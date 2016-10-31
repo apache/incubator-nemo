@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="onyx-client" />
+        <module name="onyx-common" />
+        <module name="onyx-compiler-backend" />
+        <module name="onyx-compiler-frontend-beam" />
+        <module name="onyx-compiler-frontend-spark" />
+        <module name="onyx-compiler-optimizer" />
+        <module name="onyx-conf" />
+        <module name="onyx-driver" />
+        <module name="onyx-examples" />
+        <module name="onyx-examples-beam" />
+        <module name="onyx-examples-spark" />
+        <module name="onyx-runtime-common" />
+        <module name="onyx-runtime-executor" />
+        <module name="onyx-runtime-master" />
+        <module name="onyx-tests" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="onyx-client" target="1.8" />
+      <module name="onyx-common" target="1.8" />
+      <module name="onyx-compiler-backend" target="1.8" />
+      <module name="onyx-compiler-frontend-beam" target="1.8" />
+      <module name="onyx-compiler-frontend-spark" target="1.8" />
+      <module name="onyx-compiler-optimizer" target="1.8" />
+      <module name="onyx-conf" target="1.8" />
+      <module name="onyx-driver" target="1.8" />
+      <module name="onyx-examples" target="1.8" />
+      <module name="onyx-examples-beam" target="1.8" />
+      <module name="onyx-examples-spark" target="1.8" />
+      <module name="onyx-project" target="1.8" />
+      <module name="onyx-runtime-common" target="1.8" />
+      <module name="onyx-runtime-executor" target="1.8" />
+      <module name="onyx-runtime-master" target="1.8" />
+      <module name="onyx-tests" target="1.8" />
+    </bytecodeTargetLevel>
+  </component>
+</project>

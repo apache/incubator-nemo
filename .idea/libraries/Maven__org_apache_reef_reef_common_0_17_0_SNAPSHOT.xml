@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: org.apache.reef:reef-common:0.17.0-SNAPSHOT">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/reef/reef-common/0.17.0-SNAPSHOT/reef-common-0.17.0-SNAPSHOT.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/reef/reef-common/0.17.0-SNAPSHOT/reef-common-0.17.0-SNAPSHOT-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/reef/reef-common/0.17.0-SNAPSHOT/reef-common-0.17.0-SNAPSHOT-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

@@ -1,0 +1,14 @@
+- title: Getting Started
+  docs:
+  - home
+  - getting_started
+  
+- title: Optimizations
+  docs:
+  - ir
+  - passes_and_policies
+
+- title: System Designs
+  docs:
+  - compiler_design
+  - runtime_design

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/client/onyx-client.iml" filepath="$PROJECT_DIR$/client/onyx-client.iml" />
+      <module fileurl="file://$PROJECT_DIR$/common/onyx-common.iml" filepath="$PROJECT_DIR$/common/onyx-common.iml" />
+      <module fileurl="file://$PROJECT_DIR$/compiler/backend/onyx-compiler-backend.iml" filepath="$PROJECT_DIR$/compiler/backend/onyx-compiler-backend.iml" />
+      <module fileurl="file://$PROJECT_DIR$/compiler/frontend-beam/onyx-compiler-frontend-beam.iml" filepath="$PROJECT_DIR$/compiler/frontend-beam/onyx-compiler-frontend-beam.iml" />
+      <module fileurl="file://$PROJECT_DIR$/compiler/frontend-spark/onyx-compiler-frontend-spark.iml" filepath="$PROJECT_DIR$/compiler/frontend-spark/onyx-compiler-frontend-spark.iml" />
+      <module fileurl="file://$PROJECT_DIR$/compiler/optimizer/onyx-compiler-optimizer.iml" filepath="$PROJECT_DIR$/compiler/optimizer/onyx-compiler-optimizer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/conf/onyx-conf.iml" filepath="$PROJECT_DIR$/conf/onyx-conf.iml" />
+      <module fileurl="file://$PROJECT_DIR$/runtime/driver/onyx-driver.iml" filepath="$PROJECT_DIR$/runtime/driver/onyx-driver.iml" />
+      <module fileurl="file://$PROJECT_DIR$/examples/onyx-examples.iml" filepath="$PROJECT_DIR$/examples/onyx-examples.iml" />
+      <module fileurl="file://$PROJECT_DIR$/examples-beam/onyx-examples-beam.iml" filepath="$PROJECT_DIR$/examples-beam/onyx-examples-beam.iml" />
+      <module fileurl="file://$PROJECT_DIR$/examples-spark/onyx-examples-spark.iml" filepath="$PROJECT_DIR$/examples-spark/onyx-examples-spark.iml" />
+      <module fileurl="file://$PROJECT_DIR$/onyx-project.iml" filepath="$PROJECT_DIR$/onyx-project.iml" />
+      <module fileurl="file://$PROJECT_DIR$/runtime/common/onyx-runtime-common.iml" filepath="$PROJECT_DIR$/runtime/common/onyx-runtime-common.iml" />
+      <module fileurl="file://$PROJECT_DIR$/runtime/executor/onyx-runtime-executor.iml" filepath="$PROJECT_DIR$/runtime/executor/onyx-runtime-executor.iml" />
+      <module fileurl="file://$PROJECT_DIR$/runtime/master/onyx-runtime-master.iml" filepath="$PROJECT_DIR$/runtime/master/onyx-runtime-master.iml" />
+      <module fileurl="file://$PROJECT_DIR$/tests/onyx-tests.iml" filepath="$PROJECT_DIR$/tests/onyx-tests.iml" />
+    </modules>
+  </component>
+</project>
