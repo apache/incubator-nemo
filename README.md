@@ -4,8 +4,8 @@
 Vortex is a data-processing system composed of modular components.
 
 ## Components
-* Compiler: Compiles a user program into a JobDAG for the Engine.
-* Engine: Physically executes the JobDAG.
+* Compiler: Compiles a user program into an executable for the Engine.
+* Engine: Physically executes the user program.
 
 ## Requirements
 * Beam 0.4.0-incubating-SNAPSHOT (You must download it from https://github.com/apache/incubator-beam and build it)
