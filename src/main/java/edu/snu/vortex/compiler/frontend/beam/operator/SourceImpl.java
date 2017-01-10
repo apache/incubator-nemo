@@ -21,7 +21,7 @@ import org.apache.beam.sdk.io.BoundedSource;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SourceImpl<O> extends Source<O> {
+public final class SourceImpl<O> extends Source<O> {
   private final BoundedSource<O> source;
 
   public SourceImpl(final BoundedSource<O> source) {

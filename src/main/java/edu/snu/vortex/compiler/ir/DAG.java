@@ -16,7 +16,6 @@
 package edu.snu.vortex.compiler.ir;
 
 import edu.snu.vortex.compiler.ir.operator.Operator;
-import edu.snu.vortex.compiler.ir.operator.Source;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -24,37 +23,145 @@ import java.util.function.Consumer;
 /**
  * Physical execution plan of a user program.
  */
-public class DAG {
+public final class DAG {
   private final Map<String, List<Edge>> id2inEdges;
   private final Map<String, List<Edge>> id2outEdges;
-  private final List<Source> sources;
+  private final List<Operator> operators;
 
-  public DAG(final List<Source> sources,
-             final Map<String, List<Edge>> id2inEdges,
-             final Map<String, List<Edge>> id2outEdges) {
-    this.sources = sources;
+  DAG(final List<Operator> operators,
+      final Map<String, List<Edge>> id2inEdges,
+      final Map<String, List<Edge>> id2outEdges) {
+    this.operators = operators;
     this.id2inEdges = id2inEdges;
     this.id2outEdges = id2outEdges;
   }
 
-  public List<Source> getSources() {
-    return sources;
+  public List<Operator> getOperators() {
+    return operators;
   }
 
-  public Optional<List<Edge>> getInEdges(final Operator operator) {
+  Map<String, List<Edge>> getId2inEdges() {
+    return id2inEdges;
+  }
+
+  Map<String, List<Edge>> getId2outEdges() {
+    return id2outEdges;
+  }
+
+  /**
+   * Gets the edges coming in to the given operator
+   * @param operator
+   * @return
+   */
+  public Optional<List<Edge>> getInEdgesOf(final Operator operator) {
     final List<Edge> inEdges = id2inEdges.get(operator.getId());
     return inEdges == null ? Optional.empty() : Optional.of(inEdges);
   }
 
-  public Optional<List<Edge>> getOutEdges(final Operator operator) {
+  /**
+   * Gets the edges going out of the given operator
+   * @param operator
+   * @return
+   */
+  public Optional<List<Edge>> getOutEdgesOf(final Operator operator) {
     final List<Edge> outEdges = id2outEdges.get(operator.getId());
     return outEdges == null ? Optional.empty() : Optional.of(outEdges);
   }
 
-  ////////// Auxiliary functions for graph construction and view
+  /**
+   * Finds the edge between two operators in the DAG.
+   * @param operator1
+   * @param operator2
+   * @return
+   */
+  public Optional<Edge> getEdgeBetween(final Operator operator1, final Operator operator2) {
+    final Optional<List<Edge>> inEdges = this.getInEdgesOf(operator1);
+    final Optional<List<Edge>> outEdges = this.getOutEdgesOf(operator1);
+    final Set<Edge> edges = new HashSet<>();
 
-  public static void print(final DAG dag) {
-    doDFS(dag, (operator -> System.out.println("<operator> " + operator + " / <inEdges> " + dag.getInEdges(operator))), VisitOrder.PreOrder);
+    if (inEdges.isPresent()) {
+      inEdges.get().forEach(e -> {
+        if (e.getSrc().equals(operator2)) {
+          edges.add(e);
+        }
+      });
+    }
+    if (outEdges.isPresent()) {
+      outEdges.get().forEach(e -> {
+        if (e.getDst().equals(operator2)) {
+          edges.add(e);
+        }
+      });
+    }
+
+    if (edges.size() > 1) {
+      throw new RuntimeException("There are more than one edge between two operators, this should never happen");
+    } else if (edges.size() == 1) {
+      return Optional.of(edges.iterator().next());
+    } else {
+      return Optional.empty();
+    }
+  }
+
+  /////////////// Auxiliary overriding functions
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
+    DAG dag = (DAG) o;
+
+    if (!id2inEdges.equals(dag.id2inEdges)) return false;
+    if (!id2outEdges.equals(dag.id2outEdges)) return false;
+    return operators.equals(dag.operators);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = id2inEdges.hashCode();
+    result = 31 * result + id2outEdges.hashCode();
+    result = 31 * result + operators.hashCode();
+    return result;
+  }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    this.doDFS((operator -> {
+      sb.append("<operator> ");
+      sb.append(operator.toString());
+      sb.append(" / <inEdges> ");
+      sb.append(this.getInEdgesOf(operator).toString());
+      sb.append("\n");
+    }), VisitOrder.PreOrder);
+    return sb.toString();
+  }
+
+  /**
+   * check if the DAGBuilder contains the operator
+   * @param operator
+   * @return
+   */
+  public boolean contains(Operator operator) {
+    return operators.contains(operator);
+  }
+
+  /**
+   * check if the DAGBuilder contains the edge
+   * @param edge
+   * @return
+   */
+  public boolean contains(Edge edge) {
+    return (id2inEdges.containsValue(edge) || id2outEdges.containsValue(edge));
+  }
+
+  /**
+   * returns the number of operators in the DAGBuilder
+   * @return
+   */
+  public int size() {
+    return operators.size();
   }
 
   ////////// DFS Traversal
@@ -63,30 +170,41 @@ public class DAG {
     PostOrder
   }
 
-  public static void doDFS(final DAG dag,
-                           final Consumer<Operator> function,
-                           final VisitOrder visitOrder) {
-    final HashSet<Operator> visited = new HashSet<>();
-    dag.getSources().stream()
-        .filter(source -> !visited.contains(source))
-        .forEach(source -> visit(source, function, visitOrder, dag, visited));
+  /**
+   * Do a DFS traversal.
+   * @param function function to apply to each operator
+   */
+  public void doDFS(final Consumer<Operator> function) {
+    doDFS(function, VisitOrder.PreOrder);
   }
 
-  private static void visit(final Operator operator,
-                            final Consumer<Operator> operatorConsumer,
-                            final VisitOrder visitOrder,
-                            final DAG dag,
-                            final HashSet<Operator> visited) {
+  /**
+   * Do a DFS traversal with a given visiting order.
+   * @param function function to apply to each operator
+   * @param visitOrder visiting order.
+   */
+  public void doDFS(final Consumer<Operator> function, final VisitOrder visitOrder) {
+    final HashSet<Operator> visited = new HashSet<>();
+    getOperators().stream()
+        .filter(operator -> !id2inEdges.containsKey(operator.getId())) // root Operators
+        .filter(operator -> !visited.contains(operator))
+        .forEach(operator -> visitDFS(operator, function, visitOrder, visited));
+  }
+
+  private void visitDFS(final Operator operator,
+                        final Consumer<Operator> operatorConsumer,
+                        final VisitOrder visitOrder,
+                        final HashSet<Operator> visited) {
     visited.add(operator);
     if (visitOrder == VisitOrder.PreOrder) {
       operatorConsumer.accept(operator);
     }
-    final Optional<List<Edge>> outEdges = dag.getOutEdges(operator);
+    final Optional<List<Edge>> outEdges = getOutEdgesOf(operator);
     if (outEdges.isPresent()) {
       outEdges.get().stream()
           .map(outEdge -> outEdge.getDst())
           .filter(outOperator -> !visited.contains(outOperator))
-          .forEach(outOperator -> visit(outOperator, operatorConsumer, visitOrder, dag, visited));
+          .forEach(outOperator -> visitDFS(outOperator, operatorConsumer, visitOrder, visited));
     }
     if (visitOrder == VisitOrder.PostOrder) {
       operatorConsumer.accept(operator);

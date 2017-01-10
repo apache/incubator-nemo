@@ -26,11 +26,11 @@ import java.util.stream.Collectors;
 /**
  * Simply prints out intermediate results
  */
-public class SimpleEngine {
+public final class SimpleEngine {
 
   public void executeDAG(final DAG dag) throws Exception {
     final List<Operator> topoSorted = new LinkedList<>();
-    DAG.doDFS(dag, (node -> topoSorted.add(0, node)), DAG.VisitOrder.PostOrder);
+    dag.doDFS(node -> topoSorted.add(node));
 
     final Map<String, List<Iterable>> edgeIdToData = new HashMap<>();
     final Map<String, Object> edgeIdToBroadcast = new HashMap<>();
@@ -42,7 +42,7 @@ public class SimpleEngine {
         for (final Source.Reader reader : readers) {
           data.add(reader.read());
         }
-        dag.getOutEdges(node).get().stream()
+        dag.getOutEdgesOf(node).get().stream()
             .map(outEdge -> outEdge.getId())
             .forEach(id -> edgeIdToData.put(id, data));
       } else if (node instanceof Do) {
@@ -50,12 +50,12 @@ public class SimpleEngine {
 
         // Get Broadcasted SideInputs
         final Map broadcastInput = new HashMap<>();
-        dag.getInEdges(node).get().stream()
+        dag.getInEdgesOf(node).get().stream()
             .filter(inEdge -> inEdge.getSrc() instanceof Broadcast)
             .forEach(inEdge -> broadcastInput.put(((Broadcast)inEdge.getSrc()).getTag(), edgeIdToBroadcast.get(inEdge.getId())));
 
         // Get MainInputs
-        final List<Iterable> mainInput = dag.getInEdges(node).get().stream()
+        final List<Iterable> mainInput = dag.getInEdgesOf(node).get().stream()
             .filter(inEdge -> !(inEdge.getSrc() instanceof Broadcast))
             .map(inEdge -> edgeIdToData.get(inEdge.getId()))
             .findFirst()
@@ -67,7 +67,7 @@ public class SimpleEngine {
             .collect(Collectors.toList());
 
         // TODO #12: Implement Sink Operator
-        if (dag.getOutEdges(node).isPresent()) {
+        if (dag.getOutEdgesOf(node).isPresent()) {
           // TODO #14: Implement Multi-Output Do Operators
           edgeIdToData.put(getSingleEdgeId(dag, node, EdgeDirection.Out), output);
         } else {
@@ -99,7 +99,7 @@ public class SimpleEngine {
   }
 
   private String getSingleEdgeId(final DAG dag, final Operator node, final EdgeDirection ed) {
-    final Optional<List<Edge>> optional = (ed == EdgeDirection.In) ? dag.getInEdges(node) : dag.getOutEdges(node);
+    final Optional<List<Edge>> optional = (ed == EdgeDirection.In) ? dag.getInEdgesOf(node) : dag.getOutEdgesOf(node);
     if (optional.isPresent()) {
       final List<Edge> edges = optional.get();
       if (edges.size() != 1) {

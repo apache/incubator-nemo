@@ -22,7 +22,7 @@ import java.util.HashMap;
 /**
  * Physical execution plan of intermediate data movement.
  */
-public class Edge<I, O> {
+public final class Edge<I, O> {
   public enum Type {
     M2M,
     O2M,
@@ -68,6 +68,26 @@ public class Edge<I, O> {
 
   public Operator<O, ?> getDst() {
     return dst;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
+    Edge<?, ?> edge = (Edge<?, ?>) o;
+
+    if (type != edge.type) return false;
+    if (!src.equals(edge.src)) return false;
+    return dst.equals(edge.dst);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = type.hashCode();
+    result = 31 * result + src.hashCode();
+    result = 31 * result + dst.hashCode();
+    return result;
   }
 
   @Override

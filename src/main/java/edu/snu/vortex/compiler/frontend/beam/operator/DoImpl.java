@@ -25,7 +25,7 @@ import org.apache.beam.sdk.values.PCollectionView;
 import java.util.ArrayList;
 import java.util.Map;
 
-public class DoImpl<I, O> extends Do<I, O, PCollectionView> {
+public final class DoImpl<I, O> extends Do<I, O, PCollectionView> {
   private final DoFn doFn;
 
   public DoImpl(final DoFn doFn) {

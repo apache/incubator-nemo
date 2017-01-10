@@ -22,7 +22,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
-public class BeamFrontend implements Frontend {
+public final class BeamFrontend implements Frontend {
   private static DAG dag;
 
   @Override
