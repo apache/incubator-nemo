@@ -12,7 +12,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <beam.version>0.4.0-incubating-SNAPSHOT</beam.version>
+        <beam.version>0.4.0</beam.version>
     </properties>
 
     <dependencies>
