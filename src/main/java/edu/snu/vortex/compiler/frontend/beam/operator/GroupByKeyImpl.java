@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.backend.vortex;
+package edu.snu.vortex.compiler.frontend.beam.operator;
 
-import edu.snu.vortex.compiler.backend.Backend;
+import edu.snu.vortex.compiler.ir.operator.GroupByKey;
 
-public final class VortexBackend implements Backend {
+public final class GroupByKeyImpl<I, O> extends GroupByKey<I, O> {
 }

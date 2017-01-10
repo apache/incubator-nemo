@@ -15,13 +15,10 @@
  */
 package edu.snu.vortex.compiler.frontend.beam;
 
-import edu.snu.vortex.compiler.frontend.beam.operator.BroadcastImpl;
-import edu.snu.vortex.compiler.frontend.beam.operator.DoImpl;
-import edu.snu.vortex.compiler.frontend.beam.operator.SourceImpl;
+import edu.snu.vortex.compiler.frontend.beam.operator.*;
 import edu.snu.vortex.compiler.ir.DAGBuilder;
 import edu.snu.vortex.compiler.ir.Edge;
-import edu.snu.vortex.compiler.ir.operator.Broadcast;
-import edu.snu.vortex.compiler.ir.operator.Operator;
+import edu.snu.vortex.compiler.ir.operator.*;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.Read;
 import org.apache.beam.sdk.io.Write;
@@ -33,7 +30,7 @@ import org.apache.beam.sdk.values.PValue;
 import java.util.HashMap;
 import java.util.Map;
 
-class Visitor implements Pipeline.PipelineVisitor {
+final class Visitor implements Pipeline.PipelineVisitor {
   private final DAGBuilder builder;
   private final Map<PValue, Operator> pValueToOpOutput;
 
@@ -88,7 +85,7 @@ class Visitor implements Pipeline.PipelineVisitor {
       final SourceImpl<O> source = new SourceImpl<>(read.getSource());
       return source;
     } else if (transform instanceof GroupByKey) {
-      return new edu.snu.vortex.compiler.ir.operator.GroupByKey();
+      return new GroupByKeyImpl();
     } else if (transform instanceof View.CreatePCollectionView) {
       final View.CreatePCollectionView view = (View.CreatePCollectionView)transform;
       final Broadcast vortexOperator = new BroadcastImpl(view.getView());

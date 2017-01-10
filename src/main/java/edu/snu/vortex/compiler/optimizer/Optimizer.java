@@ -18,21 +18,24 @@ package edu.snu.vortex.compiler.optimizer;
 import edu.snu.vortex.compiler.ir.Attributes;
 import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.ir.Edge;
-import edu.snu.vortex.compiler.ir.operator.Operator;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
-public class Optimizer {
+public final class Optimizer {
   /**
    * TODO #29: Make Optimizer Configurable
    */
-  public void optimize(final DAG dag) {
-    final List<Operator> topoSorted = new LinkedList<>();
-    DAG.doDFS(dag, (operator -> topoSorted.add(0, operator)), DAG.VisitOrder.PostOrder);
-    topoSorted.forEach(operator -> {
-      final Optional<List<Edge>> inEdges = dag.getInEdges(operator);
+  public DAG optimize(final DAG dag) {
+    operatorPlacement(dag);
+    edgeProcessing(dag);
+    return dag;
+  }
+
+  /////////////////////////////////////////////////////////////
+
+  private DAG operatorPlacement(final DAG dag) {
+    dag.doDFS(operator -> {
+      final Optional<List<Edge>> inEdges = dag.getInEdgesOf(operator);
       if (!inEdges.isPresent()) {
         operator.setAttr(Attributes.Key.Placement, Attributes.Placement.Transient);
       } else {
@@ -43,6 +46,7 @@ public class Optimizer {
         }
       }
     });
+    return dag;
   }
 
   private boolean hasM2M(final List<Edge> edges) {
@@ -52,5 +56,39 @@ public class Optimizer {
   private boolean allFromReserved(final List<Edge> edges) {
     return edges.stream()
         .allMatch(edge -> edge.getSrc().getAttr(Attributes.Key.Placement) == Attributes.Placement.Reserved);
+  }
+
+  ///////////////////////////////////////////////////////////
+
+  private DAG edgeProcessing(final DAG dag) {
+    dag.getOperators().forEach(operator -> {
+      final Optional<List<Edge>> inEdges = dag.getInEdgesOf(operator);
+      if (inEdges.isPresent()) {
+        inEdges.get().forEach(edge -> {
+          if (fromTransientToReserved(edge)) {
+            edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.TCPPipe);
+          } else if (fromReservedToTransient(edge)) {
+            edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.File);
+          } else {
+            if (edge.getType().equals(Edge.Type.O2O)) {
+              edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.Memory);
+            } else {
+              edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.File);
+            }
+          }
+        });
+      }
+    });
+    return dag;
+  }
+
+  private boolean fromTransientToReserved(final Edge edge) {
+    return edge.getSrc().getAttr(Attributes.Key.Placement).equals(Attributes.Placement.Transient) &&
+        edge.getDst().getAttr(Attributes.Key.Placement).equals(Attributes.Placement.Reserved);
+  }
+
+  private boolean fromReservedToTransient(final Edge edge) {
+    return edge.getSrc().getAttr(Attributes.Key.Placement).equals(Attributes.Placement.Reserved) &&
+        edge.getDst().getAttr(Attributes.Key.Placement).equals(Attributes.Placement.Transient);
   }
 }

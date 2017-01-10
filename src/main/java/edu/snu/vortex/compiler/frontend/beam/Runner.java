@@ -21,7 +21,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.runners.PipelineRunner;
 
-public class Runner extends PipelineRunner<Result> {
+public final class Runner extends PipelineRunner<Result> {
 
   public static PipelineRunner<Result> fromOptions(PipelineOptions options) {
     return new Runner();

@@ -27,7 +27,7 @@ import java.io.IOException;
 /**
  * TODO #32: Implement Beam Result
  */
-public class Result implements PipelineResult {
+public final class Result implements PipelineResult {
   @Override
   public State getState() {
     throw new UnsupportedOperationException();

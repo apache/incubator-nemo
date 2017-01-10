@@ -15,5 +15,5 @@
  */
 package edu.snu.vortex.compiler.ir.operator;
 
-public class GroupByKey<I, O> extends Operator<I, O> {
+public abstract class GroupByKey<I, O> extends Operator<I, O> {
 }

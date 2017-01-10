@@ -36,7 +36,7 @@ import java.util.Map;
 /**
  * TODO #20: Make ProcessContext Kinder
  */
-public class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext implements DoFnInvoker.ArgumentProvider<I, O> {
+public final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext implements DoFnInvoker.ArgumentProvider<I, O> {
   private I inputElement;
   private final Map<PCollectionView, Object> sideInputs;
   private final List<O> outputs;

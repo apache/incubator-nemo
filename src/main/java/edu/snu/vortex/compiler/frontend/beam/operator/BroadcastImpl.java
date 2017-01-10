@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-public class BroadcastImpl<I, O> extends Broadcast<I, O, PCollectionView> {
+public final class BroadcastImpl<I, O> extends Broadcast<I, O, PCollectionView> {
   private final PCollectionView view;
 
   public BroadcastImpl(final PCollectionView<O> view) {
