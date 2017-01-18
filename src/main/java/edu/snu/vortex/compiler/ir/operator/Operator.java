@@ -20,13 +20,14 @@ import edu.snu.vortex.compiler.ir.IdManager;
 
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Physical execution plan of a user operator.
  */
 public abstract class Operator<I, O> implements Serializable {
   private final String id;
-  private final HashMap<Attributes.Key, Attributes.Val> attributes;
+  private final Map<Attributes.Key, Attributes.Val> attributes;
 
   public Operator() {
     this.id = IdManager.newOperatorId();
@@ -42,8 +43,12 @@ public abstract class Operator<I, O> implements Serializable {
     return this;
   }
 
-  public Attributes.Val getAttr(final Attributes.Key key) {
+  public Attributes.Val getAttrByKey(final Attributes.Key key) {
     return attributes.get(key);
+  }
+
+  public Map<Attributes.Key, Attributes.Val> getAttributes() {
+    return attributes;
   }
 
   @Override
