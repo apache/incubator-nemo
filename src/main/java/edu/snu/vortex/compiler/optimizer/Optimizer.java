@@ -55,7 +55,7 @@ public final class Optimizer {
 
   private boolean allFromReserved(final List<Edge> edges) {
     return edges.stream()
-        .allMatch(edge -> edge.getSrc().getAttr(Attributes.Key.Placement) == Attributes.Placement.Reserved);
+        .allMatch(edge -> edge.getSrc().getAttrByKey(Attributes.Key.Placement) == Attributes.Placement.Reserved);
   }
 
   ///////////////////////////////////////////////////////////
@@ -83,12 +83,12 @@ public final class Optimizer {
   }
 
   private boolean fromTransientToReserved(final Edge edge) {
-    return edge.getSrc().getAttr(Attributes.Key.Placement).equals(Attributes.Placement.Transient) &&
-        edge.getDst().getAttr(Attributes.Key.Placement).equals(Attributes.Placement.Reserved);
+    return edge.getSrc().getAttrByKey(Attributes.Key.Placement).equals(Attributes.Placement.Transient) &&
+        edge.getDst().getAttrByKey(Attributes.Key.Placement).equals(Attributes.Placement.Reserved);
   }
 
   private boolean fromReservedToTransient(final Edge edge) {
-    return edge.getSrc().getAttr(Attributes.Key.Placement).equals(Attributes.Placement.Reserved) &&
-        edge.getDst().getAttr(Attributes.Key.Placement).equals(Attributes.Placement.Transient);
+    return edge.getSrc().getAttrByKey(Attributes.Key.Placement).equals(Attributes.Placement.Reserved) &&
+        edge.getDst().getAttrByKey(Attributes.Key.Placement).equals(Attributes.Placement.Transient);
   }
 }
