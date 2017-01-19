@@ -15,5 +15,8 @@
  */
 package edu.snu.vortex.compiler.backend;
 
+import edu.snu.vortex.compiler.ir.DAG;
+
 public interface Backend {
+  Object compile(DAG dag);
 }

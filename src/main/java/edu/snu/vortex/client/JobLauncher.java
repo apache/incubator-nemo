@@ -15,11 +15,15 @@
  */
 package edu.snu.vortex.client;
 
+import edu.snu.vortex.compiler.backend.Backend;
+import edu.snu.vortex.compiler.backend.vortex.VortexBackend;
 import edu.snu.vortex.compiler.frontend.Frontend;
 import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.engine.SimpleEngine;
+import edu.snu.vortex.runtime.Master;
+import edu.snu.vortex.runtime.common.ExecutionPlan;
 
 public final class JobLauncher {
   public static void main(final String[] args) throws Exception {
@@ -28,22 +32,26 @@ public final class JobLauncher {
      */
     final Frontend frontend = new BeamFrontend();
     final DAG dag = frontend.compile(args); // TODO #30: Use Tang to Parse User Arguments
-    System.out.println("##### VORTEX COMPILER (Before Optimization) #####");
+    System.out.println("##### VORTEX COMPILER (Frontend) #####");
     System.out.println(dag);
 
     final Optimizer optimizer = new Optimizer();
     final DAG optimizedDAG = optimizer.optimize(dag); // TODO #31: Interfaces for Runtime Optimization
-    System.out.println("##### VORTEX COMPILER (After Optimization) #####");
+    System.out.println("##### VORTEX COMPILER (Optimizer) #####");
     System.out.println(optimizedDAG);
 
     // TODO #28: Implement VortexBackend
-    // final Backend backend = new VortexBackend();
-    // final ??? vortexJobDAG = backend.compile(optimized);
+    final Backend backend = new VortexBackend();
+    final ExecutionPlan executionPlan = (ExecutionPlan)backend.compile(optimizedDAG);
+    System.out.println("##### VORTEX COMPILER (Backend) #####");
+    System.out.println(executionPlan);
+    System.out.println();
 
     /**
      * Step 2: Execute
      */
     System.out.println("##### VORTEX ENGINE #####");
     new SimpleEngine().executeDAG(optimizedDAG);
+    new Master().executeJob(executionPlan);
   }
 }
