@@ -110,44 +110,6 @@ public final class VortexBackend implements Backend {
     return execPlan;
   }
 
-  /*
-  private void printStages(final DAG dag) {
-    final Set<Operator> operators = new HashSet<>();
-    dag.doDFS(operators::add, DAG.VisitOrder.PostOrder);
-
-    final Set<Operator> printed = new HashSet<>();
-    operators.stream()
-        .filter(operator -> !printed.contains(operator))
-        .forEach(operator -> {
-          final Set<Operator> stage = new HashSet<>();
-          getFifoQueueNeighbors(dag, operator, stage);
-          System.out.println(stage);
-          printed.addAll(stage);
-        });
-  }
-
-  private void getFifoQueueNeighbors(final DAG dag, final Operator operator, final Set<Operator> stage) {
-    stage.add(operator);
-    final Optional<List<Edge>> inEdges = dag.getInEdgesOf(operator);
-    if (inEdges.isPresent()) {
-      inEdges.get().stream()
-          .filter(edge -> edge.getAttr(Attributes.Key.EdgeChannel) == Attributes.EdgeChannel.Memory)
-          .map(Edge::getSrc)
-          .filter(src -> !stage.contains(src))
-          .forEach(src -> getFifoQueueNeighbors(dag, src, stage));
-    }
-    final Optional<List<Edge>> outEdges = dag.getOutEdgesOf(operator);
-    if (outEdges.isPresent()) {
-      outEdges.get().stream()
-          .filter(edge -> edge.getAttr(Attributes.Key.EdgeChannel) == Attributes.EdgeChannel.Memory)
-          .map(Edge::getDst)
-          .filter(dst -> !stage.contains(dst))
-          .forEach(dst -> getFifoQueueNeighbors(dag, dst, stage));
-    }
-  }
-  */
-
-
   private static RtAttributes.CommPattern convertEdgeTypeToROpLinkAttr(Edge.Type edgeType) {
     switch (edgeType) {
       case O2O:
