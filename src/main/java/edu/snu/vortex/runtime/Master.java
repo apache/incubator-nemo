@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Remote calls
@@ -35,54 +36,75 @@ public class Master {
   }
 
   private void executeStage(final RtStage stage) {
-    final Set<List<Task>> taskGroup = convertToTaskGroups(stage);
+    final List<List<Task>> taskGroup = convertToTaskGroups(stage);
     taskGroup.forEach(this::scheduleTaskGroup);
   }
 
-  private Set<List<Task>> convertToTaskGroups(final RtStage stage) {
-    int parallelism = (int)stage.getAttr(RtAttributes.RtStageAttribute.PARALLELISM);
+  private List<List<Task>> convertToTaskGroups(final RtStage stage) {
+    int parallelism = 5; // HACK
+    int desiredByte = 20;
     final List<List<Task>> result = new ArrayList<>();
 
     for (final RtOperator rtOperator : stage.getTopoSorted()) {
+      System.out.println("parallelism: " + parallelism);
+
       final Operator operator = rtOperator.getUserOp();
       if (operator instanceof Do) {
         // simply transform
         final Do doOperator = (Do) operator;
-        final List<Task> taskList = result.get(result.size()-1).stream()
+        final List<Task> taskList = result.stream()
+            .map(list -> list.get(list.size()-1))
             .map(Task::getOutChan)
-            .map(outChan -> new Task(outChan, null, new MemoryChannel()))
+            .map(outChan -> new Task(outChan, (input -> (List)doOperator.transform(input, null)), new MemoryChannel()))
             .collect(Collectors.toList());
+
+        if (taskList.size() != result.size()) {
+          throw new RuntimeException(""+taskList.size());
+        }
+
+
+        IntStream.range(0, result.size()).forEach(i -> {
+          result.get(i).add(taskList.get(i));
+        });
         // merge taskList into result
       } else if (operator instanceof GroupByKey) {
         // partition to multi channel
         // final Iterable<KV> kvList = (Iterable<KV>)inChan.read();
       } else if (operator instanceof Broadcast) {
-        throw new RuntimeException("Broadcast not yet supported")
+        throw new RuntimeException("Broadcast not yet supported");
       } else if (operator instanceof Source) {
-        // simply read
-        final Source sourceOperator = (Source)operator;
-        final List<Source.Reader> readers = sourceOperator.getReaders(parallelism);
-        parallelism = readers.size(); // reset parallelism for this stage
-        result.add(readers.stream()
-            .map(this::convert)
-            .collect(Collectors.toList()));
+        try {
+          // simply read
+          final Source sourceOperator = (Source) operator;
+          final List<Source.Reader> readers = sourceOperator.getReaders(desiredByte);
+          parallelism = readers.size(); // reset parallelism for this stage
+          result.addAll(readers.stream()
+              .map(this::convert)
+              .map(task -> {
+                final List<Task> newList = new ArrayList<>();
+                newList.add(task);
+                return newList;
+              })
+              .collect(Collectors.toList()));
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+        System.out.println("Source TaskList " + result);
       } else {
         throw new RuntimeException("Unknown operator");
       }
     }
 
-    return null;
+    return result;
   }
 
-  private Task convert(final Do doOperator, final Channel inChan) {
-  }
 
   private Task convert(final Source.Reader reader) {
     final UserFunction userFunction = new UserFunction() {
       @Override
       public List func(List input) {
         try {
-          return reader.read();
+          return (List)reader.read();
         } catch (Exception e) {
           throw new RuntimeException(e);
         }

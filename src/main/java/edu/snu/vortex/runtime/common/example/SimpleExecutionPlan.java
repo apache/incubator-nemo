@@ -39,13 +39,13 @@ public final class SimpleExecutionPlan {
     final Map<RtAttributes.RtOpAttribute, Object> rtOpA1_Attr = new HashMap<>();
     rtOpA1_Attr.put(RtAttributes.RtOpAttribute.PARTITION, RtAttributes.Partition.HASH);
     rtOpA1_Attr.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.TRANSIENT);
-    final RtOperator a1 = new RtOperator(mockIrOpIdA1, rtOpA1_Attr);
+    final RtOperator a1 = new RtOperator(mockIrOpIdA1, rtOpA1_Attr, null);
 
     final String mockIrOpIdA2 = "a2";
     final Map<RtAttributes.RtOpAttribute, Object> rtOpA2_Attr = new HashMap<>();
     rtOpA2_Attr.put(RtAttributes.RtOpAttribute.PARTITION, RtAttributes.Partition.RANGE);
     rtOpA2_Attr.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.RESERVED);
-    final RtOperator a2 = new RtOperator(mockIrOpIdA2, rtOpA2_Attr);
+    final RtOperator a2 = new RtOperator(mockIrOpIdA2, rtOpA2_Attr, null);
 
     a.addRtOp(a1);
     a.addRtOp(a2);
@@ -65,7 +65,7 @@ public final class SimpleExecutionPlan {
     final Map<RtAttributes.RtOpAttribute, Object> rtOpB1_Attr = new HashMap<>();
     rtOpB1_Attr.put(RtAttributes.RtOpAttribute.PARTITION, RtAttributes.Partition.HASH);
     rtOpB1_Attr.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.TRANSIENT);
-    final RtOperator b1 = new RtOperator(mockIrOpIdB1, rtOpB1_Attr);
+    final RtOperator b1 = new RtOperator(mockIrOpIdB1, rtOpB1_Attr, null);
 
     b.addRtOp(b1);
 
@@ -78,7 +78,7 @@ public final class SimpleExecutionPlan {
     final Map<RtAttributes.RtOpAttribute, Object> rtOpC1_Attr = new HashMap<>();
     rtOpC1_Attr.put(RtAttributes.RtOpAttribute.PARTITION, RtAttributes.Partition.HASH);
     rtOpC1_Attr.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.TRANSIENT);
-    final RtOperator c1 = new RtOperator(mockIrOpIdC1, rtOpC1_Attr);
+    final RtOperator c1 = new RtOperator(mockIrOpIdC1, rtOpC1_Attr, null);
 
     c.addRtOp(c1);
 

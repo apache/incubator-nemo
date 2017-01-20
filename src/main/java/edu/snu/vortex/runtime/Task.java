@@ -16,7 +16,11 @@ public class Task implements Serializable {
   }
 
   public void compute() {
-    outChan.write(userFunction.func(inChan.read()));
+    if (inChan == null) {
+      outChan.write(userFunction.func(null));
+    } else {
+      outChan.write(userFunction.func(inChan.read()));
+    }
   }
 
   public Channel getInChan() {
@@ -25,5 +29,19 @@ public class Task implements Serializable {
 
   public Channel getOutChan() {
     return outChan;
+  }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("inChan: ");
+    if (inChan != null) {
+      sb.append(inChan.toString());
+    }
+    sb.append(" / userFun: ");
+    sb.append(userFunction.toString());
+    sb.append(" / outChan: ");
+    sb.append(outChan.toString());
+    return sb.toString();
   }
 }

@@ -11,6 +11,7 @@ public class Executor {
   }
 
   void executeTaskGroup(final List<Task> tasks) {
+    System.out.println("Executor execute stage: " + tasks);
     tasks.forEach(t -> t.compute());
   }
 

@@ -52,6 +52,8 @@ public final class JobLauncher {
      */
     System.out.println("##### VORTEX ENGINE #####");
     new SimpleEngine().executeDAG(optimizedDAG);
+
+    System.out.println("##### VORTEX Runtime #####");
     new Master().executeJob(executionPlan);
   }
 }
