@@ -15,6 +15,8 @@
  */
 package edu.snu.vortex.runtime.common;
 
+import edu.snu.vortex.compiler.ir.operator.Operator;
+
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,6 +24,7 @@ import java.util.Map;
 public final class RtOperator<I, O> implements Serializable {
   private final String rtOpId;
   private final Map<RtAttributes.RtOpAttribute, Object> rtOpAttr;
+  private final Operator userOp; // HACK
 
   /**
    * Map of <ID, {@link RtOpLink}> connecting previous {@link RtOperator} to this {@link RtOperator}.
@@ -33,11 +36,18 @@ public final class RtOperator<I, O> implements Serializable {
    */
   private Map<String, RtOpLink> outputLinks;
 
-  public RtOperator(final String irOpId, final Map<RtAttributes.RtOpAttribute, Object> rtOpAttr) {
+  public RtOperator(final String irOpId,
+                    final Map<RtAttributes.RtOpAttribute, Object> rtOpAttr,
+                    final Operator userOp) {
     this.rtOpId = IdGenerator.generateRtOpId(irOpId);
     this.rtOpAttr = rtOpAttr;
     this.inputLinks = new HashMap<>();
     this.outputLinks = new HashMap<>();
+    this.userOp = userOp;
+  }
+
+  public Operator getUserOp() {
+    return userOp;
   }
 
   public String getId() {

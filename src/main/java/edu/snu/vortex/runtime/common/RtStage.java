@@ -17,12 +17,10 @@ package edu.snu.vortex.runtime.common;
 
 import com.google.api.client.util.ArrayMap;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public final class RtStage {
+  private final Queue<RtOperator> topoSorted;
   private final String rtStageId;
   private final Map<RtAttributes.RtStageAttribute, Object> rtStageAttr;
 
@@ -51,6 +49,7 @@ public final class RtStage {
    * @param rtStageAttr attributes that can be given and applied to this {@link RtStage}
    */
   public RtStage(final Map<RtAttributes.RtStageAttribute, Object> rtStageAttr) {
+    this.topoSorted = new LinkedList<>();
     this.rtStageId = IdGenerator.generateRtStageId();
     this.rtOps = new ArrayMap<>();
     this.rtOpLinks = new ArrayMap<>();
@@ -59,12 +58,20 @@ public final class RtStage {
     this.rtStageAttr = rtStageAttr;
   }
 
+  public Object getAttr(final RtAttributes.RtStageAttribute key) {
+    return rtStageAttr.get(key);
+  }
+
   public String getId() {
     return rtStageId;
   }
 
   public RtOperator getRtOpById(final String rtOpId) {
     return rtOps.get(rtOpId);
+  }
+
+  public Queue<RtOperator> getTopoSorted() {
+    return topoSorted;
   }
 
   public Map<String, RtStageLink> getInputLinks() {
@@ -83,6 +90,7 @@ public final class RtStage {
     if (rtOps.containsKey(rtOp.getId()))
       throw new RuntimeException("the given rtOp has been already added");
     rtOps.put(rtOp.getId(), rtOp);
+    topoSorted.add(rtOp);
   }
 
   public void connectRtOps(final String srcRtOpId,

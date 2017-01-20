@@ -15,6 +15,8 @@
  */
 package edu.snu.vortex.compiler.ir;
 
+import java.io.Serializable;
+
 /**
  * TODO #21: Refactor Attributes Class
  */
@@ -22,7 +24,7 @@ public final class Attributes {
   /**
    * Attribute Keys
    */
-  public enum Key {
+  public enum Key implements Serializable {
     Placement,
     EdgePartitioning,
     Parallelism,
@@ -32,7 +34,7 @@ public final class Attributes {
   /**
    * Attribute Vals
    */
-  public interface Val {
+  public interface Val extends Serializable {
   }
 
   public enum Placement implements Val {

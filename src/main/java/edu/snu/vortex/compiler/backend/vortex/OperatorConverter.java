@@ -61,7 +61,7 @@ public final class OperatorConverter {
         throw new UnsupportedOperationException("Unsupported operator attribute");
       }
     });
-    final RtOperator rOp = new RtOperator(irOp.getId(), rOpAttributes);
+    final RtOperator rOp = new RtOperator(irOp.getId(), rOpAttributes, irOp);
     return rOp;
   }
 

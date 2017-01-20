@@ -1,24 +1,24 @@
 package edu.snu.vortex.runtime;
 
-import java.util.HashMap;
+import java.util.List;
 
 public class Executor {
   final Master master;
-  final HashMap dataMap;
+  // final HashMap dataMap;
 
   public Executor(final Master master) {
     this.master = master;
   }
 
-  void executeTask(final Task task) {
-    // If input is in another executor
-    master.getExecutor().readData();
-
-    // run task
-    // send output by notifying the master
-    master.onTaskCompleted();
+  void executeTaskGroup(final List<Task> tasks) {
+    tasks.forEach(t -> t.compute());
   }
 
   public Object readData() {
+    // get channel from dataMap
+    // read from the channel
+    // deregisterRemoteOutChannel();
+    // return the data
+    return null;
   }
 }
