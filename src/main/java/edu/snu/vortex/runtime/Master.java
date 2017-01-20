@@ -1,16 +1,14 @@
 package edu.snu.vortex.runtime;
 
 import edu.snu.vortex.compiler.ir.operator.*;
-import edu.snu.vortex.runtime.common.ExecutionPlan;
-import edu.snu.vortex.runtime.common.RtAttributes;
-import edu.snu.vortex.runtime.common.RtOperator;
-import edu.snu.vortex.runtime.common.RtStage;
+import edu.snu.vortex.runtime.common.*;
+import org.apache.beam.sdk.values.KV;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static edu.snu.vortex.runtime.common.RtAttributes.CommPattern.SCATTER_GATHER;
 
 /**
  * Remote calls
@@ -41,45 +39,29 @@ public class Master {
   }
 
   private List<List<Task>> convertToTaskGroups(final RtStage stage) {
-    int parallelism = 5; // HACK
-    int desiredByte = 20;
+    int desiredByte = 20; // HACK
     final List<List<Task>> result = new ArrayList<>();
 
     for (final RtOperator rtOperator : stage.getTopoSorted()) {
-      System.out.println("parallelism: " + parallelism);
-
       final Operator operator = rtOperator.getUserOp();
       if (operator instanceof Do) {
         // simply transform
         final Do doOperator = (Do) operator;
-        final List<Task> taskList = result.stream()
-            .map(list -> list.get(list.size()-1))
-            .map(Task::getOutChan)
-            .map(outChan -> new Task(outChan, (input -> (List)doOperator.transform(input, null)), new MemoryChannel()))
-            .collect(Collectors.toList());
-
-        if (taskList.size() != result.size()) {
-          throw new RuntimeException(""+taskList.size());
-        }
-
-
-        IntStream.range(0, result.size()).forEach(i -> {
-          result.get(i).add(taskList.get(i));
+        result.forEach(list -> {
+          final Channel lastTaskOutChan = list.get(list.size()-1).getOutChans().get(0);
+          final Task newTask = new DoTask(Arrays.asList(lastTaskOutChan), doOperator, Arrays.asList(new MemoryChannel()));
+          list.add(newTask);
         });
-        // merge taskList into result
       } else if (operator instanceof GroupByKey) {
         // partition to multi channel
         // final Iterable<KV> kvList = (Iterable<KV>)inChan.read();
-      } else if (operator instanceof Broadcast) {
-        throw new RuntimeException("Broadcast not yet supported");
       } else if (operator instanceof Source) {
         try {
           // simply read
           final Source sourceOperator = (Source) operator;
           final List<Source.Reader> readers = sourceOperator.getReaders(desiredByte);
-          parallelism = readers.size(); // reset parallelism for this stage
           result.addAll(readers.stream()
-              .map(this::convert)
+              .map(reader -> new SourceTask(reader, Arrays.asList(new MemoryChannel())))
               .map(task -> {
                 final List<Task> newList = new ArrayList<>();
                 newList.add(task);
@@ -95,23 +77,83 @@ public class Master {
       }
     }
 
+    final int reduceParallelism = 2; // hack
+    stage.getOutputLinks().values().forEach(stageLink -> {
+      if (stageLink.getRtOpLinks().stream()
+          .anyMatch(operatorLink ->
+              operatorLink.getRtOpLinkAttr().get(RtAttributes.RtOpLinkAttribute.COMM_PATTERN) == SCATTER_GATHER)) {
+
+        result.forEach(list -> {
+          final Channel lastTaskOutChan = list.get(list.size()-1).getOutChans().get(0);
+          final List<Channel> newTaskOutChans = IntStream.range(0, reduceParallelism)
+              .mapToObj(x -> x)
+              .map(x -> new TCPChannel())
+              .collect(Collectors.toList());
+          list.add(new PartitionTask(lastTaskOutChan, newTaskOutChans));
+        });
+      }
+    });
+
     return result;
   }
 
+  private class SourceTask extends Task {
+    private final Source.Reader reader;
 
-  private Task convert(final Source.Reader reader) {
-    final UserFunction userFunction = new UserFunction() {
-      @Override
-      public List func(List input) {
+    public SourceTask(final Source.Reader reader,
+                      final List<Channel> outChans) {
+      super(null, outChans);
+      this.reader = reader;
+    }
+
+    @Override
+    public void compute() {
+      getOutChans().forEach(chan -> {
         try {
-          return (List)reader.read();
+          chan.write((List) reader.read());
         } catch (Exception e) {
           throw new RuntimeException(e);
         }
-      }
-    };
-    return new Task(null, userFunction, new MemoryChannel());
+      });
+    }
   }
+
+  private class DoTask extends Task {
+    private final Do doOperator;
+
+    public DoTask(final List<Channel> inChans,
+                  final Do doOperator,
+                  final List<Channel> outChans) {
+      super(inChans, outChans);
+      this.doOperator = doOperator;
+    }
+
+    @Override
+    public void compute() {
+      getOutChans().get(0).write((List)doOperator.transform(getInChans().get(0).read(), null));
+    }
+  }
+
+  private class PartitionTask extends Task {
+    public PartitionTask(final Channel inChan,
+                         final List<Channel> outChans) {
+      super(Arrays.asList(inChan), outChans);
+    }
+
+    @Override
+    public void compute() {
+      final int numOfDsts = getOutChans().size();
+      final List<KV> kvList = getInChans().get(0).read();
+      final List<List<KV>> dsts = new ArrayList<>(numOfDsts);
+      IntStream.range(0, numOfDsts).forEach(x -> dsts.add(new ArrayList<>()));
+      kvList.forEach(kv -> {
+        final int dst = Math.abs(kv.getKey().hashCode() % numOfDsts);
+        dsts.get(dst).add(kv);
+      });
+      IntStream.range(0, numOfDsts).forEach(x -> getOutChans().get(x).write(dsts.get(x)));
+    }
+  }
+
 
   private void scheduleTaskGroup(final List<Task> taskGroup) {
     // Round-robin executor pick

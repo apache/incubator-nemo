@@ -2,7 +2,14 @@ package edu.snu.vortex.runtime;
 
 import java.util.List;
 
-public class MemoryChannel implements Channel {
+/**
+ * TCP Chan Remote calls
+ * - Send ChannelReadyMessage to Master
+ * - Send ReadRequestMessage to remote Executor
+ * - Remote Executor: Send data
+ * - Me: Receive data
+ */
+public class TCPChannel implements Channel {
   List data;
 
   @Override

@@ -18,6 +18,7 @@ package edu.snu.vortex.runtime.common;
 import edu.snu.vortex.compiler.ir.operator.Operator;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -78,6 +79,14 @@ public final class RtOperator<I, O> implements Serializable {
       throw new RuntimeException("the given link is already in the input link list");
     }
     inputLinks.put(rtOpLink.getRtOpLinkId(), rtOpLink);
+  }
+
+  public Collection<RtOpLink> getInLinks() {
+    return inputLinks.values();
+  }
+
+  public Collection<RtOpLink> getOutLinks() {
+    return outputLinks.values();
   }
 
   @Override

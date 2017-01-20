@@ -51,6 +51,10 @@ public final class RtStageLink {
     rtOpLinkSet.add(rtOpLink);
   }
 
+  public Set<RtOpLink> getRtOpLinks() {
+    return rtOpLinkSet;
+  }
+
   public String getId() {
     return rtStageLinkId;
   }
