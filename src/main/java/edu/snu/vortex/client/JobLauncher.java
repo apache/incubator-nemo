@@ -23,7 +23,7 @@ import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.engine.SimpleEngine;
 import edu.snu.vortex.runtime.Master;
-import edu.snu.vortex.runtime.common.ExecutionPlan;
+import edu.snu.vortex.runtime.TaskDAG;
 
 public final class JobLauncher {
   public static void main(final String[] args) throws Exception {
@@ -42,9 +42,9 @@ public final class JobLauncher {
 
     // TODO #28: Implement VortexBackend
     final Backend backend = new VortexBackend();
-    final ExecutionPlan executionPlan = (ExecutionPlan)backend.compile(optimizedDAG);
+    final TaskDAG taskDAG = (TaskDAG) backend.compile(optimizedDAG);
     System.out.println("##### VORTEX COMPILER (Backend) #####");
-    System.out.println(executionPlan);
+    System.out.println(taskDAG);
     System.out.println();
 
     /**
@@ -53,7 +53,8 @@ public final class JobLauncher {
     System.out.println("##### VORTEX ENGINE #####");
     new SimpleEngine().executeDAG(optimizedDAG);
 
+    System.out.println();
     System.out.println("##### VORTEX Runtime #####");
-    new Master().executeJob(executionPlan);
+    new Master().executeJob(taskDAG);
   }
 }

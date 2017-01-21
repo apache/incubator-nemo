@@ -19,142 +19,143 @@ import edu.snu.vortex.compiler.backend.Backend;
 import edu.snu.vortex.compiler.ir.Attributes;
 import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.ir.Edge;
+import edu.snu.vortex.compiler.ir.operator.Do;
+import edu.snu.vortex.compiler.ir.operator.GroupByKey;
 import edu.snu.vortex.compiler.ir.operator.Operator;
-import edu.snu.vortex.runtime.common.*;
-import edu.snu.vortex.runtime.exception.NoSuchRtStageException;
+import edu.snu.vortex.compiler.ir.operator.Source;
+import edu.snu.vortex.runtime.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public final class VortexBackend implements Backend {
-  public ExecutionPlan compile(final DAG dag) {
-    final ExecutionPlan execPlan = new ExecutionPlan();
-    final OperatorConverter converter = new OperatorConverter();
 
-    final List<RtStage> rtStageList = new ArrayList<>();
-    final Map<String, RtOperator> rtOperatorMap = new HashMap<>();
+  public TaskDAG compile(final DAG dag) {
+    final List<List<Operator>> stages = toStages(dag);
+    final Map<String, List<Task>> operatorIdToTasks = new HashMap<>();
+    final TaskDAG taskDAG = new TaskDAG();
+    stages.forEach(stage -> taskDAG.addStage(toTaskStage(dag, stage, operatorIdToTasks)));
+    return taskDAG;
+  }
 
-    final List<Operator> topoSorted = new LinkedList<>();
-    dag.doDFS((operator -> topoSorted.add(0, operator)), DAG.VisitOrder.PostOrder);
+  private List<TaskGroup> toTaskStage(final DAG dag,
+                                      final List<Operator> stage,
+                                      final Map<String, List<Task>> operatorIdToTasks) {
+    final int reduceParallelism = 2; // hack
+    int desiredByte = 20; // HACK
 
-    RtStage rtStage = null;
+    final List<List<Task>> result = new ArrayList<>();
 
-    for (int idx = 0; idx < topoSorted.size(); idx++) {
-      final Operator operator = topoSorted.get(idx);
-      final RtOperator rtOperator = converter.convert(operator);
-      rtOperatorMap.put(rtOperator.getId(), rtOperator);
+    for (final Operator operator : stage) {
+      final List<Task> tasksForMap = new ArrayList<>();
 
-      final Optional<List<Edge>> inEdges = dag.getInEdgesOf(operator);
-      if (isSource(inEdges)) { // in case of a source operator
-        final Object parallelism = operator.getAttrByKey(Attributes.Key.Parallelism);
-        Map<RtAttributes.RtStageAttribute, Object> rStageAttr = new HashMap<>();
-        rStageAttr.put(RtAttributes.RtStageAttribute.PARALLELISM, parallelism);
+      if (operator instanceof Do) {
+        // simply transform
+        final Do doOperator = (Do) operator;
+        result.forEach(list -> {
+          final Channel lastTaskOutChan = list.get(list.size()-1).getOutChans().get(0);
+          final Task newTask = new DoTask(Arrays.asList(lastTaskOutChan), doOperator, Arrays.asList(new MemoryChannel()));
+          tasksForMap.add(newTask);
+          list.add(newTask);
+        });
 
-        rtStage = new RtStage(rStageAttr);
-        rtStage.addRtOp(rtOperator);
-        execPlan.addRtStage(rtStage);
+      } else if (operator instanceof GroupByKey) {
+        final List<Task> prevTasks = operatorIdToTasks.get(dag.getInEdgesOf(operator).get().get(0).getSrc().getId());
+        final List<List<Channel>> prevOutChans = prevTasks.stream()
+            .map(Task::getOutChans)
+            .collect(Collectors.toList());
+        final int numOfReducers = prevOutChans.get(0).size();
 
-        rtStageList.add(rtStage);
+        /*
+        result.addAll(IntStream.range(0, numOfReducers).mapToObj(index -> index)
+            .map(index -> {
+              final List<Channel> inChans = prevOutChans.stream()
+                  .map(chanList -> chanList.get(index))
+                  .collect(Collectors.toList());
+              return new MergeTask(inChans, new MemoryChannel());})
+            .map(task -> Arrays.asList(task))
+            .collect(Collectors.toList()));
+            */
 
-      } else if (hasM2M(inEdges.get())) {
-        final Object parallelism = operator.getAttrByKey(Attributes.Key.Parallelism);
-        Map<RtAttributes.RtStageAttribute, Object> rStageAttr = new HashMap<>();
-        rStageAttr.put(RtAttributes.RtStageAttribute.PARALLELISM, parallelism);
 
-        rtStage = new RtStage(rStageAttr);
-        rtStage.addRtOp(rtOperator);
-        execPlan.addRtStage(rtStage);
-
-        rtStageList.add(rtStage);
-
-        Iterator<Edge> edges = inEdges.get().iterator();
+      } else if (operator instanceof Source) {
         try {
-          while(edges.hasNext()) {
-            final Edge edge = edges.next();
-
-            String srcROperId = converter.convertId(edge.getSrc().getId());
-            RtStage srcRtStage = findRtStageOf(rtStageList, srcROperId);
-            RtOperator srcROper = srcRtStage.getRtOpById(srcROperId);
-
-            String dstROperId = converter.convertId(edge.getDst().getId());
-            RtStage dstRtStage = findRtStageOf(rtStageList, dstROperId);
-            RtOperator dstROper = dstRtStage.getRtOpById(dstROperId);
-
-            Map<RtAttributes.RtOpLinkAttribute, Object> rOpLinkAttr = new HashMap<>();
-            rOpLinkAttr.put(RtAttributes.RtOpLinkAttribute.COMM_PATTERN, convertEdgeTypeToROpLinkAttr(edge.getType()));
-            rOpLinkAttr.put(RtAttributes.RtOpLinkAttribute.CHANNEL, convert((Attributes.EdgeChannel)edge.getAttr(Attributes.Key.EdgeChannel)));
-
-            RtOpLink rtOpLink = new RtOpLink(srcROper, dstROper, rOpLinkAttr);
-            execPlan.connectRtStages(srcRtStage, dstRtStage, rtOpLink);
-          }
-        } catch (NoSuchRtStageException e) {
-          throw new RuntimeException(e.getMessage());
+          // simply read
+          final Source sourceOperator = (Source) operator;
+          final List<Source.Reader> readers = sourceOperator.getReaders(desiredByte);
+          result.addAll(readers.stream()
+              .map(reader -> new SourceTask(reader, Arrays.asList(new MemoryChannel())))
+              .map(task -> {
+                final List<Task> newList = new ArrayList<>();
+                newList.add(task);
+                tasksForMap.add(task);
+                return newList;
+              })
+              .collect(Collectors.toList()));
+        } catch (Exception e) {
+          throw new RuntimeException(e);
         }
+        System.out.println("Source TaskList " + result);
+      } else {
+        throw new RuntimeException("Unknown operator");
       }
-      else {
-        rtStage.addRtOp(rtOperator);
 
-        Iterator<Edge> edges = inEdges.get().iterator();
-        while(edges.hasNext()) {
-          Edge edge = edges.next();
-          Map<RtAttributes.RtOpLinkAttribute, Object> rOpLinkAttr = new HashMap<>();
-          rOpLinkAttr.put(RtAttributes.RtOpLinkAttribute.COMM_PATTERN, convertEdgeTypeToROpLinkAttr(edge.getType()));
-          rOpLinkAttr.put(RtAttributes.RtOpLinkAttribute.CHANNEL, RtAttributes.Channel.LOCAL_MEM);
-
-          String srcId = converter.convertId(edge.getSrc().getId());
-          RtOpLink rtOpLink = new RtOpLink(rtOperatorMap.get(srcId), rtOperator, rOpLinkAttr);
-          rtStage.connectRtOps(srcId, rtOperator.getId(), rtOpLink);
-        }
-      }
+      operatorIdToTasks.put(operator.getId(), tasksForMap);
     }
 
-    return execPlan;
-  }
 
-  private static RtAttributes.CommPattern convertEdgeTypeToROpLinkAttr(Edge.Type edgeType) {
-    switch (edgeType) {
-      case O2O:
-        return RtAttributes.CommPattern.ONE_TO_ONE;
-      case O2M:
-        return RtAttributes.CommPattern.BROADCAST;
-      case M2M:
-        return RtAttributes.CommPattern.SCATTER_GATHER;
-      default:
-        throw new RuntimeException("no such edge type");
-    }
-  }
-
-  private static RtAttributes.Channel convert(Attributes.EdgeChannel channel) {
-    switch (channel) {
-      case File:
-        return RtAttributes.Channel.FILE;
-      case DistributedStorage:
-        return RtAttributes.Channel.DISTR_STORAGE;
-      case TCPPipe:
-        return RtAttributes.Channel.TCP;
-      case Memory:
-        return RtAttributes.Channel.LOCAL_MEM;
-      default:
-        throw new RuntimeException("no such edge type");
-    }
-  }
-
-  private static RtStage findRtStageOf(List<RtStage> rtStages, String operatorId) {
-    Iterator<RtStage> iterator = rtStages.iterator();
-
-    while (iterator.hasNext()) {
-      RtStage rtStage = iterator.next();
-      if (rtStage.contains(operatorId))
-        return rtStage;
+    final Optional<List<Edge>> finalEdges = dag.getOutEdgesOf(stage.get(stage.size()-1));
+    if (finalEdges.isPresent() && finalEdges.get().stream().anyMatch(edge -> edge.getType() == Edge.Type.M2M)) {
+      result.forEach(list -> {
+        final Channel lastTaskOutChan = list.get(list.size()-1).getOutChans().get(0);
+        final List<Channel> newTaskOutChans = IntStream.range(0, reduceParallelism)
+            .mapToObj(x -> x)
+            .map(x -> new TCPChannel())
+            .collect(Collectors.toList());
+        final Task newTask = new PartitionTask(lastTaskOutChan, newTaskOutChans);
+        list.add(newTask);
+      });
     }
 
-    return null;
+    return result.stream().map(taskList -> new TaskGroup(taskList)).collect(Collectors.toList());
   }
 
-  private static boolean isSource(final Optional<List<Edge>> edges) {
-    return (!edges.isPresent());
-  }
-  private static boolean hasM2M(final List<Edge> edges) {
-    return edges.stream().filter(edge -> edge.getType() == Edge.Type.M2M).count() > 0;
+  private List<List<Operator>> toStages(final DAG dag) {
+    final List<List<Operator>> stages = new ArrayList<>();
+    final List<Operator> topoSorted = new ArrayList<>();
+    dag.doDFS((op -> topoSorted.add(0, op)), DAG.VisitOrder.PostOrder);
+
+    final Set<Operator> printed = new HashSet<>();
+    topoSorted.stream()
+        .filter(operator -> !printed.contains(operator))
+        .forEach(operator -> {
+          final List<Operator> stage = new ArrayList<>();
+          getFifoQueueNeighbors(dag, operator, stage);
+          stages.add(stage);
+          printed.addAll(stage);
+        });
+
+    return stages;
   }
 
+  private void getFifoQueueNeighbors(final DAG dag, final Operator operator, final List<Operator> stage) {
+    stage.add(operator);
+    final Optional<List<Edge>> inEdges = dag.getInEdgesOf(operator);
+    if (inEdges.isPresent()) {
+      inEdges.get().stream()
+          .filter(edge -> edge.getAttr(Attributes.Key.EdgeChannel) == Attributes.EdgeChannel.Memory)
+          .map(Edge::getSrc)
+          .filter(src -> !stage.contains(src))
+          .forEach(src -> getFifoQueueNeighbors(dag, src, stage));
+    }
+    final Optional<List<Edge>> outEdges = dag.getOutEdgesOf(operator);
+    if (outEdges.isPresent()) {
+      outEdges.get().stream()
+          .filter(edge -> edge.getAttr(Attributes.Key.EdgeChannel) == Attributes.EdgeChannel.Memory)
+          .map(Edge::getDst)
+          .filter(dst -> !stage.contains(dst))
+          .forEach(dst -> getFifoQueueNeighbors(dag, dst, stage));
+    }
+  }
 }

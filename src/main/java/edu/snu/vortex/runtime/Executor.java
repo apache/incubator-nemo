@@ -1,7 +1,5 @@
 package edu.snu.vortex.runtime;
 
-import java.util.List;
-
 public class Executor {
   final Master master;
   // final HashMap dataMap;
@@ -10,9 +8,9 @@ public class Executor {
     this.master = master;
   }
 
-  void executeTaskGroup(final List<Task> tasks) {
-    System.out.println("Executor execute stage: " + tasks);
-    tasks.forEach(t -> t.compute());
+  void executeTaskGroup(final TaskGroup taskGroup) {
+    System.out.println("Executor execute stage: " + taskGroup);
+    taskGroup.getTasks().forEach(t -> t.compute());
   }
 
   public Object readData() {
