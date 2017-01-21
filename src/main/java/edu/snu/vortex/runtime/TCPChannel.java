@@ -1,14 +1,9 @@
 package edu.snu.vortex.runtime;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-/**
- * TCP Chan Remote calls
- * - Send ChannelReadyMessage to Master
- * - Send ReadRequestMessage to remote Executor
- * - Remote Executor: Send data
- * - Me: Receive data
- */
 public class TCPChannel extends Channel {
 
   public TCPChannel() {
@@ -18,16 +13,32 @@ public class TCPChannel extends Channel {
 
   @Override
   public void write(List data) {
-    System.out.println(getId());
-    System.out.println("TCP Channel WRITE: " + data);
+    System.out.println(getId() + " TCP Channel WRITE: " + data);
     this.data = data;
+
+    // remote call to master
     Master.onRemoteChannelReady(this.getId());
   }
 
   @Override
   public List read() {
-    System.out.println(getId());
-    System.out.println("TCP Channel READ: " + data);
-    return this.data;
+
+    // Local hit
+    if (data != null) {
+      System.out.println(getId() + " TCP Channel Local READ: " + data);
+      return data;
+    } else {
+      // remote call to master
+      final Optional<Executor> remoteExecutor = Master.getExecutor(getId());
+      if (!remoteExecutor.isPresent()) {
+        System.out.println(getId() + " TCP Channel Not Ready: ");
+        return new ArrayList(0);
+      } else {
+        // remote call to executor
+        final List data = remoteExecutor.get().readData(getId());
+        System.out.println(getId() + " TCP Channel Remote READ: ");
+        return data;
+      }
+    }
   }
 }

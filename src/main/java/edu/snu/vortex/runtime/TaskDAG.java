@@ -16,9 +16,6 @@ public class TaskDAG {
   }
 
   public void addStage(final List<TaskGroup> newStage) {
-    System.out.println("NEW STAGE");
-    System.out.println(newStage);
-
     stages.forEach(prevGroupList -> prevGroupList.forEach(prevGroup -> prevGroup.getTasks().forEach(prevTask -> {
       newStage.forEach(newGroup -> newGroup.getTasks().forEach(newTask -> {
         final List<Channel> prevOutChans = prevTask.getOutChans();
@@ -30,7 +27,6 @@ public class TaskDAG {
             final List<TaskGroup> consumers = chanToConsumers.get(chan.getId());
             if (!consumers.contains(newGroup))
               consumers.add(newGroup);
-            System.out.println("chan2consumers: " + chanToConsumers);
           }
         });
       }));
@@ -40,7 +36,6 @@ public class TaskDAG {
   }
 
   public List<TaskGroup> getConsumers(final String channelId) {
-    System.out.println("channelId: " + channelId);
     return chanToConsumers.get(channelId);
   }
 }

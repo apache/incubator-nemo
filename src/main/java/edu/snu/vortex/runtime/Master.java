@@ -8,12 +8,18 @@ import java.util.*;
  * - Receive ChannelReadyMessage
  */
 public class Master {
+  private static Master master;
   private static TaskDAG taskDAG;
+
+  private final Map<String, Integer> chanIdToExecutorId;
+
   final List<Executor> executors;
   int executorIndex;
 
   public Master(final TaskDAG taskDAG) {
+    this.master = this;
     this.taskDAG = taskDAG;
+    this.chanIdToExecutorId = new HashMap<>();
     this.executors = new ArrayList<>();
     for (int i = 0; i < 5; i++)
       this.executors.add(new Executor(this));
@@ -29,31 +35,28 @@ public class Master {
 
   private void scheduleTaskGroup(final TaskGroup taskGroup) {
     // Round-robin executor pick
-    final Executor executor = pickExecutor();
+    final int selectedIndex = (executorIndex++) % executors.size();
+    final Executor executor = executors.get(selectedIndex);
+    taskGroup.getTasks().stream()
+        .map(Task::getOutChans)
+        .flatMap(List::stream)
+        .forEach(chan -> chanIdToExecutorId.put(chan.getId(), selectedIndex));
     executor.executeTaskGroup(taskGroup); // Remote call
-  }
-
-  private Executor pickExecutor() {
-    executorIndex++;
-    return executors.get(executorIndex % executors.size());
   }
 
   /////////////////////////////// Shuffle (Remote call)
 
   public static void onRemoteChannelReady(final String chanId) {
-    System.out.println("CONSUMERS: " + taskDAG.getConsumers(chanId));
-
-    /*
-    final RtStage nextStage = remoteChanToDstStage.get(chanId);
-    executeStage(nextStage);
-    */
-
-    // scheduleTaskGroup (caching?)
-    // executor.executeTask() <- make the receiver task read the data
+    final List<TaskGroup> consumers = taskDAG.getConsumers(chanId);
+    consumers.forEach(group -> master.scheduleTaskGroup(group));
   }
 
   // Get executor where the channel data resides
-  public static Executor getExecutor(final String chanId) {
-    return null;
+  public static Optional<Executor> getExecutor(final String chanId) {
+    System.out.println("Get Executor");
+    System.out.println("chanIdToExecutorId: " + master.chanIdToExecutorId);
+    System.out.println("chanId: " + chanId);
+    final Integer index = master.chanIdToExecutorId.get(chanId);
+    return index == null ? Optional.empty() : Optional.of(master.executors.get(index));
   }
 }

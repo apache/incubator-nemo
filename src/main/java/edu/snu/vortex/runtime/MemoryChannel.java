@@ -7,15 +7,13 @@ public class MemoryChannel extends Channel {
 
   @Override
   public void write(List data) {
-    System.out.println(getId());
-    System.out.println("Memory Channel WRITE: " + data);
+    System.out.println(getId() + " Memory Channel WRITE: " + data);
     this.data = data;
   }
 
   @Override
   public List read() {
-    System.out.println(getId());
-    System.out.println("Memory Channel READ: " + data);
+    System.out.println(getId() + " Memory Channel READ: " + data);
     return this.data;
   }
 }

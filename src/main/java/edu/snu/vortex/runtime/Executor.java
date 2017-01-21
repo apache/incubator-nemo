@@ -1,23 +1,29 @@
 package edu.snu.vortex.runtime;
 
+import java.util.HashMap;
+import java.util.List;
+
 public class Executor {
   final Master master;
-  // final HashMap dataMap;
+  final HashMap<String, TCPChannel> tcpChannelHashMap;
 
   public Executor(final Master master) {
     this.master = master;
+    this.tcpChannelHashMap = new HashMap<>();
   }
 
   void executeTaskGroup(final TaskGroup taskGroup) {
     System.out.println("Executor execute stage: " + taskGroup);
+    taskGroup.getTasks().stream()
+        .map(Task::getOutChans)
+        .flatMap(List::stream)
+        .filter(chan -> chan instanceof TCPChannel)
+        .forEach(chan -> tcpChannelHashMap.put(chan.getId(), (TCPChannel)chan));
     taskGroup.getTasks().forEach(t -> t.compute());
   }
 
-  public Object readData() {
-    // get channel from dataMap
-    // read from the channel
-    // deregisterRemoteOutChannel();
-    // return the data
-    return null;
+  public List readData(final String chanId) {
+    // send data remotely
+    return tcpChannelHashMap.get(chanId).read();
   }
 }

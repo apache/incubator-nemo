@@ -30,20 +30,20 @@ public final class JobLauncher {
     /**
      * Step 1: Compile
      */
+    System.out.println("##### VORTEX COMPILER (Frontend) #####");
     final Frontend frontend = new BeamFrontend();
     final DAG dag = frontend.compile(args); // TODO #30: Use Tang to Parse User Arguments
-    System.out.println("##### VORTEX COMPILER (Frontend) #####");
     System.out.println(dag);
 
+    System.out.println("##### VORTEX COMPILER (Optimizer) #####");
     final Optimizer optimizer = new Optimizer();
     final DAG optimizedDAG = optimizer.optimize(dag); // TODO #31: Interfaces for Runtime Optimization
-    System.out.println("##### VORTEX COMPILER (Optimizer) #####");
     System.out.println(optimizedDAG);
 
     // TODO #28: Implement VortexBackend
+    System.out.println("##### VORTEX COMPILER (Backend) #####");
     final Backend backend = new VortexBackend();
     final TaskDAG taskDAG = (TaskDAG) backend.compile(optimizedDAG);
-    System.out.println("##### VORTEX COMPILER (Backend) #####");
     System.out.println(taskDAG);
     System.out.println();
 

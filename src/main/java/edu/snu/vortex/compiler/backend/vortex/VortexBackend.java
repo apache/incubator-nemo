@@ -94,7 +94,6 @@ public final class VortexBackend implements Backend {
         } catch (Exception e) {
           throw new RuntimeException(e);
         }
-        System.out.println("Source TaskList " + result);
       } else {
         throw new RuntimeException("Unknown operator");
       }
