@@ -12,6 +12,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <reef.version>0.16.0-SNAPSHOT</reef.version>
         <beam.version>0.4.0</beam.version>
     </properties>
 
@@ -26,6 +27,42 @@
             <artifactId>junit</artifactId>
             <version>4.12</version>
             <scope>test</scope>
+        </dependency>
+        <!-- REEF -->
+        <dependency>
+            <groupId>org.apache.reef</groupId>
+            <artifactId>reef-common</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.reef</groupId>
+            <artifactId>reef-io</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.reef</groupId>
+            <artifactId>reef-runtime-local</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.reef</groupId>
+            <artifactId>reef-runtime-yarn</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.reef</groupId>
+            <artifactId>tang</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.reef</groupId>
+            <artifactId>wake</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.5</version>
         </dependency>
     </dependencies>
 
