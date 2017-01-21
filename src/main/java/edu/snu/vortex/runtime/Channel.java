@@ -15,4 +15,9 @@ public abstract class Channel<T> {
   public abstract void write(List<T> data);
 
   public abstract List<T> read();
+
+  @Override
+  public String toString() {
+    return this.getClass().getSimpleName() + "#" + id;
+  }
 }

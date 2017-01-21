@@ -55,6 +55,6 @@ public final class JobLauncher {
 
     System.out.println();
     System.out.println("##### VORTEX Runtime #####");
-    new Master().executeJob(taskDAG);
+    new Master(taskDAG).executeJob();
   }
 }

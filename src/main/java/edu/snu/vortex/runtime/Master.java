@@ -8,19 +8,21 @@ import java.util.*;
  * - Receive ChannelReadyMessage
  */
 public class Master {
+  private static TaskDAG taskDAG;
   final List<Executor> executors;
   int executorIndex;
 
-  public Master() {
-    executors = new ArrayList<>();
+  public Master(final TaskDAG taskDAG) {
+    this.taskDAG = taskDAG;
+    this.executors = new ArrayList<>();
     for (int i = 0; i < 5; i++)
-      executors.add(new Executor(this));
-    executorIndex = 0;
+      this.executors.add(new Executor(this));
+    this.executorIndex = 0;
   }
 
   /////////////////////////////// Scheduling
 
-  public void executeJob(final TaskDAG taskDAG) {
+  public void executeJob() {
     final List<TaskGroup> initialTaskGroups = taskDAG.getSourceStage();
     initialTaskGroups.forEach(this::scheduleTaskGroup);
   }
@@ -39,6 +41,8 @@ public class Master {
   /////////////////////////////// Shuffle (Remote call)
 
   public static void onRemoteChannelReady(final String chanId) {
+    System.out.println("CONSUMERS: " + taskDAG.getConsumers(chanId));
+
     /*
     final RtStage nextStage = remoteChanToDstStage.get(chanId);
     executeStage(nextStage);

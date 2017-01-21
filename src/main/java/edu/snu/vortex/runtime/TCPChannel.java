@@ -18,13 +18,15 @@ public class TCPChannel extends Channel {
 
   @Override
   public void write(List data) {
+    System.out.println(getId());
     System.out.println("TCP Channel WRITE: " + data);
     this.data = data;
-    // master.onRemoteChannelReady(this.getId());
+    Master.onRemoteChannelReady(this.getId());
   }
 
   @Override
   public List read() {
+    System.out.println(getId());
     System.out.println("TCP Channel READ: " + data);
     return this.data;
   }

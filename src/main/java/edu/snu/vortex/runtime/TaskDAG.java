@@ -3,49 +3,44 @@ package edu.snu.vortex.runtime;
 import java.util.*;
 
 public class TaskDAG {
-  private final Map<TaskGroup, List<Channel>> id2inChans;
-  private final Map<TaskGroup, List<Channel>> id2outChans;
   private final List<List<TaskGroup>> stages;
+  private final Map<String, List<TaskGroup>> chanToConsumers;
 
   public TaskDAG() {
     this.stages = new ArrayList<>();
-    this.id2inChans = new HashMap<>();
-    this.id2outChans = new HashMap<>();
+    this.chanToConsumers = new HashMap<>();
   }
 
   public List<TaskGroup> getSourceStage() {
     return stages.get(0);
   }
 
-  public void addStage(final List<TaskGroup> stage) {
-    stages.add(stage);
+  public void addStage(final List<TaskGroup> newStage) {
+    System.out.println("NEW STAGE");
+    System.out.println(newStage);
+
+    stages.forEach(prevGroupList -> prevGroupList.forEach(prevGroup -> prevGroup.getTasks().forEach(prevTask -> {
+      newStage.forEach(newGroup -> newGroup.getTasks().forEach(newTask -> {
+        final List<Channel> prevOutChans = prevTask.getOutChans();
+        final List<Channel> newInChans = newTask.getInChans();
+
+        prevOutChans.forEach(chan -> {
+          if (newInChans.contains(chan)) {
+            chanToConsumers.putIfAbsent(chan.getId(), new ArrayList<>());
+            final List<TaskGroup> consumers = chanToConsumers.get(chan.getId());
+            if (!consumers.contains(newGroup))
+              consumers.add(newGroup);
+            System.out.println("chan2consumers: " + chanToConsumers);
+          }
+        });
+      }));
+    })));
+
+    stages.add(newStage);
   }
 
-  public void connectTasks(final Task src, final Task dst, final Channel chan) {
-    //id2inChans.putIfAbsent(dst, new ArrayList<>());
-    //id2outChans.putIfAbsent(src, new ArrayList<>());
-
-    id2inChans.get(dst).add(chan);
-    id2outChans.get(src).add(chan);
-  }
-
-  /**
-   * Gets the edges coming in to the given operator
-   * @param chan
-   * @return
-   */
-  public Optional<List<Channel>> getInChannelsOf(final Channel chan) {
-    final List<Channel> inChannels = id2inChans.get(chan.getId());
-    return inChannels == null ? Optional.empty() : Optional.of(inChannels);
-  }
-
-  /**
-   * Gets the edges going out of the given operator
-   * @param chan
-   * @return
-   */
-  public Optional<List<Channel>> getOutChannelsOf(final Channel chan) {
-    final List<Channel> outChannels = id2outChans.get(chan.getId());
-    return outChannels == null ? Optional.empty() : Optional.of(outChannels);
+  public List<TaskGroup> getConsumers(final String channelId) {
+    System.out.println("channelId: " + channelId);
+    return chanToConsumers.get(channelId);
   }
 }

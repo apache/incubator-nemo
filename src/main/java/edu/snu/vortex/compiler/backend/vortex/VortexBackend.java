@@ -48,35 +48,34 @@ public final class VortexBackend implements Backend {
     final List<List<Task>> result = new ArrayList<>();
 
     for (final Operator operator : stage) {
-      final List<Task> tasksForMap = new ArrayList<>();
-
       if (operator instanceof Do) {
         // simply transform
         final Do doOperator = (Do) operator;
         result.forEach(list -> {
           final Channel lastTaskOutChan = list.get(list.size()-1).getOutChans().get(0);
           final Task newTask = new DoTask(Arrays.asList(lastTaskOutChan), doOperator, Arrays.asList(new MemoryChannel()));
-          tasksForMap.add(newTask);
           list.add(newTask);
         });
 
       } else if (operator instanceof GroupByKey) {
-        final List<Task> prevTasks = operatorIdToTasks.get(dag.getInEdgesOf(operator).get().get(0).getSrc().getId());
-        final List<List<Channel>> prevOutChans = prevTasks.stream()
+        final List<List<Channel>> prevOutChans = operatorIdToTasks.get("PARTITION").stream()
             .map(Task::getOutChans)
             .collect(Collectors.toList());
         final int numOfReducers = prevOutChans.get(0).size();
 
-        /*
-        result.addAll(IntStream.range(0, numOfReducers).mapToObj(index -> index)
+        final List<Task> tasks = IntStream.range(0, numOfReducers).mapToObj(index -> index)
             .map(index -> {
               final List<Channel> inChans = prevOutChans.stream()
                   .map(chanList -> chanList.get(index))
                   .collect(Collectors.toList());
               return new MergeTask(inChans, new MemoryChannel());})
-            .map(task -> Arrays.asList(task))
-            .collect(Collectors.toList()));
-            */
+            .collect(Collectors.toList());
+
+
+        final List<List<Task>> forResult = tasks.stream()
+            .map(task -> new ArrayList<>(Arrays.asList(task)))
+            .collect(Collectors.toList());
+        result.addAll(forResult);
 
 
       } else if (operator instanceof Source) {
@@ -89,7 +88,6 @@ public final class VortexBackend implements Backend {
               .map(task -> {
                 final List<Task> newList = new ArrayList<>();
                 newList.add(task);
-                tasksForMap.add(task);
                 return newList;
               })
               .collect(Collectors.toList()));
@@ -101,7 +99,6 @@ public final class VortexBackend implements Backend {
         throw new RuntimeException("Unknown operator");
       }
 
-      operatorIdToTasks.put(operator.getId(), tasksForMap);
     }
 
 
@@ -115,6 +112,10 @@ public final class VortexBackend implements Backend {
             .collect(Collectors.toList());
         final Task newTask = new PartitionTask(lastTaskOutChan, newTaskOutChans);
         list.add(newTask);
+
+        // HACK
+        operatorIdToTasks.putIfAbsent("PARTITION", new ArrayList<>());
+        operatorIdToTasks.get("PARTITION").add(newTask);
       });
     }
 
