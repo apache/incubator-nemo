@@ -17,6 +17,7 @@ package edu.snu.vortex.compiler.frontend.beam.operator;
 
 import edu.snu.vortex.compiler.ir.operator.Source;
 import org.apache.beam.sdk.io.BoundedSource;
+import org.apache.beam.sdk.util.WindowedValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +34,7 @@ public final class SourceImpl<O> extends Source<O> {
     // Can't use lambda due to exception thrown
     final List<Source.Reader<O>> readers = new ArrayList<>();
     for (final BoundedSource<O> s : source.splitIntoBundles(desiredBundleSizeBytes, null)) {
-      readers.add(new Reader<>(s.createReader(null)));
+      readers.add(new Reader(s.createReader(null)));
     }
     return readers;
   }
@@ -47,7 +48,7 @@ public final class SourceImpl<O> extends Source<O> {
     return sb.toString();
   }
 
-  public class Reader<T> implements Source.Reader<T> {
+  public class Reader<T> implements Source.Reader<WindowedValue<T>> {
     private final BoundedSource.BoundedReader<T> beamReader;
 
     Reader(final BoundedSource.BoundedReader<T> beamReader) {
@@ -55,11 +56,11 @@ public final class SourceImpl<O> extends Source<O> {
     }
 
     @Override
-    public Iterable<T> read() throws Exception {
-      final ArrayList<T> data = new ArrayList<>();
+    public Iterable<WindowedValue<T>> read() throws Exception {
+      final ArrayList<WindowedValue<T>> data = new ArrayList<>();
       try (final BoundedSource.BoundedReader<T> reader = beamReader) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
-          data.add(reader.getCurrent());
+          data.add(WindowedValue.valueInGlobalWindow(reader.getCurrent()));
         }
       }
       return data;

@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.compiler.frontend.beam;
 
+import com.google.common.collect.Iterables;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.Aggregator;
 import org.apache.beam.sdk.transforms.Combine;
@@ -23,7 +24,9 @@ import org.apache.beam.sdk.transforms.reflect.DoFnInvoker;
 import org.apache.beam.sdk.transforms.splittabledofn.RestrictionTracker;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.util.Timer;
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.util.WindowingInternals;
 import org.apache.beam.sdk.util.state.State;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -37,25 +40,26 @@ import java.util.Map;
  * TODO #20: Make ProcessContext Kinder
  */
 public final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext implements DoFnInvoker.ArgumentProvider<I, O> {
-  private I inputElement;
+  private WindowedValue<I> windowedValue;
   private final Map<PCollectionView, Object> sideInputs;
-  private final List<O> outputs;
+  private final List<WindowedValue<O>> outputs;
+
 
   public ProcessContext(final DoFn<I, O> fn,
-                        final List<O> outputs,
+                        final List<WindowedValue<O>> outputs,
                         final Map<PCollectionView, Object> sideInputs) {
     fn.super();
     this.outputs = outputs;
     this.sideInputs = sideInputs;
   }
 
-  public void setElement(final I element) {
-    this.inputElement = element;
+  public void setWindowedValue(final WindowedValue<I> windowedValue) {
+    this.windowedValue = windowedValue;
   }
 
   @Override
   public I element() {
-    return this.inputElement;
+    return this.windowedValue.getValue();
   }
 
   @Override
@@ -65,12 +69,12 @@ public final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext implem
 
   @Override
   public Instant timestamp() {
-    throw new UnsupportedOperationException();
+    return this.windowedValue.getTimestamp();
   }
 
   @Override
   public PaneInfo pane() {
-    throw new UnsupportedOperationException();
+    return this.windowedValue.getPane();
   }
 
   @Override
@@ -80,12 +84,12 @@ public final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext implem
 
   @Override
   public void output(final O output) {
-    outputs.add(output);
+    outputs.add(WindowedValue.of(output, windowedValue.getTimestamp(), windowedValue.getWindows(), windowedValue.getPane()));
   }
 
   @Override
   public void outputWithTimestamp(final O output, final Instant timestamp) {
-    throw new UnsupportedOperationException();
+    outputs.add(WindowedValue.of(output, timestamp, windowedValue.getWindows(), windowedValue.getPane()));
   }
 
   @Override
@@ -105,7 +109,7 @@ public final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext implem
 
   @Override
   public BoundedWindow window() {
-    throw new UnsupportedOperationException();
+    return Iterables.getOnlyElement(windowedValue.getWindows());
   }
 
   @Override

@@ -2,6 +2,7 @@ package edu.snu.vortex.compiler.backend.vortex;
 
 import edu.snu.vortex.runtime.Channel;
 import edu.snu.vortex.runtime.Task;
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
 
 import java.util.*;
@@ -18,7 +19,8 @@ public class MergeTask extends Task {
     final Map<Object, List> resultMap = new HashMap<>();
 
     getInChans().forEach(inChan -> inChan.read().forEach(element -> {
-      final KV kv = (KV)element;
+      final WindowedValue<KV> wv = (WindowedValue<KV>)element;
+      final KV kv = wv.getValue();
       resultMap.putIfAbsent(kv.getKey(), new ArrayList());
       resultMap.get(kv.getKey()).add(kv.getValue());
     }));

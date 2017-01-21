@@ -20,12 +20,13 @@ import edu.snu.vortex.compiler.frontend.beam.ProcessContext;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvoker;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvokers;
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 
 import java.util.ArrayList;
 import java.util.Map;
 
-public final class DoImpl<I, O> extends Do<I, O, PCollectionView> {
+public final class DoImpl<I, O> extends Do<WindowedValue<I>, WindowedValue<O>, PCollectionView> {
   private final DoFn doFn;
 
   public DoImpl(final DoFn doFn) {
@@ -33,14 +34,15 @@ public final class DoImpl<I, O> extends Do<I, O, PCollectionView> {
   }
 
   @Override
-  public Iterable<O> transform(final Iterable<I> input, final Map<PCollectionView, Object> broadcasted) {
+  public Iterable<WindowedValue<O>> transform(final Iterable<WindowedValue<I>> input,
+                                              final Map<PCollectionView, Object> broadcasted) {
     final DoFnInvoker<I, O> invoker = DoFnInvokers.invokerFor(doFn);
-    final ArrayList<O> outputList = new ArrayList<>();
+    final ArrayList<WindowedValue<O>> outputList = new ArrayList<>();
     final ProcessContext<I, O> context = new ProcessContext<>(doFn, outputList, broadcasted);
     invoker.invokeSetup();
     invoker.invokeStartBundle(context);
     input.forEach(element -> {
-      context.setElement(element);
+      context.setWindowedValue(element);
       invoker.invokeProcessElement(context);
     });
     invoker.invokeFinishBundle(context);

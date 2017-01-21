@@ -25,8 +25,11 @@ import org.apache.beam.sdk.io.Write;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.GroupByKey;
+import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.transforms.windowing.WindowFn;
 import org.apache.beam.sdk.values.PValue;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -94,13 +97,17 @@ final class Visitor implements Pipeline.PipelineVisitor {
     } else if (transform instanceof Write.Bound) {
       throw new UnsupportedOperationException(transform.toString());
     } else if (transform instanceof ParDo.Bound) {
-      final ParDo.Bound<I, O> parDo = (ParDo.Bound<I, O>)transform;
+      final ParDo.Bound<I, O> parDo = (ParDo.Bound<I, O>) transform;
       final DoImpl<I, O> vortexOperator = new DoImpl<>(parDo.getNewFn());
       parDo.getSideInputs().stream()
           .filter(pValueToOpOutput::containsKey)
           .map(pValueToOpOutput::get)
           .forEach(src -> builder.connectOperators(src, vortexOperator, Edge.Type.O2O)); // Broadcasted = O2O
       return vortexOperator;
+    } else if (transform instanceof Window.Bound) {
+      final Window.Bound boundedWindow = (Window.Bound)transform;
+      final WindowFn windowFn = boundedWindow.getWindowFn();
+      return new AssignWindows(windowFn);
     } else {
       throw new UnsupportedOperationException(transform.toString());
     }
