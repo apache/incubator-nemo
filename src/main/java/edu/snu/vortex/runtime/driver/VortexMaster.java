@@ -22,6 +22,7 @@ final class VortexMaster {
   private final String[] userArguments;
   private final Map<String, String> outChannelIdToExecutorMap;
   private final Set<String> readyIdChannelSet;
+  private final Set<String> scheduledTaskGroupIdSet;
 
   private int executorIndex;
   private TaskDAG taskDAG;
@@ -32,7 +33,8 @@ final class VortexMaster {
     this.exeucutorList = new ArrayList<>();
     this.userArguments = args.split(",");
     this.outChannelIdToExecutorMap = new HashMap<>();
-    this.readyIdChannelSet  = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+    this.readyIdChannelSet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+    this.scheduledTaskGroupIdSet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
   }
 
   void launchJob() {
@@ -75,6 +77,11 @@ final class VortexMaster {
   }
 
   private void scheduleTaskGroup(final TaskGroup taskGroup) {
+    if (scheduledTaskGroupIdSet.contains(taskGroup.getId())) {
+      return;
+    }
+
+    scheduledTaskGroupIdSet.add(taskGroup.getId());
     // Round-robin executor pick
     final int selectedIndex = (executorIndex++) % exeucutorList.size();
     final ExecutorRepresenter executor = exeucutorList.get(selectedIndex);
