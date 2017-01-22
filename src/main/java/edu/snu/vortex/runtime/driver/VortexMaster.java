@@ -7,6 +7,7 @@ import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.runtime.*;
+import org.apache.commons.lang.StringUtils;
 import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -40,6 +41,7 @@ final class VortexMaster {
        * Step 1: Compile
        */
       System.out.println("##### VORTEX COMPILER (Frontend) #####");
+      System.out.println("User arguments: " + StringUtils.join(userArguments, " "));
       final Frontend frontend = new BeamFrontend();
       final DAG dag = frontend.compile(userArguments); // TODO #30: Use Tang to Parse User Arguments
       System.out.println(dag);
