@@ -15,6 +15,9 @@
  */
 package edu.snu.vortex.compiler.frontend.beam.operator;
 
+import edu.snu.vortex.compiler.frontend.beam.element.Element;
+import edu.snu.vortex.compiler.frontend.beam.element.Record;
+import edu.snu.vortex.compiler.frontend.beam.element.Watermark;
 import edu.snu.vortex.compiler.ir.operator.Do;
 import edu.snu.vortex.compiler.frontend.beam.ProcessContext;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -26,7 +29,7 @@ import org.apache.beam.sdk.values.PCollectionView;
 import java.util.ArrayList;
 import java.util.Map;
 
-public final class DoImpl<I, O> extends Do<WindowedValue<I>, WindowedValue<O>, PCollectionView> {
+public final class DoImpl<I, O> extends Do<Element<I>, Element<O>, PCollectionView> {
   private final DoFn doFn;
 
   public DoImpl(final DoFn doFn) {
@@ -34,16 +37,20 @@ public final class DoImpl<I, O> extends Do<WindowedValue<I>, WindowedValue<O>, P
   }
 
   @Override
-  public Iterable<WindowedValue<O>> transform(final Iterable<WindowedValue<I>> input,
-                                              final Map<PCollectionView, Object> broadcasted) {
+  public Iterable<Element<O>> transform(final Iterable<Element<I>> input,
+                                        final Map<PCollectionView, Object> broadcasted) {
     final DoFnInvoker<I, O> invoker = DoFnInvokers.invokerFor(doFn);
-    final ArrayList<WindowedValue<O>> outputList = new ArrayList<>();
+    final ArrayList<Element<O>> outputList = new ArrayList<>();
     final ProcessContext<I, O> context = new ProcessContext<>(doFn, outputList, broadcasted);
     invoker.invokeSetup();
     invoker.invokeStartBundle(context);
     input.forEach(element -> {
-      context.setWindowedValue(element);
-      invoker.invokeProcessElement(context);
+      if (element.isWatermark()) {
+        outputList.add((Watermark<O>)element.asWatermark());
+      } else {
+        context.setWindowedValue(element.asRecord().getWindowedValue());
+        invoker.invokeProcessElement(context);
+      }
     });
     invoker.invokeFinishBundle(context);
     invoker.invokeTeardown();

@@ -62,10 +62,6 @@ public class WindowedMapReduce {
           new Instant(
               ThreadLocalRandom.current()
                   .nextLong(minTimestamp.getMillis(), maxTimestamp.getMillis()));
-
-      /**
-       * Concept #2: Set the data element with that timestamp.
-       */
       c.outputWithTimestamp(c.element(), new Instant(randomTimestamp));
     }
   }

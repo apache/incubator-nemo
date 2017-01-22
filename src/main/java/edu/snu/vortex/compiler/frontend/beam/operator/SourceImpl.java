@@ -15,6 +15,8 @@
  */
 package edu.snu.vortex.compiler.frontend.beam.operator;
 
+import edu.snu.vortex.compiler.frontend.beam.element.Element;
+import edu.snu.vortex.compiler.frontend.beam.element.Record;
 import edu.snu.vortex.compiler.ir.operator.Source;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -48,7 +50,7 @@ public final class SourceImpl<O> extends Source<O> {
     return sb.toString();
   }
 
-  public class Reader<T> implements Source.Reader<WindowedValue<T>> {
+  public class Reader<T> implements Source.Reader<Element<T>> {
     private final BoundedSource.BoundedReader<T> beamReader;
 
     Reader(final BoundedSource.BoundedReader<T> beamReader) {
@@ -56,11 +58,11 @@ public final class SourceImpl<O> extends Source<O> {
     }
 
     @Override
-    public Iterable<WindowedValue<T>> read() throws Exception {
-      final ArrayList<WindowedValue<T>> data = new ArrayList<>();
+    public Iterable<Element<T>> read() throws Exception {
+      final ArrayList<Element<T>> data = new ArrayList<>();
       try (final BoundedSource.BoundedReader<T> reader = beamReader) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
-          data.add(WindowedValue.valueInGlobalWindow(reader.getCurrent()));
+          data.add(new Record<>(WindowedValue.valueInGlobalWindow(reader.getCurrent())));
         }
       }
       return data;

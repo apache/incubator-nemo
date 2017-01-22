@@ -16,6 +16,8 @@
 package edu.snu.vortex.compiler.frontend.beam;
 
 import com.google.common.collect.Iterables;
+import edu.snu.vortex.compiler.frontend.beam.element.Element;
+import edu.snu.vortex.compiler.frontend.beam.element.Record;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.Aggregator;
 import org.apache.beam.sdk.transforms.Combine;
@@ -42,11 +44,11 @@ import java.util.Map;
 public final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext implements DoFnInvoker.ArgumentProvider<I, O> {
   private WindowedValue<I> windowedValue;
   private final Map<PCollectionView, Object> sideInputs;
-  private final List<WindowedValue<O>> outputs;
+  private final List<Element<O>> outputs;
 
 
   public ProcessContext(final DoFn<I, O> fn,
-                        final List<WindowedValue<O>> outputs,
+                        final List<Element<O>> outputs,
                         final Map<PCollectionView, Object> sideInputs) {
     fn.super();
     this.outputs = outputs;
@@ -84,12 +86,12 @@ public final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext implem
 
   @Override
   public void output(final O output) {
-    outputs.add(WindowedValue.of(output, windowedValue.getTimestamp(), windowedValue.getWindows(), windowedValue.getPane()));
+    outputs.add(new Record<>(WindowedValue.of(output, windowedValue.getTimestamp(), windowedValue.getWindows(), windowedValue.getPane())));
   }
 
   @Override
   public void outputWithTimestamp(final O output, final Instant timestamp) {
-    outputs.add(WindowedValue.of(output, timestamp, windowedValue.getWindows(), windowedValue.getPane()));
+    outputs.add(new Record<>(WindowedValue.of(output, timestamp, windowedValue.getWindows(), windowedValue.getPane())));
   }
 
   @Override
