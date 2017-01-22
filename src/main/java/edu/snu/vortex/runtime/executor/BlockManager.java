@@ -64,6 +64,8 @@ public final class BlockManager {
     @Override
     public void onNext(final Message<DataMessage> message) {
       final DataMessage dataMessage = message.getData().iterator().next();
+      System.out.println("Data for channel " + dataMessage.getChannelId() + " , " + dataMessage.getData());
+
       channelIdToDataMap.put(dataMessage.getChannelId(), dataMessage.getData());
       latchMap.remove(dataMessage.getChannelId()).countDown();
     }
@@ -112,8 +114,8 @@ public final class BlockManager {
       throw new RuntimeException(errMessage);
     }
     try {
-      conn.write(new DataMessage(channelId, data));
       conn.open();
+      conn.write(new DataMessage(channelId, data));
     } catch (final NetworkException e) {
       final String errMessage = "NetworkException occurred!" + e.getMessage();
       LOG.log(Level.WARNING, errMessage);
@@ -128,6 +130,8 @@ public final class BlockManager {
   // On in-channel
   private List remoteRead(final String channelId) {
     final CountDownLatch latch = new CountDownLatch(1);
+    System.out.println("Wait for channel " + channelId);
+
     latchMap.put(channelId, latch);
     vortexExecutor.sendReadRequest(channelId);
 

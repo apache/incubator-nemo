@@ -20,6 +20,7 @@ import org.apache.beam.sdk.io.BoundedSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public final class SourceImpl<O> extends Source<O> {
   private final BoundedSource<O> source;
@@ -30,12 +31,9 @@ public final class SourceImpl<O> extends Source<O> {
 
   @Override
   public List<Source.Reader<O>> getReaders(final long desiredBundleSizeBytes) throws Exception {
-    // Can't use lambda due to exception thrown
-    final List<Source.Reader<O>> readers = new ArrayList<>();
-    for (final BoundedSource<O> s : source.splitIntoBundles(desiredBundleSizeBytes, null)) {
-      readers.add(new Reader<>(s.createReader(null)));
-    }
-    return readers;
+    return source.splitIntoBundles(desiredBundleSizeBytes, null).stream()
+        .map(Reader::new)
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -48,16 +46,16 @@ public final class SourceImpl<O> extends Source<O> {
   }
 
   public class Reader<T> implements Source.Reader<T> {
-    private final BoundedSource.BoundedReader<T> beamReader;
+    private final BoundedSource<T> beamReader;
 
-    Reader(final BoundedSource.BoundedReader<T> beamReader) {
+    Reader(final BoundedSource<T> beamReader) {
       this.beamReader = beamReader;
     }
 
     @Override
     public Iterable<T> read() throws Exception {
       final ArrayList<T> data = new ArrayList<>();
-      try (final BoundedSource.BoundedReader<T> reader = beamReader) {
+      try (final BoundedSource.BoundedReader<T> reader = beamReader.createReader(null)) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
           data.add(reader.getCurrent());
         }
