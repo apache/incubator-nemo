@@ -15,12 +15,29 @@
  */
 package edu.snu.vortex.client;
 
+import edu.snu.vortex.runtime.driver.Parameters;
 import edu.snu.vortex.runtime.driver.VortexDriver;
 import org.apache.reef.client.DriverConfiguration;
+import org.apache.reef.client.DriverLauncher;
+import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
+import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.JavaConfigurationBuilder;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.util.EnvironmentUtils;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 public final class JobLauncher {
+
+  private static final Logger LOG = Logger.getLogger(JobLauncher.class.getName());
+
+  private static final int MAX_NUMBER_OF_EVALUATORS = 1000;
+
   private static Configuration getDriverConfiguration() {
     return DriverConfiguration.CONF
         .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(JobLauncher.class))
@@ -32,7 +49,48 @@ public final class JobLauncher {
         .build();
   }
 
-  public static void main(final String[] args) throws Exception {
+  private static Configuration getRuntimeConfiguration(final String runtime) {
+    if (runtime.equals("yarn")) {
+      return getYarnRuntimeConfiguration();
+    } else {
+      return getLocalRuntimeConfiguration();
+    }
+  }
 
+  private static Configuration getYarnRuntimeConfiguration() {
+    return YarnClientConfiguration.CONF.build();
+  }
+
+  private static Configuration getLocalRuntimeConfiguration() {
+    return LocalRuntimeConfiguration.CONF
+        .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, MAX_NUMBER_OF_EVALUATORS)
+        .build();
+  }
+
+  private static Configuration getJobConf(final String[] args) throws Exception {
+    final JavaConfigurationBuilder confBuilder = Tang.Factory.getTang().newConfigurationBuilder();
+    final CommandLine cl = new CommandLine(confBuilder);
+    cl.registerShortNameOfClass(Parameters.Runtime.class);
+    cl.registerShortNameOfClass(Parameters.EvaluatorCore.class);
+    cl.registerShortNameOfClass(Parameters.EvaluatorMem.class);
+    cl.registerShortNameOfClass(Parameters.EvaluatorNum.class);
+    cl.registerShortNameOfClass(Parameters.UserArguments.class);
+    cl.processCommandLine(args);
+    return confBuilder.build();
+  }
+
+  public static void main(final String[] args) throws Exception {
+    final Configuration jobConf = getJobConf(args);
+
+    final String runtime = Tang.Factory.getTang().newInjector(jobConf)
+        .getNamedInstance(Parameters.Runtime.class);
+
+    final Configuration runtimeConf = getRuntimeConfiguration(runtime);
+    final Configuration driverConf = getDriverConfiguration();
+
+    final LauncherStatus status = DriverLauncher
+        .getLauncher(runtimeConf)
+        .run(Configurations.merge(driverConf, jobConf));
+    LOG.log(Level.INFO, "REEF job completed: {0}", status);
   }
 }

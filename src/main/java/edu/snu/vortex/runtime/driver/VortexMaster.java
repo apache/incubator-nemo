@@ -1,29 +1,40 @@
 package edu.snu.vortex.runtime.driver;
 
-
 import edu.snu.vortex.compiler.backend.Backend;
 import edu.snu.vortex.compiler.backend.vortex.VortexBackend;
 import edu.snu.vortex.compiler.frontend.Frontend;
 import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
-import edu.snu.vortex.runtime.Master;
-import edu.snu.vortex.runtime.TaskDAG;
-import edu.snu.vortex.runtime.VortexMessage;
+import edu.snu.vortex.runtime.*;
+import org.apache.reef.driver.task.RunningTask;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-public final class VortexMaster {
+final class VortexMaster {
 
+  private final Map<String, ExecutorRepresenter> executorMap;
+  private final List<ExecutorRepresenter> exeucutorList;
   private final String[] userArguments;
+  private final Map<String, String> outChannelIdToExecutorMap;
+  private final Set<String> readyIdChannelSet;
+
+  private int executorIndex;
+  private TaskDAG taskDAG;
 
   @Inject
   private VortexMaster(@Parameter(Parameters.UserArguments.class) final String args) {
-    userArguments = args.split(",");
+    this.executorMap = new HashMap<>();
+    this.exeucutorList = new ArrayList<>();
+    this.userArguments = args.split(",");
+    this.outChannelIdToExecutorMap = new HashMap<>();
+    this.readyIdChannelSet  = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
   }
 
-  public void launchJob() {
+  void launchJob() {
     try {
       /**
        * Step 1: Compile
@@ -41,7 +52,7 @@ public final class VortexMaster {
       // TODO #28: Implement VortexBackend
       System.out.println("##### VORTEX COMPILER (Backend) #####");
       final Backend backend = new VortexBackend();
-      final TaskDAG taskDAG = (TaskDAG) backend.compile(optimizedDAG);
+      this.taskDAG = (TaskDAG) backend.compile(optimizedDAG);
       System.out.println(taskDAG);
       System.out.println();
 
@@ -50,13 +61,59 @@ public final class VortexMaster {
        */
       System.out.println();
       System.out.println("##### VORTEX Runtime #####");
-      new Master(taskDAG).executeJob();
+      executeJob();
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
   }
 
-  public void onExecutorMessage(final VortexMessage vortexMessage) {
+  private void executeJob() {
+    final List<TaskGroup> initialTaskGroups = taskDAG.getSourceStage();
+    initialTaskGroups.forEach(this::scheduleTaskGroup);
+  }
 
+  private void scheduleTaskGroup(final TaskGroup taskGroup) {
+    // Round-robin executor pick
+    final int selectedIndex = (executorIndex++) % exeucutorList.size();
+    final ExecutorRepresenter executor = exeucutorList.get(selectedIndex);
+
+
+    taskGroup.getTasks().stream()
+        .map(Task::getOutChans)
+        .flatMap(List::stream)
+        .filter(chan -> chan instanceof TCPChannel)
+        .forEach(chan -> outChannelIdToExecutorMap.put(chan.getId(), executor.getId()));
+
+    executor.sendExecuteTaskGroup(taskGroup);
+  }
+
+  private void onRemoteChannelReady(final String chanId) {
+    readyIdChannelSet.add(chanId);
+    final List<TaskGroup> consumers = taskDAG.getConsumers(chanId);
+    consumers.forEach(this::scheduleTaskGroup);
+  }
+
+  private void onReadRequest(final String requestExecoturId, final String chanId) {
+    if (readyIdChannelSet.remove(chanId)) {
+      final String executorId = outChannelIdToExecutorMap.get(chanId);
+      executorMap.get(executorId).sendReadRequest(chanId);
+    } else { // Channel is not ready now.
+      executorMap.get(requestExecoturId).sendNotReadyResponse(chanId);
+    }
+  }
+
+  void onNewExecutor(final RunningTask runningTask) {
+    final ExecutorRepresenter executorRepresenter = new ExecutorRepresenter(runningTask);
+    executorMap.put(runningTask.getId(), executorRepresenter);
+    exeucutorList.add(executorRepresenter);
+  }
+
+  void onExecutorMessage(final VortexMessage vortexMessage) {
+    switch (vortexMessage.getType()) {
+      case RemoteChannelReady:
+        onRemoteChannelReady((String) vortexMessage.getData());
+      case ReadRequest:
+        onReadRequest(vortexMessage.getExecutorId(), (String) vortexMessage.getData());
+    }
   }
 }

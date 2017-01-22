@@ -1,7 +1,7 @@
 package edu.snu.vortex.runtime.driver;
 
 import edu.snu.vortex.runtime.VortexMessage;
-import edu.snu.vortex.runtime.evaluator.VortexExecutor;
+import edu.snu.vortex.runtime.executor.VortexExecutor;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -82,8 +82,9 @@ public final class VortexDriver {
 
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      if (numAllocatedEvaluators.incrementAndGet() < numEvaluators) {
-        launchExecutor(allocatedEvaluator);
+      final int executorIndex = numAllocatedEvaluators.getAndIncrement();
+      if (executorIndex < numEvaluators) {
+        launchExecutor(allocatedEvaluator, executorIndex);
       } else {
         throw new RuntimeException("Too many evaluators " + numAllocatedEvaluators.get());
       }
@@ -94,6 +95,7 @@ public final class VortexDriver {
 
     @Override
     public void onNext(final RunningTask runningTask) {
+      vortexMaster.onNewExecutor(runningTask);
       if (numRunningTasks.incrementAndGet() == numEvaluators) {
         vortexMaster.launchJob();
       }
@@ -106,17 +108,17 @@ public final class VortexDriver {
     public void onNext(final TaskMessage taskMessage) {
       final byte[] message = taskMessage.get();
       if (message != null) {
-        vortexMaster.onExecutorMessage((VortexMessage) SerializationUtils.deserialize(message));
+        vortexMaster.onExecutorMessage(
+            (VortexMessage) SerializationUtils.deserialize(message));
       }
     }
   }
 
-  private void launchExecutor(final AllocatedEvaluator allocatedEvaluator) {
-    final String executorId = allocatedEvaluator.getId() + "_vortex_executor";
+  private void launchExecutor(final AllocatedEvaluator allocatedEvaluator, final int index) {
+    final String executorId = "EXECUTOR_" + index;
     final Configuration contextConfiguration = Configurations.merge(
         ContextConfiguration.CONF
             .set(ContextConfiguration.IDENTIFIER, executorId + "_CONTEXT")
-    //        .set(ContextConfiguration.ON_CONTEXT_STOP, VortexContextStopHandler.class)
             .build(),
         getNameResolverServiceConfiguration());
     allocatedEvaluator.submitContextAndTask(contextConfiguration, getExecutorConfiguration(executorId));
