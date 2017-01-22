@@ -5,6 +5,7 @@ import edu.snu.vortex.runtime.TaskGroup;
 import edu.snu.vortex.runtime.VortexMessage;
 import edu.snu.vortex.runtime.driver.Parameters;
 import org.apache.commons.lang.SerializationUtils;
+import org.apache.commons.logging.Log;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.io.network.NetworkConnectionService;
 import org.apache.reef.tang.annotations.Parameter;
@@ -22,9 +23,13 @@ import org.apache.reef.wake.remote.transport.netty.LoggingLinkListener;
 
 import javax.inject.Inject;
 import java.util.concurrent.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @Unit
 public final class VortexExecutor implements Task, TaskMessageSource {
+
+  private final Logger LOG = Logger.getLogger(VortexExecutor.class.getName());
 
   private final HeartBeatTriggerManager heartBeatTriggerManager;
   private final NetworkConnectionService ncs;
@@ -44,6 +49,7 @@ public final class VortexExecutor implements Task, TaskMessageSource {
       final IdentifierFactory idFactory,
       @Parameter(TaskConfigurationOptions.Identifier.class)final String executorId,
       @Parameter(Parameters.EvaluatorCore.class) final int numThreads) {
+    LOG.log(Level.INFO, "Executor id = {0}", executorId);
     this.heartBeatTriggerManager = heartBeatTriggerManager;
     this.ncs = ncs;
     this.idFactory = idFactory;
@@ -82,9 +88,11 @@ public final class VortexExecutor implements Task, TaskMessageSource {
                 executeThreads.execute(() -> executeTaskGroup((TaskGroup) message.getData()));
                 break;
               case ReadRequest:
-                blockManager.onReadRequest(message.getExecutorId(), (String) message.getData());
+                blockManager.onReadRequest(message.getTargetExecutorId(), (String) message.getData());
+                break;
               case ChannelNotReady:
                 blockManager.onNotReadyResponse((String) message.getData());
+                break;
               default:
                 throw new RuntimeException("Unknown Command");
             }

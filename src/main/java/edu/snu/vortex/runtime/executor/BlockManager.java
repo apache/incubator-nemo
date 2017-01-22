@@ -64,7 +64,7 @@ public final class BlockManager {
     @Override
     public void onNext(final Message<DataMessage> message) {
       final DataMessage dataMessage = message.getData().iterator().next();
-      System.out.println("Data for channel " + dataMessage.getChannelId() + " , " + dataMessage.getData());
+      System.out.println("Received data for channel " + dataMessage.getChannelId() + " , " + dataMessage.getData());
 
       channelIdToDataMap.put(dataMessage.getChannelId(), dataMessage.getData());
       latchMap.remove(dataMessage.getChannelId()).countDown();
@@ -72,10 +72,8 @@ public final class BlockManager {
   }
 
   void onNotReadyResponse(final String channelId) {
-    final CountDownLatch latch = latchMap.remove(channelId);
-    if (latch != null) {
-      latch.countDown();
-    }
+    System.out.println("Channel " + channelId + " is not ready");
+    latchMap.remove(channelId).countDown();
   }
 
   EventHandler<Message<DataMessage>> getNetworkEventHandler() {
@@ -89,8 +87,7 @@ public final class BlockManager {
 
   public List read(Channel channel) {
     final String channelId = channel.getId();
-    final List data = channelIdToDataMap.get(channel.getId());
-
+    final List data = channelIdToDataMap.remove(channel.getId());
     // Local hit
     if (data != null) {
       System.out.println(channel + " Local READ: " + data);

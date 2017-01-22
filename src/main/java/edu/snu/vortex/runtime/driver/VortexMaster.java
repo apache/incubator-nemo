@@ -29,10 +29,10 @@ final class VortexMaster {
 
   @Inject
   private VortexMaster(@Parameter(Parameters.UserArguments.class) final String args) {
-    this.executorMap = new HashMap<>();
-    this.exeucutorList = new ArrayList<>();
+    this.executorMap = new ConcurrentHashMap<>();
+    this.exeucutorList = Collections.synchronizedList(new ArrayList<>());
     this.userArguments = args.split(",");
-    this.outChannelIdToExecutorMap = new HashMap<>();
+    this.outChannelIdToExecutorMap = new ConcurrentHashMap<>();
     this.readyIdChannelSet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
     this.scheduledTaskGroupIdSet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
   }
@@ -67,6 +67,7 @@ final class VortexMaster {
       System.out.println("##### VORTEX Runtime #####");
       executeJob();
     } catch (final Exception e) {
+      System.out.println(executorIndex + ", " + exeucutorList);
       throw new RuntimeException(e);
     }
   }
@@ -104,8 +105,11 @@ final class VortexMaster {
 
   private void onReadRequest(final String requestExecoturId, final String chanId) {
     if (readyIdChannelSet.remove(chanId)) {
+      if (chanId.equals("Channel-15")) {
+        System.out.println(outChannelIdToExecutorMap);
+      }
       final String executorId = outChannelIdToExecutorMap.get(chanId);
-      executorMap.get(executorId).sendReadRequest(chanId);
+      executorMap.get(executorId).sendReadRequest(requestExecoturId, chanId);
     } else { // Channel is not ready now.
       executorMap.get(requestExecoturId).sendNotReadyResponse(chanId);
     }
@@ -121,8 +125,10 @@ final class VortexMaster {
     switch (vortexMessage.getType()) {
       case RemoteChannelReady:
         onRemoteChannelReady((String) vortexMessage.getData());
+        break;
       case ReadRequest:
         onReadRequest(vortexMessage.getExecutorId(), (String) vortexMessage.getData());
+        break;
     }
   }
 }

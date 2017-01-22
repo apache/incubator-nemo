@@ -2,6 +2,7 @@ package edu.snu.vortex.runtime.driver;
 
 import edu.snu.vortex.runtime.TaskGroup;
 import edu.snu.vortex.runtime.VortexMessage;
+import org.apache.beam.sdk.util.SerializableUtils;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.reef.driver.task.RunningTask;
 
@@ -23,9 +24,9 @@ class ExecutorRepresenter {
     sendMessage(message);
   }
 
-  void sendReadRequest(final String chanId) {
+  void sendReadRequest(final String targetExecutorId, final String chanId) {
     final VortexMessage message = new VortexMessage(
-        getId(), VortexMessage.Type.ReadRequest, chanId);
+        getId(), targetExecutorId, VortexMessage.Type.ReadRequest, chanId);
     sendMessage(message);
   }
 
