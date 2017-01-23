@@ -1,35 +1,66 @@
 package edu.snu.vortex.compiler.backend.vortex;
 
+import edu.snu.vortex.compiler.frontend.beam.element.Element;
+import edu.snu.vortex.compiler.frontend.beam.element.Record;
 import edu.snu.vortex.runtime.Channel;
 import edu.snu.vortex.runtime.Task;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
+import org.apache.beam.sdk.transforms.windowing.IntervalWindow;
+import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class MergeTask extends Task {
+  private final Map<BoundedWindow, Map<Object, List>> windowToDataMap;
+  private final AtomicInteger pendingInChans; // hack: we assume global watermarks
+
   public MergeTask(final List<Channel> inChans,
                    final Channel outChan) {
     super(inChans, Arrays.asList(outChan));
+    this.windowToDataMap = new HashMap<>();
+    this.pendingInChans = new AtomicInteger(inChans.size());
   }
 
   @Override
   public void compute() {
-    final Map<Object, List> resultMap = new HashMap<>();
-
-    getInChans().forEach(inChan -> inChan.read().forEach(element -> {
-      final WindowedValue<KV> wv = (WindowedValue<KV>)element;
-      final KV kv = wv.getValue();
-      resultMap.putIfAbsent(kv.getKey(), new ArrayList());
-      resultMap.get(kv.getKey()).add(kv.getValue());
+    getInChans().forEach(inChan -> inChan.read().forEach(input -> {
+      final Element<KV> element = (Element<KV>)input;
+      System.out.println("MERGE READ: " + element);
+      if (element.isWatermark()) {
+        pendingInChans.decrementAndGet();
+        System.out.println(windowToDataMap);
+      } else {
+        final WindowedValue<KV> wv = element.asRecord().getWindowedValue();
+        final KV kv = wv.getValue();
+        wv.getWindows().forEach(window -> {
+          windowToDataMap.putIfAbsent(window, new HashMap<Object, List>());
+          final Map<Object, List> dataMap = windowToDataMap.get(window);
+          dataMap.putIfAbsent(kv.getKey(), new ArrayList());
+          dataMap.get(kv.getKey()).add(kv.getValue());
+        });
+      }
     }));
 
-    final List<KV> result = resultMap.entrySet().stream()
-        .map(entry -> KV.of(entry.getKey(), entry.getValue()))
-        .collect(Collectors.toList());
 
-    getOutChans().get(0).write(result);
+    if (pendingInChans.get() <= 0) {
+      final List<Element> result = windowToDataMap.entrySet().stream()
+          .flatMap(outerEntry -> {
+            final IntervalWindow window = (IntervalWindow)outerEntry.getKey();
+            final Map<Object, List> dataMap = outerEntry.getValue();
+            return dataMap.entrySet().stream()
+                .map(entry -> KV.of(entry.getKey(), entry.getValue()))
+                .map(kv -> new Record<>(WindowedValue.of(kv, window.end(), window, PaneInfo.ON_TIME_AND_ONLY_FIRING)));
+          })
+          .collect(Collectors.toList());
+      getOutChans().get(0).write(result);
+    } else {
+      getOutChans().get(0).write(new ArrayList(0)); // zero-element
+    }
   }
 }
 

@@ -1,20 +1,22 @@
 package edu.snu.vortex.compiler.frontend.beam.element;
 
-import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import java.time.Instant;
 
 public class Watermark<T> extends Element<T> {
-  private final BoundedWindow window;
+  public static final Watermark MAX_WATERMARK = new Watermark(Long.MAX_VALUE);
 
-  public Watermark(final BoundedWindow window) {
-    this.window = window;
+  private final Instant timestamp;
+
+  public Watermark(final long timestampMs) {
+    this.timestamp = Instant.ofEpochMilli(timestampMs);
   }
 
-  public BoundedWindow getWindowToTrigger() {
-    return this.window;
+  public Instant getTimestamp() {
+    return timestamp;
   }
 
   @Override
   public String toString() {
-    return "Watermark-" + window;
+    return "Watermark-" + timestamp;
   }
 }

@@ -29,7 +29,6 @@ import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.transforms.windowing.WindowFn;
 import org.apache.beam.sdk.values.PValue;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -85,7 +84,11 @@ final class Visitor implements Pipeline.PipelineVisitor {
     final PTransform transform = beamOperator.getTransform();
     if (transform instanceof Read.Bounded) {
       final Read.Bounded<O> read = (Read.Bounded)transform;
-      final SourceImpl<O> source = new SourceImpl<>(read.getSource());
+      final BoundedSourceImpl<O> source = new BoundedSourceImpl<>(read.getSource());
+      return source;
+    } else if (transform instanceof Read.Unbounded) {
+      final Read.Unbounded<O> read = (Read.Unbounded)transform;
+      final UnboundedSourceImpl<O> source = new UnboundedSourceImpl<O>(read.getSource());
       return source;
     } else if (transform instanceof GroupByKey) {
       return new GroupByKeyImpl();

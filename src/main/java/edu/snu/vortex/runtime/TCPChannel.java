@@ -22,11 +22,12 @@ public class TCPChannel extends Channel {
 
   @Override
   public List read() {
-
     // Local hit
     if (data != null) {
       System.out.println(getId() + " TCP Channel Local READ: " + data);
-      return data;
+      final List oldData = data;
+      data = new ArrayList(0);
+      return oldData;
     } else {
       // remote call to master
       final Optional<Executor> remoteExecutor = Master.getExecutor(getId());

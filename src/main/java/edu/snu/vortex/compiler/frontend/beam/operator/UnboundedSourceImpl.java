@@ -17,26 +17,27 @@ package edu.snu.vortex.compiler.frontend.beam.operator;
 
 import edu.snu.vortex.compiler.frontend.beam.element.Element;
 import edu.snu.vortex.compiler.frontend.beam.element.Record;
+import edu.snu.vortex.compiler.frontend.beam.element.Watermark;
 import edu.snu.vortex.compiler.ir.operator.Source;
-import org.apache.beam.sdk.io.BoundedSource;
+import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.beam.sdk.util.WindowedValue;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public final class SourceImpl<O> extends Source<O> {
-  private final BoundedSource<O> source;
+public final class UnboundedSourceImpl<O> extends Source<O> {
+  private final UnboundedSource<O, ?> source;
 
-  public SourceImpl(final BoundedSource<O> source) {
+  public UnboundedSourceImpl(final UnboundedSource<O, ?> source) {
     this.source = source;
   }
 
   @Override
-  public List<Source.Reader<O>> getReaders(final long desiredBundleSizeBytes) throws Exception {
+  public List<Source.Reader<O>> getReaders(final long desiredNumSplits) throws Exception {
     // Can't use lambda due to exception thrown
     final List<Source.Reader<O>> readers = new ArrayList<>();
-    for (final BoundedSource<O> s : source.splitIntoBundles(desiredBundleSizeBytes, null)) {
-      readers.add(new Reader(s.createReader(null)));
+    for (final UnboundedSource<O, ?> s : source.generateInitialSplits((int)desiredNumSplits, null)) {
+      readers.add(new Reader(s));
     }
     return readers;
   }
@@ -51,20 +52,22 @@ public final class SourceImpl<O> extends Source<O> {
   }
 
   public class Reader<T> implements Source.Reader<Element<T>> {
-    private final BoundedSource.BoundedReader<T> beamReader;
+    private final UnboundedSource<T, ?> beamSource;
 
-    Reader(final BoundedSource.BoundedReader<T> beamReader) {
-      this.beamReader = beamReader;
+    Reader(final UnboundedSource<T, ?> beamSource) {
+      this.beamSource = beamSource;
     }
 
     @Override
     public Iterable<Element<T>> read() throws Exception {
       final ArrayList<Element<T>> data = new ArrayList<>();
-      try (final BoundedSource.BoundedReader<T> reader = beamReader) {
-        for (boolean available = reader.start(); available; available = reader.advance()) {
-          data.add(new Record<>(WindowedValue.valueInGlobalWindow(reader.getCurrent())));
+      try (final UnboundedSource.UnboundedReader<T> reader = beamSource.createReader(null, null)) {
+        boolean available = false;
+        for (available = reader.start(); available; available = reader.advance()) {
+          data.add(new Record<>(WindowedValue.timestampedValueInGlobalWindow(reader.getCurrent(), reader.getCurrentTimestamp())));
         }
       }
+      data.add(Watermark.MAX_WATERMARK);
       return data;
     }
   }

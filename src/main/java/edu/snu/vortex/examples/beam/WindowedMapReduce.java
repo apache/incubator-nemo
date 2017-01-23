@@ -20,7 +20,9 @@ package edu.snu.vortex.examples.beam;
 import edu.snu.vortex.compiler.frontend.beam.Runner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.coders.BigEndianLongCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.*;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
@@ -33,11 +35,23 @@ import org.joda.time.Duration;
 import org.joda.time.Instant;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 
 
 public class WindowedMapReduce {
     static final int WINDOW_SIZE = 10;  // Default window duration in minutes
+
+  /*
+
+  static class ConvertHDFSFormat extends DoFn<KV<LongWritable, Text>, String> {
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      c.output(c.element().getValue().toString());
+    }
+  }
+  */
+
   /**
    * Concept #2: A DoFn that sets the data element timestamp. This is a silly method, just for
    * this example, for the bounded data case.
@@ -67,10 +81,16 @@ public class WindowedMapReduce {
   }
 
   public static void main(String[] args) throws IOException {
-    final String inputFilePath = args[0];
-    final String outputFilePath = args[1];
     final PipelineOptions options = PipelineOptionsFactory.create();
-    options.setRunner(Runner.class);
+
+    final String runtime = args[0];
+    if (runtime.equals("vortex")) {
+      options.setRunner(Runner.class);
+    } else {
+      throw new RuntimeException("Unknown runtime");
+    }
+
+
 
     final Duration windowSize = Duration.standardMinutes(WINDOW_SIZE);
     final Instant minTimestamp = new Instant(System.currentTimeMillis());
@@ -79,12 +99,24 @@ public class WindowedMapReduce {
     final Pipeline pipeline = Pipeline.create(options);
 
     // IMPORTANT: save timestamp (outputWithTimestamp())
+    /*
     final PCollection<String> input = pipeline
-      .apply(TextIO.Read.from(inputFilePath))
-      .apply(ParDo.of(new AddTimestampFn(minTimestamp, maxTimestamp)));
+        .apply(HDFSFileSource.readFrom(inputFilePath, TextInputFormat.class, LongWritable.class, Text.class))
+        .apply(ParDo.of(new ConvertHDFSFormat()));
+    */
+    final PCollection<String> input = pipeline
+        .apply(KafkaIO.read()
+            .withBootstrapServers("localhost:9092")
+            .withTopics(Arrays.asList("starlab"))
+            .withKeyCoder(BigEndianLongCoder.of())
+            .withValueCoder(StringUtf8Coder.of())
+            .withoutMetadata())
+        .apply(Values.<String>create());
+
+    final PCollection<String> timeStamped = input.apply(ParDo.of(new AddTimestampFn(minTimestamp, maxTimestamp)));
 
     // IMPORTANT: convert timestamp (timestamp()) into window
-    final PCollection<String> windowedWords = input.apply(Window.<String>into(FixedWindows.of(windowSize)));
+    final PCollection<String> windowedWords = timeStamped.apply(Window.<String>into(FixedWindows.of(windowSize)));
 
     // Same old stuff
     final PCollection<KV<String, Long>> wordCounts = windowedWords.apply(MapElements.via((String line) -> {
@@ -106,6 +138,7 @@ public class WindowedMapReduce {
                     context.output(KV.of(window, context.element()));
                   }
                 }));
+
 
     /*
     keyedByWindow

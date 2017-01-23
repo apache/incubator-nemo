@@ -1,5 +1,6 @@
 package edu.snu.vortex.compiler.backend.vortex;
 
+import edu.snu.vortex.compiler.frontend.beam.element.Element;
 import edu.snu.vortex.runtime.Channel;
 import edu.snu.vortex.runtime.Task;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -19,13 +20,18 @@ public class PartitionTask extends Task {
   @Override
   public void compute() {
     final int numOfDsts = getOutChans().size();
-    final List<WindowedValue<KV>> kvList = getInChans().get(0).read();
-    final List<List<WindowedValue<KV>>> dsts = new ArrayList<>(numOfDsts);
+    final List<Element<KV>> inputList = getInChans().get(0).read();
+    final List<List<Element<KV>>> dsts = new ArrayList<>(numOfDsts);
     IntStream.range(0, numOfDsts).forEach(x -> dsts.add(new ArrayList<>()));
-    kvList.forEach(wv -> {
-      final KV kv = wv.getValue();
-      final int dst = Math.abs(kv.getKey().hashCode() % numOfDsts);
-      dsts.get(dst).add(wv);
+    inputList.forEach(input -> {
+      final Element<KV> element = (Element<KV>)input;
+      if (element.isWatermark()) {
+        dsts.forEach(dst -> dst.add(element));
+      } else {
+        final KV kv = element.asRecord().getWindowedValue().getValue();
+        final int dst = Math.abs(kv.getKey().hashCode() % numOfDsts);
+        dsts.get(dst).add(element);
+      }
     });
     IntStream.range(0, numOfDsts).forEach(x -> getOutChans().get(x).write(dsts.get(x)));
   }
