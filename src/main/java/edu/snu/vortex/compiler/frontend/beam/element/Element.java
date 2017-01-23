@@ -1,6 +1,8 @@
 package edu.snu.vortex.compiler.frontend.beam.element;
 
-public abstract class Element<T> {
+import java.io.Serializable;
+
+public abstract class Element<T> implements Serializable {
   public final boolean isWatermark() {
     return getClass() == Watermark.class;
   }

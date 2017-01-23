@@ -24,7 +24,6 @@ import org.apache.beam.sdk.util.WindowedValue;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public final class BoundedSourceImpl<O> extends Source<O> {
   private final BoundedSource<O> source;
@@ -35,10 +34,11 @@ public final class BoundedSourceImpl<O> extends Source<O> {
 
   @Override
   public List<Source.Reader<O>> getReaders(final long desiredBundleSizeBytes) throws Exception {
-    return source.splitIntoBundles(desiredBundleSizeBytes, null).stream()
-        .map(Reader::new)
-        .map(reader -> (Source.Reader<O>)reader)
-        .collect(Collectors.toList());
+    final List<Source.Reader<O>> readers = new ArrayList<>();
+    for (final BoundedSource<O> s : source.splitIntoBundles(desiredBundleSizeBytes, null)) {
+      readers.add(new Reader(s));
+    }
+    return readers;
   }
 
   @Override
@@ -50,7 +50,7 @@ public final class BoundedSourceImpl<O> extends Source<O> {
     return sb.toString();
   }
 
-  public class Reader<T> implements Source.Reader<Element<T>> {
+  public class Reader<T extends BoundedSource> implements Source.Reader<Element<T>> {
     private final BoundedSource<T> beamReader;
 
     Reader(final BoundedSource<T> beamReader) {

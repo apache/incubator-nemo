@@ -27,6 +27,10 @@ import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.GroupByKey;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.transforms.windowing.WindowFn;
+import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PInput;
 import org.apache.beam.sdk.values.PValue;
 
 import java.util.HashMap;
@@ -80,8 +84,9 @@ final class Visitor implements Pipeline.PipelineVisitor {
     // System.out.println("visitv producer " + producer.getTransform());
   }
 
-  private <I, O> Operator createOperator(final TransformHierarchy.Node beamOperator) {
+  private <I, O, T extends PInput> Operator createOperator(final TransformHierarchy.Node beamOperator) {
     final PTransform transform = beamOperator.getTransform();
+
     if (transform instanceof Read.Bounded) {
       final Read.Bounded<O> read = (Read.Bounded)transform;
       final BoundedSourceImpl<O> source = new BoundedSourceImpl<>(read.getSource());
@@ -91,6 +96,10 @@ final class Visitor implements Pipeline.PipelineVisitor {
       final UnboundedSourceImpl<O> source = new UnboundedSourceImpl<O>(read.getSource());
       return source;
     } else if (transform instanceof GroupByKey) {
+      final GroupByKey gbk = (GroupByKey)transform;
+      final PCollection<KV> gbkInput = (PCollection<KV>)beamOperator.toAppliedPTransform().getInput();
+      System.out.println("CODER: " + gbkInput.getCoder());
+
       return new GroupByKeyImpl();
     } else if (transform instanceof View.CreatePCollectionView) {
       final View.CreatePCollectionView view = (View.CreatePCollectionView)transform;
