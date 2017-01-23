@@ -15,13 +15,14 @@
  */
 package edu.snu.vortex.compiler.ir.operator;
 
+import java.io.Serializable;
 import java.util.List;
 
 public abstract class Source<O> extends Operator<Void, O> {
   // Maybe make the parameter a any-type hashmap(attributes/options)
   public abstract List<Reader<O>> getReaders(final long desiredBundleSizeBytes) throws Exception;
 
-  public interface Reader<O> {
+  public interface Reader<O> extends Serializable {
     Iterable<O> read() throws Exception;
   }
 }

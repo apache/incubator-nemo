@@ -15,44 +15,82 @@
  */
 package edu.snu.vortex.client;
 
-import edu.snu.vortex.compiler.backend.Backend;
-import edu.snu.vortex.compiler.backend.vortex.VortexBackend;
-import edu.snu.vortex.compiler.frontend.Frontend;
-import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
-import edu.snu.vortex.compiler.optimizer.Optimizer;
-import edu.snu.vortex.compiler.ir.DAG;
-import edu.snu.vortex.engine.SimpleEngine;
-import edu.snu.vortex.runtime.Master;
-import edu.snu.vortex.runtime.TaskDAG;
+import edu.snu.vortex.runtime.driver.Parameters;
+import edu.snu.vortex.runtime.driver.VortexDriver;
+import org.apache.reef.client.DriverConfiguration;
+import org.apache.reef.client.DriverLauncher;
+import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
+import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.JavaConfigurationBuilder;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.formats.CommandLine;
+import org.apache.reef.util.EnvironmentUtils;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class JobLauncher {
+
+  private static final Logger LOG = Logger.getLogger(JobLauncher.class.getName());
+
+  private static final int MAX_NUMBER_OF_EVALUATORS = 1000;
+
+  private static Configuration getDriverConfiguration() {
+    return DriverConfiguration.CONF
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(JobLauncher.class))
+        .set(DriverConfiguration.DRIVER_IDENTIFIER, "Vortex-Starlab")
+        .set(DriverConfiguration.ON_DRIVER_STARTED, VortexDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, VortexDriver.EvaluatorAllocatedHandler.class)
+        .set(DriverConfiguration.ON_TASK_RUNNING, VortexDriver.RunningTaskHandler.class)
+        .set(DriverConfiguration.ON_TASK_MESSAGE, VortexDriver.TaskMessageHandler.class)
+        .build();
+  }
+
+  private static Configuration getRuntimeConfiguration(final String runtime) {
+    if (runtime.equals("yarn")) {
+      return getYarnRuntimeConfiguration();
+    } else {
+      return getLocalRuntimeConfiguration();
+    }
+  }
+
+  private static Configuration getYarnRuntimeConfiguration() {
+    return YarnClientConfiguration.CONF.build();
+  }
+
+  private static Configuration getLocalRuntimeConfiguration() {
+    return LocalRuntimeConfiguration.CONF
+        .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, MAX_NUMBER_OF_EVALUATORS)
+        .build();
+  }
+
+  private static Configuration getJobConf(final String[] args) throws Exception {
+    final JavaConfigurationBuilder confBuilder = Tang.Factory.getTang().newConfigurationBuilder();
+    final CommandLine cl = new CommandLine(confBuilder);
+    cl.registerShortNameOfClass(Parameters.Runtime.class);
+    cl.registerShortNameOfClass(Parameters.EvaluatorCore.class);
+    cl.registerShortNameOfClass(Parameters.EvaluatorMem.class);
+    cl.registerShortNameOfClass(Parameters.EvaluatorNum.class);
+    cl.registerShortNameOfClass(Parameters.UserArguments.class);
+    cl.processCommandLine(args);
+    return confBuilder.build();
+  }
+
   public static void main(final String[] args) throws Exception {
-    /**
-     * Step 1: Compile
-     */
-    System.out.println("##### VORTEX COMPILER (Frontend) #####");
-    final Frontend frontend = new BeamFrontend();
-    final DAG dag = frontend.compile(args); // TODO #30: Use Tang to Parse User Arguments
-    System.out.println(dag);
+    final Configuration jobConf = getJobConf(args);
 
-    System.out.println("##### VORTEX COMPILER (Optimizer) #####");
-    final Optimizer optimizer = new Optimizer();
-    final DAG optimizedDAG = optimizer.optimize(dag); // TODO #31: Interfaces for Runtime Optimization
-    System.out.println(optimizedDAG);
+    final String runtime = Tang.Factory.getTang().newInjector(jobConf)
+        .getNamedInstance(Parameters.Runtime.class);
 
-    // TODO #28: Implement VortexBackend
-    System.out.println("##### VORTEX COMPILER (Backend) #####");
-    final Backend backend = new VortexBackend();
-    final TaskDAG taskDAG = (TaskDAG) backend.compile(optimizedDAG);
-    System.out.println(taskDAG);
-    System.out.println();
+    final Configuration runtimeConf = getRuntimeConfiguration(runtime);
+    final Configuration driverConf = getDriverConfiguration();
 
-    /**
-     * Step 2: Execute
-     */
-    //System.out.println("##### VORTEX ENGINE #####");
-    //new SimpleEngine().executeDAG(optimizedDAG);
-    System.out.println("##### VORTEX Runtime #####");
-    new Master(taskDAG).executeJob();
+    final LauncherStatus status = DriverLauncher
+        .getLauncher(runtimeConf)
+        .run(Configurations.merge(driverConf, jobConf));
+    LOG.log(Level.INFO, "REEF job completed: {0}", status);
   }
 }

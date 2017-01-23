@@ -1,9 +1,10 @@
 package edu.snu.vortex.runtime;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class Channel<T> {
+public abstract class Channel<T> implements Serializable {
   private static AtomicInteger generator = new AtomicInteger(1);
 
   private final String id = "Channel-" + generator.getAndIncrement();
