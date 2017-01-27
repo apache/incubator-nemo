@@ -67,7 +67,6 @@ public final class UnboundedSourceImpl<O> extends Source<O> {
           data.add(new Record<>(WindowedValue.timestampedValueInGlobalWindow(reader.getCurrent(), reader.getCurrentTimestamp())));
         }
       }
-      data.add(Watermark.MAX_WATERMARK);
       return data;
     }
   }

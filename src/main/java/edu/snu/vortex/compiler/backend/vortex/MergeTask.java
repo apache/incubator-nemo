@@ -2,8 +2,10 @@ package edu.snu.vortex.compiler.backend.vortex;
 
 import edu.snu.vortex.compiler.frontend.beam.element.Element;
 import edu.snu.vortex.compiler.frontend.beam.element.Record;
+import edu.snu.vortex.compiler.frontend.beam.element.SerializedChunk;
 import edu.snu.vortex.runtime.Channel;
 import edu.snu.vortex.runtime.Task;
+import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.transforms.windowing.IntervalWindow;
@@ -11,6 +13,8 @@ import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -35,14 +39,16 @@ public class MergeTask extends Task {
         pendingInChans.decrementAndGet();
         System.out.println(windowToDataMap);
       } else {
-        final WindowedValue<KV> wv = element.asRecord().getWindowedValue();
-        final KV kv = wv.getValue();
-        wv.getWindows().forEach(window -> {
+        final SerializedChunk<KV> serializedChunk = (SerializedChunk<KV>)element;
+        serializedChunk.getWinVals().forEach(wv -> {
+          final BoundedWindow window = (BoundedWindow)wv.getWindows().iterator().next();
+          final KV kv = (KV)wv.getValue();
           windowToDataMap.putIfAbsent(window, new HashMap<Object, List>());
           final Map<Object, List> dataMap = windowToDataMap.get(window);
           dataMap.putIfAbsent(kv.getKey(), new ArrayList());
           dataMap.get(kv.getKey()).add(kv.getValue());
         });
+
       }
     }));
 
@@ -50,11 +56,11 @@ public class MergeTask extends Task {
     if (pendingInChans.get() <= 0) {
       final List<Element> result = windowToDataMap.entrySet().stream()
           .flatMap(outerEntry -> {
-            final IntervalWindow window = (IntervalWindow)outerEntry.getKey();
+            final GlobalWindow window = (GlobalWindow) outerEntry.getKey();
             final Map<Object, List> dataMap = outerEntry.getValue();
             return dataMap.entrySet().stream()
                 .map(entry -> KV.of(entry.getKey(), entry.getValue()))
-                .map(kv -> new Record<>(WindowedValue.of(kv, window.end(), window, PaneInfo.ON_TIME_AND_ONLY_FIRING)));
+                .map(kv -> new Record<>(WindowedValue.of(kv, window.maxTimestamp(), window, PaneInfo.ON_TIME_AND_ONLY_FIRING)));
           })
           .collect(Collectors.toList());
       getOutChans().get(0).write(result);
