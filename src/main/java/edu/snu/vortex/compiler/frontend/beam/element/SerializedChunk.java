@@ -4,7 +4,9 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarLongCoder;
+import org.apache.beam.sdk.testing.ValueInSingleWindow;
 import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
+import org.apache.beam.sdk.transforms.windowing.IntervalWindow;
 import org.apache.beam.sdk.util.WindowedValue;
 
 import java.io.ByteArrayInputStream;
@@ -15,7 +17,7 @@ import java.util.List;
 
 public class SerializedChunk<T> extends Element<T> {
   private static final Coder coder =
-      WindowedValue.getFullCoder(KvCoder.of(StringUtf8Coder.of(), VarLongCoder.of()), GlobalWindow.Coder.INSTANCE);
+      WindowedValue.getFullCoder(KvCoder.of(StringUtf8Coder.of(), VarLongCoder.of()), IntervalWindow.getCoder());
 
   private final List<byte[]> serList;
 

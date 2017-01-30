@@ -83,6 +83,7 @@ public final class VortexBackend implements Backend {
           // simply read
           final Source sourceOperator = (Source) operator;
           final List<Source.Reader> readers = sourceOperator.getReaders(desiredByte);
+          System.out.println("got source readers: " + readers);
           result.addAll(readers.stream()
               .map(reader -> new SourceTask(reader, Arrays.asList(new MemoryChannel())))
               .map(task -> {

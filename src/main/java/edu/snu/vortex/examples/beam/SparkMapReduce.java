@@ -41,7 +41,6 @@ public class SparkMapReduce {
     final String brokers = args[0];
     final String topics = args[1];
 
-    // Create context with a 2 seconds batch interval
     final SparkConf sparkConf = new SparkConf().setAppName("JavaDirectKafkaWordCount");
     final JavaStreamingContext jssc = new JavaStreamingContext(sparkConf, Durations.seconds(10));
 
@@ -67,8 +66,8 @@ public class SparkMapReduce {
           return new Tuple2<>(splits[0], Long.valueOf(splits[1]));
         });
 
-    final JavaPairDStream<String, Long> sum = pairs.reduceByKeyAndWindow((l, r) -> (l + r), Durations.seconds(20));
-    sum.print();
+    final JavaPairDStream<String, Long> sum =
+        pairs.reduceByKeyAndWindow((l, r) -> (l + r), Durations.seconds(20));
 
     jssc.start();
     jssc.awaitTermination();

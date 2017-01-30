@@ -1,5 +1,6 @@
 package edu.snu.vortex.runtime.executor;
 
+import edu.snu.vortex.compiler.backend.vortex.SourceTask;
 import edu.snu.vortex.runtime.DataMessageCodec;
 import edu.snu.vortex.runtime.TaskGroup;
 import edu.snu.vortex.runtime.VortexMessage;
@@ -72,7 +73,7 @@ public final class VortexExecutor implements Task, TaskMessageSource {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     final ExecutorService schedulerThread = Executors.newSingleThreadExecutor();
-    final ExecutorService executeThreads = Executors.newFixedThreadPool(numThreads);
+    final ScheduledExecutorService executeThreads = Executors.newScheduledThreadPool(numThreads);
     schedulerThread.execute(() -> {
           while (true) {
             // Scheduler Thread: Pick a command to execute (For now, simple FIFO order)
@@ -85,7 +86,38 @@ public final class VortexExecutor implements Task, TaskMessageSource {
 
             switch (message.getType()) {
               case ExecuteTaskGroup:
-                executeThreads.execute(() -> executeTaskGroup((TaskGroup) message.getData()));
+                final TaskGroup taskGroup = (TaskGroup) message.getData();
+                final boolean unboundedSource = taskGroup.getTasks().stream()
+                    .filter(task -> task instanceof SourceTask)
+                    .anyMatch(sourceTask -> ((SourceTask)sourceTask).isUnbounded());
+                if (unboundedSource) {
+                  System.out.println("Unbounded schedule");
+                  /*
+                  try {
+                    executeThreads.scheduleWithFixedDelay(() -> executeTaskGroup(taskGroup), 0, 10 * 1000, TimeUnit.MILLISECONDS);
+                        //.get(60, TimeUnit.SECONDS);
+                  } catch (Exception e) {
+                    throw new RuntimeException(e);
+                  }
+                  */
+                  executeThreads.execute(() -> {
+                    while (true) {
+                      try {
+                        executeTaskGroup(taskGroup);
+                        final Object object = new Object();
+                        synchronized (object) {
+                          Thread.sleep(10 * 1000);
+                        }
+                      } catch (Exception e) {
+                        throw new RuntimeException(e);
+                      }
+                    }
+                  });
+                }
+                else {
+                  System.out.println("Bounded schedule");
+                  executeThreads.execute(() -> executeTaskGroup(taskGroup));
+                }
                 break;
               case ReadRequest:
                 blockManager.onReadRequest(message.getTargetExecutorId(), (String) message.getData());

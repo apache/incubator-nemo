@@ -1,4 +1,8 @@
-package edu.snu.vortex.runtime;
+package edu.snu.vortex.runtime.singlethread;
+
+import edu.snu.vortex.runtime.Task;
+import edu.snu.vortex.runtime.TaskDAG;
+import edu.snu.vortex.runtime.TaskGroup;
 
 import java.util.*;
 

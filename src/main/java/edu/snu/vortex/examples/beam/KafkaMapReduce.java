@@ -47,8 +47,8 @@ import java.util.Properties;
 public class KafkaMapReduce {
   private static final int WINDOW_SIZE = 1;  // Default window duration in seconds
 
-  private final static String KAFKA_SERVER = "localhost:9092";
-  private final static String KAFKA_TOPIC = "starlab2";
+  private static String KAFKA_SERVER;
+  private static String KAFKA_TOPIC;
 
   private static void produce(String topic, Map<String, String> messages) {
     Serializer<String> stringSerializer = new StringSerializer();
@@ -73,6 +73,8 @@ public class KafkaMapReduce {
 
 
   public static void main(String[] args) throws IOException {
+    KAFKA_SERVER = args[0];
+    KAFKA_TOPIC = args[1];
 
     // messages.
     final Map<String, String> messages = ImmutableMap.of(
@@ -87,15 +89,27 @@ public class KafkaMapReduce {
 
     final Duration windowSize = Duration.standardSeconds(WINDOW_SIZE);
 
+
+
     System.out.println(options);
     final Pipeline pipeline = Pipeline.create(options);
+
+
+    /*
+    final Map<String, Object> consumerProps = ImmutableMap.<String, Object>of(
+        "auto.offset.reset", "earliest"
+    );
+    */
+
     final PCollection<String> input = pipeline
         .apply(KafkaIO.read()
             .withBootstrapServers(KAFKA_SERVER)
             .withTopics(Arrays.asList(KAFKA_TOPIC))
             .withKeyCoder(StringUtf8Coder.of())
             .withValueCoder(StringUtf8Coder.of())
+            //.updateConsumerProperties(consumerProps)
             .withoutMetadata())
+
         //.setCoder(KvCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
         .apply(Values.<String>create());
 
@@ -109,11 +123,13 @@ public class KafkaMapReduce {
         .apply(GroupByKey.<String, Long>create())
         .apply(Combine.<String, Long, Long>groupedValues(new Sum.SumLongFn()));
 
+    /*
     wordCounts.apply(KafkaIO.write()
         .withBootstrapServers("localhost:9092")
         .withTopic("output")
         .withKeyCoder(StringUtf8Coder.of())
         .withValueCoder(BigEndianLongCoder.of()));
+        */
 
     PipelineResult result = pipeline.run();
   }

@@ -22,6 +22,7 @@ import edu.snu.vortex.compiler.ir.operator.Source;
 import org.apache.beam.sdk.io.UnboundedSource;
 import org.apache.beam.sdk.util.WindowedValue;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,20 +54,39 @@ public final class UnboundedSourceImpl<O> extends Source<O> {
 
   public class Reader<T> implements Source.Reader<Element<T>> {
     private final UnboundedSource<T, ?> beamSource;
+    private UnboundedSource.UnboundedReader<T> reader;
+    private boolean firstRead;
 
     Reader(final UnboundedSource<T, ?> beamSource) {
       this.beamSource = beamSource;
+      this.firstRead = true;
     }
 
     @Override
     public Iterable<Element<T>> read() throws Exception {
       final ArrayList<Element<T>> data = new ArrayList<>();
-      try (final UnboundedSource.UnboundedReader<T> reader = beamSource.createReader(null, null)) {
-        boolean available = false;
-        for (available = reader.start(); available; available = reader.advance()) {
-          data.add(new Record<>(WindowedValue.timestampedValueInGlobalWindow(reader.getCurrent(), reader.getCurrentTimestamp())));
+      System.out.println("START");
+
+      if (firstRead) {
+        try {
+          this.reader = beamSource.createReader(null, null);
+        } catch (IOException e ) {
+          throw new RuntimeException(e);
         }
       }
+
+      boolean available = (firstRead ? reader.start() : reader.advance());
+
+      System.out.println("Available" + available);
+      while (available) {
+        System.out.println("Available");
+        data.add(new Record<>(WindowedValue.timestampedValueInGlobalWindow(reader.getCurrent(), reader.getCurrentTimestamp())));
+        System.out.println("GOT " + data);
+        available = reader.advance();
+      }
+      System.out.println("DONE");
+
+      firstRead = false;
       return data;
     }
   }
