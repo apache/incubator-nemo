@@ -20,7 +20,10 @@ import edu.snu.vortex.compiler.frontend.beam.element.Record;
 import edu.snu.vortex.compiler.frontend.beam.element.Watermark;
 import edu.snu.vortex.compiler.ir.operator.Source;
 import org.apache.beam.sdk.io.UnboundedSource;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.joda.time.Duration;
+import org.joda.time.Instant;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -56,10 +59,14 @@ public final class UnboundedSourceImpl<O> extends Source<O> {
     private final UnboundedSource<T, ?> beamSource;
     private UnboundedSource.UnboundedReader<T> reader;
     private boolean firstRead;
+    private Instant lastWatermark;
+    private Duration watermarkInterval;
 
     Reader(final UnboundedSource<T, ?> beamSource) {
       this.beamSource = beamSource;
       this.firstRead = true;
+      this.lastWatermark = BoundedWindow.TIMESTAMP_MIN_VALUE;
+      this.watermarkInterval = Duration.millis(3 * 1000);
     }
 
     @Override
@@ -79,9 +86,19 @@ public final class UnboundedSourceImpl<O> extends Source<O> {
 
       System.out.println("Available" + available);
       while (available) {
-        System.out.println("Available");
+        // data
         data.add(new Record<>(WindowedValue.timestampedValueInGlobalWindow(reader.getCurrent(), reader.getCurrentTimestamp())));
+
+        // watermark (if needed)
+        final Instant curWatermark = reader.getWatermark();
+        if (lastWatermark.plus(watermarkInterval).isBefore(curWatermark)) {
+          data.add(new Watermark<T>(curWatermark));
+          System.out.println("Add Watermark: " + curWatermark);
+          lastWatermark = curWatermark;
+        }
         System.out.println("GOT " + data);
+
+        // advance
         available = reader.advance();
       }
       System.out.println("DONE");

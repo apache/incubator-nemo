@@ -77,7 +77,8 @@ public final class VortexExecutor implements Task, TaskMessageSource {
   @Override
   public byte[] call(final byte[] bytes) throws Exception {
     final ExecutorService schedulerThread = Executors.newSingleThreadExecutor();
-    final ScheduledExecutorService executeThreads = Executors.newScheduledThreadPool(numThreads);
+    final ExecutorService executeThreads = Executors.newFixedThreadPool(numThreads);
+    final ExecutorService resubmitThread = Executors.newSingleThreadExecutor();
     schedulerThread.execute(() -> {
           while (true) {
             // Scheduler Thread: Pick a command to execute (For now, simple FIFO order)
@@ -97,12 +98,17 @@ public final class VortexExecutor implements Task, TaskMessageSource {
                     .anyMatch(sourceTask -> ((SourceTask)sourceTask).isUnbounded());
                 if (unboundedSource) {
                   System.out.println("Unbounded schedule");
-                  try {
-                    executeThreads.scheduleWithFixedDelay(() -> executeTaskGroup(taskGroup), 0, 10 * 1000, TimeUnit.MILLISECONDS);
-                        //.get(60, TimeUnit.SECONDS);
-                  } catch (Exception e) {
-                    throw new RuntimeException(e);
-                  }
+                  executeThreads.execute(() -> {
+                    executeTaskGroup(taskGroup);
+                    resubmitThread.execute(() -> {
+                      try {
+                        Thread.sleep(5 * 1000);
+                        messagesFromDriver.add(message);
+                      } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                      }
+                    });
+                  });
                   /*
                   executeThreads.execute(() -> {
                     while (true) {

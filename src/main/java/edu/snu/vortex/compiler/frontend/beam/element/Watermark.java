@@ -1,14 +1,12 @@
 package edu.snu.vortex.compiler.frontend.beam.element;
 
-import java.time.Instant;
+import org.joda.time.Instant;
 
 public class Watermark<T> extends Element<T> {
-  public static final Watermark MAX_WATERMARK = new Watermark(Long.MAX_VALUE);
-
   private final Instant timestamp;
 
-  public Watermark(final long timestampMs) {
-    this.timestamp = Instant.ofEpochMilli(timestampMs);
+  public Watermark(final Instant timestampMs) {
+    this.timestamp = timestampMs;
   }
 
   public Instant getTimestamp() {

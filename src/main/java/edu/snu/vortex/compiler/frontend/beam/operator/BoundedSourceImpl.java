@@ -20,7 +20,9 @@ import edu.snu.vortex.compiler.frontend.beam.element.Record;
 import edu.snu.vortex.compiler.frontend.beam.element.Watermark;
 import edu.snu.vortex.compiler.ir.operator.Source;
 import org.apache.beam.sdk.io.BoundedSource;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
+import org.joda.time.Instant;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -65,7 +67,7 @@ public final class BoundedSourceImpl<O> extends Source<O> {
           data.add(new Record<>(WindowedValue.valueInGlobalWindow(reader.getCurrent())));
         }
       }
-      data.add(Watermark.MAX_WATERMARK);
+      data.add(new Watermark<T>(BoundedWindow.TIMESTAMP_MAX_VALUE));
       return data;
     }
   }
