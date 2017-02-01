@@ -18,6 +18,12 @@ class ExecutorRepresenter {
     return runningTask.getId();
   }
 
+  void sendExecuteCachedTaskGroup(final String id) {
+    final VortexMessage message = new VortexMessage(
+        getId(), VortexMessage.Type.ExecutedCachedTaskGroup, id);
+    sendMessage(message);
+  }
+
   void sendExecuteTaskGroup(final TaskGroup taskGroup) {
     final VortexMessage message = new VortexMessage(
         getId(), VortexMessage.Type.ExecuteTaskGroup, taskGroup);
@@ -25,6 +31,9 @@ class ExecutorRepresenter {
   }
 
   void sendReadRequest(final String targetExecutorId, final String chanId) {
+    System.out.println("sendreadrequest");
+    System.out.println(targetExecutorId);
+    System.out.println(chanId);
     final VortexMessage message = new VortexMessage(
         getId(), targetExecutorId, VortexMessage.Type.ReadRequest, chanId);
     sendMessage(message);

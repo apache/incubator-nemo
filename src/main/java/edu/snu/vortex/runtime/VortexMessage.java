@@ -38,6 +38,7 @@ public final class VortexMessage implements Serializable {
   public enum Type {
     // Master to Executor
     ExecuteTaskGroup,
+    ExecutedCachedTaskGroup,
     ChannelNotReady,
 
     // Executor to Master

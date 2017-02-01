@@ -22,7 +22,7 @@ final class VortexMaster {
   private final String[] userArguments;
   private final Map<String, String> outChannelIdToExecutorMap;
   private final Set<String> readyIdChannelSet;
-  private final Set<String> scheduledTaskGroupIdSet;
+  private final Map<String, Integer> cachedTaskGroupToExecutor;
 
   private int executorIndex;
   private TaskDAG taskDAG;
@@ -34,7 +34,7 @@ final class VortexMaster {
     this.userArguments = args.split(",");
     this.outChannelIdToExecutorMap = new ConcurrentHashMap<>();
     this.readyIdChannelSet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
-    this.scheduledTaskGroupIdSet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+    this.cachedTaskGroupToExecutor = new ConcurrentHashMap<>();
   }
 
   void launchJob() {
@@ -78,23 +78,25 @@ final class VortexMaster {
   }
 
   private void scheduleTaskGroup(final TaskGroup taskGroup) {
-    if (scheduledTaskGroupIdSet.contains(taskGroup.getId())) {
-      return;
+    if (cachedTaskGroupToExecutor.containsKey(taskGroup.getId())) {
+      System.out.println("Schedule-Cached " + taskGroup);
+      final ExecutorRepresenter executor = exeucutorList.get(cachedTaskGroupToExecutor.get(taskGroup.getId()));
+      executor.sendExecuteCachedTaskGroup(taskGroup.getId());
+    } else {
+      System.out.println("Schedule-NonCached " + taskGroup);
+      // Round-robin executor pick
+      final int selectedIndex = (executorIndex++) % exeucutorList.size();
+      final ExecutorRepresenter executor = exeucutorList.get(selectedIndex);
+      cachedTaskGroupToExecutor.put(taskGroup.getId(), selectedIndex);
+
+      taskGroup.getTasks().stream()
+          .map(Task::getOutChans)
+          .flatMap(List::stream)
+          .filter(chan -> chan instanceof TCPChannel)
+          .forEach(chan -> outChannelIdToExecutorMap.put(chan.getId(), executor.getId()));
+
+      executor.sendExecuteTaskGroup(taskGroup);
     }
-
-    scheduledTaskGroupIdSet.add(taskGroup.getId());
-    // Round-robin executor pick
-    final int selectedIndex = (executorIndex++) % exeucutorList.size();
-    final ExecutorRepresenter executor = exeucutorList.get(selectedIndex);
-
-
-    taskGroup.getTasks().stream()
-        .map(Task::getOutChans)
-        .flatMap(List::stream)
-        .filter(chan -> chan instanceof TCPChannel)
-        .forEach(chan -> outChannelIdToExecutorMap.put(chan.getId(), executor.getId()));
-
-    executor.sendExecuteTaskGroup(taskGroup);
   }
 
   private void onRemoteChannelReady(final String chanId) {

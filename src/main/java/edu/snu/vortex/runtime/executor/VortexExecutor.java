@@ -6,7 +6,6 @@ import edu.snu.vortex.runtime.TaskGroup;
 import edu.snu.vortex.runtime.VortexMessage;
 import edu.snu.vortex.runtime.driver.Parameters;
 import org.apache.commons.lang.SerializationUtils;
-import org.apache.commons.logging.Log;
 import org.apache.reef.driver.task.TaskConfigurationOptions;
 import org.apache.reef.io.network.NetworkConnectionService;
 import org.apache.reef.tang.annotations.Parameter;
@@ -23,6 +22,8 @@ import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.transport.netty.LoggingLinkListener;
 
 import javax.inject.Inject;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,6 +44,8 @@ public final class VortexExecutor implements Task, TaskMessageSource {
 
   private final CountDownLatch terminated;
 
+  private final Map<String, TaskGroup> cachedTaskGroup;
+
   @Inject
   private VortexExecutor(
       final HeartBeatTriggerManager heartBeatTriggerManager,
@@ -61,6 +64,7 @@ public final class VortexExecutor implements Task, TaskMessageSource {
     this.numThreads = numThreads;
 
     this.terminated = new CountDownLatch(1);
+    this.cachedTaskGroup = new HashMap<>();
 
     ncs.registerConnectionFactory(
         idFactory.getNewInstance(Parameters.NCS_ID),
@@ -87,19 +91,19 @@ public final class VortexExecutor implements Task, TaskMessageSource {
             switch (message.getType()) {
               case ExecuteTaskGroup:
                 final TaskGroup taskGroup = (TaskGroup) message.getData();
+                cachedTaskGroup.put(taskGroup.getId(), taskGroup);
                 final boolean unboundedSource = taskGroup.getTasks().stream()
                     .filter(task -> task instanceof SourceTask)
                     .anyMatch(sourceTask -> ((SourceTask)sourceTask).isUnbounded());
                 if (unboundedSource) {
                   System.out.println("Unbounded schedule");
-                  /*
                   try {
                     executeThreads.scheduleWithFixedDelay(() -> executeTaskGroup(taskGroup), 0, 10 * 1000, TimeUnit.MILLISECONDS);
                         //.get(60, TimeUnit.SECONDS);
                   } catch (Exception e) {
                     throw new RuntimeException(e);
                   }
-                  */
+                  /*
                   executeThreads.execute(() -> {
                     while (true) {
                       try {
@@ -113,11 +117,16 @@ public final class VortexExecutor implements Task, TaskMessageSource {
                       }
                     }
                   });
+                  */
                 }
                 else {
                   System.out.println("Bounded schedule");
                   executeThreads.execute(() -> executeTaskGroup(taskGroup));
                 }
+                break;
+              case ExecutedCachedTaskGroup:
+                final TaskGroup cached = cachedTaskGroup.get((String)message.getData());
+                executeTaskGroup(cached);
                 break;
               case ReadRequest:
                 blockManager.onReadRequest(message.getTargetExecutorId(), (String) message.getData());
