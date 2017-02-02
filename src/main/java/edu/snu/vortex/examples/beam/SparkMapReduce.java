@@ -42,6 +42,7 @@ public class SparkMapReduce {
     final String topics = args[1];
     final Long minibatchSize = Long.valueOf(args[2]);
     final Long windowSize = Long.valueOf(args[3]);
+    final Long slideDuration = Long.valueOf(args[4]);
 
     final SparkConf sparkConf = new SparkConf().setAppName("JavaDirectKafkaWordCount");
     final JavaStreamingContext jssc = new JavaStreamingContext(sparkConf, Durations.seconds(minibatchSize));
@@ -69,7 +70,7 @@ public class SparkMapReduce {
         });
 
     final JavaPairDStream<String, Long> sum =
-        pairs.reduceByKeyAndWindow((l, r) -> (l + r), Durations.seconds(windowSize));
+        pairs.reduceByKeyAndWindow((l, r) -> (l + r), Durations.seconds(windowSize), Durations.seconds(slideDuration));
 
     sum.print();
 
