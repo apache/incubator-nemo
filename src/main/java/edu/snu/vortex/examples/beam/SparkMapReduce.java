@@ -72,7 +72,8 @@ public class SparkMapReduce {
     final JavaPairDStream<String, Long> sum =
         pairs.reduceByKeyAndWindow((l, r) -> (l + r), Durations.seconds(windowSize), Durations.seconds(slideDuration));
 
-    sum.print();
+    // sum.print();
+    sum.saveAsNewAPIHadoopFiles("starlab", "starlab");
 
     jssc.start();
     jssc.awaitTermination();
