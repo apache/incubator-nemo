@@ -15,6 +15,12 @@
  */
 package edu.snu.vortex.compiler.ir.operator;
 
+/**
+ * Broadcast operator.
+ * @param <I> input type.
+ * @param <O> output type.
+ * @param <T> .
+ */
 public abstract class Broadcast<I, O, T> extends Operator<I, O> {
   public abstract O transform(Iterable<I> input);
 

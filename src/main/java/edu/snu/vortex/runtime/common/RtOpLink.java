@@ -17,6 +17,9 @@ package edu.snu.vortex.runtime.common;
 
 import java.util.Map;
 
+/**
+ * Runtime Operators link.
+ */
 public final class RtOpLink {
   private final String rtOpLinkId;
   private final Map<RtAttributes.RtOpLinkAttribute, Object> rtOpLinkAttr;
@@ -26,8 +29,8 @@ public final class RtOpLink {
 
   /**
    * Represents a connection/edge between two {@link RtOperator} to be executed in Vortex runtime.
-   * @param srcRtOp
-   * @param dstRtOp
+   * @param srcRtOp .
+   * @param dstRtOp .
    * @param rtOpLinkAttr attributes that can be given to this {@link RtOpLink}
    */
   public RtOpLink(final RtOperator srcRtOp,

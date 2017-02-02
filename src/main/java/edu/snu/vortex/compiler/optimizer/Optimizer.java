@@ -21,9 +21,15 @@ import edu.snu.vortex.compiler.ir.Edge;
 
 import java.util.*;
 
+/**
+ * Optimizer class.
+ */
 public final class Optimizer {
   /**
+   * Optimize function.
    * TODO #29: Make Optimizer Configurable
+   * @param dag .
+   * @return optimized DAG
    */
   public DAG optimize(final DAG dag) {
     operatorPlacement(dag);

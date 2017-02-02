@@ -16,11 +16,12 @@
 package edu.snu.vortex.compiler.ir;
 
 /**
+ * Attributes class.
  * TODO #21: Refactor Attributes Class
  */
 public final class Attributes {
   /**
-   * Attribute Keys
+   * Attribute Keys.
    */
   public enum Key {
     Placement,
@@ -30,11 +31,14 @@ public final class Attributes {
   }
 
   /**
-   * Attribute Vals
+   * Attribute Vals.
    */
   public interface Val {
   }
 
+  /**
+   * Operator attributes.
+   */
   public enum Placement implements Val {
     Transient,
     Reserved,
@@ -42,11 +46,17 @@ public final class Attributes {
     Storage,
   }
 
+  /**
+   * Edge partitioning attributes.
+   */
   public enum EdgePartitioning implements Val {
     Hash,
     Range,
   }
 
+  /**
+   * Edge attributes.
+   */
   public enum EdgeChannel implements Val {
     Memory,
     TCPPipe,

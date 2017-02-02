@@ -20,6 +20,9 @@ import edu.snu.vortex.compiler.ir.operator.Source;
 
 import java.util.*;
 
+/**
+ * DAG Builder.
+ */
 public final class DAGBuilder {
   private Map<String, List<Edge>> id2inEdges;
   private Map<String, List<Edge>> id2outEdges;
@@ -39,7 +42,7 @@ public final class DAGBuilder {
 
   /**
    * add an operator.
-   * @param operator
+   * @param operator .
    */
   public void addOperator(final Operator operator) {
     if (this.contains(operator)) {
@@ -49,10 +52,15 @@ public final class DAGBuilder {
   }
 
   /**
+   */
+  /**
    * add an edge for the given operators.
-   * @param src
-   * @param dst
-   * @param type
+   * @param src source operator.
+   * @param dst destination operator.
+   * @param type edge type.
+   * @return .
+   * @param <I> input type (output type of incoming operator).
+   * @param <O> output type (input type of outgoing operator).
    * @return
    */
   public <I, O> Edge<I, O> connectOperators(final Operator<?, I> src, final Operator<O, ?> dst, final Edge.Type type) {
@@ -89,34 +97,34 @@ public final class DAGBuilder {
   }
 
   /**
-   * check if the DAGBuilder contains the operator
-   * @param operator
-   * @return
+   * check if the DAGBuilder contains the operator.
+   * @param operator .
+   * @return .
    */
-  public boolean contains(Operator operator) {
+  public boolean contains(final Operator operator) {
     return operators.contains(operator);
   }
 
   /**
-   * check if the DAGBuilder contains the edge
-   * @param edge
-   * @return
+   * check if the DAGBuilder contains the edge.
+   * @param edge .
+   * @return .
    */
-  public boolean contains(Edge edge) {
+  public boolean contains(final Edge edge) {
     return (id2inEdges.containsValue(edge) || id2outEdges.containsValue(edge));
   }
 
   /**
-   * returns the number of operators in the DAGBuilder
-   * @return
+   * returns the number of operators in the DAGBuilder.
+   * @return .
    */
   public int size() {
     return operators.size();
   }
 
   /**
-   * build the DAG
-   * @return
+   * build the DAG.
+   * @return .
    */
   public DAG build() {
     // TODO #22: DAG Integrity Check

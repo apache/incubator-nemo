@@ -18,14 +18,20 @@ package edu.snu.vortex.runtime.common;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * ID Generator.
+ */
 public final class IdGenerator {
-  private static AtomicInteger RStageIdGenerator = new AtomicInteger(1);
-  private static AtomicInteger ROpLinkIdGenerator = new AtomicInteger(1);
+  private static AtomicInteger rtStageIdGenerator = new AtomicInteger(1);
+  private static AtomicInteger rtOpLinkIdGenerator = new AtomicInteger(1);
+
+  private IdGenerator() {
+  }
 
   /**
    * Generates the ID for {@link RtOperator},
-   * given the ID of the corresponding {@link edu.snu.vortex.compiler.ir.operator.Operator}
-   * @param irOpId
+   * given the ID of the corresponding {@link edu.snu.vortex.compiler.ir.operator.Operator}.
+   * @param irOpId .
    * @return the generated ID
    */
   public static String generateRtOpId(final String irOpId) {
@@ -37,7 +43,7 @@ public final class IdGenerator {
    * @return the generated ID
    */
   public static String generateRtOpLinkId() {
-    return "RtOpLink-" + ROpLinkIdGenerator.getAndIncrement();
+    return "RtOpLink-" + rtOpLinkIdGenerator.getAndIncrement();
   }
 
   /**
@@ -45,11 +51,13 @@ public final class IdGenerator {
    * @return the generated ID
    */
   public static String generateRtStageId() {
-    return "RtStage-" + RStageIdGenerator.getAndIncrement();
+    return "RtStage-" + rtStageIdGenerator.getAndIncrement();
   }
 
   /**
    * Generates the ID for {@link RtStageLink}, generating a unique ID for a pair of {@link RtStage}.
+   * @param srcRStageId .
+   * @param dstRStageId .
    * @return the generated ID
    */
   public static String generateRtStageLinkId(final String srcRStageId, final String dstRStageId) {

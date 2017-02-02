@@ -49,9 +49,9 @@ public final class DAG {
   }
 
   /**
-   * Gets the edges coming in to the given operator
-   * @param operator
-   * @return
+   * Gets the edges coming in to the given operator.
+   * @param operator .
+   * @return .
    */
   public Optional<List<Edge>> getInEdgesOf(final Operator operator) {
     final List<Edge> inEdges = id2inEdges.get(operator.getId());
@@ -59,9 +59,9 @@ public final class DAG {
   }
 
   /**
-   * Gets the edges going out of the given operator
-   * @param operator
-   * @return
+   * Gets the edges going out of the given operator.
+   * @param operator .
+   * @return .
    */
   public Optional<List<Edge>> getOutEdgesOf(final Operator operator) {
     final List<Edge> outEdges = id2outEdges.get(operator.getId());
@@ -70,9 +70,9 @@ public final class DAG {
 
   /**
    * Finds the edge between two operators in the DAG.
-   * @param operator1
-   * @param operator2
-   * @return
+   * @param operator1 .
+   * @param operator2 .
+   * @return .
    */
   public Optional<Edge> getEdgeBetween(final Operator operator1, final Operator operator2) {
     final Optional<List<Edge>> inEdges = this.getInEdgesOf(operator1);
@@ -106,14 +106,22 @@ public final class DAG {
   /////////////// Auxiliary overriding functions
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
 
     DAG dag = (DAG) o;
 
-    if (!id2inEdges.equals(dag.id2inEdges)) return false;
-    if (!id2outEdges.equals(dag.id2outEdges)) return false;
+    if (!id2inEdges.equals(dag.id2inEdges)) {
+      return false;
+    }
+    if (!id2outEdges.equals(dag.id2outEdges)) {
+      return false;
+    }
     return operators.equals(dag.operators);
   }
 
@@ -139,32 +147,36 @@ public final class DAG {
   }
 
   /**
-   * check if the DAGBuilder contains the operator
-   * @param operator
-   * @return
+   * check if the DAGBuilder contains the operator.
+   * @param operator .
+   * @return .
    */
-  public boolean contains(Operator operator) {
+  public boolean contains(final Operator operator) {
     return operators.contains(operator);
   }
 
   /**
-   * check if the DAGBuilder contains the edge
-   * @param edge
-   * @return
+   * check if the DAGBuilder contains the edge.
+   * @param edge .
+   * @return .
    */
-  public boolean contains(Edge edge) {
+  public boolean contains(final Edge edge) {
     return (id2inEdges.containsValue(edge) || id2outEdges.containsValue(edge));
   }
 
   /**
-   * returns the number of operators in the DAGBuilder
-   * @return
+   * returns the number of operators in the DAGBuilder.
+   * @return .
    */
   public int size() {
     return operators.size();
   }
 
   ////////// DFS Traversal
+
+  /**
+   * Visit order for the traversal.
+   */
   public enum VisitOrder {
     PreOrder,
     PostOrder

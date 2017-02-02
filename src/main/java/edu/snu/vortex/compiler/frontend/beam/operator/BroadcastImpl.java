@@ -24,6 +24,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+/**
+ * Broadcast operator implementation.
+ * @param <I> input type.
+ * @param <O> output type.
+ */
 public final class BroadcastImpl<I, O> extends Broadcast<I, O, PCollectionView> {
   private final PCollectionView view;
 

@@ -34,9 +34,17 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * TODO #20: Make ProcessContext Kinder
  */
-public final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext implements DoFnInvoker.ArgumentProvider<I, O> {
+
+/**
+ * ProcessContext class.
+ * TODO #20: Make ProcessContext Kinder
+ * @param <I> input type.
+ * @param <O> output type.
+ */
+public final class ProcessContext<I, O>
+    extends DoFn<I, O>.ProcessContext
+    implements DoFnInvoker.ArgumentProvider<I, O> {
   private I inputElement;
   private final Map<PCollectionView, Object> sideInputs;
   private final List<O> outputs;
@@ -99,7 +107,8 @@ public final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext implem
   }
 
   @Override
-  protected <AggInputT, AggOutputT> Aggregator<AggInputT, AggOutputT> createAggregator(final String name, final Combine.CombineFn<AggInputT, ?, AggOutputT> combiner) {
+  protected <AggInputT, AggOutputT> Aggregator<AggInputT, AggOutputT> createAggregator(
+      final String name, final Combine.CombineFn<AggInputT, ?, AggOutputT> combiner) {
     throw new UnsupportedOperationException();
   }
 
@@ -109,17 +118,17 @@ public final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext implem
   }
 
   @Override
-  public DoFn<I, O>.Context context(DoFn<I, O> doFn) {
+  public DoFn<I, O>.Context context(final DoFn<I, O> doFn) {
     return this;
   }
 
   @Override
-  public DoFn<I, O>.ProcessContext processContext(DoFn<I, O> doFn) {
+  public DoFn<I, O>.ProcessContext processContext(final DoFn<I, O> doFn) {
     return this;
   }
 
   @Override
-  public DoFn<I, O>.OnTimerContext onTimerContext(DoFn<I, O> doFn) {
+  public DoFn<I, O>.OnTimerContext onTimerContext(final DoFn<I, O> doFn) {
     throw new UnsupportedOperationException();
   }
 
@@ -144,12 +153,12 @@ public final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext implem
   }
 
   @Override
-  public State state(String stateId) {
+  public State state(final String stateId) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public Timer timer(String timerId) {
+  public Timer timer(final String timerId) {
     throw new UnsupportedOperationException();
   }
 }

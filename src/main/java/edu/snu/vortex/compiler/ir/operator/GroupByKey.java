@@ -15,5 +15,10 @@
  */
 package edu.snu.vortex.compiler.ir.operator;
 
+/**
+ * GroupByKey operator.
+ * @param <I> input type.
+ * @param <O> output type.
+ */
 public abstract class GroupByKey<I, O> extends Operator<I, O> {
 }

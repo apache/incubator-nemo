@@ -21,8 +21,14 @@ import edu.snu.vortex.runtime.exception.NoSuchRtStageException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Simple Execution Plan.
+ */
 public final class SimpleExecutionPlan {
-  public static void main (String[] args) {
+  private SimpleExecutionPlan() {
+  }
+
+  public static void main(final String[] args) {
     final ExecutionPlan simplePlan = new ExecutionPlan();
 
     /** A simple Execution Plan composed of 3 stages, Stage A and B independent of each other,
@@ -31,66 +37,66 @@ public final class SimpleExecutionPlan {
      */
 
     // Make Stage A
-    final Map<RtAttributes.RtStageAttribute, Object> stageA_Attr = new HashMap<>();
-    stageA_Attr.put(RtAttributes.RtStageAttribute.PARALLELISM, 3);
-    final RtStage a = new RtStage(stageA_Attr);
+    final Map<RtAttributes.RtStageAttribute, Object> stageAattr = new HashMap<>();
+    stageAattr.put(RtAttributes.RtStageAttribute.PARALLELISM, 3);
+    final RtStage a = new RtStage(stageAattr);
 
     final String mockIrOpIdA1 = "a1";
-    final Map<RtAttributes.RtOpAttribute, Object> rtOpA1_Attr = new HashMap<>();
-    rtOpA1_Attr.put(RtAttributes.RtOpAttribute.PARTITION, RtAttributes.Partition.HASH);
-    rtOpA1_Attr.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.TRANSIENT);
-    final RtOperator a1 = new RtOperator(mockIrOpIdA1, rtOpA1_Attr);
+    final Map<RtAttributes.RtOpAttribute, Object> rtOpA1attr = new HashMap<>();
+    rtOpA1attr.put(RtAttributes.RtOpAttribute.PARTITION, RtAttributes.Partition.HASH);
+    rtOpA1attr.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.TRANSIENT);
+    final RtOperator a1 = new RtOperator(mockIrOpIdA1, rtOpA1attr);
 
     final String mockIrOpIdA2 = "a2";
-    final Map<RtAttributes.RtOpAttribute, Object> rtOpA2_Attr = new HashMap<>();
-    rtOpA2_Attr.put(RtAttributes.RtOpAttribute.PARTITION, RtAttributes.Partition.RANGE);
-    rtOpA2_Attr.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.RESERVED);
-    final RtOperator a2 = new RtOperator(mockIrOpIdA2, rtOpA2_Attr);
+    final Map<RtAttributes.RtOpAttribute, Object> rtOpA2attr = new HashMap<>();
+    rtOpA2attr.put(RtAttributes.RtOpAttribute.PARTITION, RtAttributes.Partition.RANGE);
+    rtOpA2attr.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.RESERVED);
+    final RtOperator a2 = new RtOperator(mockIrOpIdA2, rtOpA2attr);
 
     a.addRtOp(a1);
     a.addRtOp(a2);
 
-    final Map<RtAttributes.RtOpLinkAttribute, Object> rtOpLinkA12_Attr = new HashMap<>();
-    rtOpLinkA12_Attr.put(RtAttributes.RtOpLinkAttribute.CHANNEL, RtAttributes.Channel.LOCAL_MEM);
-    rtOpLinkA12_Attr.put(RtAttributes.RtOpLinkAttribute.COMM_PATTERN, RtAttributes.CommPattern.ONE_TO_ONE);
-    final RtOpLink a1_a2 = new RtOpLink(a1, a2, rtOpLinkA12_Attr);
-    a.connectRtOps(a1.getId(), a2.getId(), a1_a2);
+    final Map<RtAttributes.RtOpLinkAttribute, Object> rtOpLinkA12attr = new HashMap<>();
+    rtOpLinkA12attr.put(RtAttributes.RtOpLinkAttribute.CHANNEL, RtAttributes.Channel.LOCAL_MEM);
+    rtOpLinkA12attr.put(RtAttributes.RtOpLinkAttribute.COMM_PATTERN, RtAttributes.CommPattern.ONE_TO_ONE);
+    final RtOpLink a1Toa2 = new RtOpLink(a1, a2, rtOpLinkA12attr);
+    a.connectRtOps(a1.getId(), a2.getId(), a1Toa2);
 
     // Make Stage B
-    final Map<RtAttributes.RtStageAttribute, Object> stageB_Attr = new HashMap<>();
-    stageB_Attr.put(RtAttributes.RtStageAttribute.PARALLELISM, 2);
-    final RtStage b = new RtStage(stageB_Attr);
+    final Map<RtAttributes.RtStageAttribute, Object> stageBattr = new HashMap<>();
+    stageBattr.put(RtAttributes.RtStageAttribute.PARALLELISM, 2);
+    final RtStage b = new RtStage(stageBattr);
 
     final String mockIrOpIdB1 = "b1";
-    final Map<RtAttributes.RtOpAttribute, Object> rtOpB1_Attr = new HashMap<>();
-    rtOpB1_Attr.put(RtAttributes.RtOpAttribute.PARTITION, RtAttributes.Partition.HASH);
-    rtOpB1_Attr.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.TRANSIENT);
-    final RtOperator b1 = new RtOperator(mockIrOpIdB1, rtOpB1_Attr);
+    final Map<RtAttributes.RtOpAttribute, Object> rtOpB1attr = new HashMap<>();
+    rtOpB1attr.put(RtAttributes.RtOpAttribute.PARTITION, RtAttributes.Partition.HASH);
+    rtOpB1attr.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.TRANSIENT);
+    final RtOperator b1 = new RtOperator(mockIrOpIdB1, rtOpB1attr);
 
     b.addRtOp(b1);
 
     // Make Stage C
-    final Map<RtAttributes.RtStageAttribute, Object> stageC_Attr = new HashMap<>();
-    stageC_Attr.put(RtAttributes.RtStageAttribute.PARALLELISM, 4);
-    final RtStage c = new RtStage(stageC_Attr);
+    final Map<RtAttributes.RtStageAttribute, Object> stageCattr = new HashMap<>();
+    stageCattr.put(RtAttributes.RtStageAttribute.PARALLELISM, 4);
+    final RtStage c = new RtStage(stageCattr);
 
     final String mockIrOpIdC1 = "c1";
-    final Map<RtAttributes.RtOpAttribute, Object> rtOpC1_Attr = new HashMap<>();
-    rtOpC1_Attr.put(RtAttributes.RtOpAttribute.PARTITION, RtAttributes.Partition.HASH);
-    rtOpC1_Attr.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.TRANSIENT);
-    final RtOperator c1 = new RtOperator(mockIrOpIdC1, rtOpC1_Attr);
+    final Map<RtAttributes.RtOpAttribute, Object> rtOpC1attr = new HashMap<>();
+    rtOpC1attr.put(RtAttributes.RtOpAttribute.PARTITION, RtAttributes.Partition.HASH);
+    rtOpC1attr.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.TRANSIENT);
+    final RtOperator c1 = new RtOperator(mockIrOpIdC1, rtOpC1attr);
 
     c.addRtOp(c1);
 
-    final Map<RtAttributes.RtOpLinkAttribute, Object> rtOpLinkA2B1_Attr = new HashMap<>();
-    rtOpLinkA2B1_Attr.put(RtAttributes.RtOpLinkAttribute.CHANNEL, RtAttributes.Channel.FILE);
-    rtOpLinkA2B1_Attr.put(RtAttributes.RtOpLinkAttribute.COMM_PATTERN, RtAttributes.CommPattern.SCATTER_GATHER);
-    final RtOpLink a2_c1 = new RtOpLink(a2, c1, rtOpLinkA2B1_Attr);
+    final Map<RtAttributes.RtOpLinkAttribute, Object> rtOpLinkA2B1attr = new HashMap<>();
+    rtOpLinkA2B1attr.put(RtAttributes.RtOpLinkAttribute.CHANNEL, RtAttributes.Channel.FILE);
+    rtOpLinkA2B1attr.put(RtAttributes.RtOpLinkAttribute.COMM_PATTERN, RtAttributes.CommPattern.SCATTER_GATHER);
+    final RtOpLink a2Toc1 = new RtOpLink(a2, c1, rtOpLinkA2B1attr);
 
-    final Map<RtAttributes.RtOpLinkAttribute, Object> rtOpLinkA2C1_Attr = new HashMap<>();
-    rtOpLinkA2C1_Attr.put(RtAttributes.RtOpLinkAttribute.CHANNEL, RtAttributes.Channel.FILE);
-    rtOpLinkA2C1_Attr.put(RtAttributes.RtOpLinkAttribute.COMM_PATTERN, RtAttributes.CommPattern.SCATTER_GATHER);
-    final RtOpLink b1_c1 = new RtOpLink(b1, c1, rtOpLinkA2C1_Attr);
+    final Map<RtAttributes.RtOpLinkAttribute, Object> rtOpLinkA2C1attr = new HashMap<>();
+    rtOpLinkA2C1attr.put(RtAttributes.RtOpLinkAttribute.CHANNEL, RtAttributes.Channel.FILE);
+    rtOpLinkA2C1attr.put(RtAttributes.RtOpLinkAttribute.COMM_PATTERN, RtAttributes.CommPattern.SCATTER_GATHER);
+    final RtOpLink b1Toc1 = new RtOpLink(b1, c1, rtOpLinkA2C1attr);
 
     // Add stages to the execution plan
     simplePlan.addRtStage(a);
@@ -99,8 +105,8 @@ public final class SimpleExecutionPlan {
 
     // Connect the stages with links a2_c1 and b1_c1
     try {
-      simplePlan.connectRtStages(a, c, a2_c1);
-      simplePlan.connectRtStages(b, c, b1_c1);
+      simplePlan.connectRtStages(a, c, a2Toc1);
+      simplePlan.connectRtStages(b, c, b1Toc1);
     } catch (final NoSuchRtStageException ex) {
     }
   }

@@ -29,13 +29,19 @@ import edu.snu.vortex.runtime.exception.NoSuchRtStageException;
 
 import java.util.*;
 
+/**
+ * Execution Plan generation.
+ */
 public final class ExecutionPlanGeneration {
+  private ExecutionPlanGeneration() {
+  }
+
   public static void main(final String[] args) {
 
     final DAG dag = buildMapReduceIRDAG();
 
-    final Optimizer DAGOptimizer = new Optimizer();
-    DAGOptimizer.optimize(dag);
+    final Optimizer dagOptimizer = new Optimizer();
+    dagOptimizer.optimize(dag);
     System.out.println("=== Optimized IR DAG ===");
     System.out.println(dag);
 
@@ -44,7 +50,7 @@ public final class ExecutionPlanGeneration {
     System.out.println(execPlan);
   }
 
-  private static ExecutionPlan transformToExecDAG(DAG dag) {
+  private static ExecutionPlan transformToExecDAG(final DAG dag) {
     final ExecutionPlan execPlan = new ExecutionPlan();
     final OperatorConverter compiler = new OperatorConverter();
 
@@ -85,7 +91,7 @@ public final class ExecutionPlanGeneration {
 
         Iterator<Edge> edges = inEdges.get().iterator();
         try {
-          while(edges.hasNext()) {
+          while (edges.hasNext()) {
             final Edge edge = edges.next();
 
             String srcROperId = compiler.convertId(edge.getSrc().getId());
@@ -106,12 +112,11 @@ public final class ExecutionPlanGeneration {
         } catch (NoSuchRtStageException e) {
           throw new RuntimeException(e.getMessage());
         }
-      }
-      else {
+      } else {
         rtStage.addRtOp(rtOperator);
 
         Iterator<Edge> edges = inEdges.get().iterator();
-        while(edges.hasNext()) {
+        while (edges.hasNext()) {
           Edge edge = edges.next();
           Map<RtAttributes.RtOpLinkAttribute, Object> rOpLinkAttr = new HashMap<>();
           rOpLinkAttr.put(RtAttributes.RtOpLinkAttribute.COMM_PATTERN, convertEdgeTypeToROpLinkAttr(edge.getType()));
@@ -127,7 +132,7 @@ public final class ExecutionPlanGeneration {
     return execPlan;
   }
 
-  private static RtAttributes.CommPattern convertEdgeTypeToROpLinkAttr(Edge.Type edgeType) {
+  private static RtAttributes.CommPattern convertEdgeTypeToROpLinkAttr(final Edge.Type edgeType) {
     switch (edgeType) {
       case O2O:
         return RtAttributes.CommPattern.ONE_TO_ONE;
@@ -140,13 +145,14 @@ public final class ExecutionPlanGeneration {
     }
   }
 
-  private static RtStage findRtStageOf(List<RtStage> rtStages, String operatorId) {
-    Iterator<RtStage> iterator = rtStages.iterator();
+  private static RtStage findRtStageOf(final List<RtStage> rtStages, final String operatorId) {
+    final Iterator<RtStage> iterator = rtStages.iterator();
 
     while (iterator.hasNext()) {
       RtStage rtStage = iterator.next();
-      if (rtStage.contains(operatorId))
+      if (rtStage.contains(operatorId)) {
         return rtStage;
+      }
     }
 
     return null;
@@ -174,6 +180,11 @@ public final class ExecutionPlanGeneration {
     return builder.build();
   }
 
+  /**
+   * Pair.
+   * @param <K> .
+   * @param <V> .
+   */
   private static class Pair<K, V> {
     private K key;
     private V val;
@@ -184,13 +195,22 @@ public final class ExecutionPlanGeneration {
     }
   }
 
+  /**
+   * Empty Source.
+   */
   private static class EmptySource extends Source {
     @Override
-    public List<Reader> getReaders(long desiredBundleSizeBytes) throws Exception {
+    public List<Reader> getReaders(final long desiredBundleSizeBytes) throws Exception {
       return null;
     }
   }
 
+  /**
+   * Empty Do.
+   * @param <I> .
+   * @param <O> .
+   * @param <T> .
+   */
   private static class EmptyDo<I, O, T> extends Do<I, O, T> {
     private final String name;
 

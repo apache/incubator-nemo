@@ -21,6 +21,10 @@ import org.apache.beam.sdk.io.BoundedSource;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Source operator implementation.
+ * @param <O> output type.
+ */
 public final class SourceImpl<O> extends Source<O> {
   private final BoundedSource<O> source;
 
@@ -47,6 +51,10 @@ public final class SourceImpl<O> extends Source<O> {
     return sb.toString();
   }
 
+  /**
+   * Reader class.
+   * @param <T> type.
+   */
   public class Reader<T> implements Source.Reader<T> {
     private final BoundedSource.BoundedReader<T> beamReader;
 
@@ -55,7 +63,7 @@ public final class SourceImpl<O> extends Source<O> {
     }
 
     @Override
-    public Iterable<T> read() throws Exception {
+    public final Iterable<T> read() throws Exception {
       final ArrayList<T> data = new ArrayList<>();
       try (final BoundedSource.BoundedReader<T> reader = beamReader) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
