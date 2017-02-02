@@ -18,6 +18,8 @@
 package edu.snu.vortex.examples.beam;
 
 import kafka.serializer.StringDecoder;
+import org.apache.hadoop.mapreduce.OutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.spark.SparkConf;
 import org.apache.spark.streaming.Durations;
 import org.apache.spark.streaming.api.java.JavaPairDStream;
@@ -73,7 +75,7 @@ public class SparkMapReduce {
         pairs.reduceByKeyAndWindow((l, r) -> (l + r), Durations.seconds(windowSize), Durations.seconds(slideDuration));
 
     // sum.print();
-    sum.saveAsNewAPIHadoopFiles("starlab", "starlab");
+    sum.saveAsNewAPIHadoopFiles("hdfs://rio-m:9000/starlab/" + System.currentTimeMillis(), "starlab", String.class, Long.class, TextOutputFormat.class);
 
     jssc.start();
     jssc.awaitTermination();
