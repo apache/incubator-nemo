@@ -40,8 +40,8 @@ public class SparkMapReduce {
 
     final String brokers = args[0];
     final String topics = args[1];
-    final Long minibatchSize = Long.valueOf(args[1]);
-    final Long windowSize = Long.valueOf(args[1]);
+    final Long minibatchSize = Long.valueOf(args[2]);
+    final Long windowSize = Long.valueOf(args[3]);
 
     final SparkConf sparkConf = new SparkConf().setAppName("JavaDirectKafkaWordCount");
     final JavaStreamingContext jssc = new JavaStreamingContext(sparkConf, Durations.seconds(minibatchSize));
