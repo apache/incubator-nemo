@@ -18,10 +18,14 @@
 package edu.snu.vortex.examples.beam;
 
 import kafka.serializer.StringDecoder;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.OutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.spark.SparkConf;
 import org.apache.spark.streaming.Durations;
+import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaPairDStream;
 import org.apache.spark.streaming.api.java.JavaPairInputDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
@@ -74,8 +78,10 @@ public class SparkMapReduce {
     final JavaPairDStream<String, Long> sum =
         pairs.reduceByKeyAndWindow((l, r) -> (l + r), Durations.seconds(windowSize), Durations.seconds(slideDuration));
 
-    // sum.print();
-    sum.saveAsNewAPIHadoopFiles("hdfs://rio-m:9000/starlab/" + System.currentTimeMillis(), "starlab", String.class, Long.class, TextOutputFormat.class);
+    final JavaPairDStream<Text, LongWritable> writable =
+        sum.mapToPair(tuple -> new Tuple2<>(new Text(tuple._1()), new LongWritable(tuple._2())));
+
+    writable.saveAsNewAPIHadoopFiles("hdfs://rio-m:9000/starlab/" + System.currentTimeMillis(), "starlab", Text.class, LongWritable.class, TextOutputFormat.class);
 
     jssc.start();
     jssc.awaitTermination();
