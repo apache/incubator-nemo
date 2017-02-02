@@ -25,6 +25,7 @@ import org.joda.time.Duration;
 import java.io.IOException;
 
 /**
+ * Beam result.
  * TODO #32: Implement Beam Result
  */
 public final class Result implements PipelineResult {
@@ -39,7 +40,7 @@ public final class Result implements PipelineResult {
   }
 
   @Override
-  public State waitUntilFinish(Duration duration) {
+  public State waitUntilFinish(final Duration duration) {
     throw new UnsupportedOperationException();
   }
 
@@ -49,7 +50,8 @@ public final class Result implements PipelineResult {
   }
 
   @Override
-  public <T> AggregatorValues<T> getAggregatorValues(Aggregator<?, T> aggregator) throws AggregatorRetrievalException {
+  public <T> AggregatorValues<T> getAggregatorValues(final Aggregator<?, T> aggregator)
+      throws AggregatorRetrievalException {
     throw new UnsupportedOperationException();
   }
 

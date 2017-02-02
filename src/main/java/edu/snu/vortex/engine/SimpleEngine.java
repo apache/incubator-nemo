@@ -24,7 +24,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Simply prints out intermediate results
+ * Simply prints out intermediate results.
  */
 public final class SimpleEngine {
 
@@ -37,7 +37,7 @@ public final class SimpleEngine {
 
     for (final Operator node : topoSorted) {
       if (node instanceof Source) {
-        final List<Source.Reader> readers = ((Source)node).getReaders(10); // 10 Bytes per Reader
+        final List<Source.Reader> readers = ((Source) node).getReaders(10); // 10 Bytes per Reader
         final List<Iterable> data = new ArrayList<>(readers.size());
         for (final Source.Reader reader : readers) {
           data.add(reader.read());
@@ -46,13 +46,14 @@ public final class SimpleEngine {
             .map(outEdge -> outEdge.getId())
             .forEach(id -> edgeIdToData.put(id, data));
       } else if (node instanceof Do) {
-        final Do op = (Do)node;
+        final Do op = (Do) node;
 
         // Get Broadcasted SideInputs
         final Map broadcastInput = new HashMap<>();
         dag.getInEdgesOf(node).get().stream()
             .filter(inEdge -> inEdge.getSrc() instanceof Broadcast)
-            .forEach(inEdge -> broadcastInput.put(((Broadcast)inEdge.getSrc()).getTag(), edgeIdToBroadcast.get(inEdge.getId())));
+            .forEach(inEdge -> broadcastInput.put(((Broadcast) inEdge.getSrc()).getTag(),
+                edgeIdToBroadcast.get(inEdge.getId())));
 
         // Get MainInputs
         final List<Iterable> mainInput = dag.getInEdgesOf(node).get().stream()
@@ -78,10 +79,11 @@ public final class SimpleEngine {
         final List<Iterable> data = shuffle(edgeIdToData.get(getSingleEdgeId(dag, node, EdgeDirection.In)));
         edgeIdToData.put(getSingleEdgeId(dag, node, EdgeDirection.Out), data);
       } else if (node instanceof Broadcast) {
-        final Broadcast broadcastOperator = (Broadcast)node;
+        final Broadcast broadcastOperator = (Broadcast) node;
         final List<Iterable> beforeBroadcasted = edgeIdToData.get(getSingleEdgeId(dag, node, EdgeDirection.In));
         final Iterable afterBroadcasted = broadcast(beforeBroadcasted);
-        edgeIdToBroadcast.put(getSingleEdgeId(dag, node, EdgeDirection.Out), broadcastOperator.transform(afterBroadcasted));
+        edgeIdToBroadcast.put(getSingleEdgeId(dag, node, EdgeDirection.Out),
+            broadcastOperator.transform(afterBroadcasted));
       } else if (node instanceof Sink) {
         throw new UnsupportedOperationException();
       } else {
@@ -93,6 +95,9 @@ public final class SimpleEngine {
     }
   }
 
+  /**
+   * Edge direction.
+   */
   private enum EdgeDirection {
     In,
     Out

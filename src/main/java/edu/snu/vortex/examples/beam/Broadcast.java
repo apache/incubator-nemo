@@ -26,7 +26,13 @@ import org.apache.beam.sdk.values.*;
 import java.util.Optional;
 import java.util.stream.StreamSupport;
 
+/**
+ * Sample broadcast application.
+ */
 public final class Broadcast {
+  private Broadcast() {
+  }
+
   public static void main(final String[] args) {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];
@@ -50,7 +56,8 @@ public final class Broadcast {
             } else {
               c.output("error");
             }
-          }}));
+          }
+        }));
 
     p.run();
   }

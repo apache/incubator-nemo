@@ -24,13 +24,13 @@ import edu.snu.vortex.runtime.common.RtOperator;
 import java.util.HashMap;
 import java.util.Map;
 
-import static edu.snu.vortex.compiler.ir.Attributes.Key.EdgePartitioning;
-import static edu.snu.vortex.compiler.ir.Attributes.Key.Placement;
-
+/**
+ * Operator converter.
+ */
 public final class OperatorConverter {
   /**
    * Converts an {@link Operator} to its representation in {@link RtOperator}.
-   * @param irOp
+   * @param irOp .
    * @return the {@link RtOperator} representation.
    */
   public RtOperator convert(final Operator irOp) {

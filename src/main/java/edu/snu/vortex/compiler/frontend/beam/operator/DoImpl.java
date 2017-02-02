@@ -25,6 +25,11 @@ import org.apache.beam.sdk.values.PCollectionView;
 import java.util.ArrayList;
 import java.util.Map;
 
+/**
+ * Do operator implementation.
+ * @param <I> input type.
+ * @param <O> output type.
+ */
 public final class DoImpl<I, O> extends Do<I, O, PCollectionView> {
   private final DoFn doFn;
 

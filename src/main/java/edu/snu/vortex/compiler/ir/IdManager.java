@@ -17,7 +17,13 @@ package edu.snu.vortex.compiler.ir;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * ID manager.
+ */
 public final class IdManager {
+  private IdManager() {
+  }
+
   private static AtomicInteger operatorId = new AtomicInteger(1);
   private static AtomicInteger edgeId = new AtomicInteger(1);
 

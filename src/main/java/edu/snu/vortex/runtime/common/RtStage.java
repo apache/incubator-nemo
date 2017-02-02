@@ -17,11 +17,12 @@ package edu.snu.vortex.runtime.common;
 
 import com.google.api.client.util.ArrayMap;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
+/**
+ * Runtime Stage.
+ */
 public final class RtStage {
   private final String rtStageId;
   private final Map<RtAttributes.RtStageAttribute, Object> rtStageAttr;
@@ -80,8 +81,9 @@ public final class RtStage {
   }
 
   public void addRtOp(final RtOperator rtOp) {
-    if (rtOps.containsKey(rtOp.getId()))
+    if (rtOps.containsKey(rtOp.getId())) {
       throw new RuntimeException("the given rtOp has been already added");
+    }
     rtOps.put(rtOp.getId(), rtOp);
   }
 

@@ -15,5 +15,8 @@
  */
 package edu.snu.vortex.compiler.backend;
 
+/**
+ * Interface for backend components.
+ */
 public interface Backend {
 }

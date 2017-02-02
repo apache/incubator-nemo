@@ -17,10 +17,25 @@ package edu.snu.vortex.compiler.ir.operator;
 
 import java.util.List;
 
+/**
+ * Sink operator.
+ * @param <I> input type.
+ */
 public abstract class Sink<I> extends Operator<I, Void> {
   // Maybe make the parameter a any-type hashmap(attributes/options)
+
+  /**
+   * Getter for writers.
+   * @param numWriters .
+   * @return List of writers.
+   * @throws Exception .
+   */
   public abstract List<Writer<I>> getWriters(final int numWriters) throws Exception;
 
+  /**
+   * Interface for writer.
+   * @param <I> input type.
+   */
   interface Writer<I> {
     void write(Iterable<I> data) throws Exception;
   }

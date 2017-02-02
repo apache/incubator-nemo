@@ -22,6 +22,9 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
+/**
+ * Frontend component for BEAM programs.
+ */
 public final class BeamFrontend implements Frontend {
   private static DAG dag;
 
@@ -39,7 +42,7 @@ public final class BeamFrontend implements Frontend {
       throw new RuntimeException("User Main Class not public");
     }
 
-    method.invoke(null, (Object)arguments);
+    method.invoke(null, (Object) arguments);
 
     if (dag == null) {
       throw new IllegalStateException("DAG not supplied");

@@ -30,6 +30,10 @@ import org.apache.beam.sdk.values.PValue;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Visitor class.
+ * This class visits every operator in the dag to translate the BEAM program to the Vortex IR.
+ */
 final class Visitor implements Pipeline.PipelineVisitor {
   private final DAGBuilder builder;
   private final Map<PValue, Operator> pValueToOpOutput;
@@ -56,8 +60,9 @@ final class Visitor implements Pipeline.PipelineVisitor {
   public void visitPrimitiveTransform(final TransformHierarchy.Node beamOperator) {
     // Print if needed for development
     // System.out.println("visitp " + beamOperator.getTransform());
-    if (beamOperator.getOutputs().size() > 1 || beamOperator.getInputs().size() > 1)
+    if (beamOperator.getOutputs().size() > 1 || beamOperator.getInputs().size() > 1) {
       throw new UnsupportedOperationException(beamOperator.toString());
+    }
 
     final Operator vortexOperator = createOperator(beamOperator);
     builder.addOperator(vortexOperator);
@@ -81,20 +86,20 @@ final class Visitor implements Pipeline.PipelineVisitor {
   private <I, O> Operator createOperator(final TransformHierarchy.Node beamOperator) {
     final PTransform transform = beamOperator.getTransform();
     if (transform instanceof Read.Bounded) {
-      final Read.Bounded<O> read = (Read.Bounded)transform;
+      final Read.Bounded<O> read = (Read.Bounded) transform;
       final SourceImpl<O> source = new SourceImpl<>(read.getSource());
       return source;
     } else if (transform instanceof GroupByKey) {
       return new GroupByKeyImpl();
     } else if (transform instanceof View.CreatePCollectionView) {
-      final View.CreatePCollectionView view = (View.CreatePCollectionView)transform;
+      final View.CreatePCollectionView view = (View.CreatePCollectionView) transform;
       final Broadcast vortexOperator = new BroadcastImpl(view.getView());
       pValueToOpOutput.put(view.getView(), vortexOperator);
       return vortexOperator;
     } else if (transform instanceof Write.Bound) {
       throw new UnsupportedOperationException(transform.toString());
     } else if (transform instanceof ParDo.Bound) {
-      final ParDo.Bound<I, O> parDo = (ParDo.Bound<I, O>)transform;
+      final ParDo.Bound<I, O> parDo = (ParDo.Bound<I, O>) transform;
       final DoImpl<I, O> vortexOperator = new DoImpl<>(parDo.getNewFn());
       parDo.getSideInputs().stream()
           .filter(pValueToOpOutput::containsKey)

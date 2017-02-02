@@ -24,7 +24,13 @@ import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TypeDescriptors;
 
+/**
+ * Sample MapReduce application.
+ */
 public final class MapReduce {
+  private MapReduce() {
+  }
+
   public static void main(final String[] args) {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];

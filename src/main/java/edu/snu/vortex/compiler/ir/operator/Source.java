@@ -17,10 +17,25 @@ package edu.snu.vortex.compiler.ir.operator;
 
 import java.util.List;
 
+/**
+ * Source operator.
+ * @param <O> output type.
+ */
 public abstract class Source<O> extends Operator<Void, O> {
   // Maybe make the parameter a any-type hashmap(attributes/options)
+
+  /**
+   * Getter for readers.
+   * @param desiredBundleSizeBytes .
+   * @return List of readers.
+   * @throws Exception .
+   */
   public abstract List<Reader<O>> getReaders(final long desiredBundleSizeBytes) throws Exception;
 
+  /**
+   * Interface for reader.
+   * @param <O> output type.
+   */
   public interface Reader<O> {
     Iterable<O> read() throws Exception;
   }

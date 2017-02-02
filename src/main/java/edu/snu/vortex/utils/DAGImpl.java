@@ -21,11 +21,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Implements {@link DAG}
+ * Implements {@link DAG}.
  * @param <V> type of the vertex
  */
 @NotThreadSafe
 public final class DAGImpl<V> implements DAG<V> {
+  /**
+   * Logger.
+   */
   private static final Logger LOG = Logger.getLogger(DAGImpl.class.getName());
   /**
    * A set of root vertices.
@@ -89,7 +92,8 @@ public final class DAGImpl<V> implements DAG<V> {
     }
 
     if (isADescendant(dst, src)) {
-      throw new IllegalStateException("The edge from " + src + " to " + dst + " makes a cycle in the graph");
+      throw new IllegalStateException("The edge from " + src + " to " + dst
+          + " makes a cycle in the graph");
     }
 
     final Set<V> childrenOfSrc = childrenVertices.get(src);
