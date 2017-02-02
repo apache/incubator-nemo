@@ -30,7 +30,7 @@ public class SourceTask extends Task {
       try {
         final List read = (List)reader.read();
         if (read.size() > 0) {
-          System.out.println("fromKafka: " + read);
+          // System.out.println("fromKafka: " + read);
         }
         chan.write(read);
       } catch (Exception e) {

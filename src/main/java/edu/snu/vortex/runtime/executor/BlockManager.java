@@ -81,7 +81,7 @@ public final class BlockManager {
   }
 
   public void write(Channel channel, List data) {
-    System.out.println(channel + " Write: " + data);
+    // System.out.println(channel + " Write: " + data);
     channelIdToDataMap.put(channel.getId(), data);
   }
 
@@ -90,11 +90,11 @@ public final class BlockManager {
     final List data = channelIdToDataMap.remove(channel.getId());
     // Local hit
     if (data != null) {
-      System.out.println(channel + " Local READ: " + data);
+      // System.out.println(channel + " Local READ: " + data);
       return data;
     } else {
       final List remoteReadData = remoteRead(channelId);
-      System.out.println(channel + " Remote READ: " + remoteReadData);
+      // System.out.println(channel + " Remote READ: " + remoteReadData);
       return remoteReadData;
     }
   }

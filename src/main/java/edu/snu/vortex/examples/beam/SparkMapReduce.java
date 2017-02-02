@@ -63,7 +63,7 @@ public class SparkMapReduce {
         .map(tuple -> tuple._2())
         .mapToPair(msg -> {
           final String[] splits = msg.split(" ");
-          return new Tuple2<>(splits[0], Long.valueOf(splits[1]));
+          return new Tuple2<>(splits[0], Long.valueOf(splits[3]));
         });
 
     final JavaPairDStream<String, Long> sum =

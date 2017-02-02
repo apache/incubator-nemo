@@ -96,12 +96,15 @@ public final class UnboundedSourceImpl<O> extends Source<O> {
           System.out.println("Add Watermark: " + curWatermark);
           lastWatermark = curWatermark;
         }
-        System.out.println("GOT " + data);
+        // System.out.println("GOT " + data);
 
         // advance
         available = reader.advance();
       }
+
+      // add final watermark
       System.out.println("DONE");
+      data.add(new Watermark<T>(reader.getWatermark()));
 
       firstRead = false;
       return data;

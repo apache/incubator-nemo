@@ -6,21 +6,12 @@ import edu.snu.vortex.compiler.frontend.beam.element.SerializedChunk;
 import edu.snu.vortex.compiler.frontend.beam.element.Watermark;
 import edu.snu.vortex.runtime.Channel;
 import edu.snu.vortex.runtime.Task;
-import javafx.util.Pair;
-import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
-import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
-import org.apache.beam.sdk.transforms.windowing.IntervalWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
-import org.joda.time.Instant;
-import scala.xml.Atom;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -60,8 +51,7 @@ public class MergeTask extends Task {
 
     System.out.println("flush: " + toFlush);
     if (toFlush.size() > 0) {
-      toFlush.stream().forEach(this::flush);
-      toFlush.clear();
+      flush();
     } else {
       getOutChans().get(0).write(new ArrayList(0)); // zero-element
     }
@@ -77,7 +67,7 @@ public class MergeTask extends Task {
       dataMap.putIfAbsent(kv.getKey(), new ArrayList());
       dataMap.get(kv.getKey()).add(kv.getValue());
     });
-    System.out.println("after update dataMap: " + windowToDataMap);
+    // System.out.println("after update dataMap: " + windowToDataMap);
   }
 
   private void updatePendings(final Watermark watermark, final int index) {
@@ -94,15 +84,18 @@ public class MergeTask extends Task {
     System.out.println("after update pending: " + windowToPendings);
   }
 
-  private void flush(final BoundedWindow window) {
-    final Map<Object, List> dataMap = windowToDataMap.remove(window);
-    final BitSet bitSet = windowToPendings.remove(window);
-
-    final List<Element> result = dataMap.entrySet().stream()
-        .map(entry -> KV.of(entry.getKey(), entry.getValue()))
-        .map(kv -> new Record<>(WindowedValue.of(kv, window.maxTimestamp(), window, PaneInfo.ON_TIME_AND_ONLY_FIRING)))
+  private void flush() {
+    final List<Element> result = toFlush.stream()
+        .flatMap(window -> {
+          final Map<Object, List> dataMap = windowToDataMap.remove(window);
+          final BitSet bitSet = windowToPendings.remove(window);
+          return dataMap.entrySet().stream()
+              .map(entry -> KV.of(entry.getKey(), entry.getValue()))
+              .map(kv -> new Record<>(WindowedValue.of(kv, window.maxTimestamp(), window, PaneInfo.ON_TIME_AND_ONLY_FIRING)));
+        })
         .collect(Collectors.toList());
     getOutChans().get(0).write(result);
+    toFlush.clear();
   }
 }
 

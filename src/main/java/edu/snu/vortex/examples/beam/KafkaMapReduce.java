@@ -117,11 +117,17 @@ public class KafkaMapReduce {
     final PCollection<KV<String, Long>> wordCounts = windowedWords.apply(MapElements.via((String line) -> {
           final String[] words = line.split(" +");
           final String documentId = words[0];
-          final Long count = Long.parseLong(words[1]);
+          final Long count = Long.parseLong(words[3]);
           return KV.of(documentId, count);
         }).withOutputType(TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.longs())))
         .apply(GroupByKey.<String, Long>create())
         .apply(Combine.<String, Long, Long>groupedValues(new Sum.SumLongFn()));
+
+
+    wordCounts.apply(MapElements.via((KV<String, Long> kv) -> {
+      System.out.println(kv);
+      return kv.toString();
+    }).withOutputType(TypeDescriptors.strings()));
 
     /*
     wordCounts.apply(KafkaIO.write()
