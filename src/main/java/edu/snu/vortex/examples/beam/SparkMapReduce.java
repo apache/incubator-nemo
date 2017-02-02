@@ -40,9 +40,11 @@ public class SparkMapReduce {
 
     final String brokers = args[0];
     final String topics = args[1];
+    final Long minibatchSize = Long.valueOf(args[1]);
+    final Long windowSize = Long.valueOf(args[1]);
 
     final SparkConf sparkConf = new SparkConf().setAppName("JavaDirectKafkaWordCount");
-    final JavaStreamingContext jssc = new JavaStreamingContext(sparkConf, Durations.seconds(10));
+    final JavaStreamingContext jssc = new JavaStreamingContext(sparkConf, Durations.seconds(minibatchSize));
 
     final Set<String> topicsSet = new HashSet<>(Arrays.asList(topics.split(",")));
     final Map<String, String> kafkaParams = new HashMap<>();
@@ -67,7 +69,9 @@ public class SparkMapReduce {
         });
 
     final JavaPairDStream<String, Long> sum =
-        pairs.reduceByKeyAndWindow((l, r) -> (l + r), Durations.seconds(20));
+        pairs.reduceByKeyAndWindow((l, r) -> (l + r), Durations.seconds(windowSize));
+
+    sum.print();
 
     jssc.start();
     jssc.awaitTermination();
