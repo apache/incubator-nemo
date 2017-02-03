@@ -31,7 +31,7 @@ final class VortexMaster {
   private VortexMaster(@Parameter(Parameters.UserArguments.class) final String args) {
     this.executorMap = new ConcurrentHashMap<>();
     this.exeucutorList = Collections.synchronizedList(new ArrayList<>());
-    this.userArguments = args.split(",");
+    this.userArguments = args.split("!");
     this.outChannelIdToExecutorMap = new ConcurrentHashMap<>();
     this.readyIdChannelSet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
     this.cachedTaskGroupToExecutor = new ConcurrentHashMap<>();
