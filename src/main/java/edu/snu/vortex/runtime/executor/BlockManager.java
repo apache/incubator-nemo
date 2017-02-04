@@ -82,6 +82,8 @@ public final class BlockManager {
 
   public void write(Channel channel, List data) {
     // System.out.println(channel + " Write: " + data);
+    if (channelIdToDataMap.containsKey(channel.getId()))
+      throw new RuntimeException("Attempting to overwrite");
     channelIdToDataMap.put(channel.getId(), data);
   }
 
@@ -104,11 +106,12 @@ public final class BlockManager {
     Connection<DataMessage> conn = getConnectionFactory()
         .newConnection(idFactory.getNewInstance(executorId));
 
-    final List data = channelIdToDataMap.remove(channelId);
+    List data = channelIdToDataMap.remove(channelId);
     if (data == null) {
       final String errMessage = "Read on empty channel " + channelId;
       LOG.log(Level.WARNING, errMessage);
-      throw new RuntimeException(errMessage);
+      // throw new RuntimeException(errMessage);
+      data = new ArrayList(0);
     }
     try {
       conn.open();
