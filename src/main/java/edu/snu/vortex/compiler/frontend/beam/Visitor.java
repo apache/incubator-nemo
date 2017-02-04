@@ -99,7 +99,6 @@ final class Visitor implements Pipeline.PipelineVisitor {
       final GroupByKey gbk = (GroupByKey)transform;
       final PCollection<KV> gbkInput = (PCollection<KV>)beamOperator.toAppliedPTransform().getInput();
       System.out.println("CODER: " + gbkInput.getCoder());
-
       return new GroupByKeyImpl();
     } else if (transform instanceof View.CreatePCollectionView) {
       final View.CreatePCollectionView view = (View.CreatePCollectionView)transform;
@@ -107,7 +106,9 @@ final class Visitor implements Pipeline.PipelineVisitor {
       pValueToOpOutput.put(view.getView(), vortexOperator);
       return vortexOperator;
     } else if (transform instanceof Write.Bound) {
-      throw new UnsupportedOperationException(transform.toString());
+      final Write.Bound<O> write = (Write.Bound)transform;
+      final Sink vortexOperator = new SinkImpl(write.getSink());
+      return vortexOperator;
     } else if (transform instanceof ParDo.Bound) {
       final ParDo.Bound<I, O> parDo = (ParDo.Bound<I, O>) transform;
       final DoImpl<I, O> vortexOperator = new DoImpl<>(parDo.getNewFn());

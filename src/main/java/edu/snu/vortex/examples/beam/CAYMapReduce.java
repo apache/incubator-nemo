@@ -21,6 +21,8 @@ import edu.snu.vortex.compiler.frontend.beam.Runner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.Write;
+import org.apache.beam.sdk.io.hdfs.HDFSFileSink;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -30,6 +32,9 @@ import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptors;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.joda.time.Duration;
 
 import java.io.IOException;
@@ -37,10 +42,19 @@ import java.util.Arrays;
 
 
 public class CAYMapReduce {
+  public static class FormatForHDFS extends SimpleFunction<KV<String, Long>, KV<Text, LongWritable>> {
+    @Override
+    public KV<Text, LongWritable> apply(KV<String, Long> kv) {
+      return KV.of(new Text(kv.getKey()), new LongWritable(kv.getValue()));
+    }
+  }
+
+
   public static void main(String[] args) throws IOException {
     final String KAFKA_SERVER = args[0];
     final String KAFKA_TOPIC = args[1];
     final Duration windowSize = Duration.standardSeconds(Integer.valueOf(args[2]));
+    final String HDFS_PATH = args[3];
 
     final PipelineOptions options;
     options = PipelineOptionsFactory.create();
@@ -74,11 +88,10 @@ public class CAYMapReduce {
         .apply(GroupByKey.<String, Long>create())
         .apply(Combine.<String, Long, Long>groupedValues(new Sum.SumLongFn()));
 
-    wordCounts.apply(MapElements.via((KV<String, Long> kv) -> {
-      System.out.println("output: " + kv);
-      return kv.toString();
-    }).withOutputType(TypeDescriptors.strings()));
+    final PCollection<KV<Text, LongWritable>> forHDFS = wordCounts.apply(MapElements.via(new FormatForHDFS()));
 
+    // Write!
+    forHDFS.apply(Write.to(new HDFSFileSink(HDFS_PATH, new TextOutputFormat<Text, LongWritable>().getClass())));
 
     PipelineResult result = pipeline.run();
   }

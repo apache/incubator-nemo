@@ -15,13 +15,11 @@
  */
 package edu.snu.vortex.compiler.ir.operator;
 
-import java.util.List;
-
 public abstract class Sink<I> extends Operator<I, Void> {
   // Maybe make the parameter a any-type hashmap(attributes/options)
-  public abstract List<Writer<I>> getWriters(final int numWriters) throws Exception;
+  public abstract Writer<I> getWriter() throws Exception;
 
-  interface Writer<I> {
+  public interface Writer<I> {
     void write(Iterable<I> data) throws Exception;
   }
 }

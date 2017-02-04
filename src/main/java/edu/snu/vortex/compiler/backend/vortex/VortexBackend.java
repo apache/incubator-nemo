@@ -19,10 +19,7 @@ import edu.snu.vortex.compiler.backend.Backend;
 import edu.snu.vortex.compiler.ir.Attributes;
 import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.ir.Edge;
-import edu.snu.vortex.compiler.ir.operator.Do;
-import edu.snu.vortex.compiler.ir.operator.GroupByKey;
-import edu.snu.vortex.compiler.ir.operator.Operator;
-import edu.snu.vortex.compiler.ir.operator.Source;
+import edu.snu.vortex.compiler.ir.operator.*;
 import edu.snu.vortex.runtime.*;
 
 import java.util.*;
@@ -95,6 +92,14 @@ public final class VortexBackend implements Backend {
         } catch (Exception e) {
           throw new RuntimeException(e);
         }
+      } else if (operator instanceof Sink) {
+
+        final Sink sinkOperator = (Sink) operator;
+        result.forEach(list -> {
+          final Channel lastTaskOutChan = list.get(list.size()-1).getOutChans().get(0);
+          final Task newTask = new SinkTask(Arrays.asList(lastTaskOutChan), sinkOperator);
+          list.add(newTask);
+        });
       } else {
         throw new RuntimeException("Unknown operator");
       }
