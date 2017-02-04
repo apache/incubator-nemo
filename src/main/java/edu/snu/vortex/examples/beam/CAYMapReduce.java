@@ -59,8 +59,14 @@ public class CAYMapReduce {
         .apply(Values.<String>create());
 
     final PCollection<String> windowedWords = input.apply(Window.<String>into(FixedWindows.of(windowSize)));
-    final PCollection<KV<String, Long>> wordCounts = windowedWords.apply(MapElements.via((String line) -> {
-          final String[] words = line.split(" +");
+    final PCollection<KV<String, Long>> wordCounts = windowedWords
+        .apply(MapElements.via((String line) -> {
+          final String[] words = line.split(" ");
+          if (words.length < 4) {
+            System.out.println("line: " + line);
+            Arrays.stream(words).forEach(w -> System.out.println(w););
+            System.out.println("done");
+          }
           final String documentId = words[0];
           final Long count = Long.parseLong(words[3]);
           return KV.of(documentId, count);
@@ -69,7 +75,7 @@ public class CAYMapReduce {
         .apply(Combine.<String, Long, Long>groupedValues(new Sum.SumLongFn()));
 
     wordCounts.apply(MapElements.via((KV<String, Long> kv) -> {
-      System.out.println(kv);
+      System.out.println("output: " + kv);
       return kv.toString();
     }).withOutputType(TypeDescriptors.strings()));
 
