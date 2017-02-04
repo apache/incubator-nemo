@@ -79,7 +79,7 @@ final class VortexMaster {
     initialTaskGroups.forEach(this::scheduleTaskGroup);
   }
 
-  private void scheduleTaskGroup(final TaskGroup taskGroup) {
+  private synchronized void scheduleTaskGroup(final TaskGroup taskGroup) {
     System.out.println("cached: " + cachedTaskGroupToExecutor);
 
     if (cachedTaskGroupToExecutor.containsKey(taskGroup.getId())) {
