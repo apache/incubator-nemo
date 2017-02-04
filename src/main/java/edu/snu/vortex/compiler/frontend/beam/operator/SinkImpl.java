@@ -44,6 +44,7 @@ public final class SinkImpl<O> extends edu.snu.vortex.compiler.ir.operator.Sink<
 
   public class Writer<T> implements edu.snu.vortex.compiler.ir.operator.Sink.Writer<Element<T>> {
     private final Sink beamSink;
+    private BoundedWindow windowBatch = null;
 
     Writer(final Sink beamSink) {
       this.beamSink = beamSink;
@@ -55,7 +56,6 @@ public final class SinkImpl<O> extends edu.snu.vortex.compiler.ir.operator.Sink<
       wo.initialize(null);
       final Sink.Writer writer = wo.createWriter(null);
 
-      BoundedWindow windowBatch = null;
       for (final Element<T> elem : data) {
         final WindowedValue<KV> wv = (WindowedValue<KV>)elem.asRecord().getWindowedValue();
         final BoundedWindow curWindow = wv.getWindows().iterator().next();
