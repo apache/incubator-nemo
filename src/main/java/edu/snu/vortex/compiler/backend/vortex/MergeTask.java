@@ -35,6 +35,7 @@ public class MergeTask extends Task {
 
   @Override
   public void compute() {
+    final long start = System.currentTimeMillis();
     IntStream.range(0, numInChans).forEach(index -> {
       final Channel inChan = getInChans().get(index);
       inChan.read().forEach(input -> {
@@ -48,6 +49,7 @@ public class MergeTask extends Task {
         }
       });
     });
+    System.out.println("merge read took: " + (System.currentTimeMillis() - start));
 
     System.out.println("flush: " + toFlush);
     if (toFlush.size() > 0) {

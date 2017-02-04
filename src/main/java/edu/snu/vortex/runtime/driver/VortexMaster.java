@@ -129,7 +129,7 @@ final class VortexMaster {
     exeucutorList.add(executorRepresenter);
   }
 
-  void onExecutorMessage(final VortexMessage vortexMessage) {
+  synchronized void onExecutorMessage(final VortexMessage vortexMessage) {
     switch (vortexMessage.getType()) {
       case RemoteChannelReady:
         onRemoteChannelReady((String) vortexMessage.getData());
