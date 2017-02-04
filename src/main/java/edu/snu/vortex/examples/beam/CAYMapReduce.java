@@ -57,7 +57,6 @@ public class CAYMapReduce {
     final String KAFKA_SERVER = args[0];
     final String KAFKA_TOPIC = args[1];
     final Duration windowSize = Duration.standardSeconds(Integer.valueOf(args[2]));
-    final String HDFS_PATH = args[3];
 
     final PipelineOptions options;
     options = PipelineOptionsFactory.create();
