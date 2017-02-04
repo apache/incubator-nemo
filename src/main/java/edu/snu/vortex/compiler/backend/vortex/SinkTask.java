@@ -2,8 +2,10 @@ package edu.snu.vortex.compiler.backend.vortex;
 
 import edu.snu.vortex.compiler.ir.operator.Sink;
 import edu.snu.vortex.runtime.Channel;
+import edu.snu.vortex.runtime.MemoryChannel;
 import edu.snu.vortex.runtime.Task;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class SinkTask extends Task {
@@ -11,7 +13,7 @@ public class SinkTask extends Task {
 
   public SinkTask(final List<Channel> inChans,
                   final Sink sink) {
-    super(inChans, null);
+    super(inChans, Arrays.asList(new MemoryChannel()));
     this.sink = sink;
   }
 
