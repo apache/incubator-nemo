@@ -14,6 +14,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 final class VortexMaster {
 
@@ -24,7 +25,7 @@ final class VortexMaster {
   private final Set<String> readyIdChannelSet;
   private final Map<String, Integer> cachedTaskGroupToExecutor;
 
-  private int executorIndex;
+  private final AtomicInteger executorIndex;
   private TaskDAG taskDAG;
 
   @Inject
@@ -35,6 +36,7 @@ final class VortexMaster {
     this.outChannelIdToExecutorMap = new ConcurrentHashMap<>();
     this.readyIdChannelSet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
     this.cachedTaskGroupToExecutor = new ConcurrentHashMap<>();
+    this.executorIndex = new AtomicInteger(0);
   }
 
   void launchJob() {
@@ -78,6 +80,8 @@ final class VortexMaster {
   }
 
   private void scheduleTaskGroup(final TaskGroup taskGroup) {
+    System.out.println("cached: " + cachedTaskGroupToExecutor);
+
     if (cachedTaskGroupToExecutor.containsKey(taskGroup.getId())) {
       System.out.println("Schedule-Cached " + taskGroup);
       final ExecutorRepresenter executor = exeucutorList.get(cachedTaskGroupToExecutor.get(taskGroup.getId()));
@@ -85,7 +89,7 @@ final class VortexMaster {
     } else {
       System.out.println("Schedule-NonCached " + taskGroup);
       // Round-robin executor pick
-      final int selectedIndex = (executorIndex++) % exeucutorList.size();
+      final int selectedIndex = executorIndex.getAndIncrement() % exeucutorList.size();
       final ExecutorRepresenter executor = exeucutorList.get(selectedIndex);
       cachedTaskGroupToExecutor.put(taskGroup.getId(), selectedIndex);
 
