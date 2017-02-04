@@ -25,6 +25,6 @@ public class TaskGroup implements Serializable {
 
   @Override
   public String toString() {
-    return tasks.toString();
+    return id + "_" + tasks.toString();
   }
 }

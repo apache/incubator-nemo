@@ -83,14 +83,16 @@ final class VortexMaster {
     System.out.println("cached: " + cachedTaskGroupToExecutor);
 
     if (cachedTaskGroupToExecutor.containsKey(taskGroup.getId())) {
-      System.out.println("Schedule-Cached " + taskGroup);
       final ExecutorRepresenter executor = exeucutorList.get(cachedTaskGroupToExecutor.get(taskGroup.getId()));
+      System.out.println("Schedule-Cached " + taskGroup);
+      System.out.println("Schedule-Cached " + executor);
       executor.sendExecuteCachedTaskGroup(taskGroup.getId());
     } else {
-      System.out.println("Schedule-NonCached " + taskGroup);
       // Round-robin executor pick
       final int selectedIndex = executorIndex.getAndIncrement() % exeucutorList.size();
       final ExecutorRepresenter executor = exeucutorList.get(selectedIndex);
+      System.out.println("Schedule-NonCached " + taskGroup);
+      System.out.println("Schedule-NonCached " + executor);
       cachedTaskGroupToExecutor.put(taskGroup.getId(), selectedIndex);
 
       taskGroup.getTasks().stream()

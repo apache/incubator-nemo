@@ -18,6 +18,11 @@ class ExecutorRepresenter {
     return runningTask.getId();
   }
 
+  @Override
+  public String toString() {
+    return getId();
+  }
+
   void sendExecuteCachedTaskGroup(final String id) {
     final VortexMessage message = new VortexMessage(
         getId(), VortexMessage.Type.ExecutedCachedTaskGroup, id);
