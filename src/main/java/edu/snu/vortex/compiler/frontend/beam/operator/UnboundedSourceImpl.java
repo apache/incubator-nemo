@@ -66,7 +66,7 @@ public final class UnboundedSourceImpl<O> extends Source<O> {
       this.beamSource = beamSource;
       this.firstRead = true;
       this.lastWatermark = BoundedWindow.TIMESTAMP_MIN_VALUE;
-      this.watermarkInterval = Duration.millis(3 * 1000);
+      this.watermarkInterval = Duration.millis(500);
     }
 
     @Override

@@ -72,7 +72,7 @@ public final class BlockManager {
   }
 
   void onNotReadyResponse(final String channelId) {
-    System.out.println("Channel " + channelId + " is not ready");
+    // System.out.println("Channel " + channelId + " is not ready");
     latchMap.remove(channelId).countDown();
   }
 
@@ -133,7 +133,7 @@ public final class BlockManager {
   // On in-channel
   private List remoteRead(final String channelId) {
     final CountDownLatch latch = new CountDownLatch(1);
-    System.out.println("Wait for channel " + channelId);
+    // System.out.println("Wait for channel " + channelId);
 
     latchMap.put(channelId, latch);
     vortexExecutor.sendReadRequest(channelId);
