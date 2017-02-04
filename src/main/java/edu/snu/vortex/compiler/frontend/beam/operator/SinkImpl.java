@@ -64,14 +64,18 @@ public final class SinkImpl<O> extends edu.snu.vortex.compiler.ir.operator.Sink<
           // initial: set things up
           windowBatch = curWindow;
           writer.open(windowBatch.toString());
+          System.out.println("INIT: " + curWindow);
         } else if (curWindow != windowBatch) {
           // new batch: flush and re-set things up
+          System.out.println("NEW: " + windowBatch);
+          System.out.println("NEW: " + curWindow);
           windowBatch = curWindow;
           writer.close();
           writer.open(curWindow.toString());
         }
 
         writer.write(wv.getValue());
+        System.out.println("Write: " + wv.getValue());
       }
 
     }
