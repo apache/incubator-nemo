@@ -20,9 +20,12 @@ package edu.snu.vortex.examples.beam;
 import edu.snu.vortex.compiler.frontend.beam.Runner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.Write;
 import org.apache.beam.sdk.io.hdfs.HDFSFileSink;
+import org.apache.beam.sdk.io.hdfs.WritableCoder;
 import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -88,11 +91,15 @@ public class CAYMapReduce {
         .apply(GroupByKey.<String, Long>create())
         .apply(Combine.<String, Long, Long>groupedValues(new Sum.SumLongFn()));
 
-    final PCollection<KV<Text, LongWritable>> forHDFS = wordCounts.apply(MapElements.via(new FormatForHDFS()));
+    final PCollection<KV<Text, LongWritable>> forHDFS = wordCounts.apply(MapElements.via(new FormatForHDFS()))
+        .setCoder(KvCoder.of(WritableCoder.of(Text.class), WritableCoder.of(LongWritable.class)));
 
     // Write!
     forHDFS.apply(Write.to(new HDFSFileSink(HDFS_PATH, new TextOutputFormat<Text, LongWritable>().getClass())));
 
     PipelineResult result = pipeline.run();
   }
+
+
+
 }

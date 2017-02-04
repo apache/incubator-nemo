@@ -81,6 +81,7 @@ public class SparkMapReduce {
     final JavaPairDStream<Text, LongWritable> writable =
         sum.mapToPair(tuple -> new Tuple2<>(new Text(tuple._1()), new LongWritable(tuple._2())));
 
+
     writable.saveAsNewAPIHadoopFiles("hdfs://rio-m:9000/starlab/" + System.currentTimeMillis(), "starlab", Text.class, LongWritable.class, TextOutputFormat.class);
 
     jssc.start();
