@@ -102,14 +102,6 @@ public final class VortexBackend implements Backend {
       }
     }
 
-    // hack: add sink
-    final Sink sinkOperator =
-        new SinkImpl(new HDFSFileSink("hdfs://rio-m:9000/starlab/", new TextOutputFormat<Text, LongWritable>().getClass()));
-    result.forEach(list -> {
-      final Channel lastTaskOutChan = list.get(list.size()-1).getOutChans().get(0);
-      final Task newTask = new SinkTask(Arrays.asList(lastTaskOutChan), sinkOperator);
-      list.add(newTask);
-    });
 
 
     final Optional<List<Edge>> finalEdges = dag.getOutEdgesOf(stage.get(stage.size()-1));
@@ -126,6 +118,15 @@ public final class VortexBackend implements Backend {
         // HACK
         operatorIdToTasks.putIfAbsent("PARTITION", new ArrayList<>());
         operatorIdToTasks.get("PARTITION").add(newTask);
+      });
+    } else {
+      // hack: add sink
+      final Sink sinkOperator =
+          new SinkImpl(new HDFSFileSink("hdfs://rio-m:9000/starlab/", new TextOutputFormat<Text, LongWritable>().getClass()));
+      result.forEach(list -> {
+        final Channel lastTaskOutChan = list.get(list.size()-1).getOutChans().get(0);
+        final Task newTask = new SinkTask(Arrays.asList(lastTaskOutChan), sinkOperator);
+        list.add(newTask);
       });
     }
 
