@@ -102,12 +102,13 @@ public final class VortexExecutor implements Task, TaskMessageSource {
                     executeTaskGroup(taskGroup);
                     resubmitThread.execute(() -> {
                       try {
-                        Thread.sleep(2 * 1000);
+                        Thread.sleep(50);
                         messagesFromDriver.add(message);
                       } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                       }
                     });
+
                   });
                   /*
                   executeThreads.execute(() -> {
