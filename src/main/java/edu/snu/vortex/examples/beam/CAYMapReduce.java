@@ -64,7 +64,7 @@ public class CAYMapReduce {
           final String[] words = line.split(" ");
           if (words.length < 4) {
             System.out.println("line: " + line);
-            Arrays.stream(words).forEach(w -> System.out.println(w););
+            Arrays.stream(words).forEach(w -> System.out.println(w));
             System.out.println("done");
           }
           final String documentId = words[0];
