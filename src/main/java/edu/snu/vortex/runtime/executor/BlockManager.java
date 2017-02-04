@@ -83,7 +83,7 @@ public final class BlockManager {
   public void write(Channel channel, List data) {
     // System.out.println(channel + " Write: " + data);
     if (channelIdToDataMap.containsKey(channel.getId()))
-      throw new RuntimeException("Attempting to overwrite");
+      throw new RuntimeException("Attempting to overwritgit config --global credential.helper 'cache --timeout=3600'\ne");
     channelIdToDataMap.put(channel.getId(), data);
   }
 

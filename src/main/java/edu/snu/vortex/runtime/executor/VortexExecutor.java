@@ -97,7 +97,7 @@ public final class VortexExecutor implements Task, TaskMessageSource {
                     .filter(task -> task instanceof SourceTask)
                     .anyMatch(sourceTask -> ((SourceTask)sourceTask).isUnbounded());
                 if (unboundedSource) {
-                  System.out.println("Unbounded schedule");
+                  System.out.println("Unbounded schedule: " + taskGroup);
                   executeThreads.execute(() -> {
                     executeTaskGroup(taskGroup);
                     resubmitThread.execute(() -> {
@@ -126,12 +126,13 @@ public final class VortexExecutor implements Task, TaskMessageSource {
                   */
                 }
                 else {
-                  System.out.println("Bounded schedule");
+                  System.out.println("Bounded schedule: " + taskGroup);
                   executeThreads.execute(() -> executeTaskGroup(taskGroup));
                 }
                 break;
               case ExecutedCachedTaskGroup:
                 final TaskGroup cached = cachedTaskGroup.get((String)message.getData());
+                System.out.println("execute cached: " + cached);
                 executeTaskGroup(cached);
                 break;
               case ReadRequest:
