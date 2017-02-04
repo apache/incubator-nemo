@@ -131,11 +131,10 @@ public final class VortexExecutor implements Task, TaskMessageSource {
                 }
                 break;
               case ExecutedCachedTaskGroup:
-
                 final TaskGroup cached = cachedTaskGroup.get((String)message.getData());
                 System.out.println("execute cached: " + cached);
                 System.out.println("executor id: " + (String)message.getData());
-                executeTaskGroup(cached);
+                executeThreads.execute(() -> executeTaskGroup(cached));
                 break;
               case ReadRequest:
                 blockManager.onReadRequest(message.getTargetExecutorId(), (String) message.getData());

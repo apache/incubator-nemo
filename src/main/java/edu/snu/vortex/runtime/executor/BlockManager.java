@@ -80,14 +80,17 @@ public final class BlockManager {
     return networkEventHandler;
   }
 
-  public void write(Channel channel, List data) {
+  public synchronized void write(Channel channel, List data) {
     // System.out.println(channel + " Write: " + data);
-    if (channelIdToDataMap.containsKey(channel.getId()))
-      throw new RuntimeException("Attempting to overwritgit config --global credential.helper 'cache --timeout=3600'\ne");
-    channelIdToDataMap.put(channel.getId(), data);
+    final List existingData = channelIdToDataMap.get(channel.getId());
+    if (existingData != null) {
+      existingData.addAll(data);
+    } else {
+      channelIdToDataMap.put(channel.getId(), data);
+    }
   }
 
-  public List read(Channel channel) {
+  public synchronized List read(Channel channel) {
     final String channelId = channel.getId();
     final List data = channelIdToDataMap.remove(channel.getId());
     // Local hit
