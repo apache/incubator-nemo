@@ -16,11 +16,16 @@
 package edu.snu.vortex.compiler.backend.vortex;
 
 import edu.snu.vortex.compiler.backend.Backend;
+import edu.snu.vortex.compiler.frontend.beam.operator.SinkImpl;
 import edu.snu.vortex.compiler.ir.Attributes;
 import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.ir.Edge;
 import edu.snu.vortex.compiler.ir.operator.*;
 import edu.snu.vortex.runtime.*;
+import org.apache.beam.sdk.io.hdfs.HDFSFileSink;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.TextOutputFormat;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -92,18 +97,18 @@ public final class VortexBackend implements Backend {
         } catch (Exception e) {
           throw new RuntimeException(e);
         }
-      } else if (operator instanceof Sink) {
-
-        final Sink sinkOperator = (Sink) operator;
-        result.forEach(list -> {
-          final Channel lastTaskOutChan = list.get(list.size()-1).getOutChans().get(0);
-          final Task newTask = new SinkTask(Arrays.asList(lastTaskOutChan), sinkOperator);
-          list.add(newTask);
-        });
       } else {
         throw new RuntimeException("Unknown operator");
       }
 
+      // hack: add sink
+      final Sink sinkOperator =
+          new SinkImpl(new HDFSFileSink("hdfs://rio-m:9000/starlab/", new TextOutputFormat<Text, LongWritable>().getClass()));
+      result.forEach(list -> {
+        final Channel lastTaskOutChan = list.get(list.size()-1).getOutChans().get(0);
+        final Task newTask = new SinkTask(Arrays.asList(lastTaskOutChan), sinkOperator);
+        list.add(newTask);
+      });
     }
 
 

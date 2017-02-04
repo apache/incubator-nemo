@@ -95,7 +95,7 @@ public class CAYMapReduce {
         .setCoder(KvCoder.of(WritableCoder.of(Text.class), WritableCoder.of(LongWritable.class)));
 
     // Write!
-    forHDFS.apply(Write.to(new HDFSFileSink(HDFS_PATH, new TextOutputFormat<Text, LongWritable>().getClass())));
+    // forHDFS.apply(Write.to(new HDFSFileSink(HDFS_PATH, new TextOutputFormat<Text, LongWritable>().getClass())));
 
     PipelineResult result = pipeline.run();
   }
