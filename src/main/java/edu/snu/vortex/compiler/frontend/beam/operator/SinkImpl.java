@@ -78,6 +78,8 @@ public final class SinkImpl<O> extends edu.snu.vortex.compiler.ir.operator.Sink<
         System.out.println("Write: " + wv.getValue());
       }
 
+      System.out.println("Write Done: " + windowBatch);
+      writer.close();
     }
   }
 }
