@@ -25,7 +25,7 @@ import edu.snu.vortex.runtime.*;
 import org.apache.beam.sdk.io.hdfs.HDFSFileSink;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.TextOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 import java.util.*;
 import java.util.stream.Collectors;
