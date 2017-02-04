@@ -45,7 +45,7 @@ public final class VortexBackend implements Backend {
                                       final List<Operator> stage,
                                       final Map<String, List<Task>> operatorIdToTasks) {
     final int reduceParallelism = 12; // hack
-    int desiredByte = 20; // HACK
+    int desiredByte = 5; // HACK
 
     final List<List<Task>> result = new ArrayList<>();
 

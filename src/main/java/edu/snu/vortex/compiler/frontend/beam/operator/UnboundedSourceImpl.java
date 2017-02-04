@@ -84,7 +84,8 @@ public final class UnboundedSourceImpl<O> extends Source<O> {
 
       boolean available = (firstRead ? reader.start() : reader.advance());
 
-      System.out.println("Available" + available);
+      final Instant now = Instant.now();
+      // System.out.println("Available" + available);
       while (available) {
         // data
         data.add(new Record<>(WindowedValue.timestampedValueInGlobalWindow(reader.getCurrent(), reader.getCurrentTimestamp())));
@@ -104,7 +105,7 @@ public final class UnboundedSourceImpl<O> extends Source<O> {
 
       // add final watermark
       System.out.println("DONE");
-      data.add(new Watermark<T>(reader.getWatermark()));
+      data.add(new Watermark<T>(now));
 
       firstRead = false;
       return data;

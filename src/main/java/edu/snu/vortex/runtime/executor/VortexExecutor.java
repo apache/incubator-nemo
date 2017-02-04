@@ -97,7 +97,7 @@ public final class VortexExecutor implements Task, TaskMessageSource {
                     .filter(task -> task instanceof SourceTask)
                     .anyMatch(sourceTask -> ((SourceTask)sourceTask).isUnbounded());
                 if (unboundedSource) {
-                  System.out.println("Unbounded schedule: " + taskGroup);
+                  // System.out.println("Unbounded schedule: " + taskGroup);
                   executeThreads.execute(() -> {
                     executeTaskGroup(taskGroup);
                     resubmitThread.execute(() -> {
@@ -126,14 +126,14 @@ public final class VortexExecutor implements Task, TaskMessageSource {
                   */
                 }
                 else {
-                  System.out.println("Bounded schedule: " + taskGroup);
+                  // System.out.println("Bounded schedule: " + taskGroup);
                   executeThreads.execute(() -> executeTaskGroup(taskGroup));
                 }
                 break;
               case ExecutedCachedTaskGroup:
                 final TaskGroup cached = cachedTaskGroup.get((String)message.getData());
-                System.out.println("execute cached: " + cached);
-                System.out.println("executor id: " + (String)message.getData());
+                // System.out.println("execute cached: " + cached);
+                // System.out.println("executor id: " + (String)message.getData());
                 executeThreads.execute(() -> executeTaskGroup(cached));
                 break;
               case ReadRequest:
@@ -154,7 +154,7 @@ public final class VortexExecutor implements Task, TaskMessageSource {
   }
 
   private void executeTaskGroup(final TaskGroup taskGroup) {
-    System.out.println("Executor execute stage: " + taskGroup);
+    // System.out.println("Executor execute stage: " + taskGroup);
     taskGroup.getTasks().forEach(t -> t.compute());
   }
 
