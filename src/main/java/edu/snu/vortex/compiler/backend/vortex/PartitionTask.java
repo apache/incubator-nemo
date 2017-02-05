@@ -25,8 +25,6 @@ public class PartitionTask extends Task {
 
   @Override
   public void compute() {
-    System.out.println("Partitiontask compute");
-
     final int numOfDsts = getOutChans().size();
     final List<Element<KV>> inputList = getInChans().get(0).read();
     final List<List<Element<KV>>> dsts = new ArrayList<>(numOfDsts);

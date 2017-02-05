@@ -72,7 +72,6 @@ public final class UnboundedSourceImpl<O> extends Source<O> {
     @Override
     public Iterable<Element<T>> read() throws Exception {
       final ArrayList<Element<T>> data = new ArrayList<>();
-      System.out.println("START");
 
       if (firstRead) {
         try {
@@ -94,7 +93,6 @@ public final class UnboundedSourceImpl<O> extends Source<O> {
         final Instant curWatermark = reader.getWatermark();
         if (lastWatermark.plus(watermarkInterval).isBefore(curWatermark)) {
           data.add(new Watermark<T>(curWatermark));
-          System.out.println("Add Watermark: " + curWatermark);
           lastWatermark = curWatermark;
         }
         // System.out.println("GOT " + data);
@@ -104,11 +102,14 @@ public final class UnboundedSourceImpl<O> extends Source<O> {
       }
 
       // add final watermark
-      System.out.println("DONE");
       data.add(new Watermark<T>(now));
 
       firstRead = false;
-      System.out.println(Instant.now() + " read records: " + data.size());
+      if (data.size() > 1) {
+        System.out.println(Instant.now() + " read records: " + data.size());
+      } else {
+        System.out.println("watermark only: " + data);
+      }
       return data;
     }
   }

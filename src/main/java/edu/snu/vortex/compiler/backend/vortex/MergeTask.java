@@ -85,7 +85,7 @@ public class MergeTask extends Task {
         }
       }
     });
-    System.out.println("after update pending: " + windowToPendings);
+    // System.out.println("after update pending: " + windowToPendings);
   }
 
   private void flush() {

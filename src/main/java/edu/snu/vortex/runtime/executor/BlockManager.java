@@ -64,7 +64,7 @@ public final class BlockManager {
     @Override
     public void onNext(final Message<DataMessage> message) {
       final DataMessage dataMessage = message.getData().iterator().next();
-      System.out.println("Received data for channel " + dataMessage.getChannelId() + " , " + dataMessage.getData());
+      // System.out.println("Received data for channel " + dataMessage.getChannelId() + " , " + dataMessage.getData());
 
       channelIdToDataMap.put(dataMessage.getChannelId(), dataMessage.getData());
       latchMap.remove(dataMessage.getChannelId()).countDown();
