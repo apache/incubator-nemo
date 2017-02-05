@@ -81,7 +81,6 @@ public class MergeTask extends Task {
         final BitSet bitSet = entry.getValue();
         bitSet.set(index);
         if (bitSet.equals(allSet)) {
-          System.out.println("latency of " + window + " is: " + (System.currentTimeMillis() - latencyMap.remove(window)));
           toFlush.add(window);
         }
       }
@@ -94,6 +93,7 @@ public class MergeTask extends Task {
         .flatMap(window -> {
           final Map<Object, List> dataMap = windowToDataMap.remove(window);
           final BitSet bitSet = windowToPendings.remove(window);
+          System.out.println("latency(seconds) of " + window + " is: " + ((System.currentTimeMillis() - latencyMap.remove(window)) / 1000));
           return dataMap.entrySet().stream()
               .map(entry -> KV.of(entry.getKey(), entry.getValue()))
               .map(kv -> new Record<>(WindowedValue.of(kv, window.maxTimestamp(), window, PaneInfo.ON_TIME_AND_ONLY_FIRING)));
