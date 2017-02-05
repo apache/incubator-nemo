@@ -25,7 +25,6 @@ public class SourceTask extends Task {
 
   @Override
   public void compute() {
-    System.out.println("GOGO");
     getOutChans().forEach(chan -> {
       try {
         final List read = (List)reader.read();

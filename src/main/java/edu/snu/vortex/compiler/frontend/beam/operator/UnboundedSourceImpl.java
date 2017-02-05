@@ -108,7 +108,7 @@ public final class UnboundedSourceImpl<O> extends Source<O> {
       data.add(new Watermark<T>(now));
 
       firstRead = false;
-      System.out.println("read records: " + data.size());
+      System.out.println(Instant.now() + " read records: " + data.size());
       return data;
     }
   }

@@ -19,7 +19,6 @@ public class SinkTask extends Task {
 
   @Override
   public void compute() {
-    System.out.println("Write GOGO");
     getInChans().forEach(chan -> {
       final List toWrite = chan.read();
       try {

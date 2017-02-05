@@ -19,6 +19,7 @@ public class MergeTask extends Task {
   private final BitSet allSet;
   private final int numInChans;
   private final Map<BoundedWindow, Map<Object, List>> windowToDataMap;
+  private final Map<BoundedWindow, Long> latencyMap = new HashMap<>();
   private final Map<BoundedWindow, BitSet> windowToPendings = new HashMap<>();
   private final Set<BoundedWindow> toFlush;
 
@@ -40,7 +41,7 @@ public class MergeTask extends Task {
       final Channel inChan = getInChans().get(index);
       inChan.read().forEach(input -> {
         final Element<KV> element = (Element<KV>)input;
-        System.out.println("MERGE READ: " + element);
+        // System.out.println("MERGE READ: " + element);
         if (element.isWatermark()) {
           updatePendings((Watermark)element, index);
         } else {
@@ -49,10 +50,10 @@ public class MergeTask extends Task {
         }
       });
     });
-    System.out.println("merge read took: " + (System.currentTimeMillis() - start));
 
-    System.out.println("flush: " + toFlush);
     if (toFlush.size() > 0) {
+      System.out.print("merge read took: " + (System.currentTimeMillis() - start));
+      System.out.println(" | flush: " + toFlush);
       flush();
     } else {
       getOutChans().get(0).write(new ArrayList(0)); // zero-element
@@ -64,6 +65,7 @@ public class MergeTask extends Task {
       final BoundedWindow window = (BoundedWindow)wv.getWindows().iterator().next();
       final KV kv = (KV)wv.getValue();
       windowToDataMap.putIfAbsent(window, new HashMap<>());
+      latencyMap.putIfAbsent(window, System.currentTimeMillis());
       windowToPendings.putIfAbsent(window, new BitSet(numInChans));
       final Map<Object, List> dataMap = windowToDataMap.get(window);
       dataMap.putIfAbsent(kv.getKey(), new ArrayList());
@@ -79,6 +81,7 @@ public class MergeTask extends Task {
         final BitSet bitSet = entry.getValue();
         bitSet.set(index);
         if (bitSet.equals(allSet)) {
+          System.out.println("latency of " + window + " is: " + (System.currentTimeMillis() - latencyMap.remove(window)));
           toFlush.add(window);
         }
       }
