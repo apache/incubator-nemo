@@ -50,7 +50,7 @@ public class MergeTask extends Task {
         }
       });
     });
-    System.out.print("merge read took: " + (System.currentTimeMillis() - start));
+    System.out.println("merge read took: " + (System.currentTimeMillis() - start));
 
     if (toFlush.size() > 0) {
       System.out.println(" | flush: " + toFlush);
