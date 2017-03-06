@@ -30,7 +30,7 @@ public final class SimpleEngine {
 
   public void executeDAG(final DAG dag) throws Exception {
     final List<Operator> topoSorted = new LinkedList<>();
-    dag.doDFS(node -> topoSorted.add(node));
+    dag.doTopological(node -> topoSorted.add(node));
 
     final Map<String, List<Iterable>> edgeIdToData = new HashMap<>();
     final Map<String, Object> edgeIdToBroadcast = new HashMap<>();
@@ -45,6 +45,16 @@ public final class SimpleEngine {
         dag.getOutEdgesOf(node).get().stream()
             .map(outEdge -> outEdge.getId())
             .forEach(id -> edgeIdToData.put(id, data));
+      } else if (node instanceof Windowing) {
+        final List<Iterable> mainInput = dag.getInEdgesOf(node).get().stream()
+            .filter(inEdge -> !(inEdge.getSrc() instanceof Broadcast))
+            .map(inEdge -> edgeIdToData.get(inEdge.getId()))
+            .findFirst()
+            .get();
+
+        dag.getOutEdgesOf(node).get().stream()
+            .map(outEdge -> outEdge.getId())
+            .forEach(id -> edgeIdToData.put(id, mainInput));
       } else if (node instanceof Do) {
         final Do op = (Do) node;
 
@@ -67,13 +77,12 @@ public final class SimpleEngine {
             .map(iterable -> op.transform(iterable, broadcastInput))
             .collect(Collectors.toList());
 
-        // TODO #12: Implement Sink Operator
         if (dag.getOutEdgesOf(node).isPresent()) {
-          // TODO #14: Implement Multi-Output Do Operators
-          edgeIdToData.put(getSingleEdgeId(dag, node, EdgeDirection.Out), output);
+          dag.getOutEdgesOf(node).get().stream()
+              .map(outEdge -> outEdge.getId())
+              .forEach(id -> edgeIdToData.put(id, output));
         } else {
-          edgeIdToData.put("NOEDGE", output);
-
+          edgeIdToData.put("NOEDGE", output); // Data that is not written to sink, but that was output by a Do operator.
         }
       } else if (node instanceof GroupByKey) {
         final List<Iterable> data = shuffle(edgeIdToData.get(getSingleEdgeId(dag, node, EdgeDirection.In)));
@@ -90,9 +99,12 @@ public final class SimpleEngine {
         throw new UnsupportedOperationException();
       }
 
-      System.out.println("All non-broadcast data after " + node.getId() + ": " + edgeIdToData);
-      System.out.println("Also, All broadcast data: " + edgeIdToBroadcast);
+      System.out.println("## All non-broadcast data after " + node.getId() + ": ");
+      edgeIdToData.forEach((elem, val) -> System.out.println(" " + elem.toString() + ":" + val.toString()));
+      System.out.println("# Also, All broadcast data: ");
+      edgeIdToBroadcast.forEach((elem, val) -> System.out.println(" " + elem.toString() + ":" + val.toString()));
     }
+    System.out.println("## Job completed.");
   }
 
   /**

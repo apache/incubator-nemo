@@ -136,13 +136,13 @@ public final class DAG {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    this.doDFS((operator -> {
+    this.doTopological(operator -> {
       sb.append("<operator> ");
       sb.append(operator.toString());
       sb.append(" / <inEdges> ");
       sb.append(this.getInEdgesOf(operator).toString());
       sb.append("\n");
-    }), VisitOrder.PreOrder);
+    });
     return sb.toString();
   }
 
@@ -183,11 +183,15 @@ public final class DAG {
   }
 
   /**
-   * Do a DFS traversal.
-   * @param function function to apply to each operator
+   * Apply the function in a topological order.
+   * @param function function to apply.
    */
-  public void doDFS(final Consumer<Operator> function) {
-    doDFS(function, VisitOrder.PreOrder);
+  public void doTopological(final Consumer<Operator> function) {
+    final Stack<Operator> stack = new Stack<>();
+    doDFS(op -> stack.push(op), VisitOrder.PostOrder);
+    while (!stack.isEmpty()) {
+      function.accept(stack.pop());
+    }
   }
 
   /**
@@ -195,7 +199,7 @@ public final class DAG {
    * @param function function to apply to each operator
    * @param visitOrder visiting order.
    */
-  public void doDFS(final Consumer<Operator> function, final VisitOrder visitOrder) {
+  private void doDFS(final Consumer<Operator> function, final VisitOrder visitOrder) {
     final HashSet<Operator> visited = new HashSet<>();
     getOperators().stream()
         .filter(operator -> !id2inEdges.containsKey(operator.getId())) // root Operators
@@ -223,4 +227,3 @@ public final class DAG {
     }
   }
 }
-

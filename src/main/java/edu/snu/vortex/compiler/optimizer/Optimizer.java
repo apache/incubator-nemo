@@ -27,6 +27,7 @@ import java.util.*;
 public final class Optimizer {
   /**
    * Optimize function.
+   * Currently this optimizer just performs the Pado Placement Algorithm
    * TODO #29: Make Optimizer Configurable
    * @param dag .
    * @return optimized DAG
@@ -40,7 +41,7 @@ public final class Optimizer {
   /////////////////////////////////////////////////////////////
 
   private DAG operatorPlacement(final DAG dag) {
-    dag.doDFS(operator -> {
+    dag.doTopological(operator -> {
       final Optional<List<Edge>> inEdges = dag.getInEdgesOf(operator);
       if (!inEdges.isPresent()) {
         operator.setAttr(Attributes.Key.Placement, Attributes.Placement.Transient);

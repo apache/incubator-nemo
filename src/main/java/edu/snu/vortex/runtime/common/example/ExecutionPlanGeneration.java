@@ -58,7 +58,7 @@ public final class ExecutionPlanGeneration {
     final Map<String, RtOperator> rtOperatorMap = new HashMap<>();
 
     final List<Operator> topoSorted = new LinkedList<>();
-    dag.doDFS((operator -> topoSorted.add(0, operator)), DAG.VisitOrder.PostOrder);
+    dag.doTopological(operator -> topoSorted.add(operator));
 
     RtStage rtStage = null;
     for (int idx = 0; idx < topoSorted.size(); idx++) {

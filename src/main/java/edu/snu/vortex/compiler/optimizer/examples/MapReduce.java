@@ -20,10 +20,8 @@ import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.ir.DAGBuilder;
 import edu.snu.vortex.compiler.ir.Edge;
 import edu.snu.vortex.compiler.ir.operator.Do;
-import edu.snu.vortex.compiler.ir.operator.Operator;
 import edu.snu.vortex.compiler.ir.operator.Source;
 
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -52,9 +50,7 @@ public final class MapReduce {
     System.out.println(dag);
 
     // Optimize
-    final List<Operator> topoSorted = new LinkedList<>();
-    dag.doDFS(operator -> topoSorted.add(operator));
-    topoSorted.forEach(operator -> {
+    dag.doTopological(operator -> {
       final Optional<List<Edge>> inEdges = dag.getInEdgesOf(operator);
       if (!inEdges.isPresent()) {
         operator.setAttr(Attributes.Key.Placement, Attributes.Placement.Compute);
