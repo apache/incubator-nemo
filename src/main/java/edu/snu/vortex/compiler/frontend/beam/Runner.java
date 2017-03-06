@@ -25,14 +25,19 @@ import org.apache.beam.sdk.runners.PipelineRunner;
  * Runner class for BEAM programs.
  */
 public final class Runner extends PipelineRunner<Result> {
+  private final PipelineOptions options;
+
+  private Runner(final PipelineOptions options) {
+    this.options = options;
+  }
 
   public static PipelineRunner<Result> fromOptions(final PipelineOptions options) {
-    return new Runner();
+    return new Runner(options);
   }
 
   public Result run(final Pipeline pipeline) {
     final DAGBuilder builder = new DAGBuilder();
-    final Visitor visitor = new Visitor(builder);
+    final Visitor visitor = new Visitor(builder, options);
     pipeline.traverseTopologically(visitor);
     final DAG dag = builder.build();
     BeamFrontend.supplyDAGFromRunner(dag);
