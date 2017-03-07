@@ -15,9 +15,8 @@
  */
 package edu.snu.vortex.compiler.optimizer;
 
-import edu.snu.vortex.compiler.ir.Attributes;
 import edu.snu.vortex.compiler.ir.DAG;
-import edu.snu.vortex.compiler.ir.Edge;
+import edu.snu.vortex.compiler.optimizer.passes.*;
 
 import java.util.*;
 
@@ -27,75 +26,59 @@ import java.util.*;
 public final class Optimizer {
   /**
    * Optimize function.
-   * Currently this optimizer just performs the Pado Placement Algorithm
-   * TODO #29: Make Optimizer Configurable
-   * @param dag .
-   * @return optimized DAG
+   * @param dag input DAG.
+   * @param policyType type of the instantiation policy that we want to use to optimize the DAG.
+   * @return optimized DAG, tagged with attributes.
+   * @throws Exception throws an exception if there is an exception.
    */
-  public DAG optimize(final DAG dag) {
-    operatorPlacement(dag);
-    edgeProcessing(dag);
-    return dag;
+  public DAG optimize(final DAG dag, final PolicyType policyType) throws Exception {
+    final Policy policy = new Policy(POLICIES.get(policyType));
+    return policy.process(dag);
   }
 
-  /////////////////////////////////////////////////////////////
+  /**
+   * Policy class.
+   * It runs a list of passes sequentially to optimize the DAG.
+   */
+  private static final class Policy {
+    private final List<Pass> passes;
 
-  private DAG operatorPlacement(final DAG dag) {
-    dag.doTopological(operator -> {
-      final Optional<List<Edge>> inEdges = dag.getInEdgesOf(operator);
-      if (!inEdges.isPresent()) {
-        operator.setAttr(Attributes.Key.Placement, Attributes.Placement.Transient);
-      } else {
-        if (hasM2M(inEdges.get()) || allFromReserved(inEdges.get())) {
-          operator.setAttr(Attributes.Key.Placement, Attributes.Placement.Reserved);
-        } else {
-          operator.setAttr(Attributes.Key.Placement, Attributes.Placement.Transient);
+    private Policy(final List<Pass> passes) {
+      if (passes.isEmpty()) {
+        throw new NoSuchElementException("No instantiation pass supplied to the policy!");
+      }
+      this.passes = passes;
+    }
+
+    private DAG process(final DAG dag) throws Exception {
+      DAG optimizedDAG = dag;
+      passes.forEach(pass -> {
+        try {
+          pass.process(optimizedDAG);
+        } catch (Exception e) {
+          throw new RuntimeException(e);
         }
-      }
-    });
-    return dag;
+      });
+      return optimizedDAG;
+    }
   }
 
-  private boolean hasM2M(final List<Edge> edges) {
-    return edges.stream().filter(edge -> edge.getType() == Edge.Type.ScatterGather).count() > 0;
+  /**
+   * Enum for different types of instantiation policies.
+   */
+  public enum PolicyType {
+    Pado,
+    Disaggregation,
   }
 
-  private boolean allFromReserved(final List<Edge> edges) {
-    return edges.stream()
-        .allMatch(edge -> edge.getSrc().getAttrByKey(Attributes.Key.Placement) == Attributes.Placement.Reserved);
-  }
-
-  ///////////////////////////////////////////////////////////
-
-  private DAG edgeProcessing(final DAG dag) {
-    dag.getOperators().forEach(operator -> {
-      final Optional<List<Edge>> inEdges = dag.getInEdgesOf(operator);
-      if (inEdges.isPresent()) {
-        inEdges.get().forEach(edge -> {
-          if (fromTransientToReserved(edge)) {
-            edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.TCPPipe);
-          } else if (fromReservedToTransient(edge)) {
-            edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.File);
-          } else {
-            if (edge.getType().equals(Edge.Type.OneToOne)) {
-              edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.Memory);
-            } else {
-              edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.File);
-            }
-          }
-        });
-      }
-    });
-    return dag;
-  }
-
-  private boolean fromTransientToReserved(final Edge edge) {
-    return edge.getSrc().getAttrByKey(Attributes.Key.Placement).equals(Attributes.Placement.Transient) &&
-        edge.getDst().getAttrByKey(Attributes.Key.Placement).equals(Attributes.Placement.Reserved);
-  }
-
-  private boolean fromReservedToTransient(final Edge edge) {
-    return edge.getSrc().getAttrByKey(Attributes.Key.Placement).equals(Attributes.Placement.Reserved) &&
-        edge.getDst().getAttrByKey(Attributes.Key.Placement).equals(Attributes.Placement.Transient);
+  /**
+   * A HashMap to match each of instantiation policies with a combination of instantiation passes.
+   */
+  private static final Map<PolicyType, List<Pass>> POLICIES = new HashMap<>();
+  static {
+    POLICIES.put(PolicyType.Pado,
+        Arrays.asList(new PadoOperatorPass(), new PadoEdgePass()));
+    POLICIES.put(PolicyType.Disaggregation,
+        Arrays.asList(new DisaggregationPass()));
   }
 }

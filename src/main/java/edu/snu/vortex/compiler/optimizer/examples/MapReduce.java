@@ -15,16 +15,16 @@
  */
 package edu.snu.vortex.compiler.optimizer.examples;
 
-import edu.snu.vortex.compiler.ir.Attributes;
 import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.ir.DAGBuilder;
 import edu.snu.vortex.compiler.ir.Edge;
 import edu.snu.vortex.compiler.ir.operator.Do;
 import edu.snu.vortex.compiler.ir.operator.Source;
+import edu.snu.vortex.compiler.optimizer.Optimizer;
+import edu.snu.vortex.utils.Pair;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * A sample MapReduce application.
@@ -33,7 +33,7 @@ public final class MapReduce {
   private MapReduce() {
   }
 
-  public static void main(final String[] args) {
+  public static void main(final String[] args) throws Exception {
     final EmptySource source = new EmptySource();
     final EmptyDo<String, Pair<String, Integer>, Void> map = new EmptyDo<>("MapOperator");
     final EmptyDo<Pair<String, Iterable<Integer>>, String, Void> reduce = new EmptyDo<>("ReduceOperator");
@@ -50,33 +50,12 @@ public final class MapReduce {
     System.out.println(dag);
 
     // Optimize
-    dag.doTopological(operator -> {
-      final Optional<List<Edge>> inEdges = dag.getInEdgesOf(operator);
-      if (!inEdges.isPresent()) {
-        operator.setAttr(Attributes.Key.Placement, Attributes.Placement.Compute);
-      } else {
-        operator.setAttr(Attributes.Key.Placement, Attributes.Placement.Storage);
-      }
-    });
+    final Optimizer optimizer = new Optimizer();
+    final DAG optimizedDAG = optimizer.optimize(dag, Optimizer.PolicyType.Disaggregation);
 
     // After
     System.out.println("After Optimization");
-    System.out.println(dag);
-  }
-
-  /**
-   * A pair object.
-   * @param <K> key type.
-   * @param <V> value type.
-   */
-  private static class Pair<K, V> {
-    private K key;
-    private V val;
-
-    Pair(final K key, final V val) {
-      this.key = key;
-      this.val = val;
-    }
+    System.out.println(optimizedDAG);
   }
 
   /**
@@ -116,5 +95,4 @@ public final class MapReduce {
       return null;
     }
   }
-
 }

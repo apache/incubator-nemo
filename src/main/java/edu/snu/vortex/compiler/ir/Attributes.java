@@ -43,7 +43,6 @@ public final class Attributes {
     Transient,
     Reserved,
     Compute,
-    Storage,
   }
 
   /**
