@@ -46,8 +46,6 @@ public final class OperatorConverter {
           rOpAttributes.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.RESERVED);
         } else if (v == Attributes.Placement.Compute) {
           rOpAttributes.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.COMPUTE);
-        } else if (v == Attributes.Placement.Storage) {
-          rOpAttributes.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.STORAGE);
         }
         break;
       case EdgePartitioning:

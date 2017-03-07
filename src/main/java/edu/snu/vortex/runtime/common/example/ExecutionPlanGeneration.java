@@ -36,12 +36,12 @@ public final class ExecutionPlanGeneration {
   private ExecutionPlanGeneration() {
   }
 
-  public static void main(final String[] args) {
+  public static void main(final String[] args) throws Exception {
 
     final DAG dag = buildMapReduceIRDAG();
 
     final Optimizer dagOptimizer = new Optimizer();
-    dagOptimizer.optimize(dag);
+    dagOptimizer.optimize(dag, Optimizer.PolicyType.Pado);
     System.out.println("=== Optimized IR DAG ===");
     System.out.println(dag);
 
