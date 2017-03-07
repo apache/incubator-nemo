@@ -57,7 +57,7 @@ public final class Optimizer {
   }
 
   private boolean hasM2M(final List<Edge> edges) {
-    return edges.stream().filter(edge -> edge.getType() == Edge.Type.M2M).count() > 0;
+    return edges.stream().filter(edge -> edge.getType() == Edge.Type.ScatterGather).count() > 0;
   }
 
   private boolean allFromReserved(final List<Edge> edges) {
@@ -77,7 +77,7 @@ public final class Optimizer {
           } else if (fromReservedToTransient(edge)) {
             edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.File);
           } else {
-            if (edge.getType().equals(Edge.Type.O2O)) {
+            if (edge.getType().equals(Edge.Type.OneToOne)) {
               edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.Memory);
             } else {
               edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.File);

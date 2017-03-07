@@ -99,7 +99,7 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
       parDo.getSideInputs().stream()
           .filter(pValueToOpOutput::containsKey)
           .map(pValueToOpOutput::get)
-          .forEach(src -> builder.connectOperators(src, vortexOperator, Edge.Type.O2O)); // Broadcasted = O2O
+          .forEach(src -> builder.connectOperators(src, vortexOperator, Edge.Type.OneToOne)); // Broadcasted = OneToOne
       return vortexOperator;
     } else {
       throw new UnsupportedOperationException(transform.toString());
@@ -108,11 +108,11 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
 
   private Edge.Type getInEdgeType(final Operator operator) {
     if (operator instanceof edu.snu.vortex.compiler.ir.operator.GroupByKey) {
-      return Edge.Type.M2M;
+      return Edge.Type.ScatterGather;
     } else if (operator instanceof Broadcast) {
-      return Edge.Type.O2M;
+      return Edge.Type.Broadcast;
     } else {
-      return Edge.Type.O2O;
+      return Edge.Type.OneToOne;
     }
   }
 }
