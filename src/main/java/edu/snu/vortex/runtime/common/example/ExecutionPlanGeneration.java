@@ -134,11 +134,11 @@ public final class ExecutionPlanGeneration {
 
   private static RtAttributes.CommPattern convertEdgeTypeToROpLinkAttr(final Edge.Type edgeType) {
     switch (edgeType) {
-      case O2O:
+      case OneToOne:
         return RtAttributes.CommPattern.ONE_TO_ONE;
-      case O2M:
+      case Broadcast:
         return RtAttributes.CommPattern.BROADCAST;
-      case M2M:
+      case ScatterGather:
         return RtAttributes.CommPattern.SCATTER_GATHER;
       default:
         throw new RuntimeException("no such edge type");
@@ -162,7 +162,7 @@ public final class ExecutionPlanGeneration {
     return (!edges.isPresent());
   }
   private static boolean hasM2M(final List<Edge> edges) {
-    return edges.stream().filter(edge -> edge.getType() == Edge.Type.M2M).count() > 0;
+    return edges.stream().filter(edge -> edge.getType() == Edge.Type.ScatterGather).count() > 0;
   }
 
   private static DAG buildMapReduceIRDAG() {
@@ -175,8 +175,8 @@ public final class ExecutionPlanGeneration {
     builder.addOperator(source);
     builder.addOperator(map);
     builder.addOperator(reduce);
-    builder.connectOperators(source, map, Edge.Type.O2O);
-    builder.connectOperators(map, reduce, Edge.Type.M2M);
+    builder.connectOperators(source, map, Edge.Type.OneToOne);
+    builder.connectOperators(map, reduce, Edge.Type.ScatterGather);
     return builder.build();
   }
 

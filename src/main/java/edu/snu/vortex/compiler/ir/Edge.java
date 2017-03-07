@@ -29,9 +29,9 @@ public final class Edge<I, O> {
    * Type of edges.
    */
   public enum Type {
-    M2M,
-    O2M,
-    O2O,
+    ScatterGather,
+    Broadcast,
+    OneToOne,
   }
 
   private final String id;

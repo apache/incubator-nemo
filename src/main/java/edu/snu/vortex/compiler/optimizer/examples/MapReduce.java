@@ -43,8 +43,8 @@ public final class MapReduce {
     builder.addOperator(source);
     builder.addOperator(map);
     builder.addOperator(reduce);
-    builder.connectOperators(source, map, Edge.Type.O2O);
-    builder.connectOperators(map, reduce, Edge.Type.M2M);
+    builder.connectOperators(source, map, Edge.Type.OneToOne);
+    builder.connectOperators(map, reduce, Edge.Type.ScatterGather);
     final DAG dag = builder.build();
     System.out.println("Before Optimization");
     System.out.println(dag);
