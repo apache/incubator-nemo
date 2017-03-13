@@ -30,12 +30,12 @@ public final class PadoOperatorPass implements Pass {
     dag.doTopological(operator -> {
       final Optional<List<Edge>> inEdges = dag.getInEdgesOf(operator);
       if (!inEdges.isPresent()) {
-        operator.setAttr(Attributes.Key.Placement, Attributes.Placement.Transient);
+        operator.setAttr(Attributes.Key.Placement, Attributes.Transient);
       } else {
         if (hasM2M(inEdges.get()) || allFromReserved(inEdges.get())) {
-          operator.setAttr(Attributes.Key.Placement, Attributes.Placement.Reserved);
+          operator.setAttr(Attributes.Key.Placement, Attributes.Reserved);
         } else {
-          operator.setAttr(Attributes.Key.Placement, Attributes.Placement.Transient);
+          operator.setAttr(Attributes.Key.Placement, Attributes.Transient);
         }
       }
     });
@@ -48,6 +48,6 @@ public final class PadoOperatorPass implements Pass {
 
   private boolean allFromReserved(final List<Edge> edges) {
     return edges.stream()
-        .allMatch(edge -> edge.getSrc().getAttrByKey(Attributes.Key.Placement) == Attributes.Placement.Reserved);
+        .allMatch(edge -> edge.getSrc().getAttr(Attributes.Key.Placement) == Attributes.Reserved);
   }
 }

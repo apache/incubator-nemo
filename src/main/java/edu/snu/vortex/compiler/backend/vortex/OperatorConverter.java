@@ -17,6 +17,7 @@ package edu.snu.vortex.compiler.backend.vortex;
 
 import edu.snu.vortex.compiler.ir.Attributes;
 import edu.snu.vortex.compiler.ir.operator.Operator;
+import edu.snu.vortex.compiler.ir.util.AttributesMap;
 import edu.snu.vortex.runtime.common.IdGenerator;
 import edu.snu.vortex.runtime.common.RtAttributes;
 import edu.snu.vortex.runtime.common.RtOperator;
@@ -34,24 +35,24 @@ public final class OperatorConverter {
    * @return the {@link RtOperator} representation.
    */
   public RtOperator convert(final Operator irOp) {
-    final Map<Attributes.Key, Attributes.Val> irOpAttributes = irOp.getAttributes();
+    final AttributesMap irOpAttributes = irOp.getAttributes();
 
     final Map<RtAttributes.RtOpAttribute, Object> rOpAttributes = new HashMap<>();
     irOpAttributes.forEach((k, v) -> {
       switch (k) {
       case Placement:
-        if (v == Attributes.Placement.Transient) {
+        if (v == Attributes.Transient) {
           rOpAttributes.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.TRANSIENT);
-        } else if (v == Attributes.Placement.Reserved) {
+        } else if (v == Attributes.Reserved) {
           rOpAttributes.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.RESERVED);
-        } else if (v == Attributes.Placement.Compute) {
+        } else if (v == Attributes.Compute) {
           rOpAttributes.put(RtAttributes.RtOpAttribute.RESOURCE_TYPE, RtAttributes.ResourceType.COMPUTE);
         }
         break;
       case EdgePartitioning:
-        if (v == Attributes.EdgePartitioning.Hash) {
+        if (v == Attributes.Hash) {
           rOpAttributes.put(RtAttributes.RtOpAttribute.PARTITION, RtAttributes.Partition.HASH);
-        } else if (v == Attributes.EdgePartitioning.Range) {
+        } else if (v == Attributes.Range) {
           rOpAttributes.put(RtAttributes.RtOpAttribute.PARTITION, RtAttributes.Partition.RANGE);
         }
         break;

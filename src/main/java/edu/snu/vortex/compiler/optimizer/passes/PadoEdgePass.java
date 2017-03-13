@@ -32,14 +32,14 @@ public final class PadoEdgePass implements Pass {
       if (inEdges.isPresent()) {
         inEdges.get().forEach(edge -> {
           if (fromTransientToReserved(edge)) {
-            edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.TCPPipe);
+            edge.setAttr(Attributes.Key.EdgeChannel, Attributes.TCPPipe);
           } else if (fromReservedToTransient(edge)) {
-            edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.File);
+            edge.setAttr(Attributes.Key.EdgeChannel, Attributes.File);
           } else {
             if (edge.getType().equals(Edge.Type.OneToOne)) {
-              edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.Memory);
+              edge.setAttr(Attributes.Key.EdgeChannel, Attributes.Memory);
             } else {
-              edge.setAttr(Attributes.Key.EdgeChannel, Attributes.EdgeChannel.File);
+              edge.setAttr(Attributes.Key.EdgeChannel, Attributes.File);
             }
           }
         });
@@ -49,12 +49,12 @@ public final class PadoEdgePass implements Pass {
   }
 
   private boolean fromTransientToReserved(final Edge edge) {
-    return edge.getSrc().getAttrByKey(Attributes.Key.Placement).equals(Attributes.Placement.Transient) &&
-        edge.getDst().getAttrByKey(Attributes.Key.Placement).equals(Attributes.Placement.Reserved);
+    return edge.getSrc().getAttr(Attributes.Key.Placement).equals(Attributes.Transient) &&
+        edge.getDst().getAttr(Attributes.Key.Placement).equals(Attributes.Reserved);
   }
 
   private boolean fromReservedToTransient(final Edge edge) {
-    return edge.getSrc().getAttrByKey(Attributes.Key.Placement).equals(Attributes.Placement.Reserved) &&
-        edge.getDst().getAttrByKey(Attributes.Key.Placement).equals(Attributes.Placement.Transient);
+    return edge.getSrc().getAttr(Attributes.Key.Placement).equals(Attributes.Reserved) &&
+        edge.getDst().getAttr(Attributes.Key.Placement).equals(Attributes.Transient);
   }
 }
