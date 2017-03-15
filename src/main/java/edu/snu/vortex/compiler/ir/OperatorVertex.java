@@ -13,30 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.ir.operator;
-
-import java.util.List;
+package edu.snu.vortex.compiler.ir;
 
 /**
- * Sink operator.
- * @param <I> input type.
+ * Vertex that transforms input data.
+ * It is to be constructed in the compiler frontend with language-specific data transform logic.
  */
-public abstract class Sink<I> extends Operator<I, Void> {
-  // Maybe make the parameter a any-type hashmap(attributes/options)
+public final class OperatorVertex extends Vertex {
+  private final Transform transform;
 
-  /**
-   * Getter for writers.
-   * @param numWriters .
-   * @return List of writers.
-   * @throws Exception .
-   */
-  public abstract List<Writer<I>> getWriters(final int numWriters) throws Exception;
+  public OperatorVertex(final Transform t) {
+    super();
+    this.transform = t;
+  }
 
-  /**
-   * Interface for writer.
-   * @param <I> input type.
-   */
-  interface Writer<I> {
-    void write(Iterable<I> data) throws Exception;
+  public Transform getTransform() {
+    return transform;
+  }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append(super.toString());
+    sb.append(", transform: ");
+    sb.append(transform);
+    return sb.toString();
   }
 }

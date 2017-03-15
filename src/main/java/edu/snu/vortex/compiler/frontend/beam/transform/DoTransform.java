@@ -13,9 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.frontend.beam.operator;
+package edu.snu.vortex.compiler.frontend.beam.transform;
 
-import edu.snu.vortex.compiler.ir.operator.Do;
+import edu.snu.vortex.compiler.frontend.beam.BeamElement;
+import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.compiler.ir.OutputCollector;
+import edu.snu.vortex.compiler.ir.Transform;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.Aggregator;
 import org.apache.beam.sdk.transforms.Combine;
@@ -32,45 +35,47 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.Instant;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 /**
- * Do operator implementation.
- * @param <I> input type.
- * @param <O> output type.
+ * DoFn transform implementation.
  */
-public final class DoImpl<I, O> extends Do<I, O, PCollectionView> {
-  private final DoFn<I, O> doFn;
+public final class DoTransform implements Transform {
+  private final DoFn doFn;
   private final PipelineOptions options;
+  private OutputCollector outputCollector;
 
-  public DoImpl(final DoFn doFn, final PipelineOptions options) {
+  public DoTransform(final DoFn doFn, final PipelineOptions options) {
     this.doFn = doFn;
     this.options = options;
   }
 
   @Override
-  public Iterable<O> transform(final Iterable<I> input, final Map<PCollectionView, Object> broadcasted) {
-    final DoFnInvoker<I, O> invoker = DoFnInvokers.invokerFor(doFn);
-    final ArrayList<O> outputList = new ArrayList<>();
-    final ProcessContext<I, O> context = new ProcessContext<>(doFn, outputList, broadcasted, options);
-    invoker.invokeSetup();
-    invoker.invokeStartBundle(context);
-    input.forEach(element -> {
-      context.setElement(element);
-      invoker.invokeProcessElement(context);
-    });
-    invoker.invokeFinishBundle(context);
-    invoker.invokeTeardown();
-    return outputList;
+  public void prepare(final Context context, final OutputCollector oc) {
+    this.outputCollector = oc;
   }
+
+  @Override
+  public void onData(final Iterable<Element> data, final String srcVertexId) {
+    final DoFnInvoker invoker = DoFnInvokers.invokerFor(doFn);
+    final ProcessContext beamContext = new ProcessContext<>(doFn, outputCollector, options);
+    invoker.invokeSetup();
+    invoker.invokeStartBundle(beamContext);
+    data.forEach(element -> { // No need to check for input index, since it is always 0 for DoTransform
+      beamContext.setElement(element.getData());
+      invoker.invokeProcessElement(beamContext);
+    });
+    invoker.invokeFinishBundle(beamContext);
+    invoker.invokeTeardown();
+  }
+
+  @Override
+  public void close() {
+    // do nothing
+  }
+
 
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append(super.toString());
-    sb.append(", doFn: ");
     sb.append(doFn);
     return sb.toString();
   }
@@ -82,33 +87,30 @@ public final class DoImpl<I, O> extends Do<I, O, PCollectionView> {
    */
   private static final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext
       implements DoFnInvoker.ArgumentProvider<I, O> {
-    private I inputElement;
-    private final Map<PCollectionView, Object> sideInputs;
-    private final List<O> outputs;
+    private I input;
+    private final OutputCollector outputCollector;
     private final PipelineOptions options;
 
     ProcessContext(final DoFn<I, O> fn,
-                   final List<O> outputs,
-                   final Map<PCollectionView, Object> sideInputs,
+                   final OutputCollector outputCollector,
                    final PipelineOptions options) {
       fn.super();
-      this.outputs = outputs;
-      this.sideInputs = sideInputs;
+      this.outputCollector = outputCollector;
       this.options = options;
     }
 
-    void setElement(final I element) {
-      this.inputElement = element;
+    void setElement(final I in) {
+      this.input = in;
     }
 
     @Override
     public I element() {
-      return this.inputElement;
+      return this.input;
     }
 
     @Override
     public <T> T sideInput(final PCollectionView<T> view) {
-      return (T) sideInputs.get(view);
+      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -128,7 +130,7 @@ public final class DoImpl<I, O> extends Do<I, O, PCollectionView> {
 
     @Override
     public void output(final O output) {
-      outputs.add(output);
+      outputCollector.emit(new BeamElement<>(output));
     }
 
     @Override
@@ -158,17 +160,19 @@ public final class DoImpl<I, O> extends Do<I, O, PCollectionView> {
     }
 
     @Override
-    public DoFn<I, O>.Context context(final DoFn<I, O> doFn) {
+    public DoFn.Context context(final DoFn<I, O> doFn) {
       return this;
     }
 
     @Override
-    public DoFn<I, O>.ProcessContext processContext(final DoFn<I, O> doFn) {
+    public DoFn.ProcessContext
+        processContext(final DoFn<I, O> doFn) {
       return this;
     }
 
     @Override
-    public DoFn<I, O>.OnTimerContext onTimerContext(final DoFn<I, O> doFn) {
+    public DoFn.OnTimerContext
+        onTimerContext(final DoFn<I, O> doFn) {
       throw new UnsupportedOperationException();
     }
 

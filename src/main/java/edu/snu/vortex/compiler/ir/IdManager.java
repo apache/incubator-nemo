@@ -24,11 +24,11 @@ public final class IdManager {
   private IdManager() {
   }
 
-  private static AtomicInteger operatorId = new AtomicInteger(1);
+  private static AtomicInteger vertexId = new AtomicInteger(1);
   private static AtomicInteger edgeId = new AtomicInteger(1);
 
   public static String newOperatorId() {
-    return "operator" + operatorId.getAndIncrement();
+    return "vertex" + vertexId.getAndIncrement();
   }
   public static String newEdgeId() {
     return "edge" + edgeId.getAndIncrement();

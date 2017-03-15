@@ -13,17 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.ir.operator;
-
-import java.util.Map;
+package edu.snu.vortex.compiler.ir;
 
 /**
- * Do operator.
- * @param <I> input type.
- * @param <O> output type.
- * @param <T> .
+ * Key-value pair wrapper for a data element.
+ * This is to be implemented in the frontend
+ * with language-specific key-value pair definition.
+ * @param <Data> data type.
+ * @param <Key> key type.
+ * @param <Value> value type.
  */
-public abstract class Do<I, O, T> extends Operator<I, O> {
-  // We assume for now that broadcasted data are only used in Do
-  public abstract Iterable<O> transform(Iterable<I> input, Map<T, Object> broadcasted);
+public interface Element<Data, Key, Value> {
+  Data getData();
+
+  Key getKey();
+
+  Value getValue();
 }

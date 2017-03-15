@@ -13,16 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.ir.operator;
+package edu.snu.vortex.compiler.ir;
+
+import java.util.List;
 
 /**
- * Broadcast operator.
- * @param <I> input type.
+ * Vertex that reads data from an external source.
+ * It is to be implemented in the compiler frontend with source-specific data fetching logic.
  * @param <O> output type.
- * @param <T> .
  */
-public abstract class Broadcast<I, O, T> extends Operator<I, O> {
-  public abstract O transform(Iterable<I> input);
-
-  public abstract T getTag();
+public abstract class SourceVertex<O> extends Vertex {
+  /**
+   * Get parallel readers.
+   * @param desiredBundleSizeBytes .
+   * @return List of readers.
+   * @throws Exception .
+   */
+  public abstract List<Reader<O>> getReaders(final long desiredBundleSizeBytes) throws Exception;
 }

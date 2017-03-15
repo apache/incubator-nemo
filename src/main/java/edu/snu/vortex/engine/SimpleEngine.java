@@ -15,143 +15,101 @@
  */
 package edu.snu.vortex.engine;
 
-import edu.snu.vortex.compiler.ir.DAG;
-import edu.snu.vortex.compiler.ir.Edge;
-import edu.snu.vortex.compiler.ir.operator.*;
-import org.apache.beam.sdk.values.KV;
+import edu.snu.vortex.compiler.ir.*;
 
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
- * Simply prints out intermediate results.
+ * A simple engine that prints vertex outputs to stdout.
  */
 public final class SimpleEngine {
-
   public void executeDAG(final DAG dag) throws Exception {
-    final List<Operator> topoSorted = new LinkedList<>();
-    dag.doTopological(node -> topoSorted.add(node));
-
-    final Map<String, List<Iterable>> edgeIdToData = new HashMap<>();
-    final Map<String, Object> edgeIdToBroadcast = new HashMap<>();
-
-    for (final Operator node : topoSorted) {
-      if (node instanceof Source) {
-        final List<Source.Reader> readers = ((Source) node).getReaders(10); // 10 Bytes per Reader
-        final List<Iterable> data = new ArrayList<>(readers.size());
-        for (final Source.Reader reader : readers) {
-          data.add(reader.read());
-        }
-        dag.getOutEdgesOf(node).get().stream()
-            .map(outEdge -> outEdge.getId())
-            .forEach(id -> edgeIdToData.put(id, data));
-      } else if (node instanceof Windowing) {
-        final List<Iterable> mainInput = dag.getInEdgesOf(node).get().stream()
-            .filter(inEdge -> !(inEdge.getSrc() instanceof Broadcast))
-            .map(inEdge -> edgeIdToData.get(inEdge.getId()))
-            .findFirst()
-            .get();
-
-        dag.getOutEdgesOf(node).get().stream()
-            .map(outEdge -> outEdge.getId())
-            .forEach(id -> edgeIdToData.put(id, mainInput));
-      } else if (node instanceof Do) {
-        final Do op = (Do) node;
-
-        // Get Broadcasted SideInputs
-        final Map broadcastInput = new HashMap<>();
-        dag.getInEdgesOf(node).get().stream()
-            .filter(inEdge -> inEdge.getSrc() instanceof Broadcast)
-            .forEach(inEdge -> broadcastInput.put(((Broadcast) inEdge.getSrc()).getTag(),
-                edgeIdToBroadcast.get(inEdge.getId())));
-
-        // Get MainInputs
-        final List<Iterable> mainInput = dag.getInEdgesOf(node).get().stream()
-            .filter(inEdge -> !(inEdge.getSrc() instanceof Broadcast))
-            .map(inEdge -> edgeIdToData.get(inEdge.getId()))
-            .findFirst()
-            .get();
-
-        // Get Output
-        final List<Iterable> output = mainInput.stream()
-            .map(iterable -> op.transform(iterable, broadcastInput))
-            .collect(Collectors.toList());
-
-        if (dag.getOutEdgesOf(node).isPresent()) {
-          dag.getOutEdgesOf(node).get().stream()
+    final Map<String, List<Iterable<Element>>> edgeIdToPartitions = new HashMap<>();
+    dag.doTopological(vertex -> {
+      if (vertex instanceof SourceVertex) {
+        try {
+          final SourceVertex sourceVertex = (SourceVertex) vertex;
+          final List<Reader> readers = sourceVertex.getReaders(10); // 10 Bytes per BoundedSourceReader
+          final List<Iterable<Element>> partitions = new ArrayList<>(readers.size());
+          for (final Reader reader : readers) {
+            partitions.add(reader.read());
+          }
+          dag.getOutEdgesOf(vertex).get().stream()
               .map(outEdge -> outEdge.getId())
-              .forEach(id -> edgeIdToData.put(id, output));
-        } else {
-          edgeIdToData.put("NOEDGE", output); // Data that is not written to sink, but that was output by a Do operator.
+              .forEach(id -> edgeIdToPartitions.put(id, partitions));
+
+          System.out.println("Output of " + vertex.getId() + ": " + partitions);
+        } catch (Exception e) {
+          throw new RuntimeException(e);
         }
-      } else if (node instanceof GroupByKey) {
-        final List<Iterable> data = shuffle(edgeIdToData.get(getSingleEdgeId(dag, node, EdgeDirection.In)));
-        edgeIdToData.put(getSingleEdgeId(dag, node, EdgeDirection.Out), data);
-      } else if (node instanceof Broadcast) {
-        final Broadcast broadcastOperator = (Broadcast) node;
-        final List<Iterable> beforeBroadcasted = edgeIdToData.get(getSingleEdgeId(dag, node, EdgeDirection.In));
-        final Iterable afterBroadcasted = broadcast(beforeBroadcasted);
-        edgeIdToBroadcast.put(getSingleEdgeId(dag, node, EdgeDirection.Out),
-            broadcastOperator.transform(afterBroadcasted));
-      } else if (node instanceof Sink) {
-        throw new UnsupportedOperationException();
-      } else {
-        throw new UnsupportedOperationException();
-      }
+      } else if (vertex instanceof OperatorVertex) {
+        final OperatorVertex operatorVertex = (OperatorVertex) vertex;
+        final Transform transform = operatorVertex.getTransform();
+        final List<Edge> inEdges = dag.getInEdgesOf(vertex).get(); // must be at least one edge
+        final List<Edge> outEdges = dag.getOutEdgesOf(vertex).orElse(new ArrayList<>(0)); // empty lists for sinks
 
-      System.out.println("## All non-broadcast data after " + node.getId() + ": ");
-      edgeIdToData.forEach((elem, val) -> System.out.println(" " + elem.toString() + ":" + val.toString()));
-      System.out.println("# Also, All broadcast data: ");
-      edgeIdToBroadcast.forEach((elem, val) -> System.out.println(" " + elem.toString() + ":" + val.toString()));
-    }
-    System.out.println("## Job completed.");
+        // Process each input edge
+        inEdges.forEach(inEdge -> {
+          final List<Iterable<Element>> inDataPartitions = edgeIdToPartitions.get(inEdge.getId());
+          final List<Iterable<Element>> outDataPartitions = new ArrayList<>();
+
+          // Process each partition of an edge
+          inDataPartitions.forEach(inData -> {
+            final Transform.Context transformContext = new ContextImpl();
+            final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
+            transform.prepare(transformContext, outputCollector);
+            transform.onData(inData, inEdge.getSrc().getId());
+            transform.close();
+            outDataPartitions.add(outputCollector.getOutputList());
+          });
+
+          // Save the results
+          if (outEdges.size() > 1) {
+            throw new UnsupportedOperationException("Multi output not supported yet");
+          } else if (outEdges.size() == 1) {
+            final Edge outEdge = outEdges.get(0);
+            edgeIdToPartitions.put(outEdge.getId(), routePartitions(outDataPartitions, outEdge));
+          } else if (outEdges.size() == 0) {
+            System.out.println("Sink Vertex");
+          } else {
+            throw new IllegalStateException("Size must not be negative");
+          }
+
+          System.out.println("Output of " + vertex.getId() + ": " + outDataPartitions);
+        });
+      } else {
+        throw new UnsupportedOperationException(vertex.toString());
+      }
+    });
+
+    System.out.println("Job completed.");
   }
 
-  /**
-   * Edge direction.
-   */
-  private enum EdgeDirection {
-    In,
-    Out
-  }
+  private List<Iterable<Element>> routePartitions(final List<Iterable<Element>> partitions,
+                                                  final Edge edge) {
+    final Edge.Type edgeType = edge.getType();
+    if (edgeType == Edge.Type.OneToOne) {
+      return partitions;
+    } else if (edgeType == Edge.Type.ScatterGather) {
+      final int numOfDsts = partitions.size(); // Same as the number of current partitions
+      final List<List<Element>> routedPartitions = new ArrayList<>(numOfDsts);
+      IntStream.range(0, numOfDsts).forEach(x -> routedPartitions.add(new ArrayList<>()));
 
-  private String getSingleEdgeId(final DAG dag, final Operator node, final EdgeDirection ed) {
-    final Optional<List<Edge>> optional = (ed == EdgeDirection.In) ? dag.getInEdgesOf(node) : dag.getOutEdgesOf(node);
-    if (optional.isPresent()) {
-      final List<Edge> edges = optional.get();
-      if (edges.size() != 1) {
-        throw new IllegalArgumentException();
-      } else {
-        return edges.get(0).getId();
-      }
+      // Hash-based routing
+      partitions.forEach(partition -> {
+        partition.forEach(element -> {
+          final int dstIndex = Math.abs(element.getKey().hashCode() % numOfDsts);
+          routedPartitions.get(dstIndex).add(element);
+        });
+      });
+
+      // for some reason, Java requires the type to be explicit
+      final List<Iterable<Element>> explicitlyIterables = new ArrayList<>();
+      routedPartitions.forEach(explicitlyIterables::add);
+      return explicitlyIterables;
     } else {
-      throw new IllegalArgumentException();
+      throw new UnsupportedOperationException();
     }
-  }
-
-
-  private Iterable broadcast(final List<Iterable> iterables) {
-    final List result = new ArrayList();
-    iterables.stream().forEach(iterable -> iterable.forEach(x -> result.add(x)));
-    return result;
-  }
-
-
-  private List<Iterable> shuffle(final List<Iterable> data) {
-    final HashMap<Integer, HashMap<Object, KV<Object, List>>> dstIdToCombined = new HashMap<>();
-    final int numDest = 3;
-
-    data.forEach(iterable -> iterable.forEach(element -> {
-      final KV kv = (KV) element;
-      final int dstId = kv.getKey().hashCode() % numDest;
-      dstIdToCombined.putIfAbsent(dstId, new HashMap<>());
-      final HashMap<Object, KV<Object, List>> combined = dstIdToCombined.get(dstId);
-      combined.putIfAbsent(kv.getKey(), KV.of(kv.getKey(), new ArrayList()));
-      combined.get(kv.getKey()).getValue().add(kv.getValue());
-    }));
-
-    return dstIdToCombined.values().stream()
-        .map(map -> map.values().stream().collect(Collectors.toList()))
-        .collect(Collectors.toList());
   }
 }

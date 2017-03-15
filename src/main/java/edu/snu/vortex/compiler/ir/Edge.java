@@ -15,13 +15,12 @@
  */
 package edu.snu.vortex.compiler.ir;
 
-import edu.snu.vortex.compiler.ir.operator.Operator;
 import edu.snu.vortex.compiler.ir.util.AttributesMap;
 
 /**
  * Physical execution plan of intermediate data movement.
- * @param <I> input operator type.
- * @param <O> output operator type.
+ * @param <I> input vertex type.
+ * @param <O> output vertex type.
  */
 public final class Edge<I, O> {
   /**
@@ -36,12 +35,12 @@ public final class Edge<I, O> {
   private final String id;
   private final AttributesMap attributes;
   private final Type type;
-  private final Operator<?, I> src;
-  private final Operator<O, ?> dst;
+  private final Vertex src;
+  private final Vertex dst;
 
   Edge(final Type type,
-       final Operator<?, I> src,
-       final Operator<O, ?> dst) {
+       final Vertex src,
+       final Vertex dst) {
     this.id = IdManager.newEdgeId();
     this.attributes = new AttributesMap();
     this.type = type;
@@ -66,11 +65,11 @@ public final class Edge<I, O> {
     return type;
   }
 
-  public Operator<?, I> getSrc() {
+  public Vertex getSrc() {
     return src;
   }
 
-  public Operator<O, ?> getDst() {
+  public Vertex getDst() {
     return dst;
   }
 

@@ -13,31 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.frontend.beam.operator;
+package edu.snu.vortex.compiler.frontend.beam;
 
-import edu.snu.vortex.compiler.ir.operator.Source;
+import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.compiler.ir.Reader;
+import edu.snu.vortex.compiler.ir.SourceVertex;
 import org.apache.beam.sdk.io.BoundedSource;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Source operator implementation.
+ * SourceVertex implementation for BoundedSource.
  * @param <O> output type.
  */
-public final class SourceImpl<O> extends Source<O> {
+public final class BoundedSourceVertex<O> extends SourceVertex<O> {
   private final BoundedSource<O> source;
 
-  public SourceImpl(final BoundedSource<O> source) {
+  public BoundedSourceVertex(final BoundedSource<O> source) {
     this.source = source;
   }
 
   @Override
-  public List<Source.Reader<O>> getReaders(final long desiredBundleSizeBytes) throws Exception {
+  public List<Reader<O>> getReaders(final long desiredBundleSizeBytes) throws Exception {
     // Can't use lambda due to exception thrown
-    final List<Source.Reader<O>> readers = new ArrayList<>();
+    final List<Reader<O>> readers = new ArrayList<>();
     for (final BoundedSource<O> s : source.splitIntoBundles(desiredBundleSizeBytes, null)) {
-      readers.add(new Reader<>(s.createReader(null)));
+      readers.add(new BoundedSourceReader(s.createReader(null)));
     }
     return readers;
   }
@@ -46,28 +48,27 @@ public final class SourceImpl<O> extends Source<O> {
   public String toString() {
     final StringBuilder sb = new StringBuilder();
     sb.append(super.toString());
-    sb.append(", BoundedSource: ");
+    sb.append(", BoundedSourceVertex: ");
     sb.append(source);
     return sb.toString();
   }
 
   /**
-   * Reader class.
+   * BoundedSourceReader class.
    * @param <T> type.
    */
-  public class Reader<T> implements Source.Reader<T> {
+  public class BoundedSourceReader<T> implements Reader<T> {
     private final BoundedSource.BoundedReader<T> beamReader;
-
-    Reader(final BoundedSource.BoundedReader<T> beamReader) {
+    BoundedSourceReader(final BoundedSource.BoundedReader<T> beamReader) {
       this.beamReader = beamReader;
     }
 
     @Override
-    public final Iterable<T> read() throws Exception {
-      final ArrayList<T> data = new ArrayList<>();
+    public final Iterable<Element<T, ?, ?>> read() throws Exception {
+      final ArrayList<Element<T, ?, ?>> data = new ArrayList<>();
       try (final BoundedSource.BoundedReader<T> reader = beamReader) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
-          data.add(reader.getCurrent());
+          data.add(new BeamElement<>(reader.getCurrent()));
         }
       }
       return data;
