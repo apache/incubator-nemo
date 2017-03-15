@@ -13,30 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.ir.operator;
+package edu.snu.vortex.engine;
 
+import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.compiler.ir.OutputCollector;
+
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Source operator.
- * @param <O> output type.
+ * Output Collector Implementation.
  */
-public abstract class Source<O> extends Operator<Void, O> {
-  // Maybe make the parameter a any-type hashmap(attributes/options)
+public final class OutputCollectorImpl implements OutputCollector {
+  private final List<Element> outputList;
 
-  /**
-   * Getter for readers.
-   * @param desiredBundleSizeBytes .
-   * @return List of readers.
-   * @throws Exception .
-   */
-  public abstract List<Reader<O>> getReaders(final long desiredBundleSizeBytes) throws Exception;
+  public OutputCollectorImpl() {
+    outputList = new ArrayList<>();
+  }
 
-  /**
-   * Interface for reader.
-   * @param <O> output type.
-   */
-  public interface Reader<O> {
-    Iterable<O> read() throws Exception;
+  @Override
+  public void emit(final Element output) {
+    outputList.add(output);
+  }
+
+  @Override
+  public void emit(final String dstVertexId, final Element output) {
+    throw new UnsupportedOperationException();
+  }
+
+  public List getOutputList() {
+    return outputList;
   }
 }

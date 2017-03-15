@@ -13,24 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.ir.operator;
-
-import edu.snu.vortex.compiler.ir.Attributes;
-import edu.snu.vortex.compiler.ir.IdManager;
-import edu.snu.vortex.compiler.ir.util.AttributesMap;
+package edu.snu.vortex.compiler.ir;
 
 import java.io.Serializable;
 
+import edu.snu.vortex.compiler.ir.util.AttributesMap;
+
 /**
- * Physical execution plan of a user operator.
- * @param <I> input type.
- * @param <O> output type.
+ * The top-most wrapper for a user operation in the Vortex IR.
  */
-public abstract class Operator<I, O> implements Serializable {
+public abstract class Vertex implements Serializable {
   private final String id;
   private final AttributesMap attributes;
 
-  public Operator() {
+  public Vertex() {
     this.id = IdManager.newOperatorId();
     this.attributes = new AttributesMap();
   }
@@ -39,7 +35,7 @@ public abstract class Operator<I, O> implements Serializable {
     return id;
   }
 
-  public final Operator<I, O> setAttr(final Attributes.Key key, final Attributes val) {
+  public final Vertex setAttr(final Attributes.Key key, final Attributes val) {
     attributes.put(key, val);
     return this;
   }

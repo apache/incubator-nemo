@@ -15,16 +15,8 @@
  */
 package edu.snu.vortex.compiler.optimizer.examples;
 
-import edu.snu.vortex.compiler.ir.DAG;
-import edu.snu.vortex.compiler.ir.DAGBuilder;
-import edu.snu.vortex.compiler.ir.Edge;
-import edu.snu.vortex.compiler.ir.operator.Do;
-import edu.snu.vortex.compiler.ir.operator.Source;
+import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
-import edu.snu.vortex.utils.Pair;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * A sample MapReduce application.
@@ -34,17 +26,17 @@ public final class MapReduce {
   }
 
   public static void main(final String[] args) throws Exception {
-    final EmptySource source = new EmptySource();
-    final EmptyDo<String, Pair<String, Integer>, Void> map = new EmptyDo<>("MapOperator");
-    final EmptyDo<Pair<String, Iterable<Integer>>, String, Void> reduce = new EmptyDo<>("ReduceOperator");
+    final Vertex source = new OperatorVertex(new EmptyTransform("SourceVertex"));
+    final Vertex map = new OperatorVertex(new EmptyTransform("MapVertex"));
+    final Vertex reduce = new OperatorVertex(new EmptyTransform("ReduceVertex"));
 
     // Before
     final DAGBuilder builder = new DAGBuilder();
-    builder.addOperator(source);
-    builder.addOperator(map);
-    builder.addOperator(reduce);
-    builder.connectOperators(source, map, Edge.Type.OneToOne);
-    builder.connectOperators(map, reduce, Edge.Type.ScatterGather);
+    builder.addVertex(source);
+    builder.addVertex(map);
+    builder.addVertex(reduce);
+    builder.connectVertices(source, map, Edge.Type.OneToOne);
+    builder.connectVertices(map, reduce, Edge.Type.ScatterGather);
     final DAG dag = builder.build();
     System.out.println("Before Optimization");
     System.out.println(dag);
@@ -59,25 +51,12 @@ public final class MapReduce {
   }
 
   /**
-   * An empty source operator.
+   * An empty transform.
    */
-  private static class EmptySource extends Source {
-    @Override
-    public List<Reader> getReaders(final long desiredBundleSizeBytes) throws Exception {
-      return null;
-    }
-  }
-
-  /**
-   * An empty Do operator.
-   * @param <I> input type.
-   * @param <O> ouput type.
-   * @param <T>
-   */
-  private static class EmptyDo<I, O, T> extends Do<I, O, T> {
+  private static class EmptyTransform implements Transform {
     private final String name;
 
-    EmptyDo(final String name) {
+    EmptyTransform(final String name) {
       this.name = name;
     }
 
@@ -91,8 +70,15 @@ public final class MapReduce {
     }
 
     @Override
-    public Iterable<O> transform(final Iterable<I> input, final Map<T, Object> broadcasted) {
-      return null;
+    public void prepare(final Context context, final OutputCollector outputCollector) {
+    }
+
+    @Override
+    public void onData(final Iterable<Element> data, final String srcVertexId) {
+    }
+
+    @Override
+    public void close() {
     }
   }
 }

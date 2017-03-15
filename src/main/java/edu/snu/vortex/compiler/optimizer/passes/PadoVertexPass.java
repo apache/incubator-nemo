@@ -23,19 +23,19 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Pado pass for tagging operators.
+ * Pado pass for tagging vertices.
  */
-public final class PadoOperatorPass implements Pass {
+public final class PadoVertexPass implements Pass {
   public DAG process(final DAG dag) throws Exception {
-    dag.doTopological(operator -> {
-      final Optional<List<Edge>> inEdges = dag.getInEdgesOf(operator);
+    dag.doTopological(vertex -> {
+      final Optional<List<Edge>> inEdges = dag.getInEdgesOf(vertex);
       if (!inEdges.isPresent()) {
-        operator.setAttr(Attributes.Key.Placement, Attributes.Transient);
+        vertex.setAttr(Attributes.Key.Placement, Attributes.Transient);
       } else {
         if (hasM2M(inEdges.get()) || allFromReserved(inEdges.get())) {
-          operator.setAttr(Attributes.Key.Placement, Attributes.Reserved);
+          vertex.setAttr(Attributes.Key.Placement, Attributes.Reserved);
         } else {
-          operator.setAttr(Attributes.Key.Placement, Attributes.Transient);
+          vertex.setAttr(Attributes.Key.Placement, Attributes.Transient);
         }
       }
     });

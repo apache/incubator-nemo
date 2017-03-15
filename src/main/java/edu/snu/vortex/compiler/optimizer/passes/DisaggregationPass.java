@@ -23,16 +23,16 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Disaggregated Resources pass for tagging operators.
+ * Disaggregated Resources pass for tagging vertices.
  */
 public final class DisaggregationPass implements Pass {
   public DAG process(final DAG dag) throws Exception {
-    dag.doTopological(operator -> {
-      operator.setAttr(Attributes.Key.Placement, Attributes.Compute);
+    dag.doTopological(vertex -> {
+      vertex.setAttr(Attributes.Key.Placement, Attributes.Compute);
     });
 
-    dag.getOperators().forEach(operator -> {
-      final Optional<List<Edge>> inEdges = dag.getInEdgesOf(operator);
+    dag.getVertices().forEach(vertex -> {
+      final Optional<List<Edge>> inEdges = dag.getInEdgesOf(vertex);
       if (inEdges.isPresent()) {
         inEdges.get().forEach(edge -> {
           if (edge.getType().equals(Edge.Type.OneToOne)) {

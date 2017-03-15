@@ -20,7 +20,10 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.*;
+import org.apache.beam.sdk.transforms.Combine;
+import org.apache.beam.sdk.transforms.GroupByKey;
+import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.Sum;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TypeDescriptors;
 
@@ -48,8 +51,8 @@ public final class MapReduce {
         .apply(GroupByKey.<String, Long>create())
         .apply(Combine.<String, Long, Long>groupedValues(new Sum.SumLongFn()))
         .apply(MapElements.via((KV<String, Long> kv) -> kv.getKey() + ": " + kv.getValue())
-            .withOutputType(TypeDescriptors.strings()))
-        .apply(TextIO.Write.to(outputFilePath));
+            .withOutputType(TypeDescriptors.strings()));
+        // .apply(TextIO.Write.to(outputFilePath));
     p.run();
   }
 }

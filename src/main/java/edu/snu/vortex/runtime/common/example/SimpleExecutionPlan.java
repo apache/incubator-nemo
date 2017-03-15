@@ -33,7 +33,7 @@ public final class SimpleExecutionPlan {
 
     /** A simple Execution Plan composed of 3 stages, Stage A and B independent of each other,
      * while Stage C depends on both A and B.
-     * Operator a2 is connected to Operator b1 and Operator c1.
+     * Vertex a2 is connected to Vertex b1 and Vertex c1.
      */
 
     // Make Stage A

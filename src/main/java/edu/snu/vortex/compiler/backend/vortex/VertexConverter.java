@@ -16,7 +16,7 @@
 package edu.snu.vortex.compiler.backend.vortex;
 
 import edu.snu.vortex.compiler.ir.Attributes;
-import edu.snu.vortex.compiler.ir.operator.Operator;
+import edu.snu.vortex.compiler.ir.Vertex;
 import edu.snu.vortex.compiler.ir.util.AttributesMap;
 import edu.snu.vortex.runtime.common.IdGenerator;
 import edu.snu.vortex.runtime.common.RtAttributes;
@@ -26,16 +26,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Operator converter.
+ * Vertex converter.
  */
-public final class OperatorConverter {
+public final class VertexConverter {
   /**
-   * Converts an {@link Operator} to its representation in {@link RtOperator}.
-   * @param irOp .
+   * Converts an {@link Vertex} to its representation in {@link RtOperator}.
+   * @param irVertex .
    * @return the {@link RtOperator} representation.
    */
-  public RtOperator convert(final Operator irOp) {
-    final AttributesMap irOpAttributes = irOp.getAttributes();
+  public RtOperator convert(final Vertex irVertex) {
+    final AttributesMap irOpAttributes = irVertex.getAttributes();
 
     final Map<RtAttributes.RtOpAttribute, Object> rOpAttributes = new HashMap<>();
     irOpAttributes.forEach((k, v) -> {
@@ -60,7 +60,7 @@ public final class OperatorConverter {
         throw new UnsupportedOperationException("Unsupported operator attribute");
       }
     });
-    final RtOperator rOp = new RtOperator(irOp.getId(), rOpAttributes);
+    final RtOperator rOp = new RtOperator(irVertex.getId(), rOpAttributes);
     return rOp;
   }
 

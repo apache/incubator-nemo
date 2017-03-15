@@ -29,8 +29,7 @@ public final class IdGenerator {
   }
 
   /**
-   * Generates the ID for {@link RtOperator},
-   * given the ID of the corresponding {@link edu.snu.vortex.compiler.ir.operator.Operator}.
+   * Generates the ID for {@link RtOperator}.
    * @param irOpId .
    * @return the generated ID
    */

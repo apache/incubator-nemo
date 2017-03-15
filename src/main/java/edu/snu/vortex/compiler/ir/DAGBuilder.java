@@ -15,10 +15,10 @@
  */
 package edu.snu.vortex.compiler.ir;
 
-import edu.snu.vortex.compiler.ir.operator.Operator;
-import edu.snu.vortex.compiler.ir.operator.Source;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * DAG Builder.
@@ -26,59 +26,40 @@ import java.util.*;
 public final class DAGBuilder {
   private Map<String, List<Edge>> id2inEdges;
   private Map<String, List<Edge>> id2outEdges;
-  private List<Operator> operators;
+  private List<Vertex> vertices;
 
   public DAGBuilder() {
     this.id2inEdges = new HashMap<>();
     this.id2outEdges = new HashMap<>();
-    this.operators = new ArrayList<>();
-  }
-
-  public DAGBuilder(final DAG dag) {
-    this.operators = dag.getOperators();
-    this.id2inEdges = dag.getId2inEdges();
-    this.id2outEdges = dag.getId2outEdges();
+    this.vertices = new ArrayList<>();
   }
 
   /**
-   * add an operator.
-   * @param operator .
+   * add a vertex.
+   * @param vertex .
    */
-  public void addOperator(final Operator operator) {
-    if (this.contains(operator)) {
-      throw new RuntimeException("DAGBuilder is trying to add an operator multiple times");
+  public void addVertex(final Vertex vertex) {
+    if (this.contains(vertex)) {
+      throw new RuntimeException("DAGBuilder is trying to add an vertex multiple times");
     }
-    operators.add(operator);
+    vertices.add(vertex);
   }
 
   /**
-   */
-  /**
-   * add an edge for the given operators.
-   * @param src source operator.
-   * @param dst destination operator.
+   * add an edge for the given vertices.
+   * @param src source vertex.
+   * @param dst destination vertex.
    * @param type edge type.
    * @return .
-   * @param <I> input type (output type of incoming operator).
-   * @param <O> output type (input type of outgoing operator).
    * @return
    */
-  public <I, O> Edge<I, O> connectOperators(final Operator<?, I> src, final Operator<O, ?> dst, final Edge.Type type) {
-    final Edge<I, O> edge = new Edge<>(type, src, dst);
+  public Edge connectVertices(final Vertex src, final Vertex dst, final Edge.Type type) {
+    final Edge edge = new Edge(type, src, dst);
     if (this.contains(edge)) {
       throw new RuntimeException("DAGBuilder is trying to add an edge multiple times");
     }
     addToEdgeList(id2outEdges, src.getId(), edge);
     addToEdgeList(id2inEdges, dst.getId(), edge);
-    return edge;
-  }
-
-  public <I, O> Edge<I, O> connectOperators(final Edge edge) {
-    if (this.contains(edge)) {
-      throw new RuntimeException("DAGBuilder is trying to add an edge multiple times");
-    }
-    addToEdgeList(id2outEdges, edge.getSrc().getId(), edge);
-    addToEdgeList(id2inEdges, edge.getDst().getId(), edge);
     return edge;
   }
 
@@ -92,17 +73,13 @@ public final class DAGBuilder {
     }
   }
 
-  public List<Operator> getOperators() {
-    return operators;
-  }
-
   /**
-   * check if the DAGBuilder contains the operator.
-   * @param operator .
+   * check if the DAGBuilder contains the vertex.
+   * @param vertex .
    * @return .
    */
-  public boolean contains(final Operator operator) {
-    return operators.contains(operator);
+  public boolean contains(final Vertex vertex) {
+    return vertices.contains(vertex);
   }
 
   /**
@@ -115,11 +92,11 @@ public final class DAGBuilder {
   }
 
   /**
-   * returns the number of operators in the DAGBuilder.
+   * returns the number of vertices in the DAGBuilder.
    * @return .
    */
   public int size() {
-    return operators.size();
+    return vertices.size();
   }
 
   /**
@@ -128,14 +105,14 @@ public final class DAGBuilder {
    */
   public DAG build() {
     // TODO #22: DAG Integrity Check
-    final boolean sourceCheck = operators.stream()
-        .filter(operator -> !id2inEdges.containsKey(operator.getId()))
-        .allMatch(operator -> operator instanceof Source);
+    final boolean sourceCheck = vertices.stream()
+        .filter(vertex -> !id2inEdges.containsKey(vertex.getId()))
+        .allMatch(vertex -> vertex instanceof SourceVertex);
 
     if (!sourceCheck) {
-      throw new RuntimeException("DAG integrity unsatisfied: there are root operators that are not Sources.");
+      throw new RuntimeException("DAG integrity unsatisfied: there are root vertices that are not Sources.");
     }
 
-    return new DAG(operators, id2inEdges, id2outEdges);
+    return new DAG(vertices, id2inEdges, id2outEdges);
   }
 }

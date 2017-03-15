@@ -27,8 +27,8 @@ import java.util.Optional;
  */
 public final class PadoEdgePass implements Pass {
   public DAG process(final DAG dag) throws Exception {
-    dag.getOperators().forEach(operator -> {
-      final Optional<List<Edge>> inEdges = dag.getInEdgesOf(operator);
+    dag.getVertices().forEach(vertex -> {
+      final Optional<List<Edge>> inEdges = dag.getInEdgesOf(vertex);
       if (inEdges.isPresent()) {
         inEdges.get().forEach(edge -> {
           if (fromTransientToReserved(edge)) {

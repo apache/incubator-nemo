@@ -13,12 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.ir.operator;
+package edu.snu.vortex.engine;
+
+import edu.snu.vortex.compiler.ir.Transform;
+
+import java.util.List;
 
 /**
- * GroupByKey operator.
- * @param <I> input type.
- * @param <O> output type.
+ * Transform Context Implementation.
  */
-public abstract class GroupByKey<I, O> extends Operator<I, O> {
+public final class ContextImpl implements Transform.Context {
+  @Override
+  public List<String> getSrcVertexIds() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public List<String> getDstVertexIds() {
+    throw new UnsupportedOperationException();
+  }
 }

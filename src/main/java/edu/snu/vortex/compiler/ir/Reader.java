@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.ir.operator;
+package edu.snu.vortex.compiler.ir;
 
 /**
- * Windowing operator for dividing the elements into windows.
- * @param <T> type.
+ * Interface for reader.
+ * @param <O> output type.
  */
-public abstract class Windowing<T> extends Operator<T, T> {
+public interface Reader<O> {
+  Iterable<Element<O, ?, ?>> read() throws Exception;
 }
+

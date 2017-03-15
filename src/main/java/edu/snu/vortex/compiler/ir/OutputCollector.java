@@ -13,14 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.frontend.beam.operator;
-
-import edu.snu.vortex.compiler.ir.operator.GroupByKey;
+package edu.snu.vortex.compiler.ir;
 
 /**
- * GroupByKey operator implementation.
- * @param <I> input type.
- * @param <O> output type.
+ * Interface through which Transform emits outputs.
+ * This is to be implemented in the runtime with
+ * runtime-specific distributed data movement and storage mechanisms.
  */
-public final class GroupByKeyImpl<I, O> extends GroupByKey<I, O> {
+public interface OutputCollector {
+  /**
+   * Single-destination emit.
+   * @param output element.
+   */
+  void emit(final Element output);
+
+  /**
+   * Multi-destination emit.
+   * Currently unused, but might come in handy
+   * for operations like multi-output map.
+   * @param dstVertexId destination vertex id.
+   * @param output element.
+   */
+  void emit(final String dstVertexId, final Element output);
 }
