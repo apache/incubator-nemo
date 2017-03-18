@@ -13,17 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.exception;
+package edu.snu.vortex.runtime.common.task;
 
 /**
- * No such rt stage exception.
+ * UnboundedSourceTask.
  */
-public class NoSuchRtStageException extends RuntimeException {
-  /**
-   * No such rt stage exception.
-   * @param message message
-   */
-  public NoSuchRtStageException(final String message) {
-    super(message);
+public final class UnboundedSourceTask extends Task {
+  public UnboundedSourceTask(final String taskId) {
+    super(taskId);
   }
 }

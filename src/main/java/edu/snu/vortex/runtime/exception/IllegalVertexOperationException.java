@@ -13,11 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.backend.vortex;
+package edu.snu.vortex.runtime.exception;
 
 /**
- * Vertex converter.
+ * IllegalVertexOperationException.
  */
-public final class VertexConverter {
-  // TODO #000: Reconsider the use of this class after #79.
+public class IllegalVertexOperationException extends RuntimeException {
+  /**
+   * IllegalVertexOperationException.
+   * @param message message
+   */
+  public IllegalVertexOperationException(final String message) {
+    super(message);
+  }
 }
