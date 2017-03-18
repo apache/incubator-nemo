@@ -13,11 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.backend.vortex;
+package edu.snu.vortex.runtime.master;
+
+import edu.snu.vortex.runtime.common.execplan.ExecutionPlan;
+
+import java.util.logging.Logger;
 
 /**
- * Vertex converter.
+ * Runtime Master.
  */
-public final class VertexConverter {
-  // TODO #000: Reconsider the use of this class after #79.
+public final class RuntimeMaster {
+  private static final Logger LOG = Logger.getLogger(RuntimeMaster.class.getName());
+
+  /**
+   * Submits the {@link ExecutionPlan} to Runtime.
+   * @param executionPlan to execute.
+   */
+  public void execute(final ExecutionPlan executionPlan) {
+  }
 }

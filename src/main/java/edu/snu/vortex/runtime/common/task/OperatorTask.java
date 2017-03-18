@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.backend.vortex;
+package edu.snu.vortex.runtime.common.task;
 
 /**
- * Vertex converter.
+ * OperatorTask.
  */
-public final class VertexConverter {
-  // TODO #000: Reconsider the use of this class after #79.
+public final class OperatorTask extends Task {
+  public OperatorTask(final String taskId) {
+    super(taskId);
+  }
 }

@@ -18,39 +18,34 @@ package edu.snu.vortex.runtime.common;
 /**
  * Runtime attributes.
  */
-public final class RtAttributes {
+public final class RuntimeAttributes {
   /**
-   * Set of attributes applicable to {@link RtStage}.
+   * Set of attributes applicable to {@link edu.snu.vortex.runtime.common.execplan.RuntimeVertex}.
    */
-  public enum RtStageAttribute { PARALLELISM }
+  public enum RuntimeVertexAttribute { PARALLELISM, RESOURCE_TYPE }
 
   /**
-   * Set of attributes applicable to {@link RtOperator}.
-   */
-  public enum RtOpAttribute { PARTITION, RESOURCE_TYPE }
-
-  /**
-   * Set of values possible when a {@link RtOperator}'s attribute key is "PARTITION".
-   */
-  public enum Partition { HASH, RANGE }
-
-  /**
-   * Set of values possible when a {@link RtOperator}'s attribute key is "RESOURCE_TYPE".
+   * Set of values possible when {@link RuntimeVertexAttribute} is "RESOURCE_TYPE".
    */
   public enum ResourceType { TRANSIENT, RESERVED, COMPUTE, STORAGE }
 
   /**
-   * Set of attributes applicable to {@link RtOpLink}.
+   * Set of attributes applicable to {@link edu.snu.vortex.runtime.common.execplan.RuntimeEdge}.
    */
-  public enum RtOpLinkAttribute { CHANNEL, COMM_PATTERN }
+  public enum RuntimeEdgeAttribute { CHANNEL, COMM_PATTERN, PARTITION }
 
   /**
-   * Set of values possible when a {@link RtOpLink}'s attribute key is "CHANNEL".
+   * Set of values possible when {@link RuntimeEdgeAttribute} is "CHANNEL".
    */
   public enum Channel { LOCAL_MEM, TCP, FILE, DISTR_STORAGE }
 
   /**
-   * Set of values possible when a {@link RtOpLink}'s attribute key is "COMM_PATTERN".
+   * Set of values possible when {@link RuntimeEdgeAttribute} is "COMM_PATTERN".
    */
   public enum CommPattern { ONE_TO_ONE, BROADCAST, SCATTER_GATHER }
+
+  /**
+   * Set of values possible when {@link RuntimeEdgeAttribute} is "PARTITION".
+   */
+  public enum Partition { HASH, RANGE }
 }

@@ -73,6 +73,10 @@ public final class Edge<I, O> {
     return dst;
   }
 
+  public AttributesMap getAttributes() {
+    return attributes;
+  }
+
   @Override
   public boolean equals(final Object o) {
     if (this == o) {

@@ -13,11 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.backend.vortex;
+package edu.snu.vortex.runtime.common.task;
+
+import java.io.Serializable;
 
 /**
- * Vertex converter.
+ * Task.
  */
-public final class VertexConverter {
-  // TODO #000: Reconsider the use of this class after #79.
+public abstract class Task implements Serializable {
+  private final String taskId;
+
+  public Task(final String taskId) {
+    this.taskId = taskId;
+  }
 }
