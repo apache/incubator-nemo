@@ -39,6 +39,7 @@ public final class ExecutionPlanBuilder {
   public ExecutionPlanBuilder() {
     this.runtimeStageBuilderList = new LinkedList<>();
     this.vertexIdToRuntimeStageBuilderMap = new HashMap<>();
+    this.stageBuilder = new RuntimeStageBuilder();
   }
 
   /**
@@ -93,6 +94,7 @@ public final class ExecutionPlanBuilder {
           throw new UnsupportedAttributeException("this IR attribute is not supported");
         }
         runtimeVertexAttributes.put(RuntimeAttributes.RuntimeVertexAttribute.RESOURCE_TYPE, runtimeAttributeVal);
+        break;
       default:
         throw new UnsupportedAttributeException("this IR attribute is not supported");
       }
@@ -125,6 +127,7 @@ public final class ExecutionPlanBuilder {
           throw new UnsupportedAttributeException("this IR attribute is not supported");
         }
         runtimeEdgeAttributes.put(RuntimeAttributes.RuntimeEdgeAttribute.PARTITION, partitioningAttrVal);
+        break;
       case EdgeChannel:
         final Object channelAttrVal;
         switch (irAttributeVal) {
@@ -144,6 +147,7 @@ public final class ExecutionPlanBuilder {
           throw new UnsupportedAttributeException("this IR attribute is not supported");
         }
         runtimeEdgeAttributes.put(RuntimeAttributes.RuntimeEdgeAttribute.CHANNEL, channelAttrVal);
+        break;
       default:
         throw new UnsupportedAttributeException("this IR attribute is not supported");
       }
@@ -182,9 +186,7 @@ public final class ExecutionPlanBuilder {
    * Stages must be created in the order of execution.
    */
   public void createNewStage() {
-    if (!stageBuilder.isEmpty()) {
-      runtimeStageBuilderList.add(stageBuilder);
-    }
+    addCurrentStage();
     stageBuilder = new RuntimeStageBuilder();
   }
 
@@ -193,6 +195,16 @@ public final class ExecutionPlanBuilder {
    * @return the execution plan.
    */
   public ExecutionPlan build() {
+    addCurrentStage();
     return new ExecutionPlan(RuntimeIdGenerator.generateExecutionPlanId(), runtimeStageBuilderList);
+  }
+
+  /**
+   *   Adds the current stage being built if the stage is valid.
+   */
+  private void addCurrentStage() {
+    if (!stageBuilder.isEmpty()) {
+      runtimeStageBuilderList.add(stageBuilder);
+    }
   }
 }
