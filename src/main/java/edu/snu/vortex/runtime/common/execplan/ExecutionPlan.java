@@ -48,4 +48,12 @@ public final class ExecutionPlan {
   public List<RuntimeStage> getRuntimeStages() {
     return runtimeStages;
   }
+
+  @Override
+  public String toString() {
+    return "ExecutionPlan{" +
+        "id='" + id + '\'' +
+        ", runtimeStages=" + runtimeStages +
+        '}';
+  }
 }
