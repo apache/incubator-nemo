@@ -15,11 +15,14 @@
  */
 package edu.snu.vortex.client;
 
+import edu.snu.vortex.compiler.backend.Backend;
+import edu.snu.vortex.compiler.backend.vortex.VortexBackend;
 import edu.snu.vortex.compiler.frontend.Frontend;
 import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.engine.SimpleEngine;
+import edu.snu.vortex.runtime.common.execplan.ExecutionPlan;
 
 /**
  * Job launcher.
@@ -44,9 +47,10 @@ public final class JobLauncher {
     System.out.println("##### VORTEX COMPILER (After Optimization for " + optimizationPolicy + ") #####");
     System.out.println(optimizedDAG);
 
-    // TODO #28: Implement VortexBackend
-    // final Backend backend = new VortexBackend();
-    // final ??? vortexJobDAG = backend.compile(optimized);
+    final Backend<ExecutionPlan> backend = new VortexBackend();
+    final ExecutionPlan executionPlan = backend.compile(optimizedDAG);
+    System.out.println("##### VORTEX COMPILER (After Compilation) #####");
+    System.out.println(executionPlan + "\n");
 
     /**
      * Step 2: Execute

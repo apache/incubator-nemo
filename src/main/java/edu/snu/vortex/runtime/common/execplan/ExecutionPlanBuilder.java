@@ -17,7 +17,7 @@ package edu.snu.vortex.runtime.common.execplan;
 
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.ir.*;
-import edu.snu.vortex.compiler.ir.util.AttributesMap;
+import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.common.*;
 import edu.snu.vortex.runtime.common.RuntimeAttributes;
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
@@ -70,14 +70,11 @@ public final class ExecutionPlanBuilder {
    */
   // TODO #000: Must clean up IR and Runtime attributes.
   private Map<RuntimeAttributes.RuntimeVertexAttribute, Object> convertVertexAttributes(
-      final AttributesMap irAttributes) {
+      final AttributeMap irAttributes) {
     final Map<RuntimeAttributes.RuntimeVertexAttribute, Object> runtimeVertexAttributes = new HashMap<>();
 
-    irAttributes.forEach(((irAttributeKey, irAttributeVal) -> {
+    irAttributes.forEachAttr(((irAttributeKey, irAttributeVal) -> {
       switch (irAttributeKey) {
-      case Parallelism:
-        runtimeVertexAttributes.put(RuntimeAttributes.RuntimeVertexAttribute.PARALLELISM, 0);
-        break;
       case Placement:
         final Object runtimeAttributeVal;
         switch (irAttributeVal) {
@@ -99,6 +96,16 @@ public final class ExecutionPlanBuilder {
         throw new UnsupportedAttributeException("this IR attribute is not supported");
       }
     }));
+
+    irAttributes.forEachIntAttr((irAttributeKey, irAttributeVal) -> {
+      switch (irAttributeKey) {
+      case Parallelism:
+        runtimeVertexAttributes.put(RuntimeAttributes.RuntimeVertexAttribute.PARALLELISM, 0);
+        break;
+      default:
+        throw new UnsupportedAttributeException("this IR attribute is not supported: " + irAttributeKey);
+      }
+    });
     return runtimeVertexAttributes;
   }
 
@@ -109,10 +116,10 @@ public final class ExecutionPlanBuilder {
    */
   // TODO #000: Must clean up IR and Runtime attributes.
   private Map<RuntimeAttributes.RuntimeEdgeAttribute, Object> convertEdgeAttributes(
-      final AttributesMap irAttributes) {
+      final AttributeMap irAttributes) {
     final Map<RuntimeAttributes.RuntimeEdgeAttribute, Object> runtimeEdgeAttributes = new HashMap<>();
 
-    irAttributes.forEach(((irAttributeKey, irAttributeVal) -> {
+    irAttributes.forEachAttr(((irAttributeKey, irAttributeVal) -> {
       switch (irAttributeKey) {
       case EdgePartitioning:
         final Object partitioningAttrVal;
@@ -155,25 +162,42 @@ public final class ExecutionPlanBuilder {
     return runtimeEdgeAttributes;
   }
 
-  /**
-   * Connects two {@link RuntimeVertex} that belong to the same stage, using the information given in {@link Edge}.
-   * @param edge to use for the connection.
-   */
-  public void connectStageInternalVertices(final Edge edge) {
+  public void connectVertices(final Edge edge) {
     final String srcRuntimeVertexId = RuntimeIdGenerator.generateRuntimeVertexId(edge.getSrc().getId());
     final String dstRuntimeVertexId = RuntimeIdGenerator.generateRuntimeVertexId(edge.getDst().getId());
 
+    if (!vertexIdToRuntimeStageBuilderMap.containsKey(srcRuntimeVertexId) ||
+        !vertexIdToRuntimeStageBuilderMap.containsKey(dstRuntimeVertexId)) {
+      throw new IllegalVertexOperationException(
+          "srcRuntimeVertex and/or dstRuntimeVertex are not yet added to the ExecutionPlanBuilder");
+    }
+
+    if (vertexIdToRuntimeStageBuilderMap.get(srcRuntimeVertexId)
+        .equals(vertexIdToRuntimeStageBuilderMap.get(dstRuntimeVertexId))) {
+      connectStageInternalVertices(srcRuntimeVertexId, dstRuntimeVertexId);
+    } else {
+      connectStageBoundaryVertices(srcRuntimeVertexId, dstRuntimeVertexId, edge);
+    }
+  }
+
+  /**
+   * Connects two {@link RuntimeVertex} that belong to the same stage, using the information given in {@link Edge}.
+   * @param srcRuntimeVertexId source vertex id.
+   * @param dstRuntimeVertexId destination vertex id.
+   */
+  private void connectStageInternalVertices(final String srcRuntimeVertexId, final String dstRuntimeVertexId) {
     stageBuilder.connectInternalRuntimeVertices(srcRuntimeVertexId, dstRuntimeVertexId);
   }
 
   /**
    * Connects two {@link RuntimeVertex} that belong to different stages, using the information given in {@link Edge}.
+   * @param srcRuntimeVertexId source vertex id.
+   * @param dstRuntimeVertexId destination vertex id.
    * @param edge to use for the connection.
    */
-  public void connectStageBoundaryVertices(final Edge edge) {
-    final String srcRuntimeVertexId = RuntimeIdGenerator.generateRuntimeVertexId(edge.getSrc().getId());
-    final String dstRuntimeVertexId = RuntimeIdGenerator.generateRuntimeVertexId(edge.getDst().getId());
-
+  private void connectStageBoundaryVertices(final String srcRuntimeVertexId,
+                                           final String dstRuntimeVertexId,
+                                           final Edge edge) {
     final RuntimeEdge newEdge = new RuntimeEdge(edge.getId(), convertEdgeAttributes(edge.getAttributes()),
         srcRuntimeVertexId, dstRuntimeVertexId);
     vertexIdToRuntimeStageBuilderMap.get(srcRuntimeVertexId).connectRuntimeStages(srcRuntimeVertexId, newEdge);

@@ -15,36 +15,44 @@
  */
 package edu.snu.vortex.compiler.ir;
 
-import java.io.Serializable;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 
-import edu.snu.vortex.compiler.ir.util.AttributesMap;
+import java.io.Serializable;
 
 /**
  * The top-most wrapper for a user operation in the Vortex IR.
  */
 public abstract class Vertex implements Serializable {
   private final String id;
-  private final AttributesMap attributes;
+  private final AttributeMap attributes;
 
   public Vertex() {
     this.id = IdManager.newOperatorId();
-    this.attributes = new AttributesMap();
+    this.attributes = new AttributeMap();
   }
 
   public final String getId() {
     return id;
   }
 
-  public final Vertex setAttr(final Attributes.Key key, final Attributes val) {
+  public final Vertex setAttr(final Attribute.Key key, final Attribute val) {
+    attributes.put(key, val);
+    return this;
+  }
+  public final Vertex setAttr(final Attribute.IntegerKey key, final Integer val) {
     attributes.put(key, val);
     return this;
   }
 
-  public final Attributes getAttr(final Attributes.Key key) {
+  public final Attribute getAttr(final Attribute.Key key) {
+    return attributes.get(key);
+  }
+  public final Integer getAttr(final Attribute.IntegerKey key) {
     return attributes.get(key);
   }
 
-  public final AttributesMap getAttributes() {
+  public final AttributeMap getAttributes() {
     return attributes;
   }
 

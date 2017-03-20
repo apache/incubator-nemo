@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.compiler.optimizer.passes;
 
-import edu.snu.vortex.compiler.ir.Attributes;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.ir.Edge;
 
@@ -28,7 +28,7 @@ import java.util.Optional;
 public final class DisaggregationPass implements Pass {
   public DAG process(final DAG dag) throws Exception {
     dag.doTopological(vertex -> {
-      vertex.setAttr(Attributes.Key.Placement, Attributes.Compute);
+      vertex.setAttr(Attribute.Key.Placement, Attribute.Compute);
     });
 
     dag.getVertices().forEach(vertex -> {
@@ -36,9 +36,9 @@ public final class DisaggregationPass implements Pass {
       if (inEdges.isPresent()) {
         inEdges.get().forEach(edge -> {
           if (edge.getType().equals(Edge.Type.OneToOne)) {
-            edge.setAttr(Attributes.Key.EdgeChannel, Attributes.Memory);
+            edge.setAttr(Attribute.Key.EdgeChannel, Attribute.Memory);
           } else {
-            edge.setAttr(Attributes.Key.EdgeChannel,  Attributes.DistributedStorage);
+            edge.setAttr(Attribute.Key.EdgeChannel,  Attribute.DistributedStorage);
           }
         });
       }

@@ -15,8 +15,12 @@
  */
 package edu.snu.vortex.compiler.backend;
 
+import edu.snu.vortex.compiler.ir.DAG;
+
 /**
  * Interface for backend components.
+ * @param <ExecPlan> execution plan to compile the DAG into.
  */
-public interface Backend {
+public interface Backend<ExecPlan> {
+  ExecPlan compile(final DAG dag) throws Exception;
 }
