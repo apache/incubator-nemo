@@ -159,7 +159,8 @@ public final class DAG {
    * @return .
    */
   public boolean contains(final Edge edge) {
-    return (id2inEdges.containsValue(edge) || id2outEdges.containsValue(edge));
+    return (id2inEdges.values().stream().filter(list -> list.contains(edge)).count() > 0 ||
+        id2outEdges.values().stream().filter(list -> list.contains(edge)).count() > 0);
   }
 
   /**

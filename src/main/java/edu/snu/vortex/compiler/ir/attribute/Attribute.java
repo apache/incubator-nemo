@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.ir;
+package edu.snu.vortex.compiler.ir.attribute;
 
 /**
  * Attributes class.
  */
-public enum Attributes {
+public enum Attribute {
   /**
-   * Operator attributes.
+   * Vertex attributes.
    */
   Transient(Key.Placement),
   Reserved(Key.Placement),
@@ -46,13 +46,21 @@ public enum Attributes {
   public enum Key {
     Placement,
     EdgePartitioning,
-    Parallelism,
+
     EdgeChannel,
+    CommunicationPattern,
+  }
+
+  /**
+   * Attribute keys that have Integer value.
+   */
+  public enum IntegerKey {
+    Parallelism,
   }
 
   private final Key key;
 
-  Attributes(final Key key) {
+  Attribute(final Key key) {
     this.key = key;
   }
 
