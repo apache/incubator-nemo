@@ -155,6 +155,9 @@ public final class ExecutionPlanBuilder {
         }
         runtimeEdgeAttributes.put(RuntimeAttributes.RuntimeEdgeAttribute.CHANNEL, channelAttrVal);
         break;
+      case CommunicationPattern:
+        // TODO #75: Refactor Runtime attributes
+        break;
       default:
         throw new UnsupportedAttributeException("this IR attribute is not supported");
       }

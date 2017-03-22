@@ -17,6 +17,7 @@ package edu.snu.vortex.compiler.ir;
 
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
+import edu.snu.vortex.runtime.exception.UnsupportedAttributeException;
 
 /**
  * Physical execution plan of intermediate data movement.
@@ -44,9 +45,22 @@ public final class Edge<I, O> {
        final Vertex dst) {
     this.id = IdManager.newEdgeId();
     this.attributes = new AttributeMap();
-    this.type = type;
     this.src = src;
     this.dst = dst;
+    this.type = type;
+    switch (this.getType()) {
+      case OneToOne:
+        setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
+        break;
+      case Broadcast:
+        setAttr(Attribute.Key.CommunicationPattern, Attribute.Broadcast);
+        break;
+      case ScatterGather:
+        setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
+        break;
+      default:
+        throw new UnsupportedAttributeException("There is no such edge type as: " + this.getType());
+    }
   }
 
   public String getId() {
