@@ -38,7 +38,11 @@ public enum Attribute {
   Memory(Key.EdgeChannel),
   TCPPipe(Key.EdgeChannel),
   File(Key.EdgeChannel),
-  DistributedStorage(Key.EdgeChannel);
+  DistributedStorage(Key.EdgeChannel),
+
+  OneToOne(Key.CommunicationPattern),
+  Broadcast(Key.CommunicationPattern),
+  ScatterGather(Key.CommunicationPattern);
 
   /**
    * Attribute Keys.
