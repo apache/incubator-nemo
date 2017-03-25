@@ -13,13 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.task;
+package edu.snu.vortex.runtime.common.plan.physical;
 
 /**
- * BoundedSourceTask.
+ * UnboundedSourceTask.
  */
-public final class BoundedSourceTask extends Task {
-  public BoundedSourceTask(final String taskId) {
-    super(taskId);
+public final class UnboundedSourceTask extends Task {
+  public UnboundedSourceTask(final String taskId,
+                             final String runtimeVertexId,
+                             final int index) {
+    super(taskId, runtimeVertexId, index);
   }
 }

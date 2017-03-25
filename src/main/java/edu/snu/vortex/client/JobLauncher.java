@@ -22,7 +22,7 @@ import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.engine.SimpleEngine;
-import edu.snu.vortex.runtime.common.execplan.ExecutionPlan;
+import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
 
 /**
  * Job launcher.

@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.execplan;
+package edu.snu.vortex.runtime.common.plan.logical;
 
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.runtime.common.RuntimeAttributes;
-import edu.snu.vortex.runtime.common.task.BoundedSourceTask;
+import edu.snu.vortex.runtime.common.plan.physical.BoundedSourceTask;
+import edu.snu.vortex.runtime.common.plan.physical.Task;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +41,11 @@ public final class RuntimeBoundedSourceVertex extends RuntimeVertex {
   @Override
   public List<BoundedSourceTask> getTaskList() {
     return taskList;
+  }
+
+  @Override
+  public void addTask(final Task task) {
+    taskList.add((BoundedSourceTask) task);
   }
 
   public BoundedSourceVertex getBoundedSourceVertex() {

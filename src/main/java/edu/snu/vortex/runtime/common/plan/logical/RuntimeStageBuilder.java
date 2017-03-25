@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.execplan;
+package edu.snu.vortex.runtime.common.plan.logical;
 
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.exception.IllegalEdgeOperationException;
@@ -54,6 +54,22 @@ public final class RuntimeStageBuilder {
   }
 
   /**
+   * Searches for the {@link RuntimeVertex} with the given id.
+   * @param runtimeVertexId to search.
+   * @return the {@link RuntimeVertex}
+   */
+  public RuntimeVertex getRuntimeVertexById(final String runtimeVertexId) {
+    RuntimeVertex foundRuntimeVertex = null;
+    for (final RuntimeVertex vertex : runtimeVertices) {
+      if (vertex.getId().equals(runtimeVertexId)) {
+        foundRuntimeVertex = vertex;
+        break;
+      }
+    }
+    return foundRuntimeVertex;
+  }
+
+  /**
    * Connects two {@link RuntimeVertex} in this stage.
    * @param srcVertexId source vertex.
    * @param dstVertexId destination vertex.
@@ -73,18 +89,18 @@ public final class RuntimeStageBuilder {
 
   /**
    * Connects an external {@link RuntimeVertex} to another in this stage, using the {@link RuntimeEdge}.
-   * @param endpointRuntimeVertexId of the {@link RuntimeVertex} in this stage to be connected.
+   * @param endpointRuntimeVertex the {@link RuntimeVertex} in this stage to be connected.
    * @param connectingEdge the edge from/to the external vertex.
    */
-  public void connectRuntimeStages(final String endpointRuntimeVertexId,
+  public void connectRuntimeStages(final RuntimeVertex endpointRuntimeVertex,
                                    final RuntimeEdge connectingEdge) {
-    if (runtimeVertices.stream().anyMatch(vertex -> vertex.getId().equals(endpointRuntimeVertexId))) {
-      if (connectingEdge.getSrcRuntimeVertexId().equals(endpointRuntimeVertexId)) {
-        stageOutgoingEdges.putIfAbsent(endpointRuntimeVertexId, new HashSet<>());
-        stageOutgoingEdges.get(endpointRuntimeVertexId).add(connectingEdge);
-      } else if (connectingEdge.getDstRuntimeVertexId().equals(endpointRuntimeVertexId)) {
-        stageIncomingEdges.putIfAbsent(endpointRuntimeVertexId, new HashSet<>());
-        stageIncomingEdges.get(endpointRuntimeVertexId).add(connectingEdge);
+    if (runtimeVertices.contains(endpointRuntimeVertex)) {
+      if (connectingEdge.getSrcRuntimeVertex().equals(endpointRuntimeVertex)) {
+        stageOutgoingEdges.putIfAbsent(endpointRuntimeVertex.getId(), new HashSet<>());
+        stageOutgoingEdges.get(endpointRuntimeVertex.getId()).add(connectingEdge);
+      } else if (connectingEdge.getDstRuntimeVertex().equals(endpointRuntimeVertex)) {
+        stageIncomingEdges.putIfAbsent(endpointRuntimeVertex.getId(), new HashSet<>());
+        stageIncomingEdges.get(endpointRuntimeVertex.getId()).add(connectingEdge);
       } else {
         throw new IllegalEdgeOperationException("this connecting edge is not applicable to this stage");
       }

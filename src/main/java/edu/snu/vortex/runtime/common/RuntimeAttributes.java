@@ -20,7 +20,7 @@ package edu.snu.vortex.runtime.common;
  */
 public final class RuntimeAttributes {
   /**
-   * Set of attributes applicable to {@link edu.snu.vortex.runtime.common.execplan.RuntimeVertex}.
+   * Set of attributes applicable to {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex}.
    */
   public enum RuntimeVertexAttribute { PARALLELISM, RESOURCE_TYPE }
 
@@ -30,7 +30,7 @@ public final class RuntimeAttributes {
   public enum ResourceType { TRANSIENT, RESERVED, COMPUTE, STORAGE }
 
   /**
-   * Set of attributes applicable to {@link edu.snu.vortex.runtime.common.execplan.RuntimeEdge}.
+   * Set of attributes applicable to {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeEdge}.
    */
   public enum RuntimeEdgeAttribute { CHANNEL, COMM_PATTERN, PARTITION }
 
