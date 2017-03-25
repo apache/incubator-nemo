@@ -13,13 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.task;
+package edu.snu.vortex.runtime.common.plan.physical;
+
+import edu.snu.vortex.compiler.ir.Reader;
 
 /**
- * OperatorTask.
+ * BoundedSourceTask.
+ * @param <O> the output type.
  */
-public final class OperatorTask extends Task {
-  public OperatorTask(final String taskId) {
-    super(taskId);
+public final class BoundedSourceTask<O> extends Task {
+  private final Reader<O> reader;
+  public BoundedSourceTask(final String taskId,
+                           final String runtimeVertexId,
+                           final int index,
+                           final Reader<O> reader) {
+    super(taskId, runtimeVertexId, index);
+    this.reader = reader;
   }
 }

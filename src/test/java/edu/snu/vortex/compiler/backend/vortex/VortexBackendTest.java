@@ -20,7 +20,7 @@ import edu.snu.vortex.compiler.backend.Backend;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
-import edu.snu.vortex.runtime.common.execplan.ExecutionPlan;
+import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.assertTrue;

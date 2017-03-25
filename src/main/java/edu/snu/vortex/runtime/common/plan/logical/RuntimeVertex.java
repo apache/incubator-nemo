@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.execplan;
+package edu.snu.vortex.runtime.common.plan.logical;
 
 import edu.snu.vortex.runtime.common.*;
 import edu.snu.vortex.runtime.common.RuntimeAttributes;
-import edu.snu.vortex.runtime.common.task.Task;
+import edu.snu.vortex.runtime.common.plan.physical.Task;
 
 import java.io.Serializable;
 import java.util.List;
@@ -40,5 +40,11 @@ public abstract class RuntimeVertex implements Serializable {
     return runtimeVertexId;
   }
 
+  public final Map<RuntimeAttributes.RuntimeVertexAttribute, Object> getVertexAttributes() {
+    return vertexAttributes;
+  }
+
   public abstract List<? extends Task> getTaskList();
+
+  public abstract void addTask(final Task task);
 }

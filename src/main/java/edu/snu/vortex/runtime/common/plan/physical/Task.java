@@ -13,19 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.example;
+package edu.snu.vortex.runtime.common.plan.physical;
 
-import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlanBuilder;
+import java.io.Serializable;
 
 /**
- * Simple Execution Plan.
+ * Task.
  */
-public final class SimpleExecutionPlan {
-  private SimpleExecutionPlan() {
+public abstract class Task implements Serializable {
+  private final String taskId;
+  private final String runtimeVertexId;
+  private final int index;
+
+  public Task(final String taskId,
+              final String runtimeVertexId,
+              final int index) {
+    this.taskId = taskId;
+    this.runtimeVertexId = runtimeVertexId;
+    this.index = index;
   }
 
-  public static void main(final String[] args) {
-    // TODO #000: Move this example to a test.
-    final ExecutionPlanBuilder builder = new ExecutionPlanBuilder();
+  public final String getTaskId() {
+    return taskId;
+  }
+
+  public final String getRuntimeVertexId() {
+    return runtimeVertexId;
+  }
+
+  public final int getIndex() {
+    return index;
   }
 }

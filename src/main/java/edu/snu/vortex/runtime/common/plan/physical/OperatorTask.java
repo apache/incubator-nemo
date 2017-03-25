@@ -13,13 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.task;
+package edu.snu.vortex.runtime.common.plan.physical;
+
+import edu.snu.vortex.compiler.ir.Transform;
 
 /**
- * UnboundedSourceTask.
+ * OperatorTask.
  */
-public final class UnboundedSourceTask extends Task {
-  public UnboundedSourceTask(final String taskId) {
-    super(taskId);
+public final class OperatorTask extends Task {
+  private final Transform transform;
+
+  public OperatorTask(final String taskId,
+                      final String runtimeVertexId,
+                      final int index,
+                      final Transform transform) {
+    super(taskId, runtimeVertexId, index);
+    this.transform = transform;
   }
 }

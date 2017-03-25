@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.execplan;
+package edu.snu.vortex.runtime.common.plan.logical;
 
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.runtime.common.RuntimeAttributes;
-import edu.snu.vortex.runtime.common.task.OperatorTask;
+import edu.snu.vortex.runtime.common.plan.physical.OperatorTask;
+import edu.snu.vortex.runtime.common.plan.physical.Task;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +41,11 @@ public final class RuntimeOperatorVertex extends RuntimeVertex {
   @Override
   public List<OperatorTask> getTaskList() {
     return taskList;
+  }
+
+  @Override
+  public void addTask(final Task task) {
+    taskList.add((OperatorTask) task);
   }
 
   public OperatorVertex getOperatorVertex() {

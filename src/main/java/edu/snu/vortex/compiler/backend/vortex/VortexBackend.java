@@ -19,8 +19,8 @@ import edu.snu.vortex.compiler.backend.Backend;
 import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.ir.Edge;
 import edu.snu.vortex.compiler.ir.Vertex;
-import edu.snu.vortex.runtime.common.execplan.ExecutionPlan;
-import edu.snu.vortex.runtime.common.execplan.ExecutionPlanBuilder;
+import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
+import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlanBuilder;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
