@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.execplan;
+package edu.snu.vortex.runtime.common.plan.logical;
 
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.ir.*;
@@ -100,7 +100,7 @@ public final class ExecutionPlanBuilder {
     irAttributes.forEachIntAttr((irAttributeKey, irAttributeVal) -> {
       switch (irAttributeKey) {
       case Parallelism:
-        runtimeVertexAttributes.put(RuntimeAttributes.RuntimeVertexAttribute.PARALLELISM, 0);
+        runtimeVertexAttributes.put(RuntimeAttributes.RuntimeVertexAttribute.PARALLELISM, irAttributeVal);
         break;
       default:
         throw new UnsupportedAttributeException("this IR attribute is not supported: " + irAttributeKey);
@@ -156,7 +156,21 @@ public final class ExecutionPlanBuilder {
         runtimeEdgeAttributes.put(RuntimeAttributes.RuntimeEdgeAttribute.CHANNEL, channelAttrVal);
         break;
       case CommunicationPattern:
-        // TODO #75: Refactor Runtime attributes
+        final Object commPatternAttrVal;
+        switch (irAttributeVal) {
+        case OneToOne:
+          commPatternAttrVal = RuntimeAttributes.CommPattern.ONE_TO_ONE;
+          break;
+        case ScatterGather:
+          commPatternAttrVal = RuntimeAttributes.CommPattern.SCATTER_GATHER;
+          break;
+        case Broadcast:
+          commPatternAttrVal = RuntimeAttributes.CommPattern.BROADCAST;
+          break;
+        default:
+          throw new UnsupportedAttributeException("this IR attribute is not supported");
+        }
+        runtimeEdgeAttributes.put(RuntimeAttributes.RuntimeEdgeAttribute.COMM_PATTERN, commPatternAttrVal);
         break;
       default:
         throw new UnsupportedAttributeException("this IR attribute is not supported");
@@ -169,17 +183,19 @@ public final class ExecutionPlanBuilder {
     final String srcRuntimeVertexId = RuntimeIdGenerator.generateRuntimeVertexId(edge.getSrc().getId());
     final String dstRuntimeVertexId = RuntimeIdGenerator.generateRuntimeVertexId(edge.getDst().getId());
 
-    if (!vertexIdToRuntimeStageBuilderMap.containsKey(srcRuntimeVertexId) ||
-        !vertexIdToRuntimeStageBuilderMap.containsKey(dstRuntimeVertexId)) {
+    final RuntimeStageBuilder srcRuntimeStageBuilder = vertexIdToRuntimeStageBuilderMap.get(srcRuntimeVertexId);
+    final RuntimeStageBuilder dstRuntimeStageBuilder = vertexIdToRuntimeStageBuilderMap.get(dstRuntimeVertexId);
+
+    if (srcRuntimeStageBuilder == null || dstRuntimeStageBuilder == null) {
       throw new IllegalVertexOperationException(
           "srcRuntimeVertex and/or dstRuntimeVertex are not yet added to the ExecutionPlanBuilder");
     }
 
-    if (vertexIdToRuntimeStageBuilderMap.get(srcRuntimeVertexId)
-        .equals(vertexIdToRuntimeStageBuilderMap.get(dstRuntimeVertexId))) {
+    if (srcRuntimeStageBuilder.equals(dstRuntimeStageBuilder)) {
       connectStageInternalVertices(srcRuntimeVertexId, dstRuntimeVertexId);
     } else {
-      connectStageBoundaryVertices(srcRuntimeVertexId, dstRuntimeVertexId, edge);
+      connectStageBoundaryVertices(srcRuntimeStageBuilder, dstRuntimeStageBuilder,
+          srcRuntimeVertexId, dstRuntimeVertexId, edge);
     }
   }
 
@@ -194,17 +210,29 @@ public final class ExecutionPlanBuilder {
 
   /**
    * Connects two {@link RuntimeVertex} that belong to different stages, using the information given in {@link Edge}.
+   * @param srcStageBuilder the source stage builder.
+   * @param dstStageBuilder the destination stage builder.
    * @param srcRuntimeVertexId source vertex id.
    * @param dstRuntimeVertexId destination vertex id.
    * @param edge to use for the connection.
    */
-  private void connectStageBoundaryVertices(final String srcRuntimeVertexId,
-                                           final String dstRuntimeVertexId,
-                                           final Edge edge) {
+  private void connectStageBoundaryVertices(final RuntimeStageBuilder srcStageBuilder,
+                                            final RuntimeStageBuilder dstStageBuilder,
+                                            final String srcRuntimeVertexId,
+                                            final String dstRuntimeVertexId,
+                                            final Edge edge) {
+    final RuntimeVertex srcRuntimeVertex = srcStageBuilder.getRuntimeVertexById(srcRuntimeVertexId);
+    final RuntimeVertex dstRuntimeVertex = dstStageBuilder.getRuntimeVertexById(dstRuntimeVertexId);
+
+    if (srcRuntimeVertex == null || dstRuntimeVertex == null) {
+      throw new IllegalVertexOperationException("unable to locate srcRuntimeVertex and/or dstRuntimeVertex");
+    }
+
     final RuntimeEdge newEdge = new RuntimeEdge(edge.getId(), convertEdgeAttributes(edge.getAttributes()),
-        srcRuntimeVertexId, dstRuntimeVertexId);
-    vertexIdToRuntimeStageBuilderMap.get(srcRuntimeVertexId).connectRuntimeStages(srcRuntimeVertexId, newEdge);
-    vertexIdToRuntimeStageBuilderMap.get(dstRuntimeVertexId).connectRuntimeStages(dstRuntimeVertexId, newEdge);
+        srcRuntimeVertex, dstRuntimeVertex);
+
+    srcStageBuilder.connectRuntimeStages(srcRuntimeVertex, newEdge);
+    dstStageBuilder.connectRuntimeStages(dstRuntimeVertex, newEdge);
   }
 
   /**

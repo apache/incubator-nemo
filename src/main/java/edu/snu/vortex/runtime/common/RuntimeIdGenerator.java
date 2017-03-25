@@ -15,7 +15,6 @@
  */
 package edu.snu.vortex.runtime.common;
 
-
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -24,12 +23,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class RuntimeIdGenerator {
   private static AtomicInteger executionPlanIdGenerator = new AtomicInteger(1);
   private static AtomicInteger runtimeStageIdGenerator = new AtomicInteger(1);
+  private static AtomicInteger taskIdGenerator = new AtomicInteger(1);
+  private static AtomicInteger taskGroupIdGenerator = new AtomicInteger(1);
 
   private RuntimeIdGenerator() {
   }
 
   /**
-   * Generates the ID for {@link edu.snu.vortex.runtime.common.execplan.ExecutionPlan}.
+   * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan}.
    * @return the generated ID
    */
   public static String generateExecutionPlanId() {
@@ -37,7 +38,7 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for {@link edu.snu.vortex.runtime.common.execplan.RuntimeVertex}.
+   * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex}.
    * @param irVertexId .
    * @return the generated ID
    */
@@ -46,7 +47,7 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for {@link edu.snu.vortex.runtime.common.execplan.RuntimeEdge}.
+   * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeEdge}.
    * @param irEdgeId .
    * @return the generated ID
    */
@@ -55,10 +56,26 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for {@link edu.snu.vortex.runtime.common.execplan.RuntimeStage}.
+   * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeStage}.
    * @return the generated ID
    */
   public static String generateRuntimeStageId() {
     return "RuntimeStage-" + runtimeStageIdGenerator.getAndIncrement();
+  }
+
+  /**
+   * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.physical.Task}.
+   * @return the generated ID
+   */
+  public static String generateTaskId() {
+    return "Task-" + taskIdGenerator.getAndIncrement();
+  }
+
+  /**
+   * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.physical.TaskGroup}.
+   * @return the generated ID
+   */
+  public static String generateTaskGroupId() {
+    return "TaskGroup-" + taskGroupIdGenerator.getAndIncrement();
   }
 }
