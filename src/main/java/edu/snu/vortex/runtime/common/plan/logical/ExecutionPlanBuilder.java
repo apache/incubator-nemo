@@ -17,11 +17,9 @@ package edu.snu.vortex.runtime.common.plan.logical;
 
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.ir.*;
-import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.common.*;
-import edu.snu.vortex.runtime.common.RuntimeAttributes;
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
-import edu.snu.vortex.runtime.exception.UnsupportedAttributeException;
+import edu.snu.vortex.runtime.utils.RuntimeAttributeConverter;
 
 import java.util.*;
 
@@ -53,130 +51,15 @@ public final class ExecutionPlanBuilder {
     // TODO #100: Add Vertex Type in IR
     if (vertex instanceof BoundedSourceVertex) {
       newVertex = new RuntimeBoundedSourceVertex((BoundedSourceVertex) vertex,
-          convertVertexAttributes(vertex.getAttributes()));
+          RuntimeAttributeConverter.convertVertexAttributes(vertex.getAttributes()));
     } else if (vertex instanceof OperatorVertex) {
-      newVertex = new RuntimeOperatorVertex((OperatorVertex) vertex, convertVertexAttributes(vertex.getAttributes()));
+      newVertex = new RuntimeOperatorVertex((OperatorVertex) vertex,
+          RuntimeAttributeConverter.convertVertexAttributes(vertex.getAttributes()));
     } else {
       throw new IllegalVertexOperationException("Supported types: BoundedSourceVertex, OperatorVertex");
     }
     stageBuilder.addRuntimeVertex(newVertex);
     vertexIdToRuntimeStageBuilderMap.putIfAbsent(newVertex.getId(), stageBuilder);
-  }
-
-  /**
-   * Converts IR's Vertex Attributes to Runtime's attributes.
-   * @param irAttributes attributes to convert.
-   * @return a map of Runtime Vertex attributes.
-   */
-  // TODO #000: Must clean up IR and Runtime attributes.
-  private Map<RuntimeAttributes.RuntimeVertexAttribute, Object> convertVertexAttributes(
-      final AttributeMap irAttributes) {
-    final Map<RuntimeAttributes.RuntimeVertexAttribute, Object> runtimeVertexAttributes = new HashMap<>();
-
-    irAttributes.forEachAttr(((irAttributeKey, irAttributeVal) -> {
-      switch (irAttributeKey) {
-      case Placement:
-        final Object runtimeAttributeVal;
-        switch (irAttributeVal) {
-        case Transient:
-          runtimeAttributeVal = RuntimeAttributes.ResourceType.TRANSIENT;
-          break;
-        case Reserved:
-          runtimeAttributeVal = RuntimeAttributes.ResourceType.RESERVED;
-          break;
-        case Compute:
-          runtimeAttributeVal = RuntimeAttributes.ResourceType.COMPUTE;
-          break;
-        default:
-          throw new UnsupportedAttributeException("this IR attribute is not supported");
-        }
-        runtimeVertexAttributes.put(RuntimeAttributes.RuntimeVertexAttribute.RESOURCE_TYPE, runtimeAttributeVal);
-        break;
-      default:
-        throw new UnsupportedAttributeException("this IR attribute is not supported");
-      }
-    }));
-
-    irAttributes.forEachIntAttr((irAttributeKey, irAttributeVal) -> {
-      switch (irAttributeKey) {
-      case Parallelism:
-        runtimeVertexAttributes.put(RuntimeAttributes.RuntimeVertexAttribute.PARALLELISM, irAttributeVal);
-        break;
-      default:
-        throw new UnsupportedAttributeException("this IR attribute is not supported: " + irAttributeKey);
-      }
-    });
-    return runtimeVertexAttributes;
-  }
-
-  /**
-   * Converts IR's Edge Attributes to Runtime's attributes.
-   * @param irAttributes attributes to convert.
-   * @return a map of Runtime Edge attributes.
-   */
-  // TODO #000: Must clean up IR and Runtime attributes.
-  private Map<RuntimeAttributes.RuntimeEdgeAttribute, Object> convertEdgeAttributes(
-      final AttributeMap irAttributes) {
-    final Map<RuntimeAttributes.RuntimeEdgeAttribute, Object> runtimeEdgeAttributes = new HashMap<>();
-
-    irAttributes.forEachAttr(((irAttributeKey, irAttributeVal) -> {
-      switch (irAttributeKey) {
-      case EdgePartitioning:
-        final Object partitioningAttrVal;
-        switch (irAttributeVal) {
-        case Hash:
-          partitioningAttrVal = RuntimeAttributes.Partition.HASH;
-          break;
-        case Range:
-          partitioningAttrVal = RuntimeAttributes.Partition.RANGE;
-          break;
-        default:
-          throw new UnsupportedAttributeException("this IR attribute is not supported");
-        }
-        runtimeEdgeAttributes.put(RuntimeAttributes.RuntimeEdgeAttribute.PARTITION, partitioningAttrVal);
-        break;
-      case EdgeChannel:
-        final Object channelAttrVal;
-        switch (irAttributeVal) {
-        case Memory:
-          channelAttrVal = RuntimeAttributes.Channel.LOCAL_MEM;
-          break;
-        case TCPPipe:
-          channelAttrVal = RuntimeAttributes.Channel.TCP;
-          break;
-        case File:
-          channelAttrVal = RuntimeAttributes.Channel.FILE;
-          break;
-        case DistributedStorage:
-          channelAttrVal = RuntimeAttributes.Channel.DISTR_STORAGE;
-          break;
-        default:
-          throw new UnsupportedAttributeException("this IR attribute is not supported");
-        }
-        runtimeEdgeAttributes.put(RuntimeAttributes.RuntimeEdgeAttribute.CHANNEL, channelAttrVal);
-        break;
-      case CommunicationPattern:
-        final Object commPatternAttrVal;
-        switch (irAttributeVal) {
-        case OneToOne:
-          commPatternAttrVal = RuntimeAttributes.CommPattern.ONE_TO_ONE;
-          break;
-        case ScatterGather:
-          commPatternAttrVal = RuntimeAttributes.CommPattern.SCATTER_GATHER;
-          break;
-        case Broadcast:
-          commPatternAttrVal = RuntimeAttributes.CommPattern.BROADCAST;
-          break;
-        default:
-          throw new UnsupportedAttributeException("this IR attribute is not supported");
-        }
-        runtimeEdgeAttributes.put(RuntimeAttributes.RuntimeEdgeAttribute.COMM_PATTERN, commPatternAttrVal);
-        break;
-      default:
-        throw new UnsupportedAttributeException("this IR attribute is not supported");
-      }
-    }));
-    return runtimeEdgeAttributes;
   }
 
   public void connectVertices(final Edge edge) {
@@ -228,7 +111,8 @@ public final class ExecutionPlanBuilder {
       throw new IllegalVertexOperationException("unable to locate srcRuntimeVertex and/or dstRuntimeVertex");
     }
 
-    final RuntimeEdge newEdge = new RuntimeEdge(edge.getId(), convertEdgeAttributes(edge.getAttributes()),
+    final RuntimeEdge newEdge = new RuntimeEdge(edge.getId(),
+        RuntimeAttributeConverter.convertEdgeAttributes(edge.getAttributes()),
         srcRuntimeVertex, dstRuntimeVertex);
 
     srcStageBuilder.connectRuntimeStages(srcRuntimeVertex, newEdge);

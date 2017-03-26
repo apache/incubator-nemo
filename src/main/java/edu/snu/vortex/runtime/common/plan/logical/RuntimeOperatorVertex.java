@@ -16,13 +16,12 @@
 package edu.snu.vortex.runtime.common.plan.logical;
 
 import edu.snu.vortex.compiler.ir.OperatorVertex;
-import edu.snu.vortex.runtime.common.RuntimeAttributes;
+import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.runtime.common.plan.physical.OperatorTask;
 import edu.snu.vortex.runtime.common.plan.physical.Task;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Represents an operator.
@@ -32,7 +31,7 @@ public final class RuntimeOperatorVertex extends RuntimeVertex {
   private final OperatorVertex operatorVertex;
 
   public RuntimeOperatorVertex(final OperatorVertex operatorVertex,
-                               final Map<RuntimeAttributes.RuntimeVertexAttribute, Object> vertexAttributes) {
+                               final RuntimeAttributeMap vertexAttributes) {
     super(operatorVertex.getId(), vertexAttributes);
     this.operatorVertex = operatorVertex;
     this.taskList = new ArrayList<>();

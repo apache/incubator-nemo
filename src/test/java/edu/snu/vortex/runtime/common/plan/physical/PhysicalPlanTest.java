@@ -60,7 +60,7 @@ public final class PhysicalPlanTest {
     tempDAGBuilder.addVertex(v1);
     tempDAGBuilder.addVertex(v2);
     final Edge e = tempDAGBuilder.connectVertices(v1, v2, Edge.Type.ScatterGather);
-    e.setAttr(Attribute.Key.EdgeChannel, Attribute.Memory);
+    e.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
     e.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     builder.connectVertices(e);
 
@@ -117,35 +117,43 @@ public final class PhysicalPlanTest {
     tempDAGBuilder.addVertex(v8);
 
     final Edge e1 = tempDAGBuilder.connectVertices(v1, v2, Edge.Type.OneToOne);
-    e1.setAttr(Attribute.Key.EdgeChannel, Attribute.Memory);
+    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+    e1.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     e1.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 
     final Edge e2 = tempDAGBuilder.connectVertices(v1, v3, Edge.Type.OneToOne);
-    e2.setAttr(Attribute.Key.EdgeChannel, Attribute.Memory);
+    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+    e2.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     e2.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 
     final Edge e3 = tempDAGBuilder.connectVertices(v2, v4, Edge.Type.ScatterGather);
-    e3.setAttr(Attribute.Key.EdgeChannel, Attribute.TCPPipe);
+    e3.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
+    e3.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Push);
     e3.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
 
     final Edge e4 = tempDAGBuilder.connectVertices(v3, v5, Edge.Type.ScatterGather);
-    e4.setAttr(Attribute.Key.EdgeChannel, Attribute.TCPPipe);
+    e4.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
+    e4.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Push);
     e4.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
 
     final Edge e5 = tempDAGBuilder.connectVertices(v4, v6, Edge.Type.OneToOne);
-    e5.setAttr(Attribute.Key.EdgeChannel, Attribute.File);
+    e5.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.File);
+    e5.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     e5.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 
     final Edge e6 = tempDAGBuilder.connectVertices(v4, v8, Edge.Type.OneToOne);
-    e6.setAttr(Attribute.Key.EdgeChannel, Attribute.File);
+    e6.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.File);
+    e6.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     e6.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 
     final Edge e7 = tempDAGBuilder.connectVertices(v7, v5, Edge.Type.OneToOne);
-    e7.setAttr(Attribute.Key.EdgeChannel, Attribute.TCPPipe);
+    e7.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
+    e7.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Push);
     e7.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 
     final Edge e8 = tempDAGBuilder.connectVertices(v5, v8, Edge.Type.OneToOne);
-    e8.setAttr(Attribute.Key.EdgeChannel, Attribute.Memory);
+    e8.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+    e8.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     e8.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 
     // Stage 1 = {v1, v2, v3}
