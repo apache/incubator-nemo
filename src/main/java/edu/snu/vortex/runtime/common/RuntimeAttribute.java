@@ -13,28 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.ir.attribute;
+package edu.snu.vortex.runtime.common;
 
 /**
- * Attributes class.
+ * Runtime attributes.
  */
-public enum Attribute {
+public enum RuntimeAttribute {
   /**
-   * Vertex placement attributes.
+   * Set of attributes applicable to {@link edu.snu.vortex.runtime.common.execplan.RuntimeVertex}.
    */
-  Transient(Key.Placement),
-  Reserved(Key.Placement),
-  Compute(Key.Placement),
-  Storage(Key.Placement),
+
 
   /**
-   * Edge partitioning attributes.
+   * Vertex resource type attributes.
    */
-  Hash(Key.Partitioning),
-  Range(Key.Partitioning),
+  Transient(Key.ResourceType),
+  Reserved(Key.ResourceType),
+  Compute(Key.ResourceType),
+  Storage(Key.ResourceType),
+
 
   /**
-   * Edge channel data placement attributes.
+   * Channel data placement attributes.
    * Local: Intermediate data are placed without serialization
    * and the receiver on the same machine task will take the data.
    *
@@ -45,7 +45,7 @@ public enum Attribute {
    * until they are sent to the receiver task.
    *
    * DistributedStorage: Intermediate data are serialized and stored in a distributed storage,
-   * until the receiver task takes them.
+   * until they are taken by the receiver task.
    */
   Local(Key.ChannelDataPlacement),
   Memory(Key.ChannelDataPlacement),
@@ -53,43 +53,51 @@ public enum Attribute {
   DistributedStorage(Key.ChannelDataPlacement),
 
   /**
-   * Edge channel transfer policy attributes.
+   * Channel transfer policy attributes.
    */
-  Pull(Key.ChannelTransferPolicy),
   Push(Key.ChannelTransferPolicy),
+  Pull(Key.ChannelTransferPolicy),
 
   /**
    * Edge communication pattern attributes.
    */
-  OneToOne(Key.CommunicationPattern),
-  Broadcast(Key.CommunicationPattern),
-  ScatterGather(Key.CommunicationPattern);
+  OneToOne(Key.CommPattern),
+  Broadcast(Key.CommPattern),
+  ScatterGather(Key.CommPattern),
 
   /**
-   * Attribute Keys.
+   * Edge partition type attributes.
+   */
+  Hash(Key.Partition),
+  Range(Key.Partition);
+
+  /**
+   * Runtime attribute keys.
    */
   public enum Key {
-    Placement,
-    Partitioning,
+    ResourceType,
     ChannelDataPlacement,
     ChannelTransferPolicy,
-    CommunicationPattern,
+    Partition,
+    CommPattern,
   }
 
   /**
-   * Attribute keys that have Integer value.
+   * Runtime attribute keys that have an integer as its value.
    */
   public enum IntegerKey {
     Parallelism,
   }
 
-  private final Key key;
+  private final RuntimeAttribute.Key key;
 
-  Attribute(final Key key) {
+  RuntimeAttribute(final RuntimeAttribute.Key key) {
     this.key = key;
   }
 
-  public boolean hasKey(final Key k) {
+  public boolean hasKey(final RuntimeAttribute.Key k) {
     return key == k;
   }
+
 }
+

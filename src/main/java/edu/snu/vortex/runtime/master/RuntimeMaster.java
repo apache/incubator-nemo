@@ -16,7 +16,7 @@
 package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.compiler.ir.Reader;
-import edu.snu.vortex.runtime.common.RuntimeAttributes;
+import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.logical.*;
 import edu.snu.vortex.runtime.common.plan.physical.*;
@@ -64,7 +64,7 @@ public final class RuntimeMaster {
         // TODO #103: Integrity check in execution plan.
         // This code simply assumes that all vertices follow the first vertex's parallelism.
         final int parallelism = (int) runtimeVertices.get(0).getVertexAttributes()
-            .get(RuntimeAttributes.RuntimeVertexAttribute.PARALLELISM);
+            .get(RuntimeAttribute.IntegerKey.Parallelism);
 
         // Begin building a new stage in the physical plan.
         physicalPlanBuilder.createNewStage(runtimeStage.getStageId(), parallelism);

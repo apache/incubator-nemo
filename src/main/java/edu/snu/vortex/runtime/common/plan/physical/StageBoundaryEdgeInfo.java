@@ -16,17 +16,15 @@
 package edu.snu.vortex.runtime.common.plan.physical;
 
 
-import edu.snu.vortex.runtime.common.RuntimeAttributes;
-
+import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import java.io.Serializable;
-import java.util.Map;
 
 /**
  * Contains information stage boundary {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeEdge}.
  */
 public final class StageBoundaryEdgeInfo implements Serializable {
   private final String stageBoundaryEdgeInfoId;
-  private final Map<RuntimeAttributes.RuntimeEdgeAttribute, Object> edgeAttributes;
+  private final RuntimeAttributeMap edgeAttributes;
 
   /**
    * The ID of the endpoint {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex} in the stage.
@@ -37,12 +35,12 @@ public final class StageBoundaryEdgeInfo implements Serializable {
   /**
    * Vertex attributes of the endpoint vertex.
    */
-  private final Map<RuntimeAttributes.RuntimeVertexAttribute, Object> externalEndpointVertexAttr;
+  private final RuntimeAttributeMap externalEndpointVertexAttr;
 
   public StageBoundaryEdgeInfo(final String runtimeEdgeId,
-                         final Map<RuntimeAttributes.RuntimeEdgeAttribute, Object> edgeAttributes,
+                         final RuntimeAttributeMap edgeAttributes,
                          final String externalEndpointVertexId,
-                         final Map<RuntimeAttributes.RuntimeVertexAttribute, Object> externalEndpointVertexAttr) {
+                         final RuntimeAttributeMap externalEndpointVertexAttr) {
     this.stageBoundaryEdgeInfoId = runtimeEdgeId;
     this.edgeAttributes = edgeAttributes;
     this.externalEndpointVertexId = externalEndpointVertexId;
@@ -53,7 +51,7 @@ public final class StageBoundaryEdgeInfo implements Serializable {
     return stageBoundaryEdgeInfoId;
   }
 
-  public Map<RuntimeAttributes.RuntimeEdgeAttribute, Object> getEdgeAttributes() {
+  public RuntimeAttributeMap getEdgeAttributes() {
     return edgeAttributes;
   }
 
@@ -61,7 +59,7 @@ public final class StageBoundaryEdgeInfo implements Serializable {
     return externalEndpointVertexId;
   }
 
-  public Map<RuntimeAttributes.RuntimeVertexAttribute, Object> getExternalEndpointVertexAttr() {
+  public RuntimeAttributeMap getExternalEndpointVertexAttr() {
     return externalEndpointVertexAttr;
   }
 }
