@@ -16,14 +16,11 @@
 package edu.snu.vortex.runtime.common.plan.logical;
 
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
-import edu.snu.vortex.runtime.common.RuntimeAttributes;
+import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.runtime.common.plan.physical.BoundedSourceTask;
 import edu.snu.vortex.runtime.common.plan.physical.Task;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-
 /**
  * Represents a source vertex for batch execution.
  */
@@ -32,7 +29,7 @@ public final class RuntimeBoundedSourceVertex extends RuntimeVertex {
   private final BoundedSourceVertex boundedSourceVertex;
 
   public RuntimeBoundedSourceVertex(final BoundedSourceVertex boundedSourceVertex,
-                                    final Map<RuntimeAttributes.RuntimeVertexAttribute, Object> vertexAttributes) {
+                                    final RuntimeAttributeMap vertexAttributes) {
     super(boundedSourceVertex.getId(), vertexAttributes);
     this.boundedSourceVertex = boundedSourceVertex;
     this.taskList = new ArrayList<>();
