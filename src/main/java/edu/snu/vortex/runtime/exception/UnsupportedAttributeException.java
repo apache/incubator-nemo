@@ -17,8 +17,9 @@ package edu.snu.vortex.runtime.exception;
 
 /**
  * UnsupportedAttributeException.
+ * Thrown when Runtime does not support the attribute or the attribute is unknown.
  */
-public class UnsupportedAttributeException extends RuntimeException {
+public final class UnsupportedAttributeException extends RuntimeException {
   /**
    * UnsupportedAttributeException.
    * @param message message

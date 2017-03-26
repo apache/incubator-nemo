@@ -17,8 +17,10 @@ package edu.snu.vortex.runtime.exception;
 
 /**
  * IllegalVertexOperationException.
+ * Thrown when an operation is conducted with a {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex}
+ * that is unknown/invalid/out of scope.
  */
-public class IllegalVertexOperationException extends RuntimeException {
+public final class IllegalVertexOperationException extends RuntimeException {
   /**
    * IllegalVertexOperationException.
    * @param message message
