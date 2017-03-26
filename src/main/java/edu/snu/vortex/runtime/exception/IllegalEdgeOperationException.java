@@ -17,8 +17,10 @@ package edu.snu.vortex.runtime.exception;
 
 /**
  * IllegalEdgeOperationException.
+ * Thrown when an operation is conducted with a {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeEdge}
+ * that is unknown/invalid/out of scope.
  */
-public class IllegalEdgeOperationException extends RuntimeException {
+public final class IllegalEdgeOperationException extends RuntimeException {
   /**
    * IllegalEdgeOperationException.
    * @param message message
