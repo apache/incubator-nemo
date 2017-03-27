@@ -63,7 +63,12 @@ public enum Attribute {
    */
   OneToOne(Key.CommunicationPattern),
   Broadcast(Key.CommunicationPattern),
-  ScatterGather(Key.CommunicationPattern);
+  ScatterGather(Key.CommunicationPattern),
+
+  /**
+   * Edge type to specify edges that transfer SideInputs.
+   */
+  SideInput(Key.SideInput);
 
   /**
    * Attribute Keys.
@@ -74,6 +79,7 @@ public enum Attribute {
     ChannelDataPlacement,
     ChannelTransferPolicy,
     CommunicationPattern,
+    SideInput,
   }
 
   /**

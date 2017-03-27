@@ -41,7 +41,7 @@ public final class OutputCollectorImpl implements OutputCollector {
     throw new UnsupportedOperationException();
   }
 
-  public List getOutputList() {
+  public Iterable<Element> getOutputList() {
     return outputList;
   }
 }
