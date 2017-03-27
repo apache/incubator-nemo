@@ -17,12 +17,24 @@ package edu.snu.vortex.engine;
 
 import edu.snu.vortex.compiler.ir.Transform;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Transform Context Implementation.
  */
 public final class ContextImpl implements Transform.Context {
+  private final Map<Transform, Object> sideInputs;
+
+  ContextImpl() {
+    this.sideInputs = new HashMap<>();
+  }
+
+  ContextImpl(final Map<Transform, Object> sideInputs) {
+    this.sideInputs = sideInputs;
+  }
+
   @Override
   public List<String> getSrcVertexIds() {
     throw new UnsupportedOperationException();
@@ -31,5 +43,10 @@ public final class ContextImpl implements Transform.Context {
   @Override
   public List<String> getDstVertexIds() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Map<Transform, Object> getSideInputs() {
+    return this.sideInputs;
   }
 }
