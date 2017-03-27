@@ -16,6 +16,7 @@
 package edu.snu.vortex.compiler.ir;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Interface for specifying 'What' to do with data.
@@ -51,5 +52,7 @@ public interface Transform {
     List<String> getSrcVertexIds();
 
     List<String> getDstVertexIds();
+
+    Map<Transform, Object> getSideInputs();
   }
 }

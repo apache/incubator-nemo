@@ -15,22 +15,27 @@
  */
 package edu.snu.vortex.compiler.frontend.beam.transform;
 
+import edu.snu.vortex.compiler.frontend.beam.BeamElement;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.OutputCollector;
 import edu.snu.vortex.compiler.ir.Transform;
-import org.apache.beam.sdk.transforms.windowing.WindowFn;
+import org.apache.beam.sdk.transforms.ViewFn;
+import org.apache.beam.sdk.util.WindowedValue;
+import org.apache.beam.sdk.values.PCollectionView;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
- * Windowing transform implementation.
- * This transform simply windows the given elements into finite windows according to a user-specified WindowTransform.
- * As this functionality is unnecessary for batch processing workloads and for Vortex Runtime, this is left as below.
+ * Broadcast transform implementation.
  */
-public final class WindowTransform implements Transform {
-  private final WindowFn windowFn;
+public final class BroadcastTransform implements Transform {
+  private final PCollectionView pCollectionView;
   private OutputCollector outputCollector;
 
-  public WindowTransform(final WindowFn windowFn) {
-    this.windowFn = windowFn;
+  public BroadcastTransform(final PCollectionView pCollectionView) {
+    this.pCollectionView = pCollectionView;
   }
 
   @Override
@@ -40,8 +45,15 @@ public final class WindowTransform implements Transform {
 
   @Override
   public void onData(final Iterable<Element> data, final String srcVertexId) {
-    // TODO #36: Actually assign windows
-    data.forEach(outputCollector::emit);
+    final List<WindowedValue> windowed = StreamSupport.stream(data.spliterator(), false)
+        .map(element -> WindowedValue.valueInGlobalWindow(element.getData()))
+        .collect(Collectors.toList());
+    final ViewFn viewFn = this.pCollectionView.getViewFn();
+    outputCollector.emit(new BeamElement(viewFn.apply(windowed)));
+  }
+
+  public PCollectionView getTag() {
+    return this.pCollectionView;
   }
 
   @Override
@@ -51,7 +63,7 @@ public final class WindowTransform implements Transform {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("WindowTransform:" + windowFn);
+    sb.append("BroadcastTransform:" + pCollectionView);
     return sb.toString();
   }
 }

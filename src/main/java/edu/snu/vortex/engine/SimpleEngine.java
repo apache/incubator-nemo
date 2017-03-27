@@ -16,8 +16,10 @@
 package edu.snu.vortex.engine;
 
 import edu.snu.vortex.compiler.ir.*;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -26,20 +28,25 @@ import java.util.stream.IntStream;
 public final class SimpleEngine {
   public void executeDAG(final DAG dag) throws Exception {
     final Map<String, List<Iterable<Element>>> edgeIdToPartitions = new HashMap<>();
+    final Map<String, Object> edgeIdToBroadcast = new HashMap<>();
+
     dag.doTopological(vertex -> {
       if (vertex instanceof SourceVertex) {
         try {
           final SourceVertex sourceVertex = (SourceVertex) vertex;
           final List<Reader> readers = sourceVertex.getReaders(10); // 10 Bytes per BoundedSourceReader
           final List<Iterable<Element>> partitions = new ArrayList<>(readers.size());
+
+          System.out.println("Begin processing SourceVertex: " + sourceVertex.getId());
+
           for (final Reader reader : readers) {
             partitions.add(reader.read());
           }
           dag.getOutEdgesOf(vertex).get().stream()
-              .map(outEdge -> outEdge.getId())
-              .forEach(id -> edgeIdToPartitions.put(id, partitions));
+              .forEach(outEdge -> edgeIdToPartitions.put(outEdge.getId(), routePartitions(partitions, outEdge)));
 
-          System.out.println("Output of " + vertex.getId() + ": " + partitions);
+          System.out.println(" Output of {" + vertex.getId() + "} for edges " + dag.getOutEdgesOf(vertex).get().stream()
+              .map(Edge::getId).collect(Collectors.toList()) + ": " + partitions);
         } catch (Exception e) {
           throw new RuntimeException(e);
         }
@@ -49,34 +56,54 @@ public final class SimpleEngine {
         final List<Edge> inEdges = dag.getInEdgesOf(vertex).get(); // must be at least one edge
         final List<Edge> outEdges = dag.getOutEdgesOf(vertex).orElse(new ArrayList<>(0)); // empty lists for sinks
 
+        final Map<Transform, Object> broadcastedInput = new HashMap<>();
+        inEdges.stream()
+            .filter(edge -> edge.getAttr(Attribute.Key.SideInput) == Attribute.SideInput)
+            .forEach(edge -> broadcastedInput.put(
+                ((OperatorVertex) edge.getSrc()).getTransform(),
+                edgeIdToBroadcast.get(edge.getId())));
+
         // Process each input edge
         inEdges.forEach(inEdge -> {
           final List<Iterable<Element>> inDataPartitions = edgeIdToPartitions.get(inEdge.getId());
-          final List<Iterable<Element>> outDataPartitions = new ArrayList<>();
+          if (inDataPartitions != null && !inDataPartitions.isEmpty()) {
+            final List<Iterable<Element>> outDataPartitions = new ArrayList<>();
 
-          // Process each partition of an edge
-          inDataPartitions.forEach(inData -> {
-            final Transform.Context transformContext = new ContextImpl();
-            final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
-            transform.prepare(transformContext, outputCollector);
-            transform.onData(inData, inEdge.getSrc().getId());
-            transform.close();
-            outDataPartitions.add(outputCollector.getOutputList());
-          });
+            // Process each partition of an edge
+            System.out.println("Begin processing {" + inEdge.getId() + "} for OperatorVertex: " +
+                operatorVertex.getId());
 
-          // Save the results
-          if (outEdges.size() > 1) {
-            throw new UnsupportedOperationException("Multi output not supported yet");
-          } else if (outEdges.size() == 1) {
-            final Edge outEdge = outEdges.get(0);
-            edgeIdToPartitions.put(outEdge.getId(), routePartitions(outDataPartitions, outEdge));
-          } else if (outEdges.size() == 0) {
-            System.out.println("Sink Vertex");
-          } else {
-            throw new IllegalStateException("Size must not be negative");
+            inDataPartitions.forEach(inData -> {
+              final Transform.Context transformContext = new ContextImpl(broadcastedInput);
+              final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
+              transform.prepare(transformContext, outputCollector);
+              transform.onData(inData, inEdge.getSrc().getId());
+              transform.close();
+              outDataPartitions.add(outputCollector.getOutputList());
+            });
+
+            // Save the results
+            if (outEdges.size() > 0) {
+              outEdges.forEach(outEdge -> {
+                if (outEdge.getAttr(Attribute.Key.SideInput) == Attribute.SideInput) {
+                  if (outDataPartitions.size() != 1) {
+                    throw new RuntimeException("Size of out data partitions of a broadcast operator must match 1");
+                  }
+                  outDataPartitions.get(0).forEach(element ->
+                      edgeIdToBroadcast.put(outEdge.getId(), element.getData()));
+                } else {
+                  edgeIdToPartitions.put(outEdge.getId(), routePartitions(outDataPartitions, outEdge));
+                }
+              });
+            } else if (outEdges.size() == 0) {
+              System.out.println("Sink Vertex");
+            } else {
+              throw new IllegalStateException("Size must not be negative");
+            }
+
+            System.out.println(" Output of {" + vertex.getId() + "} for edges " +
+                outEdges.stream().map(Edge::getId).collect(Collectors.toList()) + ": " + outDataPartitions);
           }
-
-          System.out.println("Output of " + vertex.getId() + ": " + outDataPartitions);
         });
       } else {
         throw new UnsupportedOperationException(vertex.toString());
@@ -91,6 +118,10 @@ public final class SimpleEngine {
     final Edge.Type edgeType = edge.getType();
     if (edgeType == Edge.Type.OneToOne) {
       return partitions;
+    } else if (edgeType == Edge.Type.Broadcast) {
+      final List<Element> iterableList = new ArrayList<>();
+      partitions.forEach(iterable -> iterable.forEach(iterableList::add));
+      return Arrays.asList(iterableList);
     } else if (edgeType == Edge.Type.ScatterGather) {
       final int numOfDsts = partitions.size(); // Same as the number of current partitions
       final List<List<Element>> routedPartitions = new ArrayList<>(numOfDsts);
@@ -106,7 +137,7 @@ public final class SimpleEngine {
 
       // for some reason, Java requires the type to be explicit
       final List<Iterable<Element>> explicitlyIterables = new ArrayList<>();
-      routedPartitions.forEach(explicitlyIterables::add);
+      explicitlyIterables.addAll(routedPartitions);
       return explicitlyIterables;
     } else {
       throw new UnsupportedOperationException();

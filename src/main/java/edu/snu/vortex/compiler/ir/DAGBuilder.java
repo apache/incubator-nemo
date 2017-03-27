@@ -15,10 +15,7 @@
  */
 package edu.snu.vortex.compiler.ir;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * DAG Builder.
@@ -50,8 +47,7 @@ public final class DAGBuilder {
    * @param src source vertex.
    * @param dst destination vertex.
    * @param type edge type.
-   * @return .
-   * @return
+   * @return the created edge.
    */
   public Edge connectVertices(final Vertex src, final Vertex dst, final Edge.Type type) {
     final Edge edge = new Edge(type, src, dst);
