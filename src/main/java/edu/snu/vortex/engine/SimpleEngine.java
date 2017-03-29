@@ -34,7 +34,7 @@ public final class SimpleEngine {
       if (vertex instanceof SourceVertex) {
         try {
           final SourceVertex sourceVertex = (SourceVertex) vertex;
-          final List<Reader> readers = sourceVertex.getReaders(10); // 10 Bytes per BoundedSourceReader
+          final List<Reader> readers = sourceVertex.getReaders(10); // 10 splits
           final List<Iterable<Element>> partitions = new ArrayList<>(readers.size());
 
           System.out.println("Begin processing SourceVertex: " + sourceVertex.getId());

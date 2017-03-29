@@ -20,6 +20,7 @@ import edu.snu.vortex.compiler.ir.Reader;
 import edu.snu.vortex.compiler.ir.SourceVertex;
 import org.apache.beam.sdk.io.BoundedSource;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,12 +36,15 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
   }
 
   @Override
-  public List<Reader<O>> getReaders(final long desiredBundleSizeBytes) throws Exception {
-    // Can't use lambda due to exception thrown
+  public List<Reader<O>> getReaders(final int desiredNumOfSplits) throws Exception {
     final List<Reader<O>> readers = new ArrayList<>();
-    for (final BoundedSource<O> s : source.splitIntoBundles(desiredBundleSizeBytes, null)) {
-      readers.add(new BoundedSourceReader(s.createReader(null)));
-    }
+    source.splitIntoBundles(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null).forEach(boundedSource -> {
+      try {
+        readers.add(new BoundedSourceReader<>(boundedSource.createReader(null)));
+      } catch (IOException e) {
+        throw new RuntimeException("IOException: " + e);
+      }
+    });
     return readers;
   }
 
