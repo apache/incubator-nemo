@@ -79,8 +79,6 @@ public final class RuntimeMaster {
             if (vertex instanceof RuntimeBoundedSourceVertex) {
               final RuntimeBoundedSourceVertex boundedSourceVertex = (RuntimeBoundedSourceVertex) vertex;
 
-              // TODO #104: Change the interface of getReaders() in SourceVertex.
-              // This code assumes that the issue #104 has been resolved.
               final List<Reader> readers = boundedSourceVertex.getBoundedSourceVertex().getReaders(parallelism);
               newTaskToAdd = new BoundedSourceTask(RuntimeIdGenerator.generateTaskId(),
                   boundedSourceVertex.getId(), taskGroupIdx, readers.get(taskGroupIdx));
