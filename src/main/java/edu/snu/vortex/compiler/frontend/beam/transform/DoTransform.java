@@ -124,12 +124,12 @@ public final class DoTransform implements Transform {
 
     @Override
     public Instant timestamp() {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("timestamp() in ProcessContext under DoTransform");
     }
 
     @Override
     public PaneInfo pane() {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("pane() in ProcessContext under DoTransform");
     }
 
     @Override
@@ -144,28 +144,28 @@ public final class DoTransform implements Transform {
 
     @Override
     public void outputWithTimestamp(final O output, final Instant timestamp) {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("outputWithTimestamp() in ProcessContext under DoTransform");
     }
 
     @Override
     public <T> void sideOutput(final TupleTag<T> tag, final T output) {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("sideOutput() in ProcessContext under DoTransform");
     }
 
     @Override
     public <T> void sideOutputWithTimestamp(final TupleTag<T> tag, final T output, final Instant timestamp) {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("sideOutputWithTimestamp() in ProcessContext under DoTransform");
     }
 
     @Override
     protected <AggInputT, AggOutputT> Aggregator<AggInputT, AggOutputT> createAggregator(
         final String name, final Combine.CombineFn<AggInputT, ?, AggOutputT> combiner) {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("createAggregator() in ProcessContext under DoTransform");
     }
 
     @Override
     public BoundedWindow window() {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("window() in ProcessContext under DoTransform");
     }
 
     @Override
@@ -182,37 +182,37 @@ public final class DoTransform implements Transform {
     @Override
     public DoFn.OnTimerContext
         onTimerContext(final DoFn<I, O> doFn) {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("onTimerContext() in ProcessContext under DoTransform");
     }
 
     @Override
     public DoFn.InputProvider<I> inputProvider() {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("inputProvider() in ProcessContext under DoTransform");
     }
 
     @Override
     public DoFn.OutputReceiver<O> outputReceiver() {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("outputReceiver() in ProcessContext under DoTransform");
     }
 
     @Override
     public WindowingInternals<I, O> windowingInternals() {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("windowingInternals() in ProcessContext under DoTransform");
     }
 
     @Override
     public <RestrictionT> RestrictionTracker<RestrictionT> restrictionTracker() {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("restrictionTracker() in ProcessContext under DoTransform");
     }
 
     @Override
     public State state(final String stateId) {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("state() in ProcessContext under DoTransform");
     }
 
     @Override
     public Timer timer(final String timerId) {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException("timer() in ProcessContext under DoTransform");
     }
   }
 }
