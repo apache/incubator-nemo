@@ -39,6 +39,7 @@ public final class MapReduce {
     final String outputFilePath = args[1];
     final PipelineOptions options = PipelineOptionsFactory.create();
     options.setRunner(Runner.class);
+    options.setJobName("MapReduce");
 
     final Pipeline p = Pipeline.create(options);
     p.apply(TextIO.Read.from(inputFilePath))

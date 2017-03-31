@@ -17,6 +17,7 @@ package edu.snu.vortex.engine;
 
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -76,9 +77,10 @@ public final class SimpleEngine {
             inDataPartitions.forEach(inData -> {
               final Transform.Context transformContext = new ContextImpl(broadcastedInput);
               final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
-              transform.prepare(transformContext, outputCollector);
-              transform.onData(inData, inEdge.getSrc().getId());
-              transform.close();
+              final SimpleTask task = new SimpleTask(transform);
+              task.getTransform().prepare(transformContext, outputCollector);
+              task.getTransform().onData(inData, inEdge.getSrc().getId());
+              task.getTransform().close();
               outDataPartitions.add(outputCollector.getOutputList());
             });
 
@@ -102,7 +104,9 @@ public final class SimpleEngine {
             }
 
             System.out.println(" Output of {" + vertex.getId() + "} for edges " +
-                outEdges.stream().map(Edge::getId).collect(Collectors.toList()) + ": " + outDataPartitions);
+                outEdges.stream().map(Edge::getId).collect(Collectors.toList()) + ": " +
+                (outDataPartitions.toString().length() > 5000 ?
+                    outDataPartitions.toString().substring(0, 5000) + "..." : outDataPartitions.toString()));
           }
         });
       } else {
@@ -141,6 +145,21 @@ public final class SimpleEngine {
       return explicitlyIterables;
     } else {
       throw new UnsupportedOperationException(edgeType + " is an unsupported type of edge.");
+    }
+  }
+
+  /**
+   * A Simple Task class to simulate multi-threaded tasks for different transforms.
+   */
+  private final class SimpleTask {
+    private final Transform transform;
+
+    SimpleTask(final Transform transform) {
+      this.transform = SerializationUtils.clone(transform);
+    }
+
+    public Transform getTransform() {
+      return transform;
     }
   }
 }

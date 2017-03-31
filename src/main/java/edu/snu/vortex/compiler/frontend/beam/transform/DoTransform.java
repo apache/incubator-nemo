@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.compiler.frontend.beam.transform;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.vortex.compiler.frontend.beam.BeamElement;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.OutputCollector;
@@ -35,6 +36,7 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.Instant;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -43,13 +45,19 @@ import java.util.Map;
  */
 public final class DoTransform implements Transform {
   private final DoFn doFn;
-  private final PipelineOptions options;
+  private final ObjectMapper mapper;
+  private final String serializedOptions;
   private Map<PCollectionView, Object> sideInputs;
   private OutputCollector outputCollector;
 
   public DoTransform(final DoFn doFn, final PipelineOptions options) {
     this.doFn = doFn;
-    this.options = options;
+    this.mapper = new ObjectMapper();
+    try {
+      this.serializedOptions = mapper.writeValueAsString(options);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -61,7 +69,7 @@ public final class DoTransform implements Transform {
 
   @Override
   public void onData(final Iterable<Element> data, final String srcVertexId) {
-    final ProcessContext beamContext = new ProcessContext(doFn, this.outputCollector, this.sideInputs, options);
+    final ProcessContext beamContext = new ProcessContext(doFn, outputCollector, sideInputs, serializedOptions);
     final DoFnInvoker invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(beamContext);
@@ -96,16 +104,22 @@ public final class DoTransform implements Transform {
     private I input;
     private final OutputCollector outputCollector;
     private final Map<PCollectionView, Object> sideInputs;
+    private final ObjectMapper mapper;
     private final PipelineOptions options;
 
     ProcessContext(final DoFn<I, O> fn,
                    final OutputCollector outputCollector,
                    final Map<PCollectionView, Object> sideInputs,
-                   final PipelineOptions options) {
+                   final String serializedOptions) {
       fn.super();
       this.outputCollector = outputCollector;
       this.sideInputs = sideInputs;
-      this.options = options;
+      this.mapper = new ObjectMapper();
+      try {
+        this.options = mapper.readValue(serializedOptions, PipelineOptions.class);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     void setElement(final I in) {
@@ -134,7 +148,7 @@ public final class DoTransform implements Transform {
 
     @Override
     public PipelineOptions getPipelineOptions() {
-      return options;
+      return this.options;
     }
 
     @Override

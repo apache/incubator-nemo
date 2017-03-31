@@ -15,12 +15,14 @@
  */
 package edu.snu.vortex.compiler.ir;
 
+import java.io.Serializable;
+
 /**
  * Interface through which Transform emits outputs.
  * This is to be implemented in the runtime with
  * runtime-specific distributed data movement and storage mechanisms.
  */
-public interface OutputCollector {
+public interface OutputCollector extends Serializable {
   /**
    * Single-destination emit.
    * @param output element.
