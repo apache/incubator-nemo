@@ -38,7 +38,7 @@ public final class OutputCollectorImpl implements OutputCollector {
 
   @Override
   public void emit(final String dstVertexId, final Element output) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("emit(dstVertexId, output) in OutputCollectorImpl.");
   }
 
   public Iterable<Element> getOutputList() {

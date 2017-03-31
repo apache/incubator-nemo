@@ -37,12 +37,12 @@ public final class ContextImpl implements Transform.Context {
 
   @Override
   public List<String> getSrcVertexIds() {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("getSrcVertexIds() in ContextImpl.");
   }
 
   @Override
   public List<String> getDstVertexIds() {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("getDstVertexIds() in ContextImpl.");
   }
 
   @Override
