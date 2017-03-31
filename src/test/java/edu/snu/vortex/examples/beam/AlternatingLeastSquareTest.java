@@ -22,15 +22,16 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 /**
- * Test MapReduce program with JobLauncher.
+ * Test Alternating Least Square program with JobLauncher.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class MapReduceTest {
-  private final String mapReduce = "edu.snu.vortex.examples.beam.MapReduce";
-  private final String input = "./src/main/resources/sample_input_mr";
-  private final String output = "./src/main/resources/sample_output";
-  private final String[] args = {mapReduce, input, output};
+public final class AlternatingLeastSquareTest {
+  private final String als = "edu.snu.vortex.examples.beam.AlternatingLeastSquare";
+  private final String input = "./src/main/resources/sample_input_als";
+  private final String numFeatures = "10";
+  private final String numIteration = "3";
+  private final String[] args = {als, input, numFeatures, numIteration};
 
   @Test
   public void test() throws Exception {

@@ -52,7 +52,7 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
   public String toString() {
     final StringBuilder sb = new StringBuilder();
     sb.append(super.toString());
-    sb.append(", BoundedSourceVertex: ");
+    sb.append(", source: ");
     sb.append(source);
     return sb.toString();
   }

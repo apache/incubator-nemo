@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.compiler.ir;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -23,7 +24,7 @@ import java.util.Map;
  * It is to be implemented in the compiler frontend, possibly for every operator in a dataflow language.
  * 'How' and 'When' to do with its input/output data are up to the runtime.
  */
-public interface Transform {
+public interface Transform extends Serializable {
   /**
    * Prepare the transform.
    * @param context of the transform.
