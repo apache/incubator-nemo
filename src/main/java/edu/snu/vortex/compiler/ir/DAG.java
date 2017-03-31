@@ -137,8 +137,7 @@ public final class DAG {
     this.doTopological(vertex -> {
       sb.append("<vertex> ");
       sb.append(vertex.toString());
-      sb.append(" / <inEdges> ");
-      sb.append(this.getInEdgesOf(vertex).toString());
+      this.getInEdgesOf(vertex).ifPresent(edges -> edges.forEach(edge -> sb.append("\n  <inEdge> " + edge.toString())));
       sb.append("\n");
     });
     return sb.toString();
