@@ -140,7 +140,7 @@ public final class SimpleEngine {
       explicitlyIterables.addAll(routedPartitions);
       return explicitlyIterables;
     } else {
-      throw new UnsupportedOperationException();
+      throw new UnsupportedOperationException(edgeType + " is an unsupported type of edge.");
     }
   }
 }

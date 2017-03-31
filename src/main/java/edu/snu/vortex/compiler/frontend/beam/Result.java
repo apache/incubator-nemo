@@ -31,32 +31,32 @@ import java.io.IOException;
 public final class Result implements PipelineResult {
   @Override
   public State getState() {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("getState() in frontend.beam.Result");
   }
 
   @Override
   public State cancel() throws IOException {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("cancel() in frontend.beam.Result");
   }
 
   @Override
   public State waitUntilFinish(final Duration duration) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("waitUntilFinish() in frontend.beam.Result");
   }
 
   @Override
   public State waitUntilFinish() {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("waitUntilFinish() in frontend.beam.Result");
   }
 
   @Override
   public <T> AggregatorValues<T> getAggregatorValues(final Aggregator<?, T> aggregator)
       throws AggregatorRetrievalException {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("getAggregatorValues() in frontend.beam.Result");
   }
 
   @Override
   public MetricResults metrics() {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("metrics() in frontend.beam.Result");
   }
 }
