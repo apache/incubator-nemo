@@ -22,6 +22,7 @@ import edu.snu.vortex.runtime.common.plan.logical.*;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
 import edu.snu.vortex.runtime.exception.PhysicalPlanGenerationException;
+import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import edu.snu.vortex.utils.DAG;
 import edu.snu.vortex.utils.DAGImpl;
 
@@ -29,17 +30,28 @@ import java.util.*;
 import java.util.logging.Logger;
 
 /**
- * Runtime Master.
+ * Runtime Master is the central controller of Runtime.
+ * Compiler submits an {@link ExecutionPlan} to Runtime Master to execute a job.
+ * Runtime Master handles:
+ *    a) Physical conversion of a job's DAG into a physical plan.
+ *    b) Scheduling the job with {@link edu.snu.vortex.runtime.master.scheduler.Scheduler}.
+ *    c) (Please list others done by Runtime Master as features are added).
  */
 public final class RuntimeMaster {
   private static final Logger LOG = Logger.getLogger(RuntimeMaster.class.getName());
+  private final Scheduler scheduler;
+
+  public RuntimeMaster() {
+    this.scheduler = new Scheduler(RuntimeAttribute.Batch);
+  }
 
   /**
    * Submits the {@link ExecutionPlan} to Runtime.
    * @param executionPlan to execute.
    */
   public void execute(final ExecutionPlan executionPlan) {
-    generatePhysicalPlan(executionPlan);
+    final PhysicalPlan physicalPlan = generatePhysicalPlan(executionPlan);
+    scheduler.scheduleJob(physicalPlan);
   }
 
   /**
@@ -63,11 +75,13 @@ public final class RuntimeMaster {
 
         // TODO #103: Integrity check in execution plan.
         // This code simply assumes that all vertices follow the first vertex's parallelism.
-        final int parallelism = (int) runtimeVertices.get(0).getVertexAttributes()
+        final int parallelism = runtimeVertices.get(0).getVertexAttributes()
             .get(RuntimeAttribute.IntegerKey.Parallelism);
+        final RuntimeAttribute resourceType = runtimeVertices.get(0).getVertexAttributes()
+            .get(RuntimeAttribute.Key.ResourceType);
 
         // Begin building a new stage in the physical plan.
-        physicalPlanBuilder.createNewStage(runtimeStage.getStageId(), parallelism);
+        physicalPlanBuilder.createNewStage(parallelism);
 
         // (parallelism) number of task groups will be created.
         for (int taskGroupIdx = 0; taskGroupIdx < parallelism; taskGroupIdx++) {
@@ -105,8 +119,9 @@ public final class RuntimeMaster {
 
           // Create the task group to add for this stage.
           final TaskGroup newTaskGroup =
-              new TaskGroup(RuntimeIdGenerator.generateTaskGroupId(), taskDAG, incomingEdgeInfos, outgoingEdgeInfos);
-          physicalPlanBuilder.addTaskGroupToStage(runtimeStage.getStageId(), newTaskGroup);
+              new TaskGroup(RuntimeIdGenerator.generateTaskGroupId(), taskDAG, resourceType,
+                  incomingEdgeInfos, outgoingEdgeInfos);
+          physicalPlanBuilder.addTaskGroupToCurrentStage(newTaskGroup);
           runtimeVertexIdToTask.clear();
         }
       }

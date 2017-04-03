@@ -23,7 +23,6 @@ public enum RuntimeAttribute {
    * Set of attributes applicable to {@link edu.snu.vortex.runtime.common.execplan.RuntimeVertex}.
    */
 
-
   /**
    * Vertex resource type attributes.
    */
@@ -69,7 +68,13 @@ public enum RuntimeAttribute {
    * Edge partition type attributes.
    */
   Hash(Key.Partition),
-  Range(Key.Partition);
+  Range(Key.Partition),
+
+  /**
+   * Scheduler type attributes.
+   */
+  SamplePolicy(Key.SchedulingPolicy),
+  Batch(Key.SchedulingPolicy);
 
   /**
    * Runtime attribute keys.
@@ -80,6 +85,7 @@ public enum RuntimeAttribute {
     ChannelTransferPolicy,
     Partition,
     CommPattern,
+    SchedulingPolicy
   }
 
   /**
