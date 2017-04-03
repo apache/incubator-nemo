@@ -71,7 +71,7 @@ public final class RuntimeAttributeConverter {
     irAttributes.forEachIntAttr((irAttributeKey, irAttributeVal) -> {
       switch (irAttributeKey) {
         case Parallelism:
-          runtimeVertexAttributes.put(RuntimeAttribute.IntegerKey.Parallelism, 0);
+          runtimeVertexAttributes.put(RuntimeAttribute.IntegerKey.Parallelism, irAttributeVal);
           break;
         default:
           throw new UnsupportedAttributeException("this IR attribute (" + irAttributeKey + ") is not supported.");
