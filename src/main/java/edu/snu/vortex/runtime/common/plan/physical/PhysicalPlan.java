@@ -16,7 +16,6 @@
 package edu.snu.vortex.runtime.common.plan.physical;
 
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -28,29 +27,21 @@ public final class PhysicalPlan {
   private final String id;
 
   /**
-   * The map of {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeStage} id to the task groups to execute.
+   * The list of {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeStage}s' task groups to execute.
    */
-  private final Map<String, List<TaskGroup>> physicalPlan;
+  private final List<List<TaskGroup>> taskGroupsByStage;
 
   public PhysicalPlan(final String id,
-                      final Map<String, List<TaskGroup>> physicalPlan) {
+                      final List<List<TaskGroup>> taskGroupsByStage) {
     this.id = id;
-    this.physicalPlan = physicalPlan;
+    this.taskGroupsByStage = taskGroupsByStage;
   }
 
   public String getId() {
     return id;
   }
 
-  public Map<String, List<TaskGroup>> getPhysicalPlan() {
-    return physicalPlan;
-  }
-
-  @Override
-  public String toString() {
-    return "PhysicalPlan{" +
-        "id='" + id + '\'' +
-        ",\n physicalPlan=\n" + physicalPlan +
-        '}';
+  public List<List<TaskGroup>> getTaskGroupsByStage() {
+    return taskGroupsByStage;
   }
 }

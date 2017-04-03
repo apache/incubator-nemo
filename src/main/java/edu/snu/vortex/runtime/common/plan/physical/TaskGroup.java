@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.runtime.common.plan.physical;
 
+import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.utils.DAG;
 
 import java.io.Serializable;
@@ -26,6 +27,7 @@ import java.util.List;
 public final class TaskGroup implements Serializable {
   private final String taskGroupId;
   private final DAG<Task> taskDAG;
+  private final RuntimeAttribute resourceType;
 
   /**
    * List of information on incoming edges to the stage.
@@ -39,11 +41,17 @@ public final class TaskGroup implements Serializable {
 
   public TaskGroup(final String taskGroupId,
                    final DAG<Task> taskDAG,
+                   final RuntimeAttribute resourceType,
                    final List<StageBoundaryEdgeInfo> incomingEdges,
                    final List<StageBoundaryEdgeInfo> outgoingEdges) {
     this.taskGroupId = taskGroupId;
     this.taskDAG = taskDAG;
+    this.resourceType = resourceType;
     this.incomingEdges = incomingEdges;
     this.outgoingEdges = outgoingEdges;
+  }
+
+  public RuntimeAttribute getResourceType() {
+    return resourceType;
   }
 }
