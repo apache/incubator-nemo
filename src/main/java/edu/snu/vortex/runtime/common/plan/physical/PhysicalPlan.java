@@ -44,4 +44,13 @@ public final class PhysicalPlan {
   public List<List<TaskGroup>> getTaskGroupsByStage() {
     return taskGroupsByStage;
   }
+
+  @Override
+  public String toString() {
+    final StringBuffer sb = new StringBuffer("PhysicalPlan{");
+    sb.append("id='").append(id).append('\'');
+    sb.append(", taskGroupsByStage=").append(taskGroupsByStage);
+    sb.append('}');
+    return sb.toString();
+  }
 }
