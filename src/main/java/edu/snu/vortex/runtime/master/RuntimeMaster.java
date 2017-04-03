@@ -27,6 +27,7 @@ import edu.snu.vortex.utils.DAG;
 import edu.snu.vortex.utils.DAGImpl;
 
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -128,7 +129,9 @@ public final class RuntimeMaster {
     } catch (final Exception e) {
       throw new PhysicalPlanGenerationException(e.getMessage());
     }
-    return physicalPlanBuilder.build();
+    final PhysicalPlan physicalPlan = physicalPlanBuilder.build();
+    LOG.log(Level.INFO, physicalPlan.toString());
+    return physicalPlan;
   }
 
   /**

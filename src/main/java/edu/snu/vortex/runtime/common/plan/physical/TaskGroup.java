@@ -54,4 +54,16 @@ public final class TaskGroup implements Serializable {
   public RuntimeAttribute getResourceType() {
     return resourceType;
   }
+
+  @Override
+  public String toString() {
+    final StringBuffer sb = new StringBuffer("TaskGroup{");
+    sb.append("taskGroupId='").append(taskGroupId).append('\'');
+    sb.append(", taskDAG=").append(taskDAG);
+    sb.append(", resourceType=").append(resourceType);
+    sb.append(", incomingEdges=").append(incomingEdges);
+    sb.append(", outgoingEdges=").append(outgoingEdges);
+    sb.append('}');
+    return sb.toString();
+  }
 }
