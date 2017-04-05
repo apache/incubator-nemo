@@ -64,4 +64,20 @@ public interface DAG<V> {
    * @throws java.util.NoSuchElementException if the vertex v or w do not exist
    */
   boolean removeEdge(V v, V w);
+
+  /**
+   * Returns the incoming edges to the vertex v.
+   * @param v vertex
+   * @return the set of parent vertices for this vertex.
+   * @throws java.util.NoSuchElementException if the vertex v does not exist
+   */
+  Set<V> getParents(V v);
+
+  /**
+   * Returns the outgoing edges from the vertex v.
+   * @param v vertex
+   * @return the set of children vertices for this vertex.
+   * @throws java.util.NoSuchElementException if the vertex v does not exist
+   */
+  Set<V> getChildren(V v);
 }

@@ -44,6 +44,10 @@ public final class DAGImplTest {
     dag.addEdge(4, 5);
 
     assertEquals(dag.getRootVertices().size(), 1);
+    assertEquals(dag.getParents(1).size(), 0);
+    assertEquals(dag.getParents(5).size(), 1);
+    assertEquals(dag.getChildren(2).size(), 1);
+    assertEquals(dag.getChildren(1).size(), 1);
   }
 
   @Test
@@ -54,6 +58,8 @@ public final class DAGImplTest {
     dag.addEdge(4, 3);
 
     assertEquals(dag.getRootVertices().size(), 2);
+    assertEquals(dag.getParents(3).size(), 2);
+    assertEquals(dag.getChildren(4).size(), 2);
   }
 
   @Test(expected = IllegalStateException.class)
