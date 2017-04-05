@@ -130,6 +130,22 @@ public final class DAGImpl<V> implements DAG<V> {
     }
   }
 
+  @Override
+  public Set<V> getParents(final V v) {
+    if (!parentVertices.containsKey(v)) {
+      throw new NoSuchElementException("No vertex " + v);
+    }
+    return parentVertices.get(v);
+  }
+
+  @Override
+  public Set<V> getChildren(final V v) {
+    if (!childrenVertices.containsKey(v)) {
+      throw new NoSuchElementException("No vertex " + v);
+    }
+    return childrenVertices.get(v);
+  }
+
   /**
    * Checks whether a vertex is a descendant of the other.
    * @param v the potential ancestor
