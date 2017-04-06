@@ -15,6 +15,9 @@
  */
 package edu.snu.vortex.compiler.ir.attribute;
 
+import edu.snu.vortex.compiler.ir.Edge;
+import edu.snu.vortex.compiler.ir.Vertex;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -23,12 +26,36 @@ import java.util.function.BiConsumer;
  * AttributeMap Class, which uses HashMap for keeping track of attributes for operators and edges.
  */
 public final class AttributeMap {
+  private final String id;
   private final Map<Attribute.Key, Attribute> attributes;
   private final Map<Attribute.IntegerKey, Integer> intAttributes;
 
-  public AttributeMap() {
+  private AttributeMap(final String id) {
+    this.id = id;
     attributes = new HashMap<>();
     intAttributes = new HashMap<>();
+  }
+
+  public static AttributeMap of(final Edge edge) {
+    final AttributeMap map = new AttributeMap(edge.getId());
+    map.setDefaultEdgeValues();
+    return map;
+  }
+  public static AttributeMap of(final Vertex vertex) {
+    final AttributeMap map = new AttributeMap(vertex.getId());
+    map.setDefaultVertexValues();
+    return map;
+  }
+
+  private void setDefaultEdgeValues() {
+    this.attributes.put(Attribute.Key.Partitioning, Attribute.Hash);
+  }
+  private void setDefaultVertexValues() {
+    this.intAttributes.put(Attribute.IntegerKey.Parallelism, 1);
+  }
+
+  public String getId() {
+    return id;
   }
 
   public Attribute put(final Attribute.Key key, final Attribute val) {
@@ -65,7 +92,11 @@ public final class AttributeMap {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
+    sb.append("{");
     sb.append(attributes);
+    sb.append(", ");
+    sb.append(intAttributes);
+    sb.append("}");
     return sb.toString();
   }
 

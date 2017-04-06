@@ -29,7 +29,7 @@ public abstract class Vertex implements Serializable {
 
   public Vertex() {
     this.id = IdManager.newOperatorId();
-    this.attributes = new AttributeMap();
+    this.attributes = AttributeMap.of(this);
   }
 
   public final String getId() {
