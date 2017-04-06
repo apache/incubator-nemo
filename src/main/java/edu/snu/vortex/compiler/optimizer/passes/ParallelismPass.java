@@ -36,7 +36,7 @@ public final class ParallelismPass implements Pass {
           vertex.setAttr(Attribute.IntegerKey.Parallelism, sourceVertex.getReaders(1).size());
         } else if (inEdges.isPresent()) {
           Integer parallelism = inEdges.get().stream()
-              .mapToInt(edge -> edge.getSrc().getAttr(Attribute.IntegerKey.Parallelism)).sum();
+              .mapToInt(edge -> edge.getSrc().getAttr(Attribute.IntegerKey.Parallelism)).max().getAsInt();
           vertex.setAttr(Attribute.IntegerKey.Parallelism, parallelism);
         } else {
           throw new RuntimeException("Weird situation: there is a non-source vertex that doesn't have any inEdges");
