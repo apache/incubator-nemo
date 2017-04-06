@@ -26,9 +26,9 @@ import org.powermock.modules.junit4.PowerMockRunner;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class MapReduceTest {
+public final class MapReduceDisaggregationTest {
   private final String mapReduce = "edu.snu.vortex.examples.beam.MapReduce";
-  private final String optimizationPolicy = "pado";
+  private final String optimizationPolicy = "disaggregation";
   private final String input = "./src/main/resources/sample_input_mr";
   private final String output = "./src/main/resources/sample_output";
   private final String[] args = {mapReduce, optimizationPolicy, input, output};

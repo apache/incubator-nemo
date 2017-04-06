@@ -21,5 +21,5 @@ import edu.snu.vortex.compiler.ir.DAG;
  * Interface for the frontend class.
  */
 public interface Frontend {
-  DAG compile(final String[] args) throws Exception;
+  DAG compile(final String className, final String[] args) throws Exception;
 }

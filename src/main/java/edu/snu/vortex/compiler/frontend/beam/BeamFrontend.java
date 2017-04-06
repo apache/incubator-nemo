@@ -20,7 +20,6 @@ import edu.snu.vortex.compiler.ir.DAG;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
 
 /**
  * Frontend component for BEAM programs.
@@ -29,10 +28,7 @@ public final class BeamFrontend implements Frontend {
   private static DAG dag;
 
   @Override
-  public DAG compile(final String[] args) throws Exception {
-    final String className = args[0];
-    final String[] arguments = Arrays.copyOfRange(args, 1, args.length);
-
+  public DAG compile(final String className, final String[] args) throws Exception {
     final Class userCode = Class.forName(className);
     final Method method = userCode.getMethod("main", String[].class);
     if (!Modifier.isStatic(method.getModifiers())) {
@@ -42,7 +38,7 @@ public final class BeamFrontend implements Frontend {
       throw new RuntimeException("User Main Class not public");
     }
 
-    method.invoke(null, (Object) arguments);
+    method.invoke(null, (Object) args);
 
     if (dag == null) {
       throw new IllegalStateException("DAG not supplied");
