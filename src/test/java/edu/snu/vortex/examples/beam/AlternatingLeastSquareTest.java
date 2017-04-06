@@ -28,10 +28,11 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class AlternatingLeastSquareTest {
   private final String als = "edu.snu.vortex.examples.beam.AlternatingLeastSquare";
+  private final String optimizationPolicy = "pado";
   private final String input = "./src/main/resources/sample_input_als";
   private final String numFeatures = "10";
   private final String numIteration = "3";
-  private final String[] args = {als, input, numFeatures, numIteration};
+  private final String[] args = {als, optimizationPolicy, input, numFeatures, numIteration};
 
   @Test
   public void test() throws Exception {
