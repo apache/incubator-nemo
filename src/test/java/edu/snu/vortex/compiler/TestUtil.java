@@ -21,6 +21,7 @@ import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -52,12 +53,12 @@ public final class TestUtil {
     }
 
     public long getEstimatedSizeBytes(PipelineOptions options) throws Exception {
-      throw new UnsupportedOperationException("Empty bounded source");
+      return 1;
     }
 
     public List<? extends BoundedSource> splitIntoBundles(
         long desiredBundleSizeBytes, PipelineOptions options) throws Exception {
-      throw new UnsupportedOperationException("Empty bounded source");
+      return new ArrayList<>();
     }
 
     public void validate() {

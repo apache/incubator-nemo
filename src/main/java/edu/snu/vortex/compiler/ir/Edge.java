@@ -44,7 +44,7 @@ public final class Edge<I, O> {
        final Vertex src,
        final Vertex dst) {
     this.id = IdManager.newEdgeId();
-    this.attributes = new AttributeMap();
+    this.attributes = AttributeMap.of(this);
     this.src = src;
     this.dst = dst;
     this.type = type;
