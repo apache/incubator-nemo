@@ -74,7 +74,10 @@ public enum Attribute {
    * Attribute Keys.
    */
   public enum Key {
+    // Vertex
     Placement,
+
+    // Edge
     Partitioning,
     ChannelDataPlacement,
     ChannelTransferPolicy,
@@ -86,7 +89,10 @@ public enum Attribute {
    * Attribute keys that have Integer value.
    */
   public enum IntegerKey {
+    // Vertex
     Parallelism,
+
+    // Edge
   }
 
   private final Key key;

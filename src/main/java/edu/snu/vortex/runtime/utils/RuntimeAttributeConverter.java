@@ -166,6 +166,19 @@ public final class RuntimeAttributeConverter {
 
           runtimeEdgeAttributes.put(RuntimeAttribute.Key.CommPattern, commPatternAttrVal);
           break;
+        case SideInput:
+          final RuntimeAttribute sideInput;
+          switch (irAttributeVal) {
+            case SideInput:
+              sideInput = RuntimeAttribute.SideInput;
+              break;
+            default:
+              throw new UnsupportedAttributeException(
+                  "\'" + irAttributeVal + "\' can not be a value of " + irAttributeKey);
+          }
+
+          runtimeEdgeAttributes.put(RuntimeAttribute.Key.SideInput, sideInput);
+          break;
         default:
           throw new UnsupportedAttributeException("This IR attribute (" + irAttributeKey + ") is not supported");
       }
