@@ -24,6 +24,10 @@ import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.engine.SimpleEngine;
 import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
 
+import java.util.Arrays;
+
+import static edu.snu.vortex.compiler.optimizer.Optimizer.POLICY_NAME;
+
 /**
  * Job launcher.
  */
@@ -32,22 +36,26 @@ public final class JobLauncher {
   }
 
   public static void main(final String[] args) throws Exception {
+    final String className = args[0];
+    final String policyName = args[1];
+    final String[] arguments = Arrays.copyOfRange(args, 2, args.length);
+
+    final Frontend frontend = new BeamFrontend();
+    final Optimizer optimizer = new Optimizer();
+    final Backend<ExecutionPlan> backend = new VortexBackend();
+
     /**
      * Step 1: Compile
      */
-    final Frontend frontend = new BeamFrontend();
-    final DAG dag = frontend.compile(args); // TODO #30: Use Tang to Parse User Arguments
+    final DAG dag = frontend.compile(className, arguments); // TODO #30: Use Tang to Parse User Arguments
     System.out.println("##### VORTEX COMPILER (Before Optimization) #####");
     System.out.println(dag);
 
-    final Optimizer optimizer = new Optimizer();
-    // TODO #31: Interfaces for Runtime Optimization
-    final Optimizer.PolicyType optimizationPolicy = Optimizer.PolicyType.Pado;
+    final Optimizer.PolicyType optimizationPolicy = POLICY_NAME.get(policyName);
     final DAG optimizedDAG = optimizer.optimize(dag, optimizationPolicy);
     System.out.println("##### VORTEX COMPILER (After Optimization for " + optimizationPolicy + ") #####");
     System.out.println(optimizedDAG);
 
-    final Backend<ExecutionPlan> backend = new VortexBackend();
     final ExecutionPlan executionPlan = backend.compile(optimizedDAG);
     System.out.println("##### VORTEX COMPILER (After Compilation) #####");
     System.out.println(executionPlan + "\n");

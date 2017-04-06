@@ -28,9 +28,10 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class BroadcastTest {
   private final String broadcast = "edu.snu.vortex.examples.beam.Broadcast";
+  private final String optimizationPolicy = "pado";
   private final String input = "./src/main/resources/sample_input_mr";
   private final String output = "./src/main/resources/sample_output";
-  private final String[] args = {broadcast, input, output};
+  private final String[] args = {broadcast, optimizationPolicy, input, output};
 
   @Test
   public void test() throws Exception {

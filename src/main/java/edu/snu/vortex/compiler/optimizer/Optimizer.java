@@ -35,6 +35,9 @@ public final class Optimizer {
    * @throws Exception throws an exception if there is an exception.
    */
   public DAG optimize(final DAG dag, final PolicyType policyType) throws Exception {
+    if (policyType == null) {
+      throw new RuntimeException("Policy has not been provided for the policyType");
+    }
     final Policy policy = new Policy(POLICIES.get(policyType));
     return policy.process(dag);
   }
@@ -70,6 +73,7 @@ public final class Optimizer {
    * Enum for different types of instantiation policies.
    */
   public enum PolicyType {
+    None,
     Pado,
     Disaggregation,
   }
@@ -79,9 +83,21 @@ public final class Optimizer {
    */
   private static final Map<PolicyType, List<Pass>> POLICIES = new HashMap<>();
   static {
+    POLICIES.put(PolicyType.None,
+        new ArrayList<>());
     POLICIES.put(PolicyType.Pado,
         Arrays.asList(new PadoVertexPass(), new PadoEdgePass()));
     POLICIES.put(PolicyType.Disaggregation,
         Arrays.asList(new DisaggregationPass()));
+  }
+
+  /**
+   * A HashMap to convert string names for each policy type to receive as arguments.
+   */
+  public static final Map<String, PolicyType> POLICY_NAME = new HashMap<>();
+  static {
+    POLICY_NAME.put("none", PolicyType.None);
+    POLICY_NAME.put("pado", PolicyType.Pado);
+    POLICY_NAME.put("disaggregation", PolicyType.Disaggregation);
   }
 }
