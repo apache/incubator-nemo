@@ -1,5 +1,5 @@
 # Vortex 
-[![Build Status](http://cmscluster.snu.ac.kr:8080/jenkins/buildStatus/icon?job=Vortex-master)](http://cmscluster.snu.ac.kr:8080/jenkins/job/Vortex-master/)
+[![Build Status](https://cmscluster.snu.ac.kr/jenkins/buildStatus/icon?job=Vortex-master)](https://cmscluster.snu.ac.kr/jenkins/job/Vortex-master/)
 
 Vortex is a data-processing system composed of modular components.
 
