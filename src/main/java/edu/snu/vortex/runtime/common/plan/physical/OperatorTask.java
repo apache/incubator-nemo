@@ -30,4 +30,8 @@ public final class OperatorTask extends Task {
     super(taskId, runtimeVertexId, index);
     this.transform = transform;
   }
+
+  public Transform getTransform() {
+    return transform;
+  }
 }

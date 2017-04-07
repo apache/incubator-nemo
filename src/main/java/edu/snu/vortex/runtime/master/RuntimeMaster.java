@@ -17,17 +17,16 @@ package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.compiler.ir.Reader;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.logical.*;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
 import edu.snu.vortex.runtime.exception.PhysicalPlanGenerationException;
-import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import edu.snu.vortex.utils.DAG;
 import edu.snu.vortex.utils.DAGImpl;
 
 import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -40,10 +39,12 @@ import java.util.logging.Logger;
  */
 public final class RuntimeMaster {
   private static final Logger LOG = Logger.getLogger(RuntimeMaster.class.getName());
-  private final Scheduler scheduler;
+  // TODO #93: Implement Batch Scheduler
+  // private final Scheduler scheduler;
 
   public RuntimeMaster() {
-    this.scheduler = new Scheduler(RuntimeAttribute.Batch);
+    // TODO #93: Implement Batch Scheduler
+    // this.scheduler = new Scheduler(RuntimeAttribute.Batch);
   }
 
   /**
@@ -52,7 +53,13 @@ public final class RuntimeMaster {
    */
   public void execute(final ExecutionPlan executionPlan) {
     final PhysicalPlan physicalPlan = generatePhysicalPlan(executionPlan);
-    scheduler.scheduleJob(physicalPlan);
+    // TODO #93: Implement Batch Scheduler
+    // scheduler.scheduleJob(physicalPlan);
+    try {
+      new SimpleRuntime().executePhysicalPlan(physicalPlan);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**
@@ -67,34 +74,44 @@ public final class RuntimeMaster {
       final Map<String, Task> runtimeVertexIdToTask = new HashMap<>();
 
       for (final RuntimeStage runtimeStage : executionPlan.getRuntimeStages()) {
-        final List<RuntimeVertex> runtimeVertices = runtimeStage.getRuntimeVertices();
+        final List<RuntimeVertex> stageVertices = runtimeStage.getRuntimeVertices();
 
-        final List<StageBoundaryEdgeInfo> incomingEdgeInfos =
+        final Map<String, Set<StageBoundaryEdgeInfo>> incomingEdgeInfos =
             createStageBoundaryEdgeInfo(runtimeStage.getStageIncomingEdges(), true);
-        final List<StageBoundaryEdgeInfo> outgoingEdgeInfos =
+        final Map<String, Set<StageBoundaryEdgeInfo>> outgoingEdgeInfos =
             createStageBoundaryEdgeInfo(runtimeStage.getStageOutgoingEdges(), false);
 
-        // TODO #103: Integrity check in execution plan.
-        // This code simply assumes that all vertices follow the first vertex's parallelism.
-        final int parallelism = runtimeVertices.get(0).getVertexAttributes()
-            .get(RuntimeAttribute.IntegerKey.Parallelism);
-        final RuntimeAttribute resourceType = runtimeVertices.get(0).getVertexAttributes()
-            .get(RuntimeAttribute.Key.ResourceType);
+        final RuntimeAttributeMap firstVertexAttrs = stageVertices.get(0).getVertexAttributes();
+        final Integer stageParallelism = firstVertexAttrs.get(RuntimeAttribute.IntegerKey.Parallelism);
+        stageVertices.forEach(runtimeVertex -> {
+          if (!stageParallelism.equals(runtimeVertex
+              .getVertexAttributes().get(RuntimeAttribute.IntegerKey.Parallelism))) {
+            // This check should be done in the compiler backend
+            // TODO #103: Integrity check in execution plan.
+            throw new RuntimeException("All vertices in a stage should have same parallelism");
+          }
+        });
+
+
+        final RuntimeAttribute resourceType = firstVertexAttrs.get(RuntimeAttribute.Key.ResourceType);
 
         // Begin building a new stage in the physical plan.
-        physicalPlanBuilder.createNewStage(parallelism);
+        physicalPlanBuilder.createNewStage(stageParallelism);
 
         // (parallelism) number of task groups will be created.
-        for (int taskGroupIdx = 0; taskGroupIdx < parallelism; taskGroupIdx++) {
+        for (int taskGroupIdx = 0; taskGroupIdx < stageParallelism; taskGroupIdx++) {
           final DAG<Task> taskDAG = new DAGImpl<>();
           Task newTaskToAdd;
 
           // Iterate over the vertices contained in this stage to convert to tasks.
-          for (final RuntimeVertex vertex : runtimeVertices) {
+          for (final RuntimeVertex vertex : stageVertices) {
             if (vertex instanceof RuntimeBoundedSourceVertex) {
               final RuntimeBoundedSourceVertex boundedSourceVertex = (RuntimeBoundedSourceVertex) vertex;
 
-              final List<Reader> readers = boundedSourceVertex.getBoundedSourceVertex().getReaders(parallelism);
+              final List<Reader> readers = boundedSourceVertex.getBoundedSourceVertex().getReaders(stageParallelism);
+              if (readers.size() != stageParallelism) {
+                throw new RuntimeException("Actual parallelism differs from the one specified by IR");
+              }
               newTaskToAdd = new BoundedSourceTask(RuntimeIdGenerator.generateTaskId(),
                   boundedSourceVertex.getId(), taskGroupIdx, readers.get(taskGroupIdx));
             } else if (vertex instanceof RuntimeOperatorVertex) {
@@ -130,21 +147,22 @@ public final class RuntimeMaster {
       throw new PhysicalPlanGenerationException(e.getMessage());
     }
     final PhysicalPlan physicalPlan = physicalPlanBuilder.build();
-    LOG.log(Level.INFO, physicalPlan.toString());
     return physicalPlan;
   }
 
   /**
    * Creates a list of information on stage boundary edges for task groups.
-   * @param stageBoundaryRuntimeEdges a map of endpoint vertex id to the incoming/outgoing edges from/to this stage.
+   * @param stageBoundaryRuntimeEdges a map of this stage's vertex id to the incoming/outgoing edges from/to this stage.
    * @param isIncomingEdges true if the map is for incoming, false if it is for outgoing edges.
-   * @return a list of information on the stage boundary edges.
+   * @return a map of information on the stage boundary edges.
    */
-  private List<StageBoundaryEdgeInfo> createStageBoundaryEdgeInfo(
+  private Map<String, Set<StageBoundaryEdgeInfo>> createStageBoundaryEdgeInfo(
       final Map<String, Set<RuntimeEdge>> stageBoundaryRuntimeEdges, final boolean isIncomingEdges) {
-    final List<StageBoundaryEdgeInfo> stageBoundaryEdgeInfos = new LinkedList<>();
-    for (final Set<RuntimeEdge> edgeSet : stageBoundaryRuntimeEdges.values()) {
-      edgeSet.forEach(runtimeEdge -> {
+    final Map<String, Set<StageBoundaryEdgeInfo>> boundaryEdgeMap = new HashMap<>();
+
+    for (final Map.Entry<String, Set<RuntimeEdge>> entry : stageBoundaryRuntimeEdges.entrySet()) {
+      final Set<StageBoundaryEdgeInfo> stageBoundaryEdgeInfos = new HashSet<>();
+      entry.getValue().forEach(runtimeEdge -> {
         final RuntimeVertex endpointVertex;
         if (isIncomingEdges) {
           endpointVertex = runtimeEdge.getSrcRuntimeVertex();
@@ -152,9 +170,10 @@ public final class RuntimeMaster {
           endpointVertex = runtimeEdge.getDstRuntimeVertex();
         }
         stageBoundaryEdgeInfos.add(new StageBoundaryEdgeInfo(runtimeEdge.getId(), runtimeEdge.getEdgeAttributes(),
-            endpointVertex.getId(), endpointVertex.getVertexAttributes()));
+            endpointVertex, endpointVertex.getVertexAttributes()));
       });
+      boundaryEdgeMap.put(entry.getKey(), stageBoundaryEdgeInfos);
     }
-    return stageBoundaryEdgeInfos;
+    return boundaryEdgeMap;
   }
 }

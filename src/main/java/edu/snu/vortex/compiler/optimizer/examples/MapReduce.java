@@ -18,10 +18,15 @@ package edu.snu.vortex.compiler.optimizer.examples;
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  * A sample MapReduce application.
  */
 public final class MapReduce {
+  private static final Logger LOG = Logger.getLogger(MapReduce.class.getName());
+
   private MapReduce() {
   }
 
@@ -38,16 +43,16 @@ public final class MapReduce {
     builder.connectVertices(source, map, Edge.Type.OneToOne);
     builder.connectVertices(map, reduce, Edge.Type.ScatterGather);
     final DAG dag = builder.build();
-    System.out.println("Before Optimization");
-    System.out.println(dag);
+    LOG.log(Level.INFO, "Before Optimization");
+    LOG.log(Level.INFO, dag.toString());
 
     // Optimize
     final Optimizer optimizer = new Optimizer();
     final DAG optimizedDAG = optimizer.optimize(dag, Optimizer.PolicyType.Disaggregation);
 
     // After
-    System.out.println("After Optimization");
-    System.out.println(optimizedDAG);
+    LOG.log(Level.INFO, "After Optimization");
+    LOG.log(Level.INFO, optimizedDAG.toString());
   }
 
   /**

@@ -30,4 +30,8 @@ public final class BoundedSourceTask<O> extends Task {
     super(taskId, runtimeVertexId, index);
     this.reader = reader;
   }
+
+  public Reader getReader() {
+    return reader;
+  }
 }

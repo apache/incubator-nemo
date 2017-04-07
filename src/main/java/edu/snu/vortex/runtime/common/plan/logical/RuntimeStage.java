@@ -90,9 +90,13 @@ public final class RuntimeStage {
 
   @Override
   public String toString() {
-    return "RuntimeStage{" +
-        "stageId='" + stageId + '\'' +
-        ", runtimeVertices=" + runtimeVertices.size() +
-        '}';
+    final StringBuilder sb = new StringBuilder();
+    sb.append("RuntimeStage{");
+    sb.append("stageId='");
+    sb.append(stageId);
+    sb.append("\', runtimeVertices=");
+    sb.append(runtimeVertices);
+    sb.append('}');
+    return sb.toString();
   }
 }

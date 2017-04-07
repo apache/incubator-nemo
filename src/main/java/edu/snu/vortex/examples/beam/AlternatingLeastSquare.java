@@ -31,11 +31,15 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.netlib.util.intW;
 
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Sample Alternating Least Square application.
  */
 public final class AlternatingLeastSquare {
+  private static final Logger LOG = Logger.getLogger(AlternatingLeastSquare.class.getName());
+
   private AlternatingLeastSquare() {
   }
 
@@ -176,7 +180,7 @@ public final class AlternatingLeastSquare {
         final int ratingIndex = indexArr[i];
         final float rating = ratingArr[i];
         for (int j = 0; j < numFeatures; j++) {
-//          System.out.println("Rating index " + ratingIndex);
+//          LOG.log(Level.INFO, "Rating index " + ratingIndex);
           tmp[j] = fixedMatrix.get(ratingIndex)[j];
         }
 
@@ -218,7 +222,7 @@ public final class AlternatingLeastSquare {
 
   public static void main(final String[] args) {
     final long start = System.currentTimeMillis();
-    System.out.println(Arrays.toString(args));
+    LOG.log(Level.INFO, Arrays.toString(args));
     final String inputFilePath = args[0];
     final int numFeatures = Integer.parseInt(args[1]);
     final int numItr = Integer.parseInt(args[2]);
@@ -283,6 +287,6 @@ public final class AlternatingLeastSquare {
     }
 
     p.run();
-    System.out.println("JCT " + (System.currentTimeMillis() - start));
+    LOG.log(Level.INFO, "JCT " + (System.currentTimeMillis() - start));
   }
 }
