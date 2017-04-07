@@ -48,4 +48,9 @@ public final class RuntimeBoundedSourceVertex extends RuntimeVertex {
   public BoundedSourceVertex getBoundedSourceVertex() {
     return boundedSourceVertex;
   }
+
+  @Override
+  public String toString() {
+    return boundedSourceVertex.toString();
+  }
 }
