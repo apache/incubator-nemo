@@ -116,8 +116,8 @@ public final class PairCoder<A, B> extends StandardCoder<Pair<A, B>> {
   }
 
   @Override
-  public CloudObject asCloudObject() {
-    final CloudObject result = super.asCloudObject();
+  protected CloudObject initializeCloudObject() {
+    final CloudObject result = CloudObject.forClass(getClass());
     addBoolean(result, PropertyNames.IS_PAIR_LIKE, true);
     return result;
   }
