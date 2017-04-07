@@ -57,6 +57,7 @@ public final class VortexBackend implements Backend<ExecutionPlan> {
         final Optional<List<Edge>> inEdgesForStage = inEdges.map(e -> e.stream()
             .filter(edge -> edge.getType().equals(Edge.Type.OneToOne))
             .filter(edge -> edge.getAttr(Key.ChannelDataPlacement).equals(Local))
+            .filter(edge -> edge.getAttr(Key.SideInput) != SideInput)
             .filter(edge -> edge.getSrc().getAttributes().equals(edge.getDst().getAttributes()))
             .filter(edge -> vertexStageNumHashMap.containsKey(edge.getSrc()))
             .collect(Collectors.toList()));
