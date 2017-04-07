@@ -62,10 +62,11 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
     builder.addVertex(vortexVertex);
 
     beamNode.getOutputs()
-        .forEach(output -> pValueToVertex.put(output, vortexVertex));
+        .forEach(output -> pValueToVertex.put(output.getValue(), vortexVertex));
 
     if (vortexVertex instanceof OperatorVertex) {
       beamNode.getInputs().stream()
+          .map(taggedPValue -> taggedPValue.getValue())
           .filter(pValueToVertex::containsKey)
           .map(pValueToVertex::get)
           .forEach(src -> builder.connectVertices(src, vortexVertex, getEdgeType(src, vortexVertex)));
@@ -96,11 +97,15 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
       final Window.Bound<I> window = (Window.Bound<I>) beamTransform;
       final WindowTransform vortexTransform = new WindowTransform(window.getWindowFn());
       return new OperatorVertex(vortexTransform);
-    } else if (beamTransform instanceof Write.Bound) {
+    } else if (beamTransform instanceof Window.Assign) {
+      final Window.Assign<I> window = (Window.Assign<I>) beamTransform;
+      final WindowTransform vortexTransform = new WindowTransform(window.getWindowFn());
+      return new OperatorVertex(vortexTransform);
+    } else if (beamTransform instanceof Write) {
       throw new UnsupportedOperationException(beamTransform.toString());
     } else if (beamTransform instanceof ParDo.Bound) {
       final ParDo.Bound<I, O> parDo = (ParDo.Bound<I, O>) beamTransform;
-      final DoTransform vortexTransform = new DoTransform(parDo.getNewFn(), options);
+      final DoTransform vortexTransform = new DoTransform(parDo.getFn(), options);
       final Vertex vortexVertex = new OperatorVertex(vortexTransform);
       parDo.getSideInputs().stream()
           .filter(pValueToVertex::containsKey)
