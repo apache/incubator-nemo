@@ -21,10 +21,12 @@ import edu.snu.vortex.compiler.frontend.Frontend;
 import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
-import edu.snu.vortex.engine.SimpleEngine;
 import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
+import edu.snu.vortex.runtime.master.RuntimeMaster;
 
 import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static edu.snu.vortex.compiler.optimizer.Optimizer.POLICY_NAME;
 
@@ -32,6 +34,8 @@ import static edu.snu.vortex.compiler.optimizer.Optimizer.POLICY_NAME;
  * Job launcher.
  */
 public final class JobLauncher {
+  private static final Logger LOG = Logger.getLogger(JobLauncher.class.getName());
+
   private JobLauncher() {
   }
 
@@ -48,22 +52,22 @@ public final class JobLauncher {
      * Step 1: Compile
      */
     final DAG dag = frontend.compile(className, arguments); // TODO #30: Use Tang to Parse User Arguments
-    System.out.println("##### VORTEX COMPILER (Before Optimization) #####");
-    System.out.println(dag);
+    LOG.log(Level.INFO, "##### VORTEX COMPILER (Before Optimization) #####");
+    LOG.log(Level.INFO, dag.toString());
 
     final Optimizer.PolicyType optimizationPolicy = POLICY_NAME.get(policyName);
     final DAG optimizedDAG = optimizer.optimize(dag, optimizationPolicy);
-    System.out.println("##### VORTEX COMPILER (After Optimization for " + optimizationPolicy + ") #####");
-    System.out.println(optimizedDAG);
+    LOG.log(Level.INFO, "##### VORTEX COMPILER (After Optimization for " + optimizationPolicy + ") #####");
+    LOG.log(Level.INFO, optimizedDAG.toString());
 
     final ExecutionPlan executionPlan = backend.compile(optimizedDAG);
-    System.out.println("##### VORTEX COMPILER (After Compilation) #####");
-    System.out.println(executionPlan + "\n");
+    LOG.log(Level.INFO, "##### VORTEX COMPILER (After Compilation) #####");
+    LOG.log(Level.INFO, executionPlan + "\n");
 
     /**
      * Step 2: Execute
      */
-    System.out.println("##### VORTEX ENGINE #####");
-    new SimpleEngine().executeDAG(optimizedDAG);
+    LOG.log(Level.INFO, "##### VORTEX Runtime #####");
+    new RuntimeMaster().execute(executionPlan);
   }
 }

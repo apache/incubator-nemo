@@ -19,7 +19,8 @@ import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.utils.DAG;
 
 import java.io.Serializable;
-import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * TaskGroup.
@@ -30,20 +31,20 @@ public final class TaskGroup implements Serializable {
   private final RuntimeAttribute resourceType;
 
   /**
-   * List of information on incoming edges to the stage.
+   * Map of this stage's vertex ID to the information on the set of incoming edges to the stage.
    */
-  private final List<StageBoundaryEdgeInfo> incomingEdges;
+  private final Map<String, Set<StageBoundaryEdgeInfo>> incomingEdges;
 
   /**
-   * List of information on outgoing edges from the stage.
+   * Map of this stage's vertex ID to the information on the set of outgoing edges from the stage.
    */
-  private final List<StageBoundaryEdgeInfo> outgoingEdges;
+  private final Map<String, Set<StageBoundaryEdgeInfo>> outgoingEdges;
 
   public TaskGroup(final String taskGroupId,
                    final DAG<Task> taskDAG,
                    final RuntimeAttribute resourceType,
-                   final List<StageBoundaryEdgeInfo> incomingEdges,
-                   final List<StageBoundaryEdgeInfo> outgoingEdges) {
+                   final Map<String, Set<StageBoundaryEdgeInfo>> incomingEdges,
+                   final Map<String, Set<StageBoundaryEdgeInfo>> outgoingEdges) {
     this.taskGroupId = taskGroupId;
     this.taskDAG = taskDAG;
     this.resourceType = resourceType;
@@ -53,6 +54,18 @@ public final class TaskGroup implements Serializable {
 
   public RuntimeAttribute getResourceType() {
     return resourceType;
+  }
+
+  public DAG<Task> getTaskDAG() {
+    return taskDAG;
+  }
+
+  public Map<String, Set<StageBoundaryEdgeInfo>> getIncomingEdges() {
+    return incomingEdges;
+  }
+
+  public Map<String, Set<StageBoundaryEdgeInfo>> getOutgoingEdges() {
+    return outgoingEdges;
   }
 
   @Override

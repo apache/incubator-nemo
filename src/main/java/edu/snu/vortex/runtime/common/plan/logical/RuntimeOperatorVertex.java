@@ -50,4 +50,9 @@ public final class RuntimeOperatorVertex extends RuntimeVertex {
   public OperatorVertex getOperatorVertex() {
     return operatorVertex;
   }
+
+  @Override
+  public String toString() {
+    return operatorVertex.toString();
+  }
 }

@@ -30,7 +30,7 @@ public final class LocalChannel implements OutputChannel, InputChannel {
   private ChannelState channelState;
   private List<Element> recordList;
 
-  LocalChannel(final String channelId) {
+  public LocalChannel(final String channelId) {
     this.channelId = channelId;
     this.channelState = ChannelState.Close;
     this.recordList = new ArrayList<>();
