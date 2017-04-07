@@ -50,7 +50,7 @@ public final class MapReduce {
           return KV.of(documentId, count);
         }).withOutputType(TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.longs())))
         .apply(GroupByKey.<String, Long>create())
-        .apply(Combine.<String, Long, Long>groupedValues(new Sum.SumLongFn()))
+        .apply(Combine.<String, Long, Long>groupedValues(Sum.ofLongs()))
         .apply(MapElements.via((KV<String, Long> kv) -> kv.getKey() + ": " + kv.getValue())
             .withOutputType(TypeDescriptors.strings()))
         .apply(TextIO.Write.to(outputFilePath));
