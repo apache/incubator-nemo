@@ -23,8 +23,14 @@ import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.JavaConfigurationBuilder;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.tang.formats.CommandLine;
 
-import java.util.Arrays;
+import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -40,9 +46,8 @@ public final class JobLauncher {
   }
 
   public static void main(final String[] args) throws Exception {
-    final String className = args[0];
-    final String policyName = args[1];
-    final String[] arguments = Arrays.copyOfRange(args, 2, args.length);
+    final Configuration configuration = getJobConf(args);
+    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
 
     final Frontend frontend = new BeamFrontend();
     final Optimizer optimizer = new Optimizer();
@@ -51,10 +56,13 @@ public final class JobLauncher {
     /**
      * Step 1: Compile
      */
-    final DAG dag = frontend.compile(className, arguments); // TODO #30: Use Tang to Parse User Arguments
+    final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
+    final String[] arguments = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
+    final DAG dag = frontend.compile(className, arguments);
     LOG.log(Level.INFO, "##### VORTEX COMPILER (Before Optimization) #####");
     LOG.log(Level.INFO, dag.toString());
 
+    final String policyName = injector.getNamedInstance(JobConf.OptimizationPolicy.class);
     final Optimizer.PolicyType optimizationPolicy = POLICY_NAME.get(policyName);
     final DAG optimizedDAG = optimizer.optimize(dag, optimizationPolicy);
     LOG.log(Level.INFO, "##### VORTEX COMPILER (After Optimization for " + optimizationPolicy + ") #####");
@@ -69,5 +77,15 @@ public final class JobLauncher {
      */
     LOG.log(Level.INFO, "##### VORTEX Runtime #####");
     new RuntimeMaster().execute(executionPlan);
+  }
+
+  public static Configuration getJobConf(final String[] args) throws IOException, InjectionException {
+    final JavaConfigurationBuilder confBuilder = Tang.Factory.getTang().newConfigurationBuilder();
+    final CommandLine cl = new CommandLine(confBuilder);
+    cl.registerShortNameOfClass(JobConf.UserMainClass.class);
+    cl.registerShortNameOfClass(JobConf.UserMainArguments.class);
+    cl.registerShortNameOfClass(JobConf.OptimizationPolicy.class);
+    cl.processCommandLine(args);
+    return confBuilder.build();
   }
 }
