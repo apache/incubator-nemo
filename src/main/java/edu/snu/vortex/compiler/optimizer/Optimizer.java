@@ -48,6 +48,7 @@ public final class Optimizer {
 
     private Policy(final List<Pass> passes) {
       if (passes.isEmpty()) {
+        // TODO #144: Run without user-specified optimization pass
         throw new NoSuchElementException("No instantiation pass supplied to the policy!");
       }
       this.passes = passes;
