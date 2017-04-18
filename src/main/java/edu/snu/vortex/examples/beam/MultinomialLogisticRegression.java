@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.examples.beam;
 
+import edu.snu.vortex.client.beam.LoopCompositeTransform;
 import edu.snu.vortex.compiler.frontend.beam.Runner;
 import edu.snu.vortex.utils.Pair;
 import org.apache.beam.sdk.Pipeline;
@@ -203,6 +204,63 @@ public final class MultinomialLogisticRegression {
   }
 
   /**
+   * DoFn class that applies the gradient to the model.
+   */
+  public static final class ApplyGradient extends DoFn<KV<Integer, CoGbkResult>, KV<Integer, double[]>> {
+    private final TupleTag<double[]> gradientTag;
+    private final TupleTag<double[]> modelTag;
+    private final int numFeatures;
+    private final int numClasses;
+    private final int iterationNum;
+
+    ApplyGradient(final int numFeatures, final int numClasses, final int iterationNum,
+                  final TupleTag<double[]> gradientTag, final TupleTag<double[]> modelTag) {
+      this.numFeatures = numFeatures;
+      this.numClasses = numClasses;
+      this.iterationNum = iterationNum;
+      this.gradientTag = gradientTag;
+      this.modelTag = modelTag;
+    }
+
+    @ProcessElement
+    public void processElement(final ProcessContext c) throws Exception {
+      final KV<Integer, CoGbkResult> kv = c.element();
+      final double[] gradientArr = kv.getValue().getOnly(gradientTag);
+      final double[] prevModelArr = kv.getValue().getOnly(modelTag);
+      final double[] gradient;
+      final double[] prevModel;
+      if (gradientArr.length > prevModelArr.length) {
+        gradient = gradientArr;
+        prevModel = prevModelArr;
+      } else {
+        gradient = prevModelArr;
+        prevModel = gradientArr;
+      }
+
+      if (kv.getKey() == numClasses - 1) {
+        final int numData = (int) gradient[0];
+        final double lossSum = gradient[2];
+        LOG.log(Level.INFO, "[" + iterationNum + "-th] Num Data: " + numData + " Loss : " + lossSum / numData);
+        c.output(KV.of(kv.getKey(), prevModel));
+      } else {
+        final int numData = (int) gradient[numFeatures];
+        final double stepSize = 1.0 / Math.sqrt(iterationNum);
+        final double multiplier = stepSize / numData;
+
+        final double[] ret = new double[prevModel.length];
+        for (int i = 0; i < prevModel.length; i++) {
+          ret[i] = prevModel[i] - multiplier * gradient[i];
+        }
+        c.output(KV.of(kv.getKey(), ret));
+      }
+    }
+
+    @FinishBundle
+    public void finishBundle(final Context context) {
+    }
+  }
+
+  /**
    * Combine Function for two double arrays.
    */
   public static final class CombineFunction extends Combine.BinaryCombineFn<double[]> {
@@ -233,6 +291,52 @@ public final class MultinomialLogisticRegression {
       }
 
       return ret;
+    }
+  }
+
+  /**
+   + Composite transform that wraps the transforms inside the loop.
+   + The loop updates the model in each iteration.
+   */
+  public static final class UpdateModel
+      extends LoopCompositeTransform<PCollection<KV<Integer, double[]>>, PCollection<KV<Integer, double[]>>> {
+    private final int numFeatures;
+    private final int numClasses;
+    private final int iterationNum;
+    private final PCollection<String> readInput;
+
+    UpdateModel(final int numFeatures, final int numClasses, final int iterationNum,
+                final PCollection<String> readInput) {
+      this.numFeatures = numFeatures;
+      this.numClasses = numClasses;
+      this.iterationNum = iterationNum;
+      this.readInput = readInput;
+    }
+
+    @Override
+    public PCollection<KV<Integer, double[]>> expand(final PCollection<KV<Integer, double[]>> model) {
+      // Model as a view.
+      final PCollectionView<Map<Integer, double[]>> modelView = model.apply(View.asMap());
+
+      // Find gradient.
+      final PCollection<KV<Integer, double[]>> gradient = readInput
+          .apply(ParDo.of(
+              new CalculateGradient(modelView, numClasses, numFeatures)).withSideInputs(modelView))
+          .apply(Combine.perKey(new CombineFunction()));
+
+      // Tags for CoGroupByKey.
+      final TupleTag<double[]> gradientTag = new TupleTag<>();
+      final TupleTag<double[]> modelTag = new TupleTag<>();
+      final KeyedPCollectionTuple<Integer> coGbkInput = KeyedPCollectionTuple
+          .of(gradientTag, gradient)
+          .and(modelTag, model);
+
+      final PCollection<KV<Integer, CoGbkResult>> groupResult =
+          coGbkInput.apply(CoGroupByKey.create());
+
+      // Update the model
+      return groupResult
+          .apply(ParDo.of(new ApplyGradient(numFeatures, numClasses, iterationNum, gradientTag, modelTag)));
     }
   }
 
@@ -278,64 +382,7 @@ public final class MultinomialLogisticRegression {
 
     // Multiple iterations for convergence.
     for (int i = 1; i <= numItr; i++) {
-      final int iterationNum = i;
-
-      // Model as a view.
-      final PCollectionView<Map<Integer, double[]>> modelView = model.apply(View.asMap());
-
-      // Find gradient.
-      final PCollection<KV<Integer, double[]>> gradient = readInput
-          .apply(ParDo.of(
-              new CalculateGradient(modelView, numClasses, numFeatures)).withSideInputs(modelView))
-          .apply(Combine.perKey(new CombineFunction()));
-
-      // Tags for CoGroupByKey.
-      final TupleTag<double[]> gradientTag = new TupleTag<>();
-      final TupleTag<double[]> modelTag = new TupleTag<>();
-      final KeyedPCollectionTuple<Integer> coGbkInput = KeyedPCollectionTuple
-          .of(gradientTag, gradient)
-          .and(modelTag, model);
-
-      final PCollection<KV<Integer, CoGbkResult>> groupResult =
-          coGbkInput.apply(CoGroupByKey.create());
-
-      // Update the model
-      model = groupResult.apply(ParDo.of(
-          new DoFn<KV<Integer, CoGbkResult>, KV<Integer, double[]>>() {
-            @ProcessElement
-            public void processElement(final ProcessContext c) throws Exception {
-              final KV<Integer, CoGbkResult> kv = c.element();
-              final double[] gradientArr = kv.getValue().getOnly(gradientTag);
-              final double[] prevModelArr = kv.getValue().getOnly(modelTag);
-              final double[] gradient;
-              final double[] prevModel;
-              if (gradientArr.length > prevModelArr.length) {
-                gradient = gradientArr;
-                prevModel = prevModelArr;
-              } else {
-                gradient = prevModelArr;
-                prevModel = gradientArr;
-              }
-
-              if (kv.getKey() == numClasses - 1) {
-                final int numData = (int) gradient[0];
-                final double lossSum = gradient[2];
-                LOG.log(Level.INFO, "[" + iterationNum + "-th] Num Data: " + numData + " Loss : " + lossSum / numData);
-                c.output(KV.of(kv.getKey(), prevModel));
-              } else {
-                final int numData = (int) gradient[numFeatures];
-                final double stepSize = 1.0 / Math.sqrt(iterationNum);
-                final double multiplier = stepSize / numData;
-
-                final double[] ret = new double[prevModel.length];
-                for (int i = 0; i < prevModel.length; i++) {
-                  ret[i] = prevModel[i] - multiplier * gradient[i];
-                }
-                c.output(KV.of(kv.getKey(), ret));
-              }
-            }
-          }
-      ));
+      model = model.apply(new UpdateModel(numFeatures, numClasses, i, readInput));
     }
 
     p.run();
