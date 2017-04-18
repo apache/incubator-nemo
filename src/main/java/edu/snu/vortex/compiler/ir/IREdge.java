@@ -80,14 +80,6 @@ public final class IREdge extends Edge<IRVertex> {
     return type;
   }
 
-  public IRVertex getSrcIRVertex() {
-    return super.getSrc();
-  }
-
-  public IRVertex getDstIRVertex() {
-    return super.getDst();
-  }
-
   @Override
   public boolean equals(final Object o) {
     if (this == o) {
