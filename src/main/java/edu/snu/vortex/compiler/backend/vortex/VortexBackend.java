@@ -16,89 +16,30 @@
 package edu.snu.vortex.compiler.backend.vortex;
 
 import edu.snu.vortex.compiler.backend.Backend;
-import edu.snu.vortex.compiler.ir.DAG;
-import edu.snu.vortex.compiler.ir.Edge;
-import edu.snu.vortex.compiler.ir.Vertex;
+import edu.snu.vortex.compiler.ir.IREdge;
+import edu.snu.vortex.compiler.ir.IRVertex;
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
-import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlanBuilder;
-
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-
-import static edu.snu.vortex.compiler.ir.attribute.Attribute.*;
+import edu.snu.vortex.runtime.common.plan.logical.LogicalDAGGenerator;
+import edu.snu.vortex.utils.dag.DAG;
 
 /**
  * Backend component for Vortex Runtime.
  */
 public final class VortexBackend implements Backend<ExecutionPlan> {
-  private final ExecutionPlanBuilder executionPlanBuilder;
-  private final HashMap<Vertex, Integer> vertexStageNumHashMap;
-  private final List<List<Vertex>> vertexListForEachStage;
-  private final HashMap<Integer, Integer> stageDependencyMap;
-  private final AtomicInteger stageNumber;
-
   public VortexBackend() {
-    executionPlanBuilder = new ExecutionPlanBuilder();
-    vertexStageNumHashMap = new HashMap<>();
-    vertexListForEachStage = new ArrayList<>();
-    stageDependencyMap = new HashMap<>();
-    stageNumber = new AtomicInteger(0);
   }
 
-  public ExecutionPlan compile(final DAG dag) throws Exception {
-    // First, traverse the DAG topologically to add each vertices to a list associated with each of the stage number.
-    dag.doTopological(vertex -> {
-      final Optional<List<Edge>> inEdges = dag.getInEdgesOf(vertex);
-
-      if (!inEdges.isPresent()) { // If Source vertex
-        createNewStage(vertex);
-      } else {
-        final Optional<List<Edge>> inEdgesForStage = inEdges.map(e -> e.stream()
-            .filter(edge -> edge.getType().equals(Edge.Type.OneToOne))
-            .filter(edge -> edge.getAttr(Key.ChannelDataPlacement).equals(Local))
-            .filter(edge -> edge.getAttr(Key.SideInput) != SideInput) // remove with TODO #132: Refactor DAG
-            .filter(edge -> edge.getSrc().getAttributes().equals(edge.getDst().getAttributes()))
-            .filter(edge -> vertexStageNumHashMap.containsKey(edge.getSrc()))
-            .collect(Collectors.toList()));
-        final Optional<Edge> edgeToConnect = inEdgesForStage.map(edges -> edges.stream().filter(edge ->
-            !stageDependencyMap.containsKey(vertexStageNumHashMap.get(edge.getSrc()))).findFirst())
-            .orElse(Optional.empty());
-
-        if (!inEdgesForStage.isPresent() || inEdgesForStage.get().isEmpty() || !edgeToConnect.isPresent()) {
-          // when we cannot connect vertex in other stages
-          createNewStage(vertex);
-          inEdges.ifPresent(edges -> edges.forEach(inEdge -> {
-            stageDependencyMap.put(vertexStageNumHashMap.get(inEdge.getSrc()), stageNumber.get());
-          }));
-        } else {
-          final Vertex vertexToConnect = edgeToConnect.get().getSrc();
-          vertexStageNumHashMap.put(vertex, vertexStageNumHashMap.get(vertexToConnect));
-          final Optional<List<Vertex>> list =
-              vertexListForEachStage.stream().filter(l -> l.contains(vertexToConnect)).findFirst();
-          list.ifPresent(lst -> {
-            vertexListForEachStage.remove(lst);
-            lst.add(vertex);
-            vertexListForEachStage.add(lst);
-          });
-        }
-      }
-    });
-    // Create new Stage for each vertices with distinct stages, and connect each vertices together.
-    vertexListForEachStage.forEach(list -> {
-      executionPlanBuilder.createNewStage();
-      list.forEach(vertex -> {
-        executionPlanBuilder.addVertex(vertex);
-        dag.getInEdgesOf(vertex).ifPresent(edges -> edges.forEach(executionPlanBuilder::connectVertices));
-      });
-    });
-    return executionPlanBuilder.build();
-  }
-
-  private void createNewStage(final Vertex vertex) {
-    vertexStageNumHashMap.put(vertex, stageNumber.getAndIncrement());
-    final List<Vertex> newList = new ArrayList<>();
-    newList.add(vertex);
-    vertexListForEachStage.add(newList);
+  /**
+   * Compiles an IR DAG into an {@link ExecutionPlan} to be submitted to Runtime.
+   * The IR DAG is converted to an execution plan encapsulating a logical DAG using {@link LogicalDAGGenerator}.
+   * @param irDAG to compile.
+   * @return the execution plan to be submitted to Runtime.
+   * @throws Exception any exception occurred during the compilation.
+   */
+  public ExecutionPlan compile(final DAG<IRVertex, IREdge> irDAG) throws Exception {
+    final ExecutionPlan executionPlan =
+        new ExecutionPlan(RuntimeIdGenerator.generateExecutionPlanId(), irDAG.convert(new LogicalDAGGenerator()));
+    return executionPlan;
   }
 }

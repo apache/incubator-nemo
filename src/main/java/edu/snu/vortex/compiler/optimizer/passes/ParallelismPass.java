@@ -15,27 +15,27 @@
  */
 package edu.snu.vortex.compiler.optimizer.passes;
 
-import edu.snu.vortex.compiler.ir.DAG;
-import edu.snu.vortex.compiler.ir.Edge;
+import edu.snu.vortex.compiler.ir.IREdge;
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.SourceVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.utils.dag.DAG;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.Set;
 
 /**
  * Optimization pass for tagging parallelism attributes.
  */
 public final class ParallelismPass implements Pass {
-  public DAG process(final DAG dag) throws Exception {
-    dag.doTopological(vertex -> {
+  public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
+    dag.topologicalDo(vertex -> {
       try {
-        final Optional<List<Edge>> inEdges = dag.getInEdgesOf(vertex);
-        if (!inEdges.isPresent() && vertex instanceof SourceVertex) {
+        final Set<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
+        if (inEdges.isEmpty() && vertex instanceof SourceVertex) {
           final SourceVertex sourceVertex = (SourceVertex) vertex;
           vertex.setAttr(Attribute.IntegerKey.Parallelism, sourceVertex.getReaders(1).size());
-        } else if (inEdges.isPresent()) {
-          Integer parallelism = inEdges.get().stream()
+        } else if (!inEdges.isEmpty()) {
+          Integer parallelism = inEdges.stream()
               .mapToInt(edge -> edge.getSrc().getAttr(Attribute.IntegerKey.Parallelism)).max().getAsInt();
           vertex.setAttr(Attribute.IntegerKey.Parallelism, parallelism);
         } else {

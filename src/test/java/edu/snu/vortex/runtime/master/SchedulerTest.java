@@ -16,9 +16,9 @@
 package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
-import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlanBuilder;
-import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
+import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
+import edu.snu.vortex.utils.dag.DAGBuilder;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -34,32 +34,54 @@ import static org.mockito.Mockito.*;
 public final class SchedulerTest {
   private final Scheduler scheduler = new Scheduler(RuntimeAttribute.SamplePolicy);
 
+  /**
+   * This method builds a physical DAG and tests whether the physical DAG successfully gets scheduled..
+   */
+  // TODO #93: Implement Batch Scheduler
+  // The tests will be extended with Batch Scheduler.
   @Test
-  public void setUp() {
-    final PhysicalPlanBuilder builder = new PhysicalPlanBuilder("TestPlan");
+  public void testSimplePhysicalPlanScheduling() {
+    final DAGBuilder<PhysicalStage, PhysicalStageEdge> builder = new DAGBuilder<>();
 
     final TaskGroup taskGroup1 = mock(TaskGroup.class);
     when(taskGroup1.getResourceType()).thenReturn(RuntimeAttribute.Compute);
-
     final TaskGroup taskGroup2 = mock(TaskGroup.class);
+    when(taskGroup1.getResourceType()).thenReturn(RuntimeAttribute.Compute);
+    final TaskGroup taskGroup3 = mock(TaskGroup.class);
+    when(taskGroup1.getResourceType()).thenReturn(RuntimeAttribute.Compute);
+
+    final TaskGroup taskGroup4 = mock(TaskGroup.class);
+    when(taskGroup1.getResourceType()).thenReturn(RuntimeAttribute.Storage);
+    final TaskGroup taskGroup5 = mock(TaskGroup.class);
     when(taskGroup1.getResourceType()).thenReturn(RuntimeAttribute.Storage);
 
-    final TaskGroup taskGroup3 = mock(TaskGroup.class);
+    final TaskGroup taskGroup6 = mock(TaskGroup.class);
+    when(taskGroup1.getResourceType()).thenReturn(RuntimeAttribute.DistributedStorage);
+    final TaskGroup taskGroup7 = mock(TaskGroup.class);
     when(taskGroup1.getResourceType()).thenReturn(RuntimeAttribute.DistributedStorage);
 
-    builder.createNewStage(3);
-    builder.addTaskGroupToCurrentStage(taskGroup1);
-    builder.addTaskGroupToCurrentStage(taskGroup1);
-    builder.addTaskGroupToCurrentStage(taskGroup1);
+    PhysicalStageBuilder physicalStageBuilder = new PhysicalStageBuilder("Stage-1", 3);
+    physicalStageBuilder.addTaskGroup(taskGroup1);
+    physicalStageBuilder.addTaskGroup(taskGroup2);
+    physicalStageBuilder.addTaskGroup(taskGroup3);
 
-    builder.createNewStage(2);
-    builder.addTaskGroupToCurrentStage(taskGroup2);
-    builder.addTaskGroupToCurrentStage(taskGroup2);
+    final PhysicalStage stage1 = physicalStageBuilder.build();
+    builder.addVertex(stage1);
 
-    builder.createNewStage(2);
-    builder.addTaskGroupToCurrentStage(taskGroup3);
-    builder.addTaskGroupToCurrentStage(taskGroup3);
+    physicalStageBuilder = new PhysicalStageBuilder("Stage-2", 2);
+    physicalStageBuilder.addTaskGroup(taskGroup4);
+    physicalStageBuilder.addTaskGroup(taskGroup5);
 
-    scheduler.scheduleJob(builder.build());
+    final PhysicalStage stage2 = physicalStageBuilder.build();
+    builder.addVertex(stage2);
+
+    physicalStageBuilder = new PhysicalStageBuilder("Stage-3", 2);
+    physicalStageBuilder.addTaskGroup(taskGroup6);
+    physicalStageBuilder.addTaskGroup(taskGroup7);
+
+    final PhysicalStage stage3 = physicalStageBuilder.build();
+    builder.addVertex(stage3);
+
+    scheduler.scheduleJob(new PhysicalPlan("TestPlan", builder.build()));
   }
 }

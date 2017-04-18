@@ -29,4 +29,8 @@ public final class PhysicalPlanGenerationException extends RuntimeException {
   public PhysicalPlanGenerationException(final String message) {
     super(message);
   }
+
+  public PhysicalPlanGenerationException(final Throwable e) {
+    super(e);
+  }
 }

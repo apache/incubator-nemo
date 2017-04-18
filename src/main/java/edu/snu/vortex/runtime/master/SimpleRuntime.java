@@ -19,10 +19,11 @@ import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.Reader;
 import edu.snu.vortex.compiler.ir.Transform;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeOperatorVertex;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.executor.channel.LocalChannel;
-import edu.snu.vortex.utils.DAG;
+import edu.snu.vortex.utils.dag.DAG;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.*;
@@ -42,55 +43,65 @@ public final class SimpleRuntime {
   private static final String HACK_DUMMY_CHAND_ID = "HACK";
 
   /**
-   * Physical DAG and Logical DAG have incomplete data structures.
-   * As a result the dependency information between tasks within a stage in Physical DAG is lost in the translation.
-   * So for now we just assume that a stage is a sequence of tasks that only have 0 or 1 child/parent.
-   * This hack will be fixed by the following to do.
-   * TODO #132: Refactor DAG
-   *
+   * Executes the given physical plan.
    * @param physicalPlan Physical Plan.
    * @throws Exception during execution.
    */
   public void executePhysicalPlan(final PhysicalPlan physicalPlan) throws Exception {
     final Map<String, List<LocalChannel>> edgeIdToChannels = new HashMap<>();
+    final DAG<PhysicalStage, PhysicalStageEdge> stageDAG = physicalPlan.getStageDAG();
+    final Map<String, Iterable<Element>> runtimeEdgeIdToData = new HashMap<>();
 
     // TODO #93: Implement Batch Scheduler
-    physicalPlan.getTaskGroupsByStage().forEach(stage -> {
-      stage.forEach(taskGroup -> {
+    stageDAG.getTopologicalSort().forEach(stage -> {
+      final int stageParallelism = stage.getTaskGroupList().size();
+      final Set<PhysicalStageEdge> stageIncomingEdges = stageDAG.getIncomingEdgesOf(stage);
+      final Set<PhysicalStageEdge> stageOutgoingEdges = stageDAG.getOutgoingEdgesOf(stage);
 
-        // compute tasks in a taskgroup, supposedly 'rootVertices' at a time
-        // (another shortcoming of the current physical DAG)
-        final DAG<Task> taskDAG = taskGroup.getTaskDAG();
-        Iterable<Element> data = null; // hack (TODO #132: Refactor DAG)
-        Set<Task> currentTaskSet = new HashSet<>();
-        currentTaskSet.addAll(taskDAG.getRootVertices());
-        while (!currentTaskSet.isEmpty()) {
-          for (final Task task : currentTaskSet) {
-            final String vertexId = task.getRuntimeVertexId();
+      stage.getTaskGroupList().forEach(taskGroup -> {
 
-            // TODO #141: Remove instanceof
-            if (task instanceof BoundedSourceTask) {
-              try {
-                final BoundedSourceTask boundedSourceTask = (BoundedSourceTask) task;
-                final Reader reader = boundedSourceTask.getReader();
-                data = reader.read();
-              } catch (Exception e) {
-                throw new RuntimeException(e);
+        final DAG<Task, RuntimeEdge<Task>> taskDAG = taskGroup.getTaskDAG();
+        final List<Task> sortedTasks = taskDAG.getTopologicalSort();
+        sortedTasks.forEach(task -> {
+          final String vertexId = task.getRuntimeVertexId();
+
+          // TODO #141: Remove instanceof
+          if (task instanceof BoundedSourceTask) {
+            try {
+              final BoundedSourceTask boundedSourceTask = (BoundedSourceTask) task;
+              final Reader reader = boundedSourceTask.getReader();
+
+              writeOutput(task, reader.read(), runtimeEdgeIdToData, edgeIdToChannels,
+                  stageParallelism, stageOutgoingEdges, taskDAG.getOutgoingEdgesOf(task));
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+
+          } else if (task instanceof OperatorTask) {
+            // Check for any incoming edge from other stages.
+            final Set<PhysicalStageEdge> inEdgesFromOtherStages = stageIncomingEdges.stream().filter(
+                stageInEdge -> stageInEdge.getDstVertex().getId().equals(vertexId)).collect(Collectors.toSet());
+
+            // Check for incoming edge from this stage.
+            final Set<RuntimeEdge<Task>> inEdgesWithinStage = taskDAG.getIncomingEdgesOf(task);
+
+            final Set<RuntimeEdge> nonSideInputEdges =
+                filterInputEdges(inEdgesFromOtherStages, inEdgesWithinStage, false);
+            final Set<RuntimeEdge> sideInputEdges =
+                filterInputEdges(inEdgesFromOtherStages, inEdgesWithinStage, true);
+            final Map<Transform, Object> sideInputs = getSideInputs(sideInputEdges, task, edgeIdToChannels);
+
+            if (nonSideInputEdges.size() > 1) {
+              // TODO #13: Implement Join Node
+              throw new UnsupportedOperationException("Multi inedge not yet supported");
+            } else if (nonSideInputEdges.size() == 1) { // We fetch 'data' from the incoming stage
+              final RuntimeEdge inEdge = nonSideInputEdges.iterator().next();
+              final String srcVertexId;
+              if (inEdge instanceof PhysicalStageEdge) {
+                srcVertexId = ((PhysicalStageEdge) inEdge).getSrcVertex().getId();
+              } else {
+                srcVertexId = ((Task) inEdge.getSrc()).getRuntimeVertexId();
               }
-            } else if (task instanceof OperatorTask) {
-              // It the current task has any incoming edges, it reads data from the channels associated to the edges.
-              // After that, it applies its transform function to the data read.
-              final Set<StageBoundaryEdgeInfo> inEdges = taskGroup.getIncomingEdges().get(vertexId);
-              final Map<Transform, Object> sideInputs = getSideInputs(inEdges, task, edgeIdToChannels);
-              final Set<StageBoundaryEdgeInfo> nonSideInputEdges = getNonSideInputEdges(inEdges);
-              if (nonSideInputEdges.size() > 1) {
-                // TODO #13: Implement Join Node
-                throw new UnsupportedOperationException("Multi inedge not yet supported");
-              } else if (nonSideInputEdges.size() == 1) { // We fetch 'data' from the incoming stage
-                final StageBoundaryEdgeInfo inEdge = nonSideInputEdges.iterator().next();
-                data = edgeIdToChannels.get(inEdge.getStageBoundaryEdgeInfoId()).get(task.getIndex()).read();
-              }
-
               final OperatorTask operatorTask = (OperatorTask) task;
 
               // TODO #18: Support code/data serialization
@@ -99,85 +110,135 @@ public final class SimpleRuntime {
               final Transform.Context transformContext = new ContextImpl(sideInputs);
               final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
               transform.prepare(transformContext, outputCollector);
-              transform.onData(data, null); // hack (TODO #132: Refactor DAG)
+              transform.onData(edgeIdToChannels.get(inEdge.getRuntimeEdgeId()).get(task.getIndex()).read(),
+                  srcVertexId);
               transform.close();
-              data = outputCollector.getOutputList();
-
-            } else {
-              throw new UnsupportedOperationException(task.toString());
+              writeOutput(task, outputCollector.getOutputList(), runtimeEdgeIdToData, edgeIdToChannels,
+                  stageParallelism, stageOutgoingEdges, taskDAG.getOutgoingEdgesOf(task));
             }
-
-            LOG.log(Level.INFO, " Output of {" + task.getTaskId() + "}: " +
-                (data.toString().length() > 5000 ?
-                    data.toString().substring(0, 5000) + "..." : data.toString()));
-
-            // If the current task has any outgoing edges, it writes data to channels associated to the edges.
-            final Set<StageBoundaryEdgeInfo> outEdges = taskGroup.getOutgoingEdges().get(vertexId);
-            if (outEdges != null) {
-              final Iterable<Element> finalData = data;
-              outEdges.forEach(outEdge -> {
-                writeToChannels(task.getIndex(), edgeIdToChannels, outEdge, finalData);
-              });
-            }
+          } else {
+            throw new UnsupportedOperationException(task.toString());
           }
-
-          // this is the only way to 'traverse' the DAG<Task>..... (TODO #132: Refactor DAG)
-          currentTaskSet.forEach(task -> taskDAG.removeVertex(task));
-
-          // get the next 'rootVertices'
-          currentTaskSet.clear();
-          currentTaskSet.addAll(taskDAG.getRootVertices());
-        }
+        });
       });
     });
   }
 
-  private Set<StageBoundaryEdgeInfo> getNonSideInputEdges(final Set<StageBoundaryEdgeInfo> inEdges) {
-    if (inEdges != null) {
-      return inEdges.stream()
-          .filter(inEdge ->
-              inEdge.getEdgeAttributes().get(RuntimeAttribute.Key.SideInput) != RuntimeAttribute.SideInput)
-          .collect(Collectors.toSet());
-    } else {
-      return new HashSet<>(0);
+  private void writeOutput(final Task taskExecuted,
+                           final Iterable<Element> dataToWrite,
+                           final Map<String, Iterable<Element>> runtimeEdgeIdToData,
+                           final Map<String, List<LocalChannel>> edgeIdToChannels,
+                           final int stageParallelism,
+                           final Set<PhysicalStageEdge> stageOutgoingEdges,
+                           final Set<RuntimeEdge<Task>> outEdgesWithinStage) {
+
+    LOG.log(Level.INFO, " Output of {" + taskExecuted.getTaskId() + "}: " +
+        (dataToWrite.toString().length() > 5000 ?
+            dataToWrite.toString().substring(0, 5000) + "..." : dataToWrite.toString()));
+
+    // Check for any outgoing edge to other stages and write output.
+    final Set<PhysicalStageEdge> outEdgesToOtherStages = stageOutgoingEdges.stream()
+        .filter(outEdgeInfo -> outEdgeInfo.getSrcVertex().getId().equals(taskExecuted.getRuntimeVertexId()))
+        .collect(Collectors.toSet());
+
+    if (!outEdgesToOtherStages.isEmpty()) {
+      outEdgesToOtherStages.forEach(outEdge -> {
+        writeToChannels(taskExecuted.getIndex(), edgeIdToChannels, outEdge,
+            outEdge.getExternalVertexAttr().get(RuntimeAttribute.IntegerKey.Parallelism), dataToWrite);
+        runtimeEdgeIdToData.put(outEdge.getRuntimeEdgeId(), dataToWrite);
+      });
+    }
+
+    // Check for any outgoing edge within the stage and write output.
+    if (!outEdgesWithinStage.isEmpty()) {
+      outEdgesWithinStage.forEach(outEdge -> {
+        writeToChannels(taskExecuted.getIndex(), edgeIdToChannels, outEdge,
+            stageParallelism, dataToWrite);
+        runtimeEdgeIdToData.put(outEdge.getRuntimeEdgeId(), dataToWrite);
+      });
     }
   }
 
-  private Map<Transform, Object> getSideInputs(final Set<StageBoundaryEdgeInfo> inEdges,
+  /**
+   * Filters input edges (either side-input, or non-side-input).
+   * @param inEdgesFromOtherStages edges from other stages.
+   * @param inEdgesWithinStage edges within the stage.
+   * @param getSideInputEdges true if side-input edges are to be filtered, false otherwise.
+   * @return the set of filtered edges.
+   */
+  private Set<RuntimeEdge> filterInputEdges(final Set<PhysicalStageEdge> inEdgesFromOtherStages,
+                                            final Set<RuntimeEdge<Task>> inEdgesWithinStage,
+                                            final boolean getSideInputEdges) {
+    final Set<RuntimeEdge> filteredEdges = new HashSet<>();
+    if (!inEdgesFromOtherStages.isEmpty()) {
+      filteredEdges.addAll(inEdgesFromOtherStages.stream()
+          .filter(
+              inEdge -> (inEdge.getEdgeAttributes().get(RuntimeAttribute.Key.SideInput) != RuntimeAttribute.SideInput)
+                  ^ getSideInputEdges)
+          .collect(Collectors.toSet()));
+    }
+    if (!inEdgesWithinStage.isEmpty()) {
+      filteredEdges.addAll(inEdgesWithinStage.stream()
+          .filter(
+              inEdge -> (inEdge.getEdgeAttributes().get(RuntimeAttribute.Key.SideInput) != RuntimeAttribute.SideInput)
+                  ^ getSideInputEdges)
+          .collect(Collectors.toSet()));
+    }
+    return filteredEdges;
+  }
+
+  /**
+   * Retrieves side-inputs based on the given side-input edges.
+   * @param sideInputEdges the set of side-input edges.
+   * @param task the subject task.
+   * @param edgeIdToChannels the map of runtime edge ID to channels.
+   * @return the side-inputs.
+   */
+  private Map<Transform, Object> getSideInputs(final Set<RuntimeEdge> sideInputEdges,
                                                final Task task,
                                                final Map<String, List<LocalChannel>> edgeIdToChannels) {
-    if (inEdges != null) {
-      // We assume that all sideinputs are fetched from outside of the task's stage TODO #132: Refactor DAG
+    if (!sideInputEdges.isEmpty()) {
       final Map<Transform, Object> sideInputs = new HashMap<>();
-      inEdges.stream()
-          .filter(inEdge ->
-              inEdge.getEdgeAttributes().get(RuntimeAttribute.Key.SideInput) == RuntimeAttribute.SideInput)
-          .forEach(inEdge -> {
-            final Iterable<Element> elementSideInput =
-                edgeIdToChannels.get(inEdge.getStageBoundaryEdgeInfoId()).get(task.getIndex()).read();
-            final List<Object> objectSideInput = StreamSupport
-                .stream(elementSideInput.spliterator(), false)
-                .map(element -> element.getData())
-                .collect(Collectors.toList());
-            if (objectSideInput.size() != 1) {
-              throw new RuntimeException("Size of out data partitions of a broadcast operator must match 1");
-            }
-            sideInputs.put(
-                ((RuntimeOperatorVertex) inEdge.getExternalVertex()).getOperatorVertex().getTransform(),
-                objectSideInput.get(0));
-          });
+      sideInputEdges.forEach(inEdge -> {
+        final Iterable<Element> elementSideInput =
+            edgeIdToChannels.get(inEdge.getRuntimeEdgeId()).get(task.getIndex()).read();
+        final List<Object> objectSideInput = StreamSupport
+            .stream(elementSideInput.spliterator(), false)
+            .map(element -> element.getData())
+            .collect(Collectors.toList());
+        if (objectSideInput.size() != 1) {
+          throw new RuntimeException("Size of out data partitions of a broadcast operator must match 1");
+        }
+
+        final Transform srcTransform;
+        if (inEdge instanceof PhysicalStageEdge) {
+          srcTransform = ((RuntimeOperatorVertex) ((PhysicalStageEdge) inEdge).getSrcVertex())
+              .getOperatorVertex().getTransform();
+        } else {
+          srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
+        }
+        sideInputs.put(srcTransform, objectSideInput.get(0));
+      });
       return sideInputs;
     } else {
       return new HashMap<>(0);
     }
   }
 
+  /**
+   * Writes data to appropriate channels.
+   * @param srcTaskIndex to be used for one-to-one edge channels.
+   * @param edgeIdToChannels the map of runtime edge ID to channels.
+   * @param edge to determine how data should be written to the corresponding channels.
+   * @param dstParallelism to be used for finding the corresponding channel for scatter-gather edges.
+   * @param data to write.
+   */
   private void writeToChannels(final int srcTaskIndex,
                                final Map<String, List<LocalChannel>> edgeIdToChannels,
-                               final StageBoundaryEdgeInfo edge,
+                               final RuntimeEdge edge,
+                               final int dstParallelism,
                                final Iterable<Element> data) {
-    final int dstParallelism = edge.getExternalVertexAttr().get(RuntimeAttribute.IntegerKey.Parallelism);
-    final List<LocalChannel> dstChannels = edgeIdToChannels.computeIfAbsent(edge.getStageBoundaryEdgeInfoId(), s -> {
+    final List<LocalChannel> dstChannels = edgeIdToChannels.computeIfAbsent(edge.getRuntimeEdgeId(), s -> {
       final List<LocalChannel> newChannels = new ArrayList<>(dstParallelism);
       IntStream.range(0, dstParallelism).forEach(x -> {
         // This is a hack to make the runtime work for now

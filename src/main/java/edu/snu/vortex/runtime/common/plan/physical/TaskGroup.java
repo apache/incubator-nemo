@@ -16,56 +16,36 @@
 package edu.snu.vortex.runtime.common.plan.physical;
 
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
-import edu.snu.vortex.utils.DAG;
+import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
+import edu.snu.vortex.utils.dag.DAG;
 
 import java.io.Serializable;
-import java.util.Map;
-import java.util.Set;
 
 /**
- * TaskGroup.
+ * A TaskGroup is a grouping of {@link Task} that belong to a stage.
+ * Executors receive units of TaskGroups during job execution,
+ * and thus the resource type of all tasks of a TaskGroup must be identical.
+ * A stage contains a list of TaskGroups whose length corresponds to stage/operator parallelism.
  */
 public final class TaskGroup implements Serializable {
   private final String taskGroupId;
-  private final DAG<Task> taskDAG;
+  private final DAG<Task, RuntimeEdge<Task>> taskDAG;
   private final RuntimeAttribute resourceType;
 
-  /**
-   * Map of this stage's vertex ID to the information on the set of incoming edges to the stage.
-   */
-  private final Map<String, Set<StageBoundaryEdgeInfo>> incomingEdges;
-
-  /**
-   * Map of this stage's vertex ID to the information on the set of outgoing edges from the stage.
-   */
-  private final Map<String, Set<StageBoundaryEdgeInfo>> outgoingEdges;
-
   public TaskGroup(final String taskGroupId,
-                   final DAG<Task> taskDAG,
-                   final RuntimeAttribute resourceType,
-                   final Map<String, Set<StageBoundaryEdgeInfo>> incomingEdges,
-                   final Map<String, Set<StageBoundaryEdgeInfo>> outgoingEdges) {
+                   final DAG<Task, RuntimeEdge<Task>> taskDAG,
+                   final RuntimeAttribute resourceType) {
     this.taskGroupId = taskGroupId;
     this.taskDAG = taskDAG;
     this.resourceType = resourceType;
-    this.incomingEdges = incomingEdges;
-    this.outgoingEdges = outgoingEdges;
   }
 
   public RuntimeAttribute getResourceType() {
     return resourceType;
   }
 
-  public DAG<Task> getTaskDAG() {
+  public DAG<Task, RuntimeEdge<Task>> getTaskDAG() {
     return taskDAG;
-  }
-
-  public Map<String, Set<StageBoundaryEdgeInfo>> getIncomingEdges() {
-    return incomingEdges;
-  }
-
-  public Map<String, Set<StageBoundaryEdgeInfo>> getOutgoingEdges() {
-    return outgoingEdges;
   }
 
   @Override
@@ -74,8 +54,6 @@ public final class TaskGroup implements Serializable {
     sb.append("taskGroupId='").append(taskGroupId).append('\'');
     sb.append(", taskDAG=").append(taskDAG);
     sb.append(", resourceType=").append(resourceType);
-    sb.append(", incomingEdges=").append(incomingEdges);
-    sb.append(", outgoingEdges=").append(outgoingEdges);
     sb.append('}');
     return sb.toString();
   }

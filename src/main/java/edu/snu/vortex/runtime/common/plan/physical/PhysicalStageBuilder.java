@@ -15,40 +15,36 @@
  */
 package edu.snu.vortex.runtime.common.plan.physical;
 
-import edu.snu.vortex.utils.dag.DAG;
-
-import java.util.logging.Logger;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * A job's physical plan corresponding to an {@link edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan}.
+ * PhysicalStageBuilder.
  */
-public final class PhysicalPlan {
-  private static final Logger LOG = Logger.getLogger(PhysicalPlan.class.getName());
-
+public final class PhysicalStageBuilder {
   private final String id;
+  private final List<TaskGroup> taskGroupList;
 
-  private final DAG<PhysicalStage, PhysicalStageEdge> stageDAG;
-
-  public PhysicalPlan(final String id,
-                      final DAG<PhysicalStage, PhysicalStageEdge> stageDAG) {
-    this.id = id;
-    this.stageDAG = stageDAG;
-  }
-
-  public String getId() {
-    return id;
-  }
-
-  public DAG<PhysicalStage, PhysicalStageEdge> getStageDAG() {
-    return stageDAG;
+  public PhysicalStageBuilder(final String stageId,
+                              final int parallelism) {
+    this.id = stageId;
+    this.taskGroupList = new ArrayList<>(parallelism);
   }
 
   @Override
   public String toString() {
-    final StringBuffer sb = new StringBuffer("PhysicalPlan{");
+    final StringBuffer sb = new StringBuffer("PhysicalStage{");
     sb.append("id='").append(id).append('\'');
-    sb.append(", stageDAG=").append(stageDAG);
+    sb.append(", taskGroupList=").append(taskGroupList);
     sb.append('}');
     return sb.toString();
+  }
+
+  public void addTaskGroup(final TaskGroup taskGroup) {
+    taskGroupList.add(taskGroup);
+  }
+
+  public PhysicalStage build() {
+    return new PhysicalStage(id, taskGroupList);
   }
 }

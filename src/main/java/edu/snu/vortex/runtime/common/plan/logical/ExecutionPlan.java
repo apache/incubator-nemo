@@ -15,13 +15,13 @@
  */
 package edu.snu.vortex.runtime.common.plan.logical;
 
-import java.util.ArrayList;
-import java.util.List;
+import edu.snu.vortex.utils.dag.DAG;
+
 import java.util.logging.Logger;
 
 /**
  * Represents a job.
- * Each execution plan consists of a list of {@link RuntimeStage} to execute, in a topological order.
+ * Each execution plan consists of a list of {@link Stage} to execute, in a topological order.
  * An execution plan is submitted to {@link edu.snu.vortex.runtime.master.RuntimeMaster} once created.
  */
 public final class ExecutionPlan {
@@ -29,31 +29,28 @@ public final class ExecutionPlan {
 
   private final String id;
 
-  /**
-   * The list of {@link RuntimeStage} to execute, sorted in the order of execution.
-   */
-  private final List<RuntimeStage> runtimeStages;
+  private final DAG<Stage, StageEdge> runtimeStageDAG;
 
   public ExecutionPlan(final String id,
-                       final List<RuntimeStageBuilder> runtimeStageBuilderList) {
+                       final DAG<Stage, StageEdge> runtimeStageDAG) {
     this.id = id;
-    this.runtimeStages = new ArrayList<>(runtimeStageBuilderList.size());
-    runtimeStageBuilderList.forEach(runtimeStageBuilder -> runtimeStages.add(runtimeStageBuilder.build()));
+    this.runtimeStageDAG = runtimeStageDAG;
   }
 
   public String getId() {
     return id;
   }
 
-  public List<RuntimeStage> getRuntimeStages() {
-    return runtimeStages;
+  public DAG<Stage, StageEdge> getRuntimeStageDAG() {
+    return runtimeStageDAG;
   }
 
   @Override
   public String toString() {
-    return "ExecutionPlan{" +
-        "id='" + id + '\'' +
-        ", runtimeStages=" + runtimeStages +
-        '}';
+    final StringBuffer sb = new StringBuffer("ExecutionPlan{");
+    sb.append("id='").append(id).append('\'');
+    sb.append(", runtimeStageDAG=").append(runtimeStageDAG);
+    sb.append('}');
+    return sb.toString();
   }
 }
