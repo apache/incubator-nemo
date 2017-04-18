@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.compiler.frontend;
 
-import edu.snu.vortex.compiler.ir.DAG;
+import edu.snu.vortex.utils.dag.DAG;
 
 /**
  * Interface for the frontend class.

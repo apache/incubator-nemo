@@ -15,24 +15,24 @@
  */
 package edu.snu.vortex.compiler.optimizer.passes;
 
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
-import edu.snu.vortex.compiler.ir.DAG;
-import edu.snu.vortex.compiler.ir.Edge;
+import edu.snu.vortex.compiler.ir.IREdge;
+import edu.snu.vortex.utils.dag.DAG;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.Set;
 
 /**
  * Pado pass for tagging vertices.
  */
 public final class PadoVertexPass implements Pass {
-  public DAG process(final DAG dag) throws Exception {
-    dag.doTopological(vertex -> {
-      final Optional<List<Edge>> inEdges = dag.getInEdgesOf(vertex);
-      if (!inEdges.isPresent()) {
+  public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
+    dag.topologicalDo(vertex -> {
+      final Set<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
+      if (inEdges.isEmpty()) {
         vertex.setAttr(Attribute.Key.Placement, Attribute.Transient);
       } else {
-        if (hasM2M(inEdges.get()) || allFromReserved(inEdges.get())) {
+        if (hasM2M(inEdges) || allFromReserved(inEdges)) {
           vertex.setAttr(Attribute.Key.Placement, Attribute.Reserved);
         } else {
           vertex.setAttr(Attribute.Key.Placement, Attribute.Transient);
@@ -42,12 +42,12 @@ public final class PadoVertexPass implements Pass {
     return dag;
   }
 
-  private boolean hasM2M(final List<Edge> edges) {
-    return edges.stream().filter(edge -> edge.getType() == Edge.Type.ScatterGather).count() > 0;
+  private boolean hasM2M(final Set<IREdge> irEdges) {
+    return irEdges.stream().filter(edge -> edge.getType() == IREdge.Type.ScatterGather).count() > 0;
   }
 
-  private boolean allFromReserved(final List<Edge> edges) {
-    return edges.stream()
+  private boolean allFromReserved(final Set<IREdge> irEdges) {
+    return irEdges.stream()
         .allMatch(edge -> edge.getSrc().getAttr(Attribute.Key.Placement) == Attribute.Reserved);
   }
 }

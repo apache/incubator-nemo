@@ -23,11 +23,11 @@ import java.io.Serializable;
 /**
  * The top-most wrapper for a user operation in the Vortex IR.
  */
-public abstract class Vertex implements Serializable {
+public abstract class IRVertex implements Serializable {
   private final String id;
   private final AttributeMap attributes;
 
-  public Vertex() {
+  public IRVertex() {
     this.id = IdManager.newOperatorId();
     this.attributes = AttributeMap.of(this);
   }
@@ -36,11 +36,11 @@ public abstract class Vertex implements Serializable {
     return id;
   }
 
-  public final Vertex setAttr(final Attribute.Key key, final Attribute val) {
+  public final IRVertex setAttr(final Attribute.Key key, final Attribute val) {
     attributes.put(key, val);
     return this;
   }
-  public final Vertex setAttr(final Attribute.IntegerKey key, final Integer val) {
+  public final IRVertex setAttr(final Attribute.IntegerKey key, final Integer val) {
     attributes.put(key, val);
     return this;
   }

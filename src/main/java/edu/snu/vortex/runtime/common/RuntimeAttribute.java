@@ -24,7 +24,7 @@ public enum RuntimeAttribute {
    */
 
   /**
-   * Vertex resource type attributes.
+   * IRVertex resource type attributes.
    */
   Transient(Key.ResourceType),
   Reserved(Key.ResourceType),
@@ -58,18 +58,18 @@ public enum RuntimeAttribute {
   Pull(Key.ChannelTransferPolicy),
 
   /**
-   * Edge partition type attributes.
+   * IREdge partition type attributes.
    */
   Hash(Key.Partition),
   Range(Key.Partition),
 
   /**
-   * Edge type to specify edges that transfer SideInputs.
+   * IREdge type to specify edges that transfer SideInputs.
    */
   SideInput(Key.SideInput),
 
   /**
-   * Edge communication pattern attributes.
+   * IREdge communication pattern attributes.
    */
   OneToOne(Key.CommPattern),
   Broadcast(Key.CommPattern),
