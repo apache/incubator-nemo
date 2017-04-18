@@ -20,7 +20,7 @@ package edu.snu.vortex.compiler.ir.attribute;
  */
 public enum Attribute {
   /**
-   * Vertex placement attributes.
+   * IRVertex placement attributes.
    */
   Transient(Key.Placement),
   Reserved(Key.Placement),
@@ -28,13 +28,13 @@ public enum Attribute {
   Storage(Key.Placement),
 
   /**
-   * Edge partitioning attributes.
+   * IREdge partitioning attributes.
    */
   Hash(Key.Partitioning),
   Range(Key.Partitioning),
 
   /**
-   * Edge channel data placement attributes.
+   * IREdge channel data placement attributes.
    * Local: Intermediate data are placed without serialization
    * and the receiver on the same machine task will take the data.
    *
@@ -53,20 +53,20 @@ public enum Attribute {
   DistributedStorage(Key.ChannelDataPlacement),
 
   /**
-   * Edge channel transfer policy attributes.
+   * IREdge channel transfer policy attributes.
    */
   Pull(Key.ChannelTransferPolicy),
   Push(Key.ChannelTransferPolicy),
 
   /**
-   * Edge communication pattern attributes.
+   * IREdge communication pattern attributes.
    */
   OneToOne(Key.CommunicationPattern),
   Broadcast(Key.CommunicationPattern),
   ScatterGather(Key.CommunicationPattern),
 
   /**
-   * Edge type to specify edges that transfer SideInputs.
+   * IREdge type to specify edges that transfer SideInputs.
    */
   SideInput(Key.SideInput);
 
@@ -74,10 +74,10 @@ public enum Attribute {
    * Attribute Keys.
    */
   public enum Key {
-    // Vertex
+    // IRVertex
     Placement,
 
-    // Edge
+    // IREdge
     Partitioning,
     ChannelDataPlacement,
     ChannelTransferPolicy,
@@ -89,10 +89,10 @@ public enum Attribute {
    * Attribute keys that have Integer value.
    */
   public enum IntegerKey {
-    // Vertex
+    // IRVertex
     Parallelism,
 
-    // Edge
+    // IREdge
   }
 
   private final Key key;

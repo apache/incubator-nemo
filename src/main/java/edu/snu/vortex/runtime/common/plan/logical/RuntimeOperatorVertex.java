@@ -18,7 +18,6 @@ package edu.snu.vortex.runtime.common.plan.logical;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.runtime.common.plan.physical.OperatorTask;
-import edu.snu.vortex.runtime.common.plan.physical.Task;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,16 +34,6 @@ public final class RuntimeOperatorVertex extends RuntimeVertex {
     super(operatorVertex.getId(), vertexAttributes);
     this.operatorVertex = operatorVertex;
     this.taskList = new ArrayList<>();
-  }
-
-  @Override
-  public List<OperatorTask> getTaskList() {
-    return taskList;
-  }
-
-  @Override
-  public void addTask(final Task task) {
-    taskList.add((OperatorTask) task);
   }
 
   public OperatorVertex getOperatorVertex() {

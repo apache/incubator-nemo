@@ -18,13 +18,12 @@ package edu.snu.vortex.compiler.ir;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.exception.UnsupportedAttributeException;
+import edu.snu.vortex.utils.dag.Edge;
 
 /**
  * Physical execution plan of intermediate data movement.
- * @param <I> input vertex type.
- * @param <O> output vertex type.
  */
-public final class Edge<I, O> {
+public final class IREdge extends Edge<IRVertex> {
   /**
    * Type of edges.
    */
@@ -37,16 +36,13 @@ public final class Edge<I, O> {
   private final String id;
   private final AttributeMap attributes;
   private final Type type;
-  private final Vertex src;
-  private final Vertex dst;
 
-  Edge(final Type type,
-       final Vertex src,
-       final Vertex dst) {
+  public IREdge(final Type type,
+         final IRVertex src,
+         final IRVertex dst) {
+    super(src, dst);
     this.id = IdManager.newEdgeId();
     this.attributes = AttributeMap.of(this);
-    this.src = src;
-    this.dst = dst;
     this.type = type;
     switch (this.getType()) {
       case OneToOne:
@@ -67,7 +63,7 @@ public final class Edge<I, O> {
     return id;
   }
 
-  public Edge<I, O> setAttr(final Attribute.Key key, final Attribute val) {
+  public IREdge setAttr(final Attribute.Key key, final Attribute val) {
     attributes.put(key, val);
     return this;
   }
@@ -84,12 +80,12 @@ public final class Edge<I, O> {
     return type;
   }
 
-  public Vertex getSrc() {
-    return src;
+  public IRVertex getSrcIRVertex() {
+    return super.getSrc();
   }
 
-  public Vertex getDst() {
-    return dst;
+  public IRVertex getDstIRVertex() {
+    return super.getDst();
   }
 
   @Override
@@ -101,22 +97,22 @@ public final class Edge<I, O> {
       return false;
     }
 
-    Edge<?, ?> edge = (Edge<?, ?>) o;
+    IREdge irEdge = (IREdge) o;
 
-    if (type != edge.type) {
+    if (type != irEdge.type) {
       return false;
     }
-    if (!src.equals(edge.src)) {
+    if (!getSrc().equals(irEdge.getSrc())) {
       return false;
     }
-    return dst.equals(edge.dst);
+    return getDst().equals(irEdge.getDst());
   }
 
   @Override
   public int hashCode() {
     int result = type.hashCode();
-    result = 31 * result + src.hashCode();
-    result = 31 * result + dst.hashCode();
+    result = 31 * result + getSrc().hashCode();
+    result = 31 * result + getDst().hashCode();
     return result;
   }
 
@@ -126,9 +122,9 @@ public final class Edge<I, O> {
     sb.append("id: ");
     sb.append(id);
     sb.append(", src: ");
-    sb.append(src.getId());
+    sb.append(getSrc().getId());
     sb.append(", dst: ");
-    sb.append(dst.getId());
+    sb.append(getDst().getId());
     sb.append(", attributes: ");
     sb.append(attributes);
     sb.append(", type: ");

@@ -17,13 +17,12 @@ package edu.snu.vortex.runtime.common.plan.logical;
 
 
 import edu.snu.vortex.runtime.common.*;
+import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 
 /**
- * Runtime Edge.
+ * Stage Edge.
  */
-public final class RuntimeEdge {
-  private final String runtimeEdgeId;
-  private final RuntimeAttributeMap edgeAttributes;
+public final class StageEdge extends RuntimeEdge<Stage> {
   private final RuntimeVertex srcRuntimeVertex;
   private final RuntimeVertex dstRuntimeVertex;
 
@@ -31,25 +30,20 @@ public final class RuntimeEdge {
    * Represents the edge between vertices in a logical plan.
    * @param irEdgeId id of this edge.
    * @param edgeAttributes to control the data flow on this edge.
-   * @param srcRuntimeVertex source vertex.
-   * @param dstRuntimeVertex destination vertex.
+   * @param srcStage source runtime stage.
+   * @param dstStage destination runtime stage.
+   * @param srcRuntimeVertex source vertex (in srcStage).
+   * @param dstRuntimeVertex destination vertex (in dstStage).
    */
-  public RuntimeEdge(final String irEdgeId,
-                     final RuntimeAttributeMap edgeAttributes,
-                     final RuntimeVertex srcRuntimeVertex,
-                     final RuntimeVertex dstRuntimeVertex) {
-    this.runtimeEdgeId = RuntimeIdGenerator.generateRuntimeEdgeId(irEdgeId);
-    this.edgeAttributes = edgeAttributes;
+  public StageEdge(final String irEdgeId,
+                   final RuntimeAttributeMap edgeAttributes,
+                   final Stage srcStage,
+                   final Stage dstStage,
+                   final RuntimeVertex srcRuntimeVertex,
+                   final RuntimeVertex dstRuntimeVertex) {
+    super(RuntimeIdGenerator.generateStageEdgeId(irEdgeId), edgeAttributes, srcStage, dstStage);
     this.srcRuntimeVertex = srcRuntimeVertex;
     this.dstRuntimeVertex = dstRuntimeVertex;
-  }
-
-  public String getId() {
-    return runtimeEdgeId;
-  }
-
-  public RuntimeAttributeMap getEdgeAttributes() {
-    return edgeAttributes;
   }
 
   public RuntimeVertex getSrcRuntimeVertex() {

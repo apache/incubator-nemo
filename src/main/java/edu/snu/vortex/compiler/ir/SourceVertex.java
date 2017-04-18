@@ -18,11 +18,11 @@ package edu.snu.vortex.compiler.ir;
 import java.util.List;
 
 /**
- * Vertex that reads data from an external source.
+ * IRVertex that reads data from an external source.
  * It is to be implemented in the compiler frontend with source-specific data fetching logic.
  * @param <O> output type.
  */
-public abstract class SourceVertex<O> extends Vertex {
+public abstract class SourceVertex<O> extends IRVertex {
   /**
    * Get parallel readers.
    * @param desiredNumOfSplits number of splits desired.

@@ -16,10 +16,8 @@
 package edu.snu.vortex.runtime.common.plan.logical;
 
 import edu.snu.vortex.runtime.common.*;
-import edu.snu.vortex.runtime.common.plan.physical.Task;
 
 import java.io.Serializable;
-import java.util.List;
 
 /**
  * Represents an operator of a job, tagged with attributes about the operator.
@@ -41,8 +39,4 @@ public abstract class RuntimeVertex implements Serializable {
   public final RuntimeAttributeMap getVertexAttributes() {
     return vertexAttributes;
   }
-
-  public abstract List<? extends Task> getTaskList();
-
-  public abstract void addTask(final Task task);
 }

@@ -15,8 +15,8 @@
  */
 package edu.snu.vortex.compiler.frontend.beam;
 
-import edu.snu.vortex.compiler.ir.DAG;
-import edu.snu.vortex.compiler.ir.DAGBuilder;
+import edu.snu.vortex.utils.dag.DAG;
+import edu.snu.vortex.utils.dag.DAGBuilder;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.runners.PipelineRunner;
@@ -36,7 +36,7 @@ public final class Runner extends PipelineRunner<Result> {
   }
 
   public Result run(final Pipeline pipeline) {
-    final DAGBuilder builder = new DAGBuilder();
+    final DAGBuilder builder = new DAGBuilder<>();
     final Visitor visitor = new Visitor(builder, options);
     pipeline.traverseTopologically(visitor);
     final DAG dag = builder.build();

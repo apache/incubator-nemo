@@ -15,8 +15,8 @@
  */
 package edu.snu.vortex.compiler.optimizer;
 
-import edu.snu.vortex.compiler.ir.DAG;
 import edu.snu.vortex.compiler.optimizer.passes.*;
+import edu.snu.vortex.utils.dag.DAG;
 
 import java.util.*;
 

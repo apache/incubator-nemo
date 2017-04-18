@@ -16,10 +16,10 @@
 package edu.snu.vortex.compiler.ir;
 
 /**
- * Vertex that transforms input data.
+ * IRVertex that transforms input data.
  * It is to be constructed in the compiler frontend with language-specific data transform logic.
  */
-public final class OperatorVertex extends Vertex {
+public final class OperatorVertex extends IRVertex {
   private final Transform transform;
 
   public OperatorVertex(final Transform t) {

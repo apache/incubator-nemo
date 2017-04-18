@@ -13,19 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.example;
+package edu.snu.vortex.utils.dag;
 
-import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlanBuilder;
+import java.util.logging.Logger;
 
 /**
- * Simple Execution Plan.
+ * Connects two vertices of a DAG.
+ * This class can be extended for various DAG representations.
+ *
+ * @param <V> the vertex type.
  */
-public final class SimpleExecutionPlan {
-  private SimpleExecutionPlan() {
+public class Edge<V> {
+  private static final Logger LOG = Logger.getLogger(Edge.class.getName());
+
+  private V src;
+  private V dst;
+
+  public Edge(final V src, final V dst) {
+    this.src = src;
+    this.dst = dst;
   }
 
-  public static void main(final String[] args) {
-    // TODO #000: Move this example to a test.
-    final ExecutionPlanBuilder builder = new ExecutionPlanBuilder();
+  public final V getSrc() {
+    return src;
+  }
+
+  public final V getDst() {
+    return dst;
   }
 }

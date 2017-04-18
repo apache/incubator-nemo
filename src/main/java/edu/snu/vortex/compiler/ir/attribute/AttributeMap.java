@@ -15,8 +15,8 @@
  */
 package edu.snu.vortex.compiler.ir.attribute;
 
-import edu.snu.vortex.compiler.ir.Edge;
-import edu.snu.vortex.compiler.ir.Vertex;
+import edu.snu.vortex.compiler.ir.IREdge;
+import edu.snu.vortex.compiler.ir.IRVertex;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -36,13 +36,13 @@ public final class AttributeMap {
     intAttributes = new HashMap<>();
   }
 
-  public static AttributeMap of(final Edge edge) {
-    final AttributeMap map = new AttributeMap(edge.getId());
+  public static AttributeMap of(final IREdge irEdge) {
+    final AttributeMap map = new AttributeMap(irEdge.getId());
     map.setDefaultEdgeValues();
     return map;
   }
-  public static AttributeMap of(final Vertex vertex) {
-    final AttributeMap map = new AttributeMap(vertex.getId());
+  public static AttributeMap of(final IRVertex irVertex) {
+    final AttributeMap map = new AttributeMap(irVertex.getId());
     map.setDefaultVertexValues();
     return map;
   }

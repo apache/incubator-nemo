@@ -17,6 +17,8 @@ package edu.snu.vortex.compiler.optimizer.examples;
 
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
+import edu.snu.vortex.utils.dag.DAG;
+import edu.snu.vortex.utils.dag.DAGBuilder;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,17 +33,22 @@ public final class MapReduce {
   }
 
   public static void main(final String[] args) throws Exception {
-    final Vertex source = new OperatorVertex(new EmptyTransform("SourceVertex"));
-    final Vertex map = new OperatorVertex(new EmptyTransform("MapVertex"));
-    final Vertex reduce = new OperatorVertex(new EmptyTransform("ReduceVertex"));
+    final IRVertex source = new OperatorVertex(new EmptyTransform("SourceVertex"));
+    final IRVertex map = new OperatorVertex(new EmptyTransform("MapVertex"));
+    final IRVertex reduce = new OperatorVertex(new EmptyTransform("ReduceVertex"));
 
     // Before
-    final DAGBuilder builder = new DAGBuilder();
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
     builder.addVertex(source);
     builder.addVertex(map);
     builder.addVertex(reduce);
-    builder.connectVertices(source, map, Edge.Type.OneToOne);
-    builder.connectVertices(map, reduce, Edge.Type.ScatterGather);
+
+    final IREdge edge1 = new IREdge(IREdge.Type.OneToOne, source, map);
+    builder.connectVertices(edge1);
+
+    final IREdge edge2 = new IREdge(IREdge.Type.ScatterGather, map, reduce);
+    builder.connectVertices(edge2);
+
     final DAG dag = builder.build();
     LOG.log(Level.INFO, "Before Optimization");
     LOG.log(Level.INFO, dag.toString());

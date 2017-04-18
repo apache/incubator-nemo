@@ -32,7 +32,7 @@ public final class RuntimeAttributeConverter {
   }
 
   /**
-   * Converts IR's Vertex Attributes to Runtime's attributes.
+   * Converts IR's IRVertex Attributes to Runtime's attributes.
    * @param irAttributes attributes to convert.
    * @return a map of Runtime attributes.
    */
@@ -82,7 +82,7 @@ public final class RuntimeAttributeConverter {
   }
 
   /**
-   * Converts IR's Edge Attributes to Runtime's attributes.
+   * Converts IR's IREdge Attributes to Runtime's attributes.
    * @param irAttributes attributes to convert.
    * @return a map of Runtime attributes.
    */

@@ -17,6 +17,7 @@ package edu.snu.vortex.runtime.master.scheduler;
 
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.exception.SchedulingException;
 import edu.snu.vortex.runtime.master.ExecutorRepresenter;
@@ -43,7 +44,7 @@ public final class Scheduler {
   private final BlockingDeque<TaskGroup> taskGroupsToSchedule;
   private final Map<String, ExecutorRepresenter> executorRepresenterMap;
   private SchedulingPolicy schedulingPolicy;
-  private List<List<TaskGroup>> taskGroupsByStage;
+  private List<PhysicalStage> physicalStages;
 
   public Scheduler(final RuntimeAttribute schedulingPolicy) {
     this.schedulerThread = Executors.newSingleThreadExecutor();
@@ -60,7 +61,7 @@ public final class Scheduler {
    * @param physicalPlan the physical plan for the job.
    */
   public void scheduleJob(final PhysicalPlan physicalPlan) {
-    this.taskGroupsByStage = physicalPlan.getTaskGroupsByStage();
+    this.physicalStages = physicalPlan.getStageDAG().getTopologicalSort();
   }
 
   // TODO #90: Integrate Components for Single-Machine End-to-End Execution
@@ -74,7 +75,7 @@ public final class Scheduler {
    * It takes the list for task groups for the stage and adds them where the scheduler thread continuously polls from.
    */
   private void scheduleNextStage() {
-    final List<TaskGroup> taskGroupList = taskGroupsByStage.remove(0);
+    final List<TaskGroup> taskGroupList = physicalStages.remove(0).getTaskGroupList();
     taskGroupsToSchedule.addAll(taskGroupList);
   }
 

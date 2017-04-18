@@ -15,12 +15,14 @@
  */
 package edu.snu.vortex.compiler.backend;
 
-import edu.snu.vortex.compiler.ir.DAG;
+import edu.snu.vortex.compiler.ir.IREdge;
+import edu.snu.vortex.compiler.ir.IRVertex;
+import edu.snu.vortex.utils.dag.DAG;
 
 /**
  * Interface for backend components.
  * @param <ExecPlan> execution plan to compile the DAG into.
  */
 public interface Backend<ExecPlan> {
-  ExecPlan compile(final DAG dag) throws Exception;
+  ExecPlan compile(final DAG<IRVertex, IREdge> dag) throws Exception;
 }
