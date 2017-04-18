@@ -78,6 +78,10 @@ public final class SimpleRuntime {
             }
 
           } else if (task instanceof OperatorTask) {
+            final OperatorTask operatorTask = (OperatorTask) task;
+            // TODO #18: Support code/data serialization
+            final Transform transform = SerializationUtils.clone(operatorTask.getTransform());
+
             // Check for any incoming edge from other stages.
             final Set<PhysicalStageEdge> inEdgesFromOtherStages = stageIncomingEdges.stream().filter(
                 stageInEdge -> stageInEdge.getDstVertex().getId().equals(vertexId)).collect(Collectors.toSet());
@@ -85,37 +89,29 @@ public final class SimpleRuntime {
             // Check for incoming edge from this stage.
             final Set<RuntimeEdge<Task>> inEdgesWithinStage = taskDAG.getIncomingEdgesOf(task);
 
-            final Set<RuntimeEdge> nonSideInputEdges =
-                filterInputEdges(inEdgesFromOtherStages, inEdgesWithinStage, false);
             final Set<RuntimeEdge> sideInputEdges =
                 filterInputEdges(inEdgesFromOtherStages, inEdgesWithinStage, true);
             final Map<Transform, Object> sideInputs = getSideInputs(sideInputEdges, task, edgeIdToChannels);
 
-            if (nonSideInputEdges.size() > 1) {
-              // TODO #13: Implement Join Node
-              throw new UnsupportedOperationException("Multi inedge not yet supported");
-            } else if (nonSideInputEdges.size() == 1) { // We fetch 'data' from the incoming stage
-              final RuntimeEdge inEdge = nonSideInputEdges.iterator().next();
+            final Set<RuntimeEdge> nonSideInputEdges =
+                filterInputEdges(inEdgesFromOtherStages, inEdgesWithinStage, false);
+
+            final Transform.Context transformContext = new ContextImpl(sideInputs);
+            final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
+            transform.prepare(transformContext, outputCollector);
+            nonSideInputEdges.forEach(nonSideInputEdge -> {
               final String srcVertexId;
-              if (inEdge instanceof PhysicalStageEdge) {
-                srcVertexId = ((PhysicalStageEdge) inEdge).getSrcVertex().getId();
+              if (nonSideInputEdge instanceof PhysicalStageEdge) {
+                srcVertexId = ((PhysicalStageEdge) nonSideInputEdge).getSrcVertex().getId();
               } else {
-                srcVertexId = ((Task) inEdge.getSrc()).getRuntimeVertexId();
+                srcVertexId = ((Task) nonSideInputEdge.getSrc()).getRuntimeVertexId();
               }
-              final OperatorTask operatorTask = (OperatorTask) task;
-
-              // TODO #18: Support code/data serialization
-              final Transform transform = SerializationUtils.clone(operatorTask.getTransform());
-
-              final Transform.Context transformContext = new ContextImpl(sideInputs);
-              final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
-              transform.prepare(transformContext, outputCollector);
-              transform.onData(edgeIdToChannels.get(inEdge.getRuntimeEdgeId()).get(task.getIndex()).read(),
+              transform.onData(edgeIdToChannels.get(nonSideInputEdge.getRuntimeEdgeId()).get(task.getIndex()).read(),
                   srcVertexId);
-              transform.close();
-              writeOutput(task, outputCollector.getOutputList(), runtimeEdgeIdToData, edgeIdToChannels,
-                  stageParallelism, stageOutgoingEdges, taskDAG.getOutgoingEdgesOf(task));
-            }
+            });
+            transform.close();
+            writeOutput(task, outputCollector.getOutputList(), runtimeEdgeIdToData, edgeIdToChannels,
+                stageParallelism, stageOutgoingEdges, taskDAG.getOutgoingEdgesOf(task));
           } else {
             throw new UnsupportedOperationException(task.toString());
           }

@@ -15,27 +15,21 @@
  */
 package edu.snu.vortex.compiler.frontend.beam.transform;
 
-import edu.snu.vortex.compiler.frontend.beam.BeamElement;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.OutputCollector;
 import edu.snu.vortex.compiler.ir.Transform;
-import org.apache.beam.sdk.transforms.ViewFn;
-import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.beam.sdk.values.PCollectionView;
 
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
+import java.util.ArrayList;
 
 /**
- * Broadcast transform implementation.
+ * Flatten transform implementation.
  */
-public final class BroadcastTransform implements Transform {
-  private final PCollectionView pCollectionView;
+public final class FlattenTransform implements Transform {
+  private final ArrayList<Element> collectedElements;
   private OutputCollector outputCollector;
 
-  public BroadcastTransform(final PCollectionView pCollectionView) {
-    this.pCollectionView = pCollectionView;
+  public FlattenTransform() {
+    this.collectedElements = new ArrayList<>();
   }
 
   @Override
@@ -45,25 +39,20 @@ public final class BroadcastTransform implements Transform {
 
   @Override
   public void onData(final Iterable<Element> data, final String srcVertexId) {
-    final List<WindowedValue> windowed = StreamSupport.stream(data.spliterator(), false)
-        .map(element -> WindowedValue.valueInGlobalWindow(element.getData()))
-        .collect(Collectors.toList());
-    final ViewFn viewFn = this.pCollectionView.getViewFn();
-    outputCollector.emit(new BeamElement<>(viewFn.apply(windowed)));
-  }
-
-  public PCollectionView getTag() {
-    return this.pCollectionView;
+    data.forEach(collectedElements::add);
   }
 
   @Override
   public void close() {
+    collectedElements.forEach(outputCollector::emit);
+    collectedElements.clear();
   }
 
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("BroadcastTransform:" + pCollectionView);
+    sb.append("FlattenTransform:");
+    sb.append(super.toString());
     return sb.toString();
   }
 }
