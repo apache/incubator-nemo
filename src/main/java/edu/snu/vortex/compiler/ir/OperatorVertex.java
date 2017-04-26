@@ -32,11 +32,13 @@ public final class OperatorVertex extends IRVertex {
   }
 
   @Override
-  public String toString() {
+  public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
-    sb.append(super.toString());
-    sb.append(", transform: ");
+    sb.append("{");
+    sb.append(irVertexPropertiesToString());
+    sb.append(", \"transform\": \"");
     sb.append(transform);
+    sb.append("\"}");
     return sb.toString();
   }
 }

@@ -49,11 +49,13 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
   }
 
   @Override
-  public String toString() {
+  public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
-    sb.append(super.toString());
-    sb.append(", source: ");
+    sb.append("{");
+    sb.append(irVertexPropertiesToString());
+    sb.append(", \"source\": \"");
     sb.append(source);
+    sb.append("\"}");
     return sb.toString();
   }
 

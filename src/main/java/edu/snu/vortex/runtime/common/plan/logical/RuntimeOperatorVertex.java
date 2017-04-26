@@ -41,7 +41,7 @@ public final class RuntimeOperatorVertex extends RuntimeVertex {
   }
 
   @Override
-  public String toString() {
-    return operatorVertex.toString();
+  public String propertiesToJSON() {
+    return operatorVertex.propertiesToJSON();
   }
 }

@@ -69,14 +69,14 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> implemen
   }
 
   @Override
-  public String toString() {
-    final StringBuffer sb = new StringBuffer("PhysicalStageEdge{");
-    sb.append("runtimeEdgeId='").append(getRuntimeEdgeId()).append('\'');
-    sb.append(", src='").append(getSrc().getId());
-    sb.append(", dst='").append(getDst().getId());
-    sb.append(", externalVertexId='").append(srcVertex).append('\'');
-    sb.append(", externalVertexAttr=").append(externalVertexAttr);
-    sb.append('}');
+  public String propertiesToJSON() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("{\"runtimeEdgeId\": \"").append(getRuntimeEdgeId());
+    sb.append("\", \"edgeAttributes\": ").append(getEdgeAttributes());
+    sb.append(", \"externalSrcVertexId\": \"").append(srcVertex.getId());
+    sb.append("\", \"externalDstVertexId\": \"").append(dstVertex.getId());
+    sb.append("\", \"externalVertexAttr\": ").append(externalVertexAttr);
+    sb.append("}");
     return sb.toString();
   }
 }

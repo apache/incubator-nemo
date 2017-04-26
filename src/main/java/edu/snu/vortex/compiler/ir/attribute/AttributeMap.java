@@ -93,9 +93,28 @@ public final class AttributeMap {
   public String toString() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{");
-    sb.append(attributes);
-    sb.append(", ");
-    sb.append(intAttributes);
+    boolean isFirstPair = true;
+    for (final Map.Entry<Attribute.Key, Attribute> pair : attributes.entrySet()) {
+      if (!isFirstPair) {
+        sb.append(", ");
+      }
+      isFirstPair = false;
+      sb.append("\"");
+      sb.append(pair.getKey());
+      sb.append("\": \"");
+      sb.append(pair.getValue());
+      sb.append("\"");
+    }
+    for (final Map.Entry<Attribute.IntegerKey, Integer> pair : intAttributes.entrySet()) {
+      if (!isFirstPair) {
+        sb.append(", ");
+      }
+      isFirstPair = false;
+      sb.append("\"");
+      sb.append(pair.getKey());
+      sb.append("\": ");
+      sb.append(pair.getValue());
+    }
     sb.append("}");
     return sb.toString();
   }

@@ -18,6 +18,8 @@ package edu.snu.vortex.runtime.master;
 import edu.snu.vortex.runtime.common.plan.logical.*;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.utils.dag.*;
+
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -60,9 +62,13 @@ public final class RuntimeMaster {
    */
   private PhysicalPlan generatePhysicalPlan(final ExecutionPlan executionPlan) {
     final DAG<Stage, StageEdge> logicalDAG = executionPlan.getRuntimeStageDAG();
+    LOG.log(Level.INFO, "##### Logical DAG #####");
+    LOG.log(Level.INFO, logicalDAG.toString());
 
     final PhysicalPlan physicalPlan = new PhysicalPlan(executionPlan.getId(),
         logicalDAG.convert(new PhysicalDAGGenerator()));
+    LOG.log(Level.INFO, "##### Physical DAG #####");
+    LOG.log(Level.INFO, physicalPlan.toString());
     return physicalPlan;
   }
 }

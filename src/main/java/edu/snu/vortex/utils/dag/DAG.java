@@ -27,7 +27,7 @@ import java.util.logging.Logger;
  * @param <V> the vertex type
  * @param <E> the edge type
  */
-public final class DAG<V, E extends Edge<V>> {
+public final class DAG<V extends Vertex, E extends Edge<V>> {
   private static final Logger LOG = Logger.getLogger(DAG.class.getName());
 
   private final Set<V> vertices;
@@ -50,7 +50,7 @@ public final class DAG<V, E extends Edge<V>> {
    * @return the converted DAG.
    */
   // TODO #153: DAG conversion using Vertex/Edge Converters
-  public <V2, E2 extends Edge<V2>> DAG<V2, E2> convert(final Function<DAG<V, E>, DAG<V2, E2>> function) {
+  public <V2 extends Vertex, E2 extends Edge<V2>> DAG<V2, E2> convert(final Function<DAG<V, E>, DAG<V2, E2>> function) {
     return function.apply(this);
   }
 
@@ -161,11 +161,33 @@ public final class DAG<V, E extends Edge<V>> {
 
   @Override
   public String toString() {
-    final StringBuffer sb = new StringBuffer("DAG{");
-    sb.append("vertices=").append(vertices);
-    sb.append(", incomingEdges=").append(incomingEdges);
-    sb.append(", outgoingEdges=").append(outgoingEdges);
-    sb.append('}');
+    final StringBuilder sb = new StringBuilder();
+    sb.append("{\"vertices\": [");
+    boolean isFirstVertex = true;
+    for (final V vertex : vertices) {
+      if (!isFirstVertex) {
+        sb.append(", ");
+      }
+      isFirstVertex = false;
+      sb.append("{\"id\": \"").append(vertex.getId());
+      sb.append("\", \"properties\": ").append(vertex.propertiesToJSON());
+      sb.append("}");
+    }
+    sb.append("], \"edges\": [");
+    boolean isFirstEdge = true;
+    for (final Set<E> edgeSet : incomingEdges.values()) {
+      for (final E edge : edgeSet) {
+        if (!isFirstEdge) {
+          sb.append(", ");
+        }
+        isFirstEdge = false;
+        sb.append("{\"src\": \"").append(edge.getSrc().getId());
+        sb.append("\", \"dst\": \"").append(edge.getDst().getId());
+        sb.append("\", \"properties\": ").append(edge.propertiesToJSON());
+        sb.append("}");
+      }
+    }
+    sb.append("]}");
     return sb.toString();
   }
 }
