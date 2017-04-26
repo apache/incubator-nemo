@@ -45,10 +45,6 @@ public final class PhysicalPlan {
 
   @Override
   public String toString() {
-    final StringBuffer sb = new StringBuffer("PhysicalPlan{");
-    sb.append("id='").append(id).append('\'');
-    sb.append(", stageDAG=").append(stageDAG);
-    sb.append('}');
-    return sb.toString();
+    return stageDAG.toString();
   }
 }

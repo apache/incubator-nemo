@@ -18,6 +18,7 @@ package edu.snu.vortex.utils;
 import edu.snu.vortex.utils.dag.DAG;
 import edu.snu.vortex.utils.dag.Edge;
 import edu.snu.vortex.utils.dag.DAGBuilder;
+import edu.snu.vortex.utils.dag.Vertex;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -31,69 +32,98 @@ import static org.junit.Assert.assertEquals;
  * and the basic methods to retrieve components of the DAG using {@link DAG}.
  */
 public final class DAGTest {
-  private DAGBuilder<Integer, Edge<Integer>> dagBuilder;
+  private DAGBuilder<IntegerVertex, Edge<IntegerVertex>> dagBuilder;
 
   @Before
   public void setUp() {
     dagBuilder = new DAGBuilder<>();
-    dagBuilder.addVertex(1);
-    dagBuilder.addVertex(2);
-    dagBuilder.addVertex(3);
-    dagBuilder.addVertex(4);
-    dagBuilder.addVertex(5);
+    dagBuilder.addVertex(new IntegerVertex(1));
+    dagBuilder.addVertex(new IntegerVertex(2));
+    dagBuilder.addVertex(new IntegerVertex(3));
+    dagBuilder.addVertex(new IntegerVertex(4));
+    dagBuilder.addVertex(new IntegerVertex(5));
   }
 
   @Test
   public void testSimpleDAG() {
-    final Edge<Integer> e1 = new Edge<>(1, 2);
-    final Edge<Integer> e2 = new Edge<>(2, 3);
-    final Edge<Integer> e3 = new Edge<>(3, 4);
-    final Edge<Integer> e4 = new Edge<>(4, 5);
+    final Edge<IntegerVertex> e1 = new Edge<>(new IntegerVertex(1), new IntegerVertex(2));
+    final Edge<IntegerVertex> e2 = new Edge<>(new IntegerVertex(2), new IntegerVertex(3));
+    final Edge<IntegerVertex> e3 = new Edge<>(new IntegerVertex(3), new IntegerVertex(4));
+    final Edge<IntegerVertex> e4 = new Edge<>(new IntegerVertex(4), new IntegerVertex(5));
 
     dagBuilder.connectVertices(e1);
     dagBuilder.connectVertices(e2);
     dagBuilder.connectVertices(e3);
     dagBuilder.connectVertices(e4);
 
-    final DAG<Integer, Edge<Integer>> dag = dagBuilder.build();
+    final DAG<IntegerVertex, Edge<IntegerVertex>> dag = dagBuilder.build();
 
     assertEquals(dag.getVertices().size(), 5);
-    assertEquals(dag.getIncomingEdgesOf(1).size(), 0);
-    assertEquals(dag.getOutgoingEdgesOf(5).size(), 0);
-    assertEquals(dag.getIncomingEdgesOf(3).size(), 1);
-    assertEquals(dag.getOutgoingEdgesOf(4).size(), 1);
+    assertEquals(dag.getIncomingEdgesOf(new IntegerVertex(1)).size(), 0);
+    assertEquals(dag.getOutgoingEdgesOf(new IntegerVertex(5)).size(), 0);
+    assertEquals(dag.getIncomingEdgesOf(new IntegerVertex(3)).size(), 1);
+    assertEquals(dag.getOutgoingEdgesOf(new IntegerVertex(4)).size(), 1);
     assertEquals(dag.getTopologicalSort().size(), 5);
 
-    final List<Integer> topologicalOrder = dag.getTopologicalSort();
-    assertEquals((int) topologicalOrder.get(0), 1);
-    assertEquals((int) topologicalOrder.get(1), 2);
-    assertEquals((int) topologicalOrder.get(2), 3);
-    assertEquals((int) topologicalOrder.get(3), 4);
-    assertEquals((int) topologicalOrder.get(4), 5);
+    final List<IntegerVertex> topologicalOrder = dag.getTopologicalSort();
+    assertEquals(topologicalOrder.get(0).getValue(), 1);
+    assertEquals(topologicalOrder.get(1).getValue(), 2);
+    assertEquals(topologicalOrder.get(2).getValue(), 3);
+    assertEquals(topologicalOrder.get(3).getValue(), 4);
+    assertEquals(topologicalOrder.get(4).getValue(), 5);
   }
 
   @Test
   public void testNormalDAG() {
-    final Edge<Integer> e1 = new Edge<>(1, 2);
-    final Edge<Integer> e2 = new Edge<>(2, 3);
-    final Edge<Integer> e3 = new Edge<>(4, 5);
-    final Edge<Integer> e4 = new Edge<>(4, 3);
+    final Edge<IntegerVertex> e1 = new Edge<>(new IntegerVertex(1), new IntegerVertex(2));
+    final Edge<IntegerVertex> e2 = new Edge<>(new IntegerVertex(2), new IntegerVertex(3));
+    final Edge<IntegerVertex> e3 = new Edge<>(new IntegerVertex(4), new IntegerVertex(5));
+    final Edge<IntegerVertex> e4 = new Edge<>(new IntegerVertex(4), new IntegerVertex(3));
 
     dagBuilder.connectVertices(e1);
     dagBuilder.connectVertices(e2);
     dagBuilder.connectVertices(e3);
     dagBuilder.connectVertices(e4);
 
-    final DAG<Integer, Edge<Integer>> dag = dagBuilder.build();
+    final DAG<IntegerVertex, Edge<IntegerVertex>> dag = dagBuilder.build();
 
-    assertEquals(dag.getOutgoingEdgesOf(4).size(), 2);
-    assertEquals(dag.getIncomingEdgesOf(3).size(), 2);
+    assertEquals(dag.getOutgoingEdgesOf(new IntegerVertex(4)).size(), 2);
+    assertEquals(dag.getIncomingEdgesOf(new IntegerVertex(3)).size(), 2);
 
-    final List<Integer> topologicalOrder = dag.getTopologicalSort();
-    assertEquals((int) topologicalOrder.get(0), 4);
-    assertEquals((int) topologicalOrder.get(1), 5);
-    assertEquals((int) topologicalOrder.get(2), 1);
-    assertEquals((int) topologicalOrder.get(3), 2);
-    assertEquals((int) topologicalOrder.get(4), 3);
+    final List<IntegerVertex> topologicalOrder = dag.getTopologicalSort();
+    assertEquals(topologicalOrder.get(0).getValue(), 4);
+    assertEquals(topologicalOrder.get(1).getValue(), 5);
+    assertEquals(topologicalOrder.get(2).getValue(), 1);
+    assertEquals(topologicalOrder.get(3).getValue(), 2);
+    assertEquals(topologicalOrder.get(4).getValue(), 3);
+  }
+
+  final class IntegerVertex extends Vertex {
+    private final int value;
+    public IntegerVertex(final int value) {
+      super(String.valueOf(value));
+      this.value = value;
+    }
+
+    public int getValue() {
+      return value;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()){
+        return false;
+      }
+      final IntegerVertex that = (IntegerVertex) o;
+      return value == that.value;
+    }
+
+    @Override
+    public int hashCode() {
+      return value;
+    }
   }
 }

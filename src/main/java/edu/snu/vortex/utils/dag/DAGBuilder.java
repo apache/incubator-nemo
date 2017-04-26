@@ -24,7 +24,7 @@ import java.util.*;
  * @param <V> the vertex type.
  * @param <E> the edge type.
  */
-public final class DAGBuilder<V, E extends Edge<V>> {
+public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
   private final Set<V> vertices;
   private final Map<V, Set<E>> incomingEdges;
   private final Map<V, Set<E>> outgoingEdges;

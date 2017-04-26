@@ -50,11 +50,10 @@ public final class TaskGroup implements Serializable {
 
   @Override
   public String toString() {
-    final StringBuffer sb = new StringBuffer("TaskGroup{");
-    sb.append("taskGroupId='").append(taskGroupId).append('\'');
-    sb.append(", taskDAG=").append(taskDAG);
-    sb.append(", resourceType=").append(resourceType);
-    sb.append('}');
+    final StringBuilder sb = new StringBuilder();
+    sb.append("{\"taskGroupId\": \"").append(taskGroupId).append("\", ");
+    sb.append("\"taskDAG\": ").append(taskDAG).append(", ");
+    sb.append("\"resourceType\": \"").append(resourceType).append("\"}");
     return sb.toString();
   }
 }
