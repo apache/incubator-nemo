@@ -39,7 +39,7 @@ public final class RuntimeBoundedSourceVertex extends RuntimeVertex {
   }
 
   @Override
-  public String toString() {
-    return boundedSourceVertex.toString();
+  public String propertiesToJSON() {
+    return boundedSourceVertex.propertiesToJSON();
   }
 }

@@ -53,4 +53,15 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   public RuntimeVertex getDstRuntimeVertex() {
     return dstRuntimeVertex;
   }
+
+  @Override
+  public String propertiesToJSON() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("{\"runtimeEdgeId\": \"").append(getRuntimeEdgeId());
+    sb.append("\", \"edgeAttributes\": ").append(getEdgeAttributes());
+    sb.append(", \"srcRuntimeVertex\": \"").append(srcRuntimeVertex.getId());
+    sb.append("\", \"dstRuntimeVertex\": \"").append(dstRuntimeVertex.getId());
+    sb.append("\"}");
+    return sb.toString();
+  }
 }

@@ -15,24 +15,21 @@
  */
 package edu.snu.vortex.runtime.common.plan.physical;
 
+import edu.snu.vortex.utils.dag.Vertex;
+
 import java.io.Serializable;
 import java.util.List;
 
 /**
  * TaskGroup.
  */
-public final class PhysicalStage implements Serializable {
-  private final String id;
+public final class PhysicalStage extends Vertex implements Serializable {
   private final List<TaskGroup> taskGroupList;
 
   public PhysicalStage(final String stageId,
                        final List<TaskGroup> taskGroupList) {
-    this.id = stageId;
+    super(stageId);
     this.taskGroupList = taskGroupList;
-  }
-
-  public String getId() {
-    return id;
   }
 
   public List<TaskGroup> getTaskGroupList() {
@@ -40,10 +37,9 @@ public final class PhysicalStage implements Serializable {
   }
 
   @Override
-  public String toString() {
-    final StringBuffer sb = new StringBuffer("PhysicalStage{");
-    sb.append("id='").append(id).append('\'');
-    sb.append(", taskGroupList=").append(taskGroupList);
+  public String propertiesToJSON() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("{\"taskGroupList\": ").append(taskGroupList);
     sb.append('}');
     return sb.toString();
   }

@@ -17,12 +17,13 @@ package edu.snu.vortex.runtime.common.plan;
 
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.utils.dag.Edge;
+import edu.snu.vortex.utils.dag.Vertex;
 
 /**
  * Represents the edge between vertices in a logical/physical plan in runtime.
  * @param <V> the vertex type.
  */
-public class RuntimeEdge<V> extends Edge<V> {
+public class RuntimeEdge<V extends Vertex> extends Edge<V> {
   private final String runtimeEdgeId;
   private final RuntimeAttributeMap edgeAttributes;
 
@@ -48,5 +49,15 @@ public class RuntimeEdge<V> extends Edge<V> {
 
   public final RuntimeAttributeMap getEdgeAttributes() {
     return edgeAttributes;
+  }
+
+  @SuppressWarnings("checkstyle:designforextension")
+  @Override
+  public String propertiesToJSON() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("{\"runtimeEdgeId\": \"").append(runtimeEdgeId);
+    sb.append("\", \"edgeAttributes\": ").append(edgeAttributes);
+    sb.append("}");
+    return sb.toString();
   }
 }

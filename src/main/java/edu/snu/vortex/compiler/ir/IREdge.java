@@ -109,18 +109,12 @@ public final class IREdge extends Edge<IRVertex> {
   }
 
   @Override
-  public String toString() {
+  public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("id: ");
-    sb.append(id);
-    sb.append(", src: ");
-    sb.append(getSrc().getId());
-    sb.append(", dst: ");
-    sb.append(getDst().getId());
-    sb.append(", attributes: ");
-    sb.append(attributes);
-    sb.append(", type: ");
-    sb.append(type);
+    sb.append("{\"id\": \"").append(id);
+    sb.append("\", \"attributes\": ").append(attributes);
+    sb.append(", \"type\": \"").append(type);
+    sb.append("\"}");
     return sb.toString();
   }
 }

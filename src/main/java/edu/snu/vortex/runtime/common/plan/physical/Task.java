@@ -15,26 +15,23 @@
  */
 package edu.snu.vortex.runtime.common.plan.physical;
 
+import edu.snu.vortex.utils.dag.Vertex;
+
 import java.io.Serializable;
 
 /**
  * Task.
  */
-public abstract class Task implements Serializable {
-  private final String taskId;
+public abstract class Task extends Vertex implements Serializable {
   private final String runtimeVertexId;
   private final int index;
 
   public Task(final String taskId,
               final String runtimeVertexId,
               final int index) {
-    this.taskId = taskId;
+    super(taskId);
     this.runtimeVertexId = runtimeVertexId;
     this.index = index;
-  }
-
-  public final String getTaskId() {
-    return taskId;
   }
 
   public final String getRuntimeVertexId() {
@@ -46,12 +43,10 @@ public abstract class Task implements Serializable {
   }
 
   @Override
-  public final String toString() {
-    final StringBuffer sb = new StringBuffer("Task{");
-    sb.append("taskId='").append(taskId).append('\'');
-    sb.append(", runtimeVertexId='").append(runtimeVertexId).append('\'');
-    sb.append(", index=").append(index);
-    sb.append('}');
+  public final String propertiesToJSON() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("{\"runtimeVertexId\": \"").append(runtimeVertexId).append("\", ");
+    sb.append("\"index\": ").append(index).append("}");
     return sb.toString();
   }
 }

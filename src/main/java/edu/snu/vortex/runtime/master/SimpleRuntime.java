@@ -128,7 +128,7 @@ public final class SimpleRuntime {
                            final Set<PhysicalStageEdge> stageOutgoingEdges,
                            final Set<RuntimeEdge<Task>> outEdgesWithinStage) {
 
-    LOG.log(Level.INFO, " Output of {" + taskExecuted.getTaskId() + "}: " +
+    LOG.log(Level.INFO, " Output of {" + taskExecuted.getId() + "}: " +
         (dataToWrite.toString().length() > 5000 ?
             dataToWrite.toString().substring(0, 5000) + "..." : dataToWrite.toString()));
 
