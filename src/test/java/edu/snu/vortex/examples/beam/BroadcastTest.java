@@ -31,13 +31,15 @@ public final class BroadcastTest {
   private final String optimizationPolicy = "pado";
   private final String input = "./src/main/resources/sample_input_mr";
   private final String output = "./src/main/resources/sample_output";
+  private final String dagDirectory = "./target/dag/broadcast";
 
   @Test
   public void test() throws Exception {
     final ArgBuilder builder = new ArgBuilder()
         .addUserMain(broadcast)
         .addOptimizationPolicy(optimizationPolicy)
-        .addUserArgs(input, output);
+        .addUserArgs(input, output)
+        .addDAGDirectory(dagDirectory);
     JobLauncher.main(builder.build());
   }
 }

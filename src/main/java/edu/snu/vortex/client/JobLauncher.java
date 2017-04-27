@@ -53,30 +53,30 @@ public final class JobLauncher {
     final Optimizer optimizer = new Optimizer();
     final Backend<ExecutionPlan> backend = new VortexBackend();
 
+    final String dagDirectory = injector.getNamedInstance(JobConf.DAGDirectory.class);
+
     /**
      * Step 1: Compile
      */
+    LOG.log(Level.INFO, "##### VORTEX Compiler #####");
     final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
     final String[] arguments = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
     final DAG dag = frontend.compile(className, arguments);
-    LOG.log(Level.INFO, "##### VORTEX COMPILER (Before Optimization) #####");
-    LOG.log(Level.INFO, dag.toString());
+    dag.storeJSON(dagDirectory, "ir", "IR before optimization");
 
     final String policyName = injector.getNamedInstance(JobConf.OptimizationPolicy.class);
     final Optimizer.PolicyType optimizationPolicy = POLICY_NAME.get(policyName);
     final DAG optimizedDAG = optimizer.optimize(dag, optimizationPolicy);
-    LOG.log(Level.INFO, "##### VORTEX COMPILER (After Optimization for " + optimizationPolicy + ") #####");
-    LOG.log(Level.INFO, optimizedDAG.toString());
+    optimizedDAG.storeJSON(dagDirectory, "ir-" + optimizationPolicy, "IR optimized for " + optimizationPolicy);
 
     final ExecutionPlan executionPlan = backend.compile(optimizedDAG);
-    LOG.log(Level.INFO, "##### VORTEX COMPILER (After Compilation) #####");
-    LOG.log(Level.INFO, executionPlan + "\n");
+    executionPlan.getRuntimeStageDAG().storeJSON(dagDirectory, "plan", "execution plan by compiler");
 
     /**
      * Step 2: Execute
      */
     LOG.log(Level.INFO, "##### VORTEX Runtime #####");
-    new RuntimeMaster().execute(executionPlan);
+    new RuntimeMaster().execute(executionPlan, dagDirectory);
   }
 
   public static Configuration getJobConf(final String[] args) throws IOException, InjectionException {
@@ -84,6 +84,7 @@ public final class JobLauncher {
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(JobConf.UserMainClass.class);
     cl.registerShortNameOfClass(JobConf.UserMainArguments.class);
+    cl.registerShortNameOfClass(JobConf.DAGDirectory.class);
     cl.registerShortNameOfClass(JobConf.OptimizationPolicy.class);
     cl.processCommandLine(args);
     return confBuilder.build();

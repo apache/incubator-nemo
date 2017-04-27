@@ -56,8 +56,6 @@ public final class VortexBackendTest<I, O> {
 
     this.dag = builder.build();
 
-    System.out.println(dag);
-
     this.dag = new Optimizer().optimize(dag, Optimizer.PolicyType.Pado);
   }
 
