@@ -27,7 +27,6 @@ import edu.snu.vortex.utils.dag.DAG;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -127,10 +126,6 @@ public final class SimpleRuntime {
                            final int stageParallelism,
                            final Set<PhysicalStageEdge> stageOutgoingEdges,
                            final Set<RuntimeEdge<Task>> outEdgesWithinStage) {
-
-    LOG.log(Level.INFO, " Output of {" + taskExecuted.getId() + "}: " +
-        (dataToWrite.toString().length() > 5000 ?
-            dataToWrite.toString().substring(0, 5000) + "..." : dataToWrite.toString()));
 
     // Check for any outgoing edge to other stages and write output.
     final Set<PhysicalStageEdge> outEdgesToOtherStages = stageOutgoingEdges.stream()

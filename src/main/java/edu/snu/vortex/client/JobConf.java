@@ -28,8 +28,16 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class UserMainArguments implements Name<String> {
   }
 
+  /**
+   * Directory to store JSON representation of intermediate DAGs.
+   */
+  @NamedParameter(doc = "Directory to store intermediate DAGs", short_name = "dag_dir", default_value = "./target/dag")
+  public final class DAGDirectory implements Name<String> {
+  }
+
   static final RequiredParameter<String> USER_MAIN_CLASS = new RequiredParameter<>();
   static final RequiredParameter<String> USER_MAIN_ARGS = new RequiredParameter<>();
+  static final OptionalParameter<String> DAG_DIRECTORY = new OptionalParameter<>();
 
   //////////////////////////////// Compiler Configurations
 
@@ -51,6 +59,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public static final ConfigurationModule CONF = new JobConf()
       .bindNamedParameter(UserMainClass.class, USER_MAIN_CLASS)
       .bindNamedParameter(UserMainArguments.class, USER_MAIN_ARGS)
+      .bindNamedParameter(DAGDirectory.class, DAG_DIRECTORY)
       .bindNamedParameter(OptimizationPolicy.class, OPTIMIZATION_POLICY)
       .build();
 }

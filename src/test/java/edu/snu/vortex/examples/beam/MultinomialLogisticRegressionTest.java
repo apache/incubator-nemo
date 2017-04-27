@@ -33,13 +33,15 @@ public final class MultinomialLogisticRegressionTest {
   private final String numFeatures = "100";
   private final String numClasses = "5";
   private final String numIteration = "3";
+  private final String dagDirectory = "./target/dag/mlr";
 
   @Test
   public void test() throws Exception {
     final ArgBuilder builder = new ArgBuilder()
         .addUserMain(mlr)
         .addOptimizationPolicy(optimizationPolicy)
-        .addUserArgs(input, numFeatures, numClasses, numIteration);
+        .addUserArgs(input, numFeatures, numClasses, numIteration)
+        .addDAGDirectory(dagDirectory);
     JobLauncher.main(builder.build());
   }
 }

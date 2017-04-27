@@ -32,13 +32,15 @@ public final class AlternatingLeastSquareTest {
   private final String input = "./src/main/resources/sample_input_als";
   private final String numFeatures = "10";
   private final String numIteration = "3";
+  private final String dagDirectory = "./target/dag/als";
 
   @Test
   public void test() throws Exception {
     final ArgBuilder builder = new ArgBuilder()
         .addUserMain(als)
         .addOptimizationPolicy(optimizationPolicy)
-        .addUserArgs(input, numFeatures, numIteration);
+        .addUserArgs(input, numFeatures, numIteration)
+        .addDAGDirectory(dagDirectory);
     JobLauncher.main(builder.build());
   }
 }
