@@ -41,6 +41,11 @@ public class ArgBuilder {
     return this;
   }
 
+  public ArgBuilder addDAGDirectory(final String directory) {
+    args.add(Arrays.asList("-dag_dir", directory));
+    return this;
+  }
+
   public String[] build() {
     // new String[0] is good for performance
     // see http://stackoverflow.com/questions/4042434/converting-arrayliststring-to-string-in-java

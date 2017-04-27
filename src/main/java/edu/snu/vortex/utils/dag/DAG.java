@@ -17,9 +17,13 @@ package edu.snu.vortex.utils.dag;
 
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -189,5 +193,26 @@ public final class DAG<V extends Vertex, E extends Edge<V>> {
     }
     sb.append("]}");
     return sb.toString();
+  }
+
+  /**
+   * Stores JSON representation of this DAG into a file.
+   * @param directory the directory which JSON representation is saved to
+   * @param name name of this DAG
+   * @param description description of this DAG
+   */
+  public void storeJSON(final String directory, final String name, final String description) {
+    final File file = new File(directory, name + ".json");
+    file.getParentFile().mkdirs();
+    try {
+      final PrintWriter printWriter = new PrintWriter(file);
+      printWriter.println(toString());
+      printWriter.close();
+      LOG.log(Level.INFO, String.format("DAG JSON for %s is saved at %s" +
+          " (Use https://service.jangho.kr/vortex-dag/ to visualize it.)", description, file.getPath()));
+    } catch (IOException e) {
+      LOG.log(Level.WARNING, String.format("Cannot store JSON representation of %s to %s: %s",
+          description, file.getPath(), e.toString()));
+    }
   }
 }

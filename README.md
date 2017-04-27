@@ -22,4 +22,12 @@ Vortex is a data-processing system composed of modular components.
 * `$ java -cp target/vortex-0.1-SNAPSHOT-shaded.jar edu.snu.vortex.compiler.optimizer.examples.MapReduce`
 
 ## DAG Visualization
-You can visualize a DAG using the JSON representation of it, using [online visualizer](https://service.jangho.kr/vortex-dag/).
+Vortex Compiler and Engine stores JSON representation of intermediate DAGs.
+`-dag_dir` option specifies the directory to store JSON files. By default JSON files are saved in `./target/dag`.
+
+```bash
+# Example for specifying target directory for JSON representation of DAGs.
+./bin/run.sh -user_main edu.snu.vortex.examples.beam.AlternatingLeastSquare -optimization_policy pado -dag_dir "./target/dag/als" -user_args "./src/main/resources/sample_input_als 10 3"
+```
+
+You can easily visualize a DAG using [online visualizer](https://service.jangho.kr/vortex-dag/) with the corresponding JSON file.
