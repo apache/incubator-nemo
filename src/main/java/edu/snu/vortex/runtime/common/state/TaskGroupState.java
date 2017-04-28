@@ -32,40 +32,54 @@ public final class TaskGroupState {
 
     // Add states
     stateMachineBuilder.addState(State.READY, "The task group has been created.");
-    stateMachineBuilder.addState(State.SCHEDULED_TO_EXECUTOR,
-        "The task group has been scheduled to executor from master.");
-    stateMachineBuilder.addState(State.EXECUTING, "The task group is executing (with one of its tasks).");
+    stateMachineBuilder.addState(State.EXECUTING, "The task group is executing.");
     stateMachineBuilder.addState(State.COMPLETE, "All of this task group's tasks have completed.");
-    stateMachineBuilder.addState(State.FAILED, "Task Group failed.");
+    stateMachineBuilder.addState(State.FAILED_RECOVERABLE, "Task group failed, but is recoverable.");
+    stateMachineBuilder.addState(State.FAILED_UNRECOVERABLE,
+        "Task group failed, and is unrecoverable. The job will fail.");
 
     // Add transitions
-    stateMachineBuilder.addTransition(State.READY, State.SCHEDULED_TO_EXECUTOR,
+    stateMachineBuilder.addTransition(State.READY, State.EXECUTING,
         "Scheduling to executor");
-    stateMachineBuilder.addTransition(State.SCHEDULED_TO_EXECUTOR, State.EXECUTING,
-        "Begin executing!");
+    stateMachineBuilder.addTransition(State.READY, State.FAILED_UNRECOVERABLE,
+        "Stage Failure");
+
     stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE,
         "All tasks complete");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_UNRECOVERABLE,
+        "Unrecoverable failure in a task/Executor failure");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_RECOVERABLE,
+        "Recoverable failure in a task/Container failure");
 
-    stateMachineBuilder.addTransition(State.READY, State.FAILED,
-        "Master failure");
-    stateMachineBuilder.addTransition(State.SCHEDULED_TO_EXECUTOR, State.FAILED,
-        "Executor failure");
-    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED,
-        "Executor failure");
+    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.READY,
+        "Recoverable task group failure");
+    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.FAILED_UNRECOVERABLE,
+        "");
 
     stateMachineBuilder.setInitialState(State.READY);
 
     return stateMachineBuilder.build();
   }
 
+  public StateMachine getStateMachine() {
+    return stateMachine;
+  }
+
   /**
-   * Task Group states.
+   * TaskGroupState.
    */
   public enum State {
     READY,
-    SCHEDULED_TO_EXECUTOR,
     EXECUTING,
     COMPLETE,
-    FAILED
+    FAILED_RECOVERABLE,
+    FAILED_UNRECOVERABLE
+  }
+
+  @Override
+  public String toString() {
+    final StringBuffer sb = new StringBuffer();
+    sb.append(stateMachine.getCurrentState());
+    return sb.toString();
   }
 }

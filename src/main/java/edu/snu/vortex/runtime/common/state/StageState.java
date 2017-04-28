@@ -32,33 +32,53 @@ public final class StageState {
 
     // Add states
     stateMachineBuilder.addState(State.READY, "The stage has been created.");
-    stateMachineBuilder.addState(State.EXECUTING, "The stage is executing (with its task groups being scheduled).");
+    stateMachineBuilder.addState(State.EXECUTING, "The stage is executing.");
     stateMachineBuilder.addState(State.COMPLETE, "All of this stage's task groups have completed.");
-    stateMachineBuilder.addState(State.FAILED, "Stage failed.");
+    stateMachineBuilder.addState(State.FAILED_RECOVERABLE, "Stage failed, but is recoverable.");
+    stateMachineBuilder.addState(State.FAILED_UNRECOVERABLE, "Stage failed, and is unrecoverable. The job will fail.");
 
     // Add transitions
     stateMachineBuilder.addTransition(State.READY, State.EXECUTING,
-        "Begin executing!");
+        "The stage can now schedule its task groups");
+    stateMachineBuilder.addTransition(State.READY, State.FAILED_UNRECOVERABLE,
+        "Job Failure");
+
     stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE,
         "All task groups complete");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_UNRECOVERABLE,
+        "Unrecoverable failure in a task group");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_RECOVERABLE,
+        "Recoverable failure in a task group");
 
-    stateMachineBuilder.addTransition(State.READY, State.FAILED,
-        "Master failure");
-    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED,
-        "Executor failure");
+    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.READY,
+        "Recoverable stage failure");
+    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.FAILED_UNRECOVERABLE,
+        "");
 
     stateMachineBuilder.setInitialState(State.READY);
 
     return stateMachineBuilder.build();
   }
 
+  public StateMachine getStateMachine() {
+    return stateMachine;
+  }
+
   /**
-   * Stage states.
+   * StageState.
    */
   public enum State {
     READY,
     EXECUTING,
     COMPLETE,
-    FAILED
+    FAILED_RECOVERABLE,
+    FAILED_UNRECOVERABLE
+  }
+
+  @Override
+  public String toString() {
+    final StringBuffer sb = new StringBuffer();
+    sb.append(stateMachine.getCurrentState());
+    return sb.toString();
   }
 }

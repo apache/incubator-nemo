@@ -16,16 +16,15 @@
 package edu.snu.vortex.runtime.exception;
 
 /**
- * SchedulingException.
- * Thrown when any exception occurs while trying to schedule
- * a {@link edu.snu.vortex.runtime.common.plan.physical.TaskGroup} to an executor.
+ * IllegalStateTransitionException.
+ * Thrown when the execution state transition is illegal.
  */
-public final class SchedulingException extends RuntimeException {
+public final class IllegalStateTransitionException extends RuntimeException {
   /**
-   * SchedulingException.
-   * @param exception exception
+   * IllegalStateTransitionException.
+   * @param cause cause
    */
-  public SchedulingException(final Throwable exception) {
-    super(exception);
+  public IllegalStateTransitionException(final Throwable cause) {
+    super(cause);
   }
 }

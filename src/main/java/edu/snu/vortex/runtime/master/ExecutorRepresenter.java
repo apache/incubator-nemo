@@ -33,7 +33,6 @@ public final class ExecutorRepresenter {
   private final String executorId;
   private final RuntimeAttribute resourceType;
   private final int executorCapacity;
-  private final Set<String> scheduledTaskGroups;
   private final Set<String> runningTaskGroups;
 
   public ExecutorRepresenter(final String executorId,
@@ -42,20 +41,23 @@ public final class ExecutorRepresenter {
     this.executorId = executorId;
     this.resourceType = resourceType;
     this.executorCapacity = executorCapacity;
-    this.scheduledTaskGroups = new HashSet<>();
     this.runningTaskGroups = new HashSet<>();
   }
 
   public void onTaskGroupScheduled(final String taskGroupId) {
-
+    runningTaskGroups.add(taskGroupId);
   }
 
-  public void onTaskGroupLaunched(final String taskGroupId) {
-
+  public void onTaskGroupExecutionComplete(final String taskGroupId) {
+    runningTaskGroups.remove(taskGroupId);
   }
 
-  public void onTaskGroupCompleted(final String taskGroupId) {
+  public int getExecutorCapacity() {
+    return executorCapacity;
+  }
 
+  public Set<String> getRunningTaskGroups() {
+    return runningTaskGroups;
   }
 
   public String getExecutorId() {

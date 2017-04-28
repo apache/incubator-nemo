@@ -59,7 +59,7 @@ public final class PhysicalDAGGenerator
       final Map<String, Task> runtimeVertexIdToTask = new HashMap<>();
       PhysicalStageBuilder physicalStageBuilder;
       for (final Stage stage : logicalDAG.getVertices()) {
-        final DAGBuilder<Task, RuntimeEdge<Task>> stageInternalDAGBuilder = new DAGBuilder<>();
+
         final Set<RuntimeVertex> stageVertices = stage.getStageInternalDAG().getVertices();
 
         final RuntimeAttributeMap firstVertexAttrs = stageVertices.iterator().next().getVertexAttributes();
@@ -80,6 +80,7 @@ public final class PhysicalDAGGenerator
 
         // (parallelism) number of task groups will be created.
         for (int taskGroupIdx = 0; taskGroupIdx < stageParallelism; taskGroupIdx++) {
+          final DAGBuilder<Task, RuntimeEdge<Task>> stageInternalDAGBuilder = new DAGBuilder<>();
           Task newTaskToAdd;
 
           // Iterate over the vertices contained in this stage to convert to tasks.

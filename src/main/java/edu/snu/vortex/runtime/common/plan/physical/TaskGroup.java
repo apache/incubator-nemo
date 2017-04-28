@@ -40,6 +40,10 @@ public final class TaskGroup implements Serializable {
     this.resourceType = resourceType;
   }
 
+  public String getTaskGroupId() {
+    return taskGroupId;
+  }
+
   public RuntimeAttribute getResourceType() {
     return resourceType;
   }

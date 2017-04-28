@@ -51,7 +51,7 @@ public final class SimpleRuntime {
     final DAG<PhysicalStage, PhysicalStageEdge> stageDAG = physicalPlan.getStageDAG();
     final Map<String, Iterable<Element>> runtimeEdgeIdToData = new HashMap<>();
 
-    // TODO #93: Implement Batch Scheduler
+    // TODO #93: Implement RoundRobin BatchScheduler
     stageDAG.getTopologicalSort().forEach(stage -> {
       final int stageParallelism = stage.getTaskGroupList().size();
       final Set<PhysicalStageEdge> stageIncomingEdges = stageDAG.getIncomingEdgesOf(stage);

@@ -19,7 +19,9 @@
         <netlib.version>1.1.2</netlib.version>
         <apache.commons.version>2.1.1</apache.commons.version>
         <jackson.version>2.7.0</jackson.version>
+        <protobuf.version>3.1.0</protobuf.version>
         <slf4j.version>1.7.14</slf4j.version>
+
     </properties>
 
     <dependencies>
@@ -77,6 +79,11 @@
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protobuf.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -116,6 +123,48 @@
                         <goals>
                             <goal>check</goal>
                             <goal>checkstyle</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>1.9.1</version>
+                <executions>
+                    <execution>
+                        <id>add-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.basedir}/target/generated-sources/</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>generate-sources</id>
+                        <phase>generate-sources</phase>
+                        <configuration>
+                            <tasks>
+                                <mkdir dir="target/generated-sources"/>
+                                <exec executable="protoc">
+                                    <arg value="--proto_path=src/main/resources/protobuf/"/>
+                                    <arg value="--java_out=target/generated-sources"/>
+                                    <arg value="src/main/resources/protobuf/ExecutorMessage.proto"/>
+                                </exec>
+                            </tasks>
+                            <sourceRoot>${project.basedir}/target/generated-sources</sourceRoot>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
                         </goals>
                     </execution>
                 </executions>

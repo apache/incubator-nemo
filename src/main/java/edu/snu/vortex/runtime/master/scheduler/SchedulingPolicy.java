@@ -17,12 +17,15 @@ package edu.snu.vortex.runtime.master.scheduler;
 
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.master.ExecutorRepresenter;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.Optional;
+import java.util.Set;
 
 /**
- * Defines the policy by which {@link Scheduler} assigns task groups to executors.
+ * Defines the policy by which {@link BatchScheduler} assigns task groups to executors.
  */
+@DefaultImplementation(RoundRobinSchedulingPolicy.class)
 public interface SchedulingPolicy {
 
   /**
@@ -37,9 +40,9 @@ public interface SchedulingPolicy {
    * (Depending on the executor's resource type)
    *
    * @param taskGroup to schedule
-   * @return executorId on which the taskGroup is scheduled if successful, an empty Optional otherwise.
+   * @return {@link ExecutorRepresenter} on which the taskGroup is scheduled if successful, an empty Optional otherwise.
    */
-  Optional<String> attemptSchedule(final TaskGroup taskGroup);
+  Optional<ExecutorRepresenter> attemptSchedule(final TaskGroup taskGroup);
 
   /**
    * Adds the executor to the pool of available executors.
@@ -56,8 +59,9 @@ public interface SchedulingPolicy {
    * (Depending on the executor's resource type)
    *
    * @param executor that has been deleted.
+   * @return the ids of the set of task groups that were running on the executor.
    */
-  void onExecutorDeleted(final ExecutorRepresenter executor);
+  Set<String> onExecutorRemoved(final ExecutorRepresenter executor);
 
   /**
    * Marks the executor scheduled for the taskGroup.
@@ -65,16 +69,9 @@ public interface SchedulingPolicy {
    * (Depending on the executor's resource type)
    *
    * @param executor assigned for the taskGroup.
-   * @param taskGroup scheduled to the executor.
+   * @param taskGroupId scheduled to the executor.
    */
-  void onTaskGroupScheduled(final ExecutorRepresenter executor, final TaskGroup taskGroup);
-
-  /**
-   * Tentative.
-   * @param executor .
-   * @param taskGroup .
-   */
-  void onTaskGroupLaunched(final ExecutorRepresenter executor, final TaskGroup taskGroup);
+  void onTaskGroupScheduled(final ExecutorRepresenter executor, final String taskGroupId);
 
   /**
    * Marks the taskGroup's completion in the executor.
@@ -82,7 +79,17 @@ public interface SchedulingPolicy {
    * (Depending on the executor's resource type)
    *
    * @param executor where the taskGroup's execution has completed.
-   * @param taskGroup whose execution has completed.
+   * @param taskGroupId whose execution has completed.
    */
-  void onTaskGroupExecutionComplete(final ExecutorRepresenter executor, final TaskGroup taskGroup);
+  void onTaskGroupExecutionComplete(final ExecutorRepresenter executor, final String taskGroupId);
+
+  /**
+   * Marks the taskGroup's failure in the executor.
+   * Unlocks this policy to reschedule this taskGroup if locked.
+   * (Depending on the executor's resource type)
+   *
+   * @param executor where the taskGroup's execution has failed.
+   * @param taskGroupId whose execution has completed.
+   */
+  void onTaskGroupExecutionFailed(final ExecutorRepresenter executor, final String taskGroupId);
 }
