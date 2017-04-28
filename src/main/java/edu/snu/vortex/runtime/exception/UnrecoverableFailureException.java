@@ -16,16 +16,15 @@
 package edu.snu.vortex.runtime.exception;
 
 /**
- * SchedulingException.
- * Thrown when any exception occurs while trying to schedule
- * a {@link edu.snu.vortex.runtime.common.plan.physical.TaskGroup} to an executor.
+ * UnrecoverableFailureException.
+ * Thrown when a job fails and is unrecoverable.
  */
-public final class SchedulingException extends RuntimeException {
+public final class UnrecoverableFailureException extends RuntimeException {
   /**
-   * SchedulingException.
-   * @param exception exception
+   * UnrecoverableFailureException.
+   * @param cause cause
    */
-  public SchedulingException(final Throwable exception) {
-    super(exception);
+  public UnrecoverableFailureException(final Throwable cause) {
+    super(cause);
   }
 }

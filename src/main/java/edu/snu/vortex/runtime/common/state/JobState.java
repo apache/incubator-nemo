@@ -41,24 +41,32 @@ public final class JobState {
         "Begin executing!");
     stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE,
         "All stages complete, job complete");
-
-    stateMachineBuilder.addTransition(State.READY, State.FAILED,
-        "Master failure");
     stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED,
-        "Executor failure");
+        "Unrecoverable failure in a stage");
 
     stateMachineBuilder.setInitialState(State.READY);
 
     return stateMachineBuilder.build();
   }
 
+  public StateMachine getStateMachine() {
+    return stateMachine;
+  }
+
   /**
-   * Job states.
+   * JobState.
    */
   public enum State {
     READY,
     EXECUTING,
     COMPLETE,
     FAILED
+  }
+
+  @Override
+  public String toString() {
+    final StringBuffer sb = new StringBuffer();
+    sb.append(stateMachine.getCurrentState());
+    return sb.toString();
   }
 }

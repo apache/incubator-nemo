@@ -15,6 +15,8 @@
  */
 package edu.snu.vortex.utils;
 
+import edu.snu.vortex.runtime.exception.IllegalStateTransitionException;
+
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,6 +24,7 @@ import java.util.logging.Logger;
 /**
  * A finite state machine that can be created with user defined states and transitions.
  */
+// TODO #171: Enable StateMachine with Handlers for State Transitions
 public final class StateMachine {
   private static final Logger LOG = Logger.getLogger(StateMachine.class.getName());
 
@@ -49,7 +52,7 @@ public final class StateMachine {
           .append(getPossibleTransitionsFromCurrentState())
           .toString();
 
-      throw new RuntimeException(exceptionMessage);
+      throw new IllegalStateException(exceptionMessage);
     }
   }
 
@@ -74,7 +77,7 @@ public final class StateMachine {
           .append(toState).append('\n')
           .append(getPossibleTransitionsFromCurrentState())
           .toString();
-      throw new RuntimeException(exceptionMessage);
+      throw new IllegalStateTransitionException(new Exception(exceptionMessage));
     }
 
     currentState = toState;
