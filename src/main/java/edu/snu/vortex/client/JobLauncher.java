@@ -20,6 +20,7 @@ import edu.snu.vortex.compiler.backend.vortex.VortexBackend;
 import edu.snu.vortex.compiler.frontend.Frontend;
 import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
+import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 import edu.snu.vortex.utils.dag.DAG;
@@ -76,7 +77,7 @@ public final class JobLauncher {
      * Step 2: Execute
      */
     LOG.log(Level.INFO, "##### VORTEX Runtime #####");
-    new RuntimeMaster().execute(executionPlan, dagDirectory);
+    new RuntimeMaster(RuntimeAttribute.Batch).execute(executionPlan, dagDirectory);
   }
 
   public static Configuration getJobConf(final String[] args) throws IOException, InjectionException {

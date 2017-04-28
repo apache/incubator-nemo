@@ -32,57 +32,66 @@ public final class TaskState {
 
     // Add states
     stateMachineBuilder.addState(State.READY, "The task has been created.");
-    stateMachineBuilder.addState(State.SCHEDULED_TO_EXECUTOR, "The task has been scheduled to executor from master.");
-    stateMachineBuilder.addState(State.SCHEDULED_IN_EXECUTOR, "The task has been scheduled in its executor.");
+    stateMachineBuilder.addState(State.PENDING_IN_EXECUTOR, "The task is pending in its executor.");
     stateMachineBuilder.addState(State.EXECUTING, "The task is executing.");
-    stateMachineBuilder.addState(State.COMPUTED, "The task's operation has been executed/computed.");
-    stateMachineBuilder.addState(State.OUTPUT_COMMITTED, "The task's output has been committed.");
     stateMachineBuilder.addState(State.COMPLETE, "The task's execution is complete with its output committed.");
-    stateMachineBuilder.addState(State.FAILED, "Task failed.");
+    stateMachineBuilder.addState(State.FAILED_RECOVERABLE, "Task failed, but is recoverable.");
+    stateMachineBuilder.addState(State.FAILED_UNRECOVERABLE, "Task failed, and is unrecoverable. The job will fail.");
 
     // Add transitions
-    stateMachineBuilder.addTransition(State.READY, State.SCHEDULED_TO_EXECUTOR,
-        "Scheduling to executor");
-    stateMachineBuilder.addTransition(State.SCHEDULED_TO_EXECUTOR, State.SCHEDULED_IN_EXECUTOR,
+    stateMachineBuilder.addTransition(State.READY, State.PENDING_IN_EXECUTOR,
         "Scheduling for execution");
-    stateMachineBuilder.addTransition(State.SCHEDULED_IN_EXECUTOR, State.EXECUTING,
-        "Begin executing!");
-    stateMachineBuilder.addTransition(State.EXECUTING, State.COMPUTED,
-        "Task computed");
-    stateMachineBuilder.addTransition(State.COMPUTED, State.OUTPUT_COMMITTED,
-        "Output written out");
-    stateMachineBuilder.addTransition(State.OUTPUT_COMMITTED, State.COMPLETE,
-        "Task is complete");
+    stateMachineBuilder.addTransition(State.READY, State.FAILED_UNRECOVERABLE,
+        "Unrecoverable TaskGroup Failure");
 
-    stateMachineBuilder.addTransition(State.READY, State.FAILED,
-        "Master failure");
-    stateMachineBuilder.addTransition(State.SCHEDULED_TO_EXECUTOR, State.FAILED,
-        "Executor failure");
-    stateMachineBuilder.addTransition(State.SCHEDULED_IN_EXECUTOR, State.FAILED,
-        "Executor failure");
-    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED,
-        "Executor failure");
-    stateMachineBuilder.addTransition(State.COMPUTED, State.FAILED,
-        "Executor failure");
-    stateMachineBuilder.addTransition(State.OUTPUT_COMMITTED, State.FAILED,
-        "Executor failure");
+    stateMachineBuilder.addTransition(State.PENDING_IN_EXECUTOR, State.EXECUTING,
+        "Begin executing!");
+    stateMachineBuilder.addTransition(State.PENDING_IN_EXECUTOR, State.FAILED_UNRECOVERABLE,
+        "Unrecoverable TaskGroup Failure/Executor Failure");
+    stateMachineBuilder.addTransition(State.PENDING_IN_EXECUTOR, State.FAILED_RECOVERABLE,
+        "Recoverable TaskGroup Failure/Container Failure");
+
+    stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE,
+        "Task computation done");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_UNRECOVERABLE,
+        "Unexpected failure/Executor Failure");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_RECOVERABLE,
+        "Container Failure");
+
+    stateMachineBuilder.addTransition(State.COMPLETE, State.FAILED_UNRECOVERABLE,
+        "Executor Failure");
+
+    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.FAILED_UNRECOVERABLE,
+        "");
+    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.READY,
+        "Recoverable Task Failure");
 
     stateMachineBuilder.setInitialState(State.READY);
 
     return stateMachineBuilder.build();
   }
 
+  public StateMachine getStateMachine() {
+    return stateMachine;
+  }
+
   /**
-   * Task states.
+   * TaskState.
    */
   public enum State {
     READY,
-    SCHEDULED_TO_EXECUTOR,
-    SCHEDULED_IN_EXECUTOR,
+    // PENDING_IN_EXECUTOR and EXECUTING states are only managed in executor.
+    PENDING_IN_EXECUTOR,
     EXECUTING,
-    COMPUTED,
-    OUTPUT_COMMITTED,
     COMPLETE,
-    FAILED
+    FAILED_RECOVERABLE,
+    FAILED_UNRECOVERABLE
+  }
+
+  @Override
+  public String toString() {
+    final StringBuffer sb = new StringBuffer();
+    sb.append(stateMachine.getCurrentState());
+    return sb.toString();
   }
 }
