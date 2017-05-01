@@ -96,16 +96,24 @@ public final class BatchSchedulerTest {
     final ExecutionStateManager executionStateManager =
         scheduler.scheduleJob(new PhysicalPlan("TestPlan", physicalDAG));
 
-    for (final PhysicalStage physicalStage : physicalDAG.getVertices()) {
+    for (final PhysicalStage physicalStage : physicalDAG.getTopologicalSort()) {
+      final StageState stageState =
+          executionStateManager.getIdToStageStates().get(physicalStage.getId());
+      while (stageState.getStateMachine().getCurrentState() == StageState.State.READY) {
+        // Wait until this stage is scheduled and executing
+      }
       physicalStage.getTaskGroupList().forEach(taskGroup -> {
+        final TaskGroupState taskGroupState =
+            executionStateManager.getIdToTaskGroupStates().get(taskGroup.getTaskGroupId());
+        while (taskGroupState.getStateMachine().getCurrentState() == TaskGroupState.State.READY) {
+          // Wait until this task group is scheduled and executing
+        }
         final ExecutorMessage.TaskGroupStateChangedMsg.Builder taskGroupStateChangedMsg =
             ExecutorMessage.TaskGroupStateChangedMsg.newBuilder();
         taskGroupStateChangedMsg.setTaskGroupId(taskGroup.getTaskGroupId());
         taskGroupStateChangedMsg.setState(ExecutorMessage.TaskGroupStateFromExecutor.COMPLETE);
         scheduler.onTaskGroupStateChanged("a1", taskGroupStateChangedMsg.build());
       });
-      // Allow 2 seconds for the next stage to be scheduled.
-      Thread.sleep(3000);
     }
     executionStateManager.getIdToTaskStates().forEach((id, state) ->
         assertEquals(state.getStateMachine().getCurrentState(), TaskState.State.COMPLETE));
