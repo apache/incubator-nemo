@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.channel;
+package edu.snu.vortex.runtime.executor.channel_to_deprecate;
 
 
 import edu.snu.vortex.compiler.ir.Element;
