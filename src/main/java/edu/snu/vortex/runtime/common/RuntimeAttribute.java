@@ -33,26 +33,33 @@ public enum RuntimeAttribute {
 
 
   /**
-   * Channel data placement attributes.
-   * Local: Intermediate data are placed without serialization
+   * Data placement attributes.
+   * Local: The intermediate data is placed without serialization
    * and the receiver on the same machine task will take the data.
    *
-   * Memory: Intermediate data are serialized and stored in sender task's memory,
-   * until they are sent to the receiver task.
+   * Memory: The intermediate data is serialized and stored in sender task's memory,
+   * until it is sent to the receiver task.
+   * OOM occurs when the data size exceeds the memory capacity of the machine.
    *
-   * File: Intermediate data are serialized and stored in local file,
-   * until they are sent to the receiver task.
+   * File: The intermediate data is serialized and stored in sender task's local file system,
+   * until it is are sent to the receiver task.
+   * Data of size greater than the available disk space is lost.
    *
-   * DistributedStorage: Intermediate data are serialized and stored in a distributed storage,
-   * until they are taken by the receiver task.
+   * MemoryFile: The intermediate data is serialized and stored first in sender task's memory,
+   * and spilled to the local file system if the data size exceeds the memory capacity.
+   * Data of size greater than the available memory + disk space is lost.
+   *
+   * DistributedStorage: The intermediate data is serialized and stored in a distributed storage,
+   * until it is taken by the receiver task.
    */
   Local(Key.ChannelDataPlacement),
   Memory(Key.ChannelDataPlacement),
   File(Key.ChannelDataPlacement),
+  MemoryFile(Key.ChannelDataPlacement),
   DistributedStorage(Key.ChannelDataPlacement),
 
   /**
-   * Channel transfer policy attributes.
+   * Data transfer policy attributes.
    */
   Push(Key.ChannelTransferPolicy),
   Pull(Key.ChannelTransferPolicy),

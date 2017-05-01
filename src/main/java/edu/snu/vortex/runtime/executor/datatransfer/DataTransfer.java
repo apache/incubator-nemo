@@ -13,23 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.channel;
+package edu.snu.vortex.runtime.executor.datatransfer;
 
-import edu.snu.vortex.compiler.ir.Element;
 
 /**
- * Output channel interface.
+ * Contains common parts involved in {@link InputReader} and {@link OutputWriter}.
+ * The two classes are involved in
+ * intermediate data transfer between {@link edu.snu.vortex.runtime.common.plan.physical.Task}.
  */
-public interface OutputChannel extends Channel {
+public abstract class DataTransfer {
+  private final String id;
+
+  public DataTransfer(final String id) {
+    this.id = id;
+  }
 
   /**
-   * write data to the channel.
-   * @param data An iterable for elements to be written.
+   * @return ID of the reader/writer.
    */
-  void write(Iterable<Element> data);
-
-  /**
-   * transfer all internally buffered data to the respective {@link InputChannel} immediately.
-   */
-  void flush();
+  public final String getId() {
+    return id;
+  }
 }

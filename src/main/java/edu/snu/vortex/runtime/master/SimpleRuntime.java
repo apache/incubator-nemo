@@ -22,7 +22,7 @@ import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeOperatorVertex;
 import edu.snu.vortex.runtime.common.plan.physical.*;
-import edu.snu.vortex.runtime.executor.channel.LocalChannel;
+import edu.snu.vortex.runtime.executor.channel_to_deprecate.LocalChannel;
 import edu.snu.vortex.utils.dag.DAG;
 import org.apache.commons.lang3.SerializationUtils;
 
