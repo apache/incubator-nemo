@@ -34,16 +34,19 @@ import java.util.logging.Logger;
 public final class DAG<V extends Vertex, E extends Edge<V>> {
   private static final Logger LOG = Logger.getLogger(DAG.class.getName());
 
-  private final Set<V> vertices;
-  private final Map<V, Set<E>> incomingEdges;
-  private final Map<V, Set<E>> outgoingEdges;
+  private final Map<String, V> vertices;
+  private final Map<String, Set<E>> incomingEdges;
+  private final Map<String, Set<E>> outgoingEdges;
 
   public DAG(final Set<V> vertices,
              final Map<V, Set<E>> incomingEdges,
              final Map<V, Set<E>> outgoingEdges) {
-    this.vertices = vertices;
-    this.incomingEdges = incomingEdges;
-    this.outgoingEdges = outgoingEdges;
+    this.vertices = new HashMap<>();
+    this.incomingEdges = new HashMap<>();
+    this.outgoingEdges = new HashMap<>();
+    vertices.forEach(v -> this.vertices.put(v.getId(), v));
+    incomingEdges.forEach((v, e) -> this.incomingEdges.put(v.getId(), e));
+    outgoingEdges.forEach((v, e) -> this.outgoingEdges.put(v.getId(), e));
   }
 
   /**
@@ -64,7 +67,9 @@ public final class DAG<V extends Vertex, E extends Edge<V>> {
    * Note that the result is never null, ensured by {@link DAGBuilder}.
    */
   public Set<V> getVertices() {
-    return vertices;
+    Set<V> vertexSet = new HashSet<>();
+    vertexSet.addAll(vertices.values());
+    return vertexSet;
   }
 
   /**
@@ -74,10 +79,14 @@ public final class DAG<V extends Vertex, E extends Edge<V>> {
    * Note that the result is never null, ensured by {@link DAGBuilder}.
    */
   public Set<E> getIncomingEdgesOf(final V v) {
-    if (!vertices.contains(v)) {
+    return getIncomingEdgesOf(v.getId());
+  }
+
+  public Set<E> getIncomingEdgesOf(final String vertexId) {
+    if (!vertices.containsKey(vertexId)) {
       throw new IllegalVertexOperationException("The DAG does not contain this vertex");
     }
-    return incomingEdges.get(v);
+    return incomingEdges.get(vertexId);
   }
 
   /**
@@ -87,10 +96,14 @@ public final class DAG<V extends Vertex, E extends Edge<V>> {
    * Note that the result is never null, ensured by {@link DAGBuilder}.
    */
   public Set<E> getOutgoingEdgesOf(final V v) {
-    if (!vertices.contains(v)) {
+    return getOutgoingEdgesOf(v.getId());
+  }
+
+  public Set<E> getOutgoingEdgesOf(final String vertexId) {
+    if (!vertices.containsKey(vertexId)) {
       throw new IllegalVertexOperationException("The DAG does not contain this vertex");
     }
-    return outgoingEdges.get(v);
+    return outgoingEdges.get(vertexId);
   }
 
   /**
@@ -131,7 +144,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> {
   private void dfsTraverse(final Consumer<V> function, final TraversalOrder traversalOrder) {
     final Set<V> visited = new HashSet<>();
     getVertices().stream()
-        .filter(vertex -> incomingEdges.get(vertex).isEmpty()) // root Operators
+        .filter(vertex -> incomingEdges.get(vertex.getId()).isEmpty()) // root Operators
         .filter(vertex -> !visited.contains(vertex))
         .forEach(vertex -> dfsDo(vertex, function, traversalOrder, visited));
   }
@@ -168,7 +181,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"vertices\": [");
     boolean isFirstVertex = true;
-    for (final V vertex : vertices) {
+    for (final V vertex : vertices.values()) {
       if (!isFirstVertex) {
         sb.append(", ");
       }
