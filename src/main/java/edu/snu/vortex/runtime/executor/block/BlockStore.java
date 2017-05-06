@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Seoul National University
+ * Copyright (C) 2017 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.datatransfer;
+package edu.snu.vortex.runtime.executor.block;
+
+import edu.snu.vortex.compiler.ir.Element;
+
+import java.util.Optional;
 
 /**
- * Tests {@link InputReader} and {@link OutputWriter}.
+ * Interface for block placement.
  */
-public final class LocalDataTransferTest {
+public interface BlockStore {
+  /**
+   * Retrieves a block.
+   * @param blockId of the block
+   * @return the data of the block (optionally)
+   */
+  Optional<Iterable<Element>> getBlock(final String blockId);
 
+  /**
+   * Saves a block.
+   * @param blockId of the block
+   * @param data of the block
+   */
+  void putBlock(final String blockId, final Iterable<Element> data);
 }

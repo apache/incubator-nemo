@@ -16,11 +16,14 @@
 package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
-import edu.snu.vortex.runtime.common.plan.logical.*;
-import edu.snu.vortex.runtime.common.plan.physical.*;
+import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
+import edu.snu.vortex.runtime.common.plan.logical.Stage;
+import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalDAGGenerator;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.master.scheduler.BatchScheduler;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
-import edu.snu.vortex.utils.dag.*;
+import edu.snu.vortex.utils.dag.DAG;
 
 import java.util.logging.Logger;
 

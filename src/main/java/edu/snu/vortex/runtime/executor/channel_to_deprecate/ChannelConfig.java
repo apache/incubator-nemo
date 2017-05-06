@@ -32,7 +32,7 @@ public final class ChannelConfig {
    */
   public ChannelConfig(final RuntimeAttribute transferPolicy,
                        final int dataChunkSize) {
-    if (!transferPolicy.hasKey(RuntimeAttribute.Key.ChannelTransferPolicy)) {
+    if (!transferPolicy.hasKey(RuntimeAttribute.Key.PullOrPush)) {
       throw new InvalidParameterException("The given RuntimeAttribute value is invalid as transfer policy.");
     }
 
