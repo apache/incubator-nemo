@@ -1,6 +1,8 @@
 package edu.snu.vortex.runtime.common.message.local;
 
-import edu.snu.vortex.runtime.common.message.*;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
+import edu.snu.vortex.runtime.common.message.MessageListener;
+import edu.snu.vortex.runtime.common.message.MessageSender;
 
 import java.io.Serializable;
 import java.util.concurrent.CompletableFuture;

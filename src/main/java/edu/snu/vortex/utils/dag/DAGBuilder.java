@@ -17,7 +17,10 @@ package edu.snu.vortex.utils.dag;
 
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * DAG Builder.
