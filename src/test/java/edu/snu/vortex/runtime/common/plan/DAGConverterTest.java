@@ -183,13 +183,13 @@ public final class DAGConverterTest {
 
     // TODO #13: Implement Join Node
 //    final IREdge e7 = new IREdge(IREdge.Type.OneToOne, v7, v5);
-//    e7.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-//    e7.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Push);
+//    e7.setAttr(Attribute.Key.BlockStore, Attribute.Memory);
+//    e7.setAttr(Attribute.Key.PullOrPush, Attribute.Push);
 //    e7.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 //
 //    final IREdge e8 = new IREdge(IREdge.Type.OneToOne, v5, v8);
-//    e8.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Local);
-//    e8.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
+//    e8.setAttr(Attribute.Key.BlockStore, Attribute.Local);
+//    e8.setAttr(Attribute.Key.PullOrPush, Attribute.Pull);
 //    e8.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 
     // Stage 1 = {v1, v2, v3}

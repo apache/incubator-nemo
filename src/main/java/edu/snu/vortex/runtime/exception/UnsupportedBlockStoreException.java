@@ -16,15 +16,15 @@
 package edu.snu.vortex.runtime.exception;
 
 /**
- * UnsupportedDataPlacementException.
+ * UnsupportedBlockStoreException.
  * Thrown when the data placement method is undefined in Runtime.
  */
-public final class UnsupportedDataPlacementException extends RuntimeException {
+public final class UnsupportedBlockStoreException extends RuntimeException {
   /**
-   * UnsupportedDataPlacementException.
+   * UnsupportedBlockStoreException.
    * @param cause cause
    */
-  public UnsupportedDataPlacementException(final Throwable cause) {
+  public UnsupportedBlockStoreException(final Throwable cause) {
     super(cause);
   }
 }

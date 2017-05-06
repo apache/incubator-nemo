@@ -17,92 +17,93 @@ package edu.snu.vortex.runtime.executor.datatransfer;
 
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
-import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
-import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
-import edu.snu.vortex.runtime.common.plan.physical.Task;
+import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.exception.UnsupportedCommPatternException;
-import edu.snu.vortex.runtime.executor.dataplacement.DataPlacement;
+import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Represents the input data transfer to a task.
  */
 public final class InputReader extends DataTransfer {
+  private final String edgeId;
+  private final int dstTaskIndex;
+
+  private final BlockManagerWorker blockManagerWorker;
 
   /**
-   * The task that reads the data.
+   * Attributes that specify how we should read the input.
    */
-  private final Task dstTask;
+  private final RuntimeAttributeMap srcVertexAttributes;
+  private final RuntimeAttributeMap edgeAttributes;
 
-  /**
-   * The {@link RuntimeVertex} where the input data is from.
-   */
-  private final RuntimeVertex srcRuntimeVertex;
-
-  /**
-   * The {@link RuntimeEdge} that connects the tasks belonging to srcRuntimeVertex to dstTask.
-   */
-  private final RuntimeEdge runtimeEdge;
-
-  /**
-   * Represents where the input data is placed.
-   */
-  private final DataPlacement dataPlacement;
-
-  public InputReader(final Task dstTask,
-                     final RuntimeVertex srcRuntimeVertex,
-                     final RuntimeEdge runtimeEdge,
-                     final DataPlacement dataPlacement) {
-    super(runtimeEdge.getRuntimeEdgeId());
-    this.dstTask = dstTask;
-    this.srcRuntimeVertex = srcRuntimeVertex;
-    this.runtimeEdge = runtimeEdge;
-    this.dataPlacement = dataPlacement;
+  public InputReader(final String edgeId,
+                     final int dstTaskIndex,
+                     final RuntimeAttributeMap srcVertexAttributes,
+                     final RuntimeAttributeMap edgeAttributes,
+                     final BlockManagerWorker blockManagerWorker) {
+    super(edgeId);
+    this.edgeId = edgeId;
+    this.dstTaskIndex = dstTaskIndex;
+    this.srcVertexAttributes = srcVertexAttributes;
+    this.edgeAttributes = edgeAttributes;
+    this.blockManagerWorker = blockManagerWorker;
   }
 
   /**
    * Reads input data depending on the communication pattern of the srcRuntimeVertex.
+   *
    * @return the read data.
    */
   public Iterable<Element> read() {
-    switch (srcRuntimeVertex.getVertexAttributes().get(RuntimeAttribute.Key.CommPattern)) {
-    case OneToOne:
-      return readOneToOne();
-    case Broadcast:
-      return readBroadcast();
-    case ScatterGather:
-      return readScatterGather();
-    default:
-      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    switch (edgeAttributes.get(RuntimeAttribute.Key.CommPattern)) {
+      case OneToOne:
+        return readOneToOne();
+      case Broadcast:
+        return readBroadcast();
+      case ScatterGather:
+        return readScatterGather();
+      default:
+        throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
   }
 
   private Iterable<Element> readOneToOne() {
-    return dataPlacement.get(runtimeEdge.getRuntimeEdgeId(), dstTask.getIndex());
+    final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, dstTaskIndex);
+    return blockManagerWorker.getBlock(blockId, edgeAttributes.get(RuntimeAttribute.Key.BlockStore));
   }
 
   private Iterable<Element> readBroadcast() {
-    final int numSrcTasks = srcRuntimeVertex.getVertexAttributes().get(RuntimeAttribute.IntegerKey.Parallelism);
+    final int numSrcTasks = srcVertexAttributes.get(RuntimeAttribute.IntegerKey.Parallelism);
 
-    final List<Element> readData = new ArrayList<>();
+    final List<Element> concatStreamBase = new ArrayList<>();
+    Stream<Element> concatStream = concatStreamBase.stream();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final Iterable<Element> dataFromATask = dataPlacement.get(runtimeEdge.getRuntimeEdgeId(), srcTaskIdx);
-      dataFromATask.forEach(element -> readData.add(element));
+      final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskIdx);
+      final Iterable<Element> dataFromATask =
+          blockManagerWorker.getBlock(blockId, edgeAttributes.get(RuntimeAttribute.Key.BlockStore));
+      concatStream = Stream.concat(concatStream, StreamSupport.stream(dataFromATask.spliterator(), false));
     }
-    return readData;
+    return concatStream.collect(Collectors.toList());
   }
 
   private Iterable<Element> readScatterGather() {
-    final int numSrcTasks = srcRuntimeVertex.getVertexAttributes().get(RuntimeAttribute.IntegerKey.Parallelism);
+    final int numSrcTasks = srcVertexAttributes.get(RuntimeAttribute.IntegerKey.Parallelism);
 
-    final List<Element> readData = new ArrayList<>();
+    final List<Element> concatStreamBase = new ArrayList<>();
+    Stream<Element> concatStream = concatStreamBase.stream();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
+      final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskIdx, dstTaskIndex);
       final Iterable<Element> dataFromATask =
-          dataPlacement.get(runtimeEdge.getRuntimeEdgeId(), srcTaskIdx, dstTask.getIndex());
-      dataFromATask.forEach(element -> readData.add(element));
+          blockManagerWorker.getBlock(blockId, edgeAttributes.get(RuntimeAttribute.Key.BlockStore));
+      concatStream = Stream.concat(concatStream, StreamSupport.stream(dataFromATask.spliterator(), false));
     }
-    return readData;
+    return concatStream.collect(Collectors.toList());
   }
 }

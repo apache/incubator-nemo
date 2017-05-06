@@ -128,7 +128,7 @@ public final class RuntimeAttributeConverter {
                   "\'" + irAttributeVal + "\' can not be a value of " + irAttributeKey);
           }
 
-          runtimeEdgeAttributes.put(RuntimeAttribute.Key.ChannelDataPlacement, channelPlacementAttrVal);
+          runtimeEdgeAttributes.put(RuntimeAttribute.Key.BlockStore, channelPlacementAttrVal);
           break;
         case ChannelTransferPolicy:
           final RuntimeAttribute channelTransferPolicyAttrVal;
@@ -144,7 +144,7 @@ public final class RuntimeAttributeConverter {
                   "\'" + irAttributeVal + "\' can not be a value of " + irAttributeKey);
           }
 
-          runtimeEdgeAttributes.put(RuntimeAttribute.Key.ChannelTransferPolicy, channelTransferPolicyAttrVal);
+          runtimeEdgeAttributes.put(RuntimeAttribute.Key.PullOrPush, channelTransferPolicyAttrVal);
           break;
         case CommunicationPattern:
           final RuntimeAttribute commPatternAttrVal;

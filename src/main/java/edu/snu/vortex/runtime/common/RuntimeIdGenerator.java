@@ -87,4 +87,25 @@ public final class RuntimeIdGenerator {
   public static String generateTaskGroupId() {
     return "TaskGroup-" + taskGroupIdGenerator.getAndIncrement();
   }
+
+  /**
+   * Generates the ID for a whole block.
+   * @param runtimeEdgeId of the block
+   * @param taskIndex of the block
+   * @return the generated ID
+   */
+  public static String generateBlockId(final String runtimeEdgeId, final int taskIndex) {
+    return "Block-" + runtimeEdgeId + "-" + taskIndex;
+  }
+
+  /**
+   * Generates the ID for a sub-block.
+   * @param runtimeEdgeId of the block
+   * @param taskIndex of the block
+   * @param partitionIndex of the block
+   * @return the generated ID
+   */
+  public static String generateBlockId(final String runtimeEdgeId, final int taskIndex, final int partitionIndex) {
+    return generateBlockId(runtimeEdgeId, taskIndex) + "-" + partitionIndex;
+  }
 }

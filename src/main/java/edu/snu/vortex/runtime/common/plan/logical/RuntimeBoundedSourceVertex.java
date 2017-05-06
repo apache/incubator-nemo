@@ -18,6 +18,7 @@ package edu.snu.vortex.runtime.common.plan.logical;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.runtime.common.plan.physical.BoundedSourceTask;
+
 import java.util.ArrayList;
 import java.util.List;
 /**

@@ -15,7 +15,8 @@
  */
 package edu.snu.vortex.runtime.common.plan.logical;
 
-import edu.snu.vortex.runtime.common.*;
+import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.utils.dag.Vertex;
 
 import java.io.Serializable;
