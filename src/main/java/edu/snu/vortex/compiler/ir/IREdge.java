@@ -33,15 +33,13 @@ public final class IREdge extends Edge<IRVertex> {
     OneToOne,
   }
 
-  private final String id;
   private final AttributeMap attributes;
   private final Type type;
 
   public IREdge(final Type type,
-         final IRVertex src,
-         final IRVertex dst) {
-    super(src, dst);
-    this.id = IdManager.newEdgeId();
+                final IRVertex src,
+                final IRVertex dst) {
+    super(IdManager.newEdgeId(), src, dst);
     this.attributes = AttributeMap.of(this);
     this.type = type;
     switch (this.getType()) {
@@ -57,10 +55,6 @@ public final class IREdge extends Edge<IRVertex> {
       default:
         throw new UnsupportedAttributeException("There is no such edge type as: " + this.getType());
     }
-  }
-
-  public String getId() {
-    return id;
   }
 
   public IREdge setAttr(final Attribute.Key key, final Attribute val) {
@@ -80,6 +74,14 @@ public final class IREdge extends Edge<IRVertex> {
     return type;
   }
 
+  public Boolean hasSameItineraryAs(final IREdge edge) {
+    return getSrc().equals(edge.getSrc()) && getDst().equals(edge.getDst());
+  }
+
+  public static void copyAttributes(final IREdge fromEdge, final IREdge toEdge) {
+    fromEdge.getAttributes().forEachAttr(toEdge::setAttr);
+  }
+
   @Override
   public boolean equals(final Object o) {
     if (this == o) {
@@ -91,13 +93,7 @@ public final class IREdge extends Edge<IRVertex> {
 
     IREdge irEdge = (IREdge) o;
 
-    if (type != irEdge.type) {
-      return false;
-    }
-    if (!getSrc().equals(irEdge.getSrc())) {
-      return false;
-    }
-    return getDst().equals(irEdge.getDst());
+    return type.equals(irEdge.getType()) && hasSameItineraryAs(irEdge);
   }
 
   @Override
@@ -111,7 +107,7 @@ public final class IREdge extends Edge<IRVertex> {
   @Override
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("{\"id\": \"").append(id);
+    sb.append("{\"id\": \"").append(getId());
     sb.append("\", \"attributes\": ").append(attributes);
     sb.append(", \"type\": \"").append(type);
     sb.append("\"}");

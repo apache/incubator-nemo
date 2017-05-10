@@ -20,7 +20,7 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.utils.dag.DAG;
 
-import java.util.Set;
+import java.util.List;
 
 /**
  * Pado pass for tagging vertices.
@@ -28,7 +28,7 @@ import java.util.Set;
 public final class PadoVertexPass implements Pass {
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     dag.topologicalDo(vertex -> {
-      final Set<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
+      final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (inEdges.isEmpty()) {
         vertex.setAttr(Attribute.Key.Placement, Attribute.Transient);
       } else {
@@ -42,11 +42,11 @@ public final class PadoVertexPass implements Pass {
     return dag;
   }
 
-  private boolean hasM2M(final Set<IREdge> irEdges) {
+  private boolean hasM2M(final List<IREdge> irEdges) {
     return irEdges.stream().filter(edge -> edge.getType() == IREdge.Type.ScatterGather).count() > 0;
   }
 
-  private boolean allFromReserved(final Set<IREdge> irEdges) {
+  private boolean allFromReserved(final List<IREdge> irEdges) {
     return irEdges.stream()
         .allMatch(edge -> edge.getSrc().getAttr(Attribute.Key.Placement) == Attribute.Reserved);
   }

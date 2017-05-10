@@ -21,7 +21,7 @@ import edu.snu.vortex.compiler.ir.SourceVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.utils.dag.DAG;
 
-import java.util.Set;
+import java.util.List;
 
 /**
  * Optimization pass for tagging parallelism attributes.
@@ -30,7 +30,7 @@ public final class ParallelismPass implements Pass {
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     dag.topologicalDo(vertex -> {
       try {
-        final Set<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
+        final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
         if (inEdges.isEmpty() && vertex instanceof SourceVertex) {
           final SourceVertex sourceVertex = (SourceVertex) vertex;
           vertex.setAttr(Attribute.IntegerKey.Parallelism, sourceVertex.getReaders(1).size());

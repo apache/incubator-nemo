@@ -24,7 +24,6 @@ import edu.snu.vortex.utils.dag.Vertex;
  * @param <V> the vertex type.
  */
 public class RuntimeEdge<V extends Vertex> extends Edge<V> {
-  private final String runtimeEdgeId;
   private final RuntimeAttributeMap edgeAttributes;
 
   /**
@@ -38,13 +37,8 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
                      final RuntimeAttributeMap edgeAttributes,
                      final V src,
                      final V dst) {
-    super(src, dst);
-    this.runtimeEdgeId = runtimeEdgeId;
+    super(runtimeEdgeId, src, dst);
     this.edgeAttributes = edgeAttributes;
-  }
-
-  public final String getRuntimeEdgeId() {
-    return runtimeEdgeId;
   }
 
   public final RuntimeAttributeMap getEdgeAttributes() {
@@ -55,7 +49,7 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
   @Override
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("{\"runtimeEdgeId\": \"").append(runtimeEdgeId);
+    sb.append("{\"runtimeEdgeId\": \"").append(getId());
     sb.append("\", \"edgeAttributes\": ").append(edgeAttributes);
     sb.append("}");
     return sb.toString();

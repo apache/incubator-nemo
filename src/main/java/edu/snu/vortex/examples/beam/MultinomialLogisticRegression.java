@@ -382,6 +382,7 @@ public final class MultinomialLogisticRegression {
 
     // Multiple iterations for convergence.
     for (int i = 1; i <= numItr; i++) {
+      // NOTE: a single composite transform for the iteration.
       model = model.apply(new UpdateModel(numFeatures, numClasses, i, readInput));
     }
 

@@ -30,7 +30,6 @@ import edu.snu.vortex.utils.dag.DAGBuilder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -60,7 +59,7 @@ public final class PhysicalDAGGenerator
       PhysicalStageBuilder physicalStageBuilder;
       for (final Stage stage : logicalDAG.getVertices()) {
 
-        final Set<RuntimeVertex> stageVertices = stage.getStageInternalDAG().getVertices();
+        final List<RuntimeVertex> stageVertices = stage.getStageInternalDAG().getVertices();
 
         final RuntimeAttributeMap firstVertexAttrs = stageVertices.iterator().next().getVertexAttributes();
         int stageParallelism = firstVertexAttrs.get(RuntimeAttribute.IntegerKey.Parallelism);
@@ -110,9 +109,9 @@ public final class PhysicalDAGGenerator
           // Notice that it suffices to iterate over only the internalInEdges.
           final DAG<RuntimeVertex, RuntimeEdge<RuntimeVertex>> internalInEdges = stage.getStageInternalDAG();
           internalInEdges.getVertices().forEach(runtimeVertex -> {
-            final Set<RuntimeEdge<RuntimeVertex>> inEdges = internalInEdges.getIncomingEdgesOf(runtimeVertex);
+            final List<RuntimeEdge<RuntimeVertex>> inEdges = internalInEdges.getIncomingEdgesOf(runtimeVertex);
             inEdges.forEach(edge -> stageInternalDAGBuilder
-                .connectVertices(new RuntimeEdge<>(edge.getRuntimeEdgeId(), edge.getEdgeAttributes(),
+                .connectVertices(new RuntimeEdge<>(edge.getId(), edge.getEdgeAttributes(),
                     runtimeVertexIdToTask.get(edge.getSrc().getId()),
                     runtimeVertexIdToTask.get(edge.getDst().getId()))));
 
@@ -136,7 +135,7 @@ public final class PhysicalDAGGenerator
           final PhysicalStage srcStage = runtimeStageIdToPhysicalStageMap.get(stageEdge.getSrc().getStageId());
           final PhysicalStage dstStage = runtimeStageIdToPhysicalStageMap.get(stageEdge.getDst().getStageId());
 
-          physicalDAGBuilder.connectVertices(new PhysicalStageEdge(stageEdge.getRuntimeEdgeId(),
+          physicalDAGBuilder.connectVertices(new PhysicalStageEdge(stageEdge.getId(),
               stageEdge.getEdgeAttributes(),
               stageEdge.getSrcRuntimeVertex(), stageEdge.getDstRuntimeVertex(),
               stageEdge.getSrcRuntimeVertex().getVertexAttributes(), srcStage, dstStage));
