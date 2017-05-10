@@ -36,6 +36,11 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
   }
 
   @Override
+  public BoundedSourceVertex getClone() {
+    return new BoundedSourceVertex<>(this.source);
+  }
+
+  @Override
   public List<Reader<O>> getReaders(final int desiredNumOfSplits) throws Exception {
     final List<Reader<O>> readers = new ArrayList<>();
     source.splitIntoBundles(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null).forEach(boundedSource -> {

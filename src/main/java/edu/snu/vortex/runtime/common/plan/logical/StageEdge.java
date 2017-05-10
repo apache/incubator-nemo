@@ -58,7 +58,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   @Override
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("{\"runtimeEdgeId\": \"").append(getRuntimeEdgeId());
+    sb.append("{\"runtimeEdgeId\": \"").append(getId());
     sb.append("\", \"edgeAttributes\": ").append(getEdgeAttributes());
     sb.append(", \"srcRuntimeVertex\": \"").append(srcRuntimeVertex.getId());
     sb.append("\", \"dstRuntimeVertex\": \"").append(dstRuntimeVertex.getId());

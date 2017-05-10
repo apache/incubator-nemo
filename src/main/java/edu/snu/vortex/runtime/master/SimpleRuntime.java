@@ -54,8 +54,8 @@ public final class SimpleRuntime {
     // TODO #93: Implement RoundRobin BatchScheduler
     stageDAG.getTopologicalSort().forEach(stage -> {
       final int stageParallelism = stage.getTaskGroupList().size();
-      final Set<PhysicalStageEdge> stageIncomingEdges = stageDAG.getIncomingEdgesOf(stage);
-      final Set<PhysicalStageEdge> stageOutgoingEdges = stageDAG.getOutgoingEdgesOf(stage);
+      final List<PhysicalStageEdge> stageIncomingEdges = stageDAG.getIncomingEdgesOf(stage);
+      final List<PhysicalStageEdge> stageOutgoingEdges = stageDAG.getOutgoingEdgesOf(stage);
 
       stage.getTaskGroupList().forEach(taskGroup -> {
 
@@ -82,17 +82,17 @@ public final class SimpleRuntime {
             final Transform transform = SerializationUtils.clone(operatorTask.getTransform());
 
             // Check for any incoming edge from other stages.
-            final Set<PhysicalStageEdge> inEdgesFromOtherStages = stageIncomingEdges.stream().filter(
-                stageInEdge -> stageInEdge.getDstVertex().getId().equals(vertexId)).collect(Collectors.toSet());
+            final List<PhysicalStageEdge> inEdgesFromOtherStages = stageIncomingEdges.stream().filter(
+                stageInEdge -> stageInEdge.getDstVertex().getId().equals(vertexId)).collect(Collectors.toList());
 
             // Check for incoming edge from this stage.
-            final Set<RuntimeEdge<Task>> inEdgesWithinStage = taskDAG.getIncomingEdgesOf(task);
+            final List<RuntimeEdge<Task>> inEdgesWithinStage = taskDAG.getIncomingEdgesOf(task);
 
-            final Set<RuntimeEdge> sideInputEdges =
+            final List<RuntimeEdge> sideInputEdges =
                 filterInputEdges(inEdgesFromOtherStages, inEdgesWithinStage, true);
             final Map<Transform, Object> sideInputs = getSideInputs(sideInputEdges, task, edgeIdToChannels);
 
-            final Set<RuntimeEdge> nonSideInputEdges =
+            final List<RuntimeEdge> nonSideInputEdges =
                 filterInputEdges(inEdgesFromOtherStages, inEdgesWithinStage, false);
 
             final Transform.Context transformContext = new ContextImpl(sideInputs);
@@ -105,7 +105,7 @@ public final class SimpleRuntime {
               } else {
                 srcVertexId = ((Task) nonSideInputEdge.getSrc()).getRuntimeVertexId();
               }
-              transform.onData(edgeIdToChannels.get(nonSideInputEdge.getRuntimeEdgeId()).get(task.getIndex()).read(),
+              transform.onData(edgeIdToChannels.get(nonSideInputEdge.getId()).get(task.getIndex()).read(),
                   srcVertexId);
             });
             transform.close();
@@ -124,8 +124,8 @@ public final class SimpleRuntime {
                            final Map<String, Iterable<Element>> runtimeEdgeIdToData,
                            final Map<String, List<LocalChannel>> edgeIdToChannels,
                            final int stageParallelism,
-                           final Set<PhysicalStageEdge> stageOutgoingEdges,
-                           final Set<RuntimeEdge<Task>> outEdgesWithinStage) {
+                           final List<PhysicalStageEdge> stageOutgoingEdges,
+                           final List<RuntimeEdge<Task>> outEdgesWithinStage) {
 
     // Check for any outgoing edge to other stages and write output.
     final Set<PhysicalStageEdge> outEdgesToOtherStages = stageOutgoingEdges.stream()
@@ -136,7 +136,7 @@ public final class SimpleRuntime {
       outEdgesToOtherStages.forEach(outEdge -> {
         writeToChannels(taskExecuted.getIndex(), edgeIdToChannels, outEdge,
             outEdge.getExternalVertexAttr().get(RuntimeAttribute.IntegerKey.Parallelism), dataToWrite);
-        runtimeEdgeIdToData.put(outEdge.getRuntimeEdgeId(), dataToWrite);
+        runtimeEdgeIdToData.put(outEdge.getId(), dataToWrite);
       });
     }
 
@@ -145,7 +145,7 @@ public final class SimpleRuntime {
       outEdgesWithinStage.forEach(outEdge -> {
         writeToChannels(taskExecuted.getIndex(), edgeIdToChannels, outEdge,
             stageParallelism, dataToWrite);
-        runtimeEdgeIdToData.put(outEdge.getRuntimeEdgeId(), dataToWrite);
+        runtimeEdgeIdToData.put(outEdge.getId(), dataToWrite);
       });
     }
   }
@@ -157,10 +157,10 @@ public final class SimpleRuntime {
    * @param getSideInputEdges true if side-input edges are to be filtered, false otherwise.
    * @return the set of filtered edges.
    */
-  private Set<RuntimeEdge> filterInputEdges(final Set<PhysicalStageEdge> inEdgesFromOtherStages,
-                                            final Set<RuntimeEdge<Task>> inEdgesWithinStage,
+  private List<RuntimeEdge> filterInputEdges(final List<PhysicalStageEdge> inEdgesFromOtherStages,
+                                            final List<RuntimeEdge<Task>> inEdgesWithinStage,
                                             final boolean getSideInputEdges) {
-    final Set<RuntimeEdge> filteredEdges = new HashSet<>();
+    final List<RuntimeEdge> filteredEdges = new ArrayList<>();
     if (!inEdgesFromOtherStages.isEmpty()) {
       filteredEdges.addAll(inEdgesFromOtherStages.stream()
           .filter(
@@ -185,14 +185,14 @@ public final class SimpleRuntime {
    * @param edgeIdToChannels the map of runtime edge ID to channels.
    * @return the side-inputs.
    */
-  private Map<Transform, Object> getSideInputs(final Set<RuntimeEdge> sideInputEdges,
+  private Map<Transform, Object> getSideInputs(final List<RuntimeEdge> sideInputEdges,
                                                final Task task,
                                                final Map<String, List<LocalChannel>> edgeIdToChannels) {
     if (!sideInputEdges.isEmpty()) {
       final Map<Transform, Object> sideInputs = new HashMap<>();
       sideInputEdges.forEach(inEdge -> {
         final Iterable<Element> elementSideInput =
-            edgeIdToChannels.get(inEdge.getRuntimeEdgeId()).get(task.getIndex()).read();
+            edgeIdToChannels.get(inEdge.getId()).get(task.getIndex()).read();
         final List<Object> objectSideInput = StreamSupport
             .stream(elementSideInput.spliterator(), false)
             .map(element -> element.getData())
@@ -229,7 +229,7 @@ public final class SimpleRuntime {
                                final RuntimeEdge edge,
                                final int dstParallelism,
                                final Iterable<Element> data) {
-    final List<LocalChannel> dstChannels = edgeIdToChannels.computeIfAbsent(edge.getRuntimeEdgeId(), s -> {
+    final List<LocalChannel> dstChannels = edgeIdToChannels.computeIfAbsent(edge.getId(), s -> {
       final List<LocalChannel> newChannels = new ArrayList<>(dstParallelism);
       IntStream.range(0, dstParallelism).forEach(x -> {
         // This is a hack to make the runtime work for now
