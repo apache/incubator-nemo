@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.runtime.master.scheduler;
 
-import edu.snu.vortex.runtime.common.comm.ExecutorMessage;
+import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.master.ExecutionStateManager;
 import edu.snu.vortex.runtime.master.ExecutorRepresenter;
@@ -33,7 +33,7 @@ public interface Scheduler {
   void onExecutorRemoved(final ExecutorRepresenter executor);
 
   void onTaskGroupStateChanged(final String executorId,
-                               final ExecutorMessage.TaskGroupStateChangedMsg message);
+                               final ControlMessage.TaskGroupStateChangedMsg message);
 
   void terminate();
 }

@@ -16,7 +16,7 @@
 package edu.snu.vortex.runtime.master.scheduler;
 
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
-import edu.snu.vortex.runtime.common.comm.ExecutorMessage;
+import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
@@ -112,7 +112,7 @@ public final class BatchScheduler implements Scheduler {
   }
 
   /**
-   * Receives a {@link edu.snu.vortex.runtime.common.comm.ExecutorMessage.TaskGroupStateChangedMsg} from an executor.
+   * Receives a {@link edu.snu.vortex.runtime.common.comm.ControlMessage.TaskGroupStateChangedMsg} from an executor.
    * The message is received via communicator where this method is called.
    * @param executorId the id of the executor where the message was sent from.
    * @param message from the executor.
@@ -121,7 +121,7 @@ public final class BatchScheduler implements Scheduler {
   // TODO #94: Implement Distributed Communicator
   @Override
   public void onTaskGroupStateChanged(final String executorId,
-                                      final ExecutorMessage.TaskGroupStateChangedMsg message) {
+                                      final ControlMessage.TaskGroupStateChangedMsg message) {
     final TaskGroupState.State newState = convertState(message.getState());
     executionStateManager.onTaskGroupStateChanged(message.getTaskGroupId(), newState);
     switch (newState) {
@@ -245,7 +245,7 @@ public final class BatchScheduler implements Scheduler {
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  private TaskGroupState.State convertState(final ExecutorMessage.TaskGroupStateFromExecutor state) {
+  private TaskGroupState.State convertState(final ControlMessage.TaskGroupStateFromExecutor state) {
     switch (state) {
     case READY:
       return TaskGroupState.State.READY;
