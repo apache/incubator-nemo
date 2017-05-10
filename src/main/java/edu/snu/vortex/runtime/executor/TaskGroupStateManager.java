@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.runtime.executor;
 
-import edu.snu.vortex.runtime.common.comm.ExecutorMessage;
+import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
@@ -121,8 +121,8 @@ public final class TaskGroupStateManager {
   private void notifyTaskGroupStateToMaster(final String id,
                                             final TaskGroupState.State newState,
                                             final Optional<List<String>> failedTaskIds) {
-    final ExecutorMessage.TaskGroupStateChangedMsg.Builder taskGroupStateChangedMsg =
-        ExecutorMessage.TaskGroupStateChangedMsg.newBuilder();
+    final ControlMessage.TaskGroupStateChangedMsg.Builder taskGroupStateChangedMsg =
+        ControlMessage.TaskGroupStateChangedMsg.newBuilder();
     taskGroupStateChangedMsg.setTaskGroupId(id);
     taskGroupStateChangedMsg.setState(convertState(newState));
 
@@ -136,18 +136,18 @@ public final class TaskGroupStateManager {
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  private ExecutorMessage.TaskGroupStateFromExecutor convertState(final TaskGroupState.State state) {
+  private ControlMessage.TaskGroupStateFromExecutor convertState(final TaskGroupState.State state) {
     switch (state) {
     case READY:
-      return ExecutorMessage.TaskGroupStateFromExecutor.READY;
+      return ControlMessage.TaskGroupStateFromExecutor.READY;
     case EXECUTING:
-      return ExecutorMessage.TaskGroupStateFromExecutor.EXECUTING;
+      return ControlMessage.TaskGroupStateFromExecutor.EXECUTING;
     case COMPLETE:
-      return ExecutorMessage.TaskGroupStateFromExecutor.COMPLETE;
+      return ControlMessage.TaskGroupStateFromExecutor.COMPLETE;
     case FAILED_RECOVERABLE:
-      return ExecutorMessage.TaskGroupStateFromExecutor.FAILED_RECOVERABLE;
+      return ControlMessage.TaskGroupStateFromExecutor.FAILED_RECOVERABLE;
     case FAILED_UNRECOVERABLE:
-      return ExecutorMessage.TaskGroupStateFromExecutor.FAILED_UNRECOVERABLE;
+      return ControlMessage.TaskGroupStateFromExecutor.FAILED_UNRECOVERABLE;
     default:
       throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
     }
