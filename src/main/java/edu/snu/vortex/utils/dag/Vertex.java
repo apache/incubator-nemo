@@ -35,6 +35,10 @@ public abstract class Vertex {
     return id;
   }
 
+  public final Integer getNumericId() {
+    return Integer.parseInt(id.replaceAll("[^\\d.]", ""));
+  }
+
   /**
    * @return JSON representation of additional properties
    */

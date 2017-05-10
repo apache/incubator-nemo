@@ -92,8 +92,8 @@ public final class LogicalDAGGenerator
 
     // First, traverse the DAG topologically to add each vertices to a list associated with each of the stage number.
     irDAG.topologicalDo(vertex -> {
-      final Set<IREdge> inEdges = irDAG.getIncomingEdgesOf(vertex);
-      final Optional<Set<IREdge>> inEdgeList = (inEdges == null || inEdges.isEmpty()) ?
+      final List<IREdge> inEdges = irDAG.getIncomingEdgesOf(vertex);
+      final Optional<List<IREdge>> inEdgeList = (inEdges == null || inEdges.isEmpty()) ?
           Optional.empty() : Optional.of(inEdges);
 
       if (!inEdgeList.isPresent()) { // If Source vertex
@@ -159,8 +159,8 @@ public final class LogicalDAGGenerator
         irVertexIdToRuntimeVertexMap.put(irVertex.getId(), runtimeVertex);
 
         // Connect all the incoming edges for the runtime vertex
-        final Set<IREdge> inEdges = irDAG.getIncomingEdgesOf(irVertex);
-        final Optional<Set<IREdge>> inEdgeList = (inEdges == null) ? Optional.empty() : Optional.of(inEdges);
+        final List<IREdge> inEdges = irDAG.getIncomingEdgesOf(irVertex);
+        final Optional<List<IREdge>> inEdgeList = (inEdges == null) ? Optional.empty() : Optional.of(inEdges);
         inEdgeList.ifPresent(edges -> edges.forEach(irEdge -> {
           final RuntimeVertex srcRuntimeVertex =
               irVertexIdToRuntimeVertexMap.get(irEdge.getSrc().getId());
@@ -223,7 +223,7 @@ public final class LogicalDAGGenerator
    * @param irVertex to convert.
    * @return the converted Runtime Vertex.
    */
-  private RuntimeVertex convertVertex(final IRVertex irVertex) {
+  private static RuntimeVertex convertVertex(final IRVertex irVertex) {
     final RuntimeVertex newVertex;
 
     // TODO #100: Add irVertex Type in IR

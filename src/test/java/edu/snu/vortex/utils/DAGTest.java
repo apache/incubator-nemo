@@ -46,10 +46,10 @@ public final class DAGTest {
 
   @Test
   public void testSimpleDAG() {
-    final Edge<IntegerVertex> e1 = new Edge<>(new IntegerVertex(1), new IntegerVertex(2));
-    final Edge<IntegerVertex> e2 = new Edge<>(new IntegerVertex(2), new IntegerVertex(3));
-    final Edge<IntegerVertex> e3 = new Edge<>(new IntegerVertex(3), new IntegerVertex(4));
-    final Edge<IntegerVertex> e4 = new Edge<>(new IntegerVertex(4), new IntegerVertex(5));
+    final Edge<IntegerVertex> e1 = new Edge<>("1", new IntegerVertex(1), new IntegerVertex(2));
+    final Edge<IntegerVertex> e2 = new Edge<>("2", new IntegerVertex(2), new IntegerVertex(3));
+    final Edge<IntegerVertex> e3 = new Edge<>("3", new IntegerVertex(3), new IntegerVertex(4));
+    final Edge<IntegerVertex> e4 = new Edge<>("4", new IntegerVertex(4), new IntegerVertex(5));
 
     dagBuilder.connectVertices(e1);
     dagBuilder.connectVertices(e2);
@@ -75,10 +75,10 @@ public final class DAGTest {
 
   @Test
   public void testNormalDAG() {
-    final Edge<IntegerVertex> e1 = new Edge<>(new IntegerVertex(1), new IntegerVertex(2));
-    final Edge<IntegerVertex> e2 = new Edge<>(new IntegerVertex(2), new IntegerVertex(3));
-    final Edge<IntegerVertex> e3 = new Edge<>(new IntegerVertex(4), new IntegerVertex(5));
-    final Edge<IntegerVertex> e4 = new Edge<>(new IntegerVertex(4), new IntegerVertex(3));
+    final Edge<IntegerVertex> e1 = new Edge<>("1", new IntegerVertex(1), new IntegerVertex(2));
+    final Edge<IntegerVertex> e2 = new Edge<>("2", new IntegerVertex(2), new IntegerVertex(3));
+    final Edge<IntegerVertex> e3 = new Edge<>("3", new IntegerVertex(4), new IntegerVertex(5));
+    final Edge<IntegerVertex> e4 = new Edge<>("4", new IntegerVertex(4), new IntegerVertex(3));
 
     dagBuilder.connectVertices(e1);
     dagBuilder.connectVertices(e2);

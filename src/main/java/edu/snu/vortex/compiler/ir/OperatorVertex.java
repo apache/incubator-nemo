@@ -27,6 +27,10 @@ public final class OperatorVertex extends IRVertex {
     this.transform = t;
   }
 
+  public OperatorVertex getClone() {
+    return new OperatorVertex(this.transform);
+  }
+
   public Transform getTransform() {
     return transform;
   }

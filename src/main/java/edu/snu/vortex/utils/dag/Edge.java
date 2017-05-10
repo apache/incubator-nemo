@@ -26,12 +26,22 @@ import java.util.logging.Logger;
 public class Edge<V extends Vertex> {
   private static final Logger LOG = Logger.getLogger(Edge.class.getName());
 
-  private V src;
-  private V dst;
+  private final String id;
+  private final V src;
+  private final V dst;
 
-  public Edge(final V src, final V dst) {
+  public Edge(final String id, final V src, final V dst) {
+    this.id = id;
     this.src = src;
     this.dst = dst;
+  }
+
+  public final String getId() {
+    return id;
+  }
+
+  public final Integer getNumericId() {
+    return Integer.parseInt(id.replaceAll("[^\\d.]", ""));
   }
 
   public final V getSrc() {
