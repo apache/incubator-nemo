@@ -21,7 +21,7 @@ import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.Transform;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
-import edu.snu.vortex.runtime.common.comm.ExecutorMessage;
+import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.plan.logical.LogicalDAGGenerator;
 import edu.snu.vortex.runtime.common.plan.logical.Stage;
 import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
@@ -108,10 +108,10 @@ public final class BatchSchedulerTest {
         while (taskGroupState.getStateMachine().getCurrentState() == TaskGroupState.State.READY) {
           // Wait until this task group is scheduled and executing
         }
-        final ExecutorMessage.TaskGroupStateChangedMsg.Builder taskGroupStateChangedMsg =
-            ExecutorMessage.TaskGroupStateChangedMsg.newBuilder();
+        final ControlMessage.TaskGroupStateChangedMsg.Builder taskGroupStateChangedMsg =
+            ControlMessage.TaskGroupStateChangedMsg.newBuilder();
         taskGroupStateChangedMsg.setTaskGroupId(taskGroup.getTaskGroupId());
-        taskGroupStateChangedMsg.setState(ExecutorMessage.TaskGroupStateFromExecutor.COMPLETE);
+        taskGroupStateChangedMsg.setState(ControlMessage.TaskGroupStateFromExecutor.COMPLETE);
         scheduler.onTaskGroupStateChanged("a1", taskGroupStateChangedMsg.build());
       });
     }

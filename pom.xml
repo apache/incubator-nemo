@@ -158,7 +158,7 @@
                                 <exec executable="protoc">
                                     <arg value="--proto_path=src/main/resources/protobuf/"/>
                                     <arg value="--java_out=target/generated-sources"/>
-                                    <arg value="src/main/resources/protobuf/ExecutorMessage.proto"/>
+                                    <arg value="src/main/resources/protobuf/ControlMessage.proto"/>
                                 </exec>
                             </tasks>
                             <sourceRoot>${project.basedir}/target/generated-sources</sourceRoot>
