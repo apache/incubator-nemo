@@ -20,7 +20,6 @@ import edu.snu.vortex.compiler.ir.Reader;
 import edu.snu.vortex.compiler.ir.SourceVertex;
 import org.apache.beam.sdk.io.BoundedSource;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,11 +43,7 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
   public List<Reader<O>> getReaders(final int desiredNumOfSplits) throws Exception {
     final List<Reader<O>> readers = new ArrayList<>();
     source.splitIntoBundles(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null).forEach(boundedSource -> {
-      try {
-        readers.add(new BoundedSourceReader<>(boundedSource.createReader(null)));
-      } catch (IOException e) {
-        throw new RuntimeException("IOException: " + e);
-      }
+      readers.add(new BoundedSourceReader<>(boundedSource));
     });
     return readers;
   }
@@ -69,15 +64,15 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
    * @param <T> type.
    */
   public class BoundedSourceReader<T> implements Reader<T> {
-    private final BoundedSource.BoundedReader<T> beamReader;
-    BoundedSourceReader(final BoundedSource.BoundedReader<T> beamReader) {
-      this.beamReader = beamReader;
+    private final BoundedSource<T> boundedSource;
+    BoundedSourceReader(final BoundedSource boundedSource) {
+      this.boundedSource = boundedSource;
     }
 
     @Override
     public final Iterable<Element<T, ?, ?>> read() throws Exception {
       final ArrayList<Element<T, ?, ?>> data = new ArrayList<>();
-      try (final BoundedSource.BoundedReader<T> reader = beamReader) {
+      try (final BoundedSource.BoundedReader<T> reader = boundedSource.createReader(null)) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
           data.add(new BeamElement<>(reader.getCurrent()));
         }
