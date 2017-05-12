@@ -14,6 +14,10 @@ final class LocalMessageContext implements MessageContext {
   private Throwable throwable;
   private Object replyMessage;
 
+  /**
+   *  TODO #119.
+   * @param senderId  TODO #119.
+   */
   LocalMessageContext(final String senderId) {
     this.senderId = senderId;
   }
@@ -33,10 +37,18 @@ final class LocalMessageContext implements MessageContext {
     this.throwable = th;
   }
 
+  /**
+   *  TODO #119.
+   * @return TODO #119.
+   */
   public Optional<Throwable> getThrowable() {
     return Optional.ofNullable(throwable);
   }
 
+  /**
+   *  TODO #119.
+   * @return TODO #119.
+   */
   public Optional<Object> getReplyMessage() {
     return Optional.ofNullable(replyMessage);
   }

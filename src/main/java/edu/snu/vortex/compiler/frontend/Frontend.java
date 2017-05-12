@@ -15,11 +15,20 @@
  */
 package edu.snu.vortex.compiler.frontend;
 
+import edu.snu.vortex.compiler.ir.IREdge;
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.utils.dag.DAG;
 
 /**
  * Interface for the frontend class.
  */
 public interface Frontend {
-  DAG compile(final String className, final String[] args) throws Exception;
+  /**
+   * Compile the given program to an IR DAG.
+   * @param className user main class.
+   * @param args arguments.
+   * @return the compiled IR DAG.
+   * @throws Exception Exception on the way.
+   */
+  DAG<IRVertex, IREdge> compile(String className, String[] args) throws Exception;
 }

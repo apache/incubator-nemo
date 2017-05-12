@@ -29,6 +29,10 @@ public final class WindowTransform implements Transform {
   private final WindowFn windowFn;
   private OutputCollector outputCollector;
 
+  /**
+   * Default Constructor.
+   * @param windowFn windowFn for the Transform.
+   */
   public WindowTransform(final WindowFn windowFn) {
     this.windowFn = windowFn;
   }

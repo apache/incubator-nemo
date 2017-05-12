@@ -49,6 +49,11 @@ public final class DoTransform implements Transform {
   private Map<PCollectionView, Object> sideInputs;
   private OutputCollector outputCollector;
 
+  /**
+   * DoTransform Constructor.
+   * @param doFn doFn.
+   * @param options Pipeline Options.
+   */
   public DoTransform(final DoFn doFn, final PipelineOptions options) {
     this.doFn = doFn;
     this.mapper = new ObjectMapper();
@@ -106,6 +111,13 @@ public final class DoTransform implements Transform {
     private final ObjectMapper mapper;
     private final PipelineOptions options;
 
+    /**
+     * ProcessContext Constructor.
+     * @param fn Dofn.
+     * @param outputCollector OutputCollector.
+     * @param sideInputs Map for SideInputs.
+     * @param serializedOptions Options, serialized.
+     */
     ProcessContext(final DoFn<I, O> fn,
                    final OutputCollector outputCollector,
                    final Map<PCollectionView, Object> sideInputs,
@@ -121,6 +133,10 @@ public final class DoTransform implements Transform {
       }
     }
 
+    /**
+     * Setter for input element.
+     * @param in input element.
+     */
     void setElement(final I in) {
       this.input = in;
     }

@@ -30,28 +30,49 @@ public class Edge<V extends Vertex> {
   private final V src;
   private final V dst;
 
+  /**
+   * Constructor for Edge.
+   * @param id ID of the edge.
+   * @param src source vertex.
+   * @param dst destination vertex.
+   */
   public Edge(final String id, final V src, final V dst) {
     this.id = id;
     this.src = src;
     this.dst = dst;
   }
 
+  /**
+   * @return the ID of the edge.
+   */
   public final String getId() {
     return id;
   }
 
+  /**
+   * @return the numeric ID of the edge.
+   */
   public final Integer getNumericId() {
     return Integer.parseInt(id.replaceAll("[^\\d.]", ""));
   }
 
+  /**
+   * @return source vertex.
+   */
   public final V getSrc() {
     return src;
   }
 
+  /**
+   * @return destination vertex.
+   */
   public final V getDst() {
     return dst;
   }
 
+  /**
+   * @return JSON representation of additional properties
+   */
   @SuppressWarnings("checkstyle:designforextension")
   public String propertiesToJSON() {
     return "{}";

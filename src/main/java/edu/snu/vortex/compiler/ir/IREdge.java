@@ -36,6 +36,12 @@ public final class IREdge extends Edge<IRVertex> {
   private final AttributeMap attributes;
   private final Type type;
 
+  /**
+   * Constructor of IREdge.
+   * @param type type of the edge.
+   * @param src source vertex.
+   * @param dst destination vertex.
+   */
   public IREdge(final Type type,
                 final IRVertex src,
                 final IRVertex dst) {
@@ -57,27 +63,53 @@ public final class IREdge extends Edge<IRVertex> {
     }
   }
 
+  /**
+   * Set an attribute to the IREdge.
+   * @param key key of the attribute.
+   * @param val value of the attribute.
+   * @return the IREdge with the attribute applied.
+   */
   public IREdge setAttr(final Attribute.Key key, final Attribute val) {
     attributes.put(key, val);
     return this;
   }
 
+  /**
+   * Get the attribute of the IREdge.
+   * @param key key of the attribute.
+   * @return the attribute.
+   */
   public Attribute getAttr(final Attribute.Key key) {
     return attributes.get(key);
   }
 
+  /**
+   * @return the AttributeMap of the IREdge.
+   */
   public AttributeMap getAttributes() {
     return attributes;
   }
 
+  /**
+   * @return type of the edge.
+   */
   public Type getType() {
     return type;
   }
 
+  /**
+   * @param edge edge to compare.
+   * @return whether or not the edge has the same itinerary
+   */
   public Boolean hasSameItineraryAs(final IREdge edge) {
     return getSrc().equals(edge.getSrc()) && getDst().equals(edge.getDst());
   }
 
+  /**
+   * Static function to copy attributes from an edge to the other.
+   * @param fromEdge the edge to copy attributes from.
+   * @param toEdge the edge to copy attributes to.
+   */
   public static void copyAttributes(final IREdge fromEdge, final IREdge toEdge) {
     fromEdge.getAttributes().forEachAttr(toEdge::setAttr);
   }

@@ -33,9 +33,16 @@ import java.util.stream.StreamSupport;
  * Sample broadcast application.
  */
 public final class Broadcast {
+  /**
+   * Private constructor.
+   */
   private Broadcast() {
   }
 
+  /**
+   * Main function for the BEAM program.
+   * @param args arguments.
+   */
   public static void main(final String[] args) {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];

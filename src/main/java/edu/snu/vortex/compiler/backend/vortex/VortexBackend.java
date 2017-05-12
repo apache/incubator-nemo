@@ -27,6 +27,9 @@ import edu.snu.vortex.utils.dag.DAG;
  * Backend component for Vortex Runtime.
  */
 public final class VortexBackend implements Backend<ExecutionPlan> {
+  /**
+   * Constructor.
+   */
   public VortexBackend() {
   }
 

@@ -23,5 +23,11 @@ import edu.snu.vortex.utils.dag.DAG;
  * Interface for optimization passes.
  */
 public interface Pass {
-  DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception;
+  /**
+   * A pass processes the DAG.
+   * @param dag the DAG to process.
+   * @return the processed DAG.
+   * @throws Exception Exceptions on the way.
+   */
+  DAG<IRVertex, IREdge> process(DAG<IRVertex, IREdge> dag) throws Exception;
 }

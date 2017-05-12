@@ -28,6 +28,9 @@ public final class FlattenTransform implements Transform {
   private final ArrayList<Element> collectedElements;
   private OutputCollector outputCollector;
 
+  /**
+   * FlattenTransform Constructor.
+   */
   public FlattenTransform() {
     this.collectedElements = new ArrayList<>();
   }

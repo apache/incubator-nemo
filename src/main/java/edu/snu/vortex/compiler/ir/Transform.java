@@ -30,14 +30,14 @@ public interface Transform extends Serializable {
    * @param context of the transform.
    * @param outputCollector that collects outputs.
    */
-  void prepare(final Context context, final OutputCollector outputCollector);
+  void prepare(Context context, OutputCollector outputCollector);
 
   /**
    * On data received.
    * @param data data received.
    * @param srcVertexId sender of the data.
    */
-  void onData(final Iterable<Element> data, final String srcVertexId);
+  void onData(Iterable<Element> data, String srcVertexId);
 
   /**
    * Close the transform.
@@ -50,10 +50,19 @@ public interface Transform extends Serializable {
    * when we have more sophisticated operations like Join.
    */
   interface Context {
+    /**
+     * @return source vertex ids.
+     */
     List<String> getSrcVertexIds();
 
+    /**
+     * @return destination vertex ids.
+     */
     List<String> getDstVertexIds();
 
+    /**
+     * @return sideInputs.
+     */
     Map<Transform, Object> getSideInputs();
   }
 }

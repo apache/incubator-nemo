@@ -35,7 +35,7 @@ import java.util.List;
 import static org.apache.beam.sdk.util.Structs.addBoolean;
 
 /**
- * Coder for {@link edu.snu.vortex.utils.Pair}.
+ * BEAM Coder for {@link edu.snu.vortex.utils.Pair}.
  * @param <A> type for the left coder.
  * @param <B> type for the right coder.
  */
@@ -43,29 +43,57 @@ public final class PairCoder<A, B> extends StandardCoder<Pair<A, B>> {
   private final Coder<A> leftCoder;
   private final Coder<B> rightCoder;
 
+  /**
+   * Private constructor of PairCoder class.
+   * @param leftCoder coder for right element.
+   * @param rightCoder coder for right element.
+   */
   private PairCoder(final Coder<A> leftCoder, final Coder<B> rightCoder) {
     this.leftCoder = leftCoder;
     this.rightCoder = rightCoder;
   }
 
+  /**
+   * static initializer of the class.
+   * @param leftCoder left coder.
+   * @param rightCoder right coder.
+   * @param <A> type of the left element.
+   * @param <B> type of the right element.
+   * @return the new PairCoder.
+   */
   public static <A, B> PairCoder<A, B> of(final Coder<A> leftCoder, final Coder<B> rightCoder) {
     return new PairCoder<>(leftCoder, rightCoder);
   }
-
+  /**
+   * Same static initializer in JSON.
+   * @param components compoenents.
+   * @return the newly created PairCoder.
+   */
   @JsonCreator
   public static PairCoder<?, ?> of(@JsonProperty(PropertyNames.COMPONENT_ENCODINGS) final List<Coder<?>> components) {
     Preconditions.checkArgument(components.size() == 2, "Expecting 2 components, got " + components.size());
     return of(components.get(0), components.get(1));
   }
 
+  /**
+   * @param exampleValue example input value.
+   * @param <A> type of left element of example value.
+   * @param <B> type of right element of example value.
+   * @return instance components for the example value.
+   */
   public static <A, B> List<Object> getInstanceComponents(final Pair<A, B> exampleValue) {
     return Arrays.asList(exampleValue.left(), exampleValue.right());
   }
 
+  /**
+   * @return the left coder.
+   */
   Coder<A> getLeftCoder() {
     return leftCoder;
   }
-
+  /**
+   * @return the right coder.
+   */
   Coder<B> getRightCoder() {
     return rightCoder;
   }
@@ -127,8 +155,8 @@ public final class PairCoder<A, B> extends StandardCoder<Pair<A, B>> {
    */
   @Override
   public boolean isRegisterByteSizeObserverCheap(final Pair<A, B> pair, final Context context) {
-    return leftCoder.isRegisterByteSizeObserverCheap(pair.left(), context.nested()) &&
-        rightCoder.isRegisterByteSizeObserverCheap(pair.right(), context.nested());
+    return leftCoder.isRegisterByteSizeObserverCheap(pair.left(), context.nested())
+        && rightCoder.isRegisterByteSizeObserverCheap(pair.right(), context.nested());
   }
 
   /**

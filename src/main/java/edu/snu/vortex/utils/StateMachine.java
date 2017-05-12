@@ -99,8 +99,8 @@ public final class StateMachine {
     if (compared) {
       setState(state);
     } else {
-      LOG.log(Level.FINE, "The expected current state [" + expectedCurrentState +
-              "] is different from the actual state [" + currentState.stateEnum + "]");
+      LOG.log(Level.FINE, "The expected current state [" + expectedCurrentState
+          + "] is different from the actual state [" + currentState.stateEnum + "]");
     }
 
     return compared;
