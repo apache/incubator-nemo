@@ -93,8 +93,8 @@ public final class LogicalDAGGenerator
     // First, traverse the DAG topologically to add each vertices to a list associated with each of the stage number.
     irDAG.topologicalDo(vertex -> {
       final List<IREdge> inEdges = irDAG.getIncomingEdgesOf(vertex);
-      final Optional<List<IREdge>> inEdgeList = (inEdges == null || inEdges.isEmpty()) ?
-          Optional.empty() : Optional.of(inEdges);
+      final Optional<List<IREdge>> inEdgeList = (inEdges == null || inEdges.isEmpty())
+          ? Optional.empty() : Optional.of(inEdges);
 
       if (!inEdgeList.isPresent()) { // If Source vertex
         createNewStage(vertex);

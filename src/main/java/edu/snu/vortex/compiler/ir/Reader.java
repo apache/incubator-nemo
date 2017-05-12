@@ -20,6 +20,11 @@ package edu.snu.vortex.compiler.ir;
  * @param <O> output type.
  */
 public interface Reader<O> {
+  /**
+   * Read elements.
+   * @return the read elements in the form of iterables.
+   * @throws Exception Exception on the way.
+   */
   Iterable<Element<O, ?, ?>> read() throws Exception;
 }
 

@@ -29,9 +29,17 @@ import java.util.logging.Logger;
 public final class MapReduce {
   private static final Logger LOG = Logger.getLogger(MapReduce.class.getName());
 
+  /**
+   * Private constructor.
+   */
   private MapReduce() {
   }
 
+  /**
+   * Main function of the example MR program.
+   * @param args arguments.
+   * @throws Exception Exceptions on the way.
+   */
   public static void main(final String[] args) throws Exception {
     final IRVertex source = new OperatorVertex(new EmptyTransform("SourceVertex"));
     final IRVertex map = new OperatorVertex(new EmptyTransform("MapVertex"));
@@ -68,6 +76,10 @@ public final class MapReduce {
   private static class EmptyTransform implements Transform {
     private final String name;
 
+    /**
+     * Default constructor.
+     * @param name name of the empty transform.
+     */
     EmptyTransform(final String name) {
       this.name = name;
     }

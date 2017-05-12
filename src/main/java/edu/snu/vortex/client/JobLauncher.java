@@ -43,9 +43,17 @@ import static edu.snu.vortex.compiler.optimizer.Optimizer.POLICY_NAME;
 public final class JobLauncher {
   private static final Logger LOG = Logger.getLogger(JobLauncher.class.getName());
 
+  /**
+   * private constructor.
+   */
   private JobLauncher() {
   }
 
+  /**
+   * Main JobLauncher method.
+   * @param args arguments.
+   * @throws Exception exception on the way.
+   */
   public static void main(final String[] args) throws Exception {
     final Configuration configuration = getJobConf(args);
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
@@ -80,6 +88,13 @@ public final class JobLauncher {
     new RuntimeMaster(RuntimeAttribute.Batch).execute(executionPlan, dagDirectory);
   }
 
+  /**
+   * Retrieves job configuration using Tang.
+   * @param args arguments.
+   * @return Configuration.
+   * @throws IOException IOException.
+   * @throws InjectionException InjectionException.
+   */
   public static Configuration getJobConf(final String[] args) throws IOException, InjectionException {
     final JavaConfigurationBuilder confBuilder = Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);

@@ -90,11 +90,11 @@ public final class BatchScheduler implements Scheduler {
    */
   private void initializeSchedulingPolicy() {
     switch (schedulingPolicyAttribute) {
-    case RoundRobin:
-      this.schedulingPolicy = new RoundRobinSchedulingPolicy(scheduleTimeout);
-      break;
-    default:
-      throw new SchedulingException(new Exception("The scheduling policy is unsupported by runtime"));
+      case RoundRobin:
+        this.schedulingPolicy = new RoundRobinSchedulingPolicy(scheduleTimeout);
+        break;
+      default:
+        throw new SchedulingException(new Exception("The scheduling policy is unsupported by runtime"));
     }
   }
 
@@ -204,8 +204,8 @@ public final class BatchScheduler implements Scheduler {
       taskGroupsToSchedule.addAll(nextStageToExecute.getTaskGroupList());
       executionStateManager.onStageStateChanged(nextStageToExecute.getId(), StageState.State.EXECUTING);
     } else {
-      throw new SchedulingException(new Exception("There is no next stage to execute! " +
-          "There must have been something wrong in setting execution states!"));
+      throw new SchedulingException(new Exception("There is no next stage to execute! "
+          + "There must have been something wrong in setting execution states!"));
     }
   }
 
@@ -246,7 +246,7 @@ public final class BatchScheduler implements Scheduler {
 
   // TODO #164: Cleanup Protobuf Usage
   private TaskGroupState.State convertState(final ControlMessage.TaskGroupStateFromExecutor state) {
-    switch (state) {
+  switch (state) {
     case READY:
       return TaskGroupState.State.READY;
     case EXECUTING:

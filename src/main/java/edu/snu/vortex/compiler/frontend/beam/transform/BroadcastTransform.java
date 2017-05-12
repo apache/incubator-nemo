@@ -34,6 +34,10 @@ public final class BroadcastTransform implements Transform {
   private final PCollectionView pCollectionView;
   private OutputCollector outputCollector;
 
+  /**
+   * Constructor of BroadcastTransform.
+   * @param pCollectionView the pCollectionView to broadcast.
+   */
   public BroadcastTransform(final PCollectionView pCollectionView) {
     this.pCollectionView = pCollectionView;
   }
@@ -52,6 +56,10 @@ public final class BroadcastTransform implements Transform {
     outputCollector.emit(new BeamElement<>(viewFn.apply(windowed)));
   }
 
+  /**
+   * get the Tag of the Transform.
+   * @return the PCollectionView of the transform.
+   */
   public PCollectionView getTag() {
     return this.pCollectionView;
   }

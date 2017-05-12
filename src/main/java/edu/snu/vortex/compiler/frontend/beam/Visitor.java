@@ -47,6 +47,11 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
   // loopVertexStack keeps track of where the beam program is: whether it is inside a composite transform or it is not.
   private final Stack<LoopVertex> loopVertexStack;
 
+  /**
+   * Constructor of the BEAM Visitor.
+   * @param builder DAGBuilder to build the DAG with.
+   * @param options Pipeline Options.
+   */
   Visitor(final DAGBuilder<IRVertex, IREdge> builder, final PipelineOptions options) {
     this.builder = builder;
     this.pValueToVertex = new HashMap<>();
@@ -160,6 +165,12 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
     return vortexIRVertex;
   }
 
+  /**
+   * Get the edge type for the src, dst vertex.
+   * @param src source vertex.
+   * @param dst destination vertex.
+   * @return the appropriate edge type.
+   */
   private static IREdge.Type getEdgeType(final IRVertex src, final IRVertex dst) {
     if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof GroupByKeyTransform) {
       return IREdge.Type.ScatterGather;

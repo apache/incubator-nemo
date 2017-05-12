@@ -26,6 +26,7 @@ import java.util.List;
  * Pado pass for tagging edges.
  */
 public final class PadoEdgePass implements Pass {
+  @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     dag.getVertices().forEach(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
@@ -52,13 +53,23 @@ public final class PadoEdgePass implements Pass {
     return dag;
   }
 
+  /**
+   * checks if the edge is from transient container to a reserved container.
+   * @param irEdge edge to check.
+   * @return whether or not the edge satisfies the condition.
+   */
   private static boolean fromTransientToReserved(final IREdge irEdge) {
-    return irEdge.getSrc().getAttr(Attribute.Key.Placement).equals(Attribute.Transient) &&
-        irEdge.getDst().getAttr(Attribute.Key.Placement).equals(Attribute.Reserved);
+    return irEdge.getSrc().getAttr(Attribute.Key.Placement).equals(Attribute.Transient)
+        && irEdge.getDst().getAttr(Attribute.Key.Placement).equals(Attribute.Reserved);
   }
 
+  /**
+   * checks if the edge is from reserved container to a transient container.
+   * @param irEdge edge to check.
+   * @return whether or not the edge satisfies the condition.
+   */
   private static boolean fromReservedToTransient(final IREdge irEdge) {
-    return irEdge.getSrc().getAttr(Attribute.Key.Placement).equals(Attribute.Reserved) &&
-        irEdge.getDst().getAttr(Attribute.Key.Placement).equals(Attribute.Transient);
+    return irEdge.getSrc().getAttr(Attribute.Key.Placement).equals(Attribute.Reserved)
+        && irEdge.getDst().getAttr(Attribute.Key.Placement).equals(Attribute.Transient);
   }
 }

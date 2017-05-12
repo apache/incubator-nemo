@@ -31,9 +31,16 @@ import org.apache.beam.sdk.values.TypeDescriptors;
  * Sample MapReduce application.
  */
 public final class MapReduce {
+  /**
+   * Private Constructor.
+   */
   private MapReduce() {
   }
 
+  /**
+   * Main function for the MR BEAM program.
+   * @param args arguments.
+   */
   public static void main(final String[] args) {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];

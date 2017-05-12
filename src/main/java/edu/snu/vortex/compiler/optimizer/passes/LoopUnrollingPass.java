@@ -25,6 +25,7 @@ import edu.snu.vortex.utils.dag.DAGBuilder;
  * Then, it decomposes each of the LoopVertices with the DAG information that each of them contain.
  */
 public final class LoopUnrollingPass implements Pass {
+  @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     return recursivelyUnroll(dag);
   }

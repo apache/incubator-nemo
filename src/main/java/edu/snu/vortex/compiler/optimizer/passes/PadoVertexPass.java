@@ -26,6 +26,7 @@ import java.util.List;
  * Pado pass for tagging vertices.
  */
 public final class PadoVertexPass implements Pass {
+  @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     dag.topologicalDo(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
@@ -42,10 +43,20 @@ public final class PadoVertexPass implements Pass {
     return dag;
   }
 
+  /**
+   * Checks whether the irEdges have M2M relationship.
+   * @param irEdges irEdges to check.
+   * @return whether of not any of them has M2M relationship.
+   */
   private boolean hasM2M(final List<IREdge> irEdges) {
-    return irEdges.stream().filter(edge -> edge.getType() == IREdge.Type.ScatterGather).count() > 0;
+    return irEdges.stream().anyMatch(edge -> edge.getType() == IREdge.Type.ScatterGather);
   }
 
+  /**
+   * Checks whether the irEdges are all from reserved containers.
+   * @param irEdges irEdges to check.
+   * @return whether of not they are from reserved containers.
+   */
   private boolean allFromReserved(final List<IREdge> irEdges) {
     return irEdges.stream()
         .allMatch(edge -> edge.getSrc().getAttr(Attribute.Key.Placement) == Attribute.Reserved);

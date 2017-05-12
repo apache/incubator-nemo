@@ -44,6 +44,9 @@ import java.util.logging.Logger;
 public final class MultinomialLogisticRegression {
   private static final Logger LOG = Logger.getLogger(MultinomialLogisticRegression.class.getName());
 
+  /**
+   * Private constructor.
+   */
   private MultinomialLogisticRegression() {
   }
 
@@ -57,6 +60,12 @@ public final class MultinomialLogisticRegression {
     private final PCollectionView<Map<Integer, double[]>> modelView;
     private Map<Integer, double[]> model;
 
+    /**
+     * Constructor for CalculateGradient DoFn class.
+     * @param modelView PCollectionView of the model.
+     * @param numClasses number of classes.
+     * @param numFeatures number of features.
+     */
     CalculateGradient(final PCollectionView<Map<Integer, double[]>> modelView,
                       final int numClasses,
                       final int numFeatures) {
@@ -66,6 +75,9 @@ public final class MultinomialLogisticRegression {
       this.gradients = null;
     }
 
+    /**
+     * Initialization of gradients.
+     */
     private void initializeGradients() {
       this.gradients = new double[this.numClasses][];
       for (int i = 0; i < this.numClasses - 1; i++) {
@@ -74,6 +86,11 @@ public final class MultinomialLogisticRegression {
       gradients[this.numClasses - 1] = new double[3];
     }
 
+    /**
+     * Method for parsing lines of inputs.
+     * @param input input line.
+     * @return the parsed key-value pair.
+     */
     private KV<Integer, Pair<int[], double[]>> parseLine(final String input) {
       final String text = input.trim();
       if (text.startsWith("#") || text.length() == 0) { // comments or newline
@@ -93,6 +110,11 @@ public final class MultinomialLogisticRegression {
       return KV.of(output, Pair.of(indices, data));
     }
 
+    /**
+     * ProcessElement method for BEAM.
+     * @param c Process context.
+     * @throws Exception Exception on the way.
+     */
     @ProcessElement
     public void processElement(final ProcessContext c) throws Exception {
       final KV<Integer, Pair<int[], double[]>> data = parseLine(c.element());
@@ -194,6 +216,10 @@ public final class MultinomialLogisticRegression {
       gradients[numClasses - 1][2] += partialLoss;
     }
 
+    /**
+     * FinishBundle method for BEAM.
+     * @param context Context.
+     */
     @FinishBundle
     public void finishBundle(final Context context) {
       for (int i = 0; i < gradients.length; i++) {
@@ -213,6 +239,14 @@ public final class MultinomialLogisticRegression {
     private final int numClasses;
     private final int iterationNum;
 
+    /**
+     * Constructor for ApplyGradient DoFn class.
+     * @param numFeatures number of features.
+     * @param numClasses number of classes.
+     * @param iterationNum number of iteration.
+     * @param gradientTag TupleTag of gradient.
+     * @param modelTag TupleTag of model.
+     */
     ApplyGradient(final int numFeatures, final int numClasses, final int iterationNum,
                   final TupleTag<double[]> gradientTag, final TupleTag<double[]> modelTag) {
       this.numFeatures = numFeatures;
@@ -222,6 +256,11 @@ public final class MultinomialLogisticRegression {
       this.modelTag = modelTag;
     }
 
+    /**
+     * ProcessElement method for BEAM.
+     * @param c Process context.
+     * @throws Exception Exception on the way.
+     */
     @ProcessElement
     public void processElement(final ProcessContext c) throws Exception {
       final KV<Integer, CoGbkResult> kv = c.element();
@@ -255,6 +294,10 @@ public final class MultinomialLogisticRegression {
       }
     }
 
+    /**
+     * FinishBundle method for BEAM.
+     * @param context Context.
+     */
     @FinishBundle
     public void finishBundle(final Context context) {
     }
@@ -305,6 +348,13 @@ public final class MultinomialLogisticRegression {
     private final int iterationNum;
     private final PCollection<String> readInput;
 
+    /**
+     * Constructor of UpdateModel CompositeTransform.
+     * @param numFeatures number of features.
+     * @param numClasses number of classes.
+     * @param iterationNum iteration number.
+     * @param readInput PCollection of
+     */
     UpdateModel(final int numFeatures, final int numClasses, final int iterationNum,
                 final PCollection<String> readInput) {
       this.numFeatures = numFeatures;
@@ -340,6 +390,10 @@ public final class MultinomialLogisticRegression {
     }
   }
 
+  /**
+   * Main function for the MLR BEAM program.
+   * @param args arguments.
+   */
   public static void main(final String[] args) {
     final long start = System.currentTimeMillis();
     LOG.log(Level.INFO, Arrays.toString(args));

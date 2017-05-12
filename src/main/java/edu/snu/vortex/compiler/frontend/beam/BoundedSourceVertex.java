@@ -30,6 +30,10 @@ import java.util.List;
 public final class BoundedSourceVertex<O> extends SourceVertex<O> {
   private final BoundedSource<O> source;
 
+  /**
+   * Constructor of BoundedSourceVertex.
+   * @param source BoundedSource to read from.
+   */
   public BoundedSourceVertex(final BoundedSource<O> source) {
     this.source = source;
   }
@@ -65,6 +69,11 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
    */
   public class BoundedSourceReader<T> implements Reader<T> {
     private final BoundedSource<T> boundedSource;
+
+    /**
+     * Constructor of the BoundedSourceReader.
+     * @param boundedSource the BoundedSource.
+     */
     BoundedSourceReader(final BoundedSource boundedSource) {
       this.boundedSource = boundedSource;
     }
@@ -72,7 +81,7 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
     @Override
     public final Iterable<Element<T, ?, ?>> read() throws Exception {
       final ArrayList<Element<T, ?, ?>> data = new ArrayList<>();
-      try (final BoundedSource.BoundedReader<T> reader = boundedSource.createReader(null)) {
+      try (BoundedSource.BoundedReader<T> reader = boundedSource.createReader(null)) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
           data.add(new BeamElement<>(reader.getCurrent()));
         }

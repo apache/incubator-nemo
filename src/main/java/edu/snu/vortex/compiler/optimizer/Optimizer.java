@@ -40,6 +40,13 @@ public final class Optimizer {
     return process(dag, POLICIES.get(policyType));
   }
 
+  /**
+   * A recursive method to process each pass one-by-one to the given DAG.
+   * @param dag DAG to process.
+   * @param passes passes to apply.
+   * @return the processed DAG.
+   * @throws Exception Exceptionso n the way.
+   */
   private static DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag, final List<Pass> passes)
           throws Exception {
     if (passes.isEmpty()) {

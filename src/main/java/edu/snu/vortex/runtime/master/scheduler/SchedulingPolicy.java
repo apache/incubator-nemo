@@ -42,7 +42,7 @@ public interface SchedulingPolicy {
    * @param taskGroup to schedule
    * @return {@link ExecutorRepresenter} on which the taskGroup is scheduled if successful, an empty Optional otherwise.
    */
-  Optional<ExecutorRepresenter> attemptSchedule(final TaskGroup taskGroup);
+  Optional<ExecutorRepresenter> attemptSchedule(TaskGroup taskGroup);
 
   /**
    * Adds the executor to the pool of available executors.
@@ -51,7 +51,7 @@ public interface SchedulingPolicy {
    *
    * @param executor that has been added.
    */
-  void onExecutorAdded(final ExecutorRepresenter executor);
+  void onExecutorAdded(ExecutorRepresenter executor);
 
   /**
    * Deletes the executor from the pool of available executors.
@@ -61,7 +61,7 @@ public interface SchedulingPolicy {
    * @param executor that has been deleted.
    * @return the ids of the set of task groups that were running on the executor.
    */
-  Set<String> onExecutorRemoved(final ExecutorRepresenter executor);
+  Set<String> onExecutorRemoved(ExecutorRepresenter executor);
 
   /**
    * Marks the executor scheduled for the taskGroup.
@@ -71,7 +71,7 @@ public interface SchedulingPolicy {
    * @param executor assigned for the taskGroup.
    * @param taskGroupId scheduled to the executor.
    */
-  void onTaskGroupScheduled(final ExecutorRepresenter executor, final String taskGroupId);
+  void onTaskGroupScheduled(ExecutorRepresenter executor, String taskGroupId);
 
   /**
    * Marks the taskGroup's completion in the executor.
@@ -81,7 +81,7 @@ public interface SchedulingPolicy {
    * @param executor where the taskGroup's execution has completed.
    * @param taskGroupId whose execution has completed.
    */
-  void onTaskGroupExecutionComplete(final ExecutorRepresenter executor, final String taskGroupId);
+  void onTaskGroupExecutionComplete(ExecutorRepresenter executor, String taskGroupId);
 
   /**
    * Marks the taskGroup's failure in the executor.
@@ -91,5 +91,5 @@ public interface SchedulingPolicy {
    * @param executor where the taskGroup's execution has failed.
    * @param taskGroupId whose execution has completed.
    */
-  void onTaskGroupExecutionFailed(final ExecutorRepresenter executor, final String taskGroupId);
+  void onTaskGroupExecutionFailed(ExecutorRepresenter executor, String taskGroupId);
 }

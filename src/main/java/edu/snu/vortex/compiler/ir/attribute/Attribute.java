@@ -97,10 +97,19 @@ public enum Attribute {
 
   private final Key key;
 
+  /**
+   * Constructor for the Attribute class.
+   * @param key Key of the attribute.
+   */
   Attribute(final Key key) {
     this.key = key;
   }
 
+  /**
+   * Tells whether or not the Attribute has the given key.
+   * @param k the given key.
+   * @return whether or not the Attribute has the given key.
+   */
   public boolean hasKey(final Key k) {
     return key == k;
   }

@@ -28,12 +28,12 @@ public interface BlockStore {
    * @param blockId of the block
    * @return the data of the block (optionally)
    */
-  Optional<Iterable<Element>> getBlock(final String blockId);
+  Optional<Iterable<Element>> getBlock(String blockId);
 
   /**
    * Saves a block.
    * @param blockId of the block
    * @param data of the block
    */
-  void putBlock(final String blockId, final Iterable<Element> data);
+  void putBlock(String blockId, Iterable<Element> data);
 }

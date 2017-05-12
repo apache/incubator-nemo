@@ -24,9 +24,18 @@ package edu.snu.vortex.compiler.ir;
  * @param <Value> value type.
  */
 public interface Element<Data, Key, Value> {
+  /**
+   * @return data.
+   */
   Data getData();
 
+  /**
+   * @return key.
+   */
   Key getKey();
 
+  /**
+   * @return value.
+   */
   Value getValue();
 }
