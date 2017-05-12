@@ -41,6 +41,14 @@ public final class DAG<V extends Vertex, E extends Edge<V>> {
   private final Map<String, LoopVertex> assignedLoopVertexMap;
   private final Map<String, Integer> loopStackDepthMap;
 
+  /**
+   * Constructor of DAG, called by the DAGBuilder.
+   * @param vertices set of vertices.
+   * @param incomingEdges map of incoming edges for each vertex.
+   * @param outgoingEdges map of outgoing edges for each vertex.
+   * @param assignedLoopVertexMap map of assignedLoopVertex info.
+   * @param loopStackDepthMap map of stack depth of LoopVertices.
+   */
   public DAG(final Set<V> vertices,
              final Map<V, Set<E>> incomingEdges,
              final Map<V, Set<E>> outgoingEdges,
@@ -90,7 +98,12 @@ public final class DAG<V extends Vertex, E extends Edge<V>> {
   public List<E> getIncomingEdgesOf(final V v) {
     return getIncomingEdgesOf(v.getId());
   }
-
+  /**
+   * Retrieves the incoming edges of the given vertex.
+   * @param vertexId the ID of the subject vertex.
+   * @return the set of incoming edges to the vertex.
+   * Note that the result is never null, ensured by {@link DAGBuilder}.
+   */
   public List<E> getIncomingEdgesOf(final String vertexId) {
     return incomingEdges.get(vertexId);
   }
@@ -104,7 +117,12 @@ public final class DAG<V extends Vertex, E extends Edge<V>> {
   public List<E> getOutgoingEdgesOf(final V v) {
     return getOutgoingEdgesOf(v.getId());
   }
-
+  /**
+   * Retrieves the outgoing edges of the given vertex.
+   * @param vertexId the ID of the subject vertex.
+   * @return the set of outgoing edges to the vertex.
+   * Note that the result is never null, ensured by {@link DAGBuilder}.
+   */
   public List<E> getOutgoingEdgesOf(final String vertexId) {
     return outgoingEdges.get(vertexId);
   }
@@ -181,14 +199,29 @@ public final class DAG<V extends Vertex, E extends Edge<V>> {
     }
   }
 
+  /**
+   * Checks whether the given vertex is assigned with a wrapping LoopVertex.
+   * @param v Vertex to check.
+   * @return whether or not it is wrapped by a LoopVertex
+   */
   public Boolean isCompositeVertex(final V v) {
     return this.assignedLoopVertexMap.containsKey(v.getId());
   }
 
+  /**
+   * Retrieves the wrapping LoopVertex of the vertex.
+   * @param v Vertex to check.
+   * @return The wrapping LoopVertex.
+   */
   public LoopVertex getAssignedLoopVertexOf(final V v) {
     return this.assignedLoopVertexMap.get(v.getId());
   }
 
+  /**
+   * Retrieves the stack depth of the given vertex.
+   * @param v Vertex to check.
+   * @return The depth of the stack of LoopVertices for the vertex.
+   */
   public Integer getLoopStackDepthOf(final V v) {
     return this.loopStackDepthMap.get(v.getId());
   }
@@ -238,8 +271,8 @@ public final class DAG<V extends Vertex, E extends Edge<V>> {
       final PrintWriter printWriter = new PrintWriter(file);
       printWriter.println(toString());
       printWriter.close();
-      LOG.log(Level.INFO, String.format("DAG JSON for %s is saved at %s" +
-          " (Use https://service.jangho.kr/vortex-dag/ to visualize it.)", description, file.getPath()));
+      LOG.log(Level.INFO, String.format("DAG JSON for %s is saved at %s"
+          + " (Use https://service.jangho.kr/vortex-dag/ to visualize it.)", description, file.getPath()));
     } catch (IOException e) {
       LOG.log(Level.WARNING, String.format("Cannot store JSON representation of %s to %s: %s",
           description, file.getPath(), e.toString()));

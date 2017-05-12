@@ -91,8 +91,8 @@ public final class BlockManagerMaster {
     switch (newState) {
       case MOVING:
         if (oldState == BlockState.State.COMMITTED) {
-          LOG.log(Level.WARNING, "Transition from committed to moving: " +
-              "reset to commited since receiver probably reached us before the sender");
+          LOG.log(Level.WARNING, "Transition from committed to moving: "
+              + "reset to commited since receiver probably reached us before the sender");
           sm.setState(BlockState.State.COMMITTED);
         }
         break;

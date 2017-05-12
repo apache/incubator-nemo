@@ -27,6 +27,9 @@ import java.util.List;
 public final class OutputCollectorImpl implements OutputCollector {
   private final List<Element> outputList;
 
+  /**
+   * Constructor of a new OutputCollector.
+   */
   public OutputCollectorImpl() {
     outputList = new ArrayList<>();
   }
@@ -41,6 +44,9 @@ public final class OutputCollectorImpl implements OutputCollector {
     throw new UnsupportedOperationException("emit(dstVertexId, output) in OutputCollectorImpl.");
   }
 
+  /**
+   * @return Iterable of output elements.
+   */
   public Iterable<Element> getOutputList() {
     return outputList;
   }

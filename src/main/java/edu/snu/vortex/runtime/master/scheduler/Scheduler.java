@@ -26,14 +26,14 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  */
 @DefaultImplementation(BatchScheduler.class)
 public interface Scheduler {
-  ExecutionStateManager scheduleJob(final PhysicalPlan physicalPlan);
+  ExecutionStateManager scheduleJob(PhysicalPlan physicalPlan);
 
-  void onExecutorAdded(final ExecutorRepresenter executor);
+  void onExecutorAdded(ExecutorRepresenter executor);
 
-  void onExecutorRemoved(final ExecutorRepresenter executor);
+  void onExecutorRemoved(ExecutorRepresenter executor);
 
-  void onTaskGroupStateChanged(final String executorId,
-                               final ControlMessage.TaskGroupStateChangedMsg message);
+  void onTaskGroupStateChanged(String executorId,
+                               ControlMessage.TaskGroupStateChangedMsg message);
 
   void terminate();
 }

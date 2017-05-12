@@ -27,6 +27,10 @@ import org.apache.beam.sdk.values.KV;
 public final class BeamElement<Data, Key, Value> implements Element<Data, Key, Value> {
   private final Data data;
 
+  /**
+   * Constructor of BeamElement.
+   * @param d data.
+   */
   public BeamElement(final Data d) {
     this.data = d;
   }

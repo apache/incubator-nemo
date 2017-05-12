@@ -27,6 +27,7 @@ import java.util.List;
  * Optimization pass for tagging parallelism attributes.
  */
 public final class ParallelismPass implements Pass {
+  @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     dag.topologicalDo(vertex -> {
       try {

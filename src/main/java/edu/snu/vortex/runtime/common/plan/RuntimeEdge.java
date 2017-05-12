@@ -45,8 +45,11 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
     return edgeAttributes;
   }
 
-  @SuppressWarnings("checkstyle:designforextension")
+  /**
+   * @return JSON representation of additional properties
+   */
   @Override
+  @SuppressWarnings("checkstyle:designforextension")
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"runtimeEdgeId\": \"").append(getId());

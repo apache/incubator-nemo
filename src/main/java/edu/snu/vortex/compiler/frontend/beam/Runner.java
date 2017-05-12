@@ -27,14 +27,28 @@ import org.apache.beam.sdk.runners.PipelineRunner;
 public final class Runner extends PipelineRunner<Result> {
   private final PipelineOptions options;
 
+  /**
+   * BEAM Pipeline Runner.
+   * @param options PipelineOptions.
+   */
   private Runner(final PipelineOptions options) {
     this.options = options;
   }
 
+  /**
+   * Static initializer for creating PipelineRunner with the given options.
+   * @param options given PipelineOptions.
+   * @return The created PipelineRunner.
+   */
   public static PipelineRunner<Result> fromOptions(final PipelineOptions options) {
     return new Runner(options);
   }
 
+  /**
+   * Method to run the Pipeline.
+   * @param pipeline the Pipeline to run.
+   * @return The result of the pipeline.
+   */
   public Result run(final Pipeline pipeline) {
     final DAGBuilder builder = new DAGBuilder<>();
     final Visitor visitor = new Visitor(builder, options);

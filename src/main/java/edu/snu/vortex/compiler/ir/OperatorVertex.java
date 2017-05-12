@@ -22,15 +22,23 @@ package edu.snu.vortex.compiler.ir;
 public final class OperatorVertex extends IRVertex {
   private final Transform transform;
 
+  /**
+   * Constructor of OperatorVertex.
+   * @param t transform for the OperatorVertex.
+   */
   public OperatorVertex(final Transform t) {
     super();
     this.transform = t;
   }
 
+  @Override
   public OperatorVertex getClone() {
     return new OperatorVertex(this.transform);
   }
 
+  /**
+   * @return the transform in the OperatorVertex.
+   */
   public Transform getTransform() {
     return transform;
   }

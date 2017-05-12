@@ -33,6 +33,9 @@ public final class GroupByKeyTransform implements Transform {
   private final Map<Object, List> keyToValues;
   private OutputCollector outputCollector;
 
+  /**
+   * GroupByKey constructor.
+   */
   public GroupByKeyTransform() {
     this.keyToValues = new HashMap<>();
   }

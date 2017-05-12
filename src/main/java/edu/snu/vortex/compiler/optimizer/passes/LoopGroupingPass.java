@@ -28,6 +28,7 @@ import java.util.*;
  * other iterative computations.
  */
 public final class LoopGroupingPass implements Pass {
+  @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     final Integer maxStackDepth = this.findMaxLoopVertexStackDepth(dag);
     return groupLoops(dag, maxStackDepth);

@@ -47,6 +47,9 @@ import java.util.logging.Logger;
 public final class AlternatingLeastSquare {
   private static final Logger LOG = Logger.getLogger(AlternatingLeastSquare.class.getName());
 
+  /**
+   * Private constructor.
+   */
   private AlternatingLeastSquare() {
   }
 
@@ -56,10 +59,19 @@ public final class AlternatingLeastSquare {
   public static final class ParseLine extends DoFn<String, KV<Integer, Pair<int[], float[]>>> {
     private final boolean isUserData;
 
+    /**
+     * Constructor for Parseline DoFn class.
+     * @param isUserData flag that distinguishes user data from item data.
+     */
     public ParseLine(final boolean isUserData) {
       this.isUserData = isUserData;
     }
 
+    /**
+     * ProcessElement method for BEAM.
+     * @param c Process context.
+     * @throws Exception Exception on the way.
+     */
     @ProcessElement
     public void processElement(final ProcessContext c) throws Exception {
       final String text = ((String) c.element()).trim();
@@ -157,6 +169,12 @@ public final class AlternatingLeastSquare {
     private final double lambda;
     private final PCollectionView<Map<Integer, float[]>> fixedMatrixView;
 
+    /**
+     * Constructor for CalculateNextMatrix DoFn class.
+     * @param numFeatures number of features.
+     * @param lambda lambda.
+     * @param fixedMatrixView a PCollectionView of the fixed matrix (item / user matrix).
+     */
     CalculateNextMatrix(final int numFeatures, final double lambda,
                         final PCollectionView<Map<Integer, float[]>> fixedMatrixView) {
       this.numFeatures = numFeatures;
@@ -166,6 +184,11 @@ public final class AlternatingLeastSquare {
       this.upperTriangularLeftMatrix = new double[numFeatures * (numFeatures + 1) / 2];
     }
 
+    /**
+     * ProcessElement method for BEAM.
+     * @param c ProcessContext.
+     * @throws Exception Exception on the way.
+     */
     @ProcessElement
     public void processElement(final ProcessContext c) throws Exception {
       for (int j = 0; j < upperTriangularLeftMatrix.length; j++) {
@@ -220,6 +243,10 @@ public final class AlternatingLeastSquare {
       results.add(KV.of(c.element().getKey(), vector));
     }
 
+    /**
+     * FinishBundle method for BEAM.
+     * @param c Context.
+     */
     @FinishBundle
     public void finishBundle(final Context c) {
       results.forEach(c::output);
@@ -237,6 +264,13 @@ public final class AlternatingLeastSquare {
     private final PCollection<KV<Integer, Pair<int[], float[]>>> parsedUserData;
     private final PCollection<KV<Integer, Pair<int[], float[]>>> parsedItemData;
 
+    /**
+     * Constructor of UpdateUserAndItemMatrix CompositeTransform.
+     * @param numFeatures number of features.
+     * @param lambda lambda.
+     * @param parsedUserData PCollection of parsed user data.
+     * @param parsedItemData PCollection of parsed item data.
+     */
     UpdateUserAndItemMatrix(final int numFeatures, final double lambda,
                             final PCollection<KV<Integer, Pair<int[], float[]>>> parsedUserData,
                             final PCollection<KV<Integer, Pair<int[], float[]>>> parsedItemData) {
@@ -260,6 +294,10 @@ public final class AlternatingLeastSquare {
     }
   }
 
+  /**
+   * Main function for the ALS BEAM program.
+   * @param args arguments.
+   */
   public static void main(final String[] args) {
     final long start = System.currentTimeMillis();
     LOG.log(Level.INFO, Arrays.toString(args));

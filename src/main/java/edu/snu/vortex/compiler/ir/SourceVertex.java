@@ -29,5 +29,5 @@ public abstract class SourceVertex<O> extends IRVertex {
    * @return List of readers.
    * @throws Exception .
    */
-  public abstract List<Reader<O>> getReaders(final int desiredNumOfSplits) throws Exception;
+  public abstract List<Reader<O>> getReaders(int desiredNumOfSplits) throws Exception;
 }

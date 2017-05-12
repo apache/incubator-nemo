@@ -46,6 +46,10 @@ public final class BeamFrontend implements Frontend {
     return dag;
   }
 
+  /**
+   * Supply the DAG here from the BEAM Runner.
+   * @param supplied the supplied DAG.
+   */
   static void supplyDAGFromRunner(final DAG supplied) {
     if (dag != null) {
       throw new IllegalArgumentException("Cannot supply DAG twice");

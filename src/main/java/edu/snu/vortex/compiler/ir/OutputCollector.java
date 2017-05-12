@@ -27,7 +27,7 @@ public interface OutputCollector extends Serializable {
    * Single-destination emit.
    * @param output element.
    */
-  void emit(final Element output);
+  void emit(Element output);
 
   /**
    * Multi-destination emit.
@@ -36,5 +36,5 @@ public interface OutputCollector extends Serializable {
    * @param dstVertexId destination vertex id.
    * @param output element.
    */
-  void emit(final String dstVertexId, final Element output);
+  void emit(String dstVertexId, Element output);
 }
