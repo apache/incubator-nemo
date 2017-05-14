@@ -15,13 +15,14 @@
  */
 package edu.snu.vortex.runtime.common;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Data structure for managing {@link RuntimeAttribute} for each Runtime vertex and edge.
  */
-public final class RuntimeAttributeMap {
+public final class RuntimeAttributeMap implements Serializable {
   private final Map<RuntimeAttribute.Key, RuntimeAttribute> attributes;
   private final Map<RuntimeAttribute.IntegerKey, Integer> intAttributes;
 
@@ -51,6 +52,14 @@ public final class RuntimeAttributeMap {
 
   public RuntimeAttribute remove(final RuntimeAttribute.Key key) {
     return attributes.remove(key);
+  }
+
+  public boolean containsKey(final RuntimeAttribute.Key key) {
+    return attributes.containsKey(key);
+  }
+
+  public boolean containsKey(final RuntimeAttribute.IntegerKey key) {
+    return intAttributes.containsKey(key);
   }
 
   @Override

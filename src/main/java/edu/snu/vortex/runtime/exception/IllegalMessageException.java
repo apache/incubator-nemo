@@ -13,13 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.channel_to_deprecate;
+package edu.snu.vortex.runtime.exception;
 
 /**
- * Channel states both for {@link InputChannel} and {@link OutputChannel}.
+ * IllegalMessageException.
+ * Thrown when the received message is of an illegal type in master/executor.
  */
-public enum ChannelState {
-  //TODO #087: need to organize channel states.
-  Open,
-  Close
+public final class IllegalMessageException extends RuntimeException {
+  /**
+   * IllegalMessageException.
+   * @param cause cause
+   */
+  public IllegalMessageException(final Throwable cause) {
+    super(cause);
+  }
 }

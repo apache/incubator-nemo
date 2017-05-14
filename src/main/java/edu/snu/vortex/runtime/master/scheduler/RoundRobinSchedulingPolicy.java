@@ -18,7 +18,7 @@ package edu.snu.vortex.runtime.master.scheduler;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.exception.SchedulingException;
-import edu.snu.vortex.runtime.master.ExecutorRepresenter;
+import edu.snu.vortex.runtime.master.resourcemanager.ExecutorRepresenter;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.*;
@@ -183,10 +183,10 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   @Override
-  public void onTaskGroupScheduled(final ExecutorRepresenter executor, final String taskGroupId) {
+  public void onTaskGroupScheduled(final ExecutorRepresenter executor, final TaskGroup taskGroup) {
     lock.lock();
     try {
-      executor.onTaskGroupScheduled(taskGroupId);
+      executor.onTaskGroupScheduled(taskGroup);
     } finally {
       lock.unlock();
     }

@@ -13,21 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.channel_to_deprecate;
+package edu.snu.vortex.runtime.master.resourcemanager;
 
-
-import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.runtime.common.RuntimeAttribute;
 
 /**
- * Interface of channel selectors that determine which channels a given record should be written into.
+ * Manages resources depending on the environment in which jobs are executed.
  */
-public interface ChannelSelector {
+public interface ResourceManager {
   /**
-   * Returns the channel indexes, to which the given record should be written.
-   *
-   * @param record        the record to determine which partitions it is written into.
-   * @return a (possibly empty) array of integer numbers which indicate the indices of the channels to
-   * which the record shall be written.
+   * Requests for an executor.
+   * @param resourceType the resource type (ex. compute/storage) to request for the executor.
+   * @param executorCapacity the number of executable {@link edu.snu.vortex.runtime.common.plan.physical.TaskGroup}s
+   *                         at a time.
    */
-  int[] selectChannels(Element record);
+  void requestExecutor(final RuntimeAttribute resourceType, final int executorCapacity);
+
 }

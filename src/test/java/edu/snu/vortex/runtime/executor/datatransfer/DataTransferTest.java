@@ -16,12 +16,18 @@
 package edu.snu.vortex.runtime.executor.datatransfer;
 
 import edu.snu.vortex.compiler.frontend.beam.BeamElement;
+import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
+import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
+import edu.snu.vortex.runtime.common.plan.logical.RuntimeBoundedSourceVertex;
+import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
 import edu.snu.vortex.runtime.executor.block.LocalStore;
 import edu.snu.vortex.runtime.master.BlockManagerMaster;
+import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.values.KV;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,6 +40,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests {@link InputReader} and {@link OutputWriter}.
@@ -92,9 +100,15 @@ public final class DataTransferTest {
     final RuntimeAttributeMap srcVertexAttributes = new RuntimeAttributeMap();
     srcVertexAttributes.put(RuntimeAttribute.IntegerKey.Parallelism, PARALLELISM_TEN);
 
+    final BoundedSource s = mock(BoundedSource.class);
+    final BoundedSourceVertex v1 = new BoundedSourceVertex<>(s);
+    final RuntimeVertex srcVertex = new RuntimeBoundedSourceVertex(v1, srcVertexAttributes);
+
     // Dst setup
     final RuntimeAttributeMap dstVertexAttributes = new RuntimeAttributeMap();
     dstVertexAttributes.put(RuntimeAttribute.IntegerKey.Parallelism, PARALLELISM_TEN);
+    final BoundedSourceVertex v2 = new BoundedSourceVertex<>(s);
+    final RuntimeVertex dstVertex = new RuntimeBoundedSourceVertex(v2, dstVertexAttributes);
 
     // Edge setup
     final String edgeId = "Dummy";
@@ -102,13 +116,13 @@ public final class DataTransferTest {
     edgeAttributes.put(RuntimeAttribute.Key.CommPattern, commPattern);
     edgeAttributes.put(RuntimeAttribute.Key.Partition, RuntimeAttribute.Hash);
     edgeAttributes.put(RuntimeAttribute.Key.BlockStore, STORE);
+    final RuntimeEdge<RuntimeVertex> dummyEdge = new RuntimeEdge<>(edgeId, edgeAttributes, srcVertex, dstVertex);
 
     // Initialize states in Master
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       if (commPattern == RuntimeAttribute.ScatterGather) {
-        IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
-          master.initializeState(edgeId, srcTaskIndex, dstTaskIndex);
-        });
+        IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex ->
+            master.initializeState(edgeId, srcTaskIndex, dstTaskIndex));
       } else {
         master.initializeState(edgeId, srcTaskIndex);
       }
@@ -118,7 +132,7 @@ public final class DataTransferTest {
     final List<List<Element>> dataWrittenList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       final List<Element> dataWritten = getListOfZeroToNine();
-      final OutputWriter writer = new OutputWriter(edgeId, srcTaskIndex, dstVertexAttributes, edgeAttributes, sender);
+      final OutputWriter writer = new OutputWriter(srcTaskIndex, dstVertex, dummyEdge, sender);
       writer.write(dataWritten);
       dataWrittenList.add(dataWritten);
     });
@@ -126,7 +140,7 @@ public final class DataTransferTest {
     // Read
     final List<List<Element>> dataReadList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
-      final InputReader reader = new InputReader(edgeId, dstTaskIndex, srcVertexAttributes, edgeAttributes, receiver);
+      final InputReader reader = new InputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
       final List<Element> dataRead = new ArrayList<>();
       reader.read().forEach(dataRead::add);
       dataReadList.add(dataRead);

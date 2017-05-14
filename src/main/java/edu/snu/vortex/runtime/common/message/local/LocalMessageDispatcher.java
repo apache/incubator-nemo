@@ -3,7 +3,6 @@ package edu.snu.vortex.runtime.common.message.local;
 import edu.snu.vortex.runtime.common.message.MessageListener;
 import edu.snu.vortex.runtime.common.message.MessageSender;
 
-import java.io.Serializable;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,15 +12,15 @@ import java.util.concurrent.Future;
 /**
  * Dispatch messages on a single machine.
  */
-final class LocalMessageDispatcher {
+public final class LocalMessageDispatcher {
 
   private final ConcurrentMap<String, ConcurrentMap<String, MessageListener>> nodeIdToMessageListenersMap;
 
-  LocalMessageDispatcher() {
+  public LocalMessageDispatcher() {
     this.nodeIdToMessageListenersMap = new ConcurrentHashMap<>();
   }
 
-  <T extends Serializable> MessageSender<T> setupListener(
+  <T> MessageSender<T> setupListener(
       final String currentNodeId, final String messageTypeId, final MessageListener<T> listener) {
 
     ConcurrentMap<String, MessageListener> messageTypeToListenerMap = nodeIdToMessageListenersMap.get(currentNodeId);
@@ -43,16 +42,16 @@ final class LocalMessageDispatcher {
     return new LocalMessageSender<>(currentNodeId, currentNodeId, messageTypeId, this);
   }
 
-  <T extends Serializable> void dispatchSendMessage(
+  <T> void dispatchSendMessage(
       final String targetId, final String messageTypeId, final T message) {
     final MessageListener listener = nodeIdToMessageListenersMap.get(targetId).get(messageTypeId);
     if (listener == null) {
       throw new LocalDispatcherException("There was no set up listener for " + messageTypeId + " in " + targetId);
     }
-    listener.onSendMessage(message);
+    listener.onMessage(message);
   }
 
-  <T extends Serializable, U extends Serializable> Future<U> dispatchRequestMessage(
+  <T, U> Future<U> dispatchRequestMessage(
       final String senderId, final String targetId, final String messageTypeId, final T message) {
 
     final MessageListener listener = nodeIdToMessageListenersMap.get(targetId).get(messageTypeId);
@@ -61,7 +60,7 @@ final class LocalMessageDispatcher {
     }
 
     final LocalMessageContext context = new LocalMessageContext(senderId);
-    listener.onRequestMessage(message, context);
+    listener.onMessageWithContext(message, context);
 
     final Optional<Throwable> throwable = context.getThrowable();
     final Optional<Object> replyMessage = context.getReplyMessage();

@@ -15,31 +15,30 @@
  */
 package edu.snu.vortex.runtime.master;
 
-import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
-import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
+import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
+import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.JobState;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
 import edu.snu.vortex.runtime.exception.IllegalStateTransitionException;
 import edu.snu.vortex.utils.StateMachine;
+import edu.snu.vortex.utils.dag.DAG;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Manages the states related to a job.
  * This class can be used to track a job's execution status to task level in the future.
  * The methods of this class are synchronized.
  */
-public final class ExecutionStateManager {
-  private static final Logger LOG = Logger.getLogger(ExecutionStateManager.class.getName());
+public final class JobStateManager {
+  private static final Logger LOG = Logger.getLogger(JobStateManager.class.getName());
 
   private final String jobId;
 
@@ -73,7 +72,8 @@ public final class ExecutionStateManager {
    */
   private final Set<String> currentJobStageIds;
 
-  public ExecutionStateManager(final PhysicalPlan physicalPlan) {
+  public JobStateManager(final PhysicalPlan physicalPlan,
+                         final BlockManagerMaster blockManagerMaster) {
     this.physicalPlan = physicalPlan;
     this.jobId = physicalPlan.getId();
     this.jobState = new JobState();
@@ -82,13 +82,14 @@ public final class ExecutionStateManager {
     this.idToTaskStates = new HashMap<>();
     this.currentStageTaskGroupIds = new HashSet<>();
     this.currentJobStageIds = new HashSet<>();
-    initializeStates();
+    initializeComputationStates();
+    initializeBlockStates(blockManagerMaster);
   }
 
   /**
    * Initializes the states for the job/stages/taskgroups/tasks for this job.
    */
-  private void initializeStates() {
+  private void initializeComputationStates() {
     onJobStateChanged(JobState.State.EXECUTING);
 
     // Initialize the states for the job down to task-level.
@@ -99,6 +100,41 @@ public final class ExecutionStateManager {
         idToTaskGroupStates.put(taskGroup.getTaskGroupId(), new TaskGroupState());
         taskGroup.getTaskDAG().getVertices().forEach(
             task -> idToTaskStates.put(task.getId(), new TaskState()));
+      });
+    });
+  }
+
+  private void initializeBlockStates(final BlockManagerMaster blockManagerMaster) {
+    final DAG<PhysicalStage, PhysicalStageEdge> stageDAG = physicalPlan.getStageDAG();
+    stageDAG.topologicalDo(physicalStage -> {
+      final List<TaskGroup> taskGroupsForStage = physicalStage.getTaskGroupList();
+      final List<PhysicalStageEdge> stageOutgoingEdges = stageDAG.getOutgoingEdgesOf(physicalStage);
+
+      // Initialize states for blocks of inter-stage edges
+      stageOutgoingEdges.forEach(physicalStageEdge -> {
+        final RuntimeAttribute commPattern =
+            physicalStageEdge.getEdgeAttributes().get(RuntimeAttribute.Key.CommPattern);
+        final int srcParallelism = taskGroupsForStage.size();
+        IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
+          if (commPattern == RuntimeAttribute.ScatterGather) {
+            final int dstParallelism =
+                physicalStageEdge.getExternalVertexAttr().get(RuntimeAttribute.IntegerKey.Parallelism);
+            IntStream.range(0, dstParallelism).forEach(dstTaskIdx ->
+                blockManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx));
+          } else {
+            blockManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx);
+          }
+        });
+      });
+
+      // Initialize states for blocks of stage internal edges
+      taskGroupsForStage.forEach(taskGroup -> {
+        final DAG<Task, RuntimeEdge<Task>> taskGroupInternalDag = taskGroup.getTaskDAG();
+        taskGroupInternalDag.getVertices().forEach(task -> {
+          final List<RuntimeEdge<Task>> internalOutgoingEdges = taskGroupInternalDag.getOutgoingEdgesOf(task);
+          internalOutgoingEdges.forEach(taskRuntimeEdge ->
+              blockManagerMaster.initializeState(taskRuntimeEdge.getId(), task.getIndex()));
+        });
       });
     });
   }
