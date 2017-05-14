@@ -16,7 +16,7 @@
 package edu.snu.vortex.runtime.master.scheduler;
 
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
-import edu.snu.vortex.runtime.master.ExecutorRepresenter;
+import edu.snu.vortex.runtime.master.resourcemanager.ExecutorRepresenter;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.Optional;
@@ -69,9 +69,9 @@ public interface SchedulingPolicy {
    * (Depending on the executor's resource type)
    *
    * @param executor assigned for the taskGroup.
-   * @param taskGroupId scheduled to the executor.
+   * @param taskGroup scheduled to the executor.
    */
-  void onTaskGroupScheduled(ExecutorRepresenter executor, String taskGroupId);
+  void onTaskGroupScheduled(final ExecutorRepresenter executor, final TaskGroup taskGroup);
 
   /**
    * Marks the taskGroup's completion in the executor.

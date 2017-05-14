@@ -17,12 +17,13 @@ package edu.snu.vortex.runtime.common.plan.physical;
 
 import edu.snu.vortex.utils.dag.DAG;
 
+import java.io.Serializable;
 import java.util.logging.Logger;
 
 /**
  * A job's physical plan corresponding to an {@link edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan}.
  */
-public final class PhysicalPlan {
+public final class PhysicalPlan implements Serializable {
   private static final Logger LOG = Logger.getLogger(PhysicalPlan.class.getName());
 
   private final String id;

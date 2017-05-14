@@ -119,7 +119,7 @@ public final class PhysicalDAGGenerator
 
           // Create the task group to add for this stage.
           final TaskGroup newTaskGroup =
-              new TaskGroup(RuntimeIdGenerator.generateTaskGroupId(),
+              new TaskGroup(RuntimeIdGenerator.generateTaskGroupId(), stage.getId(),
                   stageInternalDAGBuilder.build(), resourceType);
           physicalStageBuilder.addTaskGroup(newTaskGroup);
           runtimeVertexIdToTask.clear();

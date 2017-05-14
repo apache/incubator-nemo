@@ -2,7 +2,6 @@ package edu.snu.vortex.runtime.common.message.local;
 
 import edu.snu.vortex.runtime.common.message.MessageContext;
 
-import java.io.Serializable;
 import java.util.Optional;
 
 /**
@@ -28,7 +27,7 @@ final class LocalMessageContext implements MessageContext {
   }
 
   @Override
-  public <T extends Serializable> void reply(final T message) {
+  public <T> void reply(final T message) {
     this.replyMessage = message;
   }
 

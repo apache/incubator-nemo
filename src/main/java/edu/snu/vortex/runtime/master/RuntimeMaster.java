@@ -16,6 +16,17 @@
 package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.runtime.common.comm.ControlMessage;
+import edu.snu.vortex.runtime.common.message.MessageContext;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
+import edu.snu.vortex.runtime.common.message.MessageListener;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
+import edu.snu.vortex.runtime.common.state.TaskGroupState;
+import edu.snu.vortex.runtime.exception.IllegalMessageException;
+import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
+import edu.snu.vortex.runtime.master.resourcemanager.LocalResourceManager;
+import edu.snu.vortex.runtime.master.resourcemanager.ResourceManager;
 import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
 import edu.snu.vortex.runtime.common.plan.logical.Stage;
 import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
@@ -25,7 +36,12 @@ import edu.snu.vortex.runtime.master.scheduler.BatchScheduler;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import edu.snu.vortex.utils.dag.DAG;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Logger;
+
+import static edu.snu.vortex.runtime.common.RuntimeAttribute.*;
 
 /**
  * Runtime Master is the central controller of Runtime.
@@ -37,7 +53,17 @@ import java.util.logging.Logger;
  */
 public final class RuntimeMaster {
   private static final Logger LOG = Logger.getLogger(RuntimeMaster.class.getName());
+
+  // We should have a new way of (ex. configuration) these settings.
+  private static final int DEFAULT_EXECUTOR_NUM = 2;
+  private static final int DEFAULT_EXECUTOR_CAPACITY = 4;
+
   private final Scheduler scheduler;
+  private final ResourceManager resourceManager;
+  private final LocalMessageDispatcher localMessageDispatcher;
+  private final MessageEnvironment masterMessageEnvironment;
+  private final BlockManagerMaster blockManagerMaster;
+  private JobStateManager jobStateManager;
 
   public RuntimeMaster(final RuntimeAttribute schedulerType) {
     switch (schedulerType) {
@@ -47,6 +73,27 @@ public final class RuntimeMaster {
     default:
       throw new RuntimeException("Unknown scheduler type");
     }
+    this.localMessageDispatcher = new LocalMessageDispatcher();
+    this.masterMessageEnvironment =
+        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, localMessageDispatcher);
+    masterMessageEnvironment.setupListener(MessageEnvironment.MASTER_MESSAGE_RECEIVER, new MasterMessageReceiver());
+    this.blockManagerMaster = new BlockManagerMaster();
+    this.resourceManager =
+        new LocalResourceManager(scheduler, masterMessageEnvironment, localMessageDispatcher, blockManagerMaster);
+    initializeResources();
+  }
+
+  /**
+   * Initialize a default amount of resources by requesting to the Resource Manager.
+   */
+  private void initializeResources() {
+    final Set<RuntimeAttribute> completeSetOfResourceType =
+        new HashSet<>(Arrays.asList(Transient, Reserved, Compute, Storage));
+    completeSetOfResourceType.forEach(resourceType -> {
+      for (int i = 0; i < DEFAULT_EXECUTOR_NUM; i++) {
+        resourceManager.requestExecutor(resourceType, DEFAULT_EXECUTOR_CAPACITY);
+      }
+    });
   }
 
   /**
@@ -57,7 +104,12 @@ public final class RuntimeMaster {
   public void execute(final ExecutionPlan executionPlan, final String dagDirectory) {
     final PhysicalPlan physicalPlan = generatePhysicalPlan(executionPlan, dagDirectory);
     try {
-      new SimpleRuntime().executePhysicalPlan(physicalPlan);
+      // TODO #187: Cleanup Execution Threads
+      jobStateManager = scheduler.scheduleJob(physicalPlan, blockManagerMaster);
+      while (!jobStateManager.checkJobCompletion()) {
+        // Check every 3 seconds for job completion.
+        Thread.sleep(3000);
+      }
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -77,5 +129,55 @@ public final class RuntimeMaster {
         logicalDAG.convert(new PhysicalDAGGenerator()));
     physicalPlan.getStageDAG().storeJSON(dagDirectory, "plan-physical", "physical execution plan");
     return physicalPlan;
+  }
+
+  /**
+   * Handler for messages received by Master.
+   */
+  // TODO #187: Cleanup Execution Threads
+  // Executor threads call this at the moment.
+  private final class MasterMessageReceiver implements MessageListener<ControlMessage.Message> {
+
+    @Override
+    public void onMessage(final ControlMessage.Message message) {
+      switch (message.getType()) {
+      case TaskGroupStateChanged:
+        final ControlMessage.TaskGroupStateChangedMsg taskGroupStateChangedMsg = message.getTaskStateChangedMsg();
+        scheduler.onTaskGroupStateChanged(taskGroupStateChangedMsg.getExecutorId(),
+            taskGroupStateChangedMsg.getTaskGroupId(),
+            convertState(taskGroupStateChangedMsg.getState()),
+            taskGroupStateChangedMsg.getFailedTaskIdsList());
+        break;
+      case BlockStateChanged:
+        throw new UnsupportedOperationException("Not yet supported");
+      case RequestBlock:
+        throw new UnsupportedOperationException("Not yet supported");
+      default:
+        throw new IllegalMessageException(
+            new Exception("This message should not be received by Master :" + message.getType()));
+      }
+    }
+
+    @Override
+    public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
+    }
+  }
+
+  // TODO #164: Cleanup Protobuf Usage
+  private TaskGroupState.State convertState(final ControlMessage.TaskGroupStateFromExecutor state) {
+    switch (state) {
+    case READY:
+      return TaskGroupState.State.READY;
+    case EXECUTING:
+      return TaskGroupState.State.EXECUTING;
+    case COMPLETE:
+      return TaskGroupState.State.COMPLETE;
+    case FAILED_RECOVERABLE:
+      return TaskGroupState.State.FAILED_RECOVERABLE;
+    case FAILED_UNRECOVERABLE:
+      return TaskGroupState.State.FAILED_UNRECOVERABLE;
+    default:
+      throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
+    }
   }
 }

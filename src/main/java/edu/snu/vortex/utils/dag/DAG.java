@@ -20,6 +20,7 @@ import edu.snu.vortex.compiler.ir.LoopVertex;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.Serializable;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -32,7 +33,7 @@ import java.util.stream.Collectors;
  * @param <V> the vertex type
  * @param <E> the edge type
  */
-public final class DAG<V extends Vertex, E extends Edge<V>> {
+public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializable {
   private static final Logger LOG = Logger.getLogger(DAG.class.getName());
 
   private final List<V> vertices;

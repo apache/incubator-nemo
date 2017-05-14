@@ -24,7 +24,6 @@ import edu.snu.vortex.runtime.common.plan.logical.LogicalDAGGenerator;
 import edu.snu.vortex.runtime.common.plan.logical.Stage;
 import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
-import edu.snu.vortex.runtime.common.state.JobState;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
@@ -41,9 +40,9 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 /**
- * Tests {@link ExecutionStateManager}.
+ * Tests {@link JobStateManager}.
  */
-public final class ExecutionStateManagerTest {
+public final class JobStateManagerTest {
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
 
   @Before
@@ -52,7 +51,7 @@ public final class ExecutionStateManagerTest {
   }
 
   /**
-   * This method builds a physical DAG starting from an IR DAG and submits it to {@link ExecutionStateManager}.
+   * This method builds a physical DAG starting from an IR DAG and submits it to {@link JobStateManager}.
    * State changes are explicitly called to check whether states are managed correctly or not.
    */
   @Test
@@ -75,27 +74,27 @@ public final class ExecutionStateManagerTest {
     final DAG<Stage, StageEdge> logicalDAG = irDAG.convert(new LogicalDAGGenerator());
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
 
-    final ExecutionStateManager executionStateManager =
-        new ExecutionStateManager(new PhysicalPlan("TestPlan", physicalDAG));
+    final JobStateManager jobStateManager =
+        new JobStateManager(new PhysicalPlan("TestPlan", physicalDAG), new BlockManagerMaster());
 
-    assertEquals(executionStateManager.getJobId(), "TestPlan");
+    assertEquals(jobStateManager.getJobId(), "TestPlan");
 
     final List<PhysicalStage> stageList = physicalDAG.getTopologicalSort();
     for (int stageIdx = 0; stageIdx < stageList.size(); stageIdx++) {
       final PhysicalStage physicalStage = stageList.get(stageIdx);
-      executionStateManager.onStageStateChanged(physicalStage.getId(), StageState.State.EXECUTING);
+      jobStateManager.onStageStateChanged(physicalStage.getId(), StageState.State.EXECUTING);
       final List<TaskGroup> taskGroupList = physicalStage.getTaskGroupList();
       for (int index = 0; index < taskGroupList.size(); index++) {
-        executionStateManager.onTaskGroupStateChanged(taskGroupList.get(index).getTaskGroupId(),
+        jobStateManager.onTaskGroupStateChanged(taskGroupList.get(index).getTaskGroupId(),
             TaskGroupState.State.EXECUTING);
-        executionStateManager.onTaskGroupStateChanged(taskGroupList.get(index).getTaskGroupId(),
+        jobStateManager.onTaskGroupStateChanged(taskGroupList.get(index).getTaskGroupId(),
             TaskGroupState.State.COMPLETE);
         if (index == taskGroupList.size() - 1) {
-          assertTrue(executionStateManager.checkCurrentStageCompletion());
+          assertTrue(jobStateManager.checkCurrentStageCompletion());
         }
       }
-      final Map<String, TaskGroupState> taskGroupStateMap = executionStateManager.getIdToTaskGroupStates();
-      final Map<String, TaskState> taskStateMap = executionStateManager.getIdToTaskStates();
+      final Map<String, TaskGroupState> taskGroupStateMap = jobStateManager.getIdToTaskGroupStates();
+      final Map<String, TaskState> taskStateMap = jobStateManager.getIdToTaskStates();
       taskGroupList.forEach(taskGroup -> {
         assertEquals(taskGroupStateMap.get(taskGroup.getTaskGroupId()).getStateMachine().getCurrentState(),
             TaskGroupState.State.COMPLETE);
@@ -105,7 +104,7 @@ public final class ExecutionStateManagerTest {
       });
 
       if (stageIdx == stageList.size() - 1) {
-        assertTrue(executionStateManager.checkJobCompletion());
+        assertTrue(jobStateManager.checkJobCompletion());
       }
     }
   }

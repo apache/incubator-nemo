@@ -1,7 +1,5 @@
 package edu.snu.vortex.runtime.common.message;
 
-import java.io.Serializable;
-
 /**
  * This class sends a reply message from {@link MessageListener}.
  */
@@ -20,7 +18,7 @@ public interface MessageContext {
    * @param replyMessage a reply message
    * @param <U> type of the reply message
    */
-  <U extends Serializable> void reply(U replyMessage);
+  <U> void reply(U replyMessage);
 
   /**
    * Send back a throwable.

@@ -13,28 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.channel_to_deprecate;
-
+package edu.snu.vortex.runtime.exception;
 
 /**
- * Channel interface, a common part of {@link OutputChannel} and {@link InputChannel}.
- * Channel implementations should manage data transfers.
+ * NodeConnectionException.
+ * Thrown when an exception occurs while trying to connect to a node.
  */
-public interface Channel {
-
+public final class NodeConnectionException extends RuntimeException {
   /**
-   * @return the channel id.
+   * NodeConnectionException.
+   * @param cause cause
    */
-  String getId();
-
-  /**
-   * @return the state of this channel.
-   */
-  ChannelState getState();
-
-  /**
-   * Initialize the internal state of the channel.
-   * @param config the configuration for channel initialization.
-   */
-  void initialize(ChannelConfig config);
+  public NodeConnectionException(final Throwable cause) {
+    super(cause);
+  }
 }
