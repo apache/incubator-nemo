@@ -12,28 +12,28 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Tests local messaging components.
  */
 public class LocalMessageTest {
+  private final LocalMessageDispatcher localMessageDispatcher = new LocalMessageDispatcher();
+
   @Test
   public void testLocalMessages() throws Exception {
-    final LocalMessageDispatcher dispatcher = new LocalMessageDispatcher();
-
     final String driverNodeId = "DRIVER_NODE";
     final String executorOneNodeId = "EXECUTOR_ONE_NODE";
     final String executorTwoNodeId = "EXECUTOR_TWO_NODE";
 
-    final LocalMessageEnvironment driverEnv = new LocalMessageEnvironment(driverNodeId, dispatcher);
-    final LocalMessageEnvironment executorOneEnv = new LocalMessageEnvironment(executorOneNodeId, dispatcher);
-    final LocalMessageEnvironment executorTwoEnv = new LocalMessageEnvironment(executorTwoNodeId, dispatcher);
+    final MessageEnvironment driverEnv = new LocalMessageEnvironment(driverNodeId, localMessageDispatcher);
+    final MessageEnvironment executorOneEnv = new LocalMessageEnvironment(executorOneNodeId, localMessageDispatcher);
+    final MessageEnvironment executorTwoEnv = new LocalMessageEnvironment(executorTwoNodeId, localMessageDispatcher);
 
     final AtomicInteger toDriverMessageUsingSend = new AtomicInteger();
 
     driverEnv.setupListener("ToDriver", new MessageListener<ToDriver>() {
       @Override
-      public void onSendMessage(final ToDriver message) {
+      public void onMessage(final ToDriver message) {
         toDriverMessageUsingSend.incrementAndGet();
       }
 
       @Override
-      public void onRequestMessage(final ToDriver message, final MessageContext messageContext) {
+      public void onMessageWithContext(final ToDriver message, final MessageContext messageContext) {
         if (message instanceof ExecutorStarted) {
           messageContext.reply(true);
         } else if (message instanceof MakeException) {
@@ -45,11 +45,11 @@ public class LocalMessageTest {
     // Setup multiple listeners.
     driverEnv.setupListener("SecondToDriver", new MessageListener<SecondToDriver>() {
       @Override
-      public void onSendMessage(SecondToDriver message) {
+      public void onMessage(SecondToDriver message) {
       }
 
       @Override
-      public void onRequestMessage(SecondToDriver message, MessageContext messageContext) {
+      public void onMessageWithContext(SecondToDriver message, MessageContext messageContext) {
       }
     });
 
@@ -94,13 +94,13 @@ public class LocalMessageTest {
   final class SimpleMessageListener implements MessageListener<SimpleMessage> {
 
     @Override
-    public void onSendMessage(final SimpleMessage message) {
+    public void onMessage(final SimpleMessage message) {
       // Expected not reached here.
       throw new RuntimeException();
     }
 
     @Override
-    public void onRequestMessage(final SimpleMessage message, final MessageContext messageContext) {
+    public void onMessageWithContext(final SimpleMessage message, final MessageContext messageContext) {
       messageContext.reply(message.getData());
     }
   }

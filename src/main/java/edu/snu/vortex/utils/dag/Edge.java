@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.utils.dag;
 
+import java.io.Serializable;
 import java.util.logging.Logger;
 
 /**
@@ -23,7 +24,7 @@ import java.util.logging.Logger;
  *
  * @param <V> the vertex type.
  */
-public class Edge<V extends Vertex> {
+public class Edge<V extends Vertex> implements Serializable {
   private static final Logger LOG = Logger.getLogger(Edge.class.getName());
 
   private final String id;

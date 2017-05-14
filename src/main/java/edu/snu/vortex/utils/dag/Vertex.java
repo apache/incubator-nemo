@@ -15,10 +15,12 @@
  */
 package edu.snu.vortex.utils.dag;
 
+import java.io.Serializable;
+
 /**
  * A vertex in DAG.
  */
-public abstract class Vertex {
+public abstract class Vertex implements Serializable {
   private final String id;
 
   /**

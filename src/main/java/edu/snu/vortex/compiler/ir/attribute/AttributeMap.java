@@ -18,6 +18,7 @@ package edu.snu.vortex.compiler.ir.attribute;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -25,7 +26,7 @@ import java.util.function.BiConsumer;
 /**
  * AttributeMap Class, which uses HashMap for keeping track of attributes for vertices and edges.
  */
-public final class AttributeMap {
+public final class AttributeMap implements Serializable {
   private final String id;
   private final Map<Attribute.Key, Attribute> attributes;
   private final Map<Attribute.IntegerKey, Integer> intAttributes;

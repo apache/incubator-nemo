@@ -223,7 +223,7 @@ class PhysicalStageEdge:
         self.src = src
         self.dst = dst
         self.runtimeEdgeId = properties['runtimeEdgeId']
-        self.edgeAttributes = properties['edgeAttributes']
+        self.runtimeEdge = properties['runtimeEdge']
         self.externalVertexAttr = properties['externalVertexAttr']
     @property
     def dot(self):
@@ -235,7 +235,7 @@ class PhysicalStageEdge:
                 color = 'green'
         except:
             pass
-        label = self.runtimeEdgeId + ' (p{})\\n'.format(self.externalVertexAttr['Parallelism']) + '/'.join(self.edgeAttributes.values())
+        label = self.runtimeEdgeId + ' (p{})\\n'.format(self.externalVertexAttr['Parallelism']) + '/'.join(self.runtimeEdge.values())
         return '{} -> {} [ltail = {}, lhead = {}, label = "{}", color = {}];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label, color)
 
@@ -244,10 +244,10 @@ class StageEdge:
         self.src = src.internalDAG.vertices[properties['srcRuntimeVertex']]
         self.dst = dst.internalDAG.vertices[properties['dstRuntimeVertex']]
         self.runtimeEdgeId = properties['runtimeEdgeId']
-        self.edgeAttributes = properties['edgeAttributes']
+        self.runtimeEdge = properties['runtimeEdge']
     @property
     def dot(self):
-        label = self.runtimeEdgeId + '\\n' + '/'.join(self.edgeAttributes.values())
+        label = self.runtimeEdgeId + '\\n' + '/'.join(self.runtimeEdge.values())
         return '{} -> {} [ltail = {}, lhead = {}, label = "{}"];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 
@@ -256,10 +256,10 @@ class RuntimeEdge:
         self.src = src
         self.dst = dst
         self.runtimeEdgeId = properties['runtimeEdgeId']
-        self.edgeAttributes = properties['edgeAttributes']
+        self.runtimeEdge = properties['runtimeEdge']
     @property
     def dot(self):
-        label = self.runtimeEdgeId + '\\n' + '/'.join(self.edgeAttributes.values())
+        label = self.runtimeEdgeId + '\\n' + '/'.join(self.runtimeEdge.values())
         return '{} -> {} [ltail = {}, lhead = {}, label = "{}"];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 

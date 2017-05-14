@@ -15,25 +15,29 @@
  */
 package edu.snu.vortex.runtime.master.scheduler;
 
-import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.vortex.runtime.master.ExecutionStateManager;
-import edu.snu.vortex.runtime.master.ExecutorRepresenter;
+import edu.snu.vortex.runtime.common.state.TaskGroupState;
+import edu.snu.vortex.runtime.master.BlockManagerMaster;
+import edu.snu.vortex.runtime.master.JobStateManager;
+import edu.snu.vortex.runtime.master.resourcemanager.ExecutorRepresenter;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import java.util.List;
+
 /**
- * Defines the policy by which {@link BatchScheduler} assigns task groups to executors.
+ * Receives a job to execute and schedules {@link edu.snu.vortex.runtime.common.plan.physical.TaskGroup} to executors.
  */
 @DefaultImplementation(BatchScheduler.class)
 public interface Scheduler {
-  ExecutionStateManager scheduleJob(PhysicalPlan physicalPlan);
+  JobStateManager scheduleJob(final PhysicalPlan physicalPlan, final BlockManagerMaster blockManagerMaster);
 
   void onExecutorAdded(ExecutorRepresenter executor);
 
   void onExecutorRemoved(ExecutorRepresenter executor);
 
-  void onTaskGroupStateChanged(String executorId,
-                               ControlMessage.TaskGroupStateChangedMsg message);
+  void onTaskGroupStateChanged(final String executorId,
+                               final String taskGroupId,
+                               final TaskGroupState.State newState, final List<String> failedTaskIds);
 
   void terminate();
 }

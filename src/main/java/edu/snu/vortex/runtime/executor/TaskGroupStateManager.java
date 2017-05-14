@@ -15,7 +15,10 @@
  */
 package edu.snu.vortex.runtime.executor;
 
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
+import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
@@ -30,12 +33,12 @@ import java.util.logging.Logger;
  * Manages the states related to a task group.
  * The methods of this class are synchronized.
  */
-// TODO #83: Introduce Task Group Executor
 // TODO #163: Handle Fault Tolerance
 public final class TaskGroupStateManager {
   private static final Logger LOG = Logger.getLogger(TaskGroupStateManager.class.getName());
 
   private final String taskGroupId;
+  private final String executorId;
 
   /**
    * Used to track all task states of this task group, by keeping a map of task ids to their states.
@@ -50,8 +53,14 @@ public final class TaskGroupStateManager {
    */
   private Set<String> currentTaskGroupTaskIds;
 
-  public TaskGroupStateManager(final TaskGroup taskGroup) {
+  private Map<String, MessageSender<ControlMessage.Message>> nodeIdToMsgSenderMap;
+
+  public TaskGroupStateManager(final TaskGroup taskGroup,
+                               final String executorId,
+                               final Map<String, MessageSender<ControlMessage.Message>> nodeIdToMsgSenderMap) {
     this.taskGroupId = taskGroup.getTaskGroupId();
+    this.executorId = executorId;
+    this.nodeIdToMsgSenderMap = nodeIdToMsgSenderMap;
     idToTaskStates = new HashMap<>();
     currentTaskGroupTaskIds = new HashSet<>();
     initializeStates(taskGroup);
@@ -70,6 +79,7 @@ public final class TaskGroupStateManager {
     });
   }
 
+
   /**
    * Updates the state of the task group.
    * @param newState of the task group.
@@ -77,18 +87,24 @@ public final class TaskGroupStateManager {
    */
   public synchronized void onTaskGroupStateChanged(final TaskGroupState.State newState,
                                                    final Optional<List<String>> failedTaskIds) {
-    if (newState == TaskGroupState.State.EXECUTING) {
+    switch (newState) {
+    case EXECUTING:
       LOG.log(Level.FINE, "Executing TaskGroup ID {0}...", taskGroupId);
-    } else if (newState == TaskGroupState.State.COMPLETE) {
+      idToTaskStates.forEach((taskId, state) -> state.getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR));
+      break;
+    case COMPLETE:
       LOG.log(Level.FINE, "TaskGroup ID {0} complete!", taskGroupId);
-      notifyTaskGroupStateToMaster(taskGroupId, newState, failedTaskIds);
-    } else if (newState == TaskGroupState.State.FAILED_RECOVERABLE) {
+      notifyTaskGroupStateToMaster(newState, failedTaskIds);
+      break;
+    case FAILED_RECOVERABLE:
       LOG.log(Level.FINE, "TaskGroup ID {0} failed (recoverable).", taskGroupId);
-      notifyTaskGroupStateToMaster(taskGroupId, newState, failedTaskIds);
-    } else if (newState == TaskGroupState.State.FAILED_UNRECOVERABLE) {
+      notifyTaskGroupStateToMaster(newState, failedTaskIds);
+      break;
+    case FAILED_UNRECOVERABLE:
       LOG.log(Level.FINE, "TaskGroup ID {0} failed (unrecoverable).", taskGroupId);
-      notifyTaskGroupStateToMaster(taskGroupId, newState, failedTaskIds);
-    } else {
+      notifyTaskGroupStateToMaster(newState, failedTaskIds);
+      break;
+    default:
       throw new IllegalStateException("Illegal state at this point");
     }
   }
@@ -104,35 +120,53 @@ public final class TaskGroupStateManager {
     LOG.log(Level.FINE, "Task State Transition: id {0} from {1} to {2}",
         new Object[]{taskGroupId, taskStateChanged.getCurrentState(), newState});
     taskStateChanged.setState(newState);
-    if (newState == TaskState.State.COMPLETE) {
+    switch (newState) {
+    case READY:
+    case EXECUTING:
+      break;
+    case COMPLETE:
       currentTaskGroupTaskIds.remove(taskId);
       if (currentTaskGroupTaskIds.isEmpty()) {
         onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty());
       }
+      break;
+    case FAILED_RECOVERABLE:
+      onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE, Optional.of(Arrays.asList(taskId)));
+      break;
+    case FAILED_UNRECOVERABLE:
+      onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE, Optional.of(Arrays.asList(taskId)));
+      break;
+    default:
+      throw new IllegalStateException("Illegal state at this point");
     }
   }
 
   /**
    * Notifies the change in task group state to master.
-   * @param id of the task group.
    * @param newState of the task group.
    * @param failedTaskIds the id of the task that caused this task group to fail, empty otherwise.
    */
-  private void notifyTaskGroupStateToMaster(final String id,
-                                            final TaskGroupState.State newState,
+  private void notifyTaskGroupStateToMaster(final TaskGroupState.State newState,
                                             final Optional<List<String>> failedTaskIds) {
+    final ControlMessage.Message.Builder msgBuilder = ControlMessage.Message.newBuilder();
     final ControlMessage.TaskGroupStateChangedMsg.Builder taskGroupStateChangedMsg =
         ControlMessage.TaskGroupStateChangedMsg.newBuilder();
-    taskGroupStateChangedMsg.setTaskGroupId(id);
+    taskGroupStateChangedMsg.setExecutorId(executorId);
+    taskGroupStateChangedMsg.setTaskGroupId(taskGroupId);
     taskGroupStateChangedMsg.setState(convertState(newState));
+
+    msgBuilder.setId(RuntimeIdGenerator.generateMessageId());
+    msgBuilder.setType(ControlMessage.MessageType.TaskGroupStateChanged);
+    msgBuilder.setTaskStateChangedMsg(taskGroupStateChangedMsg.build());
 
     if (failedTaskIds.isPresent()) {
       taskGroupStateChangedMsg.addAllFailedTaskIds(failedTaskIds.get());
     }
 
-    // TODO #94: Implement Distributed Communicator
-
     // Send taskGroupStateChangedMsg to master!
+    final MessageSender<ControlMessage.Message> senderToDriver =
+        nodeIdToMsgSenderMap.get(MessageEnvironment.MASTER_COMMUNICATION_ID);
+    senderToDriver.send(msgBuilder.build());
   }
 
   // TODO #164: Cleanup Protobuf Usage

@@ -19,12 +19,10 @@ import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.utils.dag.Vertex;
 
-import java.io.Serializable;
-
 /**
  * Represents an operator of a job, tagged with attributes about the operator.
  */
-public abstract class RuntimeVertex extends Vertex implements Serializable {
+public abstract class RuntimeVertex extends Vertex {
   private final RuntimeAttributeMap vertexAttributes;
 
   public RuntimeVertex(final String irVertexId,

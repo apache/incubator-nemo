@@ -13,6 +13,7 @@ enum MessageType {
     BlockLocationInfo = 4;
     RequestBlock = 5;
     TransferBlock = 6;
+    BroadcastPhysicalPlan = 7;
 }
 
 message Message {
@@ -26,6 +27,7 @@ message Message {
         BlockLocationInfoMsg blockLocationInfoMsg = 7;
         RequestBlockMsg requestBlockMsg = 8;
         TransferBlockMsg transferBlockMsg = 9;
+        BroadcastPhysicalPlanMsg broadcastPhysicalPlanMsg = 10;
     }
 }
 
@@ -37,6 +39,10 @@ message ScheduleTaskGroupMsg {
 message BlockLocationInfoMsg {
     string blockId = 1;
     string ownerExecutorId = 2;
+}
+
+message BroadcastPhysicalPlanMsg {
+    bytes physicalPlan = 1;
 }
 
 // Messages from Executors to Master

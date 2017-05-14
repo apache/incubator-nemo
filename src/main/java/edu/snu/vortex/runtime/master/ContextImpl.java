@@ -27,11 +27,11 @@ import java.util.Map;
 public final class ContextImpl implements Transform.Context {
   private final Map<Transform, Object> sideInputs;
 
-  ContextImpl() {
+  public ContextImpl() {
     this.sideInputs = new HashMap<>();
   }
 
-  ContextImpl(final Map<Transform, Object> sideInputs) {
+  public ContextImpl(final Map<Transform, Object> sideInputs) {
     this.sideInputs = sideInputs;
   }
 

@@ -17,12 +17,10 @@ package edu.snu.vortex.runtime.common.plan.physical;
 
 import edu.snu.vortex.utils.dag.Vertex;
 
-import java.io.Serializable;
-
 /**
  * Task.
  */
-public abstract class Task extends Vertex implements Serializable {
+public abstract class Task extends Vertex {
   private final String runtimeVertexId;
   private final int index;
 

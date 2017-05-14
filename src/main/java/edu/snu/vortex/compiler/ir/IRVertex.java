@@ -19,12 +19,10 @@ import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.utils.dag.Vertex;
 
-import java.io.Serializable;
-
 /**
  * The top-most wrapper for a user operation in the Vortex IR.
  */
-public abstract class IRVertex extends Vertex implements Serializable {
+public abstract class IRVertex extends Vertex {
   private final AttributeMap attributes;
 
   /**

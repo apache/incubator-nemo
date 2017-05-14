@@ -17,8 +17,9 @@ package edu.snu.vortex.runtime.executor.datatransfer;
 
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
-import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
+import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
+import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 import edu.snu.vortex.runtime.exception.UnsupportedCommPatternException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionerException;
 import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
@@ -31,31 +32,24 @@ import java.util.stream.IntStream;
  * Represents the output data transfer from a task.
  */
 public final class OutputWriter extends DataTransfer {
-  /**
-   * Attributes that specify how we should write the output.
-   */
-  private final RuntimeAttributeMap edgeAttributes;
-  private final RuntimeAttributeMap dstVertexAttributes;
+  private final int srcTaskIdx;
+  private final RuntimeEdge runtimeEdge;
+  private final RuntimeVertex dstRuntimeVertex;
 
   /**
    * The Block Manager Worker.
    */
   private final BlockManagerWorker blockManagerWorker;
 
-  private final String edgeId;
-  private final int srcTaskindex;
-
-  public OutputWriter(final String edgeId,
-                      final int srcTaskIndex,
-                      final RuntimeAttributeMap dstVertexAttributes,
-                      final RuntimeAttributeMap edgeAttributes,
+  public OutputWriter(final int srcTaskIdx,
+                      final RuntimeVertex dstRuntimeVertex,
+                      final RuntimeEdge runtimeEdge,
                       final BlockManagerWorker blockManagerWorker) {
-    super(edgeId);
-    this.edgeAttributes = edgeAttributes;
-    this.dstVertexAttributes = dstVertexAttributes;
+    super(runtimeEdge.getId());
+    this.runtimeEdge = runtimeEdge;
+    this.dstRuntimeVertex = dstRuntimeVertex;
     this.blockManagerWorker = blockManagerWorker;
-    this.edgeId = edgeId;
-    this.srcTaskindex = srcTaskIndex;
+    this.srcTaskIdx = srcTaskIdx;
   }
 
   /**
@@ -63,7 +57,7 @@ public final class OutputWriter extends DataTransfer {
    * @param dataToWrite An iterable for the elements to be written.
    */
   public void write(final Iterable<Element> dataToWrite) {
-    switch (edgeAttributes.get(RuntimeAttribute.Key.CommPattern)) {
+    switch (runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.CommPattern)) {
     case OneToOne:
       writeOneToOne(dataToWrite);
       break;
@@ -79,20 +73,22 @@ public final class OutputWriter extends DataTransfer {
   }
 
   private void writeOneToOne(final Iterable<Element> dataToWrite) {
-    final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskindex);
-    blockManagerWorker.putBlock(blockId, dataToWrite, edgeAttributes.get(RuntimeAttribute.Key.BlockStore));
+    final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
+    blockManagerWorker.putBlock(blockId, dataToWrite,
+        runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.BlockStore));
   }
 
   private void writeBroadcast(final Iterable<Element> dataToWrite) {
-    final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskindex);
-    blockManagerWorker.putBlock(blockId, dataToWrite, edgeAttributes.get(RuntimeAttribute.Key.BlockStore));
+    final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
+    blockManagerWorker.putBlock(blockId, dataToWrite,
+        runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.BlockStore));
   }
 
   private void writeScatterGather(final Iterable<Element> dataToWrite) {
-    final RuntimeAttribute partition = edgeAttributes.get(RuntimeAttribute.Key.Partition);
+    final RuntimeAttribute partition = runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.Partition);
     switch (partition) {
     case Hash:
-      final int dstParallelism = dstVertexAttributes.get(RuntimeAttribute.IntegerKey.Parallelism);
+      final int dstParallelism = dstRuntimeVertex.getVertexAttributes().get(RuntimeAttribute.IntegerKey.Parallelism);
 
       // First partition the data to write,
       final List<List<Element>> partitionedOutputList = new ArrayList<>(dstParallelism);
@@ -106,10 +102,10 @@ public final class OutputWriter extends DataTransfer {
       // Then write each partition appropriately to the target data placement.
       IntStream.range(0, dstParallelism).forEach(partitionIdx -> {
         // Give each partition its own block id
-        final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskindex, partitionIdx);
+        final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx, partitionIdx);
         blockManagerWorker.putBlock(blockId,
             partitionedOutputList.get(partitionIdx),
-            edgeAttributes.get(RuntimeAttribute.Key.BlockStore));
+            runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.BlockStore));
       });
       break;
     case Range:
