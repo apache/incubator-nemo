@@ -20,6 +20,8 @@ import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageSender;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
+import edu.snu.vortex.runtime.executor.Executor;
+import edu.snu.vortex.runtime.executor.ExecutorConfiguration;
 import edu.snu.vortex.runtime.master.resourcemanager.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.resourcemanager.ResourceManager;
 import edu.snu.vortex.runtime.master.scheduler.RoundRobinSchedulingPolicy;
@@ -43,10 +45,12 @@ public final class RoundRobinSchedulingPolicyTest {
   private SchedulingPolicy schedulingPolicy;
   private ResourceManager resourceManager = new MockResourceManager();
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
+  private final ExecutorConfiguration executorConfiguration = new ExecutorConfiguration();
 
   private final class MockResourceManager implements ResourceManager {
     @Override
-    public void requestExecutor(final RuntimeAttribute resourceType, final int executorCapacity) {
+    public void requestExecutor(final RuntimeAttribute resourceType,
+                                final ExecutorConfiguration executorConfiguration) {
       if (resourceType == RuntimeAttribute.Compute) {
         final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", RuntimeAttribute.Compute, 1, mockMsgSender);
         final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", RuntimeAttribute.Compute, 1, mockMsgSender);
@@ -75,8 +79,8 @@ public final class RoundRobinSchedulingPolicyTest {
 
   @Test
   public void testSingleCoreTwoTypesOfExecutors() {
-    resourceManager.requestExecutor(RuntimeAttribute.Compute, 1);
-    resourceManager.requestExecutor(RuntimeAttribute.Storage, 1);
+    resourceManager.requestExecutor(RuntimeAttribute.Compute, executorConfiguration);
+    resourceManager.requestExecutor(RuntimeAttribute.Storage, executorConfiguration);
 
     final TaskGroup A1 = new TaskGroup("A1", "Stage A", null, RuntimeAttribute.Compute);
     final TaskGroup A2 = new TaskGroup("A2", "Stage A", null, RuntimeAttribute.Compute);
