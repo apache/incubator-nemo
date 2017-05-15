@@ -71,6 +71,7 @@ public final class Executor {
 
   public Executor(final String executorId,
                   final int capacity,
+                  final int numThreads,
                   final LocalMessageDispatcher localMessageDispatcher,
                   final BlockManagerMaster blockManagerMaster) {
     this.executorId = executorId;
@@ -79,7 +80,7 @@ public final class Executor {
     this.nodeIdToMsgSenderMap = new HashMap<>();
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER, new ExecutorMessageReceiver());
     connectToOtherNodes(messageEnvironment);
-    this.executorService = Executors.newFixedThreadPool(capacity);
+    this.executorService = Executors.newFixedThreadPool(numThreads);
     this.dataTransferFactory = new DataTransferFactory(executorId, blockManagerMaster);
   }
 
