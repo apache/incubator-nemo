@@ -16,6 +16,7 @@
 package edu.snu.vortex.runtime.master.resourcemanager;
 
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.runtime.executor.ExecutorConfiguration;
 
 /**
  * Manages resources depending on the environment in which jobs are executed.
@@ -24,9 +25,8 @@ public interface ResourceManager {
   /**
    * Requests for an executor.
    * @param resourceType the resource type (ex. compute/storage) to request for the executor.
-   * @param executorCapacity the number of executable {@link edu.snu.vortex.runtime.common.plan.physical.TaskGroup}s
-   *                         at a time.
+   * @param executorConfiguration the configuration for the executor to use.
    */
-  void requestExecutor(final RuntimeAttribute resourceType, final int executorCapacity);
+  void requestExecutor(final RuntimeAttribute resourceType, final ExecutorConfiguration executorConfiguration);
 
 }

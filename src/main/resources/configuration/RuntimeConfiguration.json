@@ -1,0 +1,7 @@
+{
+  "executorConfiguration" : {
+    "defaultExecutorNum" : 2,
+    "defaultExecutorCapacity" : 4,
+    "executorNumThreads" : 4
+  }
+}

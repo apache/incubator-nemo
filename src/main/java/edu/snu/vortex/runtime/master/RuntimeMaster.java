@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.runtime.master;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
@@ -36,6 +37,8 @@ import edu.snu.vortex.runtime.master.scheduler.BatchScheduler;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import edu.snu.vortex.utils.dag.DAG;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -54,10 +57,7 @@ import static edu.snu.vortex.runtime.common.RuntimeAttribute.*;
 public final class RuntimeMaster {
   private static final Logger LOG = Logger.getLogger(RuntimeMaster.class.getName());
 
-  // We should have a new way of (ex. configuration) these settings.
-  private static final int DEFAULT_EXECUTOR_NUM = 2;
-  private static final int DEFAULT_EXECUTOR_CAPACITY = 4;
-
+  private final RuntimeConfiguration runtimeConfiguration;
   private final Scheduler scheduler;
   private final ResourceManager resourceManager;
   private final LocalMessageDispatcher localMessageDispatcher;
@@ -69,6 +69,7 @@ public final class RuntimeMaster {
     switch (schedulerType) {
     case Batch:
       this.scheduler = new BatchScheduler(RuntimeAttribute.RoundRobin, 2000);
+      this.runtimeConfiguration = readConfiguration();
       break;
     default:
       throw new RuntimeException("Unknown scheduler type");
@@ -83,6 +84,18 @@ public final class RuntimeMaster {
     initializeResources();
   }
 
+  private RuntimeConfiguration readConfiguration() {
+    final ObjectMapper objectMapper = new ObjectMapper();
+    final File configurationFile = new File("src/main/resources/configuration/RuntimeConfiguration.json");
+    final RuntimeConfiguration configuration;
+    try {
+      configuration = objectMapper.readValue(configurationFile, RuntimeConfiguration.class);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to read configuration file", e);
+    }
+    return configuration;
+  }
+
   /**
    * Initialize a default amount of resources by requesting to the Resource Manager.
    */
@@ -90,8 +103,8 @@ public final class RuntimeMaster {
     final Set<RuntimeAttribute> completeSetOfResourceType =
         new HashSet<>(Arrays.asList(Transient, Reserved, Compute, Storage));
     completeSetOfResourceType.forEach(resourceType -> {
-      for (int i = 0; i < DEFAULT_EXECUTOR_NUM; i++) {
-        resourceManager.requestExecutor(resourceType, DEFAULT_EXECUTOR_CAPACITY);
+      for (int i = 0; i < runtimeConfiguration.getExecutorConfiguration().getDefaultExecutorNum(); i++) {
+        resourceManager.requestExecutor(resourceType, runtimeConfiguration.getExecutorConfiguration());
       }
     });
   }

@@ -6,6 +6,7 @@ import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.vortex.runtime.executor.Executor;
+import edu.snu.vortex.runtime.executor.ExecutorConfiguration;
 import edu.snu.vortex.runtime.master.BlockManagerMaster;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 
@@ -40,12 +41,16 @@ public final class LocalResourceManager implements ResourceManager {
   }
 
   @Override
-  public synchronized void requestExecutor(final RuntimeAttribute resourceType, final int executorCapacity) {
+  public synchronized void requestExecutor(final RuntimeAttribute resourceType,
+                                           final ExecutorConfiguration executorConfiguration) {
     final String executorId = RuntimeIdGenerator.generateExecutorId();
 
     // Create the executor!
     final Executor executor =
-        new Executor(executorId, executorCapacity, localMessageDispatcher, blockManagerMaster);
+        new Executor(executorId,
+            executorConfiguration.getDefaultExecutorCapacity(),
+            executorConfiguration.getExecutorNumThreads(),
+            localMessageDispatcher, blockManagerMaster);
     executorMap.put(executorId, executor);
 
     // Connect to the executor and initiate Master side's executor representation.
@@ -57,7 +62,8 @@ public final class LocalResourceManager implements ResourceManager {
       throw new RuntimeException(e);
     }
     final ExecutorRepresenter executorRepresenter =
-        new ExecutorRepresenter(executorId, resourceType, executorCapacity, messageSender);
+        new ExecutorRepresenter(executorId, resourceType,
+            executorConfiguration.getDefaultExecutorCapacity(), messageSender);
     scheduler.onExecutorAdded(executorRepresenter);
   }
 }
