@@ -15,6 +15,8 @@
  */
 package edu.snu.vortex.compiler.ir;
 
+import java.io.Serializable;
+
 /**
  * Key-value pair wrapper for a data element.
  * This is to be implemented in the frontend
@@ -23,7 +25,7 @@ package edu.snu.vortex.compiler.ir;
  * @param <Key> key type.
  * @param <Value> value type.
  */
-public interface Element<Data, Key, Value> {
+public interface Element<Data, Key, Value> extends Serializable {
   /**
    * @return data.
    */

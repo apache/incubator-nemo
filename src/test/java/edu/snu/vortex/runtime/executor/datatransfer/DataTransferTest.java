@@ -18,30 +18,38 @@ package edu.snu.vortex.runtime.executor.datatransfer;
 import edu.snu.vortex.compiler.frontend.beam.BeamElement;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.ir.Element;
-import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
+import edu.snu.vortex.runtime.common.comm.ControlMessage;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
+import edu.snu.vortex.runtime.common.message.MessageSender;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeBoundedSourceVertex;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
+import edu.snu.vortex.runtime.executor.Executor;
+import edu.snu.vortex.runtime.executor.ExecutorConfiguration;
 import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
 import edu.snu.vortex.runtime.executor.block.LocalStore;
 import edu.snu.vortex.runtime.master.BlockManagerMaster;
+import edu.snu.vortex.runtime.master.RuntimeConfiguration;
+import edu.snu.vortex.runtime.master.RuntimeMaster;
+import edu.snu.vortex.runtime.master.resourcemanager.ResourceManager;
+import edu.snu.vortex.runtime.master.scheduler.BatchScheduler;
+import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.values.KV;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Tests {@link InputReader} and {@link OutputWriter}.
@@ -49,18 +57,77 @@ import static org.mockito.Mockito.when;
 public final class DataTransferTest {
   private static final RuntimeAttribute STORE = RuntimeAttribute.Local;
   private static final int PARALLELISM_TEN = 10;
+  private static final long DEFAULT_SCHEDULE_TIMEOUT = 1000;
 
+  private Scheduler scheduler;
+  private LocalMessageDispatcher dispatcher;
+  private MessageEnvironment masterEnv;
   private BlockManagerMaster master;
   private BlockManagerWorker worker1;
   private BlockManagerWorker worker2;
 
   @Before
   public void setUp() {
+    this.dispatcher = new LocalMessageDispatcher();
+    this.masterEnv = new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, dispatcher);
     this.master = new BlockManagerMaster();
-    this.worker1 = new BlockManagerWorker("worker1", master, new LocalStore());
-    this.worker2 = new BlockManagerWorker("worker2", master, new LocalStore());
-    this.master.addNewWorker(worker1);
-    this.master.addNewWorker(worker2);
+    final ResourceManager resourceManager = new MockResourceManager();
+
+    this.scheduler = new BatchScheduler(RuntimeAttribute.RoundRobin, 2000);
+    new RuntimeMaster(
+        new RuntimeConfiguration(DEFAULT_SCHEDULE_TIMEOUT, new ExecutorConfiguration(2, 1, 1)),
+        scheduler,
+        dispatcher,
+        masterEnv,
+        master,
+        resourceManager);
+  }
+
+  private final class MockResourceManager implements ResourceManager {
+
+    private int executorCount = 0;
+
+    @Override
+    public Optional<Executor> requestExecutor(final RuntimeAttribute resourceType,
+                                final ExecutorConfiguration executorConfiguration) {
+      if (executorCount < 2) {
+        final String executorId = "Executor" + executorCount;
+
+        final MessageEnvironment workerEnv = new LocalMessageEnvironment(executorId, dispatcher);
+
+        final Map<String, MessageSender<ControlMessage.Message>> nodeIdToMsgSenderForWorker = new HashMap<>();
+        try {
+          nodeIdToMsgSenderForWorker.put(MessageEnvironment.MASTER_COMMUNICATION_ID,
+              workerEnv.<ControlMessage.Message>asyncConnect(MessageEnvironment.MASTER_COMMUNICATION_ID,
+                  MessageEnvironment.MASTER_MESSAGE_RECEIVER).get());
+        } catch (final Exception e) {
+          e.printStackTrace();
+        }
+
+        final BlockManagerWorker blockManagerWorker =
+            new BlockManagerWorker(executorId, new LocalStore(), workerEnv, nodeIdToMsgSenderForWorker);
+
+        if (executorCount == 0) {
+          worker1 = blockManagerWorker;
+        } else {
+          worker2 = blockManagerWorker;
+        }
+
+        // Create the executor!
+        final Executor executor =
+            new Executor("Executor" + executorCount,
+                executorConfiguration.getDefaultExecutorCapacity(),
+                executorConfiguration.getExecutorNumThreads(),
+                workerEnv,
+                nodeIdToMsgSenderForWorker,
+                blockManagerWorker,
+                new DataTransferFactory(blockManagerWorker));
+
+        executorCount++;
+        return Optional.of(executor);
+      }
+      return Optional.empty();
+    }
   }
 
   @Test
@@ -149,7 +216,15 @@ public final class DataTransferTest {
     // Compare (should be the same)
     final List<Element> flattenedWrittenData = flatten(dataWrittenList);
     final List<Element> flattenedReadData = flatten(dataReadList);
-    assertTrue(doTheyHaveSameElements(flattenedWrittenData, flattenedReadData));
+    if (commPattern == RuntimeAttribute.Broadcast) {
+      final List<Element> broadcastedWrittenData = new ArrayList<>();
+      IntStream.range(0, PARALLELISM_TEN).forEach(i -> broadcastedWrittenData.addAll(flattenedWrittenData));
+      assertEquals(broadcastedWrittenData.size(), flattenedReadData.size());
+      flattenedReadData.forEach(rData -> assertTrue(broadcastedWrittenData.remove(rData)));
+    } else {
+      assertEquals(flattenedWrittenData.size(), flattenedReadData.size());
+      flattenedReadData.forEach(rData -> assertTrue(flattenedWrittenData.remove(rData)));
+    }
   }
 
   private List<Element> getListOfZeroToNine() {
@@ -160,12 +235,5 @@ public final class DataTransferTest {
 
   private List<Element> flatten(final List<List<Element>> listOfList) {
     return listOfList.stream().flatMap(list -> list.stream()).collect(Collectors.toList());
-  }
-
-  private boolean doTheyHaveSameElements(final List<Element> l, final List<Element> r) {
-    // Check equality, ignoring list order
-    final Set<Element> s1 = new HashSet<>(l);
-    final Set<Element> s2 = new HashSet<>(r);
-    return s1.equals(s2);
   }
 }

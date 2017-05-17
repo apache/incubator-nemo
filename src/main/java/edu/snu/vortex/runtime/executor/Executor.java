@@ -15,23 +15,33 @@
  */
 package edu.snu.vortex.runtime.executor;
 
+import com.google.protobuf.ByteString;
+import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageListener;
 import edu.snu.vortex.runtime.common.message.MessageSender;
-import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
-import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
-import edu.snu.vortex.runtime.exception.NodeConnectionException;
+import edu.snu.vortex.runtime.exception.UnsupportedBlockStoreException;
+import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
 import edu.snu.vortex.runtime.executor.datatransfer.DataTransferFactory;
-import edu.snu.vortex.runtime.master.BlockManagerMaster;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.coders.VarIntCoder;
+import org.apache.beam.sdk.transforms.join.RawUnionValue;
+import org.apache.beam.sdk.transforms.join.UnionCoder;
+import org.apache.beam.sdk.values.KV;
 import org.apache.commons.lang3.SerializationUtils;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -62,6 +72,11 @@ public final class Executor {
   private final ExecutorService executorService;
 
   /**
+   * In charge of this executor's intermediate data transfer.
+   */
+  private final BlockManagerWorker blockManagerWorker;
+
+  /**
    * Factory of InputReader/OutputWriter for executing tasks groups.
    */
   private final DataTransferFactory dataTransferFactory;
@@ -72,33 +87,26 @@ public final class Executor {
   public Executor(final String executorId,
                   final int capacity,
                   final int numThreads,
-                  final LocalMessageDispatcher localMessageDispatcher,
-                  final BlockManagerMaster blockManagerMaster) {
+                  final MessageEnvironment messageEnvironment,
+                  final Map<String, MessageSender<ControlMessage.Message>> nodeIdToMsgSenderMap,
+                  final BlockManagerWorker blockManagerWorker,
+                  final DataTransferFactory dataTransferFactory) {
     this.executorId = executorId;
     this.capacity = capacity;
-    this.messageEnvironment = new LocalMessageEnvironment(executorId, localMessageDispatcher);
-    this.nodeIdToMsgSenderMap = new HashMap<>();
-    messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER, new ExecutorMessageReceiver());
-    connectToOtherNodes(messageEnvironment);
     this.executorService = Executors.newFixedThreadPool(numThreads);
-    this.dataTransferFactory = new DataTransferFactory(executorId, blockManagerMaster);
+    this.messageEnvironment = messageEnvironment;
+    this.nodeIdToMsgSenderMap = nodeIdToMsgSenderMap;
+    messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER, new ExecutorMessageReceiver());
+    this.blockManagerWorker = blockManagerWorker;
+    this.dataTransferFactory = dataTransferFactory;
   }
 
-  /**
-   * Initializes connections to other nodes to send necessary messages.
-   * @param myMessageEnvironment the message environment for this executor.
-   */
-  // TODO #186: Integrate BlockManager Master/Workers with Protobuf Messages
-  // We should connect to the existing executors for control messages involved in block transfers.
-  private void connectToOtherNodes(final MessageEnvironment myMessageEnvironment) {
-    // Connect to Master for now.
-    try {
-      nodeIdToMsgSenderMap.put(MessageEnvironment.MASTER_COMMUNICATION_ID,
-          myMessageEnvironment.<ControlMessage.Message>asyncConnect(
-              MessageEnvironment.MASTER_COMMUNICATION_ID, MessageEnvironment.MASTER_MESSAGE_RECEIVER).get());
-    } catch (Exception e) {
-      throw new NodeConnectionException(e);
-    }
+  public String getExecutorId() {
+    return executorId;
+  }
+
+  public int getCapacity() {
+    return capacity;
   }
 
   private synchronized void onTaskGroupReceived(final TaskGroup taskGroup) {
@@ -137,13 +145,6 @@ public final class Executor {
         final TaskGroup taskGroup = SerializationUtils.deserialize(scheduleTaskGroupMsg.getTaskGroup().toByteArray());
         onTaskGroupReceived(taskGroup);
         break;
-      // TODO #186: Integrate BlockManager Master/Workers with Protobuf Messages
-      case BlockLocationInfo:
-        throw new UnsupportedOperationException("Not yet supported");
-      case RequestBlock:
-        throw new UnsupportedOperationException("Not yet supported");
-      case TransferBlock:
-        throw new UnsupportedOperationException("Not yet supported");
       default:
         throw new IllegalMessageException(
             new Exception("This message should not be received by an executor :" + message.getType()));
@@ -152,6 +153,75 @@ public final class Executor {
 
     @Override
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
+      switch (message.getType()) {
+      case RequestBlock:
+        final ControlMessage.RequestBlockMsg requestBlockMsg = message.getRequestBlockMsg();
+
+        final Iterable<Element> data = blockManagerWorker.getBlock(requestBlockMsg.getBlockId(),
+            convertBlockStoreType(requestBlockMsg.getBlockStore()));
+
+        // TODO #197: Improve Serialization/Deserialization Performance
+        final ArrayList<byte[]> dataToSerialize = new ArrayList<>();
+        boolean isUnionValue = false;
+        for (final Element element : data) {
+          try (final ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
+            // TODO #18: Support code/data serialization
+            if (element.getData() instanceof KV) {
+              final KV keyValue = (KV) element.getData();
+              if (keyValue.getValue() instanceof RawUnionValue) {
+                List<Coder<?>> elementCodecs = Arrays.asList(SerializableCoder.of(double[].class),
+                    SerializableCoder.of(double[].class));
+                UnionCoder coder = UnionCoder.of(elementCodecs);
+                KvCoder kvCoder = KvCoder.of(VarIntCoder.of(), coder);
+                kvCoder.encode(keyValue, stream, Coder.Context.OUTER);
+
+                isUnionValue = true;
+              } else {
+                SerializationUtils.serialize(element, stream);
+              }
+            } else {
+              SerializationUtils.serialize(element, stream);
+            }
+            dataToSerialize.add(stream.toByteArray());
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        }
+
+        messageContext.reply(
+            ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdGenerator.generateMessageId())
+                .setType(ControlMessage.MessageType.TransferBlock)
+                .setTransferBlockMsg(
+                    ControlMessage.TransferBlockMsg.newBuilder()
+                        .setExecutorId(executorId)
+                        .setBlockId(requestBlockMsg.getBlockId())
+                        .setIsUnionValue(isUnionValue)
+                        .setData(ByteString.copyFrom(SerializationUtils.serialize(dataToSerialize)))
+                        .build())
+                .build());
+        break;
+      default:
+        throw new IllegalMessageException(
+            new Exception("This message should not be requested to an executor :" + message.getType()));
+      }
+    }
+  }
+
+  private RuntimeAttribute convertBlockStoreType(final ControlMessage.BlockStore blockStoreType) {
+    switch (blockStoreType) {
+    case LOCAL:
+      return RuntimeAttribute.Local;
+    case MEMORY:
+      return RuntimeAttribute.Memory;
+    case FILE:
+      return RuntimeAttribute.File;
+    case MEMORY_FILE:
+      return RuntimeAttribute.MemoryFile;
+    case DISTRIBUTED_STORAGE:
+      return RuntimeAttribute.DistributedStorage;
+    default:
+      throw new UnsupportedBlockStoreException(new Throwable("This block store is not yet supported"));
     }
   }
 }

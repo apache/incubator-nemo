@@ -118,16 +118,17 @@ public final class BatchScheduler implements Scheduler {
   }
 
   private void broadcastPhysicalPlan() {
-    executorRepresenterMap.forEach((executorId, representer) -> {
-      ControlMessage.Message.Builder msgBuilder = ControlMessage.Message.newBuilder();
-      final ControlMessage.BroadcastPhysicalPlanMsg.Builder broadcastPhysicalPlanMsgBuilder =
-          ControlMessage.BroadcastPhysicalPlanMsg.newBuilder();
-      broadcastPhysicalPlanMsgBuilder.setPhysicalPlan(ByteString.copyFrom(SerializationUtils.serialize(physicalPlan)));
-      msgBuilder.setId(RuntimeIdGenerator.generateMessageId());
-      msgBuilder.setType(ControlMessage.MessageType.BroadcastPhysicalPlan);
-      msgBuilder.setBroadcastPhysicalPlanMsg(broadcastPhysicalPlanMsgBuilder.build());
-      representer.sendControlMessage(msgBuilder.build());
-    });
+    ControlMessage.Message message =
+        ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdGenerator.generateMessageId())
+            .setType(ControlMessage.MessageType.BroadcastPhysicalPlan)
+            .setBroadcastPhysicalPlanMsg(
+                ControlMessage.BroadcastPhysicalPlanMsg.newBuilder()
+                    .setPhysicalPlan(ByteString.copyFrom(SerializationUtils.serialize(physicalPlan)))
+                    .build())
+            .build();
+
+    executorRepresenterMap.forEach((executorId, representer) -> representer.sendControlMessage(message));
   }
 
   /**
