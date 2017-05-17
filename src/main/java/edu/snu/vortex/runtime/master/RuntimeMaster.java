@@ -15,32 +15,32 @@
  */
 package edu.snu.vortex.runtime.master;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageListener;
+import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
-import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
+import edu.snu.vortex.runtime.common.state.BlockState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
-import edu.snu.vortex.runtime.master.resourcemanager.LocalResourceManager;
+import edu.snu.vortex.runtime.executor.Executor;
+import edu.snu.vortex.runtime.master.resourcemanager.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.resourcemanager.ResourceManager;
 import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
 import edu.snu.vortex.runtime.common.plan.logical.Stage;
 import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalDAGGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.vortex.runtime.master.scheduler.BatchScheduler;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import edu.snu.vortex.utils.dag.DAG;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -51,7 +51,7 @@ import static edu.snu.vortex.runtime.common.RuntimeAttribute.*;
  * Compiler submits an {@link ExecutionPlan} to Runtime Master to execute a job.
  * Runtime Master handles:
  *    a) Physical conversion of a job's DAG into a physical plan.
- *    b) Scheduling the job with {@link BatchScheduler}.
+ *    b) Scheduling the job with {@link Scheduler}.
  *    c) (Please list others done by Runtime Master as features are added).
  */
 public final class RuntimeMaster {
@@ -65,35 +65,21 @@ public final class RuntimeMaster {
   private final BlockManagerMaster blockManagerMaster;
   private JobStateManager jobStateManager;
 
-  public RuntimeMaster(final RuntimeAttribute schedulerType) {
-    switch (schedulerType) {
-    case Batch:
-      this.scheduler = new BatchScheduler(RuntimeAttribute.RoundRobin, 2000);
-      this.runtimeConfiguration = readConfiguration();
-      break;
-    default:
-      throw new RuntimeException("Unknown scheduler type");
-    }
-    this.localMessageDispatcher = new LocalMessageDispatcher();
-    this.masterMessageEnvironment =
-        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, localMessageDispatcher);
-    masterMessageEnvironment.setupListener(MessageEnvironment.MASTER_MESSAGE_RECEIVER, new MasterMessageReceiver());
-    this.blockManagerMaster = new BlockManagerMaster();
-    this.resourceManager =
-        new LocalResourceManager(scheduler, masterMessageEnvironment, localMessageDispatcher, blockManagerMaster);
+  public RuntimeMaster(final RuntimeConfiguration runtimeConfiguration,
+                       final Scheduler scheduler,
+                       final LocalMessageDispatcher localMessageDispatcher,
+                       final MessageEnvironment masterMessageEnvironment,
+                       final BlockManagerMaster blockManagerMaster,
+                       final ResourceManager resourceManager) {
+    this.scheduler = scheduler;
+    this.runtimeConfiguration = runtimeConfiguration;
+    this.localMessageDispatcher = localMessageDispatcher;
+    this.masterMessageEnvironment = masterMessageEnvironment;
+    this.masterMessageEnvironment.setupListener(MessageEnvironment.MASTER_MESSAGE_RECEIVER,
+        new MasterMessageReceiver());
+    this.blockManagerMaster = blockManagerMaster;
+    this.resourceManager = resourceManager;
     initializeResources();
-  }
-
-  private RuntimeConfiguration readConfiguration() {
-    final ObjectMapper objectMapper = new ObjectMapper();
-    final File configurationFile = new File("src/main/resources/configuration/RuntimeConfiguration.json");
-    final RuntimeConfiguration configuration;
-    try {
-      configuration = objectMapper.readValue(configurationFile, RuntimeConfiguration.class);
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to read configuration file", e);
-    }
-    return configuration;
   }
 
   /**
@@ -104,7 +90,24 @@ public final class RuntimeMaster {
         new HashSet<>(Arrays.asList(Transient, Reserved, Compute, Storage));
     completeSetOfResourceType.forEach(resourceType -> {
       for (int i = 0; i < runtimeConfiguration.getExecutorConfiguration().getDefaultExecutorNum(); i++) {
-        resourceManager.requestExecutor(resourceType, runtimeConfiguration.getExecutorConfiguration());
+        final Optional<Executor> executor =
+            resourceManager.requestExecutor(resourceType, runtimeConfiguration.getExecutorConfiguration());
+
+        if (executor.isPresent()) {
+          // Connect to the executor and initiate Master side's executor representation.
+          final MessageSender messageSender;
+          try {
+            messageSender =
+                masterMessageEnvironment.asyncConnect(
+                    executor.get().getExecutorId(), MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER).get();
+          } catch (final Exception e) {
+            throw new RuntimeException(e);
+          }
+          final ExecutorRepresenter executorRepresenter =
+              new ExecutorRepresenter(executor.get().getExecutorId(), resourceType,
+                  executor.get().getCapacity(), messageSender);
+          scheduler.onExecutorAdded(executorRepresenter);
+        }
       }
     });
   }
@@ -149,7 +152,7 @@ public final class RuntimeMaster {
    */
   // TODO #187: Cleanup Execution Threads
   // Executor threads call this at the moment.
-  private final class MasterMessageReceiver implements MessageListener<ControlMessage.Message> {
+  public final class MasterMessageReceiver implements MessageListener<ControlMessage.Message> {
 
     @Override
     public void onMessage(final ControlMessage.Message message) {
@@ -158,13 +161,14 @@ public final class RuntimeMaster {
         final ControlMessage.TaskGroupStateChangedMsg taskGroupStateChangedMsg = message.getTaskStateChangedMsg();
         scheduler.onTaskGroupStateChanged(taskGroupStateChangedMsg.getExecutorId(),
             taskGroupStateChangedMsg.getTaskGroupId(),
-            convertState(taskGroupStateChangedMsg.getState()),
+            convertTaskGroupState(taskGroupStateChangedMsg.getState()),
             taskGroupStateChangedMsg.getFailedTaskIdsList());
         break;
       case BlockStateChanged:
-        throw new UnsupportedOperationException("Not yet supported");
-      case RequestBlock:
-        throw new UnsupportedOperationException("Not yet supported");
+        final ControlMessage.BlockStateChangedMsg blockStateChangedMsg = message.getBlockStateChangedMsg();
+        blockManagerMaster.onBlockStateChanged(blockStateChangedMsg.getExecutorId(), blockStateChangedMsg.getBlockId(),
+            convertBlockState(blockStateChangedMsg.getState()));
+        break;
       default:
         throw new IllegalMessageException(
             new Exception("This message should not be received by Master :" + message.getType()));
@@ -173,11 +177,31 @@ public final class RuntimeMaster {
 
     @Override
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
+      switch (message.getType()) {
+      case RequestBlockLocation:
+        final ControlMessage.RequestBlockLocationMsg requestBlockLocationMsg = message.getRequestBlockLocationMsg();
+
+        messageContext.reply(
+            ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdGenerator.generateMessageId())
+                .setType(ControlMessage.MessageType.BlockLocationInfo)
+                .setBlockLocationInfoMsg(
+                    ControlMessage.BlockLocationInfoMsg.newBuilder()
+                        .setBlockId(requestBlockLocationMsg.getBlockId())
+                        .setOwnerExecutorId(
+                            blockManagerMaster.getBlockLocation(requestBlockLocationMsg.getBlockId()).get())
+                        .build())
+                .build());
+        break;
+      default:
+        throw new IllegalMessageException(
+            new Exception("This message should not be requested to Master :" + message.getType()));
+      }
     }
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  private TaskGroupState.State convertState(final ControlMessage.TaskGroupStateFromExecutor state) {
+  private TaskGroupState.State convertTaskGroupState(final ControlMessage.TaskGroupStateFromExecutor state) {
     switch (state) {
     case READY:
       return TaskGroupState.State.READY;
@@ -189,6 +213,22 @@ public final class RuntimeMaster {
       return TaskGroupState.State.FAILED_RECOVERABLE;
     case FAILED_UNRECOVERABLE:
       return TaskGroupState.State.FAILED_UNRECOVERABLE;
+    default:
+      throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
+    }
+  }
+
+  // TODO #164: Cleanup Protobuf Usage
+  private BlockState.State convertBlockState(final ControlMessage.BlockStateFromExecutor state) {
+    switch (state) {
+    case BLOCK_READY:
+      return BlockState.State.READY;
+    case MOVING:
+      return BlockState.State.MOVING;
+    case COMMITTED:
+      return BlockState.State.COMMITTED;
+    case LOST:
+      return BlockState.State.LOST;
     default:
       throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
     }

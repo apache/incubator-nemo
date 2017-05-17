@@ -6,13 +6,20 @@ import edu.snu.vortex.runtime.executor.ExecutorConfiguration;
  * Defines all configurations required in Runtime.
  */
 public final class RuntimeConfiguration {
+  private long defaultScheduleTimeout;
   private ExecutorConfiguration executorConfiguration;
 
   public RuntimeConfiguration() {
   }
 
-  public RuntimeConfiguration(final ExecutorConfiguration executorConfiguration) {
+  public RuntimeConfiguration(final long defaultScheduleTimeout,
+                              final ExecutorConfiguration executorConfiguration) {
+    this.defaultScheduleTimeout = defaultScheduleTimeout;
     this.executorConfiguration = executorConfiguration;
+  }
+
+  public long getDefaultScheduleTimeout() {
+    return defaultScheduleTimeout;
   }
 
   public ExecutorConfiguration getExecutorConfiguration() {
@@ -22,7 +29,8 @@ public final class RuntimeConfiguration {
   @Override
   public String toString() {
     final StringBuffer sb = new StringBuffer("RuntimeConfiguration{");
-    sb.append("executorConfiguration=").append(executorConfiguration);
+    sb.append("defaultScheduleTimeout=").append(defaultScheduleTimeout);
+    sb.append(", executorConfiguration=").append(executorConfiguration);
     sb.append('}');
     return sb.toString();
   }

@@ -1,4 +1,5 @@
 {
+  "defaultScheduleTimeout" : 2000,
   "executorConfiguration" : {
     "defaultExecutorNum" : 2,
     "defaultExecutorCapacity" : 4,

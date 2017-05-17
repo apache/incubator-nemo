@@ -15,14 +15,24 @@
  */
 package edu.snu.vortex.client;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.vortex.compiler.backend.Backend;
 import edu.snu.vortex.compiler.backend.vortex.VortexBackend;
 import edu.snu.vortex.compiler.frontend.Frontend;
 import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
+import edu.snu.vortex.runtime.master.BlockManagerMaster;
+import edu.snu.vortex.runtime.master.RuntimeConfiguration;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
+import edu.snu.vortex.runtime.master.resourcemanager.LocalResourceManager;
+import edu.snu.vortex.runtime.master.resourcemanager.ResourceManager;
+import edu.snu.vortex.runtime.master.scheduler.BatchScheduler;
+import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import edu.snu.vortex.utils.dag.DAG;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
@@ -31,6 +41,7 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.CommandLine;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -85,7 +96,24 @@ public final class JobLauncher {
      * Step 2: Execute
      */
     LOG.log(Level.INFO, "##### VORTEX Runtime #####");
-    new RuntimeMaster(RuntimeAttribute.Batch).execute(executionPlan, dagDirectory);
+    // Initialize Runtime Components
+    final RuntimeConfiguration runtimeConfiguration = readConfiguration();
+    final Scheduler scheduler = new BatchScheduler(RuntimeAttribute.RoundRobin,
+        runtimeConfiguration.getDefaultScheduleTimeout());
+    final LocalMessageDispatcher localMessageDispatcher = new LocalMessageDispatcher();
+    final MessageEnvironment masterMessageEnvironment =
+        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, localMessageDispatcher);
+    final BlockManagerMaster blockManagerMaster = new BlockManagerMaster();
+    final ResourceManager resourceManager = new LocalResourceManager(localMessageDispatcher);
+
+    // Initialize RuntimeMaster and Execute!
+    new RuntimeMaster(
+        runtimeConfiguration,
+        scheduler,
+        localMessageDispatcher,
+        masterMessageEnvironment,
+        blockManagerMaster,
+        resourceManager).execute(executionPlan, dagDirectory);
   }
 
   /**
@@ -105,4 +133,17 @@ public final class JobLauncher {
     cl.processCommandLine(args);
     return confBuilder.build();
   }
+
+  private static RuntimeConfiguration readConfiguration() {
+    final ObjectMapper objectMapper = new ObjectMapper();
+    final File configurationFile = new File("src/main/resources/configuration/RuntimeConfiguration.json");
+    final RuntimeConfiguration configuration;
+    try {
+      configuration = objectMapper.readValue(configurationFile, RuntimeConfiguration.class);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to read configuration file", e);
+    }
+    return configuration;
+  }
+
 }
