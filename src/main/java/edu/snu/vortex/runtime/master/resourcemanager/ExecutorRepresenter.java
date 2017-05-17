@@ -57,16 +57,15 @@ public final class ExecutorRepresenter {
   public void onTaskGroupScheduled(final TaskGroup taskGroup) {
     runningTaskGroups.add(taskGroup.getTaskGroupId());
 
-    final ControlMessage.Message.Builder msgBuilder = ControlMessage.Message.newBuilder();
-    final ControlMessage.ScheduleTaskGroupMsg.Builder scheduleTaskGroupMsgBuilder =
-        ControlMessage.ScheduleTaskGroupMsg.newBuilder();
-
-    scheduleTaskGroupMsgBuilder.setTaskGroup(ByteString.copyFrom(SerializationUtils.serialize(taskGroup)));
-    msgBuilder.setId(RuntimeIdGenerator.generateMessageId());
-    msgBuilder.setType(ControlMessage.MessageType.ScheduleTaskGroup);
-    msgBuilder.setScheduleTaskGroupMsg(scheduleTaskGroupMsgBuilder.build());
-
-    sendControlMessage(msgBuilder.build());
+    sendControlMessage(
+        ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdGenerator.generateMessageId())
+            .setType(ControlMessage.MessageType.ScheduleTaskGroup)
+            .setScheduleTaskGroupMsg(
+                ControlMessage.ScheduleTaskGroupMsg.newBuilder()
+                    .setTaskGroup(ByteString.copyFrom(SerializationUtils.serialize(taskGroup)))
+                    .build())
+            .build());
   }
 
   public void sendControlMessage(final ControlMessage.Message message) {

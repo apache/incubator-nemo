@@ -148,25 +148,28 @@ public final class TaskGroupStateManager {
    */
   private void notifyTaskGroupStateToMaster(final TaskGroupState.State newState,
                                             final Optional<List<String>> failedTaskIds) {
-    final ControlMessage.Message.Builder msgBuilder = ControlMessage.Message.newBuilder();
-    final ControlMessage.TaskGroupStateChangedMsg.Builder taskGroupStateChangedMsg =
-        ControlMessage.TaskGroupStateChangedMsg.newBuilder();
-    taskGroupStateChangedMsg.setExecutorId(executorId);
-    taskGroupStateChangedMsg.setTaskGroupId(taskGroupId);
-    taskGroupStateChangedMsg.setState(convertState(newState));
-
-    msgBuilder.setId(RuntimeIdGenerator.generateMessageId());
-    msgBuilder.setType(ControlMessage.MessageType.TaskGroupStateChanged);
-    msgBuilder.setTaskStateChangedMsg(taskGroupStateChangedMsg.build());
-
-    if (failedTaskIds.isPresent()) {
-      taskGroupStateChangedMsg.addAllFailedTaskIds(failedTaskIds.get());
+    final Optional<List<String>> failedTaskIdList;
+    if (!failedTaskIds.isPresent()) {
+      failedTaskIdList = Optional.of(Collections.emptyList());
+    } else {
+      failedTaskIdList = failedTaskIds;
     }
 
     // Send taskGroupStateChangedMsg to master!
     final MessageSender<ControlMessage.Message> senderToDriver =
         nodeIdToMsgSenderMap.get(MessageEnvironment.MASTER_COMMUNICATION_ID);
-    senderToDriver.send(msgBuilder.build());
+    senderToDriver.send(
+        ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdGenerator.generateMessageId())
+            .setType(ControlMessage.MessageType.TaskGroupStateChanged)
+            .setTaskStateChangedMsg(
+                ControlMessage.TaskGroupStateChangedMsg.newBuilder()
+                    .setExecutorId(executorId)
+                    .setTaskGroupId(taskGroupId)
+                    .setState(convertState(newState))
+                    .addAllFailedTaskIds(failedTaskIdList.get())
+                    .build())
+            .build());
   }
 
   // TODO #164: Cleanup Protobuf Usage

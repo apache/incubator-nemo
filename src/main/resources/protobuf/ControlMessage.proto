@@ -68,12 +68,15 @@ message RequestBlockLocationMsg {
 message RequestBlockMsg {
     string executorId = 1;
     string blockId = 2;
+    BlockStore blockStore = 3;
 }
 
 message TransferBlockMsg {
     string executorId = 1;
     string blockId = 2;
     bytes data = 3; // just for now
+    // TODO #18: Support code/data serialization
+    bool isUnionValue = 4; // just for now
 }
 
 enum TaskGroupStateFromExecutor {
@@ -89,4 +92,12 @@ enum BlockStateFromExecutor {
     MOVING = 1;
     COMMITTED = 2;
     LOST = 3;
+}
+
+enum BlockStore {
+    LOCAL = 0;
+    MEMORY = 1;
+    FILE = 2;
+    MEMORY_FILE = 3;
+    DISTRIBUTED_STORAGE = 4;
 }

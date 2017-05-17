@@ -17,7 +17,6 @@ package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.state.BlockState;
-import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
 import edu.snu.vortex.utils.StateMachine;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -36,12 +35,10 @@ public final class BlockManagerMaster {
   private static final Logger LOG = Logger.getLogger(BlockManagerMaster.class.getName());
   private final Map<String, BlockState> blockIdToState;
   private final Map<String, String> committedBlockIdToWorkerId;
-  private final Map<String, BlockManagerWorker> workerIdToWorker;
 
   public BlockManagerMaster() {
     this.blockIdToState = new HashMap<>();
     this.committedBlockIdToWorkerId = new HashMap<>();
-    this.workerIdToWorker = new HashMap<>();
   }
 
   public synchronized void initializeState(final String edgeId, final int srcTaskIndex) {
@@ -54,10 +51,6 @@ public final class BlockManagerMaster {
     blockIdToState.put(blockId, new BlockState());
   }
 
-  public synchronized void addNewWorker(final BlockManagerWorker worker) {
-    workerIdToWorker.put(worker.getWorkerId(), worker);
-  }
-
   public synchronized void removeWorker(final String executorId) {
     // Set block states to lost
     committedBlockIdToWorkerId.entrySet().stream()
@@ -67,15 +60,14 @@ public final class BlockManagerMaster {
 
     // Update worker-related global variables
     committedBlockIdToWorkerId.entrySet().removeIf(e -> e.getValue().equals(executorId));
-    workerIdToWorker.remove(executorId);
   }
 
-  public synchronized Optional<BlockManagerWorker> getBlockLocation(final String blockId) {
+  public synchronized Optional<String> getBlockLocation(final String blockId) {
     final String executorId = committedBlockIdToWorkerId.get(blockId);
     if (executorId == null) {
       return Optional.empty();
     } else {
-      return Optional.ofNullable(workerIdToWorker.get(executorId));
+      return Optional.ofNullable(executorId);
     }
   }
 
