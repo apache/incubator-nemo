@@ -13,35 +13,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.examples.beam;
+package edu.snu.vortex.compiler.optimizer.passes;
 
 import edu.snu.vortex.client.JobLauncher;
+import edu.snu.vortex.compiler.TestUtil;
+import edu.snu.vortex.compiler.ir.IREdge;
+import edu.snu.vortex.compiler.ir.IRVertex;
+import edu.snu.vortex.utils.dag.DAG;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import static org.junit.Assert.assertEquals;
+
 /**
- * Test Alternating Least Square program with JobLauncher.
+ * Test {@link LoopGroupingPass}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class AlternatingLeastSquareTest {
-  private static final String als = "edu.snu.vortex.examples.beam.AlternatingLeastSquare";
-  private static final String optimizationPolicy = "pado";
-  private static final String input = "./src/main/resources/sample_input_als";
-  private static final String numFeatures = "10";
-  private static final String numIteration = "3";
-  private static final String dagDirectory = "./target/dag/als";
+public class LoopGroupingPassTest {
+  private DAG<IRVertex, IREdge> compiledDAG;
 
-  public static final ArgBuilder builder = new ArgBuilder()
-      .addUserMain(als)
-      .addOptimizationPolicy(optimizationPolicy)
-      .addUserArgs(input, numFeatures, numIteration)
-      .addDAGDirectory(dagDirectory);
+  @Before
+  public void setUp() throws Exception {
+    compiledDAG = TestUtil.compileALSDAG();
+  }
 
   @Test
-  public void test() throws Exception {
-    JobLauncher.main(builder.build());
+  public void testLoopGrouping() throws Exception {
+    final DAG<IRVertex, IREdge> processedDAG = new LoopGroupingPass().process(compiledDAG);
+
+    assertEquals(9, processedDAG.getTopologicalSort().size());
   }
 }

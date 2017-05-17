@@ -27,21 +27,22 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class MultinomialLogisticRegressionTest {
-  private final String mlr = "edu.snu.vortex.examples.beam.MultinomialLogisticRegression";
-  private final String optimizationPolicy = "pado";
-  private final String input = "./src/main/resources/sample_input_mlr";
-  private final String numFeatures = "100";
-  private final String numClasses = "5";
-  private final String numIteration = "3";
-  private final String dagDirectory = "./target/dag/mlr";
+  private static final String mlr = "edu.snu.vortex.examples.beam.MultinomialLogisticRegression";
+  private static final String optimizationPolicy = "pado";
+  private static final String input = "./src/main/resources/sample_input_mlr";
+  private static final String numFeatures = "100";
+  private static final String numClasses = "5";
+  private static final String numIteration = "3";
+  private static final String dagDirectory = "./target/dag/mlr";
+
+  public static final ArgBuilder builder = new ArgBuilder()
+      .addUserMain(mlr)
+      .addOptimizationPolicy(optimizationPolicy)
+      .addUserArgs(input, numFeatures, numClasses, numIteration)
+      .addDAGDirectory(dagDirectory);
 
   @Test
   public void test() throws Exception {
-    final ArgBuilder builder = new ArgBuilder()
-        .addUserMain(mlr)
-        .addOptimizationPolicy(optimizationPolicy)
-        .addUserArgs(input, numFeatures, numClasses, numIteration)
-        .addDAGDirectory(dagDirectory);
     JobLauncher.main(builder.build());
   }
 }

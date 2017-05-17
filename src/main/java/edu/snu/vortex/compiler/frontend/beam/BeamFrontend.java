@@ -16,6 +16,8 @@
 package edu.snu.vortex.compiler.frontend.beam;
 
 import edu.snu.vortex.compiler.frontend.Frontend;
+import edu.snu.vortex.compiler.ir.IREdge;
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.utils.dag.DAG;
 
 import java.lang.reflect.Method;
@@ -28,7 +30,7 @@ public final class BeamFrontend implements Frontend {
   private static DAG dag;
 
   @Override
-  public DAG compile(final String className, final String[] args) throws Exception {
+  public DAG<IRVertex, IREdge> compile(final String className, final String[] args) throws Exception {
     final Class userCode = Class.forName(className);
     final Method method = userCode.getMethod("main", String[].class);
     if (!Modifier.isStatic(method.getModifiers())) {

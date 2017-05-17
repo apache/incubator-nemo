@@ -15,10 +15,24 @@
  */
 package edu.snu.vortex.compiler;
 
+import edu.snu.vortex.client.JobConf;
+import edu.snu.vortex.client.JobLauncher;
+import edu.snu.vortex.compiler.frontend.Frontend;
+import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.ir.*;
+import edu.snu.vortex.examples.beam.AlternatingLeastSquareTest;
+import edu.snu.vortex.examples.beam.ArgBuilder;
+import edu.snu.vortex.examples.beam.MultinomialLogisticRegressionTest;
+import edu.snu.vortex.utils.dag.DAG;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,6 +42,28 @@ import java.util.List;
  * Utility methods for tests.
  */
 public final class TestUtil {
+  public static DAG<IRVertex, IREdge> compileALSDAG() throws Exception {
+    final Frontend beamFrontend = new BeamFrontend();
+    final ArgBuilder alsArgBuilder = AlternatingLeastSquareTest.builder;
+    final Configuration configuration = JobLauncher.getJobConf(alsArgBuilder.build());
+    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
+    final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
+    final String[] arguments = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
+
+    return beamFrontend.compile(className, arguments);
+  }
+
+  public static DAG<IRVertex, IREdge> compileMLRDAG() throws Exception {
+    final Frontend beamFrontend = new BeamFrontend();
+    final ArgBuilder alsArgBuilder = MultinomialLogisticRegressionTest.builder;
+    final Configuration configuration = JobLauncher.getJobConf(alsArgBuilder.build());
+    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
+    final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
+    final String[] arguments = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
+
+    return beamFrontend.compile(className, arguments);
+  }
+
   public static final class EmptyBoundedSource extends BoundedSource {
     private final String name;
 
