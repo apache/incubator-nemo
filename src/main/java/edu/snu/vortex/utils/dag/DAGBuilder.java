@@ -47,64 +47,75 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
   /**
    * Add vertex to the builder.
    * @param v vertex to add.
+   * @return the builder.
    */
-  public void addVertex(final V v) {
+  public DAGBuilder<V, E> addVertex(final V v) {
     vertices.add(v);
     incomingEdges.putIfAbsent(v, new HashSet<>());
     outgoingEdges.putIfAbsent(v, new HashSet<>());
+    return this;
   }
   /**
    * Add vertex to the builder, with assignedLoopVertex and stackDepth information.
    * @param v vertex to add.
    * @param assignedLoopVertex the assigned, wrapping loop vertex.
    * @param stackDepth the stack depth of the loop vertex.
+   * @return the builder.
    */
-  private void addVertex(final V v, final LoopVertex assignedLoopVertex, final Integer stackDepth) {
+  private DAGBuilder<V, E> addVertex(final V v, final LoopVertex assignedLoopVertex, final Integer stackDepth) {
     addVertex(v);
     this.assignedLoopVertexMap.put(v, assignedLoopVertex);
     this.loopStackDepthMap.put(v, stackDepth);
+    return this;
   }
   /**
    * Add vertex to the builder, using the LoopVertex stack.
    * @param v vertex to add.
    * @param loopVertexStack LoopVertex stack to retrieve the information from.
+   * @return the builder.
    */
-  public void addVertex(final V v, final Stack<LoopVertex> loopVertexStack) {
+  public DAGBuilder<V, E> addVertex(final V v, final Stack<LoopVertex> loopVertexStack) {
     if (!loopVertexStack.empty()) {
       addVertex(v, loopVertexStack.peek(), loopVertexStack.size());
     } else {
       addVertex(v);
     }
+    return this;
   }
   /**
    * Add vertex to the builder, using the information from the given DAG.
    * @param v vertex to add.
    * @param dag DAG to observe and get the LoopVertex-related information from.
+   * @return the builder.
    */
-  public void addVertex(final V v, final DAG<V, E> dag) {
+  public DAGBuilder<V, E> addVertex(final V v, final DAG<V, E> dag) {
     if (dag.isCompositeVertex(v)) {
       addVertex(v, dag.getAssignedLoopVertexOf(v), dag.getLoopStackDepthOf(v));
     } else {
       addVertex(v);
     }
+    return this;
   }
 
   /**
    * Remove the vertex from the list.
    * @param v vertex to remove.
+   * @return the builder.
    */
-  public void removeVertex(final V v) {
+  public DAGBuilder<V, E> removeVertex(final V v) {
     vertices.remove(v);
     incomingEdges.remove(v);
     outgoingEdges.remove(v);
+    return this;
   }
 
   /**
    * Connect vertices at the edge.
    * @param edge edge to add.
    * Note: the two vertices of the edge should already be added to the DAGBuilder.
+   * @return the builder.
    */
-  public void connectVertices(final E edge) {
+  public DAGBuilder<V, E> connectVertices(final E edge) {
     final V src = edge.getSrc();
     final V dst = edge.getDst();
     if (vertices.contains(src) && vertices.contains(dst)) {
@@ -114,6 +125,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
       throw new IllegalVertexOperationException("The DAG does not contain either src or dst of the edge: "
           + src + " -> " + dst);
     }
+    return this;
   }
 
   /**

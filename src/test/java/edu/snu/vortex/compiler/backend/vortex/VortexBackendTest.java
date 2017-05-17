@@ -38,23 +38,17 @@ public final class VortexBackendTest<I, O> {
   private final IRVertex combine = new OperatorVertex(new TestUtil.EmptyTransform("Combine"));
   private final IRVertex map2 = new OperatorVertex(new TestUtil.EmptyTransform("MapElements"));
 
-  private final DAGBuilder builder = new DAGBuilder<IRVertex, IREdge>();
+  private final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
   private DAG<IRVertex, IREdge> dag;
 
   @Before
   public void setUp() throws Exception {
-    builder.addVertex(source);
-    builder.addVertex(map1);
-    builder.addVertex(groupByKey);
-    builder.addVertex(combine);
-    builder.addVertex(map2);
-    builder.connectVertices(new IREdge(IREdge.Type.OneToOne, source, map1));
-    builder.connectVertices(new IREdge(IREdge.Type.ScatterGather, map1, groupByKey));
-    builder.connectVertices(new IREdge(IREdge.Type.OneToOne, groupByKey, combine));
-    builder.connectVertices(new IREdge(IREdge.Type.OneToOne, combine, map2));
-
-
-    this.dag = builder.build();
+    this.dag = builder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
+        .connectVertices(new IREdge(IREdge.Type.OneToOne, source, map1))
+        .connectVertices(new IREdge(IREdge.Type.ScatterGather, map1, groupByKey))
+        .connectVertices(new IREdge(IREdge.Type.OneToOne, groupByKey, combine))
+        .connectVertices(new IREdge(IREdge.Type.OneToOne, combine, map2))
+        .build();
 
     this.dag = new Optimizer().optimize(dag, Optimizer.PolicyType.Pado);
   }
@@ -68,10 +62,10 @@ public final class VortexBackendTest<I, O> {
     final Backend<ExecutionPlan> backend = new VortexBackend();
     final ExecutionPlan executionPlan = backend.compile(dag);
 
-    assertEquals(executionPlan.getRuntimeStageDAG().getVertices().size(),  2);
-    assertEquals(executionPlan.getRuntimeStageDAG().getTopologicalSort().get(0)
-        .getStageInternalDAG().getVertices().size(), 2);
-    assertEquals(executionPlan.getRuntimeStageDAG().getTopologicalSort()
-        .get(1).getStageInternalDAG().getVertices().size(), 3);
+    assertEquals(2, executionPlan.getRuntimeStageDAG().getVertices().size());
+    assertEquals(2, executionPlan.getRuntimeStageDAG().getTopologicalSort().get(0)
+        .getStageInternalDAG().getVertices().size());
+    assertEquals(3, executionPlan.getRuntimeStageDAG().getTopologicalSort()
+        .get(1).getStageInternalDAG().getVertices().size());
   }
 }
