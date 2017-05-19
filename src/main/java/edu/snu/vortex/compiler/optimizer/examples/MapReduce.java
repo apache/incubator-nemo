@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.compiler.optimizer.examples;
 
+import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.utils.dag.DAG;
@@ -51,10 +52,10 @@ public final class MapReduce {
     builder.addVertex(map);
     builder.addVertex(reduce);
 
-    final IREdge edge1 = new IREdge(IREdge.Type.OneToOne, source, map);
+    final IREdge edge1 = new IREdge(IREdge.Type.OneToOne, source, map, Coder.DUMMY_CODER);
     builder.connectVertices(edge1);
 
-    final IREdge edge2 = new IREdge(IREdge.Type.ScatterGather, map, reduce);
+    final IREdge edge2 = new IREdge(IREdge.Type.ScatterGather, map, reduce, Coder.DUMMY_CODER);
     builder.connectVertices(edge2);
 
     final DAG dag = builder.build();
