@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.compiler.ir;
 
+import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.exception.UnsupportedAttributeException;
@@ -35,19 +36,23 @@ public final class IREdge extends Edge<IRVertex> {
 
   private final AttributeMap attributes;
   private final Type type;
+  private final Coder coder;
 
   /**
    * Constructor of IREdge.
    * @param type type of the edge.
    * @param src source vertex.
    * @param dst destination vertex.
+   * @param coder codec.
    */
   public IREdge(final Type type,
                 final IRVertex src,
-                final IRVertex dst) {
+                final IRVertex dst,
+                final Coder coder) {
     super(IdManager.newEdgeId(), src, dst);
     this.attributes = AttributeMap.of(this);
     this.type = type;
+    this.coder = coder;
     switch (this.getType()) {
       case OneToOne:
         setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
@@ -98,6 +103,13 @@ public final class IREdge extends Edge<IRVertex> {
   }
 
   /**
+   * @return coder for the edge.
+   */
+  public Coder getCoder() {
+    return coder;
+  }
+
+  /**
    * @param edge edge to compare.
    * @return whether or not the edge has the same itinerary
    */
@@ -142,6 +154,7 @@ public final class IREdge extends Edge<IRVertex> {
     sb.append("{\"id\": \"").append(getId());
     sb.append("\", \"attributes\": ").append(attributes);
     sb.append(", \"type\": \"").append(type);
+    sb.append("\", \"coder\": \"").append(coder);
     sb.append("\"}");
     return sb.toString();
   }

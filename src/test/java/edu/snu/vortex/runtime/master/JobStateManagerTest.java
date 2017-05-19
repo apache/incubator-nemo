@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.runtime.master;
 
+import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
@@ -65,7 +66,7 @@ public final class JobStateManagerTest {
     v2.setAttr(Attribute.IntegerKey.Parallelism, 2);
     irDAGBuilder.addVertex(v2);
 
-    final IREdge e = new IREdge(IREdge.Type.ScatterGather, v1, v2);
+    final IREdge e = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);
     e.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
     e.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e);
