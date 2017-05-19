@@ -16,6 +16,7 @@
 package edu.snu.vortex.compiler.ir;
 
 import edu.snu.vortex.compiler.TestUtil;
+import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.utils.Pair;
 import edu.snu.vortex.utils.dag.DAG;
@@ -49,17 +50,17 @@ public class LoopVertexTest {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     loopDAGBuilder.addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
-        .connectVertices(new IREdge(IREdge.Type.ScatterGather, map1, groupByKey))
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, groupByKey, combine))
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, combine, map2));
-    loopVertex.addDagIncomingEdge(new IREdge(IREdge.Type.OneToOne, source, map1));
-    loopVertex.addIterativeIncomingEdge(new IREdge(IREdge.Type.OneToOne, map2, map1));
+        .connectVertices(new IREdge(IREdge.Type.ScatterGather, map1, groupByKey, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(IREdge.Type.OneToOne, groupByKey, combine, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(IREdge.Type.OneToOne, combine, map2, Coder.DUMMY_CODER));
+    loopVertex.addDagIncomingEdge(new IREdge(IREdge.Type.OneToOne, source, map1, Coder.DUMMY_CODER));
+    loopVertex.addIterativeIncomingEdge(new IREdge(IREdge.Type.OneToOne, map2, map1, Coder.DUMMY_CODER));
 
     originalDAG = builder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, source, map1))
-        .connectVertices(new IREdge(IREdge.Type.ScatterGather, map1, groupByKey))
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, groupByKey, combine))
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, combine, map2))
+        .connectVertices(new IREdge(IREdge.Type.OneToOne, source, map1, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(IREdge.Type.ScatterGather, map1, groupByKey, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(IREdge.Type.OneToOne, groupByKey, combine, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(IREdge.Type.OneToOne, combine, map2, Coder.DUMMY_CODER))
         .build();
   }
 

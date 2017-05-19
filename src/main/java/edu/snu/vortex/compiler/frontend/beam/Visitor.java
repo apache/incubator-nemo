@@ -16,6 +16,8 @@
 package edu.snu.vortex.compiler.frontend.beam;
 
 import edu.snu.vortex.client.beam.LoopCompositeTransform;
+import edu.snu.vortex.compiler.frontend.Coder;
+import edu.snu.vortex.compiler.frontend.beam.coder.BeamCoder;
 import edu.snu.vortex.compiler.frontend.beam.transform.*;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
@@ -30,6 +32,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PValue;
 import org.apache.beam.sdk.values.TaggedPValue;
 
@@ -46,6 +49,7 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
   private final PipelineOptions options;
   // loopVertexStack keeps track of where the beam program is: whether it is inside a composite transform or it is not.
   private final Stack<LoopVertex> loopVertexStack;
+  private final Map<PValue, Coder> pValueToCoder;
 
   /**
    * Constructor of the BEAM Visitor.
@@ -57,6 +61,7 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
     this.pValueToVertex = new HashMap<>();
     this.options = options;
     this.loopVertexStack = new Stack<>();
+    this.pValueToCoder = new HashMap<>();
   }
 
   @Override
@@ -85,16 +90,21 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
       throw new UnsupportedOperationException(beamNode.toString());
     }
 
-    final IRVertex vortexIRVertex = convertToVertex(beamNode, builder, pValueToVertex, options, loopVertexStack);
+    final IRVertex vortexIRVertex = convertToVertex(beamNode, builder, pValueToVertex, pValueToCoder, options,
+        loopVertexStack);
+    beamNode.getOutputs().stream().map(TaggedPValue::getValue)
+        .filter(v -> v instanceof PCollection).map(v -> (PCollection) v)
+        .forEach(output -> pValueToCoder.put(output, new BeamCoder(output.getCoder())));
 
     beamNode.getOutputs().forEach(output -> pValueToVertex.put(output.getValue(), vortexIRVertex));
 
     beamNode.getInputs().stream()
         .map(TaggedPValue::getValue)
         .filter(pValueToVertex::containsKey)
-        .map(pValueToVertex::get)
-        .forEach(src -> {
-          final IREdge edge = new IREdge(getEdgeType(src, vortexIRVertex), src, vortexIRVertex);
+        .forEach(pValue -> {
+          final IRVertex src = pValueToVertex.get(pValue);
+          final Coder coder = pValueToCoder.get(pValue);
+          final IREdge edge = new IREdge(getEdgeType(src, vortexIRVertex), src, vortexIRVertex, coder);
           this.builder.connectVertices(edge);
         });
   }
@@ -104,6 +114,7 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
    * @param beamNode input beam node.
    * @param builder the DAG builder to add the vertex to.
    * @param pValueToVertex PValue to Vertex map.
+   * @param pValueToCoder PValue to Coder map.
    * @param options pipeline options.
    * @param loopVertexStack Stack to get the current loop vertex that the operator vertex will be assigned to.
    * @param <I> input type.
@@ -113,6 +124,7 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
   private static <I, O> IRVertex convertToVertex(final TransformHierarchy.Node beamNode,
                                                  final DAGBuilder<IRVertex, IREdge> builder,
                                                  final Map<PValue, IRVertex> pValueToVertex,
+                                                 final Map<PValue, Coder> pValueToCoder,
                                                  final PipelineOptions options,
                                                  final Stack<LoopVertex> loopVertexStack) {
     final PTransform beamTransform = beamNode.getTransform();
@@ -130,6 +142,12 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
       vortexIRVertex = new OperatorVertex(vortexTransform);
       pValueToVertex.put(view.getView(), vortexIRVertex);
       builder.addVertex(vortexIRVertex, loopVertexStack);
+      // Coders for outgoing edges and incoming edges in BroadcastTransform are same.
+      // Since outgoing PValues for BroadcastTransform is PCollectionView, we cannot use PCollection::getCoder to
+      // obtain coders.
+      final Coder coder = pValueToCoder.get(beamNode.getInputs().stream().map(TaggedPValue::getValue).findFirst()
+          .get());
+      beamNode.getOutputs().stream().map(TaggedPValue::getValue).forEach(output -> pValueToCoder.put(output, coder));
     } else if (beamTransform instanceof Window.Bound) {
       final Window.Bound<I> window = (Window.Bound<I>) beamTransform;
       final WindowTransform vortexTransform = new WindowTransform(window.getWindowFn());
@@ -149,10 +167,11 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
       builder.addVertex(vortexIRVertex, loopVertexStack);
       parDo.getSideInputs().stream()
           .filter(pValueToVertex::containsKey)
-          .map(pValueToVertex::get)
-          .forEach(src -> {
+          .forEach(pValue -> {
+            final IRVertex src = pValueToVertex.get(pValue);
+            final Coder coder = pValueToCoder.get(pValue);
             final IREdge edge =
-                new IREdge(getEdgeType(src, vortexIRVertex), src, vortexIRVertex)
+                new IREdge(getEdgeType(src, vortexIRVertex), src, vortexIRVertex, coder)
                     .setAttr(Attribute.Key.SideInput, Attribute.SideInput);
             builder.connectVertices(edge);
           });

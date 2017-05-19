@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.runtime.common.plan;
 
+import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
@@ -57,7 +58,7 @@ public final class DAGConverterTest {
     v2.setAttr(Attribute.IntegerKey.Parallelism, 2);
     irDAGBuilder.addVertex(v2);
 
-    final IREdge e = new IREdge(IREdge.Type.ScatterGather, v1, v2);
+    final IREdge e = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);
     e.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
     e.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e);
@@ -151,32 +152,32 @@ public final class DAGConverterTest {
     // TODO #13: Implement Join Node
 //    irDAGBuilder.addVertex(v7);
 
-    final IREdge e1 = new IREdge(IREdge.Type.OneToOne, v1, v2);
+    final IREdge e1 = new IREdge(IREdge.Type.OneToOne, v1, v2, Coder.DUMMY_CODER);
     e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Local);
     e1.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     e1.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 
-    final IREdge e2 = new IREdge(IREdge.Type.OneToOne, v1, v3);
+    final IREdge e2 = new IREdge(IREdge.Type.OneToOne, v1, v3, Coder.DUMMY_CODER);
     e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Local);
     e2.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     e2.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 
-    final IREdge e3 = new IREdge(IREdge.Type.ScatterGather, v2, v4);
+    final IREdge e3 = new IREdge(IREdge.Type.ScatterGather, v2, v4, Coder.DUMMY_CODER);
     e3.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
     e3.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Push);
     e3.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
 
-    final IREdge e4 = new IREdge(IREdge.Type.ScatterGather, v3, v5);
+    final IREdge e4 = new IREdge(IREdge.Type.ScatterGather, v3, v5, Coder.DUMMY_CODER);
     e4.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
     e4.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Push);
     e4.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
 
-    final IREdge e5 = new IREdge(IREdge.Type.OneToOne, v4, v6);
+    final IREdge e5 = new IREdge(IREdge.Type.OneToOne, v4, v6, Coder.DUMMY_CODER);
     e5.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.File);
     e5.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     e5.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 
-    final IREdge e6 = new IREdge(IREdge.Type.OneToOne, v4, v8);
+    final IREdge e6 = new IREdge(IREdge.Type.OneToOne, v4, v8, Coder.DUMMY_CODER);
     e6.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.File);
     e6.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     e6.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
