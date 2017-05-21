@@ -20,6 +20,7 @@ import edu.snu.vortex.runtime.common.state.BlockState;
 import edu.snu.vortex.utils.StateMachine;
 
 import javax.annotation.concurrent.ThreadSafe;
+import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -36,6 +37,7 @@ public final class BlockManagerMaster {
   private final Map<String, BlockState> blockIdToState;
   private final Map<String, String> committedBlockIdToWorkerId;
 
+  @Inject
   public BlockManagerMaster() {
     this.blockIdToState = new HashMap<>();
     this.committedBlockIdToWorkerId = new HashMap<>();

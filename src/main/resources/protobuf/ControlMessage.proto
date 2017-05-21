@@ -13,7 +13,8 @@ enum MessageType {
     BlockLocationInfo = 4;
     RequestBlock = 5;
     TransferBlock = 6;
-    BroadcastPhysicalPlan = 7;
+    PhysicalPlan = 7;
+    RequestPhysicalPlan = 8;
 }
 
 message Message {
@@ -27,7 +28,8 @@ message Message {
         BlockLocationInfoMsg blockLocationInfoMsg = 7;
         RequestBlockMsg requestBlockMsg = 8;
         TransferBlockMsg transferBlockMsg = 9;
-        BroadcastPhysicalPlanMsg broadcastPhysicalPlanMsg = 10;
+        PhysicalPlanMsg physicalPlanMsg = 10;
+        RequestPhysicalPlanMsg requestPhysicalPlanMsg = 11;
     }
 }
 
@@ -37,12 +39,18 @@ message ScheduleTaskGroupMsg {
 }
 
 message BlockLocationInfoMsg {
-    string blockId = 1;
-    string ownerExecutorId = 2;
+    int64 requestId = 1; // To find the matching request msg
+    string blockId = 2;
+    string ownerExecutorId = 3;
 }
 
-message BroadcastPhysicalPlanMsg {
-    bytes physicalPlan = 1;
+message RequestPhysicalPlanMsg {
+    string executorId = 1;
+}
+
+message PhysicalPlanMsg {
+    int64 requestId = 1; // To find the matching request msg
+    bytes physicalPlan = 2;
 }
 
 // Messages from Executors to Master
@@ -72,11 +80,12 @@ message RequestBlockMsg {
 }
 
 message TransferBlockMsg {
-    string executorId = 1;
-    string blockId = 2;
-    bytes data = 3; // just for now
+    int64 requestId = 1; // To find the matching request msg
+    string executorId = 2;
+    string blockId = 3;
+    bytes data = 4; // just for now
     // TODO #18: Support code/data serialization
-    bool isUnionValue = 4; // just for now
+    bool isUnionValue = 5; // just for now
 }
 
 enum TaskGroupStateFromExecutor {

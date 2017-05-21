@@ -16,6 +16,7 @@
 package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.client.JobLauncher;
+import edu.snu.vortex.compiler.TestUtil;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -29,12 +30,13 @@ import org.powermock.modules.junit4.PowerMockRunner;
 public final class AlternatingLeastSquareTest {
   private static final String als = "edu.snu.vortex.examples.beam.AlternatingLeastSquare";
   private static final String optimizationPolicy = "pado";
-  private static final String input = "./src/main/resources/sample_input_als";
+  private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_als";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
-  private static final String dagDirectory = "./target/dag/als";
+  private static final String dagDirectory = "./dag";
 
   public static final ArgBuilder builder = new ArgBuilder()
+      .addJobId(AlternatingLeastSquareTest.class.getSimpleName())
       .addUserMain(als)
       .addOptimizationPolicy(optimizationPolicy)
       .addUserArgs(input, numFeatures, numIteration)

@@ -15,11 +15,11 @@
  */
 package edu.snu.vortex.compiler.frontend.beam.coder;
 
-import avro.shaded.com.google.common.base.Preconditions;
 import edu.snu.vortex.utils.Pair;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.StandardCoder;
+import org.apache.beam.sdk.repackaged.com.google.common.base.Preconditions;
 import org.apache.beam.sdk.util.CloudObject;
 import org.apache.beam.sdk.util.PropertyNames;
 import org.apache.beam.sdk.util.common.ElementByteSizeObserver;

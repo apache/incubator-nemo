@@ -15,6 +15,13 @@ public final class JobConf extends ConfigurationModuleBuilder {
   //////////////////////////////// User Configurations
 
   /**
+   * Job id.
+   */
+  @NamedParameter(doc = "Job id", short_name = "job_id")
+  public final class JobId implements Name<String> {
+  }
+
+  /**
    * User Main Class Name.
    */
   @NamedParameter(doc = "User Main Class Name", short_name = "user_main")
@@ -35,10 +42,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class DAGDirectory implements Name<String> {
   }
 
-  static final RequiredParameter<String> USER_MAIN_CLASS = new RequiredParameter<>();
-  static final RequiredParameter<String> USER_MAIN_ARGS = new RequiredParameter<>();
-  static final OptionalParameter<String> DAG_DIRECTORY = new OptionalParameter<>();
-
   //////////////////////////////// Compiler Configurations
 
   /**
@@ -48,18 +51,77 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class OptimizationPolicy implements Name<String> {
   }
 
-  static final OptionalParameter<String> OPTIMIZATION_POLICY = new OptionalParameter<>();
-
   //////////////////////////////// Runtime Configurations
 
+  /**
+   * Vortex driver memory.
+   */
+  @NamedParameter(doc = "Vortex driver memory", short_name = "driver_mem_mb", default_value = "1024")
+  public final class DriverMemMb implements Name<Integer> {
+  }
 
+  /**
+   * Number of vortex executors.
+   * TODO #205: Allow for Per-ResourceType Configurations
+   *
+   * WARNING: THE ACTUAL NUMBER WILL BE 4 * Executor Num due to hacks to get around.
+   * TODO #60: Specify Types in Requesting Containers
+   * See VortexDriver for the hacks. :-)
+   */
+  @NamedParameter(doc = "Number of vortex executors", short_name = "executor_num", default_value = "1")
+  public final class ExecutorNum implements Name<Integer> {
+  }
 
-  //////////////////////////////// Configuration Module
+  /**
+   * Vortex executor memory.
+   * TODO #205: Allow for Per-ResourceType Configurations
+   */
+  @NamedParameter(doc = "Vortex executor memory", short_name = "executor_mem_mb", default_value = "1024")
+  public final class ExecutorMemMb implements Name<Integer> {
+  }
 
-  public static final ConfigurationModule CONF = new JobConf()
-      .bindNamedParameter(UserMainClass.class, USER_MAIN_CLASS)
-      .bindNamedParameter(UserMainArguments.class, USER_MAIN_ARGS)
-      .bindNamedParameter(DAGDirectory.class, DAG_DIRECTORY)
-      .bindNamedParameter(OptimizationPolicy.class, OPTIMIZATION_POLICY)
+  /**
+   * Vortex executor cores.
+   * Used in requesting resources to a resource manager
+   * (e.g., With 3 executor_cores, we request YARN for YARN containers with 3 cores)
+   * TODO #205: Allow for Per-ResourceType Configurations
+   */
+  @NamedParameter(doc = "Vortex executor cores", short_name = "executor_cores", default_value = "1")
+  public final class ExecutorCores implements Name<Integer> {
+  }
+
+  /**
+   * VortexExecutor capacity.
+   * Determines the number of TaskGroup 'slots' for each executor.
+   * 1) Master's TaskGroup scheduler can use this number in scheduling.
+   *    (e.g., schedule TaskGroup to the executor currently with the maximum number of available slots)
+   * 2) Executor's number of TaskGroup execution threads is set to this number.
+   * TODO #205: Allow for Per-ResourceType Configurations
+   */
+  @NamedParameter(doc = "VortexExecutor capacity", short_name = "executor_capacity", default_value = "1")
+  public final class ExecutorCapacity implements Name<Integer> {
+  }
+
+  /**
+   * Scheduler timeout in ms.
+   */
+  @NamedParameter(doc = "Scheduler timeout in ms", short_name = "scheduler_timeout_ms", default_value = "2000")
+  public final class SchedulerTimeoutMs implements Name<Integer> {
+  }
+
+  /**
+   * VortexExecutor id.
+   */
+  @NamedParameter(doc = "Executor id", short_name = "executor_id")
+  public final class ExecutorId implements Name<String> {
+  }
+
+  public static final OptionalParameter<Integer> EXECUTOR_CAPACITY = new OptionalParameter<>();
+  public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();
+
+  public static final ConfigurationModule EXECUTOR_CONF = new JobConf()
+      .bindNamedParameter(ExecutorId.class, EXECUTOR_ID)
+      .bindNamedParameter(ExecutorCapacity.class, EXECUTOR_CAPACITY)
       .build();
+
 }

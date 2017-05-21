@@ -15,38 +15,27 @@
  */
 package edu.snu.vortex.client;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.snu.vortex.compiler.backend.Backend;
-import edu.snu.vortex.compiler.backend.vortex.VortexBackend;
-import edu.snu.vortex.compiler.frontend.Frontend;
-import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
-import edu.snu.vortex.compiler.optimizer.Optimizer;
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
-import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
-import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
-import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
-import edu.snu.vortex.runtime.master.BlockManagerMaster;
-import edu.snu.vortex.runtime.master.RuntimeConfiguration;
-import edu.snu.vortex.runtime.master.RuntimeMaster;
-import edu.snu.vortex.runtime.master.resourcemanager.LocalResourceManager;
-import edu.snu.vortex.runtime.master.resourcemanager.ResourceManager;
-import edu.snu.vortex.runtime.master.scheduler.BatchScheduler;
-import edu.snu.vortex.runtime.master.scheduler.Scheduler;
-import edu.snu.vortex.utils.dag.DAG;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Injector;
-import org.apache.reef.tang.JavaConfigurationBuilder;
-import org.apache.reef.tang.Tang;
+import edu.snu.vortex.runtime.common.message.ncs.NcsMessageEnvironment;
+import edu.snu.vortex.runtime.common.message.ncs.NcsParameters;
+import edu.snu.vortex.runtime.master.VortexDriver;
+import org.apache.reef.client.DriverConfiguration;
+import org.apache.reef.client.DriverLauncher;
+import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
+import org.apache.reef.io.network.naming.NameServerConfiguration;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
+import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
+import org.apache.reef.tang.*;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.CommandLine;
+import org.apache.reef.util.EnvironmentUtils;
+import org.apache.reef.util.Optional;
+import org.apache.reef.wake.IdentifierFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import static edu.snu.vortex.compiler.optimizer.Optimizer.POLICY_NAME;
 
 /**
  * Job launcher.
@@ -66,84 +55,78 @@ public final class JobLauncher {
    * @throws Exception exception on the way.
    */
   public static void main(final String[] args) throws Exception {
-    final Configuration configuration = getJobConf(args);
-    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
+    // Get Job and Driver Confs
+    final Configuration jobConf = getJobConf(args);
+    final Configuration driverConf = getDriverConf(jobConf);
+    final Configuration driverNcsConf = getDriverNcsConf();
+    final Configuration driverMessageConfg = getDriverMessageConf();
 
-    final Frontend frontend = new BeamFrontend();
-    final Optimizer optimizer = new Optimizer();
-    final Backend<ExecutionPlan> backend = new VortexBackend();
+    // Merge Job and Driver Confs
+    final Configuration jobAndDriverConf = Configurations.merge(jobConf, driverConf, driverNcsConf, driverMessageConfg);
 
-    final String dagDirectory = injector.getNamedInstance(JobConf.DAGDirectory.class);
+    // Get Runtime Conf
+    // TODO #212: Run Vortex on YARN
+    final Configuration runtimeConf = LocalRuntimeConfiguration.CONF
+        .set(LocalRuntimeConfiguration.MAX_NUMBER_OF_EVALUATORS, 20)
+        .build();
 
-    /**
-     * Step 1: Compile
-     */
-    LOG.log(Level.INFO, "##### VORTEX Compiler #####");
-    final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
-    final String[] arguments = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
-    final DAG dag = frontend.compile(className, arguments);
-    dag.storeJSON(dagDirectory, "ir", "IR before optimization");
-
-    final String policyName = injector.getNamedInstance(JobConf.OptimizationPolicy.class);
-    final Optimizer.PolicyType optimizationPolicy = POLICY_NAME.get(policyName);
-    final DAG optimizedDAG = optimizer.optimize(dag, optimizationPolicy);
-    optimizedDAG.storeJSON(dagDirectory, "ir-" + optimizationPolicy, "IR optimized for " + optimizationPolicy);
-
-    final ExecutionPlan executionPlan = backend.compile(optimizedDAG);
-    executionPlan.getRuntimeStageDAG().storeJSON(dagDirectory, "plan", "execution plan by compiler");
-
-    /**
-     * Step 2: Execute
-     */
-    LOG.log(Level.INFO, "##### VORTEX Runtime #####");
-    // Initialize Runtime Components
-    final RuntimeConfiguration runtimeConfiguration = readConfiguration();
-    final Scheduler scheduler = new BatchScheduler(RuntimeAttribute.RoundRobin,
-        runtimeConfiguration.getDefaultScheduleTimeout());
-    final LocalMessageDispatcher localMessageDispatcher = new LocalMessageDispatcher();
-    final MessageEnvironment masterMessageEnvironment =
-        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, localMessageDispatcher);
-    final BlockManagerMaster blockManagerMaster = new BlockManagerMaster();
-    final ResourceManager resourceManager = new LocalResourceManager(localMessageDispatcher);
-
-    // Initialize RuntimeMaster and Execute!
-    new RuntimeMaster(
-        runtimeConfiguration,
-        scheduler,
-        localMessageDispatcher,
-        masterMessageEnvironment,
-        blockManagerMaster,
-        resourceManager).execute(executionPlan, dagDirectory);
+    // Launch and wait indefinitely for the job to finish
+    final LauncherStatus launcherStatus =  DriverLauncher.getLauncher(runtimeConf).run(jobAndDriverConf);
+    final Optional<Throwable> possibleError = launcherStatus.getError();
+    if (possibleError.isPresent()) {
+      throw new RuntimeException(possibleError.get());
+    } else {
+      LOG.log(Level.INFO, "Job successfully completed (at least it seems...)");
+    }
   }
 
-  /**
-   * Retrieves job configuration using Tang.
-   * @param args arguments.
-   * @return Configuration.
-   * @throws IOException IOException.
-   * @throws InjectionException InjectionException.
-   */
+  private static Configuration getDriverNcsConf() throws InjectionException {
+    return Configurations.merge(NameServerConfiguration.CONF.build(),
+        LocalNameResolverConfiguration.CONF.build(),
+        Tang.Factory.getTang().newConfigurationBuilder()
+            .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+            .build());
+  }
+
+  private static Configuration getDriverMessageConf() throws InjectionException {
+    return Tang.Factory.getTang().newConfigurationBuilder()
+        .bindImplementation(MessageEnvironment.class, NcsMessageEnvironment.class)
+        .bindNamedParameter(NcsParameters.SenderId.class, MessageEnvironment.MASTER_COMMUNICATION_ID)
+        .build();
+  }
+
+  private static Configuration getDriverConf(final Configuration jobConf) throws InjectionException {
+    final Injector injector = Tang.Factory.getTang().newInjector(jobConf);
+    final String jobId = injector.getNamedInstance(JobConf.JobId.class);
+    final int driverMemory = injector.getNamedInstance(JobConf.DriverMemMb.class);
+    return DriverConfiguration.CONF
+        .set(DriverConfiguration.GLOBAL_LIBRARIES, EnvironmentUtils.getClassLocation(VortexDriver.class))
+        .set(DriverConfiguration.ON_DRIVER_STARTED, VortexDriver.StartHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, VortexDriver.AllocatedEvaluatorHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_ACTIVE, VortexDriver.ActiveContextHandler.class)
+        .set(DriverConfiguration.ON_EVALUATOR_FAILED, VortexDriver.FailedEvaluatorHandler.class)
+        .set(DriverConfiguration.ON_DRIVER_STOP, VortexDriver.DriverStopHandler.class)
+        .set(DriverConfiguration.DRIVER_IDENTIFIER, jobId)
+        .set(DriverConfiguration.DRIVER_MEMORY, driverMemory)
+        .build();
+  }
+
   public static Configuration getJobConf(final String[] args) throws IOException, InjectionException {
     final JavaConfigurationBuilder confBuilder = Tang.Factory.getTang().newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
+    cl.registerShortNameOfClass(JobConf.JobId.class);
     cl.registerShortNameOfClass(JobConf.UserMainClass.class);
     cl.registerShortNameOfClass(JobConf.UserMainArguments.class);
     cl.registerShortNameOfClass(JobConf.DAGDirectory.class);
     cl.registerShortNameOfClass(JobConf.OptimizationPolicy.class);
+    cl.registerShortNameOfClass(JobConf.DriverMemMb.class);
+    cl.registerShortNameOfClass(JobConf.ExecutorCores.class);
+    cl.registerShortNameOfClass(JobConf.ExecutorMemMb.class);
+    cl.registerShortNameOfClass(JobConf.ExecutorNum.class);
+    cl.registerShortNameOfClass(JobConf.ExecutorCapacity.class);
+    cl.registerShortNameOfClass(JobConf.SchedulerTimeoutMs.class);
     cl.processCommandLine(args);
     return confBuilder.build();
-  }
-
-  private static RuntimeConfiguration readConfiguration() {
-    final ObjectMapper objectMapper = new ObjectMapper();
-    final File configurationFile = new File("src/main/resources/configuration/RuntimeConfiguration.json");
-    final RuntimeConfiguration configuration;
-    try {
-      configuration = objectMapper.readValue(configurationFile, RuntimeConfiguration.class);
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to read configuration file", e);
-    }
-    return configuration;
   }
 
 }

@@ -16,6 +16,7 @@
 package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.client.JobLauncher;
+import edu.snu.vortex.compiler.TestUtil;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -29,13 +30,14 @@ import org.powermock.modules.junit4.PowerMockRunner;
 public final class MapReduceDisaggregationTest {
   private final String mapReduce = "edu.snu.vortex.examples.beam.MapReduce";
   private final String optimizationPolicy = "disaggregation";
-  private final String input = "./src/main/resources/sample_input_mr";
-  private final String output = "./src/main/resources/sample_output";
-  private final String dagDirectory = "./target/dag/mr_disaggregation";
+  private final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mr";
+  private final String output = TestUtil.rootDir + "/src/main/resources/sample_output";
+  private final String dagDirectory = "./dag";
 
   @Test
   public void test() throws Exception {
     final ArgBuilder builder = new ArgBuilder()
+        .addJobId(MapReduceDisaggregationTest.class.getSimpleName())
         .addUserMain(mapReduce)
         .addOptimizationPolicy(optimizationPolicy)
         .addUserArgs(input, output)

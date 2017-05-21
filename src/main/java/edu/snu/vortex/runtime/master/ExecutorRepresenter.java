@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.master.resourcemanager;
+package edu.snu.vortex.runtime.master;
 
 import com.google.protobuf.ByteString;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
@@ -22,6 +22,7 @@ import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.reef.driver.context.ActiveContext;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -41,17 +42,19 @@ public final class ExecutorRepresenter {
   private final int executorCapacity;
   private final Set<String> runningTaskGroups;
   private final MessageSender<ControlMessage.Message> messageSender;
+  private final ActiveContext activeContext;
 
   public ExecutorRepresenter(final String executorId,
                              final RuntimeAttribute resourceType,
                              final int executorCapacity,
-                             final MessageSender<ControlMessage.Message> messageSender) {
+                             final MessageSender<ControlMessage.Message> messageSender,
+                             final ActiveContext activeContext) {
     this.executorId = executorId;
     this.resourceType = resourceType;
     this.executorCapacity = executorCapacity;
     this.messageSender = messageSender;
     this.runningTaskGroups = new HashSet<>();
-
+    this.activeContext = activeContext;
   }
 
   public void onTaskGroupScheduled(final TaskGroup taskGroup) {
@@ -90,6 +93,10 @@ public final class ExecutorRepresenter {
 
   public RuntimeAttribute getResourceType() {
     return resourceType;
+  }
+
+  public void shutDown() {
+    activeContext.close();
   }
 }
 

@@ -19,14 +19,12 @@ import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
-import edu.snu.vortex.runtime.executor.Executor;
-import edu.snu.vortex.runtime.executor.ExecutorConfiguration;
-import edu.snu.vortex.runtime.master.resourcemanager.ExecutorRepresenter;
-import edu.snu.vortex.runtime.master.resourcemanager.ResourceManager;
 import edu.snu.vortex.runtime.master.scheduler.RoundRobinSchedulingPolicy;
 import edu.snu.vortex.runtime.master.scheduler.SchedulingPolicy;
+import org.apache.reef.driver.context.ActiveContext;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.Optional;
 import java.util.Set;
@@ -42,46 +40,36 @@ import static org.mockito.Mockito.*;
  */
 public final class RoundRobinSchedulingPolicyTest {
   private SchedulingPolicy schedulingPolicy;
-  private ResourceManager resourceManager = new MockResourceManager();
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
-  private final ExecutorConfiguration executorConfiguration = new ExecutorConfiguration();
-
-  private final class MockResourceManager implements ResourceManager {
-    @Override
-    public Optional<Executor> requestExecutor(final RuntimeAttribute resourceType,
-                                final ExecutorConfiguration executorConfiguration) {
-      if (resourceType == RuntimeAttribute.Compute) {
-        final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", RuntimeAttribute.Compute, 1, mockMsgSender);
-        final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", RuntimeAttribute.Compute, 1, mockMsgSender);
-        final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", RuntimeAttribute.Compute, 1, mockMsgSender);
-        schedulingPolicy.onExecutorAdded(a3);
-        schedulingPolicy.onExecutorAdded(a2);
-        schedulingPolicy.onExecutorAdded(a1);
-      } else {
-        final ExecutorRepresenter b1 = new ExecutorRepresenter("b1", RuntimeAttribute.Storage, 1, mockMsgSender);
-        final ExecutorRepresenter b2 = new ExecutorRepresenter("b2", RuntimeAttribute.Storage, 1, mockMsgSender);
-        schedulingPolicy.onExecutorAdded(b2);
-        schedulingPolicy.onExecutorAdded(b1);
-      }
-      return Optional.empty();
-    }
-  }
 
   @Before
   public void setUp() {
     schedulingPolicy = new RoundRobinSchedulingPolicy(2000);
+    final ActiveContext activeContext = mock(ActiveContext.class);
+    Mockito.doThrow(new RuntimeException()).when(activeContext).close();
+
+    // Add compute nodes
+    schedulingPolicy
+        .onExecutorAdded(new ExecutorRepresenter("a3", RuntimeAttribute.Compute, 1, mockMsgSender, activeContext));
+    schedulingPolicy
+        .onExecutorAdded(new ExecutorRepresenter("a2", RuntimeAttribute.Compute, 1, mockMsgSender, activeContext));
+    schedulingPolicy
+        .onExecutorAdded(new ExecutorRepresenter("a1", RuntimeAttribute.Compute, 1, mockMsgSender, activeContext));
+
+    // Add storage nodes
+    schedulingPolicy
+        .onExecutorAdded(new ExecutorRepresenter("b2", RuntimeAttribute.Storage, 1, mockMsgSender, activeContext));
+    schedulingPolicy
+        .onExecutorAdded(new ExecutorRepresenter("b1", RuntimeAttribute.Storage, 1, mockMsgSender, activeContext));
   }
 
   @Test
   public void checkScheduleTimeout() {
-    assertEquals(schedulingPolicy.getScheduleTimeout(), 2000);
+    assertEquals(schedulingPolicy.getScheduleTimeoutMs(), 2000);
   }
 
   @Test
   public void testSingleCoreTwoTypesOfExecutors() {
-    resourceManager.requestExecutor(RuntimeAttribute.Compute, executorConfiguration);
-    resourceManager.requestExecutor(RuntimeAttribute.Storage, executorConfiguration);
-
     final TaskGroup A1 = new TaskGroup("A1", "Stage A", null, RuntimeAttribute.Compute);
     final TaskGroup A2 = new TaskGroup("A2", "Stage A", null, RuntimeAttribute.Compute);
     final TaskGroup A3 = new TaskGroup("A3", "Stage A", null, RuntimeAttribute.Compute);
