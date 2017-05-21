@@ -16,7 +16,7 @@
 package edu.snu.vortex.runtime.master.scheduler;
 
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
-import edu.snu.vortex.runtime.master.resourcemanager.ExecutorRepresenter;
+import edu.snu.vortex.runtime.master.ExecutorRepresenter;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.Optional;
@@ -32,7 +32,7 @@ public interface SchedulingPolicy {
    * Returns this scheduling policy's timeout before an executor assignment.
    * @return the timeout in milliseconds.
    */
-  long getScheduleTimeout();
+  long getScheduleTimeoutMs();
 
   /**
    * Attempts to schedule the given taskGroup to an executor according to this policy.

@@ -5,6 +5,8 @@ import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 import edu.snu.vortex.runtime.common.plan.physical.Task;
 import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
 
+import javax.inject.Inject;
+
 /**
  * A factory that produces {@link InputReader} and {@link OutputWriter}.
  */
@@ -12,6 +14,7 @@ public final class DataTransferFactory {
 
   private final BlockManagerWorker blockManagerWorker;
 
+  @Inject
   public DataTransferFactory(final BlockManagerWorker blockManagerWorker) {
     this.blockManagerWorker = blockManagerWorker;
   }

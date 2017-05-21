@@ -17,8 +17,6 @@ package edu.snu.vortex.runtime.executor;
 
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
-import edu.snu.vortex.runtime.common.message.MessageEnvironment;
-import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
@@ -53,14 +51,15 @@ public final class TaskGroupStateManager {
    */
   private Set<String> currentTaskGroupTaskIds;
 
-  private Map<String, MessageSender<ControlMessage.Message>> nodeIdToMsgSenderMap;
+  private final PersistentConnectionToMaster persistentConnectionToMaster;
+
 
   public TaskGroupStateManager(final TaskGroup taskGroup,
                                final String executorId,
-                               final Map<String, MessageSender<ControlMessage.Message>> nodeIdToMsgSenderMap) {
+                               final PersistentConnectionToMaster persistentConnectionToMaster) {
     this.taskGroupId = taskGroup.getTaskGroupId();
     this.executorId = executorId;
-    this.nodeIdToMsgSenderMap = nodeIdToMsgSenderMap;
+    this.persistentConnectionToMaster = persistentConnectionToMaster;
     idToTaskStates = new HashMap<>();
     currentTaskGroupTaskIds = new HashSet<>();
     initializeStates(taskGroup);
@@ -156,9 +155,7 @@ public final class TaskGroupStateManager {
     }
 
     // Send taskGroupStateChangedMsg to master!
-    final MessageSender<ControlMessage.Message> senderToDriver =
-        nodeIdToMsgSenderMap.get(MessageEnvironment.MASTER_COMMUNICATION_ID);
-    senderToDriver.send(
+    persistentConnectionToMaster.getMessageSender().send(
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
             .setType(ControlMessage.MessageType.TaskGroupStateChanged)

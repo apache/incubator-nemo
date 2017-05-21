@@ -16,6 +16,7 @@
 package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.client.JobLauncher;
+import edu.snu.vortex.compiler.TestUtil;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -29,13 +30,14 @@ import org.powermock.modules.junit4.PowerMockRunner;
 public final class MultinomialLogisticRegressionTest {
   private static final String mlr = "edu.snu.vortex.examples.beam.MultinomialLogisticRegression";
   private static final String optimizationPolicy = "pado";
-  private static final String input = "./src/main/resources/sample_input_mlr";
+  private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mlr";
   private static final String numFeatures = "100";
   private static final String numClasses = "5";
   private static final String numIteration = "3";
-  private static final String dagDirectory = "./target/dag/mlr";
+  private static final String dagDirectory = "./dag";
 
   public static final ArgBuilder builder = new ArgBuilder()
+      .addJobId(MultinomialLogisticRegressionTest.class.getSimpleName())
       .addUserMain(mlr)
       .addOptimizationPolicy(optimizationPolicy)
       .addUserArgs(input, numFeatures, numClasses, numIteration)

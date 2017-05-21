@@ -9,6 +9,7 @@ import java.util.concurrent.Future;
 
 /**
  * A simple {@link MessageEnvironment} implementation that works on a single node.
+ * Used for unit tests.
  */
 public final class LocalMessageEnvironment implements MessageEnvironment {
 
@@ -22,9 +23,9 @@ public final class LocalMessageEnvironment implements MessageEnvironment {
   }
 
   @Override
-  public <T> MessageSender<T> setupListener(
+  public <T> void setupListener(
       final String messageTypeId, final MessageListener<T> listener) {
-    return dispatcher.setupListener(currentNodeId, messageTypeId, listener);
+    dispatcher.setupListener(currentNodeId, messageTypeId, listener);
   }
 
   @Override
@@ -35,7 +36,12 @@ public final class LocalMessageEnvironment implements MessageEnvironment {
   }
 
   @Override
-  public String getCurrentId() {
+  public String getId() {
     return currentNodeId;
+  }
+
+  @Override
+  public void close() {
+    // No-ops.
   }
 }

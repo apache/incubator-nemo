@@ -15,13 +15,8 @@
  */
 package edu.snu.vortex.runtime.master.scheduler;
 
-import com.google.protobuf.ByteString;
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
-import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
-import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
-import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.IllegalStateTransitionException;
@@ -29,15 +24,16 @@ import edu.snu.vortex.runtime.exception.SchedulingException;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
 import edu.snu.vortex.runtime.exception.UnrecoverableFailureException;
 import edu.snu.vortex.runtime.master.BlockManagerMaster;
+import edu.snu.vortex.runtime.master.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.JobStateManager;
-import edu.snu.vortex.runtime.master.resourcemanager.ExecutorRepresenter;
-import org.apache.commons.lang.SerializationUtils;
 
-import java.util.*;
-import java.util.concurrent.BlockingDeque;
+import javax.inject.Inject;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -48,8 +44,8 @@ import java.util.logging.Logger;
 public final class BatchScheduler implements Scheduler {
   private static final Logger LOG = Logger.getLogger(BatchScheduler.class.getName());
 
-  private final ExecutorService schedulerThread;
-  private final BlockingDeque<TaskGroup> taskGroupsToSchedule;
+  private final PendingTaskGroupQueue pendingTaskGroupQueue;
+
   private JobStateManager jobStateManager;
 
   /**
@@ -60,46 +56,20 @@ public final class BatchScheduler implements Scheduler {
 
   /**
    * The {@link SchedulingPolicy} used to schedule task groups.
-   * {@link this#schedulingPolicyAttribute} decides the implementation.
    */
   private SchedulingPolicy schedulingPolicy;
-  private RuntimeAttribute schedulingPolicyAttribute;
-
-  /**
-   * Timeout for the {@link SchedulingPolicy} upon task group scheduling.
-   */
-  private long scheduleTimeout;
 
   /**
    * The current job being executed.
    */
   private PhysicalPlan physicalPlan;
 
-  public BatchScheduler(final RuntimeAttribute schedulingPolicyAttribute,
-                        final long scheduleTimeout) {
-    this.schedulerThread = Executors.newSingleThreadExecutor();
-    this.taskGroupsToSchedule = new LinkedBlockingDeque<>();
+  @Inject
+  public BatchScheduler(final SchedulingPolicy schedulingPolicy,
+                        final PendingTaskGroupQueue pendingTaskGroupQueue) {
+    this.pendingTaskGroupQueue = pendingTaskGroupQueue;
     this.executorRepresenterMap = new HashMap<>();
-    schedulerThread.execute(new TaskGroupScheduleHandler());
-
-    // The default policy is initialized and set here.
-    this.schedulingPolicyAttribute = schedulingPolicyAttribute;
-    this.scheduleTimeout = scheduleTimeout;
-    initializeSchedulingPolicy();
-  }
-
-  /**
-   * Initializes the scheduling policy.
-   * This can be called anytime during this scheduler's lifetime and the policy will change flexibly.
-   */
-  private void initializeSchedulingPolicy() {
-    switch (schedulingPolicyAttribute) {
-      case RoundRobin:
-        this.schedulingPolicy = new RoundRobinSchedulingPolicy(scheduleTimeout);
-        break;
-      default:
-        throw new SchedulingException(new Exception("The scheduling policy is unsupported by runtime"));
-    }
+    this.schedulingPolicy = schedulingPolicy;
   }
 
   /**
@@ -112,23 +82,14 @@ public final class BatchScheduler implements Scheduler {
                                                   final BlockManagerMaster blockManagerMaster) {
     this.physicalPlan = jobToSchedule;
     this.jobStateManager = new JobStateManager(jobToSchedule, blockManagerMaster);
-    broadcastPhysicalPlan();
+
+    // Launch scheduler
+    final ExecutorService pendingTaskSchedulerThread = Executors.newSingleThreadExecutor();
+    pendingTaskSchedulerThread.execute(new SchedulerRunner(jobStateManager, schedulingPolicy, pendingTaskGroupQueue));
+    pendingTaskSchedulerThread.shutdown();
+
     scheduleNextStage();
     return jobStateManager;
-  }
-
-  private void broadcastPhysicalPlan() {
-    ControlMessage.Message message =
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setType(ControlMessage.MessageType.BroadcastPhysicalPlan)
-            .setBroadcastPhysicalPlanMsg(
-                ControlMessage.BroadcastPhysicalPlanMsg.newBuilder()
-                    .setPhysicalPlan(ByteString.copyFrom(SerializationUtils.serialize(physicalPlan)))
-                    .build())
-            .build();
-
-    executorRepresenterMap.forEach((executorId, representer) -> representer.sendControlMessage(message));
   }
 
   /**
@@ -223,43 +184,17 @@ public final class BatchScheduler implements Scheduler {
     if (nextStageToExecute != null) {
       LOG.log(Level.INFO, "Scheduling Stage: {0}", nextStageToExecute.getId());
       jobStateManager.onStageStateChanged(nextStageToExecute.getId(), StageState.State.EXECUTING);
-      taskGroupsToSchedule.addAll(nextStageToExecute.getTaskGroupList());
+      pendingTaskGroupQueue.addAll(nextStageToExecute.getTaskGroupList());
     } else {
       throw new SchedulingException(new Exception("There is no next stage to execute! "
           + "There must have been something wrong in setting execution states!"));
     }
   }
 
-  /**
-   * A separate thread is run to schedule task groups to executors.
-   */
-  private class TaskGroupScheduleHandler implements Runnable {
-    @Override
-    public void run() {
-      while (!schedulerThread.isShutdown()) {
-        try {
-          final TaskGroup taskGroup = taskGroupsToSchedule.takeFirst();
-          final Optional<ExecutorRepresenter> executor = schedulingPolicy.attemptSchedule(taskGroup);
-          if (!executor.isPresent()) {
-            LOG.log(Level.INFO, "Failed to assign an executor before the timeout: {0}",
-                schedulingPolicy.getScheduleTimeout());
-            taskGroupsToSchedule.addLast(taskGroup);
-          } else {
-            // Must send this taskGroup to the destination executor.
-            jobStateManager.onTaskGroupStateChanged(taskGroup.getTaskGroupId(),
-                TaskGroupState.State.EXECUTING);
-            schedulingPolicy.onTaskGroupScheduled(executor.get(), taskGroup);
-          }
-        } catch (final Exception e) {
-          throw new SchedulingException(e);
-        }
-      }
-    }
-  }
-
   @Override
   public void terminate() {
-    schedulerThread.shutdown();
-    taskGroupsToSchedule.clear();
+   executorRepresenterMap.entrySet().stream().forEach(e -> {
+     e.getValue().shutDown();
+   });
   }
 }

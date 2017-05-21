@@ -20,10 +20,4 @@ public interface MessageContext {
    */
   <U> void reply(U replyMessage);
 
-  /**
-   * Send back a throwable.
-   * @param throwable a throwable
-   */
-  void replyThrowable(Throwable throwable);
-
 }

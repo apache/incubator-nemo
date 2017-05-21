@@ -15,12 +15,15 @@
  */
 package edu.snu.vortex.runtime.master.scheduler;
 
+import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.exception.SchedulingException;
-import edu.snu.vortex.runtime.master.resourcemanager.ExecutorRepresenter;
+import edu.snu.vortex.runtime.master.ExecutorRepresenter;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
+import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -39,7 +42,7 @@ import java.util.logging.Logger;
 public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   private static final Logger LOG = Logger.getLogger(RoundRobinSchedulingPolicy.class.getName());
 
-  private final long scheduleTimeout;
+  private final int scheduleTimeoutMs;
 
   /**
    * Thread safety is provided by this lock as multiple threads can call the methods in this class concurrently.
@@ -64,17 +67,17 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
    */
   private final Map<RuntimeAttribute, Integer> nextExecutorIndexByResourceType;
 
-  public RoundRobinSchedulingPolicy(final long scheduleTimeout) {
-    this.scheduleTimeout = scheduleTimeout;
+  @Inject
+  public RoundRobinSchedulingPolicy(@Parameter(JobConf.SchedulerTimeoutMs.class) final int scheduleTimeoutMs) {
+    this.scheduleTimeoutMs = scheduleTimeoutMs;
     this.lock = new ReentrantLock();
     this.executorByResourceType = new HashMap<>();
     this.attemptToScheduleByResourceType = new HashMap<>();
     this.nextExecutorIndexByResourceType = new HashMap<>();
   }
 
-  @Override
-  public long getScheduleTimeout() {
-    return scheduleTimeout;
+  public long getScheduleTimeoutMs() {
+    return scheduleTimeoutMs;
   }
 
   @Override
@@ -91,9 +94,9 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
           attemptToSchedule = lock.newCondition();
           attemptToScheduleByResourceType.put(resourceType, attemptToSchedule);
         }
-        boolean executorAvailable = attemptToSchedule.await(scheduleTimeout, TimeUnit.MILLISECONDS);
+        boolean executorAvailable = attemptToSchedule.await(scheduleTimeoutMs, TimeUnit.MILLISECONDS);
 
-        if (executorAvailable) { // if an executor has become available before scheduleTimeout,
+        if (executorAvailable) { // if an executor has become available before scheduleTimeoutMs,
           executor = selectExecutorByRR(resourceType);
           return Optional.of(executor);
         } else {

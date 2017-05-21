@@ -10,7 +10,6 @@ import java.util.Optional;
 final class LocalMessageContext implements MessageContext {
 
   private final String senderId;
-  private Throwable throwable;
   private Object replyMessage;
 
   /**
@@ -29,19 +28,6 @@ final class LocalMessageContext implements MessageContext {
   @Override
   public <T> void reply(final T message) {
     this.replyMessage = message;
-  }
-
-  @Override
-  public void replyThrowable(final Throwable th) {
-    this.throwable = th;
-  }
-
-  /**
-   *  TODO #119.
-   * @return TODO #119.
-   */
-  public Optional<Throwable> getThrowable() {
-    return Optional.ofNullable(throwable);
   }
 
   /**

@@ -34,11 +34,7 @@ public class LocalMessageTest {
 
       @Override
       public void onMessageWithContext(final ToDriver message, final MessageContext messageContext) {
-        if (message instanceof ExecutorStarted) {
-          messageContext.reply(true);
-        } else if (message instanceof MakeException) {
-          messageContext.replyThrowable(new RuntimeException());
-        }
+        messageContext.reply(true);
       }
     });
 
@@ -71,11 +67,6 @@ public class LocalMessageTest {
     Assert.assertEquals(2, toDriverMessageUsingSend.get());
     Assert.assertTrue(messageSender1.<Boolean>request(new ExecutorStarted()).get());
     Assert.assertTrue(messageSender2.<Boolean>request(new ExecutorStarted()).get());
-    try {
-      messageSender1.<Boolean>request(new MakeException()).get();
-      throw new RuntimeException(); // Expected not reached here.
-    } catch (final Exception e) {
-    }
 
     // Test exchanging messages between executors.
 
@@ -109,8 +100,6 @@ public class LocalMessageTest {
   }
 
   final class ExecutorStarted implements ToDriver {
-  }
-  final class MakeException implements ToDriver {
   }
 
   interface SecondToDriver extends Serializable {
