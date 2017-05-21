@@ -34,6 +34,7 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +43,8 @@ import java.util.List;
  * Utility methods for tests.
  */
 public final class TestUtil {
+  public static String rootDir = System.getProperty("user.dir");
+
   public static DAG<IRVertex, IREdge> compileALSDAG() throws Exception {
     final Frontend beamFrontend = new BeamFrontend();
     final ArgBuilder alsArgBuilder = AlternatingLeastSquareTest.builder;

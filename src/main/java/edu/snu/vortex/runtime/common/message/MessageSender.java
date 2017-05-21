@@ -25,4 +25,10 @@ public interface MessageSender<T> {
    * @return a future
    */
   <U> Future<U> request(T message);
+
+  /**
+   * Closes the connection.
+   * @throws Exception while closing.
+   */
+  void close() throws Exception;
 }

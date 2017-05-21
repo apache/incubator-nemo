@@ -26,14 +26,24 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-jdk14</artifactId>
-            <version>${slf4j.version}</version>
+            <groupId>org.apache.reef</groupId>
+            <artifactId>reef-io</artifactId>
+            <version>${reef.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.reef</groupId>
             <artifactId>reef-common</artifactId>
             <version>${reef.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.reef</groupId>
+            <artifactId>reef-runtime-local</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-jdk14</artifactId>
+            <version>${slf4j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.beam</groupId>
@@ -89,7 +99,6 @@
             <artifactId>commons-lang3</artifactId>
             <version>${commons.lang.version}</version>
         </dependency>
-
     </dependencies>
 
     <build>

@@ -26,8 +26,8 @@ import edu.snu.vortex.runtime.common.state.TaskState;
 import edu.snu.vortex.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.vortex.runtime.executor.datatransfer.InputReader;
 import edu.snu.vortex.runtime.executor.datatransfer.OutputWriter;
-import edu.snu.vortex.runtime.master.ContextImpl;
-import edu.snu.vortex.runtime.master.OutputCollectorImpl;
+import edu.snu.vortex.runtime.master.irimpl.ContextImpl;
+import edu.snu.vortex.runtime.master.irimpl.OutputCollectorImpl;
 
 import java.util.*;
 import java.util.logging.Level;

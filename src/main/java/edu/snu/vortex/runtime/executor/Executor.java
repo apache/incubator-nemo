@@ -16,6 +16,7 @@
 package edu.snu.vortex.runtime.executor;
 
 import com.google.protobuf.ByteString;
+import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
@@ -23,7 +24,6 @@ import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageListener;
-import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
@@ -38,10 +38,15 @@ import org.apache.beam.sdk.transforms.join.RawUnionValue;
 import org.apache.beam.sdk.transforms.join.UnionCoder;
 import org.apache.beam.sdk.values.KV;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.reef.tang.annotations.Parameter;
 
+import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -54,17 +59,6 @@ public final class Executor {
   private static final Logger LOG = Logger.getLogger(Executor.class.getName());
 
   private final String executorId;
-  private final int capacity;
-
-  /**
-   * The message environment for this executor.
-   */
-  private final MessageEnvironment messageEnvironment;
-
-  /**
-   * Map of node ID to messageSender for outgoing messages from this executor.
-   */
-  private final Map<String, MessageSender<ControlMessage.Message>> nodeIdToMsgSenderMap;
 
   /**
    * To be used for a thread pool to execute task groups.
@@ -81,32 +75,29 @@ public final class Executor {
    */
   private final DataTransferFactory dataTransferFactory;
 
-  private PhysicalPlan physicalPlan;
+  private volatile PhysicalPlan physicalPlan;
   private TaskGroupStateManager taskGroupStateManager;
 
-  public Executor(final String executorId,
-                  final int capacity,
-                  final int numThreads,
+  private final PersistentConnectionToMaster persistentConnectionToMaster;
+
+  @Inject
+  public Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
+                  @Parameter(JobConf.ExecutorCapacity.class) final int executorCapacity,
+                  final PersistentConnectionToMaster persistentConnectionToMaster,
                   final MessageEnvironment messageEnvironment,
-                  final Map<String, MessageSender<ControlMessage.Message>> nodeIdToMsgSenderMap,
                   final BlockManagerWorker blockManagerWorker,
                   final DataTransferFactory dataTransferFactory) {
     this.executorId = executorId;
-    this.capacity = capacity;
-    this.executorService = Executors.newFixedThreadPool(numThreads);
-    this.messageEnvironment = messageEnvironment;
-    this.nodeIdToMsgSenderMap = nodeIdToMsgSenderMap;
-    messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER, new ExecutorMessageReceiver());
+    this.executorService = Executors.newFixedThreadPool(executorCapacity);
     this.blockManagerWorker = blockManagerWorker;
     this.dataTransferFactory = dataTransferFactory;
+    this.persistentConnectionToMaster = persistentConnectionToMaster;
+    messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER, new ExecutorMessageReceiver());
+
   }
 
   public String getExecutorId() {
     return executorId;
-  }
-
-  public int getCapacity() {
-    return capacity;
   }
 
   private synchronized void onTaskGroupReceived(final TaskGroup taskGroup) {
@@ -120,7 +111,29 @@ public final class Executor {
    * @param taskGroup to launch.
    */
   private void launchTaskGroup(final TaskGroup taskGroup) {
-    taskGroupStateManager = new TaskGroupStateManager(taskGroup, executorId, nodeIdToMsgSenderMap);
+    taskGroupStateManager = new TaskGroupStateManager(taskGroup, executorId, persistentConnectionToMaster);
+
+    // TODO #207: Multi-job and Versioned PhysicalPlan Fetching
+    synchronized (this) {
+      if (physicalPlan == null) {
+        try {
+          final ControlMessage.Message response =
+              persistentConnectionToMaster.getMessageSender().
+                  <ControlMessage.Message>request(ControlMessage.Message.newBuilder()
+                      .setId(RuntimeIdGenerator.generateMessageId())
+                      .setType(ControlMessage.MessageType.RequestPhysicalPlan)
+                      .setRequestPhysicalPlanMsg(ControlMessage.RequestPhysicalPlanMsg.newBuilder()
+                          .setExecutorId(executorId)
+                          .build())
+                      .build())
+                  .get();
+          physicalPlan = SerializationUtils.deserialize(response.getPhysicalPlanMsg().getPhysicalPlan().toByteArray());
+        } catch (ExecutionException | InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+
     new TaskGroupExecutor(taskGroup,
         taskGroupStateManager,
         physicalPlan.getStageDAG().getIncomingEdgesOf(taskGroup.getStageId()),
@@ -136,10 +149,6 @@ public final class Executor {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
-      case BroadcastPhysicalPlan:
-        final ControlMessage.BroadcastPhysicalPlanMsg broadcastPhysicalPlanMsg = message.getBroadcastPhysicalPlanMsg();
-        physicalPlan = SerializationUtils.deserialize(broadcastPhysicalPlanMsg.getPhysicalPlan().toByteArray());
-        break;
       case ScheduleTaskGroup:
         final ControlMessage.ScheduleTaskGroupMsg scheduleTaskGroupMsg = message.getScheduleTaskGroupMsg();
         final TaskGroup taskGroup = SerializationUtils.deserialize(scheduleTaskGroupMsg.getTaskGroup().toByteArray());
@@ -194,6 +203,7 @@ public final class Executor {
                 .setType(ControlMessage.MessageType.TransferBlock)
                 .setTransferBlockMsg(
                     ControlMessage.TransferBlockMsg.newBuilder()
+                        .setRequestId(message.getId())
                         .setExecutorId(executorId)
                         .setBlockId(requestBlockMsg.getBlockId())
                         .setIsUnionValue(isUnionValue)

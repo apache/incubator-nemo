@@ -17,6 +17,7 @@ package edu.snu.vortex.runtime.executor.block;
 
 import edu.snu.vortex.compiler.ir.Element;
 
+import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.Optional;
 
@@ -26,6 +27,7 @@ import java.util.Optional;
 public final class LocalStore implements BlockStore {
   private final HashMap<String, Iterable<Element>> blockIdToData;
 
+  @Inject
   public LocalStore() {
     this.blockIdToData = new HashMap<>();
   }

@@ -62,15 +62,10 @@ public final class LocalMessageDispatcher {
     final LocalMessageContext context = new LocalMessageContext(senderId);
     listener.onMessageWithContext(message, context);
 
-    final Optional<Throwable> throwable = context.getThrowable();
     final Optional<Object> replyMessage = context.getReplyMessage();
 
     final CompletableFuture future = new CompletableFuture();
-    if (throwable.isPresent()) {
-      future.completeExceptionally(throwable.get());
-    } else {
-      future.complete(replyMessage.orElse(null));
-    }
+    future.complete(replyMessage.orElse(null));
 
     return future;
   }

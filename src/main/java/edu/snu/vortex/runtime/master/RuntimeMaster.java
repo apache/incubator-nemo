@@ -15,36 +15,29 @@
  */
 package edu.snu.vortex.runtime.master;
 
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import com.google.protobuf.ByteString;
+import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageListener;
-import edu.snu.vortex.runtime.common.message.MessageSender;
-import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
-import edu.snu.vortex.runtime.common.state.BlockState;
-import edu.snu.vortex.runtime.common.state.TaskGroupState;
-import edu.snu.vortex.runtime.exception.IllegalMessageException;
-import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
-import edu.snu.vortex.runtime.executor.Executor;
-import edu.snu.vortex.runtime.master.resourcemanager.ExecutorRepresenter;
-import edu.snu.vortex.runtime.master.resourcemanager.ResourceManager;
 import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
 import edu.snu.vortex.runtime.common.plan.logical.Stage;
 import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalDAGGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.vortex.runtime.common.state.BlockState;
+import edu.snu.vortex.runtime.common.state.TaskGroupState;
+import edu.snu.vortex.runtime.exception.IllegalMessageException;
+import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import edu.snu.vortex.utils.dag.DAG;
+import org.apache.commons.lang.SerializationUtils;
+import org.apache.reef.tang.annotations.Parameter;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import javax.inject.Inject;
 import java.util.logging.Logger;
-
-import static edu.snu.vortex.runtime.common.RuntimeAttribute.*;
 
 /**
  * Runtime Master is the central controller of Runtime.
@@ -57,70 +50,35 @@ import static edu.snu.vortex.runtime.common.RuntimeAttribute.*;
 public final class RuntimeMaster {
   private static final Logger LOG = Logger.getLogger(RuntimeMaster.class.getName());
 
-  private final RuntimeConfiguration runtimeConfiguration;
   private final Scheduler scheduler;
-  private final ResourceManager resourceManager;
-  private final LocalMessageDispatcher localMessageDispatcher;
   private final MessageEnvironment masterMessageEnvironment;
   private final BlockManagerMaster blockManagerMaster;
   private JobStateManager jobStateManager;
 
-  public RuntimeMaster(final RuntimeConfiguration runtimeConfiguration,
-                       final Scheduler scheduler,
-                       final LocalMessageDispatcher localMessageDispatcher,
+  private final String dagDirectory;
+  private PhysicalPlan physicalPlan;
+
+  @Inject
+  public RuntimeMaster(final Scheduler scheduler,
                        final MessageEnvironment masterMessageEnvironment,
                        final BlockManagerMaster blockManagerMaster,
-                       final ResourceManager resourceManager) {
+                       @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     this.scheduler = scheduler;
-    this.runtimeConfiguration = runtimeConfiguration;
-    this.localMessageDispatcher = localMessageDispatcher;
     this.masterMessageEnvironment = masterMessageEnvironment;
-    this.masterMessageEnvironment.setupListener(MessageEnvironment.MASTER_MESSAGE_RECEIVER,
-        new MasterMessageReceiver());
+    this.masterMessageEnvironment
+        .setupListener(MessageEnvironment.MASTER_MESSAGE_RECEIVER, new MasterMessageReceiver());
     this.blockManagerMaster = blockManagerMaster;
-    this.resourceManager = resourceManager;
-    initializeResources();
-  }
-
-  /**
-   * Initialize a default amount of resources by requesting to the Resource Manager.
-   */
-  private void initializeResources() {
-    final Set<RuntimeAttribute> completeSetOfResourceType =
-        new HashSet<>(Arrays.asList(Transient, Reserved, Compute, Storage));
-    completeSetOfResourceType.forEach(resourceType -> {
-      for (int i = 0; i < runtimeConfiguration.getExecutorConfiguration().getDefaultExecutorNum(); i++) {
-        final Optional<Executor> executor =
-            resourceManager.requestExecutor(resourceType, runtimeConfiguration.getExecutorConfiguration());
-
-        if (executor.isPresent()) {
-          // Connect to the executor and initiate Master side's executor representation.
-          final MessageSender messageSender;
-          try {
-            messageSender =
-                masterMessageEnvironment.asyncConnect(
-                    executor.get().getExecutorId(), MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER).get();
-          } catch (final Exception e) {
-            throw new RuntimeException(e);
-          }
-          final ExecutorRepresenter executorRepresenter =
-              new ExecutorRepresenter(executor.get().getExecutorId(), resourceType,
-                  executor.get().getCapacity(), messageSender);
-          scheduler.onExecutorAdded(executorRepresenter);
-        }
-      }
-    });
+    this.dagDirectory = dagDirectory;
   }
 
   /**
    * Submits the {@link ExecutionPlan} to Runtime.
    * @param executionPlan to execute.
-   * @param dagDirectory the directory to which JSON representation of the plan is saved
    */
-  public void execute(final ExecutionPlan executionPlan, final String dagDirectory) {
-    final PhysicalPlan physicalPlan = generatePhysicalPlan(executionPlan, dagDirectory);
+  public void execute(final ExecutionPlan executionPlan) {
+    physicalPlan = generatePhysicalPlan(executionPlan);
     try {
-      // TODO #187: Cleanup Execution Threads
+      // TODO #208: Cleanup Execution Threads
       jobStateManager = scheduler.scheduleJob(physicalPlan, blockManagerMaster);
       while (!jobStateManager.checkJobCompletion()) {
         // Check every 3 seconds for job completion.
@@ -131,20 +89,23 @@ public final class RuntimeMaster {
     }
   }
 
+  public void terminate() {
+    scheduler.terminate();
+  }
+
   /**
    * Generates the {@link PhysicalPlan} to be executed.
    * @param executionPlan that should be converted to a physical plan
-   * @param dagDirectory the directory to which JSON representation of the plan is saved
    * @return {@link PhysicalPlan} to execute.
    */
-  private PhysicalPlan generatePhysicalPlan(final ExecutionPlan executionPlan, final String dagDirectory) {
+  private PhysicalPlan generatePhysicalPlan(final ExecutionPlan executionPlan) {
     final DAG<Stage, StageEdge> logicalDAG = executionPlan.getRuntimeStageDAG();
     logicalDAG.storeJSON(dagDirectory, "plan-logical", "logical execution plan");
 
-    final PhysicalPlan physicalPlan = new PhysicalPlan(executionPlan.getId(),
+    final PhysicalPlan plan = new PhysicalPlan(executionPlan.getId(),
         logicalDAG.convert(new PhysicalDAGGenerator()));
-    physicalPlan.getStageDAG().storeJSON(dagDirectory, "plan-physical", "physical execution plan");
-    return physicalPlan;
+    plan.getStageDAG().storeJSON(dagDirectory, "plan-physical", "physical execution plan");
+    return plan;
   }
 
   /**
@@ -180,16 +141,29 @@ public final class RuntimeMaster {
       switch (message.getType()) {
       case RequestBlockLocation:
         final ControlMessage.RequestBlockLocationMsg requestBlockLocationMsg = message.getRequestBlockLocationMsg();
-
         messageContext.reply(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
                 .setType(ControlMessage.MessageType.BlockLocationInfo)
                 .setBlockLocationInfoMsg(
                     ControlMessage.BlockLocationInfoMsg.newBuilder()
+                        .setRequestId(message.getId())
                         .setBlockId(requestBlockLocationMsg.getBlockId())
                         .setOwnerExecutorId(
                             blockManagerMaster.getBlockLocation(requestBlockLocationMsg.getBlockId()).get())
+                        .build())
+                .build());
+        break;
+      // TODO #207: Multi-job and Versioned PhysicalPlan Fetching
+      case RequestPhysicalPlan:
+        messageContext.reply(
+            ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdGenerator.generateMessageId())
+                .setType(ControlMessage.MessageType.PhysicalPlan)
+                .setPhysicalPlanMsg(
+                    ControlMessage.PhysicalPlanMsg.newBuilder()
+                        .setRequestId(message.getId())
+                        .setPhysicalPlan(ByteString.copyFrom(SerializationUtils.serialize(physicalPlan)))
                         .build())
                 .build());
         break;

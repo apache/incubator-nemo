@@ -24,6 +24,11 @@ import java.util.stream.Collectors;
 public class ArgBuilder {
   private List<List<String>> args = new ArrayList<>();
 
+  public ArgBuilder addJobId(final String jobId) {
+    args.add(Arrays.asList("-job_id", jobId));
+    return this;
+  }
+
   public ArgBuilder addUserMain(final String main) {
     args.add(Arrays.asList("-user_main", main));
     return this;
