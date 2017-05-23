@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.runtime.master.scheduler;
 
-import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
+import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.SchedulingException;
 import edu.snu.vortex.runtime.master.ExecutorRepresenter;
@@ -52,17 +52,18 @@ public final class SchedulerRunner implements Runnable {
     // TODO #208: Check for Job Termination in a Cleaner Way
     while (!jobStateManager.checkJobCompletion()) {
       try {
-        final TaskGroup taskGroup = pendingTaskGroupQueue.takeFirst();
-        final Optional<ExecutorRepresenter> executor = schedulingPolicy.attemptSchedule(taskGroup);
+        final ScheduledTaskGroup scheduledTaskGroup = pendingTaskGroupQueue.takeFirst();
+        final Optional<ExecutorRepresenter> executor =
+            schedulingPolicy.attemptSchedule(scheduledTaskGroup);
         if (!executor.isPresent()) {
           LOG.log(Level.INFO, "Failed to assign an executor before the timeout: {0}",
               schedulingPolicy.getScheduleTimeoutMs());
-          pendingTaskGroupQueue.addLast(taskGroup);
+          pendingTaskGroupQueue.addLast(scheduledTaskGroup);
         } else {
-          // Must send this taskGroup to the destination executor.
-          jobStateManager.onTaskGroupStateChanged(taskGroup.getTaskGroupId(),
+          // Must send this scheduledTaskGroup to the destination executor.
+          jobStateManager.onTaskGroupStateChanged(scheduledTaskGroup.getTaskGroup().getTaskGroupId(),
               TaskGroupState.State.EXECUTING);
-          schedulingPolicy.onTaskGroupScheduled(executor.get(), taskGroup);
+          schedulingPolicy.onTaskGroupScheduled(executor.get(), scheduledTaskGroup);
         }
       } catch (final Exception e) {
         throw new SchedulingException(e);

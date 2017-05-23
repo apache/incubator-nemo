@@ -20,7 +20,7 @@ import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageSender;
-import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
+import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
 
@@ -57,8 +57,8 @@ public final class ExecutorRepresenter {
     this.activeContext = activeContext;
   }
 
-  public void onTaskGroupScheduled(final TaskGroup taskGroup) {
-    runningTaskGroups.add(taskGroup.getTaskGroupId());
+  public void onTaskGroupScheduled(final ScheduledTaskGroup scheduledTaskGroup) {
+    runningTaskGroups.add(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
 
     sendControlMessage(
         ControlMessage.Message.newBuilder()
@@ -66,7 +66,7 @@ public final class ExecutorRepresenter {
             .setType(ControlMessage.MessageType.ScheduleTaskGroup)
             .setScheduleTaskGroupMsg(
                 ControlMessage.ScheduleTaskGroupMsg.newBuilder()
-                    .setTaskGroup(ByteString.copyFrom(SerializationUtils.serialize(taskGroup)))
+                    .setTaskGroup(ByteString.copyFrom(SerializationUtils.serialize(scheduledTaskGroup)))
                     .build())
             .build());
   }

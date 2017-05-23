@@ -13,8 +13,6 @@ enum MessageType {
     BlockLocationInfo = 4;
     RequestBlock = 5;
     TransferBlock = 6;
-    PhysicalPlan = 7;
-    RequestPhysicalPlan = 8;
 }
 
 message Message {
@@ -28,8 +26,6 @@ message Message {
         BlockLocationInfoMsg blockLocationInfoMsg = 7;
         RequestBlockMsg requestBlockMsg = 8;
         TransferBlockMsg transferBlockMsg = 9;
-        PhysicalPlanMsg physicalPlanMsg = 10;
-        RequestPhysicalPlanMsg requestPhysicalPlanMsg = 11;
     }
 }
 
@@ -42,15 +38,6 @@ message BlockLocationInfoMsg {
     int64 requestId = 1; // To find the matching request msg
     string blockId = 2;
     string ownerExecutorId = 3;
-}
-
-message RequestPhysicalPlanMsg {
-    string executorId = 1;
-}
-
-message PhysicalPlanMsg {
-    int64 requestId = 1; // To find the matching request msg
-    bytes physicalPlan = 2;
 }
 
 // Messages from Executors to Master
