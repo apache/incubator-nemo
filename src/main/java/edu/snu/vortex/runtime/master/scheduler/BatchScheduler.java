@@ -17,6 +17,8 @@ package edu.snu.vortex.runtime.master.scheduler;
 
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
+import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.IllegalStateTransitionException;
@@ -184,7 +186,13 @@ public final class BatchScheduler implements Scheduler {
     if (nextStageToExecute != null) {
       LOG.log(Level.INFO, "Scheduling Stage: {0}", nextStageToExecute.getId());
       jobStateManager.onStageStateChanged(nextStageToExecute.getId(), StageState.State.EXECUTING);
-      pendingTaskGroupQueue.addAll(nextStageToExecute.getTaskGroupList());
+      final List<PhysicalStageEdge> stageIncomingEdges =
+          physicalPlan.getStageDAG().getIncomingEdgesOf(nextStageToExecute.getId());
+      final List<PhysicalStageEdge> stageOutgoingEdges =
+          physicalPlan.getStageDAG().getOutgoingEdgesOf(nextStageToExecute.getId());
+
+      nextStageToExecute.getTaskGroupList().forEach(taskGroup ->
+          pendingTaskGroupQueue.addLast(new ScheduledTaskGroup(taskGroup, stageIncomingEdges, stageOutgoingEdges)));
     } else {
       throw new SchedulingException(new Exception("There is no next stage to execute! "
           + "There must have been something wrong in setting execution states!"));
@@ -193,8 +201,6 @@ public final class BatchScheduler implements Scheduler {
 
   @Override
   public void terminate() {
-   executorRepresenterMap.entrySet().stream().forEach(e -> {
-     e.getValue().shutDown();
-   });
+   executorRepresenterMap.entrySet().stream().forEach(e -> e.getValue().shutDown());
   }
 }

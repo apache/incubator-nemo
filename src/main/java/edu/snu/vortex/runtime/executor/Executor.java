@@ -24,8 +24,7 @@ import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageListener;
-import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
+import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.exception.UnsupportedBlockStoreException;
 import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
@@ -46,7 +45,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -75,7 +73,6 @@ public final class Executor {
    */
   private final DataTransferFactory dataTransferFactory;
 
-  private volatile PhysicalPlan physicalPlan;
   private TaskGroupStateManager taskGroupStateManager;
 
   private final PersistentConnectionToMaster persistentConnectionToMaster;
@@ -100,44 +97,24 @@ public final class Executor {
     return executorId;
   }
 
-  private synchronized void onTaskGroupReceived(final TaskGroup taskGroup) {
+  private synchronized void onTaskGroupReceived(final ScheduledTaskGroup scheduledTaskGroup) {
     LOG.log(Level.FINE, "Executor [{0}] received TaskGroup [{1}] to execute.",
-        new Object[]{executorId, taskGroup.getTaskGroupId()});
-    executorService.execute(() -> launchTaskGroup(taskGroup));
+        new Object[]{executorId, scheduledTaskGroup.getTaskGroup().getTaskGroupId()});
+    executorService.execute(() -> launchTaskGroup(scheduledTaskGroup));
   }
 
   /**
    * Launches the TaskGroup, and keeps track of the execution state with taskGroupStateManager.
-   * @param taskGroup to launch.
+   * @param scheduledTaskGroup to launch.
    */
-  private void launchTaskGroup(final TaskGroup taskGroup) {
-    taskGroupStateManager = new TaskGroupStateManager(taskGroup, executorId, persistentConnectionToMaster);
+  private void launchTaskGroup(final ScheduledTaskGroup scheduledTaskGroup) {
+    taskGroupStateManager = new TaskGroupStateManager(scheduledTaskGroup.getTaskGroup(),
+        executorId, persistentConnectionToMaster);
 
-    // TODO #207: Multi-job and Versioned PhysicalPlan Fetching
-    synchronized (this) {
-      if (physicalPlan == null) {
-        try {
-          final ControlMessage.Message response =
-              persistentConnectionToMaster.getMessageSender().
-                  <ControlMessage.Message>request(ControlMessage.Message.newBuilder()
-                      .setId(RuntimeIdGenerator.generateMessageId())
-                      .setType(ControlMessage.MessageType.RequestPhysicalPlan)
-                      .setRequestPhysicalPlanMsg(ControlMessage.RequestPhysicalPlanMsg.newBuilder()
-                          .setExecutorId(executorId)
-                          .build())
-                      .build())
-                  .get();
-          physicalPlan = SerializationUtils.deserialize(response.getPhysicalPlanMsg().getPhysicalPlan().toByteArray());
-        } catch (ExecutionException | InterruptedException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    }
-
-    new TaskGroupExecutor(taskGroup,
+    new TaskGroupExecutor(scheduledTaskGroup.getTaskGroup(),
         taskGroupStateManager,
-        physicalPlan.getStageDAG().getIncomingEdgesOf(taskGroup.getStageId()),
-        physicalPlan.getStageDAG().getOutgoingEdgesOf(taskGroup.getStageId()),
+        scheduledTaskGroup.getTaskGroupIncomingEdges(),
+        scheduledTaskGroup.getTaskGroupOutgoingEdges(),
         dataTransferFactory).execute();
   }
 
@@ -151,8 +128,9 @@ public final class Executor {
       switch (message.getType()) {
       case ScheduleTaskGroup:
         final ControlMessage.ScheduleTaskGroupMsg scheduleTaskGroupMsg = message.getScheduleTaskGroupMsg();
-        final TaskGroup taskGroup = SerializationUtils.deserialize(scheduleTaskGroupMsg.getTaskGroup().toByteArray());
-        onTaskGroupReceived(taskGroup);
+        final ScheduledTaskGroup scheduledTaskGroup =
+            SerializationUtils.deserialize(scheduleTaskGroupMsg.getTaskGroup().toByteArray());
+        onTaskGroupReceived(scheduledTaskGroup);
         break;
       default:
         throw new IllegalMessageException(

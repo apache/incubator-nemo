@@ -15,7 +15,6 @@
  */
 package edu.snu.vortex.runtime.master;
 
-import com.google.protobuf.ByteString;
 import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
@@ -33,7 +32,6 @@ import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import edu.snu.vortex.utils.dag.DAG;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -151,19 +149,6 @@ public final class RuntimeMaster {
                         .setBlockId(requestBlockLocationMsg.getBlockId())
                         .setOwnerExecutorId(
                             blockManagerMaster.getBlockLocation(requestBlockLocationMsg.getBlockId()).get())
-                        .build())
-                .build());
-        break;
-      // TODO #207: Multi-job and Versioned PhysicalPlan Fetching
-      case RequestPhysicalPlan:
-        messageContext.reply(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setType(ControlMessage.MessageType.PhysicalPlan)
-                .setPhysicalPlanMsg(
-                    ControlMessage.PhysicalPlanMsg.newBuilder()
-                        .setRequestId(message.getId())
-                        .setPhysicalPlan(ByteString.copyFrom(SerializationUtils.serialize(physicalPlan)))
                         .build())
                 .build());
         break;
