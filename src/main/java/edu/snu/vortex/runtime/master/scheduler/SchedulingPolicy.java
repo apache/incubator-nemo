@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.runtime.master.scheduler;
 
-import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
+import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.vortex.runtime.master.ExecutorRepresenter;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -39,10 +39,10 @@ public interface SchedulingPolicy {
    * If there is no executor available for the taskGroup, it waits for an executor to be assigned before it times out.
    * (Depending on the executor's resource type)
    *
-   * @param taskGroup to schedule
+   * @param scheduledTaskGroup to schedule
    * @return {@link ExecutorRepresenter} on which the taskGroup is scheduled if successful, an empty Optional otherwise.
    */
-  Optional<ExecutorRepresenter> attemptSchedule(TaskGroup taskGroup);
+  Optional<ExecutorRepresenter> attemptSchedule(final ScheduledTaskGroup scheduledTaskGroup);
 
   /**
    * Adds the executor to the pool of available executors.
@@ -69,9 +69,9 @@ public interface SchedulingPolicy {
    * (Depending on the executor's resource type)
    *
    * @param executor assigned for the taskGroup.
-   * @param taskGroup scheduled to the executor.
+   * @param scheduledTaskGroup scheduled to the executor.
    */
-  void onTaskGroupScheduled(final ExecutorRepresenter executor, final TaskGroup taskGroup);
+  void onTaskGroupScheduled(final ExecutorRepresenter executor, final ScheduledTaskGroup scheduledTaskGroup);
 
   /**
    * Marks the taskGroup's completion in the executor.

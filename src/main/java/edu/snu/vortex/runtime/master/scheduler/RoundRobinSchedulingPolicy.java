@@ -17,7 +17,7 @@ package edu.snu.vortex.runtime.master.scheduler;
 
 import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
-import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
+import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.vortex.runtime.exception.SchedulingException;
 import edu.snu.vortex.runtime.master.ExecutorRepresenter;
 import org.apache.reef.tang.annotations.Parameter;
@@ -81,10 +81,10 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   @Override
-  public Optional<ExecutorRepresenter> attemptSchedule(final TaskGroup taskGroup) {
+  public Optional<ExecutorRepresenter> attemptSchedule(final ScheduledTaskGroup scheduledTaskGroup) {
     lock.lock();
     try {
-      final RuntimeAttribute resourceType = taskGroup.getResourceType();
+      final RuntimeAttribute resourceType = scheduledTaskGroup.getTaskGroup().getResourceType();
       ExecutorRepresenter executor = selectExecutorByRR(resourceType);
       if (executor == null) { // If there is no available executor to schedule this task group now,
 
@@ -186,10 +186,10 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   @Override
-  public void onTaskGroupScheduled(final ExecutorRepresenter executor, final TaskGroup taskGroup) {
+  public void onTaskGroupScheduled(final ExecutorRepresenter executor, final ScheduledTaskGroup scheduledTaskGroup) {
     lock.lock();
     try {
-      executor.onTaskGroupScheduled(taskGroup);
+      executor.onTaskGroupScheduled(scheduledTaskGroup);
     } finally {
       lock.unlock();
     }

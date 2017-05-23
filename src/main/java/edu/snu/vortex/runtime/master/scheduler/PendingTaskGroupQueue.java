@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.runtime.master.scheduler;
 
-import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
+import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
 
@@ -30,25 +30,25 @@ import java.util.concurrent.LinkedBlockingDeque;
 @ThreadSafe
 @DriverSide
 public final class PendingTaskGroupQueue {
-  private final BlockingDeque<TaskGroup> pendingTaskGroups = new LinkedBlockingDeque<>();
+  private final BlockingDeque<ScheduledTaskGroup> pendingTaskGroups = new LinkedBlockingDeque<>();
 
   @Inject
   public PendingTaskGroupQueue() {
   }
 
-  public void addLast(final TaskGroup taskGroup) {
-    pendingTaskGroups.addLast(taskGroup);
+  public void addLast(final ScheduledTaskGroup scheduledTaskGroup) {
+    pendingTaskGroups.addLast(scheduledTaskGroup);
   }
 
-  public void addAll(final Collection<TaskGroup> taskGroup) {
-    pendingTaskGroups.addAll(taskGroup);
+  public void addAll(final Collection<ScheduledTaskGroup> scheduledTaskGroups) {
+    pendingTaskGroups.addAll(scheduledTaskGroups);
   }
 
-  public void addFirst(final TaskGroup taskGroup) {
-    pendingTaskGroups.addFirst(taskGroup);
+  public void addFirst(final ScheduledTaskGroup scheduledTaskGroup) {
+    pendingTaskGroups.addFirst(scheduledTaskGroup);
   }
 
-  public TaskGroup takeFirst() throws InterruptedException {
+  public ScheduledTaskGroup takeFirst() throws InterruptedException {
     return pendingTaskGroups.takeFirst();
   }
 }
