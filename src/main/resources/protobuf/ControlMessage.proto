@@ -64,6 +64,7 @@ message RequestBlockMsg {
     string executorId = 1;
     string blockId = 2;
     BlockStore blockStore = 3;
+    string runtimeEdgeId = 4;
 }
 
 message TransferBlockMsg {
@@ -71,8 +72,6 @@ message TransferBlockMsg {
     string executorId = 2;
     string blockId = 3;
     bytes data = 4; // just for now
-    // TODO #18: Support code/data serialization
-    bool isUnionValue = 5; // just for now
 }
 
 enum TaskGroupStateFromExecutor {

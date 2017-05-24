@@ -177,7 +177,7 @@ public final class LogicalDAGGenerator
           if (currentStageVertices.contains(srcRuntimeVertex) && currentStageVertices.contains(dstRuntimeVertex)) {
             stageBuilder.connectInternalRuntimeVertices(irEdge.getId(),
                 RuntimeAttributeConverter.convertEdgeAttributes(irEdge.getAttributes()),
-                srcRuntimeVertex, dstRuntimeVertex);
+                srcRuntimeVertex, dstRuntimeVertex, irEdge.getCoder());
 
           // or the edge is from another stage
           } else {
@@ -193,6 +193,7 @@ public final class LogicalDAGGenerator
             newEdgeBuilder.setSrcRuntimeVertex(srcRuntimeVertex);
             newEdgeBuilder.setDstRuntimeVertex(dstRuntimeVertex);
             newEdgeBuilder.setSrcStage(srcStage);
+            newEdgeBuilder.setCoder(irEdge.getCoder());
             currentStageIncomingEdges.add(newEdgeBuilder);
           }
         }));

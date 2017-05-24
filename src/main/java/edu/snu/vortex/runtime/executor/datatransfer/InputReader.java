@@ -77,7 +77,7 @@ public final class InputReader extends DataTransfer {
 
   private Iterable<Element> readOneToOne() {
     final String blockId = RuntimeIdGenerator.generateBlockId(getId(), dstTaskIndex);
-    return blockManagerWorker.getBlock(blockId,
+    return blockManagerWorker.getBlock(blockId, getId(),
         runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.BlockStore));
   }
 
@@ -89,7 +89,7 @@ public final class InputReader extends DataTransfer {
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
       final Iterable<Element> dataFromATask =
-          blockManagerWorker.getBlock(blockId,
+          blockManagerWorker.getBlock(blockId, getId(),
               runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.BlockStore));
       concatStream = Stream.concat(concatStream, StreamSupport.stream(dataFromATask.spliterator(), false));
     }
@@ -104,7 +104,7 @@ public final class InputReader extends DataTransfer {
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx, dstTaskIndex);
       final Iterable<Element> dataFromATask =
-          blockManagerWorker.getBlock(blockId,
+          blockManagerWorker.getBlock(blockId, getId(),
               runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.BlockStore));
       concatStream = Stream.concat(concatStream, StreamSupport.stream(dataFromATask.spliterator(), false));
     }

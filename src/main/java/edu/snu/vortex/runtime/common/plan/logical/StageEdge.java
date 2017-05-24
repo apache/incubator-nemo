@@ -16,6 +16,7 @@
 package edu.snu.vortex.runtime.common.plan.logical;
 
 
+import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
@@ -33,6 +34,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    * @param edgeAttributes to control the data flow on this edge.
    * @param srcStage source runtime stage.
    * @param dstStage destination runtime stage.
+   * @param coder coder.
    * @param srcRuntimeVertex source vertex (in srcStage).
    * @param dstRuntimeVertex destination vertex (in dstStage).
    */
@@ -40,9 +42,10 @@ public final class StageEdge extends RuntimeEdge<Stage> {
                    final RuntimeAttributeMap edgeAttributes,
                    final Stage srcStage,
                    final Stage dstStage,
+                   final Coder coder,
                    final RuntimeVertex srcRuntimeVertex,
                    final RuntimeVertex dstRuntimeVertex) {
-    super(RuntimeIdGenerator.generateStageEdgeId(irEdgeId), edgeAttributes, srcStage, dstStage);
+    super(RuntimeIdGenerator.generateStageEdgeId(irEdgeId), edgeAttributes, srcStage, dstStage, coder);
     this.srcRuntimeVertex = srcRuntimeVertex;
     this.dstRuntimeVertex = dstRuntimeVertex;
   }
@@ -62,6 +65,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
     sb.append("\", \"edgeAttributes\": ").append(getEdgeAttributes());
     sb.append(", \"srcRuntimeVertex\": \"").append(srcRuntimeVertex.getId());
     sb.append("\", \"dstRuntimeVertex\": \"").append(dstRuntimeVertex.getId());
+    sb.append("\", \"coder\": \"").append(getCoder().toString());
     sb.append("\"}");
     return sb.toString();
   }

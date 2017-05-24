@@ -113,7 +113,7 @@ public final class PhysicalDAGGenerator
             inEdges.forEach(edge -> stageInternalDAGBuilder
                 .connectVertices(new RuntimeEdge<>(edge.getId(), edge.getEdgeAttributes(),
                     runtimeVertexIdToTask.get(edge.getSrc().getId()),
-                    runtimeVertexIdToTask.get(edge.getDst().getId()))));
+                    runtimeVertexIdToTask.get(edge.getDst().getId()), edge.getCoder())));
 
           });
 
@@ -138,7 +138,7 @@ public final class PhysicalDAGGenerator
           physicalDAGBuilder.connectVertices(new PhysicalStageEdge(stageEdge.getId(),
               stageEdge.getEdgeAttributes(),
               stageEdge.getSrcRuntimeVertex(), stageEdge.getDstRuntimeVertex(),
-              stageEdge.getSrcRuntimeVertex().getVertexAttributes(), srcStage, dstStage));
+              stageEdge.getSrcRuntimeVertex().getVertexAttributes(), srcStage, dstStage, stageEdge.getCoder()));
 
         });
       }
