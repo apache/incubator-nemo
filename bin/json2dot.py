@@ -226,6 +226,8 @@ class PhysicalStageEdge:
         self.runtimeEdgeId = properties['runtimeEdgeId']
         self.edgeAttributes = properties['edgeAttributes']
         self.externalVertexAttr = properties['externalVertexAttr']
+        self.parallelism = self.externalVertexAttr['Parallelism']
+        self.coder = properties['coder']
     @property
     def dot(self):
         color = 'black'
@@ -236,8 +238,8 @@ class PhysicalStageEdge:
                 color = 'green'
         except:
             pass
-        label = self.runtimeEdgeId + ' (p{})\\n'.format(self.externalVertexAttr['Parallelism']) + '/'.join([x[1] for x in sorted(self.edgeAttributes.items())])
-        return '{} -> {} [ltail = {}, lhead = {}, label = "{}", color = {}];'.format(self.src.oneVertex.idx,
+        label = '{} (p{})<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, self.parallelism, '/'.join([x[1] for x in sorted(self.edgeAttributes.items())]), self.coder)
+        return '{} -> {} [ltail = {}, lhead = {}, label = <{}>, color = {}];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label, color)
 
 class StageEdge:
@@ -246,10 +248,11 @@ class StageEdge:
         self.dst = dst.internalDAG.vertices[properties['dstRuntimeVertex']]
         self.runtimeEdgeId = properties['runtimeEdgeId']
         self.edgeAttributes = properties['edgeAttributes']
+        self.coder = properties['coder']
     @property
     def dot(self):
-        label = self.runtimeEdgeId + '\\n' + '/'.join([x[1] for x in sorted(self.edgeAttributes.items())])
-        return '{} -> {} [ltail = {}, lhead = {}, label = "{}"];'.format(self.src.oneVertex.idx,
+        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, '/'.join([x[1] for x in sorted(self.edgeAttributes.items())]), self.coder)
+        return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 
 class RuntimeEdge:
@@ -258,10 +261,11 @@ class RuntimeEdge:
         self.dst = dst
         self.runtimeEdgeId = properties['runtimeEdgeId']
         self.edgeAttributes = properties['edgeAttributes']
+        self.coder = properties['coder']
     @property
     def dot(self):
-        label = self.runtimeEdgeId + '\\n' + '/'.join([x[1] for x in sorted(self.edgeAttributes.items())])
-        return '{} -> {} [ltail = {}, lhead = {}, label = "{}"];'.format(self.src.oneVertex.idx,
+        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, '/'.join([x[1] for x in sorted(self.edgeAttributes.items())]), self.coder)
+        return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 
 def jsonToDot(dagJSON):

@@ -15,6 +15,8 @@
  */
 package edu.snu.vortex.compiler.frontend;
 
+import edu.snu.vortex.compiler.ir.Element;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -22,16 +24,18 @@ import java.io.Serializable;
 /**
  * A {@link Coder Coder&lt;T&gt;} object encodes or decodes values of type {@code T} into byte streams.
  *
- * @param <T> type of values being encoded or decoded
+ * @param <Data> data type.
+ * @param <Key> key type.
+ * @param <Value> value type.
  */
-public interface Coder<T> extends Serializable {
+public interface Coder<Data, Key, Value> extends Serializable {
   /**
    * Encodes the given value onto the specified output stream.
    *
    * @param value the value to be encoded
    * @param outStream the stream on which encoded bytes are written
    */
-  void encode(T value, OutputStream outStream);
+  void encode(Element<Data, Key, Value> value, OutputStream outStream);
 
   /**
    * Decodes the a value from the given input stream.
@@ -39,7 +43,7 @@ public interface Coder<T> extends Serializable {
    * @param inStream the stream from which bytes are read
    * @return the decoded value
    */
-  T decode(InputStream inStream);
+  Element<Data, Key, Value> decode(InputStream inStream);
 
   /**
    * Dummy coder.
@@ -49,15 +53,15 @@ public interface Coder<T> extends Serializable {
   /**
    * Dummy coder implementation which is not supposed to be used.
    */
-  final class DummyCoder implements Coder<Object> {
+  final class DummyCoder implements Coder {
 
     @Override
-    public void encode(final Object value, final OutputStream outStream) {
+    public void encode(final Element value, final OutputStream outStream) {
       throw new RuntimeException("DummyCoder is not supposed to be used.");
     }
 
     @Override
-    public Object decode(final InputStream inStream) {
+    public Element decode(final InputStream inStream) {
       throw new RuntimeException("DummyCoder is not supposed to be used.");
     }
 

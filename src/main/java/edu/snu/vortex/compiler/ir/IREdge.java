@@ -43,7 +43,7 @@ public final class IREdge extends Edge<IRVertex> {
    * @param type type of the edge.
    * @param src source vertex.
    * @param dst destination vertex.
-   * @param coder codec.
+   * @param coder coder.
    */
   public IREdge(final Type type,
                 final IRVertex src,
@@ -154,7 +154,7 @@ public final class IREdge extends Edge<IRVertex> {
     sb.append("{\"id\": \"").append(getId());
     sb.append("\", \"attributes\": ").append(attributes);
     sb.append(", \"type\": \"").append(type);
-    sb.append("\", \"coder\": \"").append(coder);
+    sb.append("\", \"coder\": \"").append(coder.toString());
     sb.append("\"}");
     return sb.toString();
   }

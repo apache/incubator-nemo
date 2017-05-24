@@ -15,8 +15,10 @@
  */
 package edu.snu.vortex.runtime.executor.datatransfer;
 
+import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BeamElement;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
+import edu.snu.vortex.compiler.frontend.beam.coder.BeamCoder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
@@ -36,6 +38,8 @@ import edu.snu.vortex.runtime.master.scheduler.BatchScheduler;
 import edu.snu.vortex.runtime.master.scheduler.PendingTaskGroupQueue;
 import edu.snu.vortex.runtime.master.scheduler.RoundRobinSchedulingPolicy;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
+import org.apache.beam.sdk.coders.KvCoder;
+import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.values.KV;
 import org.junit.Before;
@@ -60,6 +64,8 @@ public final class DataTransferTest {
   private static final int SCHEDULE_TIMEOUT = 1000;
   private static final RuntimeAttribute STORE = RuntimeAttribute.Local;
   private static final int PARALLELISM_TEN = 10;
+  private static final String EDGE_ID = "Dummy";
+  private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
 
   private BlockManagerMaster master;
   private BlockManagerWorker worker1;
@@ -88,6 +94,7 @@ public final class DataTransferTest {
     final PersistentConnectionToMaster conToMaster = new PersistentConnectionToMaster(messageEnvironment);
     final BlockManagerWorker blockManagerWorker = new BlockManagerWorker(
         executorId, new LocalStore(), new PersistentConnectionToMaster(messageEnvironment), messageEnvironment);
+    blockManagerWorker.registerCoder(EDGE_ID, CODER);
 
     // Unused, but necessary for wiring up the message environments
     final Executor executor = new Executor(
@@ -149,20 +156,20 @@ public final class DataTransferTest {
     final RuntimeVertex dstVertex = new RuntimeBoundedSourceVertex(v2, dstVertexAttributes);
 
     // Edge setup
-    final String edgeId = "Dummy";
     final RuntimeAttributeMap edgeAttributes = new RuntimeAttributeMap();
     edgeAttributes.put(RuntimeAttribute.Key.CommPattern, commPattern);
     edgeAttributes.put(RuntimeAttribute.Key.Partition, RuntimeAttribute.Hash);
     edgeAttributes.put(RuntimeAttribute.Key.BlockStore, STORE);
-    final RuntimeEdge<RuntimeVertex> dummyEdge = new RuntimeEdge<>(edgeId, edgeAttributes, srcVertex, dstVertex);
+    final RuntimeEdge<RuntimeVertex> dummyEdge
+        = new RuntimeEdge<>(EDGE_ID, edgeAttributes, srcVertex, dstVertex, CODER);
 
     // Initialize states in Master
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       if (commPattern == RuntimeAttribute.ScatterGather) {
         IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex ->
-            master.initializeState(edgeId, srcTaskIndex, dstTaskIndex));
+            master.initializeState(EDGE_ID, srcTaskIndex, dstTaskIndex));
       } else {
-        master.initializeState(edgeId, srcTaskIndex);
+        master.initializeState(EDGE_ID, srcTaskIndex);
       }
     });
 
