@@ -16,6 +16,7 @@
 package edu.snu.vortex.runtime.common.plan.physical;
 
 
+import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
@@ -47,8 +48,9 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
                            final RuntimeVertex dstVertex,
                            final RuntimeAttributeMap externalVertexAttr,
                            final PhysicalStage srcStage,
-                           final PhysicalStage dstStage) {
-    super(runtimeEdgeId, edgeAttributes, srcStage, dstStage);
+                           final PhysicalStage dstStage,
+                           final Coder coder) {
+    super(runtimeEdgeId, edgeAttributes, srcStage, dstStage, coder);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
     this.externalVertexAttr = externalVertexAttr;
@@ -74,7 +76,8 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     sb.append(", \"externalSrcVertexId\": \"").append(srcVertex.getId());
     sb.append("\", \"externalDstVertexId\": \"").append(dstVertex.getId());
     sb.append("\", \"externalVertexAttr\": ").append(externalVertexAttr);
-    sb.append("}");
+    sb.append(", \"coder\": \"").append(getCoder().toString());
+    sb.append("\"}");
     return sb.toString();
   }
 }

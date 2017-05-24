@@ -16,6 +16,7 @@
 package edu.snu.vortex.runtime.common.plan.logical;
 
 
+import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 
 /**
@@ -28,6 +29,7 @@ public final class StageEdgeBuilder {
   private Stage dstStage;
   private RuntimeVertex srcRuntimeVertex;
   private RuntimeVertex dstRuntimeVertex;
+  private Coder coder;
 
   /**
    * Represents the edge between vertices in a logical plan.
@@ -57,8 +59,12 @@ public final class StageEdgeBuilder {
     this.dstRuntimeVertex = dstRuntimeVertex;
   }
 
+  public void setCoder(final Coder coder) {
+    this.coder = coder;
+  }
+
   public StageEdge build() {
     return new StageEdge(stageEdgeId,
-        edgeAttributes, srcStage, dstStage, srcRuntimeVertex, dstRuntimeVertex);
+        edgeAttributes, srcStage, dstStage, coder, srcRuntimeVertex, dstRuntimeVertex);
   }
 }

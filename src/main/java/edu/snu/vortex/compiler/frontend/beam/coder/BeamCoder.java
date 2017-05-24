@@ -16,6 +16,8 @@
 package edu.snu.vortex.compiler.frontend.beam.coder;
 
 import edu.snu.vortex.compiler.frontend.Coder;
+import edu.snu.vortex.compiler.frontend.beam.BeamElement;
+import edu.snu.vortex.compiler.ir.Element;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,28 +26,31 @@ import java.io.OutputStream;
 /**
  * {@link Coder} from {@link org.apache.beam.sdk.coders.Coder}.
  *
- * @param <T> type of values being encoded or decoded
+ * @param <Data> data type.
+ * @param <Key> key type.
+ * @param <Value> value type.
  */
-public final class BeamCoder<T> implements Coder<T> {
-  private final org.apache.beam.sdk.coders.Coder<T> beamCoder;
+public final class BeamCoder<Data, Key, Value> implements Coder<Data, Key, Value> {
+  private final org.apache.beam.sdk.coders.Coder<Data> beamCoder;
 
-  public BeamCoder(final org.apache.beam.sdk.coders.Coder<T> beamCoder) {
+  public BeamCoder(final org.apache.beam.sdk.coders.Coder<Data> beamCoder) {
     this.beamCoder = beamCoder;
   }
 
   @Override
-  public void encode(final T value, final OutputStream outStream) {
+  public void encode(final Element<Data, Key, Value> value, final OutputStream outStream) {
     try {
-      beamCoder.encode(value, outStream, org.apache.beam.sdk.coders.Coder.Context.OUTER);
+      beamCoder.encode(value.getData(), outStream, org.apache.beam.sdk.coders.Coder.Context.OUTER);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
   }
 
   @Override
-  public T decode(final InputStream inStream) {
+  public Element<Data, Key, Value> decode(final InputStream inStream) {
     try {
-      return beamCoder.decode(inStream, org.apache.beam.sdk.coders.Coder.Context.OUTER);
+      return (Element<Data, Key, Value>)
+          new BeamElement(beamCoder.decode(inStream, org.apache.beam.sdk.coders.Coder.Context.OUTER));
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

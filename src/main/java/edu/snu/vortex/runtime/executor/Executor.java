@@ -17,6 +17,7 @@ package edu.snu.vortex.runtime.executor;
 
 import com.google.protobuf.ByteString;
 import edu.snu.vortex.client.JobConf;
+import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
@@ -29,13 +30,6 @@ import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.exception.UnsupportedBlockStoreException;
 import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
 import edu.snu.vortex.runtime.executor.datatransfer.DataTransferFactory;
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.SerializableCoder;
-import org.apache.beam.sdk.coders.VarIntCoder;
-import org.apache.beam.sdk.transforms.join.RawUnionValue;
-import org.apache.beam.sdk.transforms.join.UnionCoder;
-import org.apache.beam.sdk.values.KV;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -43,8 +37,6 @@ import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -111,6 +103,11 @@ public final class Executor {
     taskGroupStateManager = new TaskGroupStateManager(scheduledTaskGroup.getTaskGroup(),
         executorId, persistentConnectionToMaster);
 
+    scheduledTaskGroup.getTaskGroupIncomingEdges()
+        .forEach(e -> blockManagerWorker.registerCoder(e.getId(), e.getCoder()));
+    scheduledTaskGroup.getTaskGroupOutgoingEdges()
+        .forEach(e -> blockManagerWorker.registerCoder(e.getId(), e.getCoder()));
+
     new TaskGroupExecutor(scheduledTaskGroup.getTaskGroup(),
         taskGroupStateManager,
         scheduledTaskGroup.getTaskGroupIncomingEdges(),
@@ -145,30 +142,13 @@ public final class Executor {
         final ControlMessage.RequestBlockMsg requestBlockMsg = message.getRequestBlockMsg();
 
         final Iterable<Element> data = blockManagerWorker.getBlock(requestBlockMsg.getBlockId(),
-            convertBlockStoreType(requestBlockMsg.getBlockStore()));
+            requestBlockMsg.getRuntimeEdgeId(), convertBlockStoreType(requestBlockMsg.getBlockStore()));
 
-        // TODO #197: Improve Serialization/Deserialization Performance
+        final Coder coder = blockManagerWorker.getCoder(requestBlockMsg.getRuntimeEdgeId());
         final ArrayList<byte[]> dataToSerialize = new ArrayList<>();
-        boolean isUnionValue = false;
         for (final Element element : data) {
           try (final ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
-            // TODO #18: Support code/data serialization
-            if (element.getData() instanceof KV) {
-              final KV keyValue = (KV) element.getData();
-              if (keyValue.getValue() instanceof RawUnionValue) {
-                List<Coder<?>> elementCodecs = Arrays.asList(SerializableCoder.of(double[].class),
-                    SerializableCoder.of(double[].class));
-                UnionCoder coder = UnionCoder.of(elementCodecs);
-                KvCoder kvCoder = KvCoder.of(VarIntCoder.of(), coder);
-                kvCoder.encode(keyValue, stream, Coder.Context.OUTER);
-
-                isUnionValue = true;
-              } else {
-                SerializationUtils.serialize(element, stream);
-              }
-            } else {
-              SerializationUtils.serialize(element, stream);
-            }
+            coder.encode(element, stream);
             dataToSerialize.add(stream.toByteArray());
           } catch (IOException e) {
             throw new RuntimeException(e);
@@ -184,7 +164,6 @@ public final class Executor {
                         .setRequestId(message.getId())
                         .setExecutorId(executorId)
                         .setBlockId(requestBlockMsg.getBlockId())
-                        .setIsUnionValue(isUnionValue)
                         .setData(ByteString.copyFrom(SerializationUtils.serialize(dataToSerialize)))
                         .build())
                 .build());

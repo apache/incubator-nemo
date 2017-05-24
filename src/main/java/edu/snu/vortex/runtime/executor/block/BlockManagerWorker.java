@@ -16,7 +16,7 @@
 package edu.snu.vortex.runtime.executor.block;
 
 import edu.snu.vortex.client.JobConf;
-import edu.snu.vortex.compiler.frontend.beam.BeamElement;
+import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
@@ -26,19 +26,15 @@ import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.exception.NodeConnectionException;
 import edu.snu.vortex.runtime.exception.UnsupportedBlockStoreException;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.SerializableCoder;
-import org.apache.beam.sdk.coders.VarIntCoder;
-import org.apache.beam.sdk.transforms.join.UnionCoder;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Executor-side block manager.
@@ -56,6 +52,8 @@ public final class BlockManagerWorker {
 
   private final PersistentConnectionToMaster persistentConnectionToMaster;
 
+  private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder;
+
   @Inject
   public BlockManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
                             final LocalStore localStore,
@@ -66,6 +64,29 @@ public final class BlockManagerWorker {
     this.messageEnvironment = messageEnvironment;
     this.persistentConnectionToMaster = persistentConnectionToMaster;
     this.idOfBlocksStoredInThisWorker = new HashSet<>();
+    this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
+  }
+
+  /**
+   * Return the coder for the specified runtime edge.
+   * @param runtimeEdgeId id of the runtime edge
+   * @return the corresponding coder
+   */
+  public Coder getCoder(final String runtimeEdgeId) {
+    final Coder coder = runtimeEdgeIdToCoder.get(runtimeEdgeId);
+    if (coder == null) {
+      throw new RuntimeException("No coder is registered for " + runtimeEdgeId);
+    }
+    return coder;
+  }
+
+  /**
+   * Register a coder for runtime edge.
+   * @param runtimeEdgeId id of the runtime edge
+   * @param coder the corresponding coder
+   */
+  public void registerCoder(final String runtimeEdgeId, final Coder coder) {
+    runtimeEdgeIdToCoder.putIfAbsent(runtimeEdgeId, coder);
   }
 
   /**
@@ -103,10 +124,12 @@ public final class BlockManagerWorker {
    * Unlike putBlock, this can be invoked multiple times per blockId (maybe due to failures).
    * Here, we first check if we have the block here, and then try to fetch the block from a remote worker.
    * @param blockId of the block
+   * @param runtimeEdgeId id of the runtime edge that corresponds to the block
    * @param blockStore for the data storage
    * @return the block data
    */
-  public synchronized Iterable<Element> getBlock(final String blockId, final RuntimeAttribute blockStore) {
+  public synchronized Iterable<Element> getBlock(final String blockId, final String runtimeEdgeId,
+                                                 final RuntimeAttribute blockStore) {
     if (idOfBlocksStoredInThisWorker.contains(blockId)) {
       // Local hit!
       final BlockStore store = getBlockStore(blockStore);
@@ -168,6 +191,7 @@ public final class BlockManagerWorker {
                     ControlMessage.RequestBlockMsg.newBuilder()
                     .setExecutorId(executorId)
                     .setBlockId(blockId)
+                    .setRuntimeEdgeId(runtimeEdgeId)
                     .build())
                 .build())
                 .get();
@@ -189,26 +213,12 @@ public final class BlockManagerWorker {
       }
 
       // TODO #199: Introduce Data Plane
-      // TODO #197: Improve Serialization/Deserialization Performance
+      final Coder coder = getCoder(runtimeEdgeId);
       final List<Element> deserializedData = new ArrayList<>();
       ArrayList<byte[]> data = SerializationUtils.deserialize(transferBlockMsg.getData().toByteArray());
       data.forEach(bytes -> {
-        // TODO #18: Support code/data serialization
-        if (transferBlockMsg.getIsUnionValue()) {
-          final ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
-          List<Coder<?>> elementCodecs = Arrays.asList(SerializableCoder.of(double[].class),
-              SerializableCoder.of(double[].class));
-          UnionCoder coder = UnionCoder.of(elementCodecs);
-          KvCoder kvCoder = KvCoder.of(VarIntCoder.of(), coder);
-          try {
-            final Element element = new BeamElement(kvCoder.decode(stream, Coder.Context.OUTER));
-            deserializedData.add(element);
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        } else {
-          deserializedData.add(SerializationUtils.deserialize(bytes));
-        }
+        final ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
+        deserializedData.add(coder.decode(stream));
       });
       return deserializedData;
     }

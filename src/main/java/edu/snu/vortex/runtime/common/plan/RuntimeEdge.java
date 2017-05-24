@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.runtime.common.plan;
 
+import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.utils.dag.Edge;
 import edu.snu.vortex.utils.dag.Vertex;
@@ -25,6 +26,7 @@ import edu.snu.vortex.utils.dag.Vertex;
  */
 public class RuntimeEdge<V extends Vertex> extends Edge<V> {
   private final RuntimeAttributeMap edgeAttributes;
+  private final Coder coder;
 
   /**
    * Constructs the edge given the below parameters.
@@ -32,17 +34,24 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
    * @param edgeAttributes to control the data flow on this edge.
    * @param src the source vertex.
    * @param dst the destination vertex.
+   * @param coder coder.
    */
   public RuntimeEdge(final String runtimeEdgeId,
                      final RuntimeAttributeMap edgeAttributes,
                      final V src,
-                     final V dst) {
+                     final V dst,
+                     final Coder coder) {
     super(runtimeEdgeId, src, dst);
     this.edgeAttributes = edgeAttributes;
+    this.coder = coder;
   }
 
   public final RuntimeAttributeMap getEdgeAttributes() {
     return edgeAttributes;
+  }
+
+  public final Coder getCoder() {
+    return coder;
   }
 
   /**
@@ -54,7 +63,8 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"runtimeEdgeId\": \"").append(getId());
     sb.append("\", \"edgeAttributes\": ").append(edgeAttributes);
-    sb.append("}");
+    sb.append(", \"coder\": \"").append(coder.toString());
+    sb.append("\"}");
     return sb.toString();
   }
 }
