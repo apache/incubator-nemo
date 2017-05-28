@@ -201,6 +201,22 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
   }
 
   /**
+   * Function checks whether there is a path between two vertices.
+   * @param v1 First vertex to check.
+   * @param v2 Second vertex to check.
+   * @return Whether or not there is a path between two vertices.
+   */
+  public Boolean pathExistsBetween(final V v1, final V v2) {
+    final Set<V> reachableFromV1 = new HashSet<>();
+    final Set<V> reachableFromV2 = new HashSet<>();
+
+    this.dfsDo(v1, (v) -> { }, TraversalOrder.PostOrder, reachableFromV1);
+    this.dfsDo(v2, (v) -> { }, TraversalOrder.PostOrder, reachableFromV2);
+
+    return reachableFromV1.contains(v2) || reachableFromV2.contains(v1);
+  }
+
+  /**
    * Checks whether the given vertex is assigned with a wrapping LoopVertex.
    * @param v Vertex to check.
    * @return whether or not it is wrapped by a LoopVertex
