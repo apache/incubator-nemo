@@ -60,7 +60,7 @@ public final class LoopVertex extends IRVertex {
     final DAG<IRVertex, IREdge> dagToCopy = this.getBuilder().build();
     dagToCopy.topologicalDo(v -> {
       newLoopVertex.getBuilder().addVertex(v, dagToCopy);
-      dagToCopy.getIncomingEdgesOf(v).forEach(e -> newLoopVertex.getBuilder().connectVertices(e));
+      dagToCopy.getIncomingEdgesOf(v).forEach(newLoopVertex.getBuilder()::connectVertices);
     });
     this.dagIncomingEdges.forEach(((v, es) -> es.forEach(newLoopVertex::addDagIncomingEdge)));
     this.iterativeIncomingEdges.forEach((v, es) -> es.forEach(newLoopVertex::addIterativeIncomingEdge));
@@ -214,7 +214,7 @@ public final class LoopVertex extends IRVertex {
    * @return whether or not the loop termination condition has been met.
    */
   public Boolean loopTerminationConditionMet() {
-    return loopTerminationConditionMet(0);
+    return loopTerminationConditionMet(maxNumberOfIterations);
   }
   /**
    * @param intPredicateInput input for the intPredicate of the loop termination condition.
@@ -230,6 +230,18 @@ public final class LoopVertex extends IRVertex {
    */
   public void setMaxNumberOfIterations(final Integer maxNum) {
     this.maxNumberOfIterations = maxNum;
+  }
+  /**
+   * @return termination condition int predicate.
+   */
+  public IntPredicate getTerminationCondition() {
+    return terminationCondition;
+  }
+  /**
+   * @return maximum number of iterations.
+   */
+  public Integer getMaxNumberOfIterations() {
+    return this.maxNumberOfIterations;
   }
   /**
    * increase the value of maximum number of iterations by 1.
