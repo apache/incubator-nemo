@@ -27,7 +27,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class BroadcastTest {
+public final class BroadcastITCase {
   private final String broadcast = "edu.snu.vortex.examples.beam.Broadcast";
   private final String optimizationPolicy = "pado";
   private final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mr";
@@ -37,7 +37,7 @@ public final class BroadcastTest {
   @Test
   public void test() throws Exception {
     final ArgBuilder builder = new ArgBuilder()
-        .addJobId(BroadcastTest.class.getSimpleName())
+        .addJobId(BroadcastITCase.class.getSimpleName())
         .addUserMain(broadcast)
         .addOptimizationPolicy(optimizationPolicy)
         .addUserArgs(input, output)
