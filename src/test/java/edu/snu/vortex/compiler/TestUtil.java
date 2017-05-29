@@ -20,9 +20,9 @@ import edu.snu.vortex.client.JobLauncher;
 import edu.snu.vortex.compiler.frontend.Frontend;
 import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.ir.*;
-import edu.snu.vortex.examples.beam.AlternatingLeastSquareTest;
+import edu.snu.vortex.examples.beam.AlternatingLeastSquareITCase;
 import edu.snu.vortex.examples.beam.ArgBuilder;
-import edu.snu.vortex.examples.beam.MultinomialLogisticRegressionTest;
+import edu.snu.vortex.examples.beam.MultinomialLogisticRegressionITCase;
 import edu.snu.vortex.utils.dag.DAG;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.BoundedSource;
@@ -30,11 +30,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
-import org.junit.runner.RunWith;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,7 +43,7 @@ public final class TestUtil {
 
   public static DAG<IRVertex, IREdge> compileALSDAG() throws Exception {
     final Frontend beamFrontend = new BeamFrontend();
-    final ArgBuilder alsArgBuilder = AlternatingLeastSquareTest.builder;
+    final ArgBuilder alsArgBuilder = AlternatingLeastSquareITCase.builder;
     final Configuration configuration = JobLauncher.getJobConf(alsArgBuilder.build());
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
     final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
@@ -58,7 +54,7 @@ public final class TestUtil {
 
   public static DAG<IRVertex, IREdge> compileMLRDAG() throws Exception {
     final Frontend beamFrontend = new BeamFrontend();
-    final ArgBuilder alsArgBuilder = MultinomialLogisticRegressionTest.builder;
+    final ArgBuilder alsArgBuilder = MultinomialLogisticRegressionITCase.builder;
     final Configuration configuration = JobLauncher.getJobConf(alsArgBuilder.build());
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
     final String className = injector.getNamedInstance(JobConf.UserMainClass.class);

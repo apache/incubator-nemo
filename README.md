@@ -1,16 +1,14 @@
 # Vortex 
 [![Build Status](http://cmscluster.snu.ac.kr:8080/jenkins/buildStatus/icon?job=Vortex-master)](http://cmscluster.snu.ac.kr:8080/jenkins/job/Vortex-master/)
 
-Vortex is a data-processing system composed of modular components.
-
-## Components
-* Compiler: Compiles a user program into an executable for the Engine.
-* Engine: Physically executes the user program.
-
 ## Requirements
 * Java 8
 * Maven
 * Protobuf 3.2.0
+
+## Installing Vortex
+* Run all tests and install: `mvn clean install -T 2C`
+* Run only unit tests and install: `mvn clean install -DskipITs -T 2C`
 
 ## Examples
 ```bash

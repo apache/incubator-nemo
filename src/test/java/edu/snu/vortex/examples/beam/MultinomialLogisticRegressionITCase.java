@@ -23,25 +23,28 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 /**
- * Test MapReduce program with JobLauncher.
+ * Testing Multinomial Logistic Regressions with JobLauncher.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class MapReduceTest {
-  private final String mapReduce = "edu.snu.vortex.examples.beam.MapReduce";
-  private final String optimizationPolicy = "pado";
-  private final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mr";
-  private final String output = TestUtil.rootDir + "/src/main/resources/sample_output";
-  private final String dagDirectory = "./dag";
+public final class MultinomialLogisticRegressionITCase {
+  private static final String mlr = "edu.snu.vortex.examples.beam.MultinomialLogisticRegression";
+  private static final String optimizationPolicy = "pado";
+  private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mlr";
+  private static final String numFeatures = "100";
+  private static final String numClasses = "5";
+  private static final String numIteration = "3";
+  private static final String dagDirectory = "./dag";
+
+  public static final ArgBuilder builder = new ArgBuilder()
+      .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName())
+      .addUserMain(mlr)
+      .addOptimizationPolicy(optimizationPolicy)
+      .addUserArgs(input, numFeatures, numClasses, numIteration)
+      .addDAGDirectory(dagDirectory);
 
   @Test
   public void test() throws Exception {
-    final ArgBuilder builder = new ArgBuilder()
-        .addJobId(MapReduceTest.class.getSimpleName())
-        .addUserMain(mapReduce)
-        .addOptimizationPolicy(optimizationPolicy)
-        .addUserArgs(input, output)
-        .addDAGDirectory(dagDirectory);
     JobLauncher.main(builder.build());
   }
 }
