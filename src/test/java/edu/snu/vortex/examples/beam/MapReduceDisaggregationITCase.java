@@ -23,27 +23,25 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 /**
- * Test Alternating Least Square program with JobLauncher.
+ * Test MapReduce program with JobLauncher.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class AlternatingLeastSquareTest {
-  private static final String als = "edu.snu.vortex.examples.beam.AlternatingLeastSquare";
-  private static final String optimizationPolicy = "pado";
-  private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_als";
-  private static final String numFeatures = "10";
-  private static final String numIteration = "3";
-  private static final String dagDirectory = "./dag";
-
-  public static final ArgBuilder builder = new ArgBuilder()
-      .addJobId(AlternatingLeastSquareTest.class.getSimpleName())
-      .addUserMain(als)
-      .addOptimizationPolicy(optimizationPolicy)
-      .addUserArgs(input, numFeatures, numIteration)
-      .addDAGDirectory(dagDirectory);
+public final class MapReduceDisaggregationITCase {
+  private final String mapReduce = "edu.snu.vortex.examples.beam.MapReduce";
+  private final String optimizationPolicy = "disaggregation";
+  private final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mr";
+  private final String output = TestUtil.rootDir + "/src/main/resources/sample_output";
+  private final String dagDirectory = "./dag";
 
   @Test
   public void test() throws Exception {
+    final ArgBuilder builder = new ArgBuilder()
+        .addJobId(MapReduceDisaggregationITCase.class.getSimpleName())
+        .addUserMain(mapReduce)
+        .addOptimizationPolicy(optimizationPolicy)
+        .addUserArgs(input, output)
+        .addDAGDirectory(dagDirectory);
     JobLauncher.main(builder.build());
   }
 }

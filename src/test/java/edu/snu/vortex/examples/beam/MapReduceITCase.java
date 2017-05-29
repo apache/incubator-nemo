@@ -27,9 +27,9 @@ import org.powermock.modules.junit4.PowerMockRunner;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class MapReduceDisaggregationTest {
+public final class MapReduceITCase {
   private final String mapReduce = "edu.snu.vortex.examples.beam.MapReduce";
-  private final String optimizationPolicy = "disaggregation";
+  private final String optimizationPolicy = "pado";
   private final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mr";
   private final String output = TestUtil.rootDir + "/src/main/resources/sample_output";
   private final String dagDirectory = "./dag";
@@ -37,7 +37,7 @@ public final class MapReduceDisaggregationTest {
   @Test
   public void test() throws Exception {
     final ArgBuilder builder = new ArgBuilder()
-        .addJobId(MapReduceDisaggregationTest.class.getSimpleName())
+        .addJobId(MapReduceITCase.class.getSimpleName())
         .addUserMain(mapReduce)
         .addOptimizationPolicy(optimizationPolicy)
         .addUserArgs(input, output)
