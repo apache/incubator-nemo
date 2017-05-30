@@ -28,7 +28,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Matser-side block manager.
+ * Master-side block manager.
  * For now, all its operations are synchronized to guarantee thread safety.
  */
 @ThreadSafe

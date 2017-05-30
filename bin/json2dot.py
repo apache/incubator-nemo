@@ -137,6 +137,7 @@ class Stage:
 class TaskGroup:
     def __init__(self, properties):
         self.taskGroupId = properties['taskGroupId']
+        self.taskGroupIdx = properties['taskGroupIdx']
         self.dag = DAG(properties['taskDAG'])
         self.resourceType = properties['resourceType']
         self.idx = getIdx()
@@ -148,7 +149,7 @@ class TaskGroup:
         if self.resourceType == 'Reserved':
             color = 'green'
         dot = 'subgraph cluster_{} {{'.format(self.idx)
-        dot += 'label = "{}";'.format(self.taskGroupId)
+        dot += 'label = "{} ({})";'.format(self.taskGroupId, self.taskGroupIdx)
         dot += 'color={};'.format(color)
         dot += self.dag.dot
         dot += '}'

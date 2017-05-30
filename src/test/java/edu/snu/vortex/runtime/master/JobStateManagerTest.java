@@ -56,7 +56,7 @@ public final class JobStateManagerTest {
    * State changes are explicitly called to check whether states are managed correctly or not.
    */
   @Test
-  public void testSimplePhysicalPlanStateChanges() {
+  public void testPhysicalPlanStateChanges() {
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
     v1.setAttr(Attribute.IntegerKey.Parallelism, 3);
@@ -66,10 +66,37 @@ public final class JobStateManagerTest {
     v2.setAttr(Attribute.IntegerKey.Parallelism, 2);
     irDAGBuilder.addVertex(v2);
 
-    final IREdge e = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);
-    e.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-    e.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
-    irDAGBuilder.connectVertices(e);
+    final IRVertex v3 = new OperatorVertex(t);
+    v3.setAttr(Attribute.IntegerKey.Parallelism, 3);
+    irDAGBuilder.addVertex(v3);
+
+    final IRVertex v4 = new OperatorVertex(t);
+    v4.setAttr(Attribute.IntegerKey.Parallelism, 2);
+    irDAGBuilder.addVertex(v4);
+
+    final IRVertex v5 = new OperatorVertex(t);
+    v5.setAttr(Attribute.IntegerKey.Parallelism, 2);
+    irDAGBuilder.addVertex(v5);
+
+    final IREdge e1 = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);
+    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
+    e1.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
+    irDAGBuilder.connectVertices(e1);
+
+    final IREdge e2 = new IREdge(IREdge.Type.ScatterGather, v3, v2, Coder.DUMMY_CODER);
+    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
+    e2.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
+    irDAGBuilder.connectVertices(e2);
+
+    final IREdge e4 = new IREdge(IREdge.Type.ScatterGather, v2, v4, Coder.DUMMY_CODER);
+    e4.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
+    e4.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
+    irDAGBuilder.connectVertices(e4);
+
+    final IREdge e5 = new IREdge(IREdge.Type.ScatterGather, v2, v5, Coder.DUMMY_CODER);
+    e5.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
+    e5.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
+    irDAGBuilder.connectVertices(e5);
 
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.build();
     final DAG<Stage, StageEdge> logicalDAG = irDAG.convert(new LogicalDAGGenerator());
@@ -85,15 +112,15 @@ public final class JobStateManagerTest {
       final PhysicalStage physicalStage = stageList.get(stageIdx);
       jobStateManager.onStageStateChanged(physicalStage.getId(), StageState.State.EXECUTING);
       final List<TaskGroup> taskGroupList = physicalStage.getTaskGroupList();
-      for (int index = 0; index < taskGroupList.size(); index++) {
-        jobStateManager.onTaskGroupStateChanged(taskGroupList.get(index).getTaskGroupId(),
+      taskGroupList.forEach(taskGroup -> {
+        jobStateManager.onTaskGroupStateChanged(taskGroup.getTaskGroupId(),
             TaskGroupState.State.EXECUTING);
-        jobStateManager.onTaskGroupStateChanged(taskGroupList.get(index).getTaskGroupId(),
+        jobStateManager.onTaskGroupStateChanged(taskGroup.getTaskGroupId(),
             TaskGroupState.State.COMPLETE);
-        if (index == taskGroupList.size() - 1) {
-          assertTrue(jobStateManager.checkCurrentStageCompletion());
+        if (taskGroup.getTaskGroupIdx() == taskGroupList.size() - 1) {
+          assertEquals(physicalStage.getId(), jobStateManager.checkStageCompletion(taskGroup.getTaskGroupId()).get());
         }
-      }
+      });
       final Map<String, TaskGroupState> taskGroupStateMap = jobStateManager.getIdToTaskGroupStates();
       final Map<String, TaskState> taskStateMap = jobStateManager.getIdToTaskStates();
       taskGroupList.forEach(taskGroup -> {

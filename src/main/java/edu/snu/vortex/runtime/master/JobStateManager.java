@@ -56,13 +56,12 @@ public final class JobStateManager {
   private final PhysicalPlan physicalPlan;
 
   /**
-   * Used to track current stage completion status.
+   * Used to track stage completion status.
    * All task group ids are added to the set when the a stage begins executing.
    * Each task group id is removed upon completion,
    * therefore indicating the stage's completion when this set becomes empty.
    */
-  private final Set<String> currentStageTaskGroupIds;
-  private String currentStageId;
+  private final Map<String, Set<String>> stageIdToRemainingTaskGroupSet;
 
   /**
    * Used to track job completion status.
@@ -80,7 +79,7 @@ public final class JobStateManager {
     this.idToStageStates = new HashMap<>();
     this.idToTaskGroupStates = new HashMap<>();
     this.idToTaskStates = new HashMap<>();
-    this.currentStageTaskGroupIds = new HashSet<>();
+    this.stageIdToRemainingTaskGroupSet = new HashMap<>();
     this.currentJobStageIds = new HashSet<>();
     initializeComputationStates();
     initializeBlockStates(blockManagerMaster);
@@ -133,7 +132,7 @@ public final class JobStateManager {
         taskGroupInternalDag.getVertices().forEach(task -> {
           final List<RuntimeEdge<Task>> internalOutgoingEdges = taskGroupInternalDag.getOutgoingEdgesOf(task);
           internalOutgoingEdges.forEach(taskRuntimeEdge ->
-              blockManagerMaster.initializeState(taskRuntimeEdge.getId(), task.getIndex()));
+              blockManagerMaster.initializeState(taskRuntimeEdge.getId(), taskGroup.getTaskGroupIdx()));
         });
       });
     });
@@ -172,15 +171,15 @@ public final class JobStateManager {
         new Object[]{stageId, stageStateMachine.getCurrentState(), newState});
     stageStateMachine.setState(newState);
     if (newState == StageState.State.EXECUTING) {
-      currentStageTaskGroupIds.clear();
-      currentStageId = stageId;
       for (final PhysicalStage stage : physicalPlan.getStageDAG().getVertices()) {
         if (stage.getId().equals(stageId)) {
-          currentStageTaskGroupIds.addAll(
+          Set<String> remainingTaskGroupIds = new HashSet<>();
+          remainingTaskGroupIds.addAll(
               stage.getTaskGroupList()
                   .stream()
                   .map(taskGroup -> taskGroup.getTaskGroupId())
                   .collect(Collectors.toSet()));
+          stageIdToRemainingTaskGroupSet.put(stageId, remainingTaskGroupIds);
           break;
         }
       }
@@ -209,27 +208,45 @@ public final class JobStateManager {
         new Object[]{taskGroupId, taskGroupStateChanged.getCurrentState(), newState});
     taskGroupStateChanged.setState(newState);
     if (newState == TaskGroupState.State.COMPLETE) {
-      currentStageTaskGroupIds.remove(taskGroupId);
-      for (final PhysicalStage physicalStage : physicalPlan.getStageDAG().getVertices()) {
-        for (final TaskGroup taskGroup : physicalStage.getTaskGroupList()) {
-          if (taskGroup.getTaskGroupId().equals(taskGroupId)) {
-            taskGroup.getTaskDAG().getVertices().forEach(task -> {
-              idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR);
-              idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.EXECUTING);
-              idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.COMPLETE);
-            });
-            break;
-          }
+      final TaskGroup taskGroup = getTaskGroupById(taskGroupId);
+      final String stageId = taskGroup.getStageId();
+      stageIdToRemainingTaskGroupSet.get(stageId).remove(taskGroupId);
+      // TODO #235: Cleanup Task State Management
+      taskGroup.getTaskDAG().getVertices().forEach(task -> {
+        idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR);
+        idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.EXECUTING);
+        idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.COMPLETE);
+      });
+
+      if (stageIdToRemainingTaskGroupSet.containsKey(stageId)) {
+        if (stageIdToRemainingTaskGroupSet.get(stageId).isEmpty()) {
+          onStageStateChanged(stageId, StageState.State.COMPLETE);
         }
-      }
-      if (currentStageTaskGroupIds.isEmpty()) {
-        onStageStateChanged(currentStageId, StageState.State.COMPLETE);
+      } else {
+        throw new IllegalStateTransitionException(
+            new Throwable("The stage has not yet been submitted for execution"));
       }
     }
   }
 
-  public synchronized boolean checkCurrentStageCompletion() {
-    return currentStageTaskGroupIds.isEmpty();
+  private TaskGroup getTaskGroupById(final String taskGroupId) {
+    for (final PhysicalStage physicalStage : physicalPlan.getStageDAG().getVertices()) {
+      for (final TaskGroup taskGroup : physicalStage.getTaskGroupList()) {
+        if (taskGroup.getTaskGroupId().equals(taskGroupId)) {
+          return taskGroup;
+        }
+      }
+    }
+    throw new RuntimeException(new Throwable("This taskGroupId does not exist in the plan"));
+  }
+
+  public synchronized Optional<String> checkStageCompletion(final String taskGroupId) {
+    final TaskGroup taskGroup = getTaskGroupById(taskGroupId);
+    if (stageIdToRemainingTaskGroupSet.get(taskGroup.getStageId()).isEmpty()) {
+      return Optional.of(taskGroup.getStageId());
+    } else {
+      return Optional.empty();
+    }
   }
 
   public synchronized boolean checkJobCompletion() {
