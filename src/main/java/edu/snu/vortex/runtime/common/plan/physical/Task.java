@@ -19,6 +19,7 @@ import edu.snu.vortex.utils.dag.Vertex;
 
 /**
  * Task.
+ * The index value is identical to the TaskGroup's index it belongs to.
  */
 public abstract class Task extends Vertex {
   private final String runtimeVertexId;

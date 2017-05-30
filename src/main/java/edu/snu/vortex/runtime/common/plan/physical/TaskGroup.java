@@ -30,15 +30,18 @@ import java.io.Serializable;
 public final class TaskGroup implements Serializable {
   private final String taskGroupId;
   private final String stageId;
+  private final int taskGroupIdx;
   private final DAG<Task, RuntimeEdge<Task>> taskDAG;
   private final RuntimeAttribute resourceType;
 
   public TaskGroup(final String taskGroupId,
                    final String stageId,
+                   final int taskGroupIdx,
                    final DAG<Task, RuntimeEdge<Task>> taskDAG,
                    final RuntimeAttribute resourceType) {
     this.taskGroupId = taskGroupId;
     this.stageId = stageId;
+    this.taskGroupIdx = taskGroupIdx;
     this.taskDAG = taskDAG;
     this.resourceType = resourceType;
   }
@@ -49,6 +52,10 @@ public final class TaskGroup implements Serializable {
 
   public String getStageId() {
     return stageId;
+  }
+
+  public int getTaskGroupIdx() {
+    return taskGroupIdx;
   }
 
   public RuntimeAttribute getResourceType() {
@@ -63,6 +70,7 @@ public final class TaskGroup implements Serializable {
   public String toString() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"taskGroupId\": \"").append(taskGroupId).append("\", ");
+    sb.append("\"taskGroupIdx\": ").append(taskGroupIdx).append(", ");
     sb.append("\"taskDAG\": ").append(taskDAG).append(", ");
     sb.append("\"resourceType\": \"").append(resourceType).append("\"}");
     return sb.toString();

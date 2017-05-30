@@ -71,6 +71,14 @@ public final class DAGTest {
     assertEquals(topologicalOrder.get(2).getValue(), 3);
     assertEquals(topologicalOrder.get(3).getValue(), 4);
     assertEquals(topologicalOrder.get(4).getValue(), 5);
+
+    assertEquals(dag.getRootVertices().size(), 1);
+    assertEquals(dag.getParents("1").size(), 0);
+    assertEquals(dag.getChildren("1").size(), 1);
+    assertEquals(dag.getParents("2").size(), 1);
+    assertEquals(dag.getChildren("2").size(), 1);
+    assertEquals(dag.getParents("5").size(), 1);
+    assertEquals(dag.getChildren("5").size(), 0);
   }
 
   @Test
@@ -96,6 +104,14 @@ public final class DAGTest {
     assertEquals(topologicalOrder.get(2).getValue(), 1);
     assertEquals(topologicalOrder.get(3).getValue(), 2);
     assertEquals(topologicalOrder.get(4).getValue(), 3);
+
+    assertEquals(dag.getRootVertices().size(), 2);
+    assertEquals(dag.getParents("4").size(), 0);
+    assertEquals(dag.getChildren("4").size(), 2);
+    assertEquals(dag.getParents("3").size(), 2);
+    assertEquals(dag.getChildren("3").size(), 0);
+    assertEquals(dag.getParents("5").size(), 1);
+    assertEquals(dag.getChildren("5").size(), 0);
   }
 
   final class IntegerVertex extends Vertex {

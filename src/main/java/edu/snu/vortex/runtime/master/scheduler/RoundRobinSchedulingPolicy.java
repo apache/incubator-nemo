@@ -59,6 +59,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   /**
    * The pool of executors available for each resource type.
    */
+  // TODO #233: Introduce Container Manager
   private final Map<RuntimeAttribute, List<ExecutorRepresenter>> executorByResourceType;
 
   /**

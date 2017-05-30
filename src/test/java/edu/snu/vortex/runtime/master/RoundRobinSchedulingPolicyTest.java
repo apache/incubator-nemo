@@ -72,14 +72,14 @@ public final class RoundRobinSchedulingPolicyTest {
 
   @Test
   public void testSingleCoreTwoTypesOfExecutors() {
-    final TaskGroup A1 = new TaskGroup("A1", "Stage A", null, RuntimeAttribute.Compute);
-    final TaskGroup A2 = new TaskGroup("A2", "Stage A", null, RuntimeAttribute.Compute);
-    final TaskGroup A3 = new TaskGroup("A3", "Stage A", null, RuntimeAttribute.Compute);
-    final TaskGroup A4 = new TaskGroup("A4", "Stage A", null, RuntimeAttribute.Compute);
-    final TaskGroup A5 = new TaskGroup("A4", "Stage A", null, RuntimeAttribute.Compute);
-    final TaskGroup B1 = new TaskGroup("B1", "Stage B", null, RuntimeAttribute.Storage);
-    final TaskGroup B2 = new TaskGroup("B2", "Stage B", null, RuntimeAttribute.Storage);
-    final TaskGroup B3 = new TaskGroup("B3", "Stage B", null, RuntimeAttribute.Storage);
+    final TaskGroup A1 = new TaskGroup("A1", "Stage A", 0, null, RuntimeAttribute.Compute);
+    final TaskGroup A2 = new TaskGroup("A2", "Stage A", 1, null, RuntimeAttribute.Compute);
+    final TaskGroup A3 = new TaskGroup("A3", "Stage A", 2, null, RuntimeAttribute.Compute);
+    final TaskGroup A4 = new TaskGroup("A4", "Stage A", 3, null, RuntimeAttribute.Compute);
+    final TaskGroup A5 = new TaskGroup("A4", "Stage A", 4, null, RuntimeAttribute.Compute);
+    final TaskGroup B1 = new TaskGroup("B1", "Stage B", 0, null, RuntimeAttribute.Storage);
+    final TaskGroup B2 = new TaskGroup("B2", "Stage B", 1, null, RuntimeAttribute.Storage);
+    final TaskGroup B3 = new TaskGroup("B3", "Stage B", 2, null, RuntimeAttribute.Storage);
 
     final ScheduledTaskGroup a1Wrapper = new ScheduledTaskGroup(A1, Collections.emptyList(), Collections.emptyList());
     final ScheduledTaskGroup a2Wrapper = new ScheduledTaskGroup(A2, Collections.emptyList(), Collections.emptyList());
