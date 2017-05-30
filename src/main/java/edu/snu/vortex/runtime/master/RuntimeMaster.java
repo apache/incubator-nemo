@@ -109,8 +109,6 @@ public final class RuntimeMaster {
   /**
    * Handler for messages received by Master.
    */
-  // TODO #187: Cleanup Execution Threads
-  // Executor threads call this at the moment.
   public final class MasterMessageReceiver implements MessageListener<ControlMessage.Message> {
 
     @Override

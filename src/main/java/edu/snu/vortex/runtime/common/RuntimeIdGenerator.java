@@ -100,7 +100,7 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for a whole block.
+   * Generates the ID for a block, whose data is the output of a task.
    * @param runtimeEdgeId of the block
    * @param taskIndex of the block
    * @return the generated ID
@@ -110,7 +110,7 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for a sub-block.
+   * Generates the ID for a block, whose data is a partition of a task's output.
    * @param runtimeEdgeId of the block
    * @param taskIndex of the block
    * @param partitionIndex of the block
