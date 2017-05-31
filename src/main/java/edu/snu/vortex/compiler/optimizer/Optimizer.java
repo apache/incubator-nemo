@@ -31,29 +31,35 @@ public final class Optimizer {
    * Optimize function.
    * @param dag input DAG.
    * @param policyType type of the instantiation policy that we want to use to optimize the DAG.
+   * @param dagDirectory directory to save the DAG information.
    * @return optimized DAG, tagged with attributes.
    * @throws Exception throws an exception if there is an exception.
    */
-  public DAG<IRVertex, IREdge> optimize(final DAG<IRVertex, IREdge> dag, final PolicyType policyType) throws Exception {
+  public DAG<IRVertex, IREdge> optimize(final DAG<IRVertex, IREdge> dag, final PolicyType policyType,
+                                        final String dagDirectory) throws Exception {
     if (policyType == null) {
       throw new RuntimeException("Policy has not been provided for the policyType");
     }
-    return process(dag, POLICIES.get(policyType));
+    return process(dag, POLICIES.get(policyType), dagDirectory);
   }
 
   /**
    * A recursive method to process each pass one-by-one to the given DAG.
    * @param dag DAG to process.
    * @param passes passes to apply.
+   * @param dagDirectory directory to save the DAG information.
    * @return the processed DAG.
    * @throws Exception Exceptionso n the way.
    */
-  private static DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag, final List<Pass> passes)
-          throws Exception {
+  private static DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag, final List<Pass> passes,
+                                               final String dagDirectory) throws Exception {
     if (passes.isEmpty()) {
       return dag;
     } else {
-      return process(passes.get(0).process(dag), passes.subList(1, passes.size()));
+      final DAG<IRVertex, IREdge> processedDAG = passes.get(0).process(dag);
+      processedDAG.storeJSON(dagDirectory, "ir-after-" + passes.get(0).getClass().getSimpleName(),
+          "DAG after optimization");
+      return process(processedDAG, passes.subList(1, passes.size()), dagDirectory);
     }
   }
 
