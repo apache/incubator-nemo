@@ -24,6 +24,8 @@ import edu.snu.vortex.utils.dag.DAGBuilder;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.vortex.utils.dag.DAG.EMPTY_DAG_DIRECTORY;
+
 /**
  * A sample MapReduce application.
  */
@@ -64,7 +66,7 @@ public final class MapReduce {
 
     // Optimize
     final Optimizer optimizer = new Optimizer();
-    final DAG optimizedDAG = optimizer.optimize(dag, Optimizer.PolicyType.Disaggregation);
+    final DAG optimizedDAG = optimizer.optimize(dag, Optimizer.PolicyType.Disaggregation, EMPTY_DAG_DIRECTORY);
 
     // After
     LOG.log(Level.INFO, "After Optimization");
