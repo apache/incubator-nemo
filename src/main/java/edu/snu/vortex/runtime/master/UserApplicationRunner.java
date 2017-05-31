@@ -69,7 +69,7 @@ public final class UserApplicationRunner implements Runnable {
       dag.storeJSON(dagDirectory, "ir", "IR before optimization");
 
       final Optimizer.PolicyType optimizationPolicy = POLICY_NAME.get(policyName);
-      final DAG optimizedDAG = optimizer.optimize(dag, optimizationPolicy);
+      final DAG optimizedDAG = optimizer.optimize(dag, optimizationPolicy, dagDirectory);
       optimizedDAG.storeJSON(dagDirectory, "ir-" + optimizationPolicy, "IR optimized for " + optimizationPolicy);
 
       final ExecutionPlan executionPlan = backend.compile(optimizedDAG);

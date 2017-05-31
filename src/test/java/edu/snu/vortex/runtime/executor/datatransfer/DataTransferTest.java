@@ -50,6 +50,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static edu.snu.vortex.utils.dag.DAG.EMPTY_DAG_DIRECTORY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -59,7 +60,6 @@ import static org.mockito.Mockito.mock;
  */
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
-  private static final String EMPTY_DAG_DIRECTORY = "";
   private static final int EXECUTOR_CAPACITY = 1;
   private static final int SCHEDULE_TIMEOUT = 1000;
   private static final RuntimeAttribute STORE = RuntimeAttribute.Local;

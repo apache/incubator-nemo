@@ -27,6 +27,7 @@ import edu.snu.vortex.utils.dag.DAGBuilder;
 import org.junit.Before;
 import org.junit.Test;
 
+import static edu.snu.vortex.utils.dag.DAG.EMPTY_DAG_DIRECTORY;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -51,7 +52,7 @@ public final class VortexBackendTest<I, O> {
         .connectVertices(new IREdge(IREdge.Type.OneToOne, combine, map2, Coder.DUMMY_CODER))
         .build();
 
-    this.dag = new Optimizer().optimize(dag, Optimizer.PolicyType.Pado);
+    this.dag = new Optimizer().optimize(dag, Optimizer.PolicyType.Pado, EMPTY_DAG_DIRECTORY);
   }
 
   /**
