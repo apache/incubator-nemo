@@ -22,7 +22,6 @@ import edu.snu.vortex.compiler.frontend.beam.Runner;
 import edu.snu.vortex.compiler.frontend.beam.coder.PairCoder;
 import edu.snu.vortex.utils.Pair;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Combine;
@@ -319,7 +318,7 @@ public final class AlternatingLeastSquare {
     p.getCoderRegistry().registerCoder(Pair.class, PairCoder.class);
 
     // Read raw data
-    final PCollection<String> rawData = p.apply(TextIO.Read.from(inputFilePath));
+    final PCollection<String> rawData = GenericSourceSink.read(p, inputFilePath);
 
     // Parse data for item
     final PCollection<KV<Integer, Pair<int[], float[]>>> parsedItemData = rawData

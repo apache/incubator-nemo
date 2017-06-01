@@ -54,6 +54,13 @@ public final class JobConf extends ConfigurationModuleBuilder {
   //////////////////////////////// Runtime Configurations
 
   /**
+   * Deploy mode.
+   */
+  @NamedParameter(doc = "Deploy mode", short_name = "deploy_mode", default_value = "local")
+  public final class DeployMode implements Name<String> {
+  }
+
+  /**
    * Vortex driver memory.
    */
   @NamedParameter(doc = "Vortex driver memory", short_name = "driver_mem_mb", default_value = "1024")

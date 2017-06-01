@@ -17,7 +17,6 @@ package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.compiler.frontend.beam.Runner;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Combine;
@@ -25,6 +24,7 @@ import org.apache.beam.sdk.transforms.GroupByKey;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.Sum;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptors;
 
 /**
@@ -49,7 +49,7 @@ public final class MapReduce {
     options.setJobName("MapReduce");
 
     final Pipeline p = Pipeline.create(options);
-    p.apply(TextIO.Read.from(inputFilePath))
+    final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
         .apply(MapElements.via((String line) -> {
           final String[] words = line.split(" +");
           final String documentId = words[0];
@@ -59,8 +59,8 @@ public final class MapReduce {
         .apply(GroupByKey.<String, Long>create())
         .apply(Combine.<String, Long, Long>groupedValues(Sum.ofLongs()))
         .apply(MapElements.via((KV<String, Long> kv) -> kv.getKey() + ": " + kv.getValue())
-            .withOutputType(TypeDescriptors.strings()))
-        .apply(TextIO.Write.to(outputFilePath));
+            .withOutputType(TypeDescriptors.strings()));
+    GenericSourceSink.write(result, outputFilePath);
     p.run();
   }
 }
