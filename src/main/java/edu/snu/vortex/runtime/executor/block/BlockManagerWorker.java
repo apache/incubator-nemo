@@ -191,6 +191,7 @@ public final class BlockManagerWorker {
                     ControlMessage.RequestBlockMsg.newBuilder()
                     .setExecutorId(executorId)
                     .setBlockId(blockId)
+                    .setBlockStore(convertBlockStore(blockStore))
                     .setRuntimeEdgeId(runtimeEdgeId)
                     .build())
                 .build())
@@ -240,6 +241,27 @@ public final class BlockManagerWorker {
       case DistributedStorage:
         // TODO #180: Implement DistributedStorageStore
         return localStore;
+      default:
+        throw new UnsupportedBlockStoreException(new Exception(blockStore + " is not supported."));
+    }
+  }
+
+  private ControlMessage.BlockStore convertBlockStore(final RuntimeAttribute blockStore) {
+    switch (blockStore) {
+      case Local:
+        return ControlMessage.BlockStore.LOCAL;
+      case Memory:
+        // TODO #181: Implement MemoryBlockStore
+        return ControlMessage.BlockStore.MEMORY;
+      case File:
+        // TODO #69: Implement file channel in Runtime
+        return ControlMessage.BlockStore.FILE;
+      case MemoryFile:
+        // TODO #69: Implement file channel in Runtime
+        return ControlMessage.BlockStore.MEMORY_FILE;
+      case DistributedStorage:
+        // TODO #180: Implement DistributedStorageStore
+        return ControlMessage.BlockStore.DISTRIBUTED_STORAGE;
       default:
         throw new UnsupportedBlockStoreException(new Exception(blockStore + " is not supported."));
     }

@@ -19,7 +19,6 @@ import edu.snu.vortex.client.beam.LoopCompositeTransform;
 import edu.snu.vortex.compiler.frontend.beam.Runner;
 import edu.snu.vortex.utils.Pair;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.*;
@@ -431,8 +430,7 @@ public final class MultinomialLogisticRegression {
         }));
 
     // Read input data
-    final PCollection<String> readInput = p
-        .apply(TextIO.Read.from(inputFilePath));
+    final PCollection<String> readInput = GenericSourceSink.read(p, inputFilePath);
 
     // Multiple iterations for convergence.
     for (int i = 1; i <= numItr; i++) {

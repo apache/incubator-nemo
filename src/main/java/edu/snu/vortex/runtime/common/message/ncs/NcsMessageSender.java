@@ -5,12 +5,15 @@ import edu.snu.vortex.runtime.common.message.MessageSender;
 import org.apache.reef.io.network.Connection;
 
 import java.util.concurrent.Future;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * MessageSender for NCS.
  * TODO #206: Rethink/Refactor NCS as our RPC stack
  */
 final class NcsMessageSender implements MessageSender<ControlMessage.Message> {
+  private static final Logger LOG = Logger.getLogger(NcsMessageSender.class.getName());
 
   private final Connection<ControlMessage.Message> connection;
   private final ReplyWaitingLock replyWaitingLock;
@@ -24,15 +27,13 @@ final class NcsMessageSender implements MessageSender<ControlMessage.Message> {
 
   @Override
   public void send(final ControlMessage.Message message) {
-    // comment out when debugging :)
-    // System.out.println("send: " + message.toString());
+    LOG.log(Level.INFO, "send: {0}", message);
     connection.write(message);
   }
 
   @Override
   public <U> Future<U> request(final ControlMessage.Message message) {
-    // comment out when debugging :)
-    // System.out.println("request: " + message.toString());
+    LOG.log(Level.INFO, "request: {0}", message);
     connection.write(message);
     return (Future) replyWaitingLock.waitingReply(message.getId());
   }

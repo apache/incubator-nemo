@@ -1,4 +1,4 @@
-syntax = "proto3";
+syntax = "proto2";
 
 package protobuf;
 
@@ -16,62 +16,60 @@ enum MessageType {
 }
 
 message Message {
-    MessageType type = 1;
-    int64 id = 2;
-    oneof messageTypes {
-        TaskGroupStateChangedMsg taskStateChangedMsg = 3;
-        ScheduleTaskGroupMsg scheduleTaskGroupMsg = 4;
-        BlockStateChangedMsg blockStateChangedMsg = 5;
-        RequestBlockLocationMsg requestBlockLocationMsg = 6;
-        BlockLocationInfoMsg blockLocationInfoMsg = 7;
-        RequestBlockMsg requestBlockMsg = 8;
-        TransferBlockMsg transferBlockMsg = 9;
-    }
+    required MessageType type = 1;
+    required int64 id = 2;
+    optional TaskGroupStateChangedMsg taskStateChangedMsg = 3;
+    optional ScheduleTaskGroupMsg scheduleTaskGroupMsg = 4;
+    optional BlockStateChangedMsg blockStateChangedMsg = 5;
+    optional RequestBlockLocationMsg requestBlockLocationMsg = 6;
+    optional BlockLocationInfoMsg blockLocationInfoMsg = 7;
+    optional RequestBlockMsg requestBlockMsg = 8;
+    optional TransferBlockMsg transferBlockMsg = 9;
 }
 
 // Messages from Master to Executors
 message ScheduleTaskGroupMsg {
-    bytes taskGroup = 1;
+    required bytes taskGroup = 1;
 }
 
 message BlockLocationInfoMsg {
-    int64 requestId = 1; // To find the matching request msg
-    string blockId = 2;
-    string ownerExecutorId = 3;
+    required int64 requestId = 1; // To find the matching request msg
+    required string blockId = 2;
+    required string ownerExecutorId = 3;
 }
 
 // Messages from Executors to Master
 message TaskGroupStateChangedMsg {
-    string executorId = 1;
-    string taskGroupId = 2;
-    TaskGroupStateFromExecutor state = 3;
+    required string executorId = 1;
+    required string taskGroupId = 2;
+    required TaskGroupStateFromExecutor state = 3;
     repeated string failedTaskIds = 4;
 }
 
 message BlockStateChangedMsg {
-    string executorId = 1;
-    string blockId = 2;
-    BlockStateFromExecutor state = 3;
+    required string executorId = 1;
+    required string blockId = 2;
+    required BlockStateFromExecutor state = 3;
 }
 
 message RequestBlockLocationMsg {
-    string executorId = 1;
-    string blockId = 2;
+    required string executorId = 1;
+    required string blockId = 2;
 }
 
 // Messages between Executors
 message RequestBlockMsg {
-    string executorId = 1;
-    string blockId = 2;
-    BlockStore blockStore = 3;
-    string runtimeEdgeId = 4;
+    required string executorId = 1;
+    required string blockId = 2;
+    required BlockStore blockStore = 3;
+    required string runtimeEdgeId = 4;
 }
 
 message TransferBlockMsg {
-    int64 requestId = 1; // To find the matching request msg
-    string executorId = 2;
-    string blockId = 3;
-    bytes data = 4; // just for now
+    required int64 requestId = 1; // To find the matching request msg
+    required string executorId = 2;
+    required string blockId = 3;
+    required bytes data = 4; // just for now
 }
 
 enum TaskGroupStateFromExecutor {
