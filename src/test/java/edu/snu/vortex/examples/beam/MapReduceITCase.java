@@ -17,6 +17,7 @@ package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.client.JobLauncher;
 import edu.snu.vortex.compiler.TestUtil;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -28,20 +29,45 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class MapReduceITCase {
-  private final String mapReduce = "edu.snu.vortex.examples.beam.MapReduce";
-  private final String optimizationPolicy = "pado";
-  private final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mr";
-  private final String output = TestUtil.rootDir + "/src/main/resources/sample_output";
-  private final String dagDirectory = "./dag";
+  private static final String mapReduce = "edu.snu.vortex.examples.beam.MapReduce";
+  private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mr";
+  private static final String output = TestUtil.rootDir + "/src/main/resources/sample_output";
+  private static final String dagDirectory = "./dag";
+
+  private static ArgBuilder builder = new ArgBuilder()
+      .addJobId(MapReduceITCase.class.getSimpleName())
+      .addUserMain(mapReduce)
+      .addUserArgs(input, output)
+      .addDAGDirectory(dagDirectory);
+
+  @Before
+  public void setUp() throws Exception {
+    builder = new ArgBuilder()
+        .addUserMain(mapReduce)
+        .addUserArgs(input, output)
+        .addDAGDirectory(dagDirectory);
+  }
 
   @Test
   public void test() throws Exception {
-    final ArgBuilder builder = new ArgBuilder()
+    JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName())
-        .addUserMain(mapReduce)
-        .addOptimizationPolicy(optimizationPolicy)
-        .addUserArgs(input, output)
-        .addDAGDirectory(dagDirectory);
-    JobLauncher.main(builder.build());
+        .build());
+  }
+
+  @Test
+  public void testDisaggregation() throws Exception {
+    JobLauncher.main(builder
+        .addJobId(MapReduceITCase.class.getSimpleName() + "_disaggregation")
+        .addOptimizationPolicy("disaggregation")
+        .build());
+  }
+
+  @Test
+  public void testPado() throws Exception {
+    JobLauncher.main(builder
+        .addJobId(MapReduceITCase.class.getSimpleName() + "_pado")
+        .addOptimizationPolicy("pado")
+        .build());
   }
 }

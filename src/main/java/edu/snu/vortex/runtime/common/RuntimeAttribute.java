@@ -26,6 +26,7 @@ public enum RuntimeAttribute {
   /**
    * IRVertex resource type attributes.
    */
+  Default(Key.ResourceType),
   Transient(Key.ResourceType),
   Reserved(Key.ResourceType),
   Compute(Key.ResourceType),

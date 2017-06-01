@@ -117,7 +117,7 @@ public final class VortexDriver {
     public void onNext(final StartTime startTime) {
       // Launch resources
       final Set<RuntimeAttribute> completeSetOfResourceType =
-          new HashSet<>(Arrays.asList(Transient, Reserved, Compute, Storage));
+          new HashSet<>(Arrays.asList(Default, Transient, Reserved, Compute, Storage));
       completeSetOfResourceType.forEach(resourceType -> {
         // For each type, request executorNum of evaluators
         // These are hacks to get around
