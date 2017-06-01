@@ -17,6 +17,7 @@ package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.client.JobLauncher;
 import edu.snu.vortex.compiler.TestUtil;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -29,21 +30,37 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class AlternatingLeastSquareITCase {
   private static final String als = "edu.snu.vortex.examples.beam.AlternatingLeastSquare";
-  private static final String optimizationPolicy = "pado";
   private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_als";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
   private static final String dagDirectory = "./dag";
 
-  public static final ArgBuilder builder = new ArgBuilder()
+  public static ArgBuilder builder = new ArgBuilder()
       .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
       .addUserMain(als)
-      .addOptimizationPolicy(optimizationPolicy)
       .addUserArgs(input, numFeatures, numIteration)
       .addDAGDirectory(dagDirectory);
 
+  @Before
+  public void setUp() throws Exception {
+    builder = new ArgBuilder()
+        .addUserMain(als)
+        .addUserArgs(input, numFeatures, numIteration)
+        .addDAGDirectory(dagDirectory);
+  }
+
   @Test
   public void test() throws Exception {
-    JobLauncher.main(builder.build());
+    JobLauncher.main(builder
+        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
+        .build());
+  }
+
+  @Test
+  public void testPado() throws Exception {
+    JobLauncher.main(builder
+        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_pado")
+        .addOptimizationPolicy("pado")
+        .build());
   }
 }

@@ -17,6 +17,7 @@ package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.client.JobLauncher;
 import edu.snu.vortex.compiler.TestUtil;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -29,22 +30,38 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class MultinomialLogisticRegressionITCase {
   private static final String mlr = "edu.snu.vortex.examples.beam.MultinomialLogisticRegression";
-  private static final String optimizationPolicy = "pado";
   private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mlr";
   private static final String numFeatures = "100";
   private static final String numClasses = "5";
   private static final String numIteration = "3";
   private static final String dagDirectory = "./dag";
 
-  public static final ArgBuilder builder = new ArgBuilder()
+  public static ArgBuilder builder = new ArgBuilder()
       .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName())
       .addUserMain(mlr)
-      .addOptimizationPolicy(optimizationPolicy)
       .addUserArgs(input, numFeatures, numClasses, numIteration)
       .addDAGDirectory(dagDirectory);
 
+  @Before
+  public void setUp() throws Exception {
+    builder = new ArgBuilder()
+        .addUserMain(mlr)
+        .addUserArgs(input, numFeatures, numClasses, numIteration)
+        .addDAGDirectory(dagDirectory);
+  }
+
   @Test
   public void test() throws Exception {
-    JobLauncher.main(builder.build());
+    JobLauncher.main(builder
+        .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName())
+        .build());
+  }
+
+  @Test
+  public void testPado() throws Exception {
+    JobLauncher.main(builder
+        .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName() + "_pado")
+        .addOptimizationPolicy("pado")
+        .build());
   }
 }
