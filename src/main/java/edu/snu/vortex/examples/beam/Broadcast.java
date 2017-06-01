@@ -17,7 +17,6 @@ package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.compiler.frontend.beam.Runner;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -50,7 +49,7 @@ public final class Broadcast {
     options.setRunner(Runner.class);
 
     final Pipeline p = Pipeline.create(options);
-    final PCollection<String> elemCollection = p.apply(TextIO.Read.from(inputFilePath));
+    final PCollection<String> elemCollection = GenericSourceSink.read(p, inputFilePath);
     final PCollectionView<Iterable<String>> allCollection = elemCollection.apply(View.<String>asIterable());
 
     elemCollection.apply(ParDo.withSideInputs(allCollection)
