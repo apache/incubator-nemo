@@ -67,7 +67,7 @@ public final class Optimizer {
    * Enum for different types of instantiation policies.
    */
   public enum PolicyType {
-    None,
+    Default,
     Pado,
     Disaggregation,
   }
@@ -78,9 +78,10 @@ public final class Optimizer {
    */
   private static final Map<PolicyType, List<Pass>> POLICIES = new HashMap<>();
   static {
-    POLICIES.put(PolicyType.None,
+    POLICIES.put(PolicyType.Default,
         Arrays.asList(
-            new ParallelismPass() // Provides parallelism information.
+            new ParallelismPass(), // Provides parallelism information.
+            new DefaultPass()
         ));
     POLICIES.put(PolicyType.Pado,
         Arrays.asList(
@@ -107,7 +108,7 @@ public final class Optimizer {
    */
   public static final Map<String, PolicyType> POLICY_NAME = new HashMap<>();
   static {
-    POLICY_NAME.put("none", PolicyType.None);
+    POLICY_NAME.put("default", PolicyType.Default);
     POLICY_NAME.put("pado", PolicyType.Pado);
     POLICY_NAME.put("disaggregation", PolicyType.Disaggregation);
   }

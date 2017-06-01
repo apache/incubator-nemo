@@ -12,7 +12,7 @@
 
 ## Examples
 ```bash
-./bin/run.sh -job_id mr_none -user_main edu.snu.vortex.examples.beam.MapReduce -optimization_policy none -user_args "`pwd`/src/main/resources/sample_input_mr `pwd`/src/main/resources/sample_output"
+./bin/run.sh -job_id mr_default -user_main edu.snu.vortex.examples.beam.MapReduce -optimization_policy default -user_args "`pwd`/src/main/resources/sample_input_mr `pwd`/src/main/resources/sample_output"
 ./bin/run.sh -job_id mr_pado -user_main edu.snu.vortex.examples.beam.MapReduce -optimization_policy pado -user_args "`pwd`/src/main/resources/sample_input_mr `pwd`/src/main/resources/sample_output"
 ./bin/run.sh -job_id mr_disaggr -user_main edu.snu.vortex.examples.beam.MapReduce -optimization_policy disaggregation -user_args "`pwd`/src/main/resources/sample_input_mr `pwd`/src/main/resources/sample_output"
 ./bin/run.sh -job_id mr_runtime_opt -user_main edu.snu.vortex.examples.beam.MapReduce -optimization_policy runtime_opt -user_args "`pwd`/src/main/resources/sample_input_mr `pwd`/src/main/resources/sample_output"
