@@ -16,7 +16,6 @@
 package edu.snu.vortex.runtime.master.scheduler;
 
 import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
-import edu.snu.vortex.runtime.master.ExecutorRepresenter;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.Optional;
@@ -40,56 +39,56 @@ public interface SchedulingPolicy {
    * (Depending on the executor's resource type)
    *
    * @param scheduledTaskGroup to schedule
-   * @return {@link ExecutorRepresenter} on which the taskGroup is scheduled if successful, an empty Optional otherwise.
+   * @return the ID of the executor on which the taskGroup is scheduled if successful, an empty Optional otherwise.
    */
-  Optional<ExecutorRepresenter> attemptSchedule(final ScheduledTaskGroup scheduledTaskGroup);
+  Optional<String> attemptSchedule(final ScheduledTaskGroup scheduledTaskGroup);
 
   /**
-   * Adds the executor to the pool of available executors.
+   * Adds the executorId to the pool of available executors.
    * Unlocks this policy to schedule a next taskGroup if locked.
    * (Depending on the executor's resource type)
    *
-   * @param executor that has been added.
+   * @param executorId for the executor that has been added.
    */
-  void onExecutorAdded(ExecutorRepresenter executor);
+  void onExecutorAdded(String executorId);
 
   /**
-   * Deletes the executor from the pool of available executors.
+   * Deletes the executorId from the pool of available executors.
    * Locks this policy from scheduling if there is no more executor currently available for the next taskGroup.
    * (Depending on the executor's resource type)
    *
-   * @param executor that has been deleted.
+   * @param executorId for the executor that has been deleted.
    * @return the ids of the set of task groups that were running on the executor.
    */
-  Set<String> onExecutorRemoved(ExecutorRepresenter executor);
+  Set<String> onExecutorRemoved(String executorId);
 
   /**
-   * Marks the executor scheduled for the taskGroup.
+   * Marks the executorId scheduled for the taskGroup.
    * Locks this policy from scheduling if there is no more executor currently available for the next taskGroup.
    * (Depending on the executor's resource type)
    *
-   * @param executor assigned for the taskGroup.
-   * @param scheduledTaskGroup scheduled to the executor.
+   * @param executorId of the executor assigned for the taskGroup.
+   * @param scheduledTaskGroup scheduled to the executorId.
    */
-  void onTaskGroupScheduled(final ExecutorRepresenter executor, final ScheduledTaskGroup scheduledTaskGroup);
+  void onTaskGroupScheduled(final String executorId, final ScheduledTaskGroup scheduledTaskGroup);
 
   /**
    * Marks the taskGroup's completion in the executor.
    * Unlocks this policy to schedule a next taskGroup if locked.
    * (Depending on the executor's resource type)
    *
-   * @param executor where the taskGroup's execution has completed.
+   * @param executorId of the executor where the taskGroup's execution has completed.
    * @param taskGroupId whose execution has completed.
    */
-  void onTaskGroupExecutionComplete(ExecutorRepresenter executor, String taskGroupId);
+  void onTaskGroupExecutionComplete(String executorId, String taskGroupId);
 
   /**
    * Marks the taskGroup's failure in the executor.
    * Unlocks this policy to reschedule this taskGroup if locked.
    * (Depending on the executor's resource type)
    *
-   * @param executor where the taskGroup's execution has failed.
+   * @param executorId of the executor where the taskGroup's execution has failed.
    * @param taskGroupId whose execution has completed.
    */
-  void onTaskGroupExecutionFailed(ExecutorRepresenter executor, String taskGroupId);
+  void onTaskGroupExecutionFailed(String executorId, String taskGroupId);
 }

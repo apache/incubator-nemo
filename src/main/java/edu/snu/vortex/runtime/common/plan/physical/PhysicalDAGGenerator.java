@@ -72,7 +72,7 @@ public final class PhysicalDAGGenerator
             throw new RuntimeException("All vertices in a stage should have same parallelism");
           }
         });
-        final RuntimeAttribute resourceType = firstVertexAttrs.get(RuntimeAttribute.Key.ResourceType);
+        final RuntimeAttribute resourceType = firstVertexAttrs.get(RuntimeAttribute.Key.ContainerType);
 
         // Begin building a new stage in the physical plan.
         physicalStageBuilder = new PhysicalStageBuilder(stage.getStageId(), stageParallelism);

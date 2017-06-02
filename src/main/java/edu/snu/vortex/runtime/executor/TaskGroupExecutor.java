@@ -165,7 +165,7 @@ public final class TaskGroupExecutor {
         throw new RuntimeException(e);
       }
     });
-    LOG.log(Level.FINE, "TaskGroup #{0} Execution Complete!", taskGroup.getTaskGroupId());
+    LOG.log(Level.INFO, "{0} Execution Complete!", taskGroup.getTaskGroupId());
   }
 
   /**

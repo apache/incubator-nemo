@@ -18,7 +18,6 @@ package edu.snu.vortex.runtime.master.scheduler;
 import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.SchedulingException;
-import edu.snu.vortex.runtime.master.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.JobStateManager;
 import org.apache.reef.annotations.audience.DriverSide;
 
@@ -53,9 +52,8 @@ public final class SchedulerRunner implements Runnable {
     while (!jobStateManager.checkJobCompletion()) {
       try {
         final ScheduledTaskGroup scheduledTaskGroup = pendingTaskGroupQueue.takeFirst();
-        final Optional<ExecutorRepresenter> executor =
-            schedulingPolicy.attemptSchedule(scheduledTaskGroup);
-        if (!executor.isPresent()) {
+        final Optional<String> executorId = schedulingPolicy.attemptSchedule(scheduledTaskGroup);
+        if (!executorId.isPresent()) {
           LOG.log(Level.INFO, "Failed to assign an executor before the timeout: {0}",
               schedulingPolicy.getScheduleTimeoutMs());
           pendingTaskGroupQueue.addLast(scheduledTaskGroup);
@@ -63,11 +61,12 @@ public final class SchedulerRunner implements Runnable {
           // Must send this scheduledTaskGroup to the destination executor.
           jobStateManager.onTaskGroupStateChanged(scheduledTaskGroup.getTaskGroup().getTaskGroupId(),
               TaskGroupState.State.EXECUTING);
-          schedulingPolicy.onTaskGroupScheduled(executor.get(), scheduledTaskGroup);
+          schedulingPolicy.onTaskGroupScheduled(executorId.get(), scheduledTaskGroup);
         }
       } catch (final Exception e) {
         throw new SchedulingException(e);
       }
     }
+    LOG.log(Level.INFO, "Job is complete, scheduler runner will terminate.");
   }
 }

@@ -25,7 +25,6 @@ import edu.snu.vortex.runtime.exception.IllegalStateTransitionException;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
 import edu.snu.vortex.runtime.exception.UnrecoverableFailureException;
 import edu.snu.vortex.runtime.master.BlockManagerMaster;
-import edu.snu.vortex.runtime.master.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.JobStateManager;
 
 import javax.inject.Inject;
@@ -43,21 +42,14 @@ import java.util.logging.Logger;
 public final class BatchScheduler implements Scheduler {
   private static final Logger LOG = Logger.getLogger(BatchScheduler.class.getName());
 
-  private final PendingTaskGroupQueue pendingTaskGroupQueue;
-
   private JobStateManager jobStateManager;
-
-  /**
-   * A map of executor ID to the corresponding {@link ExecutorRepresenter}.
-   * This object is synchronized as multiple threads can access and modify {@link ExecutorRepresenter}s.
-   */
-  // TODO #233: Introduce Container Manager
-  private final Map<String, ExecutorRepresenter> executorRepresenterMap;
 
   /**
    * The {@link SchedulingPolicy} used to schedule task groups.
    */
   private SchedulingPolicy schedulingPolicy;
+
+  private final PendingTaskGroupQueue pendingTaskGroupQueue;
 
   /**
    * The current job being executed.
@@ -68,7 +60,6 @@ public final class BatchScheduler implements Scheduler {
   public BatchScheduler(final SchedulingPolicy schedulingPolicy,
                         final PendingTaskGroupQueue pendingTaskGroupQueue) {
     this.pendingTaskGroupQueue = pendingTaskGroupQueue;
-    this.executorRepresenterMap = new HashMap<>();
     this.schedulingPolicy = schedulingPolicy;
   }
 
@@ -110,14 +101,10 @@ public final class BatchScheduler implements Scheduler {
     // TODO #233: Introduce Container Manager
     switch (newState) {
     case COMPLETE:
-      synchronized (executorRepresenterMap) {
-        onTaskGroupExecutionComplete(executorRepresenterMap.get(executorId), taskGroupId);
-      }
+      onTaskGroupExecutionComplete(executorId, taskGroupId);
       break;
     case FAILED_RECOVERABLE:
-      synchronized (executorRepresenterMap) {
-        onTaskGroupExecutionFailed(executorRepresenterMap.get(executorId), taskGroupId, failedTaskIds);
-      }
+      onTaskGroupExecutionFailed(executorId, taskGroupId, failedTaskIds);
       break;
     case FAILED_UNRECOVERABLE:
       throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The job failed on TaskGroup #")
@@ -130,9 +117,9 @@ public final class BatchScheduler implements Scheduler {
     }
   }
 
-  private void onTaskGroupExecutionComplete(final ExecutorRepresenter executor,
+  private void onTaskGroupExecutionComplete(final String executorId,
                                             final String taskGroupId) {
-    schedulingPolicy.onTaskGroupExecutionComplete(executor, taskGroupId);
+    schedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroupId);
 
     final Optional<String> stageIdForTaskGroupUponCompletion = jobStateManager.checkStageCompletion(taskGroupId);
     // if the stage this task group belongs to is complete,
@@ -144,27 +131,20 @@ public final class BatchScheduler implements Scheduler {
   }
 
   // TODO #163: Handle Fault Tolerance
-  private void onTaskGroupExecutionFailed(final ExecutorRepresenter executor, final String taskGroupId,
+  private void onTaskGroupExecutionFailed(final String executorId, final String taskGroupId,
                                           final List<String> taskIdOnFailure) {
-    schedulingPolicy.onTaskGroupExecutionFailed(executor, taskGroupId);
+    schedulingPolicy.onTaskGroupExecutionFailed(executorId, taskGroupId);
   }
 
   @Override
-  public void onExecutorAdded(final ExecutorRepresenter executor) {
-    schedulingPolicy.onExecutorAdded(executor);
-    synchronized (executorRepresenterMap) {
-      executorRepresenterMap.put(executor.getExecutorId(), executor);
-    }
+  public void onExecutorAdded(final String executorId) {
+    schedulingPolicy.onExecutorAdded(executorId);
   }
 
   // TODO #163: Handle Fault Tolerance
   @Override
-  public void onExecutorRemoved(final ExecutorRepresenter executor) {
-    // TODO #233: Introduce Container Manager
-    synchronized (executorRepresenterMap) {
-      executorRepresenterMap.remove(executor.getExecutorId());
-    }
-    final Set<String> taskGroupsToReschedule = schedulingPolicy.onExecutorRemoved(executor);
+  public void onExecutorRemoved(final String executorId) {
+    final Set<String> taskGroupsToReschedule = schedulingPolicy.onExecutorRemoved(executorId);
 
     // Reschedule taskGroupsToReschedule
   }
@@ -285,6 +265,5 @@ public final class BatchScheduler implements Scheduler {
 
   @Override
   public void terminate() {
-   executorRepresenterMap.entrySet().stream().forEach(e -> e.getValue().shutDown());
   }
 }
