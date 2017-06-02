@@ -18,7 +18,6 @@ package edu.snu.vortex.runtime.master.scheduler;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.master.BlockManagerMaster;
-import edu.snu.vortex.runtime.master.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.JobStateManager;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -31,9 +30,9 @@ import java.util.List;
 public interface Scheduler {
   JobStateManager scheduleJob(final PhysicalPlan physicalPlan, final BlockManagerMaster blockManagerMaster);
 
-  void onExecutorAdded(ExecutorRepresenter executor);
+  void onExecutorAdded(String executorId);
 
-  void onExecutorRemoved(ExecutorRepresenter executor);
+  void onExecutorRemoved(String executorId);
 
   void onTaskGroupStateChanged(final String executorId,
                                final String taskGroupId,
