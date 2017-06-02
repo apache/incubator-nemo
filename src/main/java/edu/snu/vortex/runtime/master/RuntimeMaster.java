@@ -30,6 +30,7 @@ import edu.snu.vortex.runtime.common.state.BlockState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
+import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import edu.snu.vortex.utils.dag.DAG;
 import org.apache.reef.tang.annotations.Parameter;
@@ -50,6 +51,7 @@ public final class RuntimeMaster {
   private static final Logger LOG = Logger.getLogger(RuntimeMaster.class.getName());
 
   private final Scheduler scheduler;
+  private final ContainerManager containerManager;
   private final MessageEnvironment masterMessageEnvironment;
   private final BlockManagerMaster blockManagerMaster;
   private JobStateManager jobStateManager;
@@ -59,10 +61,12 @@ public final class RuntimeMaster {
 
   @Inject
   public RuntimeMaster(final Scheduler scheduler,
+                       final ContainerManager containerManager,
                        final MessageEnvironment masterMessageEnvironment,
                        final BlockManagerMaster blockManagerMaster,
                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     this.scheduler = scheduler;
+    this.containerManager = containerManager;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
         .setupListener(MessageEnvironment.MASTER_MESSAGE_RECEIVER, new MasterMessageReceiver());
@@ -83,13 +87,14 @@ public final class RuntimeMaster {
         // Check every 3 seconds for job completion.
         Thread.sleep(3000);
       }
+      LOG.log(Level.INFO, "**" + executionPlan.getId() + "** is complete!");
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
 
   public void terminate() {
-    scheduler.terminate();
+    containerManager.terminate();
   }
 
   /**

@@ -18,19 +18,20 @@ package edu.snu.vortex.runtime.common;
 /**
  * Runtime attributes.
  */
+// TODO #249: Clean up Attributes
 public enum RuntimeAttribute {
   /**
    * Set of attributes applicable to {@link edu.snu.vortex.runtime.common.execplan.RuntimeVertex}.
    */
 
   /**
-   * IRVertex resource type attributes.
+   * IRVertex container type attributes.
    */
-  Default(Key.ResourceType),
-  Transient(Key.ResourceType),
-  Reserved(Key.ResourceType),
-  Compute(Key.ResourceType),
-  Storage(Key.ResourceType),
+  Default(Key.ContainerType),
+  Transient(Key.ContainerType),
+  Reserved(Key.ContainerType),
+  Compute(Key.ContainerType),
+  Storage(Key.ContainerType),
 
 
   /**
@@ -97,7 +98,7 @@ public enum RuntimeAttribute {
    * Runtime attribute keys.
    */
   public enum Key {
-    ResourceType,
+    ContainerType,
     BlockStore,
     PullOrPush,
     Partition,

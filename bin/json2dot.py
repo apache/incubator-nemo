@@ -139,14 +139,14 @@ class TaskGroup:
         self.taskGroupId = properties['taskGroupId']
         self.taskGroupIdx = properties['taskGroupIdx']
         self.dag = DAG(properties['taskDAG'])
-        self.resourceType = properties['resourceType']
+        self.containerType = properties['containerType']
         self.idx = getIdx()
     @property
     def dot(self):
         color = 'black'
-        if self.resourceType == 'Transient':
+        if self.containerType == 'Transient':
             color = 'orange'
-        if self.resourceType == 'Reserved':
+        if self.containerType == 'Reserved':
             color = 'green'
         dot = 'subgraph cluster_{} {{'.format(self.idx)
         dot += 'label = "{} ({})";'.format(self.taskGroupId, self.taskGroupIdx)

@@ -34,6 +34,7 @@ import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
 import edu.snu.vortex.runtime.executor.block.LocalStore;
 import edu.snu.vortex.runtime.master.BlockManagerMaster;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
+import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.scheduler.BatchScheduler;
 import edu.snu.vortex.runtime.master.scheduler.PendingTaskGroupQueue;
 import edu.snu.vortex.runtime.master.scheduler.RoundRobinSchedulingPolicy;
@@ -76,13 +77,16 @@ public final class DataTransferTest {
     final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
     final LocalMessageEnvironment messageEnvironment =
         new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
+    final ContainerManager containerManager = new ContainerManager(null, messageEnvironment);
     final Scheduler scheduler =
-        new BatchScheduler(new RoundRobinSchedulingPolicy(SCHEDULE_TIMEOUT), new PendingTaskGroupQueue());
+        new BatchScheduler(
+            new RoundRobinSchedulingPolicy(containerManager, SCHEDULE_TIMEOUT), new PendingTaskGroupQueue());
     final AtomicInteger executorCount = new AtomicInteger(0);
     final BlockManagerMaster master = new BlockManagerMaster();
 
     // Unused, but necessary for wiring up the message environments
-    final RuntimeMaster runtimeMaster = new RuntimeMaster(scheduler, messageEnvironment, master, EMPTY_DAG_DIRECTORY);
+    final RuntimeMaster runtimeMaster = new RuntimeMaster(scheduler, containerManager,
+        messageEnvironment, master, EMPTY_DAG_DIRECTORY);
 
     this.master = master;
     this.worker1 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher);

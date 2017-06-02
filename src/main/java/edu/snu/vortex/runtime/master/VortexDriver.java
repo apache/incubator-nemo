@@ -19,17 +19,16 @@ import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
-import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.common.message.ncs.NcsMessageEnvironment;
 import edu.snu.vortex.runtime.common.message.ncs.NcsParameters;
 import edu.snu.vortex.runtime.executor.VortexContext;
+import edu.snu.vortex.runtime.master.resource.ContainerManager;
+import edu.snu.vortex.runtime.master.resource.ResourceSpecification;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
-import org.apache.reef.driver.evaluator.EvaluatorRequest;
-import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.naming.parameters.NameResolverNameServerAddr;
@@ -50,9 +49,7 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.IntStream;
 
 import static edu.snu.vortex.runtime.common.RuntimeAttribute.*;
 
@@ -64,49 +61,35 @@ import static edu.snu.vortex.runtime.common.RuntimeAttribute.*;
 public final class VortexDriver {
   private static final Logger LOG = Logger.getLogger(VortexDriver.class.getName());
 
-  private final EvaluatorRequestor evaluatorRequestor;
   private final NameServer nameServer;
   private final LocalAddressProvider localAddressProvider;
 
   // Resource configuration for single thread pool
   private final int executorNum;
-  private final int executorCores;
   private final int executorMem;
   private final int executorCapacity;
 
   private final UserApplicationRunner userApplicationRunner;
+  private final ContainerManager containerManager;
   private final Scheduler scheduler;
-  private final MessageEnvironment messageEnvironment;
-
-  // These are hacks to get around
-  // TODO #60: Specify Types in Requesting Containers
-  // TODO #211: An Abstraction for Managing Resources
-  private final List<ExecutorToBeLaunched> pendingEvaluators;
-  private final Map<String, ExecutorToBeLaunched> executorIdToPendingContext;
 
   @Inject
-  private VortexDriver(final EvaluatorRequestor evaluatorRequestor,
+  private VortexDriver(final ContainerManager containerManager,
                        final Scheduler scheduler,
                        final NameServer nameServer,
                        final LocalAddressProvider localAddressProvider,
                        final UserApplicationRunner userApplicationRunner,
-                       final MessageEnvironment messageEnvironment,
                        @Parameter(JobConf.ExecutorMemMb.class) final int executorMem,
                        @Parameter(JobConf.ExecutorNum.class) final int executorNum,
-                       @Parameter(JobConf.ExecutorCores.class) final int executorCores,
                        @Parameter(JobConf.ExecutorCapacity.class) final int executorCapacity) {
     this.userApplicationRunner = userApplicationRunner;
+    this.containerManager = containerManager;
     this.scheduler = scheduler;
-    this.evaluatorRequestor = evaluatorRequestor;
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
-    this.messageEnvironment = messageEnvironment;
     this.executorNum = executorNum;
-    this.executorCores = executorCores;
     this.executorMem = executorMem;
     this.executorCapacity = executorCapacity;
-    this.pendingEvaluators = new ArrayList<>();
-    this.executorIdToPendingContext = new HashMap<>();
   }
 
   /**
@@ -118,21 +101,9 @@ public final class VortexDriver {
       // Launch resources
       final Set<RuntimeAttribute> completeSetOfResourceType =
           new HashSet<>(Arrays.asList(Default, Transient, Reserved, Compute, Storage));
-      completeSetOfResourceType.forEach(resourceType -> {
-        // For each type, request executorNum of evaluators
-        // These are hacks to get around
-        // TODO #60: Specify Types in Requesting Containers
-        // TODO #211: An Abstraction for Managing Resources
-        final ExecutorToBeLaunched executorToBeLaunched = new ExecutorToBeLaunched(resourceType, executorCapacity);
-        IntStream.range(0, executorNum).forEach(i -> {
-          pendingEvaluators.add(executorToBeLaunched);
-        });
-        evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
-            .setNumber(executorNum)
-            .setMemory(executorMem)
-            .setNumberOfCores(executorCores)
-            .build());
-      });
+      completeSetOfResourceType.forEach(containerType ->
+        containerManager.requestContainer(executorNum,
+            new ResourceSpecification(containerType, executorCapacity, executorMem)));
 
       // Launch user application (with a new thread)
       final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor();
@@ -147,17 +118,8 @@ public final class VortexDriver {
   public final class AllocatedEvaluatorHandler implements EventHandler<AllocatedEvaluator> {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      LOG.log(Level.INFO, "Container allocated");
-      synchronized (this) {
-        // Match one-by-one from the list assuming homogeneous evaluators
-        // These are hacks to get around
-        // TODO #60: Specify Types in Requesting Containers
-        // TODO #211: An Abstraction for Managing Resources
-        final ExecutorToBeLaunched executorToBeLaunched = pendingEvaluators.remove(0);
-        final String executorId = RuntimeIdGenerator.generateExecutorId();
-        executorIdToPendingContext.put(executorId, executorToBeLaunched);
-        allocatedEvaluator.submitContext(getExecutorConfiguration(executorId));
-      }
+      final String executorId = RuntimeIdGenerator.generateExecutorId();
+      containerManager.onContainerAllocated(executorId, allocatedEvaluator, getExecutorConfiguration(executorId));
     }
   }
 
@@ -167,28 +129,8 @@ public final class VortexDriver {
   public final class ActiveContextHandler implements EventHandler<ActiveContext> {
     @Override
     public void onNext(final ActiveContext activeContext) {
-      LOG.log(Level.INFO, "VortexContext up and running");
-      synchronized (this) {
-        // These are hacks to get around
-        // TODO #60: Specify Types in Requesting Containers
-        // TODO #211: An Abstraction for Managing Resources
-        final String executorId = activeContext.getId(); // Because we set: contextId = executorId
-        final ExecutorToBeLaunched executorToBeLaunched = executorIdToPendingContext.get(executorId);
-
-        // Connect to the executor and initiate Master side's executor representation.
-        final MessageSender messageSender;
-        try {
-          messageSender =
-              messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER).get();
-        } catch (final Exception e) {
-          throw new RuntimeException(e);
-        }
-        final ExecutorRepresenter executorRepresenter =
-            new ExecutorRepresenter(executorId, executorToBeLaunched.getResourceType(),
-                executorToBeLaunched.getExecutorCapacity(), messageSender, activeContext);
-
-        scheduler.onExecutorAdded(executorRepresenter);
-      }
+      containerManager.onExecutorLaunched(activeContext);
+      scheduler.onExecutorAdded(activeContext.getId());
     }
   }
 
@@ -210,7 +152,6 @@ public final class VortexDriver {
     public void onNext(final StopTime stopTime) {
     }
   }
-
 
   private Configuration getExecutorConfiguration(final String executorId) {
     final Configuration executorConfiguration = JobConf.EXECUTOR_CONF
