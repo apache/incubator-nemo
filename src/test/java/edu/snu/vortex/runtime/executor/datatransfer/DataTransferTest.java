@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.runtime.executor.datatransfer;
 
+import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BeamElement;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
@@ -25,13 +26,13 @@ import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
+import edu.snu.vortex.runtime.common.message.ncs.NcsParameters;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeBoundedSourceVertex;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 import edu.snu.vortex.runtime.executor.Executor;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
 import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
-import edu.snu.vortex.runtime.executor.block.LocalStore;
 import edu.snu.vortex.runtime.master.BlockManagerMaster;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
@@ -44,6 +45,15 @@ import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.values.KV;
+import org.apache.reef.io.network.naming.NameResolverConfiguration;
+import org.apache.reef.io.network.naming.NameServer;
+import org.apache.reef.io.network.util.StringIdentifierFactory;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.wake.IdentifierFactory;
+import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -68,6 +78,7 @@ public final class DataTransferTest {
   private static final int PARALLELISM_TEN = 10;
   private static final String EDGE_ID = "Dummy";
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
+  private static final Tang TANG = Tang.Factory.getTang();
 
   private BlockManagerMaster master;
   private BlockManagerWorker worker1;
@@ -89,16 +100,32 @@ public final class DataTransferTest {
     final RuntimeMaster runtimeMaster = new RuntimeMaster(scheduler, containerManager,
         messageEnvironment, master, EMPTY_DAG_DIRECTORY);
 
+    final Injector injector = createNameClientInjector();
+
     this.master = master;
-    this.worker1 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher);
-    this.worker2 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher);
+    this.worker1 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher,
+        injector);
+    this.worker2 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher,
+        injector);
   }
 
-  private BlockManagerWorker createWorker(final String executorId, final LocalMessageDispatcher messageDispatcher) {
+  private BlockManagerWorker createWorker(final String executorId, final LocalMessageDispatcher messageDispatcher,
+                                          final Injector nameClientInjector) {
     final LocalMessageEnvironment messageEnvironment = new LocalMessageEnvironment(executorId, messageDispatcher);
     final PersistentConnectionToMaster conToMaster = new PersistentConnectionToMaster(messageEnvironment);
-    final BlockManagerWorker blockManagerWorker = new BlockManagerWorker(
-        executorId, new LocalStore(), new PersistentConnectionToMaster(messageEnvironment), messageEnvironment);
+    final Configuration executorConfiguration = TANG.newConfigurationBuilder()
+        .bindNamedParameter(JobConf.ExecutorId.class, executorId)
+        .bindNamedParameter(NcsParameters.SenderId.class, executorId)
+        .build();
+    final Injector injector = nameClientInjector.forkInjector(executorConfiguration);
+    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
+    injector.bindVolatileInstance(PersistentConnectionToMaster.class, conToMaster);
+    final BlockManagerWorker blockManagerWorker;
+    try {
+      blockManagerWorker = injector.getInstance(BlockManagerWorker.class);
+    } catch (final InjectionException e) {
+      throw new RuntimeException(e);
+    }
     blockManagerWorker.registerCoder(EDGE_ID, CODER);
 
     // Unused, but necessary for wiring up the message environments
@@ -109,8 +136,27 @@ public final class DataTransferTest {
         messageEnvironment,
         blockManagerWorker,
         new DataTransferFactory(blockManagerWorker));
+    injector.bindVolatileInstance(Executor.class, executor);
 
     return blockManagerWorker;
+  }
+
+  private Injector createNameClientInjector() {
+    try {
+      final Configuration configuration = TANG.newConfigurationBuilder()
+          .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
+          .build();
+      final Injector injector = TANG.newInjector(configuration);
+      final LocalAddressProvider localAddressProvider = injector.getInstance(LocalAddressProvider.class);
+      final NameServer nameServer = injector.getInstance(NameServer.class);
+      final Configuration nameClientConfiguration = NameResolverConfiguration.CONF
+          .set(NameResolverConfiguration.NAME_SERVER_HOSTNAME, localAddressProvider.getLocalAddress())
+          .set(NameResolverConfiguration.NAME_SERVICE_PORT, nameServer.getPort())
+          .build();
+      return injector.forkInjector(nameClientConfiguration);
+    } catch (final InjectionException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Test

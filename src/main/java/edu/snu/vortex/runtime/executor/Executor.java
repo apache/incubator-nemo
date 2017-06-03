@@ -15,28 +15,19 @@
  */
 package edu.snu.vortex.runtime.executor;
 
-import com.google.protobuf.ByteString;
 import edu.snu.vortex.client.JobConf;
-import edu.snu.vortex.compiler.frontend.Coder;
-import edu.snu.vortex.compiler.ir.Element;
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
-import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageListener;
 import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
-import edu.snu.vortex.runtime.exception.UnsupportedBlockStoreException;
 import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
 import edu.snu.vortex.runtime.executor.datatransfer.DataTransferFactory;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -140,57 +131,10 @@ public final class Executor {
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       LOG.log(Level.INFO, "onMessageWithContext: {0}", message);
       switch (message.getType()) {
-      case RequestBlock:
-        final ControlMessage.RequestBlockMsg requestBlockMsg = message.getRequestBlockMsg();
-
-        final Iterable<Element> data = blockManagerWorker.getBlock(requestBlockMsg.getBlockId(),
-            requestBlockMsg.getRuntimeEdgeId(), convertBlockStoreType(requestBlockMsg.getBlockStore()));
-
-        final Coder coder = blockManagerWorker.getCoder(requestBlockMsg.getRuntimeEdgeId());
-        final ArrayList<byte[]> dataToSerialize = new ArrayList<>();
-        for (final Element element : data) {
-          try (final ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
-            coder.encode(element, stream);
-            dataToSerialize.add(stream.toByteArray());
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        }
-
-        messageContext.reply(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setType(ControlMessage.MessageType.TransferBlock)
-                .setTransferBlockMsg(
-                    ControlMessage.TransferBlockMsg.newBuilder()
-                        .setRequestId(message.getId())
-                        .setExecutorId(executorId)
-                        .setBlockId(requestBlockMsg.getBlockId())
-                        .setData(ByteString.copyFrom(SerializationUtils.serialize(dataToSerialize)))
-                        .build())
-                .build());
-        break;
       default:
         throw new IllegalMessageException(
             new Exception("This message should not be requested to an executor :" + message.getType()));
       }
-    }
-  }
-
-  private RuntimeAttribute convertBlockStoreType(final ControlMessage.BlockStore blockStoreType) {
-    switch (blockStoreType) {
-    case LOCAL:
-      return RuntimeAttribute.Local;
-    case MEMORY:
-      return RuntimeAttribute.Memory;
-    case FILE:
-      return RuntimeAttribute.File;
-    case MEMORY_FILE:
-      return RuntimeAttribute.MemoryFile;
-    case DISTRIBUTED_STORAGE:
-      return RuntimeAttribute.DistributedStorage;
-    default:
-      throw new UnsupportedBlockStoreException(new Throwable("This block store is not yet supported"));
     }
   }
 }

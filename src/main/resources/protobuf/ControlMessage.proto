@@ -11,8 +11,6 @@ enum MessageType {
     BlockStateChanged = 2;
     RequestBlockLocation = 3;
     BlockLocationInfo = 4;
-    RequestBlock = 5;
-    TransferBlock = 6;
 }
 
 message Message {
@@ -23,8 +21,6 @@ message Message {
     optional BlockStateChangedMsg blockStateChangedMsg = 5;
     optional RequestBlockLocationMsg requestBlockLocationMsg = 6;
     optional BlockLocationInfoMsg blockLocationInfoMsg = 7;
-    optional RequestBlockMsg requestBlockMsg = 8;
-    optional TransferBlockMsg transferBlockMsg = 9;
 }
 
 // Messages from Master to Executors
@@ -59,17 +55,15 @@ message RequestBlockLocationMsg {
 
 // Messages between Executors
 message RequestBlockMsg {
-    required string executorId = 1;
+    required int64 requestId = 1; // To handle multiple outstanding requests on one link between BlockTransferPeers
     required string blockId = 2;
     required BlockStore blockStore = 3;
     required string runtimeEdgeId = 4;
 }
 
-message TransferBlockMsg {
-    required int64 requestId = 1; // To find the matching request msg
-    required string executorId = 2;
-    required string blockId = 3;
-    required bytes data = 4; // just for now
+message BlockTransferMsg {
+    required int64 requestId = 1; // Should be equal to requestId of the corresponding RequestBlockMsg
+    repeated bytes data = 2;
 }
 
 enum TaskGroupStateFromExecutor {
