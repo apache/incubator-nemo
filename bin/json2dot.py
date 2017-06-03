@@ -31,16 +31,81 @@ def getIdx():
     nextIdx += 1
     return nextIdx
 
+def stateToColor(state):
+    try:
+        return {'READY': '#fffbe2',
+                'EXECUTING': '#e2fbff',
+                'COMPLETE': '#e2ffe5',
+                'FAILED_RECOVERABLE': '#ffe2e2',
+                'FAILED_UNRECOVERABLE': '#e2e2e2'}[state]
+    except:
+        return 'white'
+
+class JobState:
+    def __init__(self, data):
+        self.id = data['jobId']
+        self.stages = {}
+        for stage in data['physicalStages']:
+            self.stages[stage['id']] = PhysicalStageState(stage)
+    @classmethod
+    def empty(cls):
+        return cls({'jobId': None, 'physicalStages': []})
+    def get(self, id):
+        try:
+            return self.stages[id]
+        except:
+            return PhysicalStageState.empty()
+
+class PhysicalStageState:
+    def __init__(self, data):
+        self.id = data['id']
+        self.state = data['state']
+        self.taskGroups = {}
+        for taskGroup in data['taskGroups']:
+            self.taskGroups[taskGroup['id']] = TaskGroupState(taskGroup)
+    @classmethod
+    def empty(cls):
+        return cls({'id': None, 'state': None, 'taskGroups': []})
+    def get(self, id):
+        try:
+            return self.taskGroups[id]
+        except:
+            return TaskGroupState.empty()
+
+class TaskGroupState:
+    def __init__(self, data):
+        self.id = data['id']
+        self.state = data['state']
+        self.tasks = {}
+        for task in data['tasks']:
+            self.tasks[task['id']] = TaskState(task)
+    @classmethod
+    def empty(cls):
+        return cls({'id': None, 'state': None, 'tasks': []})
+    def get(self, id):
+        try:
+            return self.tasks[id]
+        except:
+            return TaskState.empty()
+
+class TaskState:
+    def __init__(self, data):
+        self.id = data['id']
+        self.state = data['state']
+    @classmethod
+    def empty(cls):
+        return cls({'id': None, 'state': None})
+
 class DAG:
     '''
     A class for converting DAG to Graphviz representation.
     JSON representation should be formatted like what toString method in DAG.java does.
     '''
-    def __init__(self, dag):
+    def __init__(self, dag, jobState):
         self.vertices = {}
         self.edges = []
         for vertex in dag['vertices']:
-            self.vertices[vertex['id']] = Vertex(vertex['id'], vertex['properties'])
+            self.vertices[vertex['id']] = Vertex(vertex['id'], vertex['properties'], jobState.get(vertex['id']))
         for edge in dag['edges']:
             self.edges.append(Edge(self.vertices[edge['src']], self.vertices[edge['dst']], edge['properties']))
     @property
@@ -52,26 +117,23 @@ class DAG:
             dot += edge.dot
         return dot
 
-def Vertex(id, properties):
+def Vertex(id, properties, state):
     try:
-        return PhysicalStage(id, properties)
+        return PhysicalStage(id, properties, state)
     except:
         pass
     try:
         return Stage(id, properties)
     except:
         pass
-    try:
-        return Task(id, properties)
-    except:
-        pass
-    return NormalVertex(id, properties)
+    return NormalVertex(id, properties, state)
 
 class NormalVertex:
-    def __init__(self, id, properties):
+    def __init__(self, id, properties, state):
         self.id = id
         self.properties = properties
         self.idx = getIdx()
+        self.state = state.state
     @property
     def dot(self):
         color = 'black'
@@ -83,6 +145,8 @@ class NormalVertex:
         except:
             pass
         label = self.id
+        if self.state is not None:
+            label += '\\n({})'.format(self.state)
         try:
             label += ' (p{})'.format(self.properties['attributes']['Parallelism'])
         except:
@@ -104,7 +168,7 @@ class NormalVertex:
             label += '\\n{}:{}'.format(m.group(1), m.group(2).split('.')[-1])
         except:
             pass
-        dot = '{} [label="{}", color={}];'.format(self.idx, label, color)
+        dot = '{} [label="{}", color={}, style=filled, fillcolor="{}"];'.format(self.idx, label, color, stateToColor(self.state))
         return dot
     @property
     def oneVertex(self):
@@ -116,7 +180,7 @@ class NormalVertex:
 class Stage:
     def __init__(self, id, properties):
         self.id = id
-        self.internalDAG = DAG(properties['stageInternalDAG'])
+        self.internalDAG = DAG(properties['stageInternalDAG'], JobState.empty())
         self.idx = getIdx()
     @property
     def dot(self):
@@ -135,12 +199,13 @@ class Stage:
         return 'cluster_{}'.format(self.idx)
 
 class TaskGroup:
-    def __init__(self, properties):
+    def __init__(self, properties, state):
         self.taskGroupId = properties['taskGroupId']
         self.taskGroupIdx = properties['taskGroupIdx']
-        self.dag = DAG(properties['taskDAG'])
+        self.dag = DAG(properties['taskDAG'], state)
         self.containerType = properties['containerType']
         self.idx = getIdx()
+        self.state = state.state
     @property
     def dot(self):
         color = 'black'
@@ -148,9 +213,13 @@ class TaskGroup:
             color = 'orange'
         if self.containerType == 'Reserved':
             color = 'green'
+        if self.state is None:
+            state = ''
+        else:
+            state = ' ({})'.format(self.state)
         dot = 'subgraph cluster_{} {{'.format(self.idx)
-        dot += 'label = "{} ({})";'.format(self.taskGroupId, self.taskGroupIdx)
-        dot += 'color={};'.format(color)
+        dot += 'label = "{} ({}){}";'.format(self.taskGroupId, self.taskGroupIdx, state)
+        dot += 'color={}; bgcolor="{}";'.format(color, stateToColor(self.state))
         dot += self.dag.dot
         dot += '}'
         return dot
@@ -159,15 +228,20 @@ class TaskGroup:
         return 'cluster_{}'.format(self.idx)
 
 class PhysicalStage:
-    def __init__(self, id, properties):
+    def __init__(self, id, properties, state):
         self.id = id
-        self.taskGroups = [TaskGroup(x) for x in properties['taskGroupList']]
+        self.taskGroups = [TaskGroup(x, state.get(x['taskGroupId'])) for x in properties['taskGroupList']]
         self.idx = getIdx()
+        self.state = state.state
     @property
     def dot(self):
+        if self.state is None:
+            state = ''
+        else:
+            state = ' ({})'.format(self.state)
         dot = 'subgraph cluster_{} {{'.format(self.idx)
-        dot += 'label = "{}";'.format(self.id)
-        dot += 'color=red;'
+        dot += 'label = "{}{}";'.format(self.id, state)
+        dot += 'color=red; bgcolor="{}";'.format(stateToColor(self.state))
         for taskGroup in self.taskGroups:
             dot += taskGroup.dot
         dot += '}'
@@ -269,8 +343,12 @@ class RuntimeEdge:
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 
-def jsonToDot(dagJSON):
-    return 'digraph dag {compound=true; nodesep=1.0; forcelabels=true;' + DAG(dagJSON).dot + '}'
+def jsonToDot(jsonDict):
+    try:
+        dag = DAG(jsonDict['dag'], JobState(jsonDict['jobState']))
+    except:
+        dag = DAG(jsonDict, JobState.empty())
+    return 'digraph dag {compound=true; nodesep=1.0; forcelabels=true;' + dag.dot + '}'
 
 if __name__ == "__main__":
     print(jsonToDot(json.loads(sys.stdin.read())))
