@@ -37,7 +37,7 @@ public final class RuntimeIdGenerator {
    * @return the generated ID
    */
   public static String generateExecutionPlanId() {
-    return "ExecPlan-" + executionPlanIdGenerator.getAndIncrement();
+    return "Plan-" + executionPlanIdGenerator.getAndIncrement();
   }
 
   /**

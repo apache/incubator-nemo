@@ -26,11 +26,16 @@ import edu.snu.vortex.runtime.exception.IllegalStateTransitionException;
 import edu.snu.vortex.utils.StateMachine;
 import edu.snu.vortex.utils.dag.DAG;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static edu.snu.vortex.utils.dag.DAG.EMPTY_DAG_DIRECTORY;
 
 /**
  * Manages the states related to a job.
@@ -149,11 +154,9 @@ public final class JobStateManager {
     } else if (newState == JobState.State.COMPLETE) {
       LOG.log(Level.FINE, "Job ID {0} complete!", jobId);
       jobState.getStateMachine().setState(newState);
-      dumpPreviousJobExecutionStateToFile();
     } else if (newState == JobState.State.FAILED) {
       LOG.log(Level.FINE, "Job ID {0} failed.", jobId);
       jobState.getStateMachine().setState(newState);
-      dumpPreviousJobExecutionStateToFile();
     } else {
       throw new IllegalStateTransitionException(new Exception("Illegal Job State Transition"));
     }
@@ -273,28 +276,79 @@ public final class JobStateManager {
     return idToTaskStates;
   }
 
-  // Tentative
-  public void printCurrentJobExecutionState() {
-    final StringBuffer sb = new StringBuffer("Job ID ");
-    sb.append(this.jobId).append(":").append(jobState.getStateMachine().getCurrentState());
-    sb.append("\n{Stages:\n{");
-    physicalPlan.getStageDAG().topologicalDo(physicalStage -> {
-      final StageState stageState = idToStageStates.get(physicalStage.getId());
-      sb.append(physicalStage.getId()).append(":").append(stageState).append("\nTaskGroups:\n{");
-      physicalStage.getTaskGroupList().forEach(taskGroup -> {
-        sb.append(taskGroup.getTaskGroupId()).append(":").append(idToTaskGroupStates.get(taskGroup.getTaskGroupId()))
-            .append(", Tasks:{\n");
-        taskGroup.getTaskDAG().topologicalDo(
-            task -> sb.append(task.getId()).append(":").append(idToTaskStates.get(task.getId())).append(","));
-        sb.append("},\n");
-      });
-      sb.append("}}\n");
-    });
-    LOG.log(Level.INFO, sb.toString());
+  /**
+   * Stores JSON representation of job state into a file.
+   * @param directory the directory which JSON representation is saved to
+   * @param suffix suffix for file name
+   */
+  public void storeJSON(final String directory, final String suffix) {
+    if (directory.equals(EMPTY_DAG_DIRECTORY)) {
+      return;
+    }
+
+    final File file = new File(directory, jobId + "-" + suffix + ".json");
+    file.getParentFile().mkdirs();
+    try {
+      final PrintWriter printWriter = new PrintWriter(file);
+      printWriter.println(toStringWithPhysicalPlan());
+      printWriter.close();
+      LOG.log(Level.INFO, String.format("JSON representation of job state for %s(%s) was saved to %s",
+          jobId, suffix, file.getPath()));
+    } catch (IOException e) {
+      LOG.log(Level.WARNING, String.format("Cannot store JSON representation of job state for %s(%s) to %s: %s",
+          jobId, suffix, file.getPath(), e.toString()));
+    }
   }
 
-  // Tentative
-  private void dumpPreviousJobExecutionStateToFile() {
+  public String toStringWithPhysicalPlan() {
+    final StringBuilder sb = new StringBuilder("{");
+    sb.append("\"dag\": ").append(physicalPlan.getStageDAG().toString()).append(", ");
+    sb.append("\"jobState\": ").append(toString()).append("}");
+    return sb.toString();
+  }
 
+  @Override
+  public synchronized String toString() {
+    final StringBuilder sb = new StringBuilder("{");
+    sb.append("\"jobId\": \"").append(jobId).append("\", ");
+    sb.append("\"physicalStages\": [");
+    boolean isFirstStage = true;
+    for (final PhysicalStage stage : physicalPlan.getStageDAG().getVertices()) {
+      if (!isFirstStage) {
+        sb.append(", ");
+      }
+      isFirstStage = false;
+      final StageState stageState = idToStageStates.get(stage.getId());
+      sb.append("{\"id\": \"").append(stage.getId()).append("\", ");
+      sb.append("\"state\": \"").append(stageState.toString()).append("\", ");
+      sb.append("\"taskGroups\": [");
+
+      boolean isFirstTaskGroup = true;
+      for (final TaskGroup taskGroup : stage.getTaskGroupList()) {
+        if (!isFirstTaskGroup) {
+          sb.append(", ");
+        }
+        isFirstTaskGroup = false;
+        final TaskGroupState taskGroupState = idToTaskGroupStates.get(taskGroup.getTaskGroupId());
+        sb.append("{\"id\": \"").append(taskGroup.getTaskGroupId()).append("\", ");
+        sb.append("\"state\": \"").append(taskGroupState.toString()).append("\", ");
+        sb.append("\"tasks\": [");
+
+        boolean isFirstTask = true;
+        for (final Task task : taskGroup.getTaskDAG().getVertices()) {
+          if (!isFirstTask) {
+            sb.append(", ");
+          }
+          isFirstTask = false;
+          final TaskState taskState = idToTaskStates.get(task.getId());
+          sb.append("{\"id\": \"").append(task.getId()).append("\", ");
+          sb.append("\"state\": \"").append(taskState.toString()).append("\"}");
+        }
+        sb.append("]}");
+      }
+      sb.append("]}");
+    }
+    sb.append("]}");
+    return sb.toString();
   }
 }
