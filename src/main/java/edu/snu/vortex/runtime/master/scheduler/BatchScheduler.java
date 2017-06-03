@@ -100,7 +100,6 @@ public final class BatchScheduler implements Scheduler {
                                       final List<String> failedTaskIds) {
     jobStateManager.onTaskGroupStateChanged(taskGroupId, newState);
 
-    // TODO #233: Introduce Container Manager
     switch (newState) {
     case COMPLETE:
       onTaskGroupExecutionComplete(executorId, taskGroupId);

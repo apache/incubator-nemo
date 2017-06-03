@@ -54,8 +54,9 @@ public final class SchedulerRunner implements Runnable {
         final ScheduledTaskGroup scheduledTaskGroup = pendingTaskGroupQueue.takeFirst();
         final Optional<String> executorId = schedulingPolicy.attemptSchedule(scheduledTaskGroup);
         if (!executorId.isPresent()) {
-          LOG.log(Level.INFO, "Failed to assign an executor before the timeout: {0}",
-              schedulingPolicy.getScheduleTimeoutMs());
+          LOG.log(Level.INFO, "Failed to assign an executor for {0} before the timeout: {1}",
+              new Object[] {scheduledTaskGroup.getTaskGroup().getTaskGroupId(),
+                  schedulingPolicy.getScheduleTimeoutMs()});
           pendingTaskGroupQueue.addLast(scheduledTaskGroup);
         } else {
           // Must send this scheduledTaskGroup to the destination executor.
