@@ -268,6 +268,10 @@ public final class JobStateManager {
     return idToStageStates;
   }
 
+  public synchronized TaskGroupState getTaskGroupState(final String taskGroupId) {
+    return idToTaskGroupStates.get(taskGroupId);
+  }
+
   public synchronized Map<String, TaskGroupState> getIdToTaskGroupStates() {
     return idToTaskGroupStates;
   }
