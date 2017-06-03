@@ -22,19 +22,17 @@ import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
-import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.exception.NodeConnectionException;
 import edu.snu.vortex.runtime.exception.UnsupportedBlockStoreException;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.io.ByteArrayInputStream;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Executor-side block manager.
@@ -54,17 +52,21 @@ public final class BlockManagerWorker {
 
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder;
 
+  private final BlockTransferPeer blockTransferPeer;
+
   @Inject
   public BlockManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
                             final LocalStore localStore,
                             final PersistentConnectionToMaster persistentConnectionToMaster,
-                            final MessageEnvironment messageEnvironment) {
+                            final MessageEnvironment messageEnvironment,
+                            final BlockTransferPeer blockTransferPeer) {
     this.executorId = executorId;
     this.localStore = localStore;
     this.messageEnvironment = messageEnvironment;
     this.persistentConnectionToMaster = persistentConnectionToMaster;
     this.idOfBlocksStoredInThisWorker = new HashSet<>();
     this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
+    this.blockTransferPeer = blockTransferPeer;
   }
 
   /**
@@ -170,58 +172,13 @@ public final class BlockManagerWorker {
       }
       final String remoteWorkerId = blockLocationInfoMsg.getOwnerExecutorId();
 
-      // Request the block to the owner executor.
-      final MessageSender<ControlMessage.Message> messageSenderToRemoteExecutor;
       try {
-        messageSenderToRemoteExecutor =
-            messageEnvironment.<ControlMessage.Message>asyncConnect(
-                remoteWorkerId, MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER).get();
-      } catch (Exception e) {
-        throw new NodeConnectionException(e);
-      }
-
-      final ControlMessage.Message responseFromRemoteExecutor;
-      try {
-        responseFromRemoteExecutor =
-            messageSenderToRemoteExecutor.<ControlMessage.Message>request(
-                ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setType(ControlMessage.MessageType.RequestBlock)
-                .setRequestBlockMsg(
-                    ControlMessage.RequestBlockMsg.newBuilder()
-                    .setExecutorId(executorId)
-                    .setBlockId(blockId)
-                    .setBlockStore(convertBlockStore(blockStore))
-                    .setRuntimeEdgeId(runtimeEdgeId)
-                    .build())
-                .build())
-                .get();
-      } catch (Exception e) {
-        throw new NodeConnectionException(e);
-      }
-
-      try {
-        messageSenderToRemoteExecutor.close();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-
-      final ControlMessage.TransferBlockMsg transferBlockMsg = responseFromRemoteExecutor.getTransferBlockMsg();
-      if (transferBlockMsg == null) {
+        // TODO #250: Fetch multiple blocks in parallel
+        return blockTransferPeer.fetch(remoteWorkerId, blockId, runtimeEdgeId, blockStore).get();
+      } catch (final InterruptedException | ExecutionException e) {
         // TODO #163: Handle Fault Tolerance
-        // We should report this exception to the master, instead of shutting down the JVM
-        throw new RuntimeException("Failed fetching block " + blockId + "from worker " + remoteWorkerId);
+        throw new NodeConnectionException(e);
       }
-
-      // TODO #199: Introduce Data Plane
-      final Coder coder = getCoder(runtimeEdgeId);
-      final List<Element> deserializedData = new ArrayList<>();
-      ArrayList<byte[]> data = SerializationUtils.deserialize(transferBlockMsg.getData().toByteArray());
-      data.forEach(bytes -> {
-        final ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
-        deserializedData.add(coder.decode(stream));
-      });
-      return deserializedData;
     }
   }
 
@@ -246,24 +203,4 @@ public final class BlockManagerWorker {
     }
   }
 
-  private ControlMessage.BlockStore convertBlockStore(final RuntimeAttribute blockStore) {
-    switch (blockStore) {
-      case Local:
-        return ControlMessage.BlockStore.LOCAL;
-      case Memory:
-        // TODO #181: Implement MemoryBlockStore
-        return ControlMessage.BlockStore.MEMORY;
-      case File:
-        // TODO #69: Implement file channel in Runtime
-        return ControlMessage.BlockStore.FILE;
-      case MemoryFile:
-        // TODO #69: Implement file channel in Runtime
-        return ControlMessage.BlockStore.MEMORY_FILE;
-      case DistributedStorage:
-        // TODO #180: Implement DistributedStorageStore
-        return ControlMessage.BlockStore.DISTRIBUTED_STORAGE;
-      default:
-        throw new UnsupportedBlockStoreException(new Exception(blockStore + " is not supported."));
-    }
-  }
 }
