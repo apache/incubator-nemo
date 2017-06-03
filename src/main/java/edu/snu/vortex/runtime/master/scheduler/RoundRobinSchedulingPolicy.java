@@ -212,8 +212,8 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     lock.lock();
     try {
       final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
-      LOG.log(Level.INFO, "Scheduling {" + scheduledTaskGroup.getTaskGroup().getTaskGroupId() + "} to ["
-      + executorId + "]");
+      LOG.log(Level.INFO, "Scheduling {0} to {1}",
+          new Object[]{scheduledTaskGroup.getTaskGroup().getTaskGroupId(), executorId});
       executor.onTaskGroupScheduled(scheduledTaskGroup);
     } finally {
       lock.unlock();

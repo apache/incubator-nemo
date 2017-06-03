@@ -74,6 +74,8 @@ public final class BatchScheduler implements Scheduler {
     this.physicalPlan = jobToSchedule;
     this.jobStateManager = new JobStateManager(jobToSchedule, blockManagerMaster);
 
+    LOG.log(Level.INFO, "Job to schedule: {0}", jobToSchedule.getId());
+
     // Launch scheduler
     final ExecutorService pendingTaskSchedulerThread = Executors.newSingleThreadExecutor();
     pendingTaskSchedulerThread.execute(new SchedulerRunner(jobStateManager, schedulingPolicy, pendingTaskGroupQueue));
@@ -119,6 +121,7 @@ public final class BatchScheduler implements Scheduler {
 
   private void onTaskGroupExecutionComplete(final String executorId,
                                             final String taskGroupId) {
+    LOG.log(Level.INFO, "TaskGroup {0} completed in {1}", new Object[]{taskGroupId, executorId});
     schedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroupId);
 
     final Optional<String> stageIdForTaskGroupUponCompletion = jobStateManager.checkStageCompletion(taskGroupId);

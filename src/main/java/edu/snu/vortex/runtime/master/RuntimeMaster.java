@@ -83,11 +83,14 @@ public final class RuntimeMaster {
     try {
       // TODO #208: Cleanup Execution Threads
       jobStateManager = scheduler.scheduleJob(physicalPlan, blockManagerMaster);
+      int i = 0;
       while (!jobStateManager.checkJobCompletion()) {
+        jobStateManager.storeJSON(dagDirectory, String.valueOf(i++));
         // Check every 3 seconds for job completion.
         Thread.sleep(3000);
       }
-      LOG.log(Level.INFO, "**" + executionPlan.getId() + "** is complete!");
+      jobStateManager.storeJSON(dagDirectory, "final");
+      LOG.log(Level.INFO, "{0} is complete!", executionPlan.getId());
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
