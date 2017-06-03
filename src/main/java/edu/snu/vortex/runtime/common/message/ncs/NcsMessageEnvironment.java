@@ -174,10 +174,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case BlockStateChanged:
         return MessageType.Send;
       case RequestBlockLocation:
-      case RequestBlock:
         return MessageType.Request;
       case BlockLocationInfo:
-      case TransferBlock:
         return MessageType.Reply;
       default:
         throw new IllegalArgumentException(controlMessage.toString());
@@ -188,8 +186,6 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     switch (controlMessage.getType()) {
       case RequestBlockLocation:
         return controlMessage.getRequestBlockLocationMsg().getExecutorId();
-      case RequestBlock:
-        return controlMessage.getRequestBlockMsg().getExecutorId();
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }
@@ -199,8 +195,6 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     switch (controlMessage.getType()) {
       case BlockLocationInfo:
         return controlMessage.getBlockLocationInfoMsg().getRequestId();
-      case TransferBlock:
-        return controlMessage.getTransferBlockMsg().getRequestId();
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }
@@ -213,7 +207,6 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case RequestBlockLocation:
         return MessageEnvironment.MASTER_MESSAGE_RECEIVER;
       case ScheduleTaskGroup:
-      case RequestBlock:
         return MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER;
       default:
         throw new IllegalArgumentException(controlMessage.toString());
