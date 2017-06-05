@@ -99,9 +99,9 @@ public final class VortexDriver {
     @Override
     public void onNext(final StartTime startTime) {
       // Launch resources
-      final Set<RuntimeAttribute> completeSetOfResourceType =
+      final Set<RuntimeAttribute> completeSetOfContainerType =
           new HashSet<>(Arrays.asList(Default, Transient, Reserved, Compute, Storage));
-      completeSetOfResourceType.forEach(containerType ->
+      completeSetOfContainerType.forEach(containerType ->
         containerManager.requestContainer(executorNum,
             new ResourceSpecification(containerType, executorCapacity, executorMem)));
 
