@@ -410,6 +410,7 @@ public final class MultinomialLogisticRegression {
     final PipelineOptions options = PipelineOptionsFactory.create();
     options.setRunner(Runner.class);
     options.setJobName("MLR");
+    options.setStableUniqueNames(PipelineOptions.CheckEnabled.OFF);
 
     final Pipeline p = Pipeline.create(options);
 
