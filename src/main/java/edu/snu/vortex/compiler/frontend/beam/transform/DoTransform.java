@@ -21,16 +21,15 @@ import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.OutputCollector;
 import edu.snu.vortex.compiler.ir.Transform;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.transforms.Aggregator;
-import org.apache.beam.sdk.transforms.Combine;
+import org.apache.beam.sdk.state.State;
+import org.apache.beam.sdk.state.Timer;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvoker;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvokers;
 import org.apache.beam.sdk.transforms.splittabledofn.RestrictionTracker;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
-import org.apache.beam.sdk.util.Timer;
-import org.apache.beam.sdk.util.state.State;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.Instant;
@@ -73,15 +72,17 @@ public final class DoTransform implements Transform {
 
   @Override
   public void onData(final Iterable<Element> data, final String srcVertexId) {
-    final ProcessContext beamContext = new ProcessContext(doFn, outputCollector, sideInputs, serializedOptions);
+    final StartBundleContext startBundleContext = new StartBundleContext(doFn, serializedOptions);
+    final FinishBundleContext finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
+    final ProcessContext processContext = new ProcessContext(doFn, outputCollector, sideInputs, serializedOptions);
     final DoFnInvoker invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
-    invoker.invokeStartBundle(beamContext);
+    invoker.invokeStartBundle(startBundleContext);
     data.forEach(element -> { // No need to check for input index, since it is always 0 for DoTransform
-      beamContext.setElement(element.getData());
-      invoker.invokeProcessElement(beamContext);
+      processContext.setElement(element.getData());
+      invoker.invokeProcessElement(processContext);
     });
-    invoker.invokeFinishBundle(beamContext);
+    invoker.invokeFinishBundle(finishBundleContext);
     invoker.invokeTeardown();
   }
 
@@ -96,6 +97,75 @@ public final class DoTransform implements Transform {
     final StringBuilder sb = new StringBuilder();
     sb.append("DoTransform:" + doFn);
     return sb.toString();
+  }
+
+  /**
+   * StartBundleContext.
+   * @param <I> input type.
+   * @param <O> output type.
+   */
+  private static final class StartBundleContext<I, O> extends DoFn<I, O>.StartBundleContext {
+    private final ObjectMapper mapper;
+    private final PipelineOptions options;
+
+    StartBundleContext(final DoFn<I, O> fn,
+                       final String serializedOptions) {
+      fn.super();
+      this.mapper = new ObjectMapper();
+      try {
+        this.options = mapper.readValue(serializedOptions, PipelineOptions.class);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    public PipelineOptions getPipelineOptions() {
+      return options;
+    }
+  }
+
+  /**
+   * FinishBundleContext.
+   * @param <I> input type.
+   * @param <O> output type.
+   */
+  private static final class FinishBundleContext<I, O> extends DoFn<I, O>.FinishBundleContext {
+    private final OutputCollector outputCollector;
+    private final ObjectMapper mapper;
+    private final PipelineOptions options;
+
+    FinishBundleContext(final DoFn<I, O> fn,
+                        final OutputCollector outputCollector,
+                        final String serializedOptions) {
+      fn.super();
+      this.outputCollector = outputCollector;
+      this.mapper = new ObjectMapper();
+      try {
+        this.options = mapper.readValue(serializedOptions, PipelineOptions.class);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    public PipelineOptions getPipelineOptions() {
+      return options;
+    }
+
+    @Override
+    public void output(final O output, final Instant instant, final BoundedWindow boundedWindow) {
+      outputCollector.emit(new BeamElement<>(output));
+    }
+
+    @Override
+    public <T> void output(final TupleTag<T> tupleTag,
+                           final T t,
+                           final Instant instant,
+                           final BoundedWindow boundedWindow) {
+      throw new UnsupportedOperationException("output(TupleTag, T, Instant, BoundedWindow)"
+          + "in FinishBundleContext under DoTransform");
+    }
   }
 
   /**
@@ -162,6 +232,11 @@ public final class DoTransform implements Transform {
     }
 
     @Override
+    public void updateWatermark(final Instant instant) {
+      throw new UnsupportedOperationException("updateWatermark() in ProcessContext under DoTransform");
+    }
+
+    @Override
     public PipelineOptions getPipelineOptions() {
       return this.options;
     }
@@ -177,29 +252,33 @@ public final class DoTransform implements Transform {
     }
 
     @Override
-    public <T> void sideOutput(final TupleTag<T> tag, final T output) {
-      throw new UnsupportedOperationException("sideOutput() in ProcessContext under DoTransform");
+    public <T> void output(final TupleTag<T> tupleTag, final T t) {
+      throw new UnsupportedOperationException("output(TupleTag, T) in ProcessContext under DoTransform");
     }
 
     @Override
-    public <T> void sideOutputWithTimestamp(final TupleTag<T> tag, final T output, final Instant timestamp) {
-      throw new UnsupportedOperationException("sideOutputWithTimestamp() in ProcessContext under DoTransform");
-    }
-
-    @Override
-    protected <AggInputT, AggOutputT> Aggregator<AggInputT, AggOutputT> createAggregator(
-        final String name, final Combine.CombineFn<AggInputT, ?, AggOutputT> combiner) {
-      throw new UnsupportedOperationException("createAggregator() in ProcessContext under DoTransform");
+    public <T> void outputWithTimestamp(final TupleTag<T> tupleTag, final T t, final Instant instant) {
+      throw new UnsupportedOperationException("output(TupleTag, T, Instant) in ProcessContext under DoTransform");
     }
 
     @Override
     public BoundedWindow window() {
-      throw new UnsupportedOperationException("window() in ProcessContext under DoTransform");
+      return new BoundedWindow() {
+        @Override
+        public Instant maxTimestamp() {
+          return GlobalWindow.INSTANCE.maxTimestamp();
+        }
+      };
     }
 
     @Override
-    public DoFn.Context context(final DoFn<I, O> doFn) {
-      return this;
+    public DoFn<I, O>.StartBundleContext startBundleContext(final DoFn<I, O> doFn) {
+      throw new UnsupportedOperationException("StartBundleContext parameters are not supported.");
+    }
+
+    @Override
+    public DoFn<I, O>.FinishBundleContext finishBundleContext(final DoFn<I, O> doFn) {
+      throw new UnsupportedOperationException("FinishBundleContext parameters are not supported.");
     }
 
     @Override
