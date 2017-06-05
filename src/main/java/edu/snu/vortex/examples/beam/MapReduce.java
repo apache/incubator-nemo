@@ -19,13 +19,9 @@ import edu.snu.vortex.compiler.frontend.beam.Runner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.Combine;
-import org.apache.beam.sdk.transforms.GroupByKey;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.Sum;
+import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.TypeDescriptors;
 
 /**
  * Sample MapReduce application.
@@ -50,16 +46,23 @@ public final class MapReduce {
 
     final Pipeline p = Pipeline.create(options);
     final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
-        .apply(MapElements.via((String line) -> {
-          final String[] words = line.split(" +");
-          final String documentId = words[0];
-          final Long count = Long.parseLong(words[1]);
-          return KV.of(documentId, count);
-        }).withOutputType(TypeDescriptors.kvs(TypeDescriptors.strings(), TypeDescriptors.longs())))
+        .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
+          @Override
+          public KV<String, Long> apply(final String line) {
+            final String[] words = line.split(" +");
+            final String documentId = words[0];
+            final Long count = Long.parseLong(words[1]);
+            return KV.of(documentId, count);
+          }
+        }))
         .apply(GroupByKey.<String, Long>create())
         .apply(Combine.<String, Long, Long>groupedValues(Sum.ofLongs()))
-        .apply(MapElements.via((KV<String, Long> kv) -> kv.getKey() + ": " + kv.getValue())
-            .withOutputType(TypeDescriptors.strings()));
+        .apply(MapElements.<KV<String, Long>, String>via(new SimpleFunction<KV<String, Long>, String>() {
+          @Override
+          public String apply(final KV<String, Long> kv) {
+            return kv.getKey() + ": " + kv.getValue();
+          }
+        }));
     GenericSourceSink.write(result, outputFilePath);
     p.run();
   }

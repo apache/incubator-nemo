@@ -16,11 +16,7 @@
 package edu.snu.vortex.examples.beam;
 
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.Read;
 import org.apache.beam.sdk.io.TextIO;
-import org.apache.beam.sdk.io.Write;
-import org.apache.beam.sdk.io.hdfs.HDFSFileSink;
-import org.apache.beam.sdk.io.hdfs.HDFSFileSource;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 
@@ -35,18 +31,20 @@ final class GenericSourceSink {
   public static PCollection<String> read(final Pipeline pipeline,
                                          final String path) {
     if (path.startsWith("hdfs://")) {
-      return pipeline.apply(Read.from(HDFSFileSource.fromText(path)));
+      throw new RuntimeException("HDFS not supported!");
+      // return pipeline.apply(Read.from(HDFSFileSource.fromText(path)));
     } else {
-      return pipeline.apply(TextIO.Read.from(path));
+      return pipeline.apply(TextIO.read().from(path));
     }
   }
 
   public static PDone write(final PCollection<String> dataToWrite,
                             final String path) {
     if (path.startsWith("hdfs://")) {
-      return dataToWrite.apply(Write.to(HDFSFileSink.toText(path)));
+      throw new RuntimeException("HDFS not supported!");
+      // return dataToWrite.apply(Write.to(HDFSFileSink.toText(path)));
     } else {
-      return dataToWrite.apply(TextIO.Write.to(path));
+      return dataToWrite.apply(TextIO.write().to(path));
     }
   }
 }
