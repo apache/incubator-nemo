@@ -88,7 +88,7 @@ public final class ExecutorRepresenter {
     return executorId;
   }
 
-  public RuntimeAttribute getResourceType() {
+  public RuntimeAttribute getContainerType() {
     return resourceSpecification.getContainerType();
   }
 
