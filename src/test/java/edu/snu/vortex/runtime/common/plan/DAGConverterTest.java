@@ -105,7 +105,7 @@ public final class DAGConverterTest {
     dummyReaderList.add(r);
     when(s.getEstimatedSizeBytes(null)).thenReturn(9L);
     when(s.createReader(null)).thenReturn(r);
-    when(s.splitIntoBundles(3L, null)).thenReturn(dummyReaderList);
+    when(s.split(3L, null)).thenReturn(dummyReaderList);
 
     final IRVertex v1 = new BoundedSourceVertex<>(s);
     v1.setAttr(Attribute.IntegerKey.Parallelism, 3);

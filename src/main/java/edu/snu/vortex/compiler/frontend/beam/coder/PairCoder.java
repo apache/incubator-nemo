@@ -18,13 +18,8 @@ package edu.snu.vortex.compiler.frontend.beam.coder;
 import edu.snu.vortex.utils.Pair;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
-import org.apache.beam.sdk.coders.StandardCoder;
-import org.apache.beam.sdk.repackaged.com.google.common.base.Preconditions;
-import org.apache.beam.sdk.util.CloudObject;
-import org.apache.beam.sdk.util.PropertyNames;
+import org.apache.beam.sdk.coders.StructuredCoder;
 import org.apache.beam.sdk.util.common.ElementByteSizeObserver;
-import org.codehaus.jackson.annotate.JsonCreator;
-import org.codehaus.jackson.annotate.JsonProperty;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,14 +27,12 @@ import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.beam.sdk.util.Structs.addBoolean;
-
 /**
- * BEAM Coder for {@link edu.snu.vortex.utils.Pair}.
+ * BEAM Coder for {@link edu.snu.vortex.utils.Pair}. Reference: KvCoder in BEAM.
  * @param <A> type for the left coder.
  * @param <B> type for the right coder.
  */
-public final class PairCoder<A, B> extends StandardCoder<Pair<A, B>> {
+public final class PairCoder<A, B> extends StructuredCoder<Pair<A, B>> {
   private final Coder<A> leftCoder;
   private final Coder<B> rightCoder;
 
@@ -64,26 +57,6 @@ public final class PairCoder<A, B> extends StandardCoder<Pair<A, B>> {
   public static <A, B> PairCoder<A, B> of(final Coder<A> leftCoder, final Coder<B> rightCoder) {
     return new PairCoder<>(leftCoder, rightCoder);
   }
-  /**
-   * Same static initializer in JSON.
-   * @param components compoenents.
-   * @return the newly created PairCoder.
-   */
-  @JsonCreator
-  public static PairCoder<?, ?> of(@JsonProperty(PropertyNames.COMPONENT_ENCODINGS) final List<Coder<?>> components) {
-    Preconditions.checkArgument(components.size() == 2, "Expecting 2 components, got " + components.size());
-    return of(components.get(0), components.get(1));
-  }
-
-  /**
-   * @param exampleValue example input value.
-   * @param <A> type of left element of example value.
-   * @param <B> type of right element of example value.
-   * @return instance components for the example value.
-   */
-  public static <A, B> List<Object> getInstanceComponents(final Pair<A, B> exampleValue) {
-    return Arrays.asList(exampleValue.left(), exampleValue.right());
-  }
 
   /**
    * @return the left coder.
@@ -101,20 +74,18 @@ public final class PairCoder<A, B> extends StandardCoder<Pair<A, B>> {
   //=====================================================================================================
 
   @Override
-  public void encode(final Pair<A, B> pair, final OutputStream outStream, final Context context) throws IOException {
+  public void encode(final Pair<A, B> pair, final OutputStream outStream) throws IOException {
     if (pair == null) {
       throw new CoderException("cannot encode a null KV");
     }
-    final Context nestedContext = context.nested();
-    leftCoder.encode(pair.left(), outStream, nestedContext);
-    rightCoder.encode(pair.right(), outStream, nestedContext);
+    leftCoder.encode(pair.left(), outStream);
+    rightCoder.encode(pair.right(), outStream);
   }
 
   @Override
-  public Pair<A, B> decode(final InputStream inStream, final Context context) throws IOException {
-    final Context nestedContext = context.nested();
-    final A key = leftCoder.decode(inStream, nestedContext);
-    final B value = rightCoder.decode(inStream, nestedContext);
+  public Pair<A, B> decode(final InputStream inStream) throws IOException {
+    final A key = leftCoder.decode(inStream);
+    final B value = rightCoder.decode(inStream);
     return Pair.of(key, value);
   }
 
@@ -125,8 +96,8 @@ public final class PairCoder<A, B> extends StandardCoder<Pair<A, B>> {
 
   @Override
   public void verifyDeterministic() throws NonDeterministicException {
-    verifyDeterministic("Key coder must be deterministic", getLeftCoder());
-    verifyDeterministic("Value coder must be deterministic", getRightCoder());
+    verifyDeterministic(this, "Key coder must be deterministic", getLeftCoder());
+    verifyDeterministic(this, "Value coder must be deterministic", getRightCoder());
   }
 
   @Override
@@ -135,7 +106,7 @@ public final class PairCoder<A, B> extends StandardCoder<Pair<A, B>> {
   }
 
   @Override
-  public Object structuralValue(final Pair<A, B> pair) throws Exception {
+  public Object structuralValue(final Pair<A, B> pair) {
     if (consistentWithEquals()) {
       return pair;
     } else {
@@ -143,20 +114,13 @@ public final class PairCoder<A, B> extends StandardCoder<Pair<A, B>> {
     }
   }
 
-  @Override
-  protected CloudObject initializeCloudObject() {
-    final CloudObject result = CloudObject.forClass(getClass());
-    addBoolean(result, PropertyNames.IS_PAIR_LIKE, true);
-    return result;
-  }
-
   /**
    * Returns whether both leftCoder and rightCoder are considered not expensive.
    */
   @Override
-  public boolean isRegisterByteSizeObserverCheap(final Pair<A, B> pair, final Context context) {
-    return leftCoder.isRegisterByteSizeObserverCheap(pair.left(), context.nested())
-        && rightCoder.isRegisterByteSizeObserverCheap(pair.right(), context.nested());
+  public boolean isRegisterByteSizeObserverCheap(final Pair<A, B> pair) {
+    return leftCoder.isRegisterByteSizeObserverCheap(pair.left())
+        && rightCoder.isRegisterByteSizeObserverCheap(pair.right());
   }
 
   /**
@@ -165,12 +129,11 @@ public final class PairCoder<A, B> extends StandardCoder<Pair<A, B>> {
    */
   @Override
   public void registerByteSizeObserver(final Pair<A, B> pair,
-                                       final ElementByteSizeObserver observer,
-                                       final Context context) throws Exception {
+                                       final ElementByteSizeObserver observer) throws Exception {
     if (pair == null) {
       throw new CoderException("cannot encode a null Pair");
     }
-    leftCoder.registerByteSizeObserver(pair.left(), observer, context.nested());
-    rightCoder.registerByteSizeObserver(pair.right(), observer, context.nested());
+    leftCoder.registerByteSizeObserver(pair.left(), observer);
+    rightCoder.registerByteSizeObserver(pair.right(), observer);
   }
 }

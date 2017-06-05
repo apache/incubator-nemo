@@ -33,6 +33,7 @@ import org.apache.reef.tang.Tang;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -85,6 +86,11 @@ public final class TestUtil {
 
     public BoundedReader createReader(PipelineOptions options) throws IOException {
       throw new UnsupportedOperationException("Empty bounded source");
+    }
+
+    @Override
+    public List<? extends BoundedSource> split(final long l, final PipelineOptions pipelineOptions) throws Exception {
+      return Arrays.asList(this);
     }
 
     public long getEstimatedSizeBytes(PipelineOptions options) throws Exception {

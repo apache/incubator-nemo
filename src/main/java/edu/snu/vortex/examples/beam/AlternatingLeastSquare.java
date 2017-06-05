@@ -22,6 +22,7 @@ import edu.snu.vortex.compiler.frontend.beam.Runner;
 import edu.snu.vortex.compiler.frontend.beam.coder.PairCoder;
 import edu.snu.vortex.utils.Pair;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.CoderProviders;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Combine;
@@ -106,32 +107,29 @@ public final class AlternatingLeastSquare {
    * Combiner for the training data.
    */
   public static final class TrainingDataCombiner extends
-      Combine.KeyedCombineFn<Integer, Pair<int[], float[]>, List<Pair<int[], float[]>>, Pair<int[], float[]>> {
+      Combine.CombineFn<Pair<int[], float[]>, List<Pair<int[], float[]>>, Pair<int[], float[]>> {
 
     @Override
-    public List<Pair<int[], float[]>> createAccumulator(final Integer key) {
+    public List<Pair<int[], float[]>> createAccumulator() {
       return new LinkedList<>();
     }
 
     @Override
-    public List<Pair<int[], float[]>> addInput(final Integer key,
-                                               final List<Pair<int[], float[]>> accumulator,
+    public List<Pair<int[], float[]>> addInput(final List<Pair<int[], float[]>> accumulator,
                                                final Pair<int[], float[]> value) {
       accumulator.add(value);
       return accumulator;
     }
 
     @Override
-    public List<Pair<int[], float[]>> mergeAccumulators(final Integer key,
-                                                        final Iterable<List<Pair<int[], float[]>>> accumulators) {
+    public List<Pair<int[], float[]>> mergeAccumulators(final Iterable<List<Pair<int[], float[]>>> accumulators) {
       final List<Pair<int[], float[]>> merged = new LinkedList<>();
       accumulators.forEach(merged::addAll);
       return merged;
     }
 
     @Override
-    public Pair<int[], float[]> extractOutput(final Integer key,
-                                              final List<Pair<int[], float[]>> accumulator) {
+    public Pair<int[], float[]> extractOutput(final List<Pair<int[], float[]>> accumulator) {
       int dimension = 0;
       for (final Pair<int[], float[]> pair : accumulator) {
         dimension += pair.left().length;
@@ -247,8 +245,8 @@ public final class AlternatingLeastSquare {
      * @param c Context.
      */
     @FinishBundle
-    public void finishBundle(final Context c) {
-      results.forEach(c::output);
+    public void finishBundle(final FinishBundleContext c) {
+      results.forEach(r -> c.output(r, null, null));
     }
   }
 
@@ -315,7 +313,7 @@ public final class AlternatingLeastSquare {
     options.setJobName("ALS");
 
     final Pipeline p = Pipeline.create(options);
-    p.getCoderRegistry().registerCoder(Pair.class, PairCoder.class);
+    p.getCoderRegistry().registerCoderProvider(CoderProviders.fromStaticMethods(Pair.class, PairCoder.class));
 
     // Read raw data
     final PCollection<String> rawData = GenericSourceSink.read(p, inputFilePath);

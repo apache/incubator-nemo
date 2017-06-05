@@ -15,11 +15,8 @@
  */
 package edu.snu.vortex.compiler.frontend.beam;
 
-import org.apache.beam.sdk.AggregatorRetrievalException;
-import org.apache.beam.sdk.AggregatorValues;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.metrics.MetricResults;
-import org.apache.beam.sdk.transforms.Aggregator;
 import org.joda.time.Duration;
 
 import java.io.IOException;
@@ -47,12 +44,6 @@ public final class Result implements PipelineResult {
   @Override
   public State waitUntilFinish() {
     throw new UnsupportedOperationException("waitUntilFinish() in frontend.beam.Result");
-  }
-
-  @Override
-  public <T> AggregatorValues<T> getAggregatorValues(final Aggregator<?, T> aggregator)
-      throws AggregatorRetrievalException {
-    throw new UnsupportedOperationException("getAggregatorValues() in frontend.beam.Result");
   }
 
   @Override
