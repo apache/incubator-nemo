@@ -307,9 +307,9 @@ class PhysicalStageEdge:
     def dot(self):
         color = 'black'
         try:
-            if self.externalVertexAttr['ResourceType'] == 'Transient':
+            if self.externalVertexAttr['ContainerType'] == 'Transient':
                 color = 'orange'
-            if self.externalVertexAttr['ResourceType'] == 'Reserved':
+            if self.externalVertexAttr['ContainerType'] == 'Reserved':
                 color = 'green'
         except:
             pass

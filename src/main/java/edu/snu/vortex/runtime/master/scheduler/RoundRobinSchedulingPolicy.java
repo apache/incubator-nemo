@@ -37,8 +37,8 @@ import java.util.logging.Logger;
  * {@inheritDoc}
  * A Round-Robin implementation used by {@link BatchScheduler}.
  *
- * This policy keeps a list of available {@link ExecutorRepresenter} for each type of resource.
- * The RR policy is used for each resource type when trying to schedule a task group.
+ * This policy keeps a list of available {@link ExecutorRepresenter} for each type of container.
+ * The RR policy is used for each container type when trying to schedule a task group.
  */
 @ThreadSafe
 public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
@@ -54,16 +54,16 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   private final Lock lock;
 
   /**
-   * Executor allocation is achieved by putting conditions for each resource type.
-   * The condition blocks when there is no executor of the resource type available,
+   * Executor allocation is achieved by putting conditions for each container type.
+   * The condition blocks when there is no executor of the container type available,
    * and is released when such an executor becomes available (either by an extra executor, or a task group completion).
    */
-  private final Map<RuntimeAttribute, Condition> attemptToScheduleByResourceType;
+  private final Map<RuntimeAttribute, Condition> attemptToScheduleByContainerType;
 
   /**
-   * The pool of executors available for each resource type.
+   * The pool of executors available for each container type.
    */
-  private final Map<RuntimeAttribute, List<String>> executorIdByResourceType;
+  private final Map<RuntimeAttribute, List<String>> executorIdByContainerType;
 
   /**
    * A copy of {@link ContainerManager#executorRepresenterMap}.
@@ -72,10 +72,10 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   private final Map<String, ExecutorRepresenter> executorRepresenterMap;
 
   /**
-   * The index of the next executor to be assigned for each resource type.
+   * The index of the next executor to be assigned for each container type.
    * This map allows the executor index computation of the RR scheduling.
    */
-  private final Map<RuntimeAttribute, Integer> nextExecutorIndexByResourceType;
+  private final Map<RuntimeAttribute, Integer> nextExecutorIndexByContainerType;
 
   @Inject
   public RoundRobinSchedulingPolicy(final ContainerManager containerManager,
@@ -83,10 +83,10 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     this.containerManager = containerManager;
     this.scheduleTimeoutMs = scheduleTimeoutMs;
     this.lock = new ReentrantLock();
-    this.executorIdByResourceType = new HashMap<>();
+    this.executorIdByContainerType = new HashMap<>();
     this.executorRepresenterMap = new HashMap<>();
-    this.attemptToScheduleByResourceType = new HashMap<>();
-    this.nextExecutorIndexByResourceType = new HashMap<>();
+    this.attemptToScheduleByContainerType = new HashMap<>();
+    this.nextExecutorIndexByContainerType = new HashMap<>();
   }
 
   public long getScheduleTimeoutMs() {
@@ -97,20 +97,20 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   public Optional<String> attemptSchedule(final ScheduledTaskGroup scheduledTaskGroup) {
     lock.lock();
     try {
-      final RuntimeAttribute resourceType = scheduledTaskGroup.getTaskGroup().getResourceType();
-      String executorId = selectExecutorByRR(resourceType);
+      final RuntimeAttribute containerType = scheduledTaskGroup.getTaskGroup().getContainerType();
+      String executorId = selectExecutorByRR(containerType);
       if (executorId == null) { // If there is no available executor to schedule this task group now,
 
         // we must wait until an executor becomes available, by putting a condition on the lock.
-        Condition attemptToSchedule = attemptToScheduleByResourceType.get(resourceType);
-        if (attemptToSchedule == null) { // initialize a new condition if this resourceType has never waited before.
+        Condition attemptToSchedule = attemptToScheduleByContainerType.get(containerType);
+        if (attemptToSchedule == null) { // initialize a new condition if this containerType has never waited before.
           attemptToSchedule = lock.newCondition();
-          attemptToScheduleByResourceType.put(resourceType, attemptToSchedule);
+          attemptToScheduleByContainerType.put(containerType, attemptToSchedule);
         }
         boolean executorAvailable = attemptToSchedule.await(scheduleTimeoutMs, TimeUnit.MILLISECONDS);
 
         if (executorAvailable) { // if an executor has become available before scheduleTimeoutMs,
-          executorId = selectExecutorByRR(resourceType);
+          executorId = selectExecutorByRR(containerType);
           return Optional.of(executorId);
         } else {
           return Optional.empty();
@@ -128,16 +128,16 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   /**
    * Sticks to the RR policy to select an executor for the next task group.
    * It checks the task groups running (as compared to each executor's capacity).
-   * @param resourceType to select an executor for.
+   * @param containerType to select an executor for.
    * @return the selected executor.
    */
-  private String selectExecutorByRR(final RuntimeAttribute resourceType) {
+  private String selectExecutorByRR(final RuntimeAttribute containerType) {
     String selectedExecutorId = null;
-    final List<String> executorIds = executorIdByResourceType.get(resourceType);
+    final List<String> executorIds = executorIdByContainerType.get(containerType);
 
     if (executorIds != null && !executorIds.isEmpty()) {
       final int numExecutors = executorIds.size();
-      int nextExecutorIndex = nextExecutorIndexByResourceType.get(resourceType);
+      int nextExecutorIndex = nextExecutorIndexByContainerType.get(containerType);
       for (int i = 0; i < numExecutors; i++) {
         final int index = (nextExecutorIndex + i) % numExecutors;
         selectedExecutorId = executorIds.get(index);
@@ -145,7 +145,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
         final ExecutorRepresenter executor = executorRepresenterMap.get(selectedExecutorId);
         if (executor.getRunningTaskGroups().size() < executor.getExecutorCapacity()) {
           nextExecutorIndex = (index + 1) % numExecutors;
-          nextExecutorIndexByResourceType.put(resourceType, nextExecutorIndex);
+          nextExecutorIndexByContainerType.put(containerType, nextExecutorIndex);
           break;
         } else {
           selectedExecutorId = null;
@@ -161,16 +161,17 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     try {
       updateCachedExecutorRepresenterMap();
       final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
-      final RuntimeAttribute resourceType = executor.getResourceType();
-      final List<String> executors = executorIdByResourceType.putIfAbsent(resourceType, new ArrayList<>());
+      final RuntimeAttribute containerType = executor.getContainerType();
+      final List<String> executors = executorIdByContainerType.putIfAbsent(containerType, new ArrayList<>());
 
-      if (executors == null) { // This resource type is initially being introduced.
-        executorIdByResourceType.get(resourceType).add(executorId);
-        nextExecutorIndexByResourceType.put(resourceType, 0);
-        attemptToScheduleByResourceType.put(resourceType, lock.newCondition());
-      } else { // This resource type has been introduced and there may be a TaskGroup waiting to be scheduled.
-        executorIdByResourceType.get(resourceType).add(nextExecutorIndexByResourceType.get(resourceType), executorId);
-        attemptToScheduleByResourceType.get(resourceType).signal();
+      if (executors == null) { // This container type is initially being introduced.
+        executorIdByContainerType.get(containerType).add(executorId);
+        nextExecutorIndexByContainerType.put(containerType, 0);
+        attemptToScheduleByContainerType.put(containerType, lock.newCondition());
+      } else { // This container type has been introduced and there may be a TaskGroup waiting to be scheduled.
+        executorIdByContainerType.get(containerType)
+            .add(nextExecutorIndexByContainerType.get(containerType), executorId);
+        attemptToScheduleByContainerType.get(containerType).signal();
       }
     } finally {
       lock.unlock();
@@ -182,16 +183,16 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     lock.lock();
     try {
       final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
-      final RuntimeAttribute resourceType = executor.getResourceType();
+      final RuntimeAttribute containerType = executor.getContainerType();
 
-      final List<String> executorIdList = executorIdByResourceType.get(resourceType);
-      int nextExecutorIndex = nextExecutorIndexByResourceType.get(resourceType);
+      final List<String> executorIdList = executorIdByContainerType.get(containerType);
+      int nextExecutorIndex = nextExecutorIndexByContainerType.get(containerType);
 
       final int executorAssignmentLocation = executorIdList.indexOf(executorId);
       if (executorAssignmentLocation < nextExecutorIndex) {
-        nextExecutorIndexByResourceType.put(resourceType, nextExecutorIndex - 1);
+        nextExecutorIndexByContainerType.put(containerType, nextExecutorIndex - 1);
       } else if (executorAssignmentLocation == nextExecutorIndex) {
-        nextExecutorIndexByResourceType.put(resourceType, 0);
+        nextExecutorIndexByContainerType.put(containerType, 0);
       }
       executorIdList.remove(executorId);
       updateCachedExecutorRepresenterMap();
@@ -225,11 +226,11 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     lock.lock();
     try {
       final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
-      final RuntimeAttribute resourceType = executor.getResourceType();
+      final RuntimeAttribute containerType = executor.getContainerType();
       executor.onTaskGroupExecutionComplete(taskGroupId);
       LOG.log(Level.INFO, "Completed {" + taskGroupId + "} in ["
           + executorId + "]");
-      attemptToScheduleByResourceType.get(resourceType).signal();
+      attemptToScheduleByContainerType.get(containerType).signal();
     } finally {
       lock.unlock();
     }

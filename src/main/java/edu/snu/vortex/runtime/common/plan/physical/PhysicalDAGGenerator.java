@@ -72,7 +72,7 @@ public final class PhysicalDAGGenerator
             throw new RuntimeException("All vertices in a stage should have same parallelism");
           }
         });
-        final RuntimeAttribute resourceType = firstVertexAttrs.get(RuntimeAttribute.Key.ContainerType);
+        final RuntimeAttribute containerType = firstVertexAttrs.get(RuntimeAttribute.Key.ContainerType);
 
         // Begin building a new stage in the physical plan.
         physicalStageBuilder = new PhysicalStageBuilder(stage.getStageId(), stageParallelism);
@@ -120,7 +120,7 @@ public final class PhysicalDAGGenerator
           // Create the task group to add for this stage.
           final TaskGroup newTaskGroup =
               new TaskGroup(RuntimeIdGenerator.generateTaskGroupId(), stage.getId(), taskGroupIdx,
-                  stageInternalDAGBuilder.build(), resourceType);
+                  stageInternalDAGBuilder.build(), containerType);
           physicalStageBuilder.addTaskGroup(newTaskGroup);
           runtimeVertexIdToTask.clear();
         }
