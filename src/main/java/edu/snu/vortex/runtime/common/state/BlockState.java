@@ -34,6 +34,7 @@ public final class BlockState {
     stateMachineBuilder.addState(State.READY, "The block is ready to be created.");
     stateMachineBuilder.addState(State.MOVING, "The block is moving.");
     stateMachineBuilder.addState(State.COMMITTED, "The block has been committed.");
+    stateMachineBuilder.addState(State.REMOVED, "The block has been removed (e.g., GC-ed).");
     stateMachineBuilder.addState(State.LOST, "Block lost.");
 
     // Add transitions
@@ -42,6 +43,7 @@ public final class BlockState {
     stateMachineBuilder.addTransition(State.MOVING, State.COMMITTED, "Successfully moved and committed");
     stateMachineBuilder.addTransition(State.MOVING, State.LOST, "Lost before committed");
     stateMachineBuilder.addTransition(State.COMMITTED, State.LOST, "Lost after committed");
+    stateMachineBuilder.addTransition(State.COMMITTED, State.REMOVED, "Removed after committed");
 
     stateMachineBuilder.addTransition(State.COMMITTED, State.MOVING,
         "(WARNING) Possible race condition: receiver may have reached us before the sender, or there's sth wrong");
@@ -75,7 +77,8 @@ public final class BlockState {
      * meaning that we do not fail the job upon the event of a lost block.
      * Thus, we only have a single state(LOST) that represents failure.
      */
-    LOST
+    LOST,
+    REMOVED
   }
 
   @Override

@@ -35,7 +35,7 @@ final class NcsMessageContext implements MessageContext {
   @Override
   public <U> void reply(final U replyMessage) {
     // TODO #200: Track whether the replied message is successfully sent in NcsMessageContext
-    LOG.log(Level.INFO, "reply: {0}", replyMessage);
+    LOG.log(Level.FINE, "reply: {0}", replyMessage);
     final Connection connection = connectionFactory.newConnection(idFactory.getNewInstance(senderId));
     try {
       connection.open();

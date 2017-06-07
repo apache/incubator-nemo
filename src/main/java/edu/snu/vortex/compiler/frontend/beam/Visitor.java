@@ -56,7 +56,7 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
   /**
    * Constructor of the BEAM Visitor.
    * @param builder DAGBuilder to build the DAG with.
-   * @param options Pipeline Options.
+   * @param options Pipeline options.
    */
   Visitor(final DAGBuilder<IRVertex, IREdge> builder, final PipelineOptions options) {
     this.builder = builder;
