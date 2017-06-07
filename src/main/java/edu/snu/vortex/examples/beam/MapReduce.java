@@ -16,6 +16,7 @@
 package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.compiler.frontend.beam.Runner;
+import edu.snu.vortex.compiler.frontend.beam.VortexPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -40,7 +41,7 @@ public final class MapReduce {
   public static void main(final String[] args) {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];
-    final PipelineOptions options = PipelineOptionsFactory.create();
+    final PipelineOptions options = PipelineOptionsFactory.create().as(VortexPipelineOptions.class);
     options.setRunner(Runner.class);
     options.setJobName("MapReduce");
 
@@ -51,7 +52,7 @@ public final class MapReduce {
           public KV<String, Long> apply(final String line) {
             final String[] words = line.split(" +");
             final String documentId = words[0];
-            final Long count = Long.parseLong(words[1]);
+            final Long count = Long.parseLong(words[2]);
             return KV.of(documentId, count);
           }
         }))

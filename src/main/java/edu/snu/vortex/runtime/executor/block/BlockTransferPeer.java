@@ -40,6 +40,7 @@ import org.apache.reef.wake.remote.transport.netty.LoggingLinkListener;
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
@@ -173,6 +174,7 @@ public final class BlockTransferPeer {
       final ControlMessage.BlockTransferMsg.Builder replyBuilder = ControlMessage.BlockTransferMsg.newBuilder()
           .setRequestId(request.getRequestId());
       for (final Element element : data) {
+        // Memory leak if we don't do try-with-resources here
         try (final ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
           coder.encode(element, stream);
           replyBuilder.addData(ByteString.copyFrom(stream.toByteArray()));
@@ -208,7 +210,12 @@ public final class BlockTransferPeer {
       final Coder coder = peer.requestIdToCoder.remove(reply.getRequestId());
       final ArrayList<Element> deserializedData = new ArrayList<>(reply.getDataCount());
       for (int i = 0; i < reply.getDataCount(); i++) {
-        deserializedData.add(coder.decode(reply.getData(i).newInput()));
+        // Memory leak if we don't do try-with-resources here
+        try (final InputStream inputStream = reply.getData(i).newInput()) {
+          deserializedData.add(coder.decode(inputStream));
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
       }
       final CompletableFuture<Iterable<Element>> future = peer.requestIdToFuture.remove(reply.getRequestId());
       future.complete(deserializedData);

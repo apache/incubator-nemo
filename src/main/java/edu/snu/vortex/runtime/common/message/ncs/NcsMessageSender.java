@@ -27,13 +27,13 @@ final class NcsMessageSender implements MessageSender<ControlMessage.Message> {
 
   @Override
   public void send(final ControlMessage.Message message) {
-    LOG.log(Level.INFO, "send: {0}", message);
+    LOG.log(Level.FINE, "send: {0}", message);
     connection.write(message);
   }
 
   @Override
   public <U> Future<U> request(final ControlMessage.Message message) {
-    LOG.log(Level.INFO, "request: {0}", message);
+    LOG.log(Level.FINE, "request: {0}", message);
     connection.write(message);
     return (Future) replyWaitingLock.waitingReply(message.getId());
   }

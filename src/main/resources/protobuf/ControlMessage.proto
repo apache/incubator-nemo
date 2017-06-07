@@ -79,6 +79,7 @@ enum BlockStateFromExecutor {
     MOVING = 1;
     COMMITTED = 2;
     LOST = 3;
+    REMOVED = 4;
 }
 
 enum BlockStore {

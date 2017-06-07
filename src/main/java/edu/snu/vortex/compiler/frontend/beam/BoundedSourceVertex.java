@@ -22,12 +22,15 @@ import org.apache.beam.sdk.io.BoundedSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * SourceVertex implementation for BoundedSource.
  * @param <O> output type.
  */
 public final class BoundedSourceVertex<O> extends SourceVertex<O> {
+  private static final Logger LOG = Logger.getLogger(BoundedSourceVertex.class.getName());
   private final BoundedSource<O> source;
 
   /**
@@ -46,9 +49,13 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
   @Override
   public List<Reader<O>> getReaders(final int desiredNumOfSplits) throws Exception {
     final List<Reader<O>> readers = new ArrayList<>();
+    LOG.log(Level.INFO, "estimate: {0}", source.getEstimatedSizeBytes(null));
+    LOG.log(Level.INFO, "desired: {0}", desiredNumOfSplits);
     source.split(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null).forEach(boundedSource -> {
       readers.add(new BoundedSourceReader<>(boundedSource));
     });
+
+    LOG.log(Level.INFO, "readers: {0}", readers);
     return readers;
   }
 

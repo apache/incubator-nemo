@@ -36,4 +36,11 @@ public interface BlockStore {
    * @param data of the block
    */
   void putBlock(String blockId, Iterable<Element> data);
+
+  /**
+   * Removes a block.
+   * @param blockId of the block
+   * @return the data of the block (optionally)
+   */
+  Optional<Iterable<Element>> removeBlock(String blockId);
 }
