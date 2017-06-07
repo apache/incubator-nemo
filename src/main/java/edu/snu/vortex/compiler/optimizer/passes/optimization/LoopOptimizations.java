@@ -251,7 +251,8 @@ public final class LoopOptimizations {
         final List<Map.Entry<IRVertex, Set<IREdge>>> candidates = loopVertex.getNonIterativeIncomingEdges().entrySet()
             .stream().filter(entry ->
                 loopVertex.getDAG().getIncomingEdgesOf(entry.getKey()).size() == 0 // no internal inEdges
-                    && loopVertex.getIterativeIncomingEdges().get(entry.getKey()).size() == 0) // no external inEdges
+                    // no external inEdges
+                    && loopVertex.getIterativeIncomingEdges().getOrDefault(entry.getKey(), new HashSet<>()).size() == 0)
             .collect(Collectors.toList());
         candidates.forEach(candidate -> {
           // add refactored vertex to builder.
