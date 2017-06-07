@@ -20,12 +20,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Message environment for NCS.
  * TODO #206: Rethink/Refactor NCS as our RPC stack
  */
 public final class NcsMessageEnvironment implements MessageEnvironment {
+  private static final Logger LOG = Logger.getLogger(NcsMessageEnvironment.class.getName());
 
   private static final String NCS_CONN_FACTORY_ID = "NCS_CONN_FACTORY_ID";
 
@@ -95,8 +98,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
     public void onNext(final Message<ControlMessage.Message> messages) {
       final ControlMessage.Message controlMessage = extractSingleMessage(messages);
-      // comment out when debugging :)
-      // System.out.println("onNext: " + controlMessage);
+      LOG.log(Level.FINE, "received: {0}", controlMessage);
       final MessageType messageType = getMsgType(controlMessage);
       switch (messageType) {
         case Send:

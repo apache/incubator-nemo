@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.Optional;
 
 /**
- * Store data in local memory, unserialized.
+ * Store data in local memory.
  */
 public final class LocalStore implements BlockStore {
   private final HashMap<String, Iterable<Element>> blockIdToData;
@@ -32,14 +32,23 @@ public final class LocalStore implements BlockStore {
     this.blockIdToData = new HashMap<>();
   }
 
+  @Override
   public Optional<Iterable<Element>> getBlock(final String blockId) {
-    return Optional.ofNullable(blockIdToData.get(blockId));
+    final Optional<Iterable<Element>> result = Optional.ofNullable(blockIdToData.get(blockId));
+    return result;
   }
 
+  @Override
   public void putBlock(final String blockId, final Iterable<Element> data) {
     if (blockIdToData.containsKey(blockId)) {
-      throw new RuntimeException("Trying to overwrite an already-put block");
+      throw new RuntimeException("Trying to overwrite an existing block");
     }
     blockIdToData.put(blockId, data);
+  }
+
+  @Override
+  public Optional<Iterable<Element>> removeBlock(final String blockId) {
+    final Optional<Iterable<Element>> result = Optional.ofNullable(blockIdToData.remove(blockId));
+    return result;
   }
 }

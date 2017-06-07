@@ -122,7 +122,6 @@ public final class RuntimeMaster {
 
     @Override
     public void onMessage(final ControlMessage.Message message) {
-      LOG.log(Level.INFO, "onMessage: {0}", message);
       switch (message.getType()) {
       case TaskGroupStateChanged:
         final ControlMessage.TaskGroupStateChangedMsg taskGroupStateChangedMsg = message.getTaskStateChangedMsg();
@@ -144,7 +143,6 @@ public final class RuntimeMaster {
 
     @Override
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
-      LOG.log(Level.INFO, "onMessageWithContext: {0}", message);
       switch (message.getType()) {
       case RequestBlockLocation:
         final ControlMessage.RequestBlockLocationMsg requestBlockLocationMsg = message.getRequestBlockLocationMsg();
@@ -197,8 +195,10 @@ public final class RuntimeMaster {
       return BlockState.State.COMMITTED;
     case LOST:
       return BlockState.State.LOST;
+    case REMOVED:
+      return BlockState.State.REMOVED;
     default:
-      throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
+      throw new UnknownExecutionStateException(new Exception("This BlockState is unknown: " + state));
     }
   }
 }

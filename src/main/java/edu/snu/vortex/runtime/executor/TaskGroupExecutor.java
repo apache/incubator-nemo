@@ -18,16 +18,20 @@ package edu.snu.vortex.runtime.executor;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.Reader;
 import edu.snu.vortex.compiler.ir.Transform;
+import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeOperatorVertex;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
+import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
 import edu.snu.vortex.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.vortex.runtime.executor.datatransfer.InputReader;
 import edu.snu.vortex.runtime.executor.datatransfer.OutputWriter;
 import edu.snu.vortex.runtime.master.irimpl.ContextImpl;
 import edu.snu.vortex.runtime.master.irimpl.OutputCollectorImpl;
+import edu.snu.vortex.utils.dag.DAG;
 
 import java.util.*;
 import java.util.logging.Level;
@@ -55,11 +59,14 @@ public final class TaskGroupExecutor {
 
   private boolean isExecutionRequested;
 
+  private final BlockManagerWorker blockManagerWorker;
+
   public TaskGroupExecutor(final TaskGroup taskGroup,
                            final TaskGroupStateManager taskGroupStateManager,
                            final List<PhysicalStageEdge> stageIncomingEdges,
                            final List<PhysicalStageEdge> stageOutgoingEdges,
-                           final DataTransferFactory channelFactory) {
+                           final DataTransferFactory channelFactory,
+                           final BlockManagerWorker blockManagerWorker) {
     this.taskGroup = taskGroup;
     this.taskGroupStateManager = taskGroupStateManager;
     this.stageIncomingEdges = stageIncomingEdges;
@@ -70,6 +77,8 @@ public final class TaskGroupExecutor {
     this.taskIdToOutputWriterMap = new HashMap<>();
 
     this.isExecutionRequested = false;
+
+    this.blockManagerWorker = blockManagerWorker;
 
     initializeDataTransfer();
   }
@@ -118,12 +127,12 @@ public final class TaskGroupExecutor {
 
   // Helper functions to initializes stage-internal edges.
   private void createLocalReader(final Task task, final RuntimeEdge<Task> internalEdge) {
-    final InputReader inputReader = channelFactory.createReader(task, internalEdge);
+    final InputReader inputReader = channelFactory.createLocalReader(task, internalEdge);
     addInputReader(task, inputReader);
   }
 
   private void createLocalWriter(final Task task, final RuntimeEdge<Task> internalEdge) {
-    final OutputWriter outputWriter = channelFactory.createWriter(task, internalEdge);
+    final OutputWriter outputWriter = channelFactory.createLocalWriter(task, internalEdge);
     addOutputWriter(task, outputWriter);
   }
 
@@ -157,6 +166,7 @@ public final class TaskGroupExecutor {
           launchBoundedSourceTask((BoundedSourceTask) task);
         } else if (task instanceof OperatorTask) {
           launchOperatorTask((OperatorTask) task);
+          garbageCollectLocalIntermediateData(task);
         } else {
           throw new UnsupportedOperationException(task.toString());
         }
@@ -166,6 +176,21 @@ public final class TaskGroupExecutor {
       }
     });
     LOG.log(Level.INFO, "{0} Execution Complete!", taskGroup.getTaskGroupId());
+  }
+
+  /**
+   * Data on stage-internal edges can be garbage collected after they're consumed.
+   * Without garbage collection, JVM will be filled with no-longer needed data, and will eventually crash with an OOM.
+   * TODO #266: Introduce Caching
+   * @param executedTask that consumed the data
+   */
+  private void garbageCollectLocalIntermediateData(final Task executedTask) {
+    final DAG<Task, RuntimeEdge<Task>> dag = taskGroup.getTaskDAG();
+    dag.getIncomingEdgesOf(executedTask).stream() // inEdges within the stage
+        .forEach(edge -> {
+          final String blockId = RuntimeIdGenerator.generateBlockId(edge.getId(), edge.getSrc().getIndex());
+          blockManagerWorker.removeBlock(blockId, edge.getEdgeAttributes().get(RuntimeAttribute.Key.BlockStore));
+        });
   }
 
   /**

@@ -51,7 +51,7 @@ public final class DoTransform implements Transform {
   /**
    * DoTransform Constructor.
    * @param doFn doFn.
-   * @param options Pipeline Options.
+   * @param options Pipeline options.
    */
   public DoTransform(final DoFn doFn, final PipelineOptions options) {
     this.doFn = doFn;

@@ -93,6 +93,9 @@ public final class BlockManagerMaster {
       case COMMITTED:
         committedBlockIdToWorkerId.put(blockId, executorId);
         break;
+      case REMOVED:
+        committedBlockIdToWorkerId.remove(blockId);
+        break;
       case LOST:
         throw new UnsupportedOperationException(newState.toString());
       default:

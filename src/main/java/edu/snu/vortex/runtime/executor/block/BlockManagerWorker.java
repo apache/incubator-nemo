@@ -21,7 +21,6 @@ import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
-import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.exception.NodeConnectionException;
 import edu.snu.vortex.runtime.exception.UnsupportedBlockStoreException;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
@@ -44,10 +43,6 @@ public final class BlockManagerWorker {
 
   private final LocalStore localStore;
 
-  private final Set<String> idOfBlocksStoredInThisWorker;
-
-  private final MessageEnvironment messageEnvironment;
-
   private final PersistentConnectionToMaster persistentConnectionToMaster;
 
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder;
@@ -58,13 +53,10 @@ public final class BlockManagerWorker {
   public BlockManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
                             final LocalStore localStore,
                             final PersistentConnectionToMaster persistentConnectionToMaster,
-                            final MessageEnvironment messageEnvironment,
                             final BlockTransferPeer blockTransferPeer) {
     this.executorId = executorId;
     this.localStore = localStore;
-    this.messageEnvironment = messageEnvironment;
     this.persistentConnectionToMaster = persistentConnectionToMaster;
-    this.idOfBlocksStoredInThisWorker = new HashSet<>();
     this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
     this.blockTransferPeer = blockTransferPeer;
   }
@@ -91,6 +83,30 @@ public final class BlockManagerWorker {
     runtimeEdgeIdToCoder.putIfAbsent(runtimeEdgeId, coder);
   }
 
+  public synchronized Iterable<Element> removeBlock(final String blockId,
+                                                    final RuntimeAttribute blockStore) {
+    final BlockStore store = getBlockStore(blockStore);
+    final Optional<Iterable<Element>> optional = store.removeBlock(blockId);
+    if (!optional.isPresent()) {
+      throw new RuntimeException("Trying to remove a non-existent block");
+    }
+
+    persistentConnectionToMaster.getMessageSender().send(
+        ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdGenerator.generateMessageId())
+            .setType(ControlMessage.MessageType.BlockStateChanged)
+            .setBlockStateChangedMsg(
+                ControlMessage.BlockStateChangedMsg.newBuilder()
+                    .setExecutorId(executorId)
+                    .setBlockId(blockId)
+                    .setState(ControlMessage.BlockStateFromExecutor.REMOVED)
+                    .build())
+            .build());
+
+    return optional.get();
+  }
+
+
   /**
    * Store block somewhere.
    * Invariant: This should be invoked only once per blockId.
@@ -101,24 +117,20 @@ public final class BlockManagerWorker {
   public synchronized void putBlock(final String blockId,
                                     final Iterable<Element> data,
                                     final RuntimeAttribute blockStore) {
-    if (idOfBlocksStoredInThisWorker.contains(blockId)) {
-      throw new RuntimeException("Trying to put an already existing block");
-    }
     final BlockStore store = getBlockStore(blockStore);
     store.putBlock(blockId, data);
-    idOfBlocksStoredInThisWorker.add(blockId);
 
     persistentConnectionToMaster.getMessageSender().send(
         ControlMessage.Message.newBuilder()
-        .setId(RuntimeIdGenerator.generateMessageId())
-        .setType(ControlMessage.MessageType.BlockStateChanged)
-        .setBlockStateChangedMsg(
-            ControlMessage.BlockStateChangedMsg.newBuilder()
-            .setExecutorId(executorId)
-            .setBlockId(blockId)
-            .setState(ControlMessage.BlockStateFromExecutor.COMMITTED)
-            .build())
-        .build());
+            .setId(RuntimeIdGenerator.generateMessageId())
+            .setType(ControlMessage.MessageType.BlockStateChanged)
+            .setBlockStateChangedMsg(
+                ControlMessage.BlockStateChangedMsg.newBuilder()
+                    .setExecutorId(executorId)
+                    .setBlockId(blockId)
+                    .setState(ControlMessage.BlockStateFromExecutor.COMMITTED)
+                    .build())
+            .build());
   }
 
   /**
@@ -130,35 +142,29 @@ public final class BlockManagerWorker {
    * @param blockStore for the data storage
    * @return the block data
    */
-  public synchronized Iterable<Element> getBlock(final String blockId, final String runtimeEdgeId,
+  public synchronized Iterable<Element> getBlock(final String blockId,
+                                                 final String runtimeEdgeId,
                                                  final RuntimeAttribute blockStore) {
-    if (idOfBlocksStoredInThisWorker.contains(blockId)) {
-      // Local hit!
-      final BlockStore store = getBlockStore(blockStore);
-      final Optional<Iterable<Element>> optionalData = store.getBlock(blockId);
-      if (optionalData.isPresent()) {
-        return optionalData.get();
-      } else {
-        // TODO #163: Handle Fault Tolerance
-        // We should report this exception to the master, instead of shutting down the JVM
-        throw new RuntimeException("Something's wrong: worker thinks it has the block, but the store doesn't have it");
-      }
+    // Local hit!
+    final BlockStore store = getBlockStore(blockStore);
+    final Optional<Iterable<Element>> optionalData = store.getBlock(blockId);
+    if (optionalData.isPresent()) {
+      return optionalData.get();
     } else {
       // We don't have the block here... let's see if a remote worker has it
       // Ask Master for the location
-
       final ControlMessage.Message responseFromMaster;
       try {
         responseFromMaster = persistentConnectionToMaster.getMessageSender().<ControlMessage.Message>request(
-          ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdGenerator.generateMessageId())
-              .setType(ControlMessage.MessageType.RequestBlockLocation)
-              .setRequestBlockLocationMsg(
-                  ControlMessage.RequestBlockLocationMsg.newBuilder()
-                      .setExecutorId(executorId)
-                      .setBlockId(blockId)
-                      .build())
-              .build()).get();
+            ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdGenerator.generateMessageId())
+                .setType(ControlMessage.MessageType.RequestBlockLocation)
+                .setRequestBlockLocationMsg(
+                    ControlMessage.RequestBlockLocationMsg.newBuilder()
+                        .setExecutorId(executorId)
+                        .setBlockId(blockId)
+                        .build())
+                .build()).get();
       } catch (Exception e) {
         throw new NodeConnectionException(e);
       }
