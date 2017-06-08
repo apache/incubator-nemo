@@ -40,6 +40,7 @@ public final class ExecutorRepresenter {
   private final String executorId;
   private final ResourceSpecification resourceSpecification;
   private final Set<String> runningTaskGroups;
+  private final Set<String> executedTaskGroups;
   private final MessageSender<ControlMessage.Message> messageSender;
   private final ActiveContext activeContext;
 
@@ -51,6 +52,7 @@ public final class ExecutorRepresenter {
     this.resourceSpecification = resourceSpecification;
     this.messageSender = messageSender;
     this.runningTaskGroups = new HashSet<>();
+    this.executedTaskGroups = new HashSet<>();
     this.activeContext = activeContext;
   }
 
@@ -74,6 +76,7 @@ public final class ExecutorRepresenter {
 
   public void onTaskGroupExecutionComplete(final String taskGroupId) {
     runningTaskGroups.remove(taskGroupId);
+    executedTaskGroups.add(taskGroupId);
   }
 
   public int getExecutorCapacity() {
@@ -82,6 +85,10 @@ public final class ExecutorRepresenter {
 
   public Set<String> getRunningTaskGroups() {
     return runningTaskGroups;
+  }
+
+  public Set<String> getExecutedTaskGroups() {
+    return executedTaskGroups;
   }
 
   public String getExecutorId() {
