@@ -120,7 +120,7 @@ public final class BatchScheduler implements Scheduler {
 
   private void onTaskGroupExecutionComplete(final String executorId,
                                             final String taskGroupId) {
-    LOG.log(Level.INFO, "TaskGroup {0} completed in {1}", new Object[]{taskGroupId, executorId});
+    LOG.log(Level.INFO, "{0} completed in {1}", new Object[]{taskGroupId, executorId});
     schedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroupId);
 
     final Optional<String> stageIdForTaskGroupUponCompletion = jobStateManager.checkStageCompletion(taskGroupId);
