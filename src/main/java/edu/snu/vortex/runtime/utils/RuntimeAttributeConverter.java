@@ -45,8 +45,8 @@ public final class RuntimeAttributeConverter {
         case Placement:
           final RuntimeAttribute runtimeAttributeVal;
           switch (irAttributeVal) {
-            case Default:
-              runtimeAttributeVal = RuntimeAttribute.Default;
+            case None:
+              runtimeAttributeVal = RuntimeAttribute.None;
               break;
             case Transient:
               runtimeAttributeVal = RuntimeAttribute.Transient;

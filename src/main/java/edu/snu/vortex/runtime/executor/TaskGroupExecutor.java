@@ -151,6 +151,7 @@ public final class TaskGroupExecutor {
    * Executes the task group.
    */
   public void execute() {
+    LOG.log(Level.INFO, "{0} Execution Started!", taskGroup.getTaskGroupId());
     if (isExecutionRequested) {
       throw new RuntimeException("TaskGroup {" + taskGroup.getTaskGroupId() + "} execution called again!");
     } else {

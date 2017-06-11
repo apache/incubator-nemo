@@ -47,6 +47,8 @@ import static org.mockito.Mockito.*;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(ContainerManager.class)
 public final class RoundRobinSchedulingPolicyTest {
+  private static final int TIMEOUT_MS = 1000;
+
   private SchedulingPolicy schedulingPolicy;
   private ContainerManager containerManager = mock(ContainerManager.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
@@ -56,7 +58,7 @@ public final class RoundRobinSchedulingPolicyTest {
     final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();
     when(containerManager.getExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
 
-    schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, 2000);
+    schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TIMEOUT_MS);
 
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
@@ -88,7 +90,48 @@ public final class RoundRobinSchedulingPolicyTest {
 
   @Test
   public void checkScheduleTimeout() {
-    assertEquals(schedulingPolicy.getScheduleTimeoutMs(), 2000);
+    assertEquals(schedulingPolicy.getScheduleTimeoutMs(), TIMEOUT_MS);
+  }
+
+  @Test
+  public void testNoneContainerType() {
+    final TaskGroup A1 = new TaskGroup("A1", "Stage A", 0, null, RuntimeAttribute.None);
+    final TaskGroup A2 = new TaskGroup("A2", "Stage A", 0, null, RuntimeAttribute.None);
+    final TaskGroup A3 = new TaskGroup("A3", "Stage A", 0, null, RuntimeAttribute.None);
+    final TaskGroup A4 = new TaskGroup("A4", "Stage A", 0, null, RuntimeAttribute.None);
+    final TaskGroup A5 = new TaskGroup("A5", "Stage A", 0, null, RuntimeAttribute.None);
+    final TaskGroup A6 = new TaskGroup("A6", "Stage A", 0, null, RuntimeAttribute.None);
+
+    final ScheduledTaskGroup a1Wrapper = wrap(A1);
+    final ScheduledTaskGroup a2Wrapper = wrap(A2);
+    final ScheduledTaskGroup a3Wrapper = wrap(A3);
+    final ScheduledTaskGroup a4Wrapper = wrap(A4);
+    final ScheduledTaskGroup a5Wrapper = wrap(A5);
+    final ScheduledTaskGroup a6Wrapper = wrap(A6);
+
+    Optional<String> a1 = schedulingPolicy.attemptSchedule(a1Wrapper);
+    assertTrue(a1.isPresent());
+    schedulingPolicy.onTaskGroupScheduled(a1.get(), a1Wrapper);
+
+    Optional<String> a2 = schedulingPolicy.attemptSchedule(a2Wrapper);
+    assertTrue(a2.isPresent());
+    schedulingPolicy.onTaskGroupScheduled(a2.get(), a2Wrapper);
+
+    Optional<String> a3 = schedulingPolicy.attemptSchedule(a3Wrapper);
+    assertTrue(a3.isPresent());
+    schedulingPolicy.onTaskGroupScheduled(a3.get(), a3Wrapper);
+
+    Optional<String> a4 = schedulingPolicy.attemptSchedule(a4Wrapper);
+    assertTrue(a4.isPresent());
+    schedulingPolicy.onTaskGroupScheduled(a4.get(), a4Wrapper);
+
+    Optional<String> a5 = schedulingPolicy.attemptSchedule(a5Wrapper);
+    assertTrue(a5.isPresent());
+    schedulingPolicy.onTaskGroupScheduled(a5.get(), a5Wrapper);
+
+    // No more slot
+    Optional<String> a6 = schedulingPolicy.attemptSchedule(a6Wrapper);
+    assertFalse(a6.isPresent());
   }
 
   @Test
@@ -102,28 +145,28 @@ public final class RoundRobinSchedulingPolicyTest {
     final TaskGroup B2 = new TaskGroup("B2", "Stage B", 1, null, RuntimeAttribute.Storage);
     final TaskGroup B3 = new TaskGroup("B3", "Stage B", 2, null, RuntimeAttribute.Storage);
 
-    final ScheduledTaskGroup a1Wrapper = new ScheduledTaskGroup(A1, Collections.emptyList(), Collections.emptyList());
-    final ScheduledTaskGroup a2Wrapper = new ScheduledTaskGroup(A2, Collections.emptyList(), Collections.emptyList());
-    final ScheduledTaskGroup a3Wrapper = new ScheduledTaskGroup(A3, Collections.emptyList(), Collections.emptyList());
-    final ScheduledTaskGroup a4Wrapper = new ScheduledTaskGroup(A4, Collections.emptyList(), Collections.emptyList());
-    final ScheduledTaskGroup a5Wrapper = new ScheduledTaskGroup(A5, Collections.emptyList(), Collections.emptyList());
-    final ScheduledTaskGroup b1Wrapper = new ScheduledTaskGroup(B1, Collections.emptyList(), Collections.emptyList());
-    final ScheduledTaskGroup b2Wrapper = new ScheduledTaskGroup(B2, Collections.emptyList(), Collections.emptyList());
-    final ScheduledTaskGroup b3Wrapper = new ScheduledTaskGroup(B3, Collections.emptyList(), Collections.emptyList());
+    final ScheduledTaskGroup a1Wrapper = wrap(A1);
+    final ScheduledTaskGroup a2Wrapper = wrap(A2);
+    final ScheduledTaskGroup a3Wrapper = wrap(A3);
+    final ScheduledTaskGroup a4Wrapper = wrap(A4);
+    final ScheduledTaskGroup a5Wrapper = wrap(A5);
+    final ScheduledTaskGroup b1Wrapper = wrap(B1);
+    final ScheduledTaskGroup b2Wrapper = wrap(B2);
+    final ScheduledTaskGroup b3Wrapper = wrap(B3);
 
     Optional<String> a1 = schedulingPolicy.attemptSchedule(a1Wrapper);
     assertTrue(a1.isPresent());
-    assertEquals(a1.get(), "a1");
+    assertEquals("a1", a1.get());
     schedulingPolicy.onTaskGroupScheduled(a1.get(), a1Wrapper);
 
     Optional<String> a2 = schedulingPolicy.attemptSchedule(a2Wrapper);
     assertTrue(a2.isPresent());
-    assertEquals(a2.get(), "a2");
+    assertEquals("a2", a2.get());
     schedulingPolicy.onTaskGroupScheduled(a2.get(), a2Wrapper);
 
     Optional<String> a3 = schedulingPolicy.attemptSchedule(a3Wrapper);
     assertTrue(a3.isPresent());
-    assertEquals(a3.get(), "a3");
+    assertEquals("a3", a3.get());
     schedulingPolicy.onTaskGroupScheduled(a3.get(), a3Wrapper);
 
     Optional<String> a4 = schedulingPolicy.attemptSchedule(a4Wrapper);
@@ -134,7 +177,7 @@ public final class RoundRobinSchedulingPolicyTest {
 
     a4 = schedulingPolicy.attemptSchedule(a4Wrapper);
     assertTrue(a4.isPresent());
-    assertEquals(a4.get(), "a1");
+    assertEquals("a1", a4.get());
     schedulingPolicy.onTaskGroupScheduled(a1.get(), a4Wrapper);
 
     Optional<String> a5 = schedulingPolicy.attemptSchedule(a5Wrapper);
@@ -145,17 +188,17 @@ public final class RoundRobinSchedulingPolicyTest {
 
     a5 = schedulingPolicy.attemptSchedule(a5Wrapper);
     assertTrue(a5.isPresent());
-    assertEquals(a5.get(), "a3");
+    assertEquals("a3", a5.get());
     schedulingPolicy.onTaskGroupScheduled(a5.get(), a5Wrapper);
 
     Optional<String> b1 = schedulingPolicy.attemptSchedule(b1Wrapper);
     assertTrue(b1.isPresent());
-    assertEquals(b1.get(), "b1");
+    assertEquals("b1", b1.get());
     schedulingPolicy.onTaskGroupScheduled(b1.get(), b1Wrapper);
 
     Optional<String> b2 = schedulingPolicy.attemptSchedule(b2Wrapper);
     assertTrue(b2.isPresent());
-    assertEquals(b2.get(), "b2");
+    assertEquals("b2", b2.get());
     schedulingPolicy.onTaskGroupScheduled(b2.get(), b2Wrapper);
 
     Optional<String> b3 = schedulingPolicy.attemptSchedule(b3Wrapper);
@@ -166,18 +209,22 @@ public final class RoundRobinSchedulingPolicyTest {
 
     b3 = schedulingPolicy.attemptSchedule(b3Wrapper);
     assertTrue(b3.isPresent());
-    assertEquals(b3.get(), "b1");
+    assertEquals("b1", b3.get());
     schedulingPolicy.onTaskGroupScheduled(b3.get(), b3Wrapper);
 
     Set<String> executingTaskGroups = schedulingPolicy.onExecutorRemoved(b1.get());
-    assertEquals(executingTaskGroups.size(), 1);
-    assertEquals(executingTaskGroups.iterator().next(), "B3");
+    assertEquals(1, executingTaskGroups.size());
+    assertEquals("B3", executingTaskGroups.iterator().next());
 
     executingTaskGroups = schedulingPolicy.onExecutorRemoved(a1.get());
-    assertEquals(executingTaskGroups.size(), 1);
-    assertEquals(executingTaskGroups.iterator().next(), "A4");
+    assertEquals(1, executingTaskGroups.size());
+    assertEquals("A4", executingTaskGroups.iterator().next());
 
     verify(mockMsgSender, times(8)).send(anyObject());
+  }
+
+  private ScheduledTaskGroup wrap(final TaskGroup taskGroup) {
+    return new ScheduledTaskGroup(taskGroup, Collections.emptyList(), Collections.emptyList());
   }
 }
 

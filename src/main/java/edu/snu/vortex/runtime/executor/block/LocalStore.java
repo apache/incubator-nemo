@@ -17,25 +17,26 @@ package edu.snu.vortex.runtime.executor.block;
 
 import edu.snu.vortex.compiler.ir.Element;
 
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.HashMap;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Store data in local memory.
  */
+@ThreadSafe
 public final class LocalStore implements BlockStore {
-  private final HashMap<String, Iterable<Element>> blockIdToData;
+  private final ConcurrentHashMap<String, Iterable<Element>> blockIdToData;
 
   @Inject
   public LocalStore() {
-    this.blockIdToData = new HashMap<>();
+    this.blockIdToData = new ConcurrentHashMap<>();
   }
 
   @Override
   public Optional<Iterable<Element>> getBlock(final String blockId) {
-    final Optional<Iterable<Element>> result = Optional.ofNullable(blockIdToData.get(blockId));
-    return result;
+    return Optional.ofNullable(blockIdToData.get(blockId));
   }
 
   @Override
@@ -48,7 +49,6 @@ public final class LocalStore implements BlockStore {
 
   @Override
   public Optional<Iterable<Element>> removeBlock(final String blockId) {
-    final Optional<Iterable<Element>> result = Optional.ofNullable(blockIdToData.remove(blockId));
-    return result;
+    return Optional.ofNullable(blockIdToData.remove(blockId));
   }
 }
