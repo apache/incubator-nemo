@@ -66,11 +66,7 @@ public final class BlockManagerMaster {
 
   public synchronized Optional<String> getBlockLocation(final String blockId) {
     final String executorId = committedBlockIdToWorkerId.get(blockId);
-    if (executorId == null) {
-      return Optional.empty();
-    } else {
-      return Optional.ofNullable(executorId);
-    }
+    return Optional.ofNullable(executorId);
   }
 
   public synchronized void onBlockStateChanged(final String executorId,

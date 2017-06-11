@@ -23,7 +23,6 @@ import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.exception.UnsupportedBlockStoreException;
-import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -37,6 +36,7 @@ import org.apache.reef.wake.remote.transport.Transport;
 import org.apache.reef.wake.remote.transport.TransportFactory;
 import org.apache.reef.wake.remote.transport.netty.LoggingLinkListener;
 
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -52,8 +52,8 @@ import java.util.logging.Logger;
 /**
  * Handles block transfer between {@link edu.snu.vortex.runtime.executor.Executor}s.
  */
-@EvaluatorSide
-public final class BlockTransferPeer {
+@ThreadSafe
+final class BlockTransferPeer {
   private static final Logger LOG = Logger.getLogger(BlockTransferPeer.class.getName());
   private static final RequestBlockMessageCodec REQUEST_MESSAGE_CODEC = new RequestBlockMessageCodec();
   private static final LinkListener LINK_LISTENER = new LoggingLinkListener();
@@ -101,10 +101,10 @@ public final class BlockTransferPeer {
    * @param blockStore type of the block store
    * @return {@link CompletableFuture} for the block
    */
-  public CompletableFuture<Iterable<Element>> fetch(final String remoteExecutorId,
-                                                    final String blockId,
-                                                    final String runtimeEdgeId,
-                                                    final RuntimeAttribute blockStore) {
+  CompletableFuture<Iterable<Element>> fetch(final String remoteExecutorId,
+                                             final String blockId,
+                                             final String runtimeEdgeId,
+                                             final RuntimeAttribute blockStore) {
     final Identifier remotePeerIdentifier = new BlockTransferPeerIdentifier(remoteExecutorId);
     final InetSocketAddress remoteAddress;
     final Coder coder = blockManagerWorker.get().getCoder(runtimeEdgeId);
@@ -114,6 +114,8 @@ public final class BlockTransferPeer {
       LOG.log(Level.SEVERE, "Cannot lookup BlockTransferPeer {0}", remotePeerIdentifier);
       throw new RuntimeException(e);
     }
+    LOG.log(Level.INFO, "Looked up {0}", remoteAddress);
+
     final Link<ControlMessage.RequestBlockMsg> link;
     try {
       link = transport.open(remoteAddress, REQUEST_MESSAGE_CODEC, LINK_LISTENER);
@@ -131,6 +133,8 @@ public final class BlockTransferPeer {
         .setBlockStore(convertBlockStore(blockStore))
         .build();
     link.write(msg);
+
+    LOG.log(Level.INFO, "Wrote request {0}", msg);
     return future;
   }
 

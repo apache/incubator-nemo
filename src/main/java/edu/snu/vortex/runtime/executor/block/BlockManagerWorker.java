@@ -32,13 +32,18 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Executor-side block manager.
- * For now, all its operations are synchronized to guarantee thread safety.
  */
 @ThreadSafe
 public final class BlockManagerWorker {
+  private static final Logger LOG = Logger.getLogger(BlockManagerWorker.class.getName());
+
+  public static final String NO_REMOTE_BLOCK = "";
+
   private final String executorId;
 
   private final LocalStore localStore;
@@ -83,8 +88,9 @@ public final class BlockManagerWorker {
     runtimeEdgeIdToCoder.putIfAbsent(runtimeEdgeId, coder);
   }
 
-  public synchronized Iterable<Element> removeBlock(final String blockId,
-                                                    final RuntimeAttribute blockStore) {
+  public Iterable<Element> removeBlock(final String blockId,
+                                       final RuntimeAttribute blockStore) {
+    LOG.log(Level.INFO, "RemoveBlock: {0}", blockId);
     final BlockStore store = getBlockStore(blockStore);
     final Optional<Iterable<Element>> optional = store.removeBlock(blockId);
     if (!optional.isPresent()) {
@@ -114,9 +120,10 @@ public final class BlockManagerWorker {
    * @param data of the block
    * @param blockStore for storing the block
    */
-  public synchronized void putBlock(final String blockId,
-                                    final Iterable<Element> data,
-                                    final RuntimeAttribute blockStore) {
+  public void putBlock(final String blockId,
+                       final Iterable<Element> data,
+                       final RuntimeAttribute blockStore) {
+    LOG.log(Level.INFO, "PutBlock: {0}", blockId);
     final BlockStore store = getBlockStore(blockStore);
     store.putBlock(blockId, data);
 
@@ -142,9 +149,10 @@ public final class BlockManagerWorker {
    * @param blockStore for the data storage
    * @return the block data
    */
-  public synchronized Iterable<Element> getBlock(final String blockId,
-                                                 final String runtimeEdgeId,
-                                                 final RuntimeAttribute blockStore) {
+  public Iterable<Element> getBlock(final String blockId,
+                                    final String runtimeEdgeId,
+                                    final RuntimeAttribute blockStore) {
+    LOG.log(Level.INFO, "GetBlock: {0}", blockId);
     // Local hit!
     final BlockStore store = getBlockStore(blockStore);
     final Optional<Iterable<Element>> optionalData = store.getBlock(blockId);
@@ -171,7 +179,7 @@ public final class BlockManagerWorker {
 
       final ControlMessage.BlockLocationInfoMsg blockLocationInfoMsg = responseFromMaster.getBlockLocationInfoMsg();
       assert (responseFromMaster.getType() == ControlMessage.MessageType.BlockLocationInfo);
-      if (blockLocationInfoMsg == null) {
+      if (blockLocationInfoMsg.getOwnerExecutorId().equals(NO_REMOTE_BLOCK)) {
         // TODO #163: Handle Fault Tolerance
         // We should report this exception to the master, instead of shutting down the JVM
         throw new RuntimeException("Block " + blockId + " not found both in the local storage and the remote storage");

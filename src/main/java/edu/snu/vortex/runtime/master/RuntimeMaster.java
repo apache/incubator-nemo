@@ -30,12 +30,14 @@ import edu.snu.vortex.runtime.common.state.BlockState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
+import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import edu.snu.vortex.utils.dag.DAG;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -146,6 +148,7 @@ public final class RuntimeMaster {
       switch (message.getType()) {
       case RequestBlockLocation:
         final ControlMessage.RequestBlockLocationMsg requestBlockLocationMsg = message.getRequestBlockLocationMsg();
+        final Optional<String> executorId = blockManagerMaster.getBlockLocation(requestBlockLocationMsg.getBlockId());
         messageContext.reply(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
@@ -154,8 +157,9 @@ public final class RuntimeMaster {
                     ControlMessage.BlockLocationInfoMsg.newBuilder()
                         .setRequestId(message.getId())
                         .setBlockId(requestBlockLocationMsg.getBlockId())
-                        .setOwnerExecutorId(
-                            blockManagerMaster.getBlockLocation(requestBlockLocationMsg.getBlockId()).get())
+                        .setOwnerExecutorId(executorId.isPresent()
+                            ? executorId.get()
+                            : BlockManagerWorker.NO_REMOTE_BLOCK)
                         .build())
                 .build());
         break;
