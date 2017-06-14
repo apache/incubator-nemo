@@ -15,11 +15,16 @@
  */
 package edu.snu.vortex.utils.dag;
 
-import edu.snu.vortex.compiler.ir.LoopVertex;
+import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
+import edu.snu.vortex.compiler.ir.*;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
 
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * DAG Builder.
@@ -42,6 +47,16 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
     this.outgoingEdges = new HashMap<>();
     this.assignedLoopVertexMap = new HashMap<>();
     this.loopStackDepthMap = new HashMap<>();
+  }
+
+  /**
+   * Constructor of DAGBuilder with a DAG to start from.
+   * @param dag to start the builder from.
+   */
+  public DAGBuilder(final DAG<V, E> dag) {
+    this();
+    dag.getVertices().forEach(v -> this.addVertex(v, dag));
+    vertices.forEach(v -> dag.getIncomingEdgesOf(v).forEach(this::connectVertices));
   }
 
   /**
@@ -154,11 +169,124 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
     return vertices.stream().anyMatch(predicate);
   }
 
+  ///////////////////////////INTEGRITY CHECK///////////////////////////
+  /**
+   * Helper method to guarantee that there are no cycles in the DAG.
+   * @param stack stack to push the vertices to.
+   * @param visited set to keep track of visited vertices.
+   * @param vertex vertex to check.
+   */
+  private void cycleCheck(final Stack<V> stack, final Set<V> visited, final V vertex) {
+    // We check in a DFS manner.
+    visited.add(vertex);
+    stack.push(vertex);
+    // When we encounter a vertex that we've already gone through, then there is a cycle.
+    if (outgoingEdges.get(vertex).stream().map(Edge::getDst).anyMatch(stack::contains)) {
+      throw new RuntimeException("DAG contains a cycle");
+    } else {
+      outgoingEdges.get(vertex).stream().map(Edge::getDst).filter(v -> !visited.contains(v))
+          .forEachOrdered(v -> cycleCheck(stack, visited, v));
+    }
+    stack.pop();
+  }
+
+  /**
+   * Helper method to guarantee that all vertices without incoming edges are sources.
+   */
+  private void sourceCheck() {
+    // We observe IRVertex that do not have any incoming edges.
+    final Supplier<Stream<V>> verticesToObserve = () -> vertices.stream().filter(v -> incomingEdges.get(v).isEmpty())
+        .filter(v -> v instanceof IRVertex);
+    // They should all match SourceVertex
+    if (verticesToObserve.get().anyMatch(v -> !(v instanceof SourceVertex))) {
+      final String problematicVertices = verticesToObserve.get().filter(v -> !(v instanceof SourceVertex))
+          .map(V::getId).collect(Collectors.toList()).toString();
+      throw new RuntimeException("DAG source check failed while building DAG. " + problematicVertices);
+    }
+  }
+
+  /**
+   * Helper method to guarantee that all vertices without outgoing edges are sink or DoTransform.
+   */
+  private void sinkCheck() {
+    // We observe IRVertex that do not have any outgoing edges.
+    final Supplier<Stream<V>> verticesToObserve = () -> vertices.stream().filter(v -> outgoingEdges.get(v).isEmpty())
+        .filter(v -> v instanceof IRVertex);
+    // They should either be OperatorVertex or LoopVertex
+    if (verticesToObserve.get().anyMatch(v -> !(v instanceof OperatorVertex || v instanceof LoopVertex))) {
+      final String problematicVertices = verticesToObserve.get().filter(v ->
+          !(v instanceof OperatorVertex || v instanceof LoopVertex))
+          .map(V::getId).collect(Collectors.toList()).toString();
+      throw new RuntimeException("DAG sink check failed while building DAG: " + problematicVertices);
+    // All OperatorVertices should have DoTransform as its transform.
+    } else if (verticesToObserve.get().filter(v -> v instanceof OperatorVertex)
+        .map(v -> ((OperatorVertex) v).getTransform()).anyMatch(t -> !(t instanceof DoTransform))) {
+      final String problematicVertices = verticesToObserve.get().filter(v -> v instanceof OperatorVertex)
+          .filter(v -> !(((OperatorVertex) v).getTransform() instanceof DoTransform))
+          .map(V::getId).collect(Collectors.toList()).toString();
+      throw new RuntimeException("DAG sink check failed while building DAG: " + problematicVertices);
+    }
+  }
+
+  /**
+   * Helper method to check that all attributes are correct and makes sense.
+   */
+  private void attributeCheck() {
+    // All vertices connected with OneToOne edge should have identical Parallelism attribute.
+    vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge)
+        .filter(e -> ((IREdge) e).getType().equals(IREdge.Type.OneToOne)).forEach(e -> {
+          if (e.getSrc() instanceof IRVertex && e.getDst() instanceof IRVertex
+              && ((IRVertex) e.getSrc()).getAttr(Attribute.IntegerKey.Parallelism) != null
+              && ((IRVertex) e.getDst()).getAttr(Attribute.IntegerKey.Parallelism) != null
+              && !((IRVertex) e.getSrc()).getAttr(Attribute.IntegerKey.Parallelism)
+              .equals(((IRVertex) e.getDst()).getAttr(Attribute.IntegerKey.Parallelism))) {
+            throw new RuntimeException("DAG attribute check: vertices are connected by OneToOne edge, "
+                + "but has different parallelism attributes: " + e.getId());
+          }
+        }));
+  }
+
+  /**
+   * DAG integrity check function, that keeps DAG in shape.
+   * @param cycle whether or not to check for cycles.
+   * @param source whether or not to check sources.
+   * @param sink whether or not to check sink.
+   * @param attribute whether or not to check attributes.
+   */
+  private void integrityCheck(final boolean cycle, final boolean source, final boolean sink, final boolean attribute) {
+    if (cycle) {
+      final Stack<V> stack = new Stack<>();
+      final Set<V> visited = new HashSet<>();
+      vertices.stream().filter(v -> incomingEdges.get(v).isEmpty()) // source operators
+          .forEachOrdered(v -> cycleCheck(stack, visited, v));
+    }
+    if (source) {
+      sourceCheck();
+    }
+    if (sink) {
+      sinkCheck();
+    }
+    if (attribute) {
+      attributeCheck();
+    }
+  }
+
+  ///////////////////////////BUILD///////////////////////////
+  /**
+   * Build the DAG for LoopVertex.
+   * @return the DAG contained by the builder.
+   */
+  public DAG<V, E> buildWithoutSourceSinkCheck() {
+    integrityCheck(true, false, false, true);
+    return new DAG<>(vertices, incomingEdges, outgoingEdges, assignedLoopVertexMap, loopStackDepthMap);
+  }
+
   /**
    * Build the DAG.
    * @return the DAG contained by the builder.
    */
   public DAG<V, E> build() {
+    integrityCheck(true, true, true, true);
     return new DAG<>(vertices, incomingEdges, outgoingEdges, assignedLoopVertexMap, loopStackDepthMap);
   }
 }

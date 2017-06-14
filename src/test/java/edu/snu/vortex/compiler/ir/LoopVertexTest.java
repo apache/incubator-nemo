@@ -18,6 +18,7 @@ package edu.snu.vortex.compiler.ir;
 import edu.snu.vortex.compiler.TestUtil;
 import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
+import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.vortex.utils.Pair;
 import edu.snu.vortex.utils.dag.DAG;
 import edu.snu.vortex.utils.dag.DAGBuilder;
@@ -42,7 +43,7 @@ public class LoopVertexTest {
   private final IRVertex map1 = new OperatorVertex(new TestUtil.EmptyTransform("MapElements"));
   private final IRVertex groupByKey = new OperatorVertex(new TestUtil.EmptyTransform("GroupByKey"));
   private final IRVertex combine = new OperatorVertex(new TestUtil.EmptyTransform("Combine"));
-  private final IRVertex map2 = new OperatorVertex(new TestUtil.EmptyTransform("MapElements"));
+  private final IRVertex map2 = new OperatorVertex(new DoTransform(null, null));
 
   @Before
   public void setUp() {

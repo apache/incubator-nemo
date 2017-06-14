@@ -260,6 +260,7 @@ public final class LoopOptimizations {
           // connect incoming edges.
           candidate.getValue().forEach(builder::connectVertices);
           // connect outgoing edges.
+          loopVertex.getDAG().getOutgoingEdgesOf(candidate.getKey()).forEach(loopVertex::addDagIncomingEdge);
           loopVertex.getDAG().getOutgoingEdgesOf(candidate.getKey()).forEach(loopVertex::addNonIterativeIncomingEdge);
           // clear garbage.
           loopVertex.getBuilder().removeVertex(candidate.getKey());

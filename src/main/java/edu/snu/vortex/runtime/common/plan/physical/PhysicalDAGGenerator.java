@@ -90,7 +90,8 @@ public final class PhysicalDAGGenerator
               final List<Reader> readers =
                   boundedSourceVertex.getBoundedSourceVertex().getReaders(stageParallelism);
               if (readers.size() != stageParallelism) {
-                throw new RuntimeException("Actual parallelism differs from the one specified by IR");
+                throw new RuntimeException("Actual parallelism differs from the one specified by IR: "
+                    + readers.size() + " and " + stageParallelism);
               }
               newTaskToAdd = new BoundedSourceTask(RuntimeIdGenerator.generateTaskId(),
                   boundedSourceVertex.getId(), taskGroupIdx, readers.get(taskGroupIdx));
