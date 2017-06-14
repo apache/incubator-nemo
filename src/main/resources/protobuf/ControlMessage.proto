@@ -11,6 +11,7 @@ enum MessageType {
     BlockStateChanged = 2;
     RequestBlockLocation = 3;
     BlockLocationInfo = 4;
+    ExecutorFailed = 5;
 }
 
 message Message {
@@ -21,6 +22,7 @@ message Message {
     optional BlockStateChangedMsg blockStateChangedMsg = 5;
     optional RequestBlockLocationMsg requestBlockLocationMsg = 6;
     optional BlockLocationInfoMsg blockLocationInfoMsg = 7;
+    optional ExecutorFailedMsg executorFailedMsg = 8;
 }
 
 // Messages from Master to Executors
@@ -51,6 +53,11 @@ message BlockStateChangedMsg {
 message RequestBlockLocationMsg {
     required string executorId = 1;
     required string blockId = 2;
+}
+
+message ExecutorFailedMsg {
+    required string executorId = 1;
+    required bytes exception = 2;
 }
 
 // Messages between Executors

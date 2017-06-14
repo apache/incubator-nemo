@@ -15,7 +15,9 @@
  */
 package edu.snu.vortex.runtime.executor;
 
+import com.google.protobuf.ByteString;
 import edu.snu.vortex.client.JobConf;
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
@@ -91,20 +93,39 @@ public final class Executor {
    * @param scheduledTaskGroup to launch.
    */
   private void launchTaskGroup(final ScheduledTaskGroup scheduledTaskGroup) {
-    taskGroupStateManager = new TaskGroupStateManager(scheduledTaskGroup.getTaskGroup(),
-        executorId, persistentConnectionToMaster);
+    try {
+      taskGroupStateManager = new TaskGroupStateManager(scheduledTaskGroup.getTaskGroup(),
+          executorId, persistentConnectionToMaster);
 
-    scheduledTaskGroup.getTaskGroupIncomingEdges()
-        .forEach(e -> blockManagerWorker.registerCoder(e.getId(), e.getCoder()));
-    scheduledTaskGroup.getTaskGroupOutgoingEdges()
-        .forEach(e -> blockManagerWorker.registerCoder(e.getId(), e.getCoder()));
+      scheduledTaskGroup.getTaskGroupIncomingEdges()
+          .forEach(e -> blockManagerWorker.registerCoder(e.getId(), e.getCoder()));
+      scheduledTaskGroup.getTaskGroupOutgoingEdges()
+          .forEach(e -> blockManagerWorker.registerCoder(e.getId(), e.getCoder()));
 
-    new TaskGroupExecutor(scheduledTaskGroup.getTaskGroup(),
-        taskGroupStateManager,
-        scheduledTaskGroup.getTaskGroupIncomingEdges(),
-        scheduledTaskGroup.getTaskGroupOutgoingEdges(),
-        dataTransferFactory,
-        blockManagerWorker).execute();
+      new TaskGroupExecutor(scheduledTaskGroup.getTaskGroup(),
+          taskGroupStateManager,
+          scheduledTaskGroup.getTaskGroupIncomingEdges(),
+          scheduledTaskGroup.getTaskGroupOutgoingEdges(),
+          dataTransferFactory,
+          blockManagerWorker).execute();
+    } catch (final Exception e) {
+      persistentConnectionToMaster.getMessageSender().send(
+          ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdGenerator.generateMessageId())
+              .setType(ControlMessage.MessageType.ExecutorFailed)
+              .setExecutorFailedMsg(ControlMessage.ExecutorFailedMsg.newBuilder()
+                  .setExecutorId(executorId)
+                  .setException(ByteString.copyFrom(SerializationUtils.serialize(e)))
+                  .build())
+              .build());
+      throw e;
+    } finally {
+      terminate();
+    }
+  }
+
+  public void terminate() {
+
   }
 
   /**

@@ -105,6 +105,7 @@ public final class JobLauncher {
         .set(DriverConfiguration.ON_EVALUATOR_ALLOCATED, VortexDriver.AllocatedEvaluatorHandler.class)
         .set(DriverConfiguration.ON_CONTEXT_ACTIVE, VortexDriver.ActiveContextHandler.class)
         .set(DriverConfiguration.ON_EVALUATOR_FAILED, VortexDriver.FailedEvaluatorHandler.class)
+        .set(DriverConfiguration.ON_CONTEXT_FAILED, VortexDriver.FailedContextHandler.class)
         .set(DriverConfiguration.ON_DRIVER_STOP, VortexDriver.DriverStopHandler.class)
         .set(DriverConfiguration.DRIVER_IDENTIFIER, jobId)
         .set(DriverConfiguration.DRIVER_MEMORY, driverMemory)

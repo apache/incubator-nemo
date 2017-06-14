@@ -174,6 +174,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case TaskGroupStateChanged:
       case ScheduleTaskGroup:
       case BlockStateChanged:
+      case ExecutorFailed:
         return MessageType.Send;
       case RequestBlockLocation:
         return MessageType.Request;
@@ -207,6 +208,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case TaskGroupStateChanged:
       case BlockStateChanged:
       case RequestBlockLocation:
+      case ExecutorFailed:
         return MessageEnvironment.MASTER_MESSAGE_RECEIVER;
       case ScheduleTaskGroup:
         return MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER;
