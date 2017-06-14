@@ -96,6 +96,11 @@ public final class CommonSubexpressionEliminationPass implements Pass {
     // process IREdges
     operatorVerticesToBeMerged.values().forEach(operatorVertices ->
         operatorVertices.forEach(operatorVertex -> {
+          inEdges.getOrDefault(operatorVertex, new HashSet<>()).forEach(e -> {
+            if (builder.contains(operatorVertex) && builder.contains(e.getSrc())) {
+              builder.connectVertices(e);
+            }
+          });
           outEdges.getOrDefault(operatorVertex, new HashSet<>()).forEach(e -> {
             if (builder.contains(operatorVertex) && builder.contains(e.getDst())) {
               builder.connectVertices(e);
