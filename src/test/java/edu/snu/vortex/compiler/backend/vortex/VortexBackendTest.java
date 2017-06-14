@@ -19,6 +19,7 @@ import edu.snu.vortex.compiler.TestUtil;
 import edu.snu.vortex.compiler.backend.Backend;
 import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
+import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
@@ -38,7 +39,7 @@ public final class VortexBackendTest<I, O> {
   private final IRVertex map1 = new OperatorVertex(new TestUtil.EmptyTransform("MapElements"));
   private final IRVertex groupByKey = new OperatorVertex(new TestUtil.EmptyTransform("GroupByKey"));
   private final IRVertex combine = new OperatorVertex(new TestUtil.EmptyTransform("Combine"));
-  private final IRVertex map2 = new OperatorVertex(new TestUtil.EmptyTransform("MapElements"));
+  private final IRVertex map2 = new OperatorVertex(new DoTransform(null, null));
 
   private final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
   private DAG<IRVertex, IREdge> dag;

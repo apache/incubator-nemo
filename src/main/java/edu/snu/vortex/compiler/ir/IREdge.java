@@ -29,9 +29,9 @@ public final class IREdge extends Edge<IRVertex> {
    * Type of edges.
    */
   public enum Type {
-    ScatterGather,
-    Broadcast,
     OneToOne,
+    Broadcast,
+    ScatterGather,
   }
 
   private final AttributeMap attributes;

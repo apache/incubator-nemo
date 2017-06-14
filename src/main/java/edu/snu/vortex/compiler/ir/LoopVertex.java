@@ -57,7 +57,7 @@ public final class LoopVertex extends IRVertex {
     final LoopVertex newLoopVertex = new LoopVertex(compositeTransformFullName);
 
     // Copy all elements to the clone
-    final DAG<IRVertex, IREdge> dagToCopy = this.getBuilder().build();
+    final DAG<IRVertex, IREdge> dagToCopy = this.getDAG();
     dagToCopy.topologicalDo(v -> {
       newLoopVertex.getBuilder().addVertex(v, dagToCopy);
       dagToCopy.getIncomingEdgesOf(v).forEach(newLoopVertex.getBuilder()::connectVertices);
@@ -83,7 +83,7 @@ public final class LoopVertex extends IRVertex {
    * @return the DAG of rthe LoopVertex
    */
   public DAG<IRVertex, IREdge> getDAG() {
-    return builder.build();
+    return builder.buildWithoutSourceSinkCheck();
   }
 
   /**

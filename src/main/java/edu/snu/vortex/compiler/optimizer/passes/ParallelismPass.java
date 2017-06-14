@@ -21,6 +21,7 @@ import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.SourceVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.utils.dag.DAG;
+import edu.snu.vortex.utils.dag.DAGBuilder;
 
 import java.util.Collections;
 import java.util.List;
@@ -86,22 +87,8 @@ public final class ParallelismPass implements Pass {
         throw new UnsupportedOperationException("Unknown vertex type: " + vertex.toString());
       }
     }
-
-    // Check all OneToOne edges have src/dst with the same parallelism
-    // TODO #22: DAG Integrity Check
-    dag.topologicalDo(vertex -> {
-      final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
-      inEdges.stream()
-          .filter(edge -> edge.getAttr(Attribute.Key.CommunicationPattern) == Attribute.OneToOne)
-          .forEach(edge -> {
-            final Integer srcParallelism = edge.getSrc().getAttr(Attribute.IntegerKey.Parallelism);
-            final Integer dstParallelism = edge.getDst().getAttr(Attribute.IntegerKey.Parallelism);
-            if (!srcParallelism.equals(dstParallelism)) {
-              throw new RuntimeException(edge.toString() + " is OneToOne, but src/dst parallelisms differ");
-            }
-          });
-    });
-    return dag;
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
+    return builder.build();
   }
 
   private List<IRVertex> getReverseTopologicalSort(final DAG<IRVertex, IREdge> dag) {

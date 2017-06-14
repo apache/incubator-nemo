@@ -17,6 +17,7 @@ package edu.snu.vortex.runtime.common.plan;
 
 import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
+import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.plan.logical.LogicalDAGGenerator;
@@ -63,7 +64,7 @@ public final class DAGConverterTest {
     e.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e);
 
-    final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.build();
+    final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
     final DAG<Stage, StageEdge> logicalDAG = irDAG.convert(new LogicalDAGGenerator());
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
 
@@ -112,6 +113,7 @@ public final class DAGConverterTest {
     v1.setAttr(Attribute.Key.Placement, Attribute.Compute);
 
     final Transform t = mock(Transform.class);
+    final DoTransform dt = new DoTransform(null, null);
     final IRVertex v2 = new OperatorVertex(t);
     v2.setAttr(Attribute.IntegerKey.Parallelism, 3);
     v2.setAttr(Attribute.Key.Placement, Attribute.Compute);
@@ -124,11 +126,11 @@ public final class DAGConverterTest {
     v4.setAttr(Attribute.IntegerKey.Parallelism, 2);
     v4.setAttr(Attribute.Key.Placement, Attribute.Compute);
 
-    final IRVertex v5 = new OperatorVertex(t);
+    final IRVertex v5 = new OperatorVertex(dt);
     v5.setAttr(Attribute.IntegerKey.Parallelism, 2);
     v5.setAttr(Attribute.Key.Placement, Attribute.Compute);
 
-    final IRVertex v6 = new OperatorVertex(t);
+    final IRVertex v6 = new OperatorVertex(dt);
     v6.setAttr(Attribute.IntegerKey.Parallelism, 2);
     v6.setAttr(Attribute.Key.Placement, Attribute.Reserved);
 
@@ -137,7 +139,7 @@ public final class DAGConverterTest {
 //    v7.setAttr(Attribute.IntegerKey.Parallelism, 2);
 //    v7.setAttr(Attribute.Key.Placement, Attribute.Compute);
 
-    final IRVertex v8 = new OperatorVertex(t);
+    final IRVertex v8 = new OperatorVertex(dt);
     v8.setAttr(Attribute.IntegerKey.Parallelism, 2);
     v8.setAttr(Attribute.Key.Placement, Attribute.Compute);
 

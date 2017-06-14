@@ -73,7 +73,7 @@ public class LoopInvariantCodeMotionPassTest {
 
     alsLoop.getNonIterativeIncomingEdges().remove(vertex11);
     alsLoop.getNonIterativeIncomingEdges().putIfAbsent(vertex7, new HashSet<>());
-    newDAGIncomingEdge.forEach(alsLoop.getDagIncomingEdges().get(vertex7)::add);
+    newDAGIncomingEdge.forEach(alsLoop.getNonIterativeIncomingEdges().get(vertex7)::add);
 
     alsLoop.getBuilder().addVertex(vertex7);
     oldDAGIncomingEdges.forEach(alsLoop.getBuilder()::connectVertices);
@@ -93,6 +93,7 @@ public class LoopInvariantCodeMotionPassTest {
             assertTrue(theIncomingEdge.isPresent());
             final IREdge newIREdge = new IREdge(theIncomingEdge.get().getType(), theIncomingEdge.get().getSrc(),
                 alsLoop, theIncomingEdge.get().getCoder());
+            builder.connectVertices(newIREdge);
           }
         });
       }
