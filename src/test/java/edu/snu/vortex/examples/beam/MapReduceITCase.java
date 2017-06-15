@@ -29,6 +29,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class MapReduceITCase {
+  private static final int TIMEOUT = 30000;
   private static final String mapReduce = "edu.snu.vortex.examples.beam.MapReduce";
   private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mr";
   private static final String output = TestUtil.rootDir + "/src/main/resources/sample_output";
@@ -48,14 +49,14 @@ public final class MapReduceITCase {
         .addDAGDirectory(dagDirectory);
   }
 
-  @Test
+  @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName())
         .build());
   }
 
-  @Test
+  @Test (timeout = TIMEOUT)
   public void testDisaggregation() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_disaggregation")
@@ -63,7 +64,7 @@ public final class MapReduceITCase {
         .build());
   }
 
-  @Test
+  @Test (timeout = TIMEOUT)
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_pado")

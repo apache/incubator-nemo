@@ -29,6 +29,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class MultinomialLogisticRegressionITCase {
+  private static final int TIMEOUT = 60000;
   private static final String mlr = "edu.snu.vortex.examples.beam.MultinomialLogisticRegression";
   private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mlr";
   private static final String numFeatures = "100";
@@ -50,14 +51,14 @@ public final class MultinomialLogisticRegressionITCase {
         .addDAGDirectory(dagDirectory);
   }
 
-  @Test
+  @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
         .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName())
         .build());
   }
 
-  @Test
+  @Test (timeout = TIMEOUT)
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName() + "_pado")
