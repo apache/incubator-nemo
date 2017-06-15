@@ -29,6 +29,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class BroadcastITCase {
+  private static final int TIMEOUT = 60000;
   private static final String broadcast = "edu.snu.vortex.examples.beam.Broadcast";
   private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mr";
   private static final String output = TestUtil.rootDir + "/src/main/resources/sample_output";
@@ -48,14 +49,14 @@ public final class BroadcastITCase {
         .addDAGDirectory(dagDirectory);
   }
 
-  @Test
+  @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
         .addJobId(BroadcastITCase.class.getSimpleName())
         .build());
   }
 
-  @Test
+  @Test (timeout = TIMEOUT)
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(BroadcastITCase.class.getSimpleName() + "_pado")
