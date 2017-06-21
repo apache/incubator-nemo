@@ -50,12 +50,13 @@ public final class AlternatingLeastSquareITCase {
         .addDAGDirectory(dagDirectory);
   }
 
-  @Test (timeout = TIMEOUT)
-  public void test() throws Exception {
-    JobLauncher.main(builder
-        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
-        .build());
-  }
+  // Disabled for speed purposes. To be re-enabled through TODO #138.
+//  @Test (timeout = TIMEOUT)
+//  public void test() throws Exception {
+//    JobLauncher.main(builder
+//        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
+//        .build());
+//  }
 
   @Test (timeout = TIMEOUT)
   public void testPado() throws Exception {

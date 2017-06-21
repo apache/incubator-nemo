@@ -1,5 +1,5 @@
 # Vortex 
-[![Build Status](http://cmscluster.snu.ac.kr:8080/jenkins/buildStatus/icon?job=Vortex-master)](http://cmscluster.snu.ac.kr:8080/jenkins/job/Vortex-master/)
+[![Build Status](http://147.46.247.143:8080/buildStatus/icon?job=Vortex-master)](http://147.46.247.143:8080/job/Vortex-master/)
 
 ## Requirements
 * Java 8
@@ -38,6 +38,7 @@ You can easily visualize a DAG using [online visualizer](https://service.jangho.
 
 ## Instructions for installing Protobuf
 * Vortex uses v2.5.0 downloadable at: https://github.com/google/protobuf/releases/tag/v2.5.0
+* If on ubuntu run `$ sudo apt-get install autoconf automake libtool curl make g++ unzip`
 * Extract the downloaded tarball and command:
     - sudo ./configure
     - sudo make
