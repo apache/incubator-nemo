@@ -22,7 +22,7 @@ import edu.snu.vortex.compiler.frontend.Frontend;
 import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
-import edu.snu.vortex.utils.dag.DAG;
+import edu.snu.vortex.common.dag.DAG;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -74,7 +74,7 @@ public final class UserApplicationRunner implements Runnable {
 
       final ExecutionPlan executionPlan = backend.compile(optimizedDAG);
       executionPlan.getRuntimeStageDAG().storeJSON(dagDirectory, "plan", "execution plan by compiler");
-      runtimeMaster.execute(executionPlan);
+      runtimeMaster.execute(executionPlan, frontend.getClientEndpoint());
       runtimeMaster.terminate();
     } catch (Exception e) {
       throw new RuntimeException(e);

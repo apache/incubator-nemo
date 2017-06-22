@@ -13,22 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.backend;
+package edu.snu.vortex.common.proxy;
 
-import edu.snu.vortex.compiler.ir.IREdge;
-import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.runtime.common.state.JobState;
 
 /**
- * Interface for backend components.
- * @param <ExecPlan> execution plan to compile the DAG into.
+ * A class provides the translation between the state of job and corresponding {@link ClientEndpoint}.
  */
-public interface Backend<ExecPlan> {
+abstract class StateTranslator {
+
   /**
-   * Compiles a DAG to an execution plan.
-   * @param dag DAG to compile.
-   * @return the execution plan generated.
-   * @throws Exception Exception on the way.
+   * Translate a job state of vortex to a corresponding client endpoint state.
+   *
+   * @param jobState to translate.
+   * @return the translated state.
    */
-  ExecPlan compile(DAG<IRVertex, IREdge> dag) throws Exception;
+  protected abstract Enum translateState(final JobState.State jobState);
 }

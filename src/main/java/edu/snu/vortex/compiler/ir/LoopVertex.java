@@ -15,8 +15,8 @@
  */
 package edu.snu.vortex.compiler.ir;
 
-import edu.snu.vortex.utils.dag.DAG;
-import edu.snu.vortex.utils.dag.DAGBuilder;
+import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.common.dag.DAGBuilder;
 
 import java.util.*;
 import java.util.function.IntPredicate;

@@ -28,15 +28,15 @@ import edu.snu.vortex.runtime.common.plan.logical.LogicalDAGGenerator;
 import edu.snu.vortex.runtime.common.plan.logical.Stage;
 import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
+import edu.snu.vortex.runtime.common.state.JobState;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
-import edu.snu.vortex.runtime.common.state.TaskState;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.resource.ResourceSpecification;
 import edu.snu.vortex.runtime.master.scheduler.*;
-import edu.snu.vortex.utils.dag.DAG;
-import edu.snu.vortex.utils.dag.DAGBuilder;
+import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.common.dag.DAGBuilder;
 import org.apache.reef.driver.context.ActiveContext;
 import org.junit.Before;
 import org.junit.Test;
@@ -179,10 +179,13 @@ public final class BatchSchedulerTest {
         sendTaskGroupCompletionEventToScheduler(jobStateManager, physicalStage));
 
     // Then, for the rest of the stages.
-    while (!jobStateManager.checkJobCompletion()) {
+    while (!jobStateManager.checkJobTermination()) {
       final List<PhysicalStage> stageList = physicalDAG.getTopologicalSort();
       stageList.forEach(physicalStage -> sendTaskGroupCompletionEventToScheduler(jobStateManager, physicalStage));
     }
+
+    // Check that the job have completed (not failed)
+    assertTrue(jobStateManager.getJobState().getStateMachine().getCurrentState() == JobState.State.COMPLETE);
 
     // Check that all stages have completed.
     physicalDAG.getVertices().forEach(physicalStage ->

@@ -15,8 +15,8 @@
  */
 package edu.snu.vortex.compiler.frontend.beam;
 
-import edu.snu.vortex.utils.dag.DAG;
-import edu.snu.vortex.utils.dag.DAGBuilder;
+import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.common.dag.DAGBuilder;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineRunner;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -25,7 +25,7 @@ import org.apache.beam.sdk.options.PipelineOptionsValidator;
 /**
  * Runner class for BEAM programs.
  */
-public final class Runner extends PipelineRunner<Result> {
+public final class Runner extends PipelineRunner<BeamResult> {
   private final VortexPipelineOptions vortexPipelineOptions;
 
   /**
@@ -41,7 +41,7 @@ public final class Runner extends PipelineRunner<Result> {
    * @param options given PipelineOptions.
    * @return The created PipelineRunner.
    */
-  public static PipelineRunner<Result> fromOptions(final PipelineOptions options) {
+  public static PipelineRunner<BeamResult> fromOptions(final PipelineOptions options) {
     final VortexPipelineOptions vortexOptions = PipelineOptionsValidator.validate(VortexPipelineOptions.class, options);
     return new Runner(vortexOptions);
   }
@@ -51,12 +51,13 @@ public final class Runner extends PipelineRunner<Result> {
    * @param pipeline the Pipeline to run.
    * @return The result of the pipeline.
    */
-  public Result run(final Pipeline pipeline) {
+  public BeamResult run(final Pipeline pipeline) {
     final DAGBuilder builder = new DAGBuilder<>();
     final Visitor visitor = new Visitor(builder, vortexPipelineOptions);
     pipeline.traverseTopologically(visitor);
     final DAG dag = builder.build();
-    BeamFrontend.supplyDAGFromRunner(dag);
-    return new Result();
+    final BeamResult beamResult = new BeamResult();
+    BeamFrontend.supplyDAGFromRunner(dag, beamResult);
+    return beamResult;
   }
 }

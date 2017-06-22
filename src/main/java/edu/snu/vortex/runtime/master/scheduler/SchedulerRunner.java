@@ -16,8 +16,8 @@
 package edu.snu.vortex.runtime.master.scheduler;
 
 import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.vortex.runtime.common.state.JobState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
-import edu.snu.vortex.runtime.exception.SchedulingException;
 import edu.snu.vortex.runtime.master.JobStateManager;
 import org.apache.reef.annotations.audience.DriverSide;
 
@@ -48,8 +48,7 @@ public final class SchedulerRunner implements Runnable {
    */
   @Override
   public void run() {
-    // TODO #208: Check for Job Termination in a Cleaner Way
-    while (!jobStateManager.checkJobCompletion()) {
+    while (!jobStateManager.checkJobTermination()) {
       try {
         final ScheduledTaskGroup scheduledTaskGroup = pendingTaskGroupQueue.takeFirst();
         final Optional<String> executorId = schedulingPolicy.attemptSchedule(scheduledTaskGroup);
@@ -65,9 +64,14 @@ public final class SchedulerRunner implements Runnable {
           schedulingPolicy.onTaskGroupScheduled(executorId.get(), scheduledTaskGroup);
         }
       } catch (final Exception e) {
-        throw new SchedulingException(e);
+        e.printStackTrace(System.err);
+        // TODO #285 make SchedulerRunner failure reportable
       }
     }
-    LOG.log(Level.INFO, "Job is complete, scheduler runner will terminate.");
+    if (jobStateManager.getJobState().getStateMachine().getCurrentState() == JobState.State.COMPLETE) {
+      LOG.log(Level.INFO, "Job is complete, scheduler runner will terminate.");
+    } else {
+      LOG.log(Level.INFO, "Job is failed, scheduler runner will terminate.");
+    }
   }
 }

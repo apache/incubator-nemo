@@ -21,7 +21,7 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
 import edu.snu.vortex.runtime.common.plan.logical.LogicalDAGGenerator;
-import edu.snu.vortex.utils.dag.DAG;
+import edu.snu.vortex.common.dag.DAG;
 
 /**
  * Backend component for Vortex Runtime.

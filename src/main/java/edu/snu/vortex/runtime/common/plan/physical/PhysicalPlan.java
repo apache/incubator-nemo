@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.runtime.common.plan.physical;
 
-import edu.snu.vortex.utils.dag.DAG;
+import edu.snu.vortex.common.dag.DAG;
 
 import java.io.Serializable;
 import java.util.logging.Logger;

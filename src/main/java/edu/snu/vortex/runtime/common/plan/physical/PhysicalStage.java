@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.runtime.common.plan.physical;
 
-import edu.snu.vortex.utils.dag.Vertex;
+import edu.snu.vortex.common.dag.Vertex;
 
 import java.util.List;
 

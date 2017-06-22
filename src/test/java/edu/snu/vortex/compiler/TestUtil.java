@@ -23,7 +23,7 @@ import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.examples.beam.AlternatingLeastSquareITCase;
 import edu.snu.vortex.examples.beam.ArgBuilder;
 import edu.snu.vortex.examples.beam.MultinomialLogisticRegressionITCase;
-import edu.snu.vortex.utils.dag.DAG;
+import edu.snu.vortex.common.dag.DAG;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.options.PipelineOptions;

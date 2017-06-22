@@ -21,7 +21,7 @@ import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
-import edu.snu.vortex.utils.StateMachine;
+import edu.snu.vortex.common.StateMachine;
 
 import java.util.*;
 import java.util.logging.Level;

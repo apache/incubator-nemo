@@ -19,7 +19,7 @@ import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
-import edu.snu.vortex.utils.dag.DAGBuilder;
+import edu.snu.vortex.common.dag.DAGBuilder;
 
 /**
  * Stage Builder.
