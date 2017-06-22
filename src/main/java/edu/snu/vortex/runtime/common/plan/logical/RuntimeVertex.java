@@ -17,7 +17,7 @@ package edu.snu.vortex.runtime.common.plan.logical;
 
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
-import edu.snu.vortex.utils.dag.Vertex;
+import edu.snu.vortex.common.dag.Vertex;
 
 /**
  * Represents an operator of a job, tagged with attributes about the operator.

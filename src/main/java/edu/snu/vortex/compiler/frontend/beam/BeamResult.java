@@ -15,39 +15,47 @@
  */
 package edu.snu.vortex.compiler.frontend.beam;
 
+import edu.snu.vortex.common.proxy.BeamStateTranslator;
+import edu.snu.vortex.common.proxy.ClientEndpoint;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.metrics.MetricResults;
 import org.joda.time.Duration;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Beam result.
- * TODO #32: Implement Beam Result
+ * TODO #32: Implement Beam BeamResult
  */
-public final class Result implements PipelineResult {
+public final class BeamResult extends ClientEndpoint implements PipelineResult {
+
+  public BeamResult() {
+    super(new BeamStateTranslator());
+  }
+
   @Override
   public State getState() {
-    throw new UnsupportedOperationException("getState() in frontend.beam.Result");
+    return (State) super.getJobState();
   }
 
   @Override
   public State cancel() throws IOException {
-    throw new UnsupportedOperationException("cancel() in frontend.beam.Result");
+    throw new UnsupportedOperationException("cancel() in frontend.beam.BeamResult");
   }
 
   @Override
   public State waitUntilFinish(final Duration duration) {
-    throw new UnsupportedOperationException("waitUntilFinish() in frontend.beam.Result");
+    return (State) super.waitUntilJobFinish(duration.getMillis(), TimeUnit.MILLISECONDS);
   }
 
   @Override
   public State waitUntilFinish() {
-    throw new UnsupportedOperationException("waitUntilFinish() in frontend.beam.Result");
+    return (State) super.waitUntilJobFinish();
   }
 
   @Override
   public MetricResults metrics() {
-    throw new UnsupportedOperationException("metrics() in frontend.beam.Result");
+    throw new UnsupportedOperationException("metrics() in frontend.beam.BeamResult");
   }
 }

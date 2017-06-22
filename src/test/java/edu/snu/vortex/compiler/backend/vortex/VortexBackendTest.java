@@ -23,12 +23,12 @@ import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
-import edu.snu.vortex.utils.dag.DAG;
-import edu.snu.vortex.utils.dag.DAGBuilder;
+import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.common.dag.DAGBuilder;
 import org.junit.Before;
 import org.junit.Test;
 
-import static edu.snu.vortex.utils.dag.DAG.EMPTY_DAG_DIRECTORY;
+import static edu.snu.vortex.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 import static org.junit.Assert.assertEquals;
 
 /**

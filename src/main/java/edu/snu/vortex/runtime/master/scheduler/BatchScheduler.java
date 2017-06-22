@@ -126,7 +126,7 @@ public final class BatchScheduler implements Scheduler {
     final Optional<String> stageIdForTaskGroupUponCompletion = jobStateManager.checkStageCompletion(taskGroupId);
     // if the stage this task group belongs to is complete,
     if (stageIdForTaskGroupUponCompletion.isPresent()) {
-      if (!jobStateManager.checkJobCompletion()) { // and if the job is not yet complete,
+      if (!jobStateManager.checkJobTermination()) { // and if the job is not yet complete or failed,
         scheduleNextStage(stageIdForTaskGroupUponCompletion.get());
       }
     }
@@ -203,7 +203,6 @@ public final class BatchScheduler implements Scheduler {
    * @param stageTocheck the subject stage to check for scheduling.
    * @return the stage to schedule next.
    */
-  // TODO #234: Add Unit Tests for Scheduler
   private Optional<PhysicalStage> selectNextStageToSchedule(final PhysicalStage stageTocheck) {
     Optional<PhysicalStage> selectedStage = Optional.empty();
     final List<PhysicalStage> parentStageList = physicalPlan.getStageDAG().getParents(stageTocheck.getId());

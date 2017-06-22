@@ -17,7 +17,7 @@ package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.state.BlockState;
-import edu.snu.vortex.utils.StateMachine;
+import edu.snu.vortex.common.StateMachine;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;

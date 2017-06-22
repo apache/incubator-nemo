@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.utils;
+package edu.snu.vortex.common;
 
 import edu.snu.vortex.compiler.TestUtil;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;

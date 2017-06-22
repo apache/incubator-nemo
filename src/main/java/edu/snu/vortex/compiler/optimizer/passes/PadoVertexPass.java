@@ -18,7 +18,7 @@ package edu.snu.vortex.compiler.optimizer.passes;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
-import edu.snu.vortex.utils.dag.DAG;
+import edu.snu.vortex.common.dag.DAG;
 
 import java.util.List;
 
