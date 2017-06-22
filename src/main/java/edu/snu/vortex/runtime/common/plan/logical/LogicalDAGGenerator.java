@@ -23,8 +23,8 @@ import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
 import edu.snu.vortex.runtime.utils.RuntimeAttributeConverter;
-import edu.snu.vortex.utils.dag.DAG;
-import edu.snu.vortex.utils.dag.DAGBuilder;
+import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.common.dag.DAGBuilder;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;

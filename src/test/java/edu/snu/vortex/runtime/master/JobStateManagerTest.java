@@ -25,19 +25,21 @@ import edu.snu.vortex.runtime.common.plan.logical.LogicalDAGGenerator;
 import edu.snu.vortex.runtime.common.plan.logical.Stage;
 import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
+import edu.snu.vortex.runtime.common.state.JobState;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
-import edu.snu.vortex.utils.dag.DAG;
-import edu.snu.vortex.utils.dag.DAGBuilder;
+import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.common.dag.DAGBuilder;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.*;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -132,8 +134,34 @@ public final class JobStateManagerTest {
       });
 
       if (stageIdx == stageList.size() - 1) {
-        assertTrue(jobStateManager.checkJobCompletion());
+        assertEquals(jobStateManager.getJobState().getStateMachine().getCurrentState(), JobState.State.COMPLETE);
       }
     }
+  }
+
+  /**
+   * Test whether the methods waiting finish of job works properly.
+   */
+  @Test(timeout = 1000)
+  public void testWaitUntilFinish() throws Exception {
+    // Create a JobStateManager of an empty dag.
+    final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.build();
+    final DAG<Stage, StageEdge> logicalDAG = irDAG.convert(new LogicalDAGGenerator());
+    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
+    final JobStateManager jobStateManager =
+        new JobStateManager(new PhysicalPlan("TestPlan", physicalDAG), new BlockManagerMaster());
+
+    assertFalse(jobStateManager.checkJobTermination());
+
+    // Wait for the job to finish and check the job state.
+    // It have to return EXECUTING state after timeout.
+    JobState state = jobStateManager.waitUntilFinish(100, TimeUnit.MILLISECONDS);
+    assertEquals(state.getStateMachine().getCurrentState(), JobState.State.EXECUTING);
+
+    // Complete the job and check the result again.
+    // It have to return COMPLETE.
+    jobStateManager.onJobStateChanged(JobState.State.COMPLETE);
+    state = jobStateManager.waitUntilFinish();
+    assertEquals(state.getStateMachine().getCurrentState(), JobState.State.COMPLETE);
   }
 }

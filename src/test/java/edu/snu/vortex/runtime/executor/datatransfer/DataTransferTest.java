@@ -40,7 +40,6 @@ import edu.snu.vortex.runtime.master.scheduler.BatchScheduler;
 import edu.snu.vortex.runtime.master.scheduler.PendingTaskGroupQueue;
 import edu.snu.vortex.runtime.master.scheduler.RoundRobinSchedulingPolicy;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
-import edu.snu.vortex.utils.dag.DAG;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.io.BoundedSource;
@@ -62,7 +61,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static edu.snu.vortex.utils.dag.DAG.EMPTY_DAG_DIRECTORY;
+import static edu.snu.vortex.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;

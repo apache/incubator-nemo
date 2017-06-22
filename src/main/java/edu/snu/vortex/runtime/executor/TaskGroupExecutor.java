@@ -31,7 +31,7 @@ import edu.snu.vortex.runtime.executor.datatransfer.InputReader;
 import edu.snu.vortex.runtime.executor.datatransfer.OutputWriter;
 import edu.snu.vortex.runtime.master.irimpl.ContextImpl;
 import edu.snu.vortex.runtime.master.irimpl.OutputCollectorImpl;
-import edu.snu.vortex.utils.dag.DAG;
+import edu.snu.vortex.common.dag.DAG;
 
 import java.util.*;
 import java.util.logging.Level;

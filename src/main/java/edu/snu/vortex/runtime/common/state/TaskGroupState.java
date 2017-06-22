@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.runtime.common.state;
 
-import edu.snu.vortex.utils.StateMachine;
+import edu.snu.vortex.common.StateMachine;
 
 /**
  * Represents the states and their transitions of a {@link edu.snu.vortex.runtime.common.plan.physical.TaskGroup}.

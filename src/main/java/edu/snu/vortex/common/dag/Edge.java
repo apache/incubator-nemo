@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.utils.dag;
+package edu.snu.vortex.common.dag;
 
 import java.io.Serializable;
 import java.util.logging.Logger;

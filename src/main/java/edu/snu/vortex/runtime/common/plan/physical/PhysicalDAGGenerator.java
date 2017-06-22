@@ -24,8 +24,8 @@ import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.logical.*;
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
 import edu.snu.vortex.runtime.exception.PhysicalPlanGenerationException;
-import edu.snu.vortex.utils.dag.DAG;
-import edu.snu.vortex.utils.dag.DAGBuilder;
+import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.common.dag.DAGBuilder;
 
 import java.util.HashMap;
 import java.util.List;

@@ -17,7 +17,7 @@ package edu.snu.vortex.compiler.ir;
 
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
-import edu.snu.vortex.utils.dag.Vertex;
+import edu.snu.vortex.common.dag.Vertex;
 
 /**
  * The top-most wrapper for a user operation in the Vortex IR.

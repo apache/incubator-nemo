@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.utils;
+package edu.snu.vortex.common;
 
-import edu.snu.vortex.utils.dag.DAG;
-import edu.snu.vortex.utils.dag.Edge;
-import edu.snu.vortex.utils.dag.DAGBuilder;
-import edu.snu.vortex.utils.dag.Vertex;
+import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.common.dag.Edge;
+import edu.snu.vortex.common.dag.DAGBuilder;
+import edu.snu.vortex.common.dag.Vertex;
 import org.junit.Before;
 import org.junit.Test;
 

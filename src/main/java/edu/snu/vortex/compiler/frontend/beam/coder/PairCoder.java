@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.compiler.frontend.beam.coder;
 
-import edu.snu.vortex.utils.Pair;
+import edu.snu.vortex.common.Pair;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.StructuredCoder;
@@ -28,7 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * BEAM Coder for {@link edu.snu.vortex.utils.Pair}. Reference: KvCoder in BEAM.
+ * BEAM Coder for {@link edu.snu.vortex.common.Pair}. Reference: KvCoder in BEAM.
  * @param <A> type for the left coder.
  * @param <B> type for the right coder.
  */

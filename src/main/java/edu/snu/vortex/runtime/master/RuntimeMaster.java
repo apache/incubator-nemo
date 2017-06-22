@@ -16,6 +16,8 @@
 package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.client.JobConf;
+import edu.snu.vortex.common.proxy.ClientEndpoint;
+import edu.snu.vortex.common.proxy.DriverEndpoint;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
@@ -33,12 +35,15 @@ import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
 import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
-import edu.snu.vortex.utils.dag.DAG;
 import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
+import edu.snu.vortex.common.dag.DAG;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -52,6 +57,7 @@ import java.util.logging.Logger;
  */
 public final class RuntimeMaster {
   private static final Logger LOG = Logger.getLogger(RuntimeMaster.class.getName());
+  private static final int DAG_LOGGING_PERIOD = 3000;
 
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
@@ -80,18 +86,22 @@ public final class RuntimeMaster {
   /**
    * Submits the {@link ExecutionPlan} to Runtime.
    * @param executionPlan to execute.
+   * @param clientEndpoint of this plan.
    */
-  public void execute(final ExecutionPlan executionPlan) {
+  public void execute(final ExecutionPlan executionPlan,
+                      final ClientEndpoint clientEndpoint) {
     physicalPlan = generatePhysicalPlan(executionPlan);
     try {
-      // TODO #208: Cleanup Execution Threads
       jobStateManager = scheduler.scheduleJob(physicalPlan, blockManagerMaster);
-      int i = 0;
-      while (!jobStateManager.checkJobCompletion()) {
-        jobStateManager.storeJSON(dagDirectory, String.valueOf(i++));
-        // Check every 3 seconds for job completion.
-        Thread.sleep(3000);
-      }
+      final DriverEndpoint driverEndpoint = new DriverEndpoint(jobStateManager, clientEndpoint);
+
+      // Schedule dag logging thread
+      final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging();
+
+      // Wait the job to finish and stop logging
+      jobStateManager.waitUntilFinish();
+      dagLoggingExecutor.shutdown();
+
       jobStateManager.storeJSON(dagDirectory, "final");
       LOG.log(Level.INFO, "{0} is complete!", executionPlan.getId());
     } catch (Exception e) {
@@ -212,5 +222,24 @@ public final class RuntimeMaster {
     default:
       throw new UnknownExecutionStateException(new Exception("This BlockState is unknown: " + state));
     }
+  }
+
+  /**
+   * Schedules a periodic DAG logging thread.
+   * TODO #58: Web UI (Real-time visualization)
+   *
+   * @return the scheduled executor service.
+   */
+  private ScheduledExecutorService scheduleDagLogging() {
+    final ScheduledExecutorService dagLoggingExecutor = Executors.newSingleThreadScheduledExecutor();
+    dagLoggingExecutor.scheduleAtFixedRate(new Runnable() {
+      private int dagLogFileIndex = 0;
+
+      public void run() {
+        jobStateManager.storeJSON(dagDirectory, String.valueOf(dagLogFileIndex++));
+      }
+    }, DAG_LOGGING_PERIOD, DAG_LOGGING_PERIOD, TimeUnit.MILLISECONDS);
+
+    return dagLoggingExecutor;
   }
 }

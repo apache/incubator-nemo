@@ -18,13 +18,13 @@ package edu.snu.vortex.compiler.optimizer.examples;
 import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
-import edu.snu.vortex.utils.dag.DAG;
-import edu.snu.vortex.utils.dag.DAGBuilder;
+import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.common.dag.DAGBuilder;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static edu.snu.vortex.utils.dag.DAG.EMPTY_DAG_DIRECTORY;
+import static edu.snu.vortex.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 
 /**
  * A sample MapReduce application.

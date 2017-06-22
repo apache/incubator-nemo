@@ -16,8 +16,8 @@
 package edu.snu.vortex.runtime.common.plan.logical;
 
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
-import edu.snu.vortex.utils.dag.DAG;
-import edu.snu.vortex.utils.dag.Vertex;
+import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.common.dag.Vertex;
 
 /**
  * Represents a stage in Runtime's execution of a job.

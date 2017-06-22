@@ -17,8 +17,8 @@ package edu.snu.vortex.runtime.common.plan;
 
 import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
-import edu.snu.vortex.utils.dag.Edge;
-import edu.snu.vortex.utils.dag.Vertex;
+import edu.snu.vortex.common.dag.Edge;
+import edu.snu.vortex.common.dag.Vertex;
 
 /**
  * Represents the edge between vertices in a logical/physical plan in runtime.
