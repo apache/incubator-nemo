@@ -119,6 +119,8 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
    */
   public DAGBuilder<V, E> removeVertex(final V v) {
     vertices.remove(v);
+    incomingEdges.get(v).forEach(e -> outgoingEdges.get(e.getSrc()).remove(e));
+    outgoingEdges.get(v).forEach(e -> incomingEdges.get(e.getDst()).remove(e));
     incomingEdges.remove(v);
     outgoingEdges.remove(v);
     return this;
@@ -138,7 +140,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
       outgoingEdges.get(src).add(edge);
     } else {
       throw new IllegalVertexOperationException("The DAG does not contain either src or dst of the edge: "
-          + src + " -> " + dst);
+          + (src == null ? null : src.getId()) + " -> " + (dst == null ? null : dst.getId()));
     }
     return this;
   }
