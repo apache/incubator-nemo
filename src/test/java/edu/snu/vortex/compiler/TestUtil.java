@@ -21,6 +21,7 @@ import edu.snu.vortex.compiler.frontend.Frontend;
 import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.examples.beam.AlternatingLeastSquareITCase;
+import edu.snu.vortex.examples.beam.AlternatingLeastSquareInefficient;
 import edu.snu.vortex.examples.beam.ArgBuilder;
 import edu.snu.vortex.examples.beam.MultinomialLogisticRegressionITCase;
 import edu.snu.vortex.common.dag.DAG;
@@ -45,6 +46,27 @@ public final class TestUtil {
   public static DAG<IRVertex, IREdge> compileALSDAG() throws Exception {
     final Frontend beamFrontend = new BeamFrontend();
     final ArgBuilder alsArgBuilder = AlternatingLeastSquareITCase.builder;
+    final Configuration configuration = JobLauncher.getJobConf(alsArgBuilder.build());
+    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
+    final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
+    final String[] arguments = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
+
+    return beamFrontend.compile(className, arguments);
+  }
+
+  public static DAG<IRVertex, IREdge> compileALSInefficientDAG() throws Exception {
+    final String alsInefficient = "edu.snu.vortex.examples.beam.AlternatingLeastSquareInefficient";
+    final String input = rootDir + "/src/main/resources/sample_input_als";
+    final String numFeatures = "10";
+    final String numIteration = "3";
+    final String dagDirectory = "./dag";
+
+    final Frontend beamFrontend = new BeamFrontend();
+    final ArgBuilder alsArgBuilder = new ArgBuilder()
+        .addJobId(AlternatingLeastSquareInefficient.class.getSimpleName())
+        .addUserMain(alsInefficient)
+        .addUserArgs(input, numFeatures, numIteration)
+        .addDAGDirectory(dagDirectory);
     final Configuration configuration = JobLauncher.getJobConf(alsArgBuilder.build());
     final Injector injector = Tang.Factory.getTang().newInjector(configuration);
     final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
