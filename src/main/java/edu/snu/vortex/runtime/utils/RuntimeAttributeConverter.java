@@ -131,7 +131,7 @@ public final class RuntimeAttributeConverter {
                   "\'" + irAttributeVal + "\' can not be a value of " + irAttributeKey);
           }
 
-          runtimeEdgeAttributes.put(RuntimeAttribute.Key.BlockStore, channelPlacementAttrVal);
+          runtimeEdgeAttributes.put(RuntimeAttribute.Key.PartitionStore, channelPlacementAttrVal);
           break;
         case ChannelTransferPolicy:
           final RuntimeAttribute channelTransferPolicyAttrVal;

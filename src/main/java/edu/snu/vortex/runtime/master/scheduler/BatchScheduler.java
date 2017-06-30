@@ -24,7 +24,7 @@ import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.IllegalStateTransitionException;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
 import edu.snu.vortex.runtime.exception.UnrecoverableFailureException;
-import edu.snu.vortex.runtime.master.BlockManagerMaster;
+import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.JobStateManager;
 
 import javax.inject.Inject;
@@ -70,9 +70,9 @@ public final class BatchScheduler implements Scheduler {
    */
   @Override
   public synchronized JobStateManager scheduleJob(final PhysicalPlan jobToSchedule,
-                                                  final BlockManagerMaster blockManagerMaster) {
+                                                  final PartitionManagerMaster partitionManagerMaster) {
     this.physicalPlan = jobToSchedule;
-    this.jobStateManager = new JobStateManager(jobToSchedule, blockManagerMaster);
+    this.jobStateManager = new JobStateManager(jobToSchedule, partitionManagerMaster);
 
     LOG.log(Level.INFO, "Job to schedule: {0}", jobToSchedule.getId());
 

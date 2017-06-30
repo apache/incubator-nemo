@@ -22,7 +22,7 @@ import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 import edu.snu.vortex.runtime.exception.UnsupportedCommPatternException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionerException;
-import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
+import edu.snu.vortex.runtime.executor.partition.PartitionManagerWorker;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,16 +39,16 @@ public final class OutputWriter extends DataTransfer {
   /**
    * The Block Manager Worker.
    */
-  private final BlockManagerWorker blockManagerWorker;
+  private final PartitionManagerWorker partitionManagerWorker;
 
   public OutputWriter(final int srcTaskIdx,
                       final RuntimeVertex dstRuntimeVertex,
                       final RuntimeEdge runtimeEdge,
-                      final BlockManagerWorker blockManagerWorker) {
+                      final PartitionManagerWorker partitionManagerWorker) {
     super(runtimeEdge.getId());
     this.runtimeEdge = runtimeEdge;
     this.dstRuntimeVertex = dstRuntimeVertex;
-    this.blockManagerWorker = blockManagerWorker;
+    this.partitionManagerWorker = partitionManagerWorker;
     this.srcTaskIdx = srcTaskIdx;
   }
 
@@ -73,15 +73,15 @@ public final class OutputWriter extends DataTransfer {
   }
 
   private void writeOneToOne(final Iterable<Element> dataToWrite) {
-    final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
-    blockManagerWorker.putBlock(blockId, dataToWrite,
-        runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.BlockStore));
+    final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
+    partitionManagerWorker.putPartition(partitionId, dataToWrite,
+        runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.PartitionStore));
   }
 
   private void writeBroadcast(final Iterable<Element> dataToWrite) {
-    final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
-    blockManagerWorker.putBlock(blockId, dataToWrite,
-        runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.BlockStore));
+    final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
+    partitionManagerWorker.putPartition(partitionId, dataToWrite,
+        runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.PartitionStore));
   }
 
   private void writeScatterGather(final Iterable<Element> dataToWrite) {
@@ -101,11 +101,11 @@ public final class OutputWriter extends DataTransfer {
 
       // Then write each partition appropriately to the target data placement.
       IntStream.range(0, dstParallelism).forEach(partitionIdx -> {
-        // Give each partition its own block id
-        final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx, partitionIdx);
-        blockManagerWorker.putBlock(blockId,
+        // Give each partition its own partition id
+        final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx, partitionIdx);
+        partitionManagerWorker.putPartition(partitionId,
             partitionedOutputList.get(partitionIdx),
-            runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.BlockStore));
+            runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.PartitionStore));
       });
       break;
     case Range:

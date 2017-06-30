@@ -173,12 +173,12 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     switch (controlMessage.getType()) {
       case TaskGroupStateChanged:
       case ScheduleTaskGroup:
-      case BlockStateChanged:
+      case PartitionStateChanged:
       case ExecutorFailed:
         return MessageType.Send;
-      case RequestBlockLocation:
+      case RequestPartitionLocation:
         return MessageType.Request;
-      case BlockLocationInfo:
+      case PartitionLocationInfo:
         return MessageType.Reply;
       default:
         throw new IllegalArgumentException(controlMessage.toString());
@@ -187,8 +187,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
   private String getExecutorId(final ControlMessage.Message controlMessage) {
     switch (controlMessage.getType()) {
-      case RequestBlockLocation:
-        return controlMessage.getRequestBlockLocationMsg().getExecutorId();
+      case RequestPartitionLocation:
+        return controlMessage.getRequestPartitionLocationMsg().getExecutorId();
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }
@@ -196,8 +196,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
   private long getRequestId(final ControlMessage.Message controlMessage) {
     switch (controlMessage.getType()) {
-      case BlockLocationInfo:
-        return controlMessage.getBlockLocationInfoMsg().getRequestId();
+      case PartitionLocationInfo:
+        return controlMessage.getPartitionLocationInfoMsg().getRequestId();
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }
@@ -206,8 +206,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
   private String getListenerId(final ControlMessage.Message controlMessage) {
     switch (controlMessage.getType()) {
       case TaskGroupStateChanged:
-      case BlockStateChanged:
-      case RequestBlockLocation:
+      case PartitionStateChanged:
+      case RequestPartitionLocation:
       case ExecutorFailed:
         return MessageEnvironment.MASTER_MESSAGE_RECEIVER;
       case ScheduleTaskGroup:

@@ -8,9 +8,9 @@ option java_outer_classname = "ControlMessage";
 enum MessageType {
     TaskGroupStateChanged = 0;
     ScheduleTaskGroup = 1;
-    BlockStateChanged = 2;
-    RequestBlockLocation = 3;
-    BlockLocationInfo = 4;
+    PartitionStateChanged = 2;
+    RequestPartitionLocation = 3;
+    PartitionLocationInfo = 4;
     ExecutorFailed = 5;
 }
 
@@ -19,9 +19,9 @@ message Message {
     required int64 id = 2;
     optional TaskGroupStateChangedMsg taskStateChangedMsg = 3;
     optional ScheduleTaskGroupMsg scheduleTaskGroupMsg = 4;
-    optional BlockStateChangedMsg blockStateChangedMsg = 5;
-    optional RequestBlockLocationMsg requestBlockLocationMsg = 6;
-    optional BlockLocationInfoMsg blockLocationInfoMsg = 7;
+    optional PartitionStateChangedMsg partitionStateChangedMsg = 5;
+    optional RequestPartitionLocationMsg requestPartitionLocationMsg = 6;
+    optional PartitionLocationInfoMsg partitionLocationInfoMsg = 7;
     optional ExecutorFailedMsg executorFailedMsg = 8;
 }
 
@@ -30,9 +30,9 @@ message ScheduleTaskGroupMsg {
     required bytes taskGroup = 1;
 }
 
-message BlockLocationInfoMsg {
+message PartitionLocationInfoMsg {
     required int64 requestId = 1; // To find the matching request msg
-    required string blockId = 2;
+    required string partitionId = 2;
     required string ownerExecutorId = 3;
 }
 
@@ -44,15 +44,15 @@ message TaskGroupStateChangedMsg {
     repeated string failedTaskIds = 4;
 }
 
-message BlockStateChangedMsg {
+message PartitionStateChangedMsg {
     required string executorId = 1;
-    required string blockId = 2;
-    required BlockStateFromExecutor state = 3;
+    required string partitionId = 2;
+    required PartitionStateFromExecutor state = 3;
 }
 
-message RequestBlockLocationMsg {
+message RequestPartitionLocationMsg {
     required string executorId = 1;
-    required string blockId = 2;
+    required string partitionId = 2;
 }
 
 message ExecutorFailedMsg {
@@ -61,15 +61,15 @@ message ExecutorFailedMsg {
 }
 
 // Messages between Executors
-message RequestBlockMsg {
-    required int64 requestId = 1; // To handle multiple outstanding requests on one link between BlockTransferPeers
-    required string blockId = 2;
-    required BlockStore blockStore = 3;
+message RequestPartitionMsg {
+    required int64 requestId = 1; // To handle multiple outstanding requests on one link between PartitionTransferPeers
+    required string partitionId = 2;
+    required PartitionStore partitionStore = 3;
     required string runtimeEdgeId = 4;
 }
 
-message BlockTransferMsg {
-    required int64 requestId = 1; // Should be equal to requestId of the corresponding RequestBlockMsg
+message PartitionTransferMsg {
+    required int64 requestId = 1; // Should be equal to requestId of the corresponding RequestPartitionMsg
     repeated bytes data = 2;
 }
 
@@ -81,15 +81,15 @@ enum TaskGroupStateFromExecutor {
     FAILED_UNRECOVERABLE = 4;
 }
 
-enum BlockStateFromExecutor {
-    BLOCK_READY = 0;
+enum PartitionStateFromExecutor {
+    PARTITION_READY = 0;
     MOVING = 1;
     COMMITTED = 2;
     LOST = 3;
     REMOVED = 4;
 }
 
-enum BlockStore {
+enum PartitionStore {
     LOCAL = 0;
     MEMORY = 1;
     FILE = 2;

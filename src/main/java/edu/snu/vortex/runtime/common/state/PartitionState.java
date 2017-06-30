@@ -18,28 +18,28 @@ package edu.snu.vortex.runtime.common.state;
 import edu.snu.vortex.common.StateMachine;
 
 /**
- * Represents the states of a whole block(a task output).
+ * Represents the states of a whole partition(a task output).
  */
-public final class BlockState {
+public final class PartitionState {
   private final StateMachine stateMachine;
 
-  public BlockState() {
-    stateMachine = buildBlockStateMachine();
+  public PartitionState() {
+    stateMachine = buildPartitionStateMachine();
   }
 
-  private StateMachine buildBlockStateMachine() {
+  private StateMachine buildPartitionStateMachine() {
     final StateMachine.Builder stateMachineBuilder = StateMachine.newBuilder();
 
     // Add states
-    stateMachineBuilder.addState(State.READY, "The block is ready to be created.");
-    stateMachineBuilder.addState(State.MOVING, "The block is moving.");
-    stateMachineBuilder.addState(State.COMMITTED, "The block has been committed.");
-    stateMachineBuilder.addState(State.REMOVED, "The block has been removed (e.g., GC-ed).");
-    stateMachineBuilder.addState(State.LOST, "Block lost.");
+    stateMachineBuilder.addState(State.READY, "The partition is ready to be created.");
+    stateMachineBuilder.addState(State.MOVING, "The partition is moving.");
+    stateMachineBuilder.addState(State.COMMITTED, "The partition has been committed.");
+    stateMachineBuilder.addState(State.REMOVED, "The partition has been removed (e.g., GC-ed).");
+    stateMachineBuilder.addState(State.LOST, "Partition lost.");
 
     // Add transitions
     stateMachineBuilder.addTransition(State.READY, State.COMMITTED, "Committed as soon as created");
-    stateMachineBuilder.addTransition(State.READY, State.MOVING, "Block moving");
+    stateMachineBuilder.addTransition(State.READY, State.MOVING, "Partition moving");
     stateMachineBuilder.addTransition(State.MOVING, State.COMMITTED, "Successfully moved and committed");
     stateMachineBuilder.addTransition(State.MOVING, State.LOST, "Lost before committed");
     stateMachineBuilder.addTransition(State.COMMITTED, State.LOST, "Lost after committed");
@@ -58,23 +58,23 @@ public final class BlockState {
   }
 
   /**
-   * BlockState.
+   * PartitionState.
    */
   public enum State {
     READY,
     MOVING,
     COMMITTED,
     /**
-     * A block can be considered "lost" by BlockManagerMaster for the following reasons:
-     * 1) The executor that has the block goes down
-     * 2) Local block fetch failure (disk corruption, block evicted due to memory pressure, etc)
-     * 3) Remote block fetch failure (network partitioning, network timeout, etc)
+     * A partition can be considered "lost" by PartitionManagerMaster for the following reasons:
+     * 1) The executor that has the partition goes down
+     * 2) Local partition fetch failure (disk corruption, partition evicted due to memory pressure, etc)
+     * 3) Remote partition fetch failure (network partitioning, network timeout, etc)
      *
-     * Our current BlockManager implementation does *not* properly handle the above cases.
+     * Our current PartitionManager implementation does *not* properly handle the above cases.
      * They should be handled in the future with the issue, TODO #163: Handle Fault Tolerance
      *
-     * Moreover, we assume that all lost blocks are recoverable,
-     * meaning that we do not fail the job upon the event of a lost block.
+     * Moreover, we assume that all lost partitions are recoverable,
+     * meaning that we do not fail the job upon the event of a lost partition.
      * Thus, we only have a single state(LOST) that represents failure.
      */
     LOST,
