@@ -16,7 +16,7 @@
 package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
-import edu.snu.vortex.runtime.common.state.BlockState;
+import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.common.StateMachine;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -28,69 +28,70 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Master-side block manager.
+ * Master-side partition manager.
  * For now, all its operations are synchronized to guarantee thread safety.
  */
 @ThreadSafe
-public final class BlockManagerMaster {
-  private static final Logger LOG = Logger.getLogger(BlockManagerMaster.class.getName());
-  private final Map<String, BlockState> blockIdToState;
-  private final Map<String, String> committedBlockIdToWorkerId;
+public final class PartitionManagerMaster {
+  private static final Logger LOG = Logger.getLogger(PartitionManagerMaster.class.getName());
+  private final Map<String, PartitionState> partitionIdToState;
+  private final Map<String, String> committedPartitionIdToWorkerId;
 
   @Inject
-  public BlockManagerMaster() {
-    this.blockIdToState = new HashMap<>();
-    this.committedBlockIdToWorkerId = new HashMap<>();
+  public PartitionManagerMaster() {
+    this.partitionIdToState = new HashMap<>();
+    this.committedPartitionIdToWorkerId = new HashMap<>();
   }
 
   public synchronized void initializeState(final String edgeId, final int srcTaskIndex) {
-    final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskIndex);
-    blockIdToState.put(blockId, new BlockState());
+    final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex);
+    partitionIdToState.put(partitionId, new PartitionState());
   }
 
   public synchronized void initializeState(final String edgeId, final int srcTaskIndex, final int partitionIndex) {
-    final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskIndex, partitionIndex);
-    blockIdToState.put(blockId, new BlockState());
+    final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex, partitionIndex);
+    partitionIdToState.put(partitionId, new PartitionState());
   }
 
   public synchronized void removeWorker(final String executorId) {
-    // Set block states to lost
-    committedBlockIdToWorkerId.entrySet().stream()
+    // Set partition states to lost
+    committedPartitionIdToWorkerId.entrySet().stream()
         .filter(e -> e.getValue().equals(executorId))
         .map(Map.Entry::getKey)
-        .forEach(blockId -> onBlockStateChanged(executorId, blockId, BlockState.State.LOST));
+        .forEach(partitionId -> onPartitionStateChanged(executorId, partitionId, PartitionState.State.LOST));
 
     // Update worker-related global variables
-    committedBlockIdToWorkerId.entrySet().removeIf(e -> e.getValue().equals(executorId));
+    committedPartitionIdToWorkerId.entrySet().removeIf(e -> e.getValue().equals(executorId));
   }
 
-  public synchronized Optional<String> getBlockLocation(final String blockId) {
-    final String executorId = committedBlockIdToWorkerId.get(blockId);
+  public synchronized Optional<String> getPartitionLocation(final String partitionId) {
+    final String executorId = committedPartitionIdToWorkerId.get(partitionId);
     return Optional.ofNullable(executorId);
   }
 
-  public synchronized void onBlockStateChanged(final String executorId,
-                                               final String blockId,
-                                               final BlockState.State newState) {
-    final StateMachine sm = blockIdToState.get(blockId).getStateMachine();
+  public synchronized void onPartitionStateChanged(final String executorId,
+                                                   final String partitionId,
+                                                   final PartitionState.State newState) {
+    final StateMachine sm = partitionIdToState.get(partitionId).getStateMachine();
     final Enum oldState = sm.getCurrentState();
-    LOG.log(Level.FINE, "Block State Transition: id {0} from {1} to {2}", new Object[]{blockId, oldState, newState});
+    LOG.log(Level.FINE, "Partition State Transition: id {0} from {1} to {2}",
+        new Object[]{partitionId, oldState, newState});
 
     sm.setState(newState);
 
     switch (newState) {
       case MOVING:
-        if (oldState == BlockState.State.COMMITTED) {
+        if (oldState == PartitionState.State.COMMITTED) {
           LOG.log(Level.WARNING, "Transition from committed to moving: "
               + "reset to commited since receiver probably reached us before the sender");
-          sm.setState(BlockState.State.COMMITTED);
+          sm.setState(PartitionState.State.COMMITTED);
         }
         break;
       case COMMITTED:
-        committedBlockIdToWorkerId.put(blockId, executorId);
+        committedPartitionIdToWorkerId.put(partitionId, executorId);
         break;
       case REMOVED:
-        committedBlockIdToWorkerId.remove(blockId);
+        committedPartitionIdToWorkerId.remove(partitionId);
         break;
       case LOST:
         throw new UnsupportedOperationException(newState.toString());

@@ -23,7 +23,7 @@ import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 import edu.snu.vortex.runtime.common.plan.physical.Task;
 import edu.snu.vortex.runtime.exception.UnsupportedCommPatternException;
-import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
+import edu.snu.vortex.runtime.executor.partition.PartitionManagerWorker;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +37,7 @@ import java.util.stream.StreamSupport;
 public final class InputReader extends DataTransfer {
   private final int dstTaskIndex;
 
-  private final BlockManagerWorker blockManagerWorker;
+  private final PartitionManagerWorker partitionManagerWorker;
 
   /**
    * Attributes that specify how we should read the input.
@@ -48,13 +48,13 @@ public final class InputReader extends DataTransfer {
   public InputReader(final int dstTaskIndex,
                      final RuntimeVertex srcRuntimeVertex,
                      final RuntimeEdge runtimeEdge,
-                     final BlockManagerWorker blockManagerWorker) {
+                     final PartitionManagerWorker partitionManagerWorker) {
 
     super(runtimeEdge.getId());
     this.dstTaskIndex = dstTaskIndex;
     this.srcRuntimeVertex = srcRuntimeVertex;
     this.runtimeEdge = runtimeEdge;
-    this.blockManagerWorker = blockManagerWorker;
+    this.partitionManagerWorker = partitionManagerWorker;
   }
 
   /**
@@ -76,9 +76,9 @@ public final class InputReader extends DataTransfer {
   }
 
   private Iterable<Element> readOneToOne() {
-    final String blockId = RuntimeIdGenerator.generateBlockId(getId(), dstTaskIndex);
-    return blockManagerWorker.getBlock(blockId, getId(),
-        runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.BlockStore));
+    final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), dstTaskIndex);
+    return partitionManagerWorker.getPartition(partitionId, getId(),
+        runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.PartitionStore));
   }
 
   private Iterable<Element> readBroadcast() {
@@ -87,10 +87,10 @@ public final class InputReader extends DataTransfer {
     final List<Element> concatStreamBase = new ArrayList<>();
     Stream<Element> concatStream = concatStreamBase.stream();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
+      final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
       final Iterable<Element> dataFromATask =
-          blockManagerWorker.getBlock(blockId, getId(),
-              runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.BlockStore));
+          partitionManagerWorker.getPartition(partitionId, getId(),
+              runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.PartitionStore));
       concatStream = Stream.concat(concatStream, StreamSupport.stream(dataFromATask.spliterator(), false));
     }
     return concatStream.collect(Collectors.toList());
@@ -102,10 +102,10 @@ public final class InputReader extends DataTransfer {
     final List<Element> concatStreamBase = new ArrayList<>();
     Stream<Element> concatStream = concatStreamBase.stream();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx, dstTaskIndex);
+      final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx, dstTaskIndex);
       final Iterable<Element> dataFromATask =
-          blockManagerWorker.getBlock(blockId, getId(),
-              runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.BlockStore));
+          partitionManagerWorker.getPartition(partitionId, getId(),
+              runtimeEdge.getEdgeAttributes().get(RuntimeAttribute.Key.PartitionStore));
       concatStream = Stream.concat(concatStream, StreamSupport.stream(dataFromATask.spliterator(), false));
     }
     return concatStream.collect(Collectors.toList());

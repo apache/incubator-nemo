@@ -32,8 +32,8 @@ import edu.snu.vortex.runtime.common.plan.logical.RuntimeBoundedSourceVertex;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 import edu.snu.vortex.runtime.executor.Executor;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
-import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
-import edu.snu.vortex.runtime.master.BlockManagerMaster;
+import edu.snu.vortex.runtime.executor.partition.PartitionManagerWorker;
+import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.scheduler.BatchScheduler;
@@ -79,9 +79,9 @@ public final class DataTransferTest {
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
   private static final Tang TANG = Tang.Factory.getTang();
 
-  private BlockManagerMaster master;
-  private BlockManagerWorker worker1;
-  private BlockManagerWorker worker2;
+  private PartitionManagerMaster master;
+  private PartitionManagerWorker worker1;
+  private PartitionManagerWorker worker2;
 
   @Before
   public void setUp() {
@@ -93,7 +93,7 @@ public final class DataTransferTest {
         new BatchScheduler(
             new RoundRobinSchedulingPolicy(containerManager, SCHEDULE_TIMEOUT), new PendingTaskGroupQueue());
     final AtomicInteger executorCount = new AtomicInteger(0);
-    final BlockManagerMaster master = new BlockManagerMaster();
+    final PartitionManagerMaster master = new PartitionManagerMaster();
 
     // Unused, but necessary for wiring up the message environments
     final RuntimeMaster runtimeMaster = new RuntimeMaster(scheduler, containerManager,
@@ -108,8 +108,8 @@ public final class DataTransferTest {
         injector);
   }
 
-  private BlockManagerWorker createWorker(final String executorId, final LocalMessageDispatcher messageDispatcher,
-                                          final Injector nameClientInjector) {
+  private PartitionManagerWorker createWorker(final String executorId, final LocalMessageDispatcher messageDispatcher,
+                                              final Injector nameClientInjector) {
     final LocalMessageEnvironment messageEnvironment = new LocalMessageEnvironment(executorId, messageDispatcher);
     final PersistentConnectionToMaster conToMaster = new PersistentConnectionToMaster(messageEnvironment);
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
@@ -119,13 +119,13 @@ public final class DataTransferTest {
     final Injector injector = nameClientInjector.forkInjector(executorConfiguration);
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
     injector.bindVolatileInstance(PersistentConnectionToMaster.class, conToMaster);
-    final BlockManagerWorker blockManagerWorker;
+    final PartitionManagerWorker partitionManagerWorker;
     try {
-      blockManagerWorker = injector.getInstance(BlockManagerWorker.class);
+      partitionManagerWorker = injector.getInstance(PartitionManagerWorker.class);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
-    blockManagerWorker.registerCoder(EDGE_ID, CODER);
+    partitionManagerWorker.registerCoder(EDGE_ID, CODER);
 
     // Unused, but necessary for wiring up the message environments
     final Executor executor = new Executor(
@@ -133,11 +133,11 @@ public final class DataTransferTest {
         EXECUTOR_CAPACITY,
         conToMaster,
         messageEnvironment,
-        blockManagerWorker,
-        new DataTransferFactory(blockManagerWorker));
+        partitionManagerWorker,
+        new DataTransferFactory(partitionManagerWorker));
     injector.bindVolatileInstance(Executor.class, executor);
 
-    return blockManagerWorker;
+    return partitionManagerWorker;
   }
 
   private Injector createNameClientInjector() {
@@ -188,8 +188,8 @@ public final class DataTransferTest {
     writeAndRead(worker1, worker2, RuntimeAttribute.ScatterGather);
   }
 
-  private void writeAndRead(final BlockManagerWorker sender,
-                            final BlockManagerWorker receiver,
+  private void writeAndRead(final PartitionManagerWorker sender,
+                            final PartitionManagerWorker receiver,
                             final RuntimeAttribute commPattern) {
     // Src setup
     final RuntimeAttributeMap srcVertexAttributes = new RuntimeAttributeMap();
@@ -209,7 +209,7 @@ public final class DataTransferTest {
     final RuntimeAttributeMap edgeAttributes = new RuntimeAttributeMap();
     edgeAttributes.put(RuntimeAttribute.Key.CommPattern, commPattern);
     edgeAttributes.put(RuntimeAttribute.Key.Partition, RuntimeAttribute.Hash);
-    edgeAttributes.put(RuntimeAttribute.Key.BlockStore, STORE);
+    edgeAttributes.put(RuntimeAttribute.Key.PartitionStore, STORE);
     final RuntimeEdge<RuntimeVertex> dummyEdge
         = new RuntimeEdge<>(EDGE_ID, edgeAttributes, srcVertex, dstVertex, CODER);
 

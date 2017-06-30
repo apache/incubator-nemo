@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.block;
+package edu.snu.vortex.runtime.executor.partition;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -22,7 +22,7 @@ import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
-import edu.snu.vortex.runtime.exception.UnsupportedBlockStoreException;
+import edu.snu.vortex.runtime.exception.UnsupportedPartitionStoreException;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -50,73 +50,73 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Handles block transfer between {@link edu.snu.vortex.runtime.executor.Executor}s.
+ * Handles partition transfer between {@link edu.snu.vortex.runtime.executor.Executor}s.
  */
 @ThreadSafe
-final class BlockTransferPeer {
-  private static final Logger LOG = Logger.getLogger(BlockTransferPeer.class.getName());
-  private static final RequestBlockMessageCodec REQUEST_MESSAGE_CODEC = new RequestBlockMessageCodec();
+final class PartitionTransferPeer {
+  private static final Logger LOG = Logger.getLogger(PartitionTransferPeer.class.getName());
+  private static final RequestPartitionMessageCodec REQUEST_MESSAGE_CODEC = new RequestPartitionMessageCodec();
   private static final LinkListener LINK_LISTENER = new LoggingLinkListener();
 
   private final Transport transport;
   private final NameResolver nameResolver;
-  private final InjectionFuture<BlockManagerWorker> blockManagerWorker;
+  private final InjectionFuture<PartitionManagerWorker> partitionManagerWorker;
 
   private final AtomicLong requestIdCounter;
   private final ConcurrentHashMap<Long, Coder> requestIdToCoder;
   private final ConcurrentHashMap<Long, CompletableFuture<Iterable<Element>>> requestIdToFuture;
 
   @Inject
-  private BlockTransferPeer(final NameResolver nameResolver,
-                            final TransportFactory transportFactory,
-                            final InjectionFuture<BlockManagerWorker> blockManagerWorker,
-                            final BlockClientHandler blockClientHandler,
-                            final BlockServerHandler blockServerHandler,
-                            final ExceptionHandler exceptionHandler,
-                            @Parameter(JobConf.ExecutorId.class) final String executorId) {
+  private PartitionTransferPeer(final NameResolver nameResolver,
+                                final TransportFactory transportFactory,
+                                final InjectionFuture<PartitionManagerWorker> partitionManagerWorker,
+                                final PartitionClientHandler partitionClientHandler,
+                                final PartitionServerHandler partitionServerHandler,
+                                final ExceptionHandler exceptionHandler,
+                                @Parameter(JobConf.ExecutorId.class) final String executorId) {
     this.nameResolver = nameResolver;
-    this.blockManagerWorker = blockManagerWorker;
+    this.partitionManagerWorker = partitionManagerWorker;
     this.requestIdCounter = new AtomicLong(1);
     this.requestIdToCoder = new ConcurrentHashMap<>();
     this.requestIdToFuture = new ConcurrentHashMap<>();
 
-    transport = transportFactory.newInstance(0, blockClientHandler, blockServerHandler, exceptionHandler);
+    transport = transportFactory.newInstance(0, partitionClientHandler, partitionServerHandler, exceptionHandler);
     final InetSocketAddress serverAddress = (InetSocketAddress) transport.getLocalAddress();
-    LOG.log(Level.FINE, "BlockTransferPeer starting, listening at {0}", serverAddress);
+    LOG.log(Level.FINE, "PartitionTransferPeer starting, listening at {0}", serverAddress);
 
-    final Identifier serverIdentifier = new BlockTransferPeerIdentifier(executorId);
+    final Identifier serverIdentifier = new PartitionTransferPeerIdentifier(executorId);
     try {
       nameResolver.register(serverIdentifier, serverAddress);
     } catch (final Exception e) {
-      LOG.log(Level.SEVERE, "Cannot register BlockTransferPeer to name server");
+      LOG.log(Level.SEVERE, "Cannot register PartitionTransferPeer to name server");
       throw new RuntimeException(e);
     }
   }
 
   /**
-   * Fetches a block asynchronously.
+   * Fetches a partition asynchronously.
    * @param remoteExecutorId id of the remote executor
-   * @param blockId id of the block
-   * @param runtimeEdgeId id of the {@link edu.snu.vortex.runtime.common.plan.RuntimeEdge} corresponds to the block
-   * @param blockStore type of the block store
-   * @return {@link CompletableFuture} for the block
+   * @param partitionId id of the partition
+   * @param runtimeEdgeId id of the {@link edu.snu.vortex.runtime.common.plan.RuntimeEdge} corresponds to the partition
+   * @param partitionStore type of the partition store
+   * @return {@link CompletableFuture} for the partition
    */
   CompletableFuture<Iterable<Element>> fetch(final String remoteExecutorId,
-                                             final String blockId,
+                                             final String partitionId,
                                              final String runtimeEdgeId,
-                                             final RuntimeAttribute blockStore) {
-    final Identifier remotePeerIdentifier = new BlockTransferPeerIdentifier(remoteExecutorId);
+                                             final RuntimeAttribute partitionStore) {
+    final Identifier remotePeerIdentifier = new PartitionTransferPeerIdentifier(remoteExecutorId);
     final InetSocketAddress remoteAddress;
-    final Coder coder = blockManagerWorker.get().getCoder(runtimeEdgeId);
+    final Coder coder = partitionManagerWorker.get().getCoder(runtimeEdgeId);
     try {
       remoteAddress = nameResolver.lookup(remotePeerIdentifier);
     } catch (final Exception e) {
-      LOG.log(Level.SEVERE, "Cannot lookup BlockTransferPeer {0}", remotePeerIdentifier);
+      LOG.log(Level.SEVERE, "Cannot lookup PartitionTransferPeer {0}", remotePeerIdentifier);
       throw new RuntimeException(e);
     }
     LOG.log(Level.INFO, "Looked up {0}", remoteAddress);
 
-    final Link<ControlMessage.RequestBlockMsg> link;
+    final Link<ControlMessage.RequestPartitionMsg> link;
     try {
       link = transport.open(remoteAddress, REQUEST_MESSAGE_CODEC, LINK_LISTENER);
     } catch (final IOException e) {
@@ -126,11 +126,11 @@ final class BlockTransferPeer {
     final CompletableFuture<Iterable<Element>> future = new CompletableFuture<>();
     requestIdToCoder.put(requestId, coder);
     requestIdToFuture.put(requestId, future);
-    final ControlMessage.RequestBlockMsg msg = ControlMessage.RequestBlockMsg.newBuilder()
+    final ControlMessage.RequestPartitionMsg msg = ControlMessage.RequestPartitionMsg.newBuilder()
         .setRequestId(requestId)
-        .setBlockId(blockId)
+        .setPartitionId(partitionId)
         .setRuntimeEdgeId(runtimeEdgeId)
-        .setBlockStore(convertBlockStore(blockStore))
+        .setPartitionStore(convertPartitionStore(partitionStore))
         .build();
     link.write(msg);
 
@@ -139,18 +139,18 @@ final class BlockTransferPeer {
   }
 
   /**
-   * A {@link Codec} implementation for {@link ControlMessage.RequestBlockMsg}.
+   * A {@link Codec} implementation for {@link ControlMessage.RequestPartitionMsg}.
    */
-  private static final class RequestBlockMessageCodec implements Codec<ControlMessage.RequestBlockMsg> {
+  private static final class RequestPartitionMessageCodec implements Codec<ControlMessage.RequestPartitionMsg> {
     @Override
-    public byte[] encode(final ControlMessage.RequestBlockMsg msg) {
+    public byte[] encode(final ControlMessage.RequestPartitionMsg msg) {
       return msg.toByteArray();
     }
 
     @Override
-    public ControlMessage.RequestBlockMsg decode(final byte[] bytes) {
+    public ControlMessage.RequestPartitionMsg decode(final byte[] bytes) {
       try {
-        return ControlMessage.RequestBlockMsg.parseFrom(bytes);
+        return ControlMessage.RequestPartitionMsg.parseFrom(bytes);
       } catch (final InvalidProtocolBufferException e) {
         throw new RuntimeException(e);
       }
@@ -158,24 +158,24 @@ final class BlockTransferPeer {
   }
 
   /**
-   * An {@link EventHandler} for incoming requests for {@link BlockTransferPeer}.
+   * An {@link EventHandler} for incoming requests for {@link PartitionTransferPeer}.
    */
-  private static final class BlockServerHandler implements EventHandler<TransportEvent> {
-    private final InjectionFuture<BlockManagerWorker> blockManagerWorker;
+  private static final class PartitionServerHandler implements EventHandler<TransportEvent> {
+    private final InjectionFuture<PartitionManagerWorker> partitionManagerWorker;
 
     @Inject
-    private BlockServerHandler(final InjectionFuture<BlockManagerWorker> blockManagerWorker) {
-      this.blockManagerWorker = blockManagerWorker;
+    private PartitionServerHandler(final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
+      this.partitionManagerWorker = partitionManagerWorker;
     }
 
     @Override
     public void onNext(final TransportEvent transportEvent) {
-      final BlockManagerWorker worker = blockManagerWorker.get();
-      final ControlMessage.RequestBlockMsg request = REQUEST_MESSAGE_CODEC.decode(transportEvent.getData());
-      final Iterable<Element> data = worker.getBlock(request.getBlockId(), request.getRuntimeEdgeId(),
-          convertBlockStoreType(request.getBlockStore()));
+      final PartitionManagerWorker worker = partitionManagerWorker.get();
+      final ControlMessage.RequestPartitionMsg request = REQUEST_MESSAGE_CODEC.decode(transportEvent.getData());
+      final Iterable<Element> data = worker.getPartition(request.getPartitionId(), request.getRuntimeEdgeId(),
+          convertPartitionStoreType(request.getPartitionStore()));
       final Coder coder = worker.getCoder(request.getRuntimeEdgeId());
-      final ControlMessage.BlockTransferMsg.Builder replyBuilder = ControlMessage.BlockTransferMsg.newBuilder()
+      final ControlMessage.PartitionTransferMsg.Builder replyBuilder = ControlMessage.PartitionTransferMsg.newBuilder()
           .setRequestId(request.getRequestId());
       for (final Element element : data) {
         // Memory leak if we don't do try-with-resources here
@@ -192,22 +192,22 @@ final class BlockTransferPeer {
   }
 
   /**
-   * An {@link EventHandler} for response from {@link BlockServerHandler}.
+   * An {@link EventHandler} for response from {@link PartitionServerHandler}.
    */
-  private static final class BlockClientHandler implements EventHandler<TransportEvent> {
-    private final InjectionFuture<BlockTransferPeer> blockTransferPeer;
+  private static final class PartitionClientHandler implements EventHandler<TransportEvent> {
+    private final InjectionFuture<PartitionTransferPeer> partitionTransferPeer;
 
     @Inject
-    private BlockClientHandler(final InjectionFuture<BlockTransferPeer> blockTransferPeer) {
-      this.blockTransferPeer = blockTransferPeer;
+    private PartitionClientHandler(final InjectionFuture<PartitionTransferPeer> partitionTransferPeer) {
+      this.partitionTransferPeer = partitionTransferPeer;
     }
 
     @Override
     public void onNext(final TransportEvent transportEvent) {
-      final BlockTransferPeer peer = blockTransferPeer.get();
-      final ControlMessage.BlockTransferMsg reply;
+      final PartitionTransferPeer peer = partitionTransferPeer.get();
+      final ControlMessage.PartitionTransferMsg reply;
       try {
-        reply = ControlMessage.BlockTransferMsg.parseFrom(transportEvent.getData());
+        reply = ControlMessage.PartitionTransferMsg.parseFrom(transportEvent.getData());
       } catch (InvalidProtocolBufferException e) {
         throw new RuntimeException(e);
       }
@@ -227,7 +227,7 @@ final class BlockTransferPeer {
   }
 
   /**
-   * An {@link EventHandler} for {@link Exception}s during block transfer.
+   * An {@link EventHandler} for {@link Exception}s during partition transfer.
    */
   private static final class ExceptionHandler implements EventHandler<Exception> {
     @Inject
@@ -240,29 +240,29 @@ final class BlockTransferPeer {
     }
   }
 
-  private static ControlMessage.BlockStore convertBlockStore(final RuntimeAttribute blockStore) {
-    switch (blockStore) {
+  private static ControlMessage.PartitionStore convertPartitionStore(final RuntimeAttribute partitionStore) {
+    switch (partitionStore) {
       case Local:
-        return ControlMessage.BlockStore.LOCAL;
+        return ControlMessage.PartitionStore.LOCAL;
       case Memory:
-        // TODO #181: Implement MemoryBlockStore
-        return ControlMessage.BlockStore.MEMORY;
+        // TODO #181: Implement MemoryPartitionStore
+        return ControlMessage.PartitionStore.MEMORY;
       case File:
         // TODO #69: Implement file channel in Runtime
-        return ControlMessage.BlockStore.FILE;
+        return ControlMessage.PartitionStore.FILE;
       case MemoryFile:
         // TODO #69: Implement file channel in Runtime
-        return ControlMessage.BlockStore.MEMORY_FILE;
+        return ControlMessage.PartitionStore.MEMORY_FILE;
       case DistributedStorage:
         // TODO #180: Implement DistributedStorageStore
-        return ControlMessage.BlockStore.DISTRIBUTED_STORAGE;
+        return ControlMessage.PartitionStore.DISTRIBUTED_STORAGE;
       default:
-        throw new UnsupportedBlockStoreException(new Exception(blockStore + " is not supported."));
+        throw new UnsupportedPartitionStoreException(new Exception(partitionStore + " is not supported."));
     }
   }
 
-  private static RuntimeAttribute convertBlockStoreType(final ControlMessage.BlockStore blockStoreType) {
-    switch (blockStoreType) {
+  private static RuntimeAttribute convertPartitionStoreType(final ControlMessage.PartitionStore partitionStoreType) {
+    switch (partitionStoreType) {
       case LOCAL:
         return RuntimeAttribute.Local;
       case MEMORY:
@@ -274,7 +274,7 @@ final class BlockTransferPeer {
       case DISTRIBUTED_STORAGE:
         return RuntimeAttribute.DistributedStorage;
       default:
-        throw new UnsupportedBlockStoreException(new Throwable("This block store is not yet supported"));
+        throw new UnsupportedPartitionStoreException(new Throwable("This partition store is not yet supported"));
     }
   }
 }
