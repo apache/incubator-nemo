@@ -13,34 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.block;
+package edu.snu.vortex.runtime.executor.partition;
 
 import edu.snu.vortex.compiler.ir.Element;
 
 import java.util.Optional;
 
 /**
- * Interface for block placement.
+ * Interface for partition placement.
  */
-public interface BlockStore {
+public interface PartitionStore {
   /**
-   * Retrieves a block.
-   * @param blockId of the block
-   * @return the data of the block (optionally)
+   * Retrieves a partition.
+   * @param partitionId of the partition
+   * @return the data of the partition (optionally)
    */
-  Optional<Iterable<Element>> getBlock(String blockId);
+  Optional<Partition> getPartition(String partitionId);
 
   /**
-   * Saves a block.
-   * @param blockId of the block
-   * @param data of the block
+   * Saves a partition.
+   * @param partitionId of the partition
+   * @param data of the partition
+   * @return the size of the partition (only when the partition is serialized)
    */
-  void putBlock(String blockId, Iterable<Element> data);
+  Optional<Long> putPartition(String partitionId, Iterable<Element> data);
 
   /**
-   * Removes a block.
-   * @param blockId of the block
-   * @return the data of the block (optionally)
+   * Removes a partition.
+   * @param partitionId of the partition
+   * @return the data of the partition (optionally)
    */
-  Optional<Iterable<Element>> removeBlock(String blockId);
+  Optional<Partition> removePartition(String partitionId);
 }

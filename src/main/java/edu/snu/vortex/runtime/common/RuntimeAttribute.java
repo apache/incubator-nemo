@@ -54,11 +54,11 @@ public enum RuntimeAttribute {
    * DistributedStorage: The intermediate data is serialized and stored in a distributed storage,
    * until it is taken by the receiver task.
    */
-  Local(Key.BlockStore),
-  Memory(Key.BlockStore),
-  File(Key.BlockStore),
-  MemoryFile(Key.BlockStore),
-  DistributedStorage(Key.BlockStore),
+  Local(Key.PartitionStore),
+  Memory(Key.PartitionStore),
+  File(Key.PartitionStore),
+  MemoryFile(Key.PartitionStore),
+  DistributedStorage(Key.PartitionStore),
 
   /**
    * Data transfer policy attributes.
@@ -99,7 +99,7 @@ public enum RuntimeAttribute {
    */
   public enum Key {
     ContainerType,
-    BlockStore,
+    PartitionStore,
     PullOrPush,
     Partition,
     SideInput,

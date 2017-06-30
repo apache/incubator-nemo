@@ -87,7 +87,7 @@ public final class JobStateManager {
   private final Condition jobFinishedCondition;
 
   public JobStateManager(final PhysicalPlan physicalPlan,
-                         final BlockManagerMaster blockManagerMaster) {
+                         final PartitionManagerMaster partitionManagerMaster) {
     this.physicalPlan = physicalPlan;
     this.jobId = physicalPlan.getId();
     this.jobState = new JobState();
@@ -99,7 +99,7 @@ public final class JobStateManager {
     this.finishLock = new ReentrantLock();
     this.jobFinishedCondition = finishLock.newCondition();
     initializeComputationStates();
-    initializeBlockStates(blockManagerMaster);
+    initializePartitionStates(partitionManagerMaster);
   }
 
   /**
@@ -120,7 +120,7 @@ public final class JobStateManager {
     });
   }
 
-  private void initializeBlockStates(final BlockManagerMaster blockManagerMaster) {
+  private void initializePartitionStates(final PartitionManagerMaster partitionManagerMaster) {
     final DAG<PhysicalStage, PhysicalStageEdge> stageDAG = physicalPlan.getStageDAG();
     stageDAG.topologicalDo(physicalStage -> {
       final List<TaskGroup> taskGroupsForStage = physicalStage.getTaskGroupList();
@@ -136,9 +136,9 @@ public final class JobStateManager {
             final int dstParallelism =
                 physicalStageEdge.getExternalVertexAttr().get(RuntimeAttribute.IntegerKey.Parallelism);
             IntStream.range(0, dstParallelism).forEach(dstTaskIdx ->
-                blockManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx));
+                partitionManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx));
           } else {
-            blockManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx);
+            partitionManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx);
           }
         });
       });
@@ -149,7 +149,7 @@ public final class JobStateManager {
         taskGroupInternalDag.getVertices().forEach(task -> {
           final List<RuntimeEdge<Task>> internalOutgoingEdges = taskGroupInternalDag.getOutgoingEdgesOf(task);
           internalOutgoingEdges.forEach(taskRuntimeEdge ->
-              blockManagerMaster.initializeState(taskRuntimeEdge.getId(), taskGroup.getTaskGroupIdx()));
+              partitionManagerMaster.initializeState(taskRuntimeEdge.getId(), taskGroup.getTaskGroupIdx()));
         });
       });
     });

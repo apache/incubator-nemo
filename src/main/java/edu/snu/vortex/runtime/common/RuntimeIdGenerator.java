@@ -100,24 +100,24 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for a block, whose data is the output of a task.
-   * @param runtimeEdgeId of the block
-   * @param taskIndex of the block
+   * Generates the ID for a partition, whose data is the output of a task.
+   * @param runtimeEdgeId of the partition
+   * @param taskIndex of the partition
    * @return the generated ID
    */
-  public static String generateBlockId(final String runtimeEdgeId, final int taskIndex) {
-    return "Block-" + runtimeEdgeId + "-" + taskIndex;
+  public static String generatePartitionId(final String runtimeEdgeId, final int taskIndex) {
+    return "Partition-" + runtimeEdgeId + "-" + taskIndex;
   }
 
   /**
-   * Generates the ID for a block, whose data is a partition of a task's output.
-   * @param runtimeEdgeId of the block
-   * @param taskIndex of the block
-   * @param partitionIndex of the block
+   * Generates the ID for a partition, whose data is a partition of a task's output.
+   * @param runtimeEdgeId of the partition
+   * @param taskIndex of the partition
+   * @param partitionIndex of the partition
    * @return the generated ID
    */
-  public static String generateBlockId(final String runtimeEdgeId, final int taskIndex, final int partitionIndex) {
-    return generateBlockId(runtimeEdgeId, taskIndex) + "-" + partitionIndex;
+  public static String generatePartitionId(final String runtimeEdgeId, final int taskIndex, final int partitionIndex) {
+    return generatePartitionId(runtimeEdgeId, taskIndex) + "-" + partitionIndex;
   }
 
   /**

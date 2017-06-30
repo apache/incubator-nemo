@@ -105,7 +105,7 @@ public final class JobStateManagerTest {
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
 
     final JobStateManager jobStateManager =
-        new JobStateManager(new PhysicalPlan("TestPlan", physicalDAG), new BlockManagerMaster());
+        new JobStateManager(new PhysicalPlan("TestPlan", physicalDAG), new PartitionManagerMaster());
 
     assertEquals(jobStateManager.getJobId(), "TestPlan");
 
@@ -149,7 +149,7 @@ public final class JobStateManagerTest {
     final DAG<Stage, StageEdge> logicalDAG = irDAG.convert(new LogicalDAGGenerator());
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
     final JobStateManager jobStateManager =
-        new JobStateManager(new PhysicalPlan("TestPlan", physicalDAG), new BlockManagerMaster());
+        new JobStateManager(new PhysicalPlan("TestPlan", physicalDAG), new PartitionManagerMaster());
 
     assertFalse(jobStateManager.checkJobTermination());
 

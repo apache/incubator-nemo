@@ -24,7 +24,7 @@ import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageListener;
 import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
-import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
+import edu.snu.vortex.runtime.executor.partition.PartitionManagerWorker;
 import edu.snu.vortex.runtime.executor.datatransfer.DataTransferFactory;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
@@ -51,7 +51,7 @@ public final class Executor {
   /**
    * In charge of this executor's intermediate data transfer.
    */
-  private final BlockManagerWorker blockManagerWorker;
+  private final PartitionManagerWorker partitionManagerWorker;
 
   /**
    * Factory of InputReader/OutputWriter for executing tasks groups.
@@ -67,11 +67,11 @@ public final class Executor {
                   @Parameter(JobConf.ExecutorCapacity.class) final int executorCapacity,
                   final PersistentConnectionToMaster persistentConnectionToMaster,
                   final MessageEnvironment messageEnvironment,
-                  final BlockManagerWorker blockManagerWorker,
+                  final PartitionManagerWorker partitionManagerWorker,
                   final DataTransferFactory dataTransferFactory) {
     this.executorId = executorId;
     this.executorService = Executors.newFixedThreadPool(executorCapacity);
-    this.blockManagerWorker = blockManagerWorker;
+    this.partitionManagerWorker = partitionManagerWorker;
     this.dataTransferFactory = dataTransferFactory;
     this.persistentConnectionToMaster = persistentConnectionToMaster;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER, new ExecutorMessageReceiver());
@@ -98,16 +98,16 @@ public final class Executor {
           executorId, persistentConnectionToMaster);
 
       scheduledTaskGroup.getTaskGroupIncomingEdges()
-          .forEach(e -> blockManagerWorker.registerCoder(e.getId(), e.getCoder()));
+          .forEach(e -> partitionManagerWorker.registerCoder(e.getId(), e.getCoder()));
       scheduledTaskGroup.getTaskGroupOutgoingEdges()
-          .forEach(e -> blockManagerWorker.registerCoder(e.getId(), e.getCoder()));
+          .forEach(e -> partitionManagerWorker.registerCoder(e.getId(), e.getCoder()));
 
       new TaskGroupExecutor(scheduledTaskGroup.getTaskGroup(),
           taskGroupStateManager,
           scheduledTaskGroup.getTaskGroupIncomingEdges(),
           scheduledTaskGroup.getTaskGroupOutgoingEdges(),
           dataTransferFactory,
-          blockManagerWorker).execute();
+          partitionManagerWorker).execute();
     } catch (final Exception e) {
       persistentConnectionToMaster.getMessageSender().send(
           ControlMessage.Message.newBuilder()

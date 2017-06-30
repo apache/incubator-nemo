@@ -3,7 +3,7 @@ package edu.snu.vortex.runtime.executor.datatransfer;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 import edu.snu.vortex.runtime.common.plan.physical.Task;
-import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
+import edu.snu.vortex.runtime.executor.partition.PartitionManagerWorker;
 
 import javax.inject.Inject;
 
@@ -12,11 +12,11 @@ import javax.inject.Inject;
  */
 public final class DataTransferFactory {
 
-  private final BlockManagerWorker blockManagerWorker;
+  private final PartitionManagerWorker partitionManagerWorker;
 
   @Inject
-  public DataTransferFactory(final BlockManagerWorker blockManagerWorker) {
-    this.blockManagerWorker = blockManagerWorker;
+  public DataTransferFactory(final PartitionManagerWorker partitionManagerWorker) {
+    this.partitionManagerWorker = partitionManagerWorker;
   }
 
   /**
@@ -29,7 +29,7 @@ public final class DataTransferFactory {
   public OutputWriter createWriter(final Task srcTask,
                                    final RuntimeVertex dstRuntimeVertex,
                                    final RuntimeEdge runtimeEdge) {
-    return new OutputWriter(srcTask.getIndex(), dstRuntimeVertex, runtimeEdge, blockManagerWorker);
+    return new OutputWriter(srcTask.getIndex(), dstRuntimeVertex, runtimeEdge, partitionManagerWorker);
   }
 
   public OutputWriter createLocalWriter(final Task srcTask,
@@ -47,7 +47,7 @@ public final class DataTransferFactory {
   public InputReader createReader(final Task dstTask,
                                   final RuntimeVertex srcRuntimeVertex,
                                   final RuntimeEdge runtimeEdge) {
-    return new InputReader(dstTask.getIndex(), srcRuntimeVertex, runtimeEdge, blockManagerWorker);
+    return new InputReader(dstTask.getIndex(), srcRuntimeVertex, runtimeEdge, partitionManagerWorker);
   }
 
   public InputReader createLocalReader(final Task dstTask,

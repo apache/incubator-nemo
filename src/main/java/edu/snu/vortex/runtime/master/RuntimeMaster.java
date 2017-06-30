@@ -28,11 +28,11 @@ import edu.snu.vortex.runtime.common.plan.logical.Stage;
 import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalDAGGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.vortex.runtime.common.state.BlockState;
+import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
-import edu.snu.vortex.runtime.executor.block.BlockManagerWorker;
+import edu.snu.vortex.runtime.executor.partition.PartitionManagerWorker;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
@@ -62,7 +62,7 @@ public final class RuntimeMaster {
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
   private final MessageEnvironment masterMessageEnvironment;
-  private final BlockManagerMaster blockManagerMaster;
+  private final PartitionManagerMaster partitionManagerMaster;
   private JobStateManager jobStateManager;
 
   private final String dagDirectory;
@@ -72,14 +72,14 @@ public final class RuntimeMaster {
   public RuntimeMaster(final Scheduler scheduler,
                        final ContainerManager containerManager,
                        final MessageEnvironment masterMessageEnvironment,
-                       final BlockManagerMaster blockManagerMaster,
+                       final PartitionManagerMaster partitionManagerMaster,
                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     this.scheduler = scheduler;
     this.containerManager = containerManager;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
         .setupListener(MessageEnvironment.MASTER_MESSAGE_RECEIVER, new MasterMessageReceiver());
-    this.blockManagerMaster = blockManagerMaster;
+    this.partitionManagerMaster = partitionManagerMaster;
     this.dagDirectory = dagDirectory;
   }
 
@@ -92,7 +92,7 @@ public final class RuntimeMaster {
                       final ClientEndpoint clientEndpoint) {
     physicalPlan = generatePhysicalPlan(executionPlan);
     try {
-      jobStateManager = scheduler.scheduleJob(physicalPlan, blockManagerMaster);
+      jobStateManager = scheduler.scheduleJob(physicalPlan, partitionManagerMaster);
       final DriverEndpoint driverEndpoint = new DriverEndpoint(jobStateManager, clientEndpoint);
 
       // Schedule dag logging thread
@@ -143,10 +143,11 @@ public final class RuntimeMaster {
             convertTaskGroupState(taskGroupStateChangedMsg.getState()),
             taskGroupStateChangedMsg.getFailedTaskIdsList());
         break;
-      case BlockStateChanged:
-        final ControlMessage.BlockStateChangedMsg blockStateChangedMsg = message.getBlockStateChangedMsg();
-        blockManagerMaster.onBlockStateChanged(blockStateChangedMsg.getExecutorId(), blockStateChangedMsg.getBlockId(),
-            convertBlockState(blockStateChangedMsg.getState()));
+      case PartitionStateChanged:
+        final ControlMessage.PartitionStateChangedMsg partitionStateChangedMsg = message.getPartitionStateChangedMsg();
+        partitionManagerMaster.onPartitionStateChanged(
+            partitionStateChangedMsg.getExecutorId(), partitionStateChangedMsg.getPartitionId(),
+            convertPartitionState(partitionStateChangedMsg.getState()));
         break;
       case ExecutorFailed:
         final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
@@ -164,20 +165,22 @@ public final class RuntimeMaster {
     @Override
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
-      case RequestBlockLocation:
-        final ControlMessage.RequestBlockLocationMsg requestBlockLocationMsg = message.getRequestBlockLocationMsg();
-        final Optional<String> executorId = blockManagerMaster.getBlockLocation(requestBlockLocationMsg.getBlockId());
+      case RequestPartitionLocation:
+        final ControlMessage.RequestPartitionLocationMsg requestPartitionLocationMsg =
+            message.getRequestPartitionLocationMsg();
+        final Optional<String> executorId =
+            partitionManagerMaster.getPartitionLocation(requestPartitionLocationMsg.getPartitionId());
         messageContext.reply(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
-                .setType(ControlMessage.MessageType.BlockLocationInfo)
-                .setBlockLocationInfoMsg(
-                    ControlMessage.BlockLocationInfoMsg.newBuilder()
+                .setType(ControlMessage.MessageType.PartitionLocationInfo)
+                .setPartitionLocationInfoMsg(
+                    ControlMessage.PartitionLocationInfoMsg.newBuilder()
                         .setRequestId(message.getId())
-                        .setBlockId(requestBlockLocationMsg.getBlockId())
+                        .setPartitionId(requestPartitionLocationMsg.getPartitionId())
                         .setOwnerExecutorId(executorId.isPresent()
                             ? executorId.get()
-                            : BlockManagerWorker.NO_REMOTE_BLOCK)
+                            : PartitionManagerWorker.NO_REMOTE_PARTITION)
                         .build())
                 .build());
         break;
@@ -207,20 +210,20 @@ public final class RuntimeMaster {
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  private BlockState.State convertBlockState(final ControlMessage.BlockStateFromExecutor state) {
+  private PartitionState.State convertPartitionState(final ControlMessage.PartitionStateFromExecutor state) {
     switch (state) {
-    case BLOCK_READY:
-      return BlockState.State.READY;
+    case PARTITION_READY:
+      return PartitionState.State.READY;
     case MOVING:
-      return BlockState.State.MOVING;
+      return PartitionState.State.MOVING;
     case COMMITTED:
-      return BlockState.State.COMMITTED;
+      return PartitionState.State.COMMITTED;
     case LOST:
-      return BlockState.State.LOST;
+      return PartitionState.State.LOST;
     case REMOVED:
-      return BlockState.State.REMOVED;
+      return PartitionState.State.REMOVED;
     default:
-      throw new UnknownExecutionStateException(new Exception("This BlockState is unknown: " + state));
+      throw new UnknownExecutionStateException(new Exception("This PartitionState is unknown: " + state));
     }
   }
 

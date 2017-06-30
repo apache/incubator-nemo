@@ -13,28 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.block;
+package edu.snu.vortex.runtime.executor.partition;
 
 import org.apache.reef.wake.Identifier;
 
 /**
- * Identifier for {@link BlockTransferPeer}.
+ * Identifier for {@link PartitionTransferPeer}.
  */
-public final class BlockTransferPeerIdentifier implements Identifier {
+public final class PartitionTransferPeerIdentifier implements Identifier {
   private final String executorId;
 
   /**
-   * Return the identifier of the specified {@link BlockTransferPeer}.
+   * Return the identifier of the specified {@link PartitionTransferPeer}.
    * @param executorId id of the {@link edu.snu.vortex.runtime.executor.Executor}
-   *                   to which the specified {@link BlockTransferPeer} belongs
+   *                   to which the specified {@link PartitionTransferPeer} belongs
    */
-  public BlockTransferPeerIdentifier(final String executorId) {
+  public PartitionTransferPeerIdentifier(final String executorId) {
     this.executorId = executorId;
   }
 
   @Override
   public String toString() {
-    return "blockpeer://" + executorId;
+    return "partitionpeer://" + executorId;
   }
 
   @Override
@@ -46,7 +46,7 @@ public final class BlockTransferPeerIdentifier implements Identifier {
       return false;
     }
 
-    final BlockTransferPeerIdentifier that = (BlockTransferPeerIdentifier) o;
+    final PartitionTransferPeerIdentifier that = (PartitionTransferPeerIdentifier) o;
     return executorId.equals(that.executorId);
   }
 
