@@ -82,6 +82,7 @@ public final class LoopGroupingPass implements Pass {
                     irEdge.getCoder());
                 IREdge.copyAttributes(irEdge, edgeFromLoop);
                 builder.connectVertices(edgeFromLoop);
+                srcLoopVertex.mapEdgeWithLoop(edgeFromLoop, irEdge);
               } else { // connecting outside the composite loop: operator -> operator.
                 builder.connectVertices(irEdge);
               }
@@ -128,12 +129,14 @@ public final class LoopGroupingPass implements Pass {
           final IREdge edgeToLoop = new IREdge(irEdge.getType(), srcLoopVertex, assignedLoopVertex, irEdge.getCoder());
           IREdge.copyAttributes(irEdge, edgeToLoop);
           builder.connectVertices(edgeToLoop);
+          assignedLoopVertex.mapEdgeWithLoop(edgeToLoop, irEdge);
         }
       } else { // operator -> loop
         assignedLoopVertex.addDagIncomingEdge(irEdge);
         final IREdge edgeToLoop = new IREdge(irEdge.getType(), irEdge.getSrc(), assignedLoopVertex, irEdge.getCoder());
         IREdge.copyAttributes(irEdge, edgeToLoop);
         builder.connectVertices(edgeToLoop);
+        assignedLoopVertex.mapEdgeWithLoop(edgeToLoop, irEdge);
       }
     });
   }
@@ -221,6 +224,7 @@ public final class LoopGroupingPass implements Pass {
             final IREdge newIrEdge = new IREdge(edge.getType(), equivalentSrcVertex, dstVertex, edge.getCoder());
             IREdge.copyAttributes(edge, newIrEdge);
             finalRootLoopVertex.addDagOutgoingEdge(newIrEdge);
+            finalRootLoopVertex.mapEdgeWithLoop(loopVertex.getEdgeWithLoop(edge), newIrEdge);
           }));
         }
 
