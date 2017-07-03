@@ -126,6 +126,10 @@ def Vertex(id, properties, state):
         return Stage(id, properties)
     except:
         pass
+    try:
+        return LoopVertex(id, properties)
+    except:
+        pass
     return NormalVertex(id, properties, state)
 
 class NormalVertex:
@@ -197,6 +201,44 @@ class Stage:
     @property
     def logicalEnd(self):
         return 'cluster_{}'.format(self.idx)
+
+class LoopVertex:
+    def __init__(self, id, properties):
+        self.id = id
+        self.dag = DAG(properties['DAG'], JobState.empty())
+        self.remaining_iteration = properties['remainingIteration']
+        self.attributes = properties['attributes']
+        self.incoming = properties['dagIncomingEdges']
+        self.outgoing = properties['dagOutgoingEdges']
+        self.edgeMapping = properties['edgeWithLoopToEdgeWithInternalVertex']
+        self.idx = getIdx()
+    @property
+    def dot(self):
+        label = self.id
+        try:
+            label += ' (p{})'.format(self.attributes['Parallelism'])
+        except:
+            pass
+        label += '\\n(Remaining iteration: {})'.format(self.remaining_iteration)
+        dot = 'subgraph cluster_{} {{'.format(self.idx)
+        dot += 'label = "{}";'.format(label)
+        dot += self.dag.dot
+        dot += '}'
+        return dot
+    @property
+    def oneVertex(self):
+        return next(iter(self.dag.vertices.values())).oneVertex
+    @property
+    def logicalEnd(self):
+        return 'cluster_{}'.format(self.idx)
+    def internalSrcFor(self, edgeWithLoopId):
+        edgeId = self.edgeMapping[edgeWithLoopId]
+        vertexId = list(filter(lambda v: edgeId in self.outgoing[v], self.outgoing))[0]
+        return self.dag.vertices[vertexId]
+    def internalDstFor(self, edgeWithLoopId):
+        edgeId = self.edgeMapping[edgeWithLoopId]
+        vertexId = list(filter(lambda v: edgeId in self.incoming[v], self.incoming))[0]
+        return self.dag.vertices[vertexId]
 
 class TaskGroup:
     def __init__(self, properties, state):
@@ -290,9 +332,19 @@ class IREdge:
         self.coder = properties['coder']
     @property
     def dot(self):
+        src = self.src
+        dst = self.dst
+        try:
+            src = src.internalSrcFor(self.id)
+        except:
+            pass
+        try:
+            dst = dst.internalDstFor(self.id)
+        except:
+            pass
         label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.id, '/'.join(self.attributes.values()), self.coder)
-        return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(self.src.oneVertex.idx,
-                self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
+        return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(src.oneVertex.idx,
+                dst.oneVertex.idx, src.logicalEnd, dst.logicalEnd, label)
 
 class PhysicalStageEdge:
     def __init__(self, src, dst, properties):
