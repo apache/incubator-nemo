@@ -20,6 +20,7 @@ import edu.snu.vortex.common.dag.DAGBuilder;
 
 import java.util.*;
 import java.util.function.IntPredicate;
+import java.util.stream.Collectors;
 
 /**
  * IRVertex that contains a partial DAG that is iterative.
@@ -32,6 +33,8 @@ public final class LoopVertex extends IRVertex {
   private final Map<IRVertex, Set<IREdge>> iterativeIncomingEdges; // Edges from previous iterations connected internal.
   private final Map<IRVertex, Set<IREdge>> nonIterativeIncomingEdges; // Edges from outside previous iterations.
   private final Map<IRVertex, Set<IREdge>> dagOutgoingEdges; // for the final iteration
+  private final Map<IREdge, IREdge> edgeWithLoopToEdgeWithInternalVertex;
+  private final Map<IREdge, IREdge> edgeWithInternalVertexToEdgeWithLoop;
 
   private Integer maxNumberOfIterations;
   private IntPredicate terminationCondition;
@@ -48,6 +51,8 @@ public final class LoopVertex extends IRVertex {
     this.iterativeIncomingEdges = new HashMap<>();
     this.nonIterativeIncomingEdges = new HashMap<>();
     this.dagOutgoingEdges = new HashMap<>();
+    this.edgeWithLoopToEdgeWithInternalVertex = new HashMap<>();
+    this.edgeWithInternalVertexToEdgeWithLoop = new HashMap<>();
     this.maxNumberOfIterations = 1; // 1 is the default number of iterations.
     this.terminationCondition = (integer -> false); // nothing much yet.
   }
@@ -66,6 +71,8 @@ public final class LoopVertex extends IRVertex {
     this.iterativeIncomingEdges.forEach((v, es) -> es.forEach(newLoopVertex::addIterativeIncomingEdge));
     this.nonIterativeIncomingEdges.forEach((v, es) -> es.forEach(newLoopVertex::addNonIterativeIncomingEdge));
     this.dagOutgoingEdges.forEach(((v, es) -> es.forEach(newLoopVertex::addDagOutgoingEdge)));
+    this.edgeWithLoopToEdgeWithInternalVertex.forEach((eLoop, eInternal)
+        -> newLoopVertex.mapEdgeWithLoop(eLoop, eInternal));
     newLoopVertex.setMaxNumberOfIterations(maxNumberOfIterations);
     newLoopVertex.setTerminationCondition(terminationCondition);
 
@@ -94,6 +101,24 @@ public final class LoopVertex extends IRVertex {
   }
 
   /**
+   * Maps an edge from/to loop with the corresponding edge from/to internal vertex.
+   * @param edgeWithLoop an edge from/to loop
+   * @param edgeWithInternalVertex the corresponding edge from/to internal vertex
+   */
+  public void mapEdgeWithLoop(final IREdge edgeWithLoop, final IREdge edgeWithInternalVertex) {
+    this.edgeWithLoopToEdgeWithInternalVertex.put(edgeWithLoop, edgeWithInternalVertex);
+    this.edgeWithInternalVertexToEdgeWithLoop.put(edgeWithInternalVertex, edgeWithLoop);
+  }
+
+  /**
+   * @param edgeWithInternalVertex an edge with internal vertex
+   * @return the corresponding edge with loop for the specified edge with internal vertex
+   */
+  public IREdge getEdgeWithLoop(final IREdge edgeWithInternalVertex) {
+    return this.edgeWithInternalVertexToEdgeWithLoop.get(edgeWithInternalVertex);
+  }
+
+  /**
    * Adds the incoming edge of the contained DAG.
    * @param edge edge to add.
    */
@@ -101,6 +126,7 @@ public final class LoopVertex extends IRVertex {
     this.dagIncomingEdges.putIfAbsent(edge.getDst(), new HashSet<>());
     this.dagIncomingEdges.get(edge.getDst()).add(edge);
   }
+
   /**
    * @return incoming edges of the contained DAG.
    */
@@ -266,14 +292,32 @@ public final class LoopVertex extends IRVertex {
 
   @Override
   public String propertiesToJSON() {
+    final List<String> edgeMappings = edgeWithLoopToEdgeWithInternalVertex.entrySet().stream()
+        .map(entry -> String.format("\"%s\": \"%s\"", entry.getKey().getId(), entry.getValue().getId()))
+        .collect(Collectors.toList());
     final StringBuilder sb = new StringBuilder();
     sb.append("{");
     sb.append(irVertexPropertiesToString());
-    sb.append(", \"Remaining Iteration\": ");
+    sb.append(", \"remainingIteration\": ");
     sb.append(this.maxNumberOfIterations);
     sb.append(", \"DAG\": ");
     sb.append(getDAG());
-    sb.append("}");
+    sb.append(", \"dagIncomingEdges\": ").append(crossingEdgesToJSON(dagIncomingEdges));
+    sb.append(", \"dagOutgoingEdges\": ").append(crossingEdgesToJSON(dagOutgoingEdges));
+    sb.append(", \"edgeWithLoopToEdgeWithInternalVertex\": {").append(String.join(", ", edgeMappings));
+    sb.append("}}");
     return sb.toString();
+  }
+
+  private static String crossingEdgesToJSON(final Map<IRVertex, Set<IREdge>> map) {
+    final ArrayList<String> vertices = new ArrayList<>();
+    map.forEach(((irVertex, irEdges) -> {
+      final StringBuilder sb = new StringBuilder();
+      sb.append("\"").append(irVertex.getId()).append("\": [");
+      final List<String> edges = irEdges.stream().map(e -> "\"" + e.getId() + "\"").collect(Collectors.toList());
+      sb.append(String.join(", ", edges)).append("]");
+      vertices.add(sb.toString());
+    }));
+    return "{" + String.join(", ", vertices) + "}";
   }
 }
