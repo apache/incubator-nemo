@@ -44,6 +44,7 @@ public final class LocalStore implements PartitionStore {
     if (partitionIdToData.containsKey(partitionId)) {
       throw new RuntimeException("Trying to overwrite an existing partition");
     }
+
     partitionIdToData.put(partitionId, new LocalPartition(data));
 
     // The partition is not serialized.

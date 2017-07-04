@@ -15,15 +15,10 @@
  */
 package edu.snu.vortex.runtime.master.scheduler;
 
-import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
-import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
-import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
-import edu.snu.vortex.runtime.exception.IllegalStateTransitionException;
-import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
-import edu.snu.vortex.runtime.exception.UnrecoverableFailureException;
+import edu.snu.vortex.runtime.exception.*;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.JobStateManager;
 
@@ -38,9 +33,9 @@ import java.util.logging.Logger;
  * BatchScheduler receives a {@link PhysicalPlan} to execute and asynchronously schedules the task groups.
  * The policy by which it schedules them is dependent on the implementation of {@link SchedulingPolicy}.
  */
-// TODO #234: Add Unit Tests for Scheduler
 public final class BatchScheduler implements Scheduler {
   private static final Logger LOG = Logger.getLogger(BatchScheduler.class.getName());
+  private static final int SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE = Integer.MAX_VALUE;
 
   private JobStateManager jobStateManager;
 
@@ -48,6 +43,8 @@ public final class BatchScheduler implements Scheduler {
    * The {@link SchedulingPolicy} used to schedule task groups.
    */
   private SchedulingPolicy schedulingPolicy;
+
+  private final PartitionManagerMaster partitionManagerMaster;
 
   private final PendingTaskGroupQueue pendingTaskGroupQueue;
 
@@ -57,8 +54,10 @@ public final class BatchScheduler implements Scheduler {
   private PhysicalPlan physicalPlan;
 
   @Inject
-  public BatchScheduler(final SchedulingPolicy schedulingPolicy,
+  public BatchScheduler(final PartitionManagerMaster partitionManagerMaster,
+                        final SchedulingPolicy schedulingPolicy,
                         final PendingTaskGroupQueue pendingTaskGroupQueue) {
+    this.partitionManagerMaster = partitionManagerMaster;
     this.pendingTaskGroupQueue = pendingTaskGroupQueue;
     this.schedulingPolicy = schedulingPolicy;
   }
@@ -70,9 +69,9 @@ public final class BatchScheduler implements Scheduler {
    */
   @Override
   public synchronized JobStateManager scheduleJob(final PhysicalPlan jobToSchedule,
-                                                  final PartitionManagerMaster partitionManagerMaster) {
+                                                  final int maxScheduleAttempt) {
     this.physicalPlan = jobToSchedule;
-    this.jobStateManager = new JobStateManager(jobToSchedule, partitionManagerMaster);
+    this.jobStateManager = new JobStateManager(jobToSchedule, partitionManagerMaster, maxScheduleAttempt);
 
     LOG.log(Level.INFO, "Job to schedule: {0}", jobToSchedule.getId());
 
@@ -97,15 +96,27 @@ public final class BatchScheduler implements Scheduler {
   public void onTaskGroupStateChanged(final String executorId,
                                       final String taskGroupId,
                                       final TaskGroupState.State newState,
-                                      final List<String> failedTaskIds) {
-    jobStateManager.onTaskGroupStateChanged(taskGroupId, newState);
+                                      final int attemptIdx,
+                                      final List<String> failedTaskIds,
+                                      final TaskGroupState.RecoverableFailureCause failureCause) {
+    final TaskGroup taskGroup = getTaskGroupById(taskGroupId);
+    jobStateManager.onTaskGroupStateChanged(taskGroup, newState);
 
     switch (newState) {
     case COMPLETE:
-      onTaskGroupExecutionComplete(executorId, taskGroupId);
+      onTaskGroupExecutionComplete(executorId, taskGroup);
       break;
     case FAILED_RECOVERABLE:
-      onTaskGroupExecutionFailed(executorId, taskGroupId, failedTaskIds);
+      final int attemptIndexForStage =
+          jobStateManager.getAttemptCountForStage(getTaskGroupById(taskGroupId).getStageId());
+      if (attemptIdx == attemptIndexForStage || attemptIdx == SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE) {
+        onTaskGroupExecutionFailedRecoverable(executorId, taskGroup, failedTaskIds, failureCause);
+      } else if (attemptIdx < attemptIndexForStage) {
+        // if attemptIdx < attemptIndexForStage, we can ignore this late arriving message.
+        LOG.log(Level.INFO, "{0} state change to failed_recoverable arrived late, we will ignore this.", taskGroupId);
+      } else {
+        throw new SchedulingException(new Throwable("AttemptIdx for a task group cannot be greater than its stage"));
+      }
       break;
     case FAILED_UNRECOVERABLE:
       throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The job failed on TaskGroup #")
@@ -119,36 +130,77 @@ public final class BatchScheduler implements Scheduler {
   }
 
   private void onTaskGroupExecutionComplete(final String executorId,
-                                            final String taskGroupId) {
-    LOG.log(Level.INFO, "{0} completed in {1}", new Object[]{taskGroupId, executorId});
-    schedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroupId);
+                                            final TaskGroup taskGroup) {
+    LOG.log(Level.INFO, "{0} completed in {1}", new Object[]{taskGroup.getTaskGroupId(), executorId});
+    schedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroup.getTaskGroupId());
+    final String stageIdForTaskGroupUponCompletion = taskGroup.getStageId();
 
-    final Optional<String> stageIdForTaskGroupUponCompletion = jobStateManager.checkStageCompletion(taskGroupId);
+    final boolean stageComplete =
+        jobStateManager.checkStageCompletion(stageIdForTaskGroupUponCompletion);
+
     // if the stage this task group belongs to is complete,
-    if (stageIdForTaskGroupUponCompletion.isPresent()) {
+    if (stageComplete) {
       if (!jobStateManager.checkJobTermination()) { // and if the job is not yet complete or failed,
-        scheduleNextStage(stageIdForTaskGroupUponCompletion.get());
+        scheduleNextStage(stageIdForTaskGroupUponCompletion);
       }
     }
   }
 
-  // TODO #163: Handle Fault Tolerance
-  private void onTaskGroupExecutionFailed(final String executorId, final String taskGroupId,
-                                          final List<String> taskIdOnFailure) {
-    schedulingPolicy.onTaskGroupExecutionFailed(executorId, taskGroupId);
+  private void onTaskGroupExecutionFailedRecoverable(final String executorId, final TaskGroup taskGroup,
+                                                     final List<String> taskIdOnFailure,
+                                                     final TaskGroupState.RecoverableFailureCause failureCause) {
+    LOG.log(Level.INFO, "{0} failed in {1} by {2}", new Object[]{taskGroup.getTaskGroupId(), executorId, failureCause});
+    schedulingPolicy.onTaskGroupExecutionFailed(executorId, taskGroup.getTaskGroupId());
+
+    switch (failureCause) {
+    // Previous task group must be re-executed, and incomplete task groups of the belonging stage must be rescheduled.
+    case INPUT_READ_FAILURE:
+      LOG.log(Level.INFO, "All task groups of {0} will be made failed_recoverable.", taskGroup.getStageId());
+      for (final PhysicalStage stage : physicalPlan.getStageDAG().getTopologicalSort()) {
+        if (stage.getId().equals(taskGroup.getStageId())) {
+          stage.getTaskGroupList().forEach(tg -> {
+            if (pendingTaskGroupQueue.remove(tg.getTaskGroupId())) {
+              LOG.log(Level.INFO, "Removing {0} before it is scheduled to an executor", tg.getTaskGroupId());
+            }
+            if (jobStateManager.getTaskGroupState(tg.getTaskGroupId()).getStateMachine().getCurrentState()
+                != TaskGroupState.State.COMPLETE) {
+              jobStateManager.onTaskGroupStateChanged(tg, TaskGroupState.State.FAILED_RECOVERABLE);
+            }
+          });
+          break;
+        }
+      }
+      break;
+    // The task group executed successfully but there is something wrong with the output store.
+    case OUTPUT_WRITE_FAILURE:
+    case CONTAINER_FAILURE:
+      LOG.log(Level.INFO, "Only the failed task group will be retried.");
+      break;
+    default:
+      throw new UnknownFailureCauseException(new Throwable("Unknown cause: " + failureCause));
+    }
+
+    // the stage this task group belongs to has become failed recoverable.
+    // it is a good point to start searching for another stage to schedule.
+    scheduleNextStage(taskGroup.getStageId());
   }
 
   @Override
-  public void onExecutorAdded(final String executorId) {
+  public synchronized void onExecutorAdded(final String executorId) {
     schedulingPolicy.onExecutorAdded(executorId);
   }
 
-  // TODO #163: Handle Fault Tolerance
   @Override
-  public void onExecutorRemoved(final String executorId) {
-    final Set<String> taskGroupsToReschedule = schedulingPolicy.onExecutorRemoved(executorId);
+  public synchronized void onExecutorRemoved(final String executorId) {
+    final Set<String> taskGroupsForLostBlocks = partitionManagerMaster.removeWorker(executorId);
+    final Set<String> taskGroupsToRecompute = schedulingPolicy.onExecutorRemoved(executorId);
 
-    // Reschedule taskGroupsToReschedule
+    taskGroupsToRecompute.addAll(taskGroupsForLostBlocks);
+    taskGroupsToRecompute.forEach(failedTaskGroupId -> {
+      pendingTaskGroupQueue.remove(failedTaskGroupId);
+      onTaskGroupStateChanged(executorId, failedTaskGroupId, TaskGroupState.State.FAILED_RECOVERABLE,
+          SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE, null, TaskGroupState.RecoverableFailureCause.CONTAINER_FAILURE);
+    });
   }
 
   private synchronized void scheduleRootStages() {
@@ -177,8 +229,8 @@ public final class BatchScheduler implements Scheduler {
     // No child stage has been selected, but there may be remaining stages.
     if (!scheduled) {
       for (final PhysicalStage stage : physicalPlan.getStageDAG().getTopologicalSort()) {
-        if (jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState()
-            == StageState.State.READY) {
+        final Enum stageState = jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState();
+        if (stageState == StageState.State.READY || stageState == StageState.State.FAILED_RECOVERABLE) {
           stageToSchedule = selectNextStageToSchedule(stage);
           if (stageToSchedule.isPresent()) {
             scheduleStage(stageToSchedule.get());
@@ -207,12 +259,13 @@ public final class BatchScheduler implements Scheduler {
     Optional<PhysicalStage> selectedStage = Optional.empty();
     final List<PhysicalStage> parentStageList = physicalPlan.getStageDAG().getParents(stageTocheck.getId());
     boolean allParentStagesComplete = true;
-    for (PhysicalStage parentStage : parentStageList) {
+    for (final PhysicalStage parentStage : parentStageList) {
       final StageState.State parentStageState =
           (StageState.State) jobStateManager.getStageState(parentStage.getId()).getStateMachine().getCurrentState();
 
       switch (parentStageState) {
       case READY:
+      case FAILED_RECOVERABLE:
         // look into see grandparent stages
         allParentStagesComplete = false;
         selectedStage = selectNextStageToSchedule(parentStage);
@@ -222,10 +275,6 @@ public final class BatchScheduler implements Scheduler {
         allParentStagesComplete = false;
         break;
       case COMPLETE:
-        break;
-      case FAILED_RECOVERABLE:
-        // TODO #163: Handle Fault Tolerance
-        allParentStagesComplete = false;
         break;
       case FAILED_UNRECOVERABLE:
         throw new UnrecoverableFailureException(new Throwable("Stage " + parentStage.getId()));
@@ -257,11 +306,46 @@ public final class BatchScheduler implements Scheduler {
     final List<PhysicalStageEdge> stageOutgoingEdges =
         physicalPlan.getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
 
-    LOG.log(Level.INFO, "Scheduling Stage: {0}", stageToSchedule.getId());
-    jobStateManager.onStageStateChanged(stageToSchedule.getId(), StageState.State.EXECUTING);
+    // The 'failed_recoverable' stage has been selected as the next stage to execute. Change its state back to 'ready'.
+    if (jobStateManager.getStageState(stageToSchedule.getId()).getStateMachine().getCurrentState()
+        == StageState.State.FAILED_RECOVERABLE) {
+      jobStateManager.onStageStateChanged(stageToSchedule.getId(), StageState.State.READY);
+    }
 
-    stageToSchedule.getTaskGroupList().forEach(taskGroup ->
-        pendingTaskGroupQueue.addLast(new ScheduledTaskGroup(taskGroup, stageIncomingEdges, stageOutgoingEdges)));
+    // attemptIdx is only initialized/updated when we set the stage's state to executing
+    jobStateManager.onStageStateChanged(stageToSchedule.getId(), StageState.State.EXECUTING);
+    final int attemptIdx = jobStateManager.getAttemptCountForStage(stageToSchedule.getId());
+    LOG.log(Level.INFO, "Scheduling Stage: {0} with attemptIdx={1}", new Object[]{stageToSchedule.getId(), attemptIdx});
+
+    stageToSchedule.getTaskGroupList().forEach(taskGroup -> {
+      // this happens when the belonging stage's other task groups have failed recoverable,
+      // but this task group's results are safe.
+      final TaskGroupState.State taskGroupState =
+          (TaskGroupState.State)
+              jobStateManager.getTaskGroupState(taskGroup.getTaskGroupId()).getStateMachine().getCurrentState();
+
+      if (taskGroupState == TaskGroupState.State.COMPLETE || taskGroupState == TaskGroupState.State.EXECUTING) {
+        LOG.log(Level.INFO, "Skipping {0} because its outputs are safe!", taskGroup.getTaskGroupId());
+      } else {
+        if (taskGroupState == TaskGroupState.State.FAILED_RECOVERABLE) {
+          LOG.log(Level.INFO, "Re-scheduling {0} for failure recovery", taskGroup.getTaskGroupId());
+          jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.READY);
+        }
+        pendingTaskGroupQueue.addLast(
+            new ScheduledTaskGroup(taskGroup, stageIncomingEdges, stageOutgoingEdges, attemptIdx));
+      }
+    });
+  }
+
+  private TaskGroup getTaskGroupById(final String taskGroupId) {
+    for (final PhysicalStage physicalStage : physicalPlan.getStageDAG().getVertices()) {
+      for (final TaskGroup taskGroup : physicalStage.getTaskGroupList()) {
+        if (taskGroup.getTaskGroupId().equals(taskGroupId)) {
+          return taskGroup;
+        }
+      }
+    }
+    throw new RuntimeException(new Throwable("This taskGroupId does not exist in the plan"));
   }
 
   @Override

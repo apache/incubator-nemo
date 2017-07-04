@@ -32,6 +32,7 @@ import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
+import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
 import edu.snu.vortex.runtime.executor.partition.PartitionManagerWorker;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
@@ -67,14 +68,17 @@ public final class RuntimeMaster {
 
   private final String dagDirectory;
   private PhysicalPlan physicalPlan;
+  private final int maxScheduleAttempt;
 
   @Inject
   public RuntimeMaster(final Scheduler scheduler,
                        final ContainerManager containerManager,
                        final MessageEnvironment masterMessageEnvironment,
                        final PartitionManagerMaster partitionManagerMaster,
-                       @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
+                       @Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
+                       @Parameter(JobConf.MaxScheduleAttempt.class) final int maxScheduleAttempt) {
     this.scheduler = scheduler;
+    this.maxScheduleAttempt = maxScheduleAttempt;
     this.containerManager = containerManager;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
@@ -92,7 +96,7 @@ public final class RuntimeMaster {
                       final ClientEndpoint clientEndpoint) {
     physicalPlan = generatePhysicalPlan(executionPlan);
     try {
-      jobStateManager = scheduler.scheduleJob(physicalPlan, partitionManagerMaster);
+      jobStateManager = scheduler.scheduleJob(physicalPlan, maxScheduleAttempt);
       final DriverEndpoint driverEndpoint = new DriverEndpoint(jobStateManager, clientEndpoint);
 
       // Schedule dag logging thread
@@ -141,7 +145,9 @@ public final class RuntimeMaster {
         scheduler.onTaskGroupStateChanged(taskGroupStateChangedMsg.getExecutorId(),
             taskGroupStateChangedMsg.getTaskGroupId(),
             convertTaskGroupState(taskGroupStateChangedMsg.getState()),
-            taskGroupStateChangedMsg.getFailedTaskIdsList());
+            taskGroupStateChangedMsg.getAttemptIdx(),
+            taskGroupStateChangedMsg.getFailedTaskIdsList(),
+            convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
         break;
       case PartitionStateChanged:
         final ControlMessage.PartitionStateChangedMsg partitionStateChangedMsg = message.getPartitionStateChangedMsg();
@@ -154,7 +160,7 @@ public final class RuntimeMaster {
         final String failedExecutorId = executorFailedMsg.getExecutorId();
         final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
         LOG.log(Level.SEVERE, failedExecutorId + " failed, Stack Trace: ", exception);
-        containerManager.onContainerFailed();
+        containerManager.onExecutorRemoved(failedExecutorId);
         throw new RuntimeException(exception);
       default:
         throw new IllegalMessageException(
@@ -224,6 +230,19 @@ public final class RuntimeMaster {
       return PartitionState.State.REMOVED;
     default:
       throw new UnknownExecutionStateException(new Exception("This PartitionState is unknown: " + state));
+    }
+  }
+
+  // TODO #164: Cleanup Protobuf Usage
+  private TaskGroupState.RecoverableFailureCause convertFailureCause(
+      final ControlMessage.RecoverableFailureCause cause) {
+    switch (cause) {
+    case InputReadFailure:
+      return TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE;
+    case OutputWriteFailure:
+      return TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE;
+    default:
+      throw new UnknownFailureCauseException(new Throwable("The failure cause for the recoverable failure is unknown"));
     }
   }
 

@@ -114,6 +114,13 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class ExecutorId implements Name<String> {
   }
 
+  /**
+   * Max number of attempts for task group scheduling.
+   */
+  @NamedParameter(doc = "Max number of schedules", short_name = "max_schedule_attempt", default_value = "3")
+  public final class MaxScheduleAttempt implements Name<Integer> {
+  }
+
   public static final OptionalParameter<Integer> EXECUTOR_CAPACITY = new OptionalParameter<>();
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();
 

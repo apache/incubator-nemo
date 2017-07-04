@@ -41,6 +41,8 @@ public final class TaskGroupState {
     // Add transitions
     stateMachineBuilder.addTransition(State.READY, State.EXECUTING,
         "Scheduling to executor");
+    stateMachineBuilder.addTransition(State.READY, State.FAILED_RECOVERABLE,
+        "Stage Failure by a recoverable failure in another task group");
     stateMachineBuilder.addTransition(State.READY, State.FAILED_UNRECOVERABLE,
         "Stage Failure");
 
@@ -74,6 +76,15 @@ public final class TaskGroupState {
     COMPLETE,
     FAILED_RECOVERABLE,
     FAILED_UNRECOVERABLE
+  }
+
+  /**
+   * Causes of a recoverable failure.
+   */
+  public enum RecoverableFailureCause {
+    INPUT_READ_FAILURE, // Occurs when a task is unable to read its input block
+    OUTPUT_WRITE_FAILURE, // Occurs when a task successfully generates its output, but is able to write it
+    CONTAINER_FAILURE // When a REEF evaluator fails
   }
 
   @Override

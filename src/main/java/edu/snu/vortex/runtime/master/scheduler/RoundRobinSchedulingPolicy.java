@@ -195,7 +195,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   public Set<String> onExecutorRemoved(final String executorId) {
     lock.lock();
     try {
-      final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
+      final ExecutorRepresenter executor = containerManager.getFailedExecutorRepresenterMap().get(executorId);
       final RuntimeAttribute containerType = executor.getContainerType();
 
       final List<String> executorIdList = executorIdByContainerType.get(containerType);
@@ -241,7 +241,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     try {
       final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
       executor.onTaskGroupExecutionComplete(taskGroupId);
-      LOG.log(Level.INFO, "Completed {" + taskGroupId + "} in [" + executorId + "]");
+      LOG.log(Level.INFO, "{" + taskGroupId + "} completed in [" + executorId + "]");
 
       // the scheduler thread may be waiting for a free slot...
       final RuntimeAttribute containerType = executor.getContainerType();
@@ -253,6 +253,17 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
 
   @Override
   public void onTaskGroupExecutionFailed(final String executorId, final String taskGroupId) {
-    // TODO #163: Handle Fault Tolerance
+    lock.lock();
+    try {
+      final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
+      executor.onTaskGroupExecutionFailed(taskGroupId);
+      LOG.log(Level.INFO, "{" + taskGroupId + "} failed in [" + executorId + "]");
+
+      // the scheduler thread may be waiting for a free slot...
+      final RuntimeAttribute containerType = executor.getContainerType();
+      signalPossiblyWaitingScheduler(containerType);
+    } finally {
+      lock.unlock();
+    }
   }
 }

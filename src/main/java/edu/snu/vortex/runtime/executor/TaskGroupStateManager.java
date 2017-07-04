@@ -21,6 +21,7 @@ import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
+import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
 import edu.snu.vortex.common.StateMachine;
 
 import java.util.*;
@@ -36,6 +37,7 @@ public final class TaskGroupStateManager {
   private static final Logger LOG = Logger.getLogger(TaskGroupStateManager.class.getName());
 
   private final String taskGroupId;
+  private final int attemptIdx;
   private final String executorId;
 
   /**
@@ -55,9 +57,11 @@ public final class TaskGroupStateManager {
 
 
   public TaskGroupStateManager(final TaskGroup taskGroup,
+                               final int attemptIdx,
                                final String executorId,
                                final PersistentConnectionToMaster persistentConnectionToMaster) {
     this.taskGroupId = taskGroup.getTaskGroupId();
+    this.attemptIdx = attemptIdx;
     this.executorId = executorId;
     this.persistentConnectionToMaster = persistentConnectionToMaster;
     idToTaskStates = new HashMap<>();
@@ -70,8 +74,6 @@ public final class TaskGroupStateManager {
    * @param taskGroup to manage.
    */
   private void initializeStates(final TaskGroup taskGroup) {
-    onTaskGroupStateChanged(TaskGroupState.State.EXECUTING, Optional.empty());
-
     taskGroup.getTaskDAG().getVertices().forEach(task -> {
       currentTaskGroupTaskIds.add(task.getId());
       idToTaskStates.put(task.getId(), new TaskState());
@@ -83,9 +85,11 @@ public final class TaskGroupStateManager {
    * Updates the state of the task group.
    * @param newState of the task group.
    * @param failedTaskIds the ID of the task on which this task group failed if failed, empty otherwise.
+   * @param cause only provided as non-empty upon recoverable failures.
    */
   public synchronized void onTaskGroupStateChanged(final TaskGroupState.State newState,
-                                                   final Optional<List<String>> failedTaskIds) {
+                                                   final Optional<List<String>> failedTaskIds,
+                                                   final Optional<TaskGroupState.RecoverableFailureCause> cause) {
     switch (newState) {
     case EXECUTING:
       LOG.log(Level.FINE, "Executing TaskGroup ID {0}...", taskGroupId);
@@ -93,15 +97,15 @@ public final class TaskGroupStateManager {
       break;
     case COMPLETE:
       LOG.log(Level.FINE, "TaskGroup ID {0} complete!", taskGroupId);
-      notifyTaskGroupStateToMaster(newState, failedTaskIds);
+      notifyTaskGroupStateToMaster(newState, failedTaskIds, cause);
       break;
     case FAILED_RECOVERABLE:
       LOG.log(Level.FINE, "TaskGroup ID {0} failed (recoverable).", taskGroupId);
-      notifyTaskGroupStateToMaster(newState, failedTaskIds);
+      notifyTaskGroupStateToMaster(newState, failedTaskIds, cause);
       break;
     case FAILED_UNRECOVERABLE:
       LOG.log(Level.FINE, "TaskGroup ID {0} failed (unrecoverable).", taskGroupId);
-      notifyTaskGroupStateToMaster(newState, failedTaskIds);
+      notifyTaskGroupStateToMaster(newState, failedTaskIds, cause);
       break;
     default:
       throw new IllegalStateException("Illegal state at this point");
@@ -113,8 +117,10 @@ public final class TaskGroupStateManager {
    * Task state changes only occur in executor.
    * @param taskId of the task.
    * @param newState of the task.
+   * @param cause only provided as non-empty upon recoverable failures.
    */
-  public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newState) {
+  public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newState,
+                                              final Optional<TaskGroupState.RecoverableFailureCause> cause) {
     final StateMachine taskStateChanged = idToTaskStates.get(taskId).getStateMachine();
     LOG.log(Level.FINE, "Task State Transition: id {0} from {1} to {2}",
         new Object[]{taskGroupId, taskStateChanged.getCurrentState(), newState});
@@ -126,14 +132,14 @@ public final class TaskGroupStateManager {
     case COMPLETE:
       currentTaskGroupTaskIds.remove(taskId);
       if (currentTaskGroupTaskIds.isEmpty()) {
-        onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty());
+        onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), cause);
       }
       break;
     case FAILED_RECOVERABLE:
-      onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE, Optional.of(Arrays.asList(taskId)));
+      onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE, Optional.of(Arrays.asList(taskId)), cause);
       break;
     case FAILED_UNRECOVERABLE:
-      onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE, Optional.of(Arrays.asList(taskId)));
+      onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE, Optional.of(Arrays.asList(taskId)), cause);
       break;
     default:
       throw new IllegalStateException("Illegal state at this point");
@@ -144,9 +150,11 @@ public final class TaskGroupStateManager {
    * Notifies the change in task group state to master.
    * @param newState of the task group.
    * @param failedTaskIds the id of the task that caused this task group to fail, empty otherwise.
+   * @param cause only provided as non-empty upon recoverable failures.
    */
   private void notifyTaskGroupStateToMaster(final TaskGroupState.State newState,
-                                            final Optional<List<String>> failedTaskIds) {
+                                            final Optional<List<String>> failedTaskIds,
+                                            final Optional<TaskGroupState.RecoverableFailureCause> cause) {
     final Optional<List<String>> failedTaskIdList;
     if (!failedTaskIds.isPresent()) {
       failedTaskIdList = Optional.of(Collections.emptyList());
@@ -154,18 +162,23 @@ public final class TaskGroupStateManager {
       failedTaskIdList = failedTaskIds;
     }
 
+    final ControlMessage.TaskGroupStateChangedMsg.Builder msgBuilder =
+        ControlMessage.TaskGroupStateChangedMsg.newBuilder()
+          .setExecutorId(executorId)
+          .setTaskGroupId(taskGroupId)
+          .setAttemptIdx(attemptIdx)
+          .setState(convertState(newState))
+          .addAllFailedTaskIds(failedTaskIdList.get());
+    if (cause.isPresent()) {
+      msgBuilder.setFailureCause(convertFailureCause(cause.get()));
+    }
+
     // Send taskGroupStateChangedMsg to master!
     persistentConnectionToMaster.getMessageSender().send(
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
             .setType(ControlMessage.MessageType.TaskGroupStateChanged)
-            .setTaskStateChangedMsg(
-                ControlMessage.TaskGroupStateChangedMsg.newBuilder()
-                    .setExecutorId(executorId)
-                    .setTaskGroupId(taskGroupId)
-                    .setState(convertState(newState))
-                    .addAllFailedTaskIds(failedTaskIdList.get())
-                    .build())
+            .setTaskStateChangedMsg(msgBuilder.build())
             .build());
   }
 
@@ -184,6 +197,20 @@ public final class TaskGroupStateManager {
       return ControlMessage.TaskGroupStateFromExecutor.FAILED_UNRECOVERABLE;
     default:
       throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
+    }
+  }
+
+  // TODO #164: Cleanup Protobuf Usage
+  private ControlMessage.RecoverableFailureCause convertFailureCause(
+    final TaskGroupState.RecoverableFailureCause cause) {
+    switch (cause) {
+    case INPUT_READ_FAILURE:
+      return ControlMessage.RecoverableFailureCause.InputReadFailure;
+    case OUTPUT_WRITE_FAILURE:
+      return ControlMessage.RecoverableFailureCause.OutputWriteFailure;
+    default:
+      throw new UnknownFailureCauseException(
+          new Throwable("The failure cause for the recoverable failure is unknown"));
     }
   }
 

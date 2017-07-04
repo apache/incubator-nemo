@@ -13,17 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.partition;
-
-import edu.snu.vortex.compiler.ir.Element;
-import java.util.Optional;
+package edu.snu.vortex.runtime.exception;
 
 /**
- * This interface represents an output data of each operation.
- * It might be divided in multiple blocks.
+ * UnknownFailureCauseException.
+ * Thrown when the cause for the recoverable failure is undefined in Runtime.
  */
-interface Partition {
-
-  Iterable<Element> asIterable();
-  Optional<Long> size();
+public final class UnknownFailureCauseException extends RuntimeException {
+  /**
+   * UnknownFailureCauseException.
+   * @param cause cause
+   */
+  public UnknownFailureCauseException(final Throwable cause) {
+    super(cause);
+  }
 }

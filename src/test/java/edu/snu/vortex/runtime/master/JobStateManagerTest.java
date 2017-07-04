@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 
+import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.mock;
@@ -46,6 +47,7 @@ import static org.mockito.Mockito.mock;
  * Tests {@link JobStateManager}.
  */
 public final class JobStateManagerTest {
+  private static final int MAX_SCHEDULE_ATTEMPT = 2;
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
 
   @Before
@@ -104,23 +106,22 @@ public final class JobStateManagerTest {
     final DAG<Stage, StageEdge> logicalDAG = irDAG.convert(new LogicalDAGGenerator());
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
 
-    final JobStateManager jobStateManager =
-        new JobStateManager(new PhysicalPlan("TestPlan", physicalDAG), new PartitionManagerMaster());
+    final JobStateManager jobStateManager = new JobStateManager(
+            new PhysicalPlan("TestPlan", physicalDAG), new PartitionManagerMaster(), MAX_SCHEDULE_ATTEMPT);
 
     assertEquals(jobStateManager.getJobId(), "TestPlan");
 
     final List<PhysicalStage> stageList = physicalDAG.getTopologicalSort();
+
     for (int stageIdx = 0; stageIdx < stageList.size(); stageIdx++) {
       final PhysicalStage physicalStage = stageList.get(stageIdx);
       jobStateManager.onStageStateChanged(physicalStage.getId(), StageState.State.EXECUTING);
       final List<TaskGroup> taskGroupList = physicalStage.getTaskGroupList();
       taskGroupList.forEach(taskGroup -> {
-        jobStateManager.onTaskGroupStateChanged(taskGroup.getTaskGroupId(),
-            TaskGroupState.State.EXECUTING);
-        jobStateManager.onTaskGroupStateChanged(taskGroup.getTaskGroupId(),
-            TaskGroupState.State.COMPLETE);
+        jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
+        jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.COMPLETE);
         if (taskGroup.getTaskGroupIdx() == taskGroupList.size() - 1) {
-          assertEquals(physicalStage.getId(), jobStateManager.checkStageCompletion(taskGroup.getTaskGroupId()).get());
+          assertTrue(jobStateManager.checkStageCompletion(taskGroup.getStageId()));
         }
       });
       final Map<String, TaskGroupState> taskGroupStateMap = jobStateManager.getIdToTaskGroupStates();
@@ -148,8 +149,8 @@ public final class JobStateManagerTest {
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.build();
     final DAG<Stage, StageEdge> logicalDAG = irDAG.convert(new LogicalDAGGenerator());
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
-    final JobStateManager jobStateManager =
-        new JobStateManager(new PhysicalPlan("TestPlan", physicalDAG), new PartitionManagerMaster());
+    final JobStateManager jobStateManager = new JobStateManager(
+        new PhysicalPlan("TestPlan", physicalDAG), new PartitionManagerMaster(), MAX_SCHEDULE_ATTEMPT);
 
     assertFalse(jobStateManager.checkJobTermination());
 

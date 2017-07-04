@@ -48,6 +48,8 @@ public final class PartitionState {
     stateMachineBuilder.addTransition(State.COMMITTED, State.MOVING,
         "(WARNING) Possible race condition: receiver may have reached us before the sender, or there's sth wrong");
 
+    stateMachineBuilder.addTransition(State.LOST, State.COMMITTED, "Recomputation successful and committed");
+
     stateMachineBuilder.setInitialState(State.READY);
 
     return stateMachineBuilder.build();
