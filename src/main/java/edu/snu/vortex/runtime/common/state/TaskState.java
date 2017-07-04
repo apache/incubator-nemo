@@ -43,6 +43,8 @@ public final class TaskState {
         "Scheduling for execution");
     stateMachineBuilder.addTransition(State.READY, State.FAILED_UNRECOVERABLE,
         "Unrecoverable TaskGroup Failure");
+    stateMachineBuilder.addTransition(State.READY, State.FAILED_RECOVERABLE,
+        "Recoverable TaskGroup Failure");
 
     stateMachineBuilder.addTransition(State.PENDING_IN_EXECUTOR, State.EXECUTING,
         "Begin executing!");
@@ -60,6 +62,9 @@ public final class TaskState {
 
     stateMachineBuilder.addTransition(State.COMPLETE, State.FAILED_UNRECOVERABLE,
         "Executor Failure");
+
+    stateMachineBuilder.addTransition(State.COMPLETE, State.FAILED_RECOVERABLE,
+        "Container Failure");
 
     stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.FAILED_UNRECOVERABLE,
         "");

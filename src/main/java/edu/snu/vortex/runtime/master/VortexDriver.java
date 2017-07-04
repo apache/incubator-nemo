@@ -77,9 +77,9 @@ public final class VortexDriver {
   @Inject
   private VortexDriver(final ContainerManager containerManager,
                        final Scheduler scheduler,
+                       final UserApplicationRunner userApplicationRunner,
                        final NameServer nameServer,
                        final LocalAddressProvider localAddressProvider,
-                       final UserApplicationRunner userApplicationRunner,
                        @Parameter(JobConf.ExecutorMemMb.class) final int executorMem,
                        @Parameter(JobConf.ExecutorNum.class) final int executorNum,
                        @Parameter(JobConf.ExecutorCapacity.class) final int executorCapacity) {
@@ -141,6 +141,12 @@ public final class VortexDriver {
   public final class FailedEvaluatorHandler implements EventHandler<FailedEvaluator> {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
+      // The list size is 0 if the evaluator failed before an executor started. For now, the size is 1 otherwise.
+      failedEvaluator.getFailedContextList().forEach(failedContext -> {
+        final String failedExecutorId = failedContext.getId();
+        containerManager.onExecutorRemoved(failedExecutorId);
+        scheduler.onExecutorRemoved(failedExecutorId);
+      });
       throw new RuntimeException(failedEvaluator.getId()
           + " failed. See driver's log for the stack trace in executor.");
     }

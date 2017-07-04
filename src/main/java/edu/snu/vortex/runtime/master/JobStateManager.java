@@ -23,8 +23,10 @@ import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
 import edu.snu.vortex.runtime.exception.IllegalStateTransitionException;
+import edu.snu.vortex.runtime.exception.SchedulingException;
 import edu.snu.vortex.common.StateMachine;
 import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
 
 import java.io.File;
 import java.io.IOException;
@@ -51,6 +53,8 @@ public final class JobStateManager {
 
   private final String jobId;
 
+  private final int maxScheduleAttempt;
+
   /**
    * The data structures below track the execution states of this job.
    */
@@ -58,6 +62,11 @@ public final class JobStateManager {
   private final Map<String, StageState> idToStageStates;
   private final Map<String, TaskGroupState> idToTaskGroupStates;
   private final Map<String, TaskState> idToTaskStates;
+
+  /**
+   * Keeps track of the number of schedule attempts for each stage.
+   */
+  private final Map<String, Integer> scheduleAttemptIdxByStage;
 
   /**
    * Represents the job to manage.
@@ -87,13 +96,16 @@ public final class JobStateManager {
   private final Condition jobFinishedCondition;
 
   public JobStateManager(final PhysicalPlan physicalPlan,
-                         final PartitionManagerMaster partitionManagerMaster) {
+                         final PartitionManagerMaster partitionManagerMaster,
+                         final int maxScheduleAttempt) {
     this.physicalPlan = physicalPlan;
+    this.maxScheduleAttempt = maxScheduleAttempt;
     this.jobId = physicalPlan.getId();
     this.jobState = new JobState();
     this.idToStageStates = new HashMap<>();
     this.idToTaskGroupStates = new HashMap<>();
     this.idToTaskStates = new HashMap<>();
+    this.scheduleAttemptIdxByStage = new HashMap<>();
     this.stageIdToRemainingTaskGroupSet = new HashMap<>();
     this.currentJobStageIds = new HashSet<>();
     this.finishLock = new ReentrantLock();
@@ -126,7 +138,7 @@ public final class JobStateManager {
       final List<TaskGroup> taskGroupsForStage = physicalStage.getTaskGroupList();
       final List<PhysicalStageEdge> stageOutgoingEdges = stageDAG.getOutgoingEdgesOf(physicalStage);
 
-      // Initialize states for blocks of inter-stage edges
+      // Initialize states for partitions of inter-stage edges
       stageOutgoingEdges.forEach(physicalStageEdge -> {
         final RuntimeAttribute commPattern =
             physicalStageEdge.getEdgeAttributes().get(RuntimeAttribute.Key.CommPattern);
@@ -136,20 +148,23 @@ public final class JobStateManager {
             final int dstParallelism =
                 physicalStageEdge.getExternalVertexAttr().get(RuntimeAttribute.IntegerKey.Parallelism);
             IntStream.range(0, dstParallelism).forEach(dstTaskIdx ->
-                partitionManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx));
+                partitionManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx,
+                    taskGroupsForStage.get(srcTaskIdx).getTaskGroupId()));
           } else {
-            partitionManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx);
+            partitionManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx,
+                taskGroupsForStage.get(srcTaskIdx).getTaskGroupId());
           }
         });
       });
 
-      // Initialize states for blocks of stage internal edges
+      // Initialize states for partitions of stage internal edges
       taskGroupsForStage.forEach(taskGroup -> {
         final DAG<Task, RuntimeEdge<Task>> taskGroupInternalDag = taskGroup.getTaskDAG();
         taskGroupInternalDag.getVertices().forEach(task -> {
           final List<RuntimeEdge<Task>> internalOutgoingEdges = taskGroupInternalDag.getOutgoingEdgesOf(task);
           internalOutgoingEdges.forEach(taskRuntimeEdge ->
-              partitionManagerMaster.initializeState(taskRuntimeEdge.getId(), taskGroup.getTaskGroupIdx()));
+              partitionManagerMaster.initializeState(taskRuntimeEdge.getId(), taskGroup.getTaskGroupIdx(),
+                  taskGroup.getTaskGroupId()));
         });
       });
     });
@@ -200,16 +215,33 @@ public final class JobStateManager {
         new Object[]{stageId, stageStateMachine.getCurrentState(), newState});
     stageStateMachine.setState(newState);
     if (newState == StageState.State.EXECUTING) {
-      for (final PhysicalStage stage : physicalPlan.getStageDAG().getVertices()) {
-        if (stage.getId().equals(stageId)) {
-          Set<String> remainingTaskGroupIds = new HashSet<>();
-          remainingTaskGroupIds.addAll(
-              stage.getTaskGroupList()
-                  .stream()
-                  .map(taskGroup -> taskGroup.getTaskGroupId())
-                  .collect(Collectors.toSet()));
-          stageIdToRemainingTaskGroupSet.put(stageId, remainingTaskGroupIds);
-          break;
+      if (scheduleAttemptIdxByStage.containsKey(stageId)) {
+        final int numAttempts = scheduleAttemptIdxByStage.get(stageId);
+
+        if (numAttempts < maxScheduleAttempt) {
+          scheduleAttemptIdxByStage.put(stageId, numAttempts + 1);
+        } else {
+          throw new SchedulingException(
+              new Throwable("Exceeded max number of scheduling attempts for " + stageId));
+        }
+      } else {
+        scheduleAttemptIdxByStage.put(stageId, 1);
+      }
+
+      // if there exists a mapping, this state change is from a failed_recoverable stage,
+      // and there may be task groups that do not need to be re-executed.
+      if (!stageIdToRemainingTaskGroupSet.containsKey(stageId)) {
+        for (final PhysicalStage stage : physicalPlan.getStageDAG().getVertices()) {
+          if (stage.getId().equals(stageId)) {
+            Set<String> remainingTaskGroupIds = new HashSet<>();
+            remainingTaskGroupIds.addAll(
+                stage.getTaskGroupList()
+                    .stream()
+                    .map(taskGroup -> taskGroup.getTaskGroupId())
+                    .collect(Collectors.toSet()));
+            stageIdToRemainingTaskGroupSet.put(stageId, remainingTaskGroupIds);
+            break;
+          }
         }
       }
     } else if (newState == StageState.State.COMPLETE) {
@@ -217,6 +249,8 @@ public final class JobStateManager {
       if (currentJobStageIds.isEmpty()) {
         onJobStateChanged(JobState.State.COMPLETE);
       }
+    } else if (newState == StageState.State.FAILED_RECOVERABLE) {
+      currentJobStageIds.add(stageId);
     }
   }
 
@@ -228,59 +262,97 @@ public final class JobStateManager {
    * and the call to this method is initiated in {@link edu.snu.vortex.runtime.master.scheduler.BatchScheduler}
    * when the message/event is received.
    * A task group completion implies completion of all its tasks.
-   * @param taskGroupId of the task group.
+   * @param taskGroup the task group.
    * @param newState of the task group.
    */
-  public synchronized void onTaskGroupStateChanged(final String taskGroupId, final TaskGroupState.State newState) {
-    final StateMachine taskGroupStateChanged = idToTaskGroupStates.get(taskGroupId).getStateMachine();
+  public synchronized void onTaskGroupStateChanged(final TaskGroup taskGroup, final TaskGroupState.State newState) {
+    final StateMachine taskGroupState = idToTaskGroupStates.get(taskGroup.getTaskGroupId()).getStateMachine();
     LOG.log(Level.FINE, "Task Group State Transition: id {0} from {1} to {2}",
-        new Object[]{taskGroupId, taskGroupStateChanged.getCurrentState(), newState});
-    taskGroupStateChanged.setState(newState);
-    if (newState == TaskGroupState.State.COMPLETE) {
-      final TaskGroup taskGroup = getTaskGroupById(taskGroupId);
-      final String stageId = taskGroup.getStageId();
-      stageIdToRemainingTaskGroupSet.get(stageId).remove(taskGroupId);
+        new Object[]{taskGroup.getTaskGroupId(), taskGroupState.getCurrentState(), newState});
+    final String stageId = taskGroup.getStageId();
+
+    switch (newState) {
+    case COMPLETE:
+      taskGroupState.setState(newState);
       // TODO #235: Cleanup Task State Management
       taskGroup.getTaskDAG().getVertices().forEach(task -> {
-        idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR);
-        idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.EXECUTING);
         idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.COMPLETE);
       });
 
       if (stageIdToRemainingTaskGroupSet.containsKey(stageId)) {
-        if (stageIdToRemainingTaskGroupSet.get(stageId).isEmpty()) {
+        final Set<String> remainingTaskGroups = stageIdToRemainingTaskGroupSet.get(stageId);
+        remainingTaskGroups.remove(taskGroup.getTaskGroupId());
+
+        if (remainingTaskGroups.isEmpty()) {
           onStageStateChanged(stageId, StageState.State.COMPLETE);
         }
       } else {
         throw new IllegalStateTransitionException(
             new Throwable("The stage has not yet been submitted for execution"));
       }
-    }
-  }
+      break;
+    case EXECUTING:
+      taskGroupState.setState(newState);
+      // TODO #235: Cleanup Task State Management
+      taskGroup.getTaskDAG().getVertices().forEach(task -> {
+        idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR);
+        idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.EXECUTING);
+      });
+      break;
+    case FAILED_RECOVERABLE:
+      // Multiple calls to set a task group's state to failed_recoverable can occur when
+      // a task group is made failed_recoverable early by another task group's failure detection in the same stage
+      // and the task group finds itself failed_recoverable later, propagating the state change event only then.
+      if (taskGroupState.getCurrentState() != TaskGroupState.State.FAILED_RECOVERABLE) {
+        taskGroupState.setState(newState);
+        taskGroup.getTaskDAG().getVertices().forEach(task ->
+            idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.FAILED_RECOVERABLE));
 
-  private TaskGroup getTaskGroupById(final String taskGroupId) {
-    for (final PhysicalStage physicalStage : physicalPlan.getStageDAG().getVertices()) {
-      for (final TaskGroup taskGroup : physicalStage.getTaskGroupList()) {
-        if (taskGroup.getTaskGroupId().equals(taskGroupId)) {
-          return taskGroup;
+        // Mark this stage as failed_recoverable as long as it contains at least one failed_recoverable task group
+        if (idToStageStates.get(stageId).getStateMachine().getCurrentState() != StageState.State.FAILED_RECOVERABLE) {
+          onStageStateChanged(stageId, StageState.State.FAILED_RECOVERABLE);
         }
+
+        if (stageIdToRemainingTaskGroupSet.containsKey(stageId)) {
+          stageIdToRemainingTaskGroupSet.get(stageId).add(taskGroup.getTaskGroupId());
+        } else {
+          throw new IllegalStateTransitionException(
+              new Throwable("The stage has not yet been submitted for execution"));
+        }
+      } else {
+        LOG.log(Level.INFO, "{0} state is already FAILED_RECOVERABLE. Skipping this event.",
+            taskGroup.getTaskGroupId());
       }
+      break;
+    case READY:
+      // TODO #235: Cleanup Task State Management
+      taskGroup.getTaskDAG().getVertices().forEach(task ->
+          idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.READY));
+      taskGroupState.setState(newState);
+      break;
+    case FAILED_UNRECOVERABLE:
+      taskGroupState.setState(newState);
+      break;
+    default:
+      throw new UnknownExecutionStateException(new Throwable("This task group state is unknown"));
     }
-    throw new RuntimeException(new Throwable("This taskGroupId does not exist in the plan"));
   }
 
-  public synchronized Optional<String> checkStageCompletion(final String taskGroupId) {
-    final TaskGroup taskGroup = getTaskGroupById(taskGroupId);
-    if (stageIdToRemainingTaskGroupSet.get(taskGroup.getStageId()).isEmpty()) {
-      return Optional.of(taskGroup.getStageId());
-    } else {
-      return Optional.empty();
-    }
+  public synchronized boolean checkStageCompletion(final String stageId) {
+    return stageIdToRemainingTaskGroupSet.get(stageId).isEmpty();
   }
 
   public synchronized boolean checkJobTermination() {
     final Enum currentState = jobState.getStateMachine().getCurrentState();
     return (currentState == JobState.State.COMPLETE || currentState == JobState.State.FAILED);
+  }
+
+  public synchronized int getAttemptCountForStage(final String stageId) {
+    if (scheduleAttemptIdxByStage.containsKey(stageId)) {
+      return scheduleAttemptIdxByStage.get(stageId);
+    } else {
+      throw new IllegalStateException("No mapping for this stage's attemptIdx, an inconsistent state occurred.");
+    }
   }
 
   /**

@@ -42,6 +42,14 @@ message TaskGroupStateChangedMsg {
     required string taskGroupId = 2;
     required TaskGroupStateFromExecutor state = 3;
     repeated string failedTaskIds = 4;
+    optional RecoverableFailureCause failureCause = 5;
+    required int32 attemptIdx = 6;
+}
+
+enum RecoverableFailureCause {
+    InputReadFailure = 0;
+    OutputWriteFailure = 1;
+    // There is a 3rd cause: container_failure, but this is ommitted here as it is never propagated with a control msg.
 }
 
 message PartitionStateChangedMsg {

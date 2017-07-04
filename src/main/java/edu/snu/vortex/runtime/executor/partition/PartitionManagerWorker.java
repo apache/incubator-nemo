@@ -21,7 +21,9 @@ import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
+import edu.snu.vortex.runtime.exception.PartitionFetchException;
 import edu.snu.vortex.runtime.exception.NodeConnectionException;
+import edu.snu.vortex.runtime.exception.PartitionWriteException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionStoreException;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
 import org.apache.reef.tang.annotations.Parameter;
@@ -125,7 +127,12 @@ public final class PartitionManagerWorker {
                            final RuntimeAttribute partitionStore) {
     LOG.log(Level.INFO, "PutPartition: {0}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
-    store.putPartition(partitionId, data);
+
+    try {
+      store.putPartition(partitionId, data);
+    } catch (final Exception e) {
+      throw new PartitionWriteException(e);
+    }
 
     persistentConnectionToMaster.getMessageSender().send(
         ControlMessage.Message.newBuilder()
@@ -155,7 +162,14 @@ public final class PartitionManagerWorker {
     LOG.log(Level.INFO, "GetPartition: {0}", partitionId);
     // Local hit!
     final PartitionStore store = getPartitionStore(partitionStore);
-    final Optional<Partition> optionalData = store.getPartition(partitionId);
+    final Optional<Partition> optionalData;
+
+    try {
+      optionalData = store.getPartition(partitionId);
+    } catch (final Exception e) {
+      throw new PartitionFetchException(e);
+    }
+
     if (optionalData.isPresent()) {
       return optionalData.get().asIterable();
     } else {
@@ -181,10 +195,8 @@ public final class PartitionManagerWorker {
           responseFromMaster.getPartitionLocationInfoMsg();
       assert (responseFromMaster.getType() == ControlMessage.MessageType.PartitionLocationInfo);
       if (partitionLocationInfoMsg.getOwnerExecutorId().equals(NO_REMOTE_PARTITION)) {
-        // TODO #163: Handle Fault Tolerance
-        // We should report this exception to the master, instead of shutting down the JVM
-        throw new RuntimeException(
-            "Partition " + partitionId + " not found both in the local storage and the remote storage");
+        throw new PartitionFetchException(
+            new Throwable("Partition " + partitionId + " not found both in the local storage and the remote storage"));
       }
       final String remoteWorkerId = partitionLocationInfoMsg.getOwnerExecutorId();
 
@@ -192,8 +204,8 @@ public final class PartitionManagerWorker {
         // TODO #250: Fetch multiple partitions in parallel
         return partitionTransferPeer.fetch(remoteWorkerId, partitionId, runtimeEdgeId, partitionStore).get();
       } catch (final InterruptedException | ExecutionException e) {
-        // TODO #163: Handle Fault Tolerance
-        throw new NodeConnectionException(e);
+        LOG.log(Level.INFO, "Unable to fetch partition {0} from {1}", new Object[]{partitionId, remoteWorkerId});
+        throw new PartitionFetchException(e);
       }
     }
   }

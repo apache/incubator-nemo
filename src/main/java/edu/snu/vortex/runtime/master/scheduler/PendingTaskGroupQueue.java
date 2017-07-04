@@ -51,4 +51,9 @@ public final class PendingTaskGroupQueue {
   public ScheduledTaskGroup takeFirst() throws InterruptedException {
     return pendingTaskGroups.takeFirst();
   }
+
+  public boolean remove(final String taskGroupId) {
+    return pendingTaskGroups.removeIf(
+        scheduledTaskGroup -> scheduledTaskGroup.getTaskGroup().getTaskGroupId().equals(taskGroupId));
+  }
 }

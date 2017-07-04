@@ -25,6 +25,8 @@ import edu.snu.vortex.runtime.common.plan.logical.RuntimeOperatorVertex;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
+import edu.snu.vortex.runtime.exception.PartitionFetchException;
+import edu.snu.vortex.runtime.exception.PartitionWriteException;
 import edu.snu.vortex.runtime.executor.partition.PartitionManagerWorker;
 import edu.snu.vortex.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.vortex.runtime.executor.datatransfer.InputReader;
@@ -158,21 +160,29 @@ public final class TaskGroupExecutor {
       isExecutionRequested = true;
     }
 
-    taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.EXECUTING, Optional.empty());
+    taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.EXECUTING, Optional.empty(), Optional.empty());
 
     taskGroup.getTaskDAG().topologicalDo(task -> {
-      taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.EXECUTING);
+      taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.EXECUTING, Optional.empty());
       try {
         if (task instanceof BoundedSourceTask) {
           launchBoundedSourceTask((BoundedSourceTask) task);
+          taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.COMPLETE, Optional.empty());
         } else if (task instanceof OperatorTask) {
           launchOperatorTask((OperatorTask) task);
           garbageCollectLocalIntermediateData(task);
+          taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.COMPLETE, Optional.empty());
         } else {
           throw new UnsupportedOperationException(task.toString());
         }
+      } catch (final PartitionFetchException ex) {
+        taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.FAILED_RECOVERABLE,
+            Optional.of(TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
+      } catch (final PartitionWriteException ex2) {
+        taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.FAILED_RECOVERABLE,
+            Optional.of(TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
       } catch (final Exception e) {
-        taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.FAILED_UNRECOVERABLE);
+        taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.FAILED_UNRECOVERABLE, Optional.empty());
         throw new RuntimeException(e);
       }
     });
@@ -198,17 +208,13 @@ public final class TaskGroupExecutor {
   /**
    * Processes a BoundedSourceTask.
    * @param boundedSourceTask to execute
+   * @throws Exception occurred during input read.
    */
-  private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask) {
-    try {
-      final Reader reader = boundedSourceTask.getReader();
-      final Iterable<Element> readData = reader.read();
+  private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask) throws Exception {
+    final Reader reader = boundedSourceTask.getReader();
+    final Iterable<Element> readData = reader.read();
 
-      taskIdToOutputWriterMap.get(boundedSourceTask.getId()).forEach(outputWriter -> outputWriter.write(readData));
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-    taskGroupStateManager.onTaskStateChanged(boundedSourceTask.getId(), TaskState.State.COMPLETE);
+    taskIdToOutputWriterMap.get(boundedSourceTask.getId()).forEach(outputWriter -> outputWriter.write(readData));
   }
 
   /**
@@ -256,7 +262,5 @@ public final class TaskGroupExecutor {
     } else {
       LOG.log(Level.INFO, "This is a sink task: {0}", operatorTask.getId());
     }
-
-    taskGroupStateManager.onTaskStateChanged(operatorTask.getId(), TaskState.State.COMPLETE);
   }
 }

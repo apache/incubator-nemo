@@ -59,8 +59,7 @@ public final class SchedulerRunner implements Runnable {
           pendingTaskGroupQueue.addLast(scheduledTaskGroup);
         } else {
           // Must send this scheduledTaskGroup to the destination executor.
-          jobStateManager.onTaskGroupStateChanged(scheduledTaskGroup.getTaskGroup().getTaskGroupId(),
-              TaskGroupState.State.EXECUTING);
+          jobStateManager.onTaskGroupStateChanged(scheduledTaskGroup.getTaskGroup(), TaskGroupState.State.EXECUTING);
           schedulingPolicy.onTaskGroupScheduled(executorId.get(), scheduledTaskGroup);
         }
       } catch (final Exception e) {

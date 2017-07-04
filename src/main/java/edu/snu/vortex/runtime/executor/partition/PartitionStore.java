@@ -16,6 +16,8 @@
 package edu.snu.vortex.runtime.executor.partition;
 
 import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.runtime.exception.PartitionFetchException;
+import edu.snu.vortex.runtime.exception.PartitionWriteException;
 
 import java.util.Optional;
 
@@ -27,21 +29,24 @@ public interface PartitionStore {
    * Retrieves a partition.
    * @param partitionId of the partition
    * @return the data of the partition (optionally)
+   * @throws PartitionFetchException thrown for any error occurred while trying to fetch a partition
    */
-  Optional<Partition> getPartition(String partitionId);
+  Optional<Partition> getPartition(String partitionId) throws PartitionFetchException;
 
   /**
    * Saves a partition.
    * @param partitionId of the partition
    * @param data of the partition
    * @return the size of the partition (only when the partition is serialized)
+   * @throws PartitionWriteException thrown for any error occurred while trying to write a partition
    */
-  Optional<Long> putPartition(String partitionId, Iterable<Element> data);
+  Optional<Long> putPartition(String partitionId, Iterable<Element> data) throws PartitionWriteException;
 
   /**
    * Removes a partition.
    * @param partitionId of the partition
    * @return the data of the partition (optionally)
+   * @throws PartitionFetchException thrown for any error occurred while trying to fetch a partition
    */
-  Optional<Partition> removePartition(String partitionId);
+  Optional<Partition> removePartition(String partitionId) throws PartitionFetchException;
 }

@@ -56,6 +56,11 @@ public final class ContainerManager {
   private final Map<String, ExecutorRepresenter> executorRepresenterMap;
 
   /**
+   * A map of failed executor ID to the corresponding failed {@link ExecutorRepresenter}.
+   */
+  private final Map<String, ExecutorRepresenter> failedExecutorRepresenterMap;
+
+  /**
    * Keeps track of evaluator and context requests.
    */
   private final Map<String, ResourceSpecification> pendingContextIdToResourceSpec;
@@ -68,6 +73,7 @@ public final class ContainerManager {
     this.messageEnvironment = messageEnvironment;
     this.executorsByContainerType = new HashMap<>();
     this.executorRepresenterMap = new HashMap<>();
+    this.failedExecutorRepresenterMap = new HashMap<>();
     this.pendingContextIdToResourceSpec = new HashMap<>();
     this.pendingContainerRequestsByContainerType = new HashMap<>();
   }
@@ -155,7 +161,7 @@ public final class ContainerManager {
   /**
    * Initializes master's connection to the executor once launched.
    * A representation of the executor to reside in master is created.
-   * @param activeContext for the launcned executor.
+   * @param activeContext for the launched executor.
    */
   public synchronized void onExecutorLaunched(final ActiveContext activeContext) {
     // We set contextId = executorId in VortexDriver when we generate executor configuration.
@@ -183,15 +189,26 @@ public final class ContainerManager {
     executorRepresenterMap.put(executorId, executorRepresenter);
   }
 
-  // TODO #163: Handle Fault Tolerance
-  public synchronized void onContainerFailed() {
+  public synchronized void onExecutorRemoved(final String failedExecutorId) {
+    LOG.log(Level.INFO, "[" + failedExecutorId + "] failure reported.");
+
+    final ExecutorRepresenter failedExecutor = executorRepresenterMap.remove(failedExecutorId);
+    failedExecutor.onExecutorFailed();
+
+    executorsByContainerType.get(failedExecutor.getContainerType()).remove(failedExecutor);
+
+    failedExecutorRepresenterMap.put(failedExecutorId, failedExecutor);
   }
 
   public synchronized Map<String, ExecutorRepresenter> getExecutorRepresenterMap() {
     return executorRepresenterMap;
   }
 
+  public synchronized Map<String, ExecutorRepresenter> getFailedExecutorRepresenterMap() {
+    return failedExecutorRepresenterMap;
+  }
+
   public synchronized void terminate() {
-    executorRepresenterMap.entrySet().stream().forEach(e -> e.getValue().shutDown());
+    executorRepresenterMap.entrySet().forEach(e -> e.getValue().shutDown());
   }
 }

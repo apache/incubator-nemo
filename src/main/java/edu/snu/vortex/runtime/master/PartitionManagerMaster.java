@@ -21,9 +21,7 @@ import edu.snu.vortex.common.StateMachine;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,37 +34,65 @@ public final class PartitionManagerMaster {
   private static final Logger LOG = Logger.getLogger(PartitionManagerMaster.class.getName());
   private final Map<String, PartitionState> partitionIdToState;
   private final Map<String, String> committedPartitionIdToWorkerId;
+  private final Map<String, String> partitionIdToParentTaskGroupId;
 
   @Inject
   public PartitionManagerMaster() {
     this.partitionIdToState = new HashMap<>();
     this.committedPartitionIdToWorkerId = new HashMap<>();
+    this.partitionIdToParentTaskGroupId = new HashMap<>();
   }
 
-  public synchronized void initializeState(final String edgeId, final int srcTaskIndex) {
+  public synchronized void initializeState(final String edgeId, final int srcTaskIndex,
+                                           final String parentTaskGroupId) {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex);
     partitionIdToState.put(partitionId, new PartitionState());
+    partitionIdToParentTaskGroupId.put(partitionId, parentTaskGroupId);
   }
 
-  public synchronized void initializeState(final String edgeId, final int srcTaskIndex, final int partitionIndex) {
+  public synchronized void initializeState(final String edgeId, final int srcTaskIndex, final int partitionIndex,
+                                           final String parentTaskGroupId) {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex, partitionIndex);
     partitionIdToState.put(partitionId, new PartitionState());
+    partitionIdToParentTaskGroupId.put(partitionId, parentTaskGroupId);
   }
 
-  public synchronized void removeWorker(final String executorId) {
+  public synchronized Set<String> removeWorker(final String executorId) {
+    final Set<String> taskGroupsToRecompute = new HashSet<>();
+
     // Set partition states to lost
-    committedPartitionIdToWorkerId.entrySet().stream()
-        .filter(e -> e.getValue().equals(executorId))
-        .map(Map.Entry::getKey)
-        .forEach(partitionId -> onPartitionStateChanged(executorId, partitionId, PartitionState.State.LOST));
+    getPartitionsByWorker(executorId).forEach(partitionId -> {
+      onPartitionStateChanged(executorId, partitionId, PartitionState.State.LOST);
+      taskGroupsToRecompute.add(partitionIdToParentTaskGroupId.get(partitionId));
+    });
 
     // Update worker-related global variables
     committedPartitionIdToWorkerId.entrySet().removeIf(e -> e.getValue().equals(executorId));
+
+    return taskGroupsToRecompute;
   }
 
   public synchronized Optional<String> getPartitionLocation(final String partitionId) {
     final String executorId = committedPartitionIdToWorkerId.get(partitionId);
     return Optional.ofNullable(executorId);
+  }
+
+  public synchronized String getParentTaskGroupId(final String partitionId) {
+    return partitionIdToParentTaskGroupId.get(partitionId);
+  }
+
+  public synchronized Set<String> getPartitionsByWorker(final String executorId) {
+    final Set<String> partitionIds = new HashSet<>();
+    committedPartitionIdToWorkerId.forEach((partitionId, workerId) -> {
+      if (workerId.equals(executorId)) {
+        partitionIds.add(partitionId);
+      }
+    });
+    return partitionIds;
+  }
+
+  public synchronized PartitionState getPartitionState(final String partitionId) {
+    return partitionIdToState.get(partitionId);
   }
 
   public synchronized void onPartitionStateChanged(final String executorId,
@@ -94,7 +120,9 @@ public final class PartitionManagerMaster {
         committedPartitionIdToWorkerId.remove(partitionId);
         break;
       case LOST:
-        throw new UnsupportedOperationException(newState.toString());
+        LOG.log(Level.INFO, "Partition {0} lost in {1}", new Object[]{partitionId, executorId});
+        committedPartitionIdToWorkerId.remove(partitionId);
+        break;
       default:
         throw new UnsupportedOperationException(newState.toString());
     }
