@@ -72,6 +72,7 @@ import static org.mockito.Mockito.mock;
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final int EXECUTOR_CAPACITY = 1;
+  private static final int MAX_SCHEDULE_ATTEMPT = 2;
   private static final int SCHEDULE_TIMEOUT = 1000;
   private static final RuntimeAttribute STORE = RuntimeAttribute.Local;
   private static final int PARALLELISM_TEN = 10;
@@ -90,14 +91,14 @@ public final class DataTransferTest {
         new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
     final ContainerManager containerManager = new ContainerManager(null, messageEnvironment);
     final Scheduler scheduler =
-        new BatchScheduler(
+        new BatchScheduler(master,
             new RoundRobinSchedulingPolicy(containerManager, SCHEDULE_TIMEOUT), new PendingTaskGroupQueue());
     final AtomicInteger executorCount = new AtomicInteger(0);
     final PartitionManagerMaster master = new PartitionManagerMaster();
 
     // Unused, but necessary for wiring up the message environments
     final RuntimeMaster runtimeMaster = new RuntimeMaster(scheduler, containerManager,
-        messageEnvironment, master, EMPTY_DAG_DIRECTORY);
+        messageEnvironment, master, EMPTY_DAG_DIRECTORY, MAX_SCHEDULE_ATTEMPT);
 
     final Injector injector = createNameClientInjector();
 
@@ -217,9 +218,9 @@ public final class DataTransferTest {
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       if (commPattern == RuntimeAttribute.ScatterGather) {
         IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex ->
-            master.initializeState(EDGE_ID, srcTaskIndex, dstTaskIndex));
+            master.initializeState(EDGE_ID, srcTaskIndex, dstTaskIndex, null));
       } else {
-        master.initializeState(EDGE_ID, srcTaskIndex);
+        master.initializeState(EDGE_ID, srcTaskIndex, null);
       }
     });
 

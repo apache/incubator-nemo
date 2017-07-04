@@ -21,6 +21,7 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.Transform;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.runtime.TestUtil;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageSender;
@@ -30,7 +31,6 @@ import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.JobState;
 import edu.snu.vortex.runtime.common.state.StageState;
-import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.resource.ResourceSpecification;
@@ -45,7 +45,6 @@ import org.mockito.Mockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,19 +71,23 @@ public final class BatchSchedulerTest {
 
   private static final int TEST_TIMEOUT_MS = 1000;
 
+  // This schedule index will make sure that task group events are not ignored
+  private static final int MAGIC_SCHEDULE_ATTEMPT_INDEX = Integer.MAX_VALUE;
+
   @Before
   public void setUp() {
     irDAGBuilder = new DAGBuilder<>();
     containerManager = mock(ContainerManager.class);
     pendingTaskGroupQueue = new PendingTaskGroupQueue();
     schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TEST_TIMEOUT_MS);
-    scheduler = new BatchScheduler(schedulingPolicy, pendingTaskGroupQueue);
+    partitionManagerMaster = new PartitionManagerMaster();
+    scheduler = new BatchScheduler(partitionManagerMaster, schedulingPolicy, pendingTaskGroupQueue);
     partitionManagerMaster = new PartitionManagerMaster();
 
     final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();
     when(containerManager.getExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
 
-    schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, 2000);
+    schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TEST_TIMEOUT_MS);
 
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
@@ -172,16 +175,19 @@ public final class BatchSchedulerTest {
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
 
     final JobStateManager jobStateManager =
-        scheduler.scheduleJob(new PhysicalPlan("TestPlan", physicalDAG), partitionManagerMaster);
+        scheduler.scheduleJob(new PhysicalPlan("TestPlan", physicalDAG), 1);
 
     // Start off with the root stages.
     physicalDAG.getRootVertices().forEach(physicalStage ->
-        sendTaskGroupCompletionEventToScheduler(jobStateManager, physicalStage));
+        TestUtil.sendStageCompletionEventToScheduler(
+            jobStateManager, scheduler, containerManager, physicalStage, MAGIC_SCHEDULE_ATTEMPT_INDEX));
 
     // Then, for the rest of the stages.
     while (!jobStateManager.checkJobTermination()) {
       final List<PhysicalStage> stageList = physicalDAG.getTopologicalSort();
-      stageList.forEach(physicalStage -> sendTaskGroupCompletionEventToScheduler(jobStateManager, physicalStage));
+      stageList.forEach(physicalStage ->
+          TestUtil.sendStageCompletionEventToScheduler(
+              jobStateManager, scheduler, containerManager, physicalStage, MAGIC_SCHEDULE_ATTEMPT_INDEX));
     }
 
     // Check that the job have completed (not failed)
@@ -191,44 +197,5 @@ public final class BatchSchedulerTest {
     physicalDAG.getVertices().forEach(physicalStage ->
         assertTrue(jobStateManager.getStageState(physicalStage.getId()).getStateMachine().getCurrentState()
             == StageState.State.COMPLETE));
-  }
-
-  /**
-   * Sends task group completion event to scheduler.
-   * This replaces executor's task group completion messages for testing purposes.
-   * @param jobStateManager for the submitted job.
-   * @param physicalStage for which its task groups should be marked as complete.
-   */
-  private void sendTaskGroupCompletionEventToScheduler(final JobStateManager jobStateManager,
-                                                       final PhysicalStage physicalStage) {
-    while (jobStateManager.getStageState(physicalStage.getId()).getStateMachine().getCurrentState()
-        == StageState.State.EXECUTING) {
-      physicalStage.getTaskGroupList().forEach(taskGroup -> {
-        if (jobStateManager.getTaskGroupState(taskGroup.getTaskGroupId()).getStateMachine().getCurrentState()
-            == TaskGroupState.State.EXECUTING) {
-          final ExecutorRepresenter scheduledExecutor = findExecutorForTaskGroup(taskGroup.getTaskGroupId());
-
-          if (scheduledExecutor != null) {
-            scheduler.onTaskGroupStateChanged(scheduledExecutor.getExecutorId(), taskGroup.getTaskGroupId(),
-                TaskGroupState.State.COMPLETE, Collections.emptyList());
-          } // else pass this round, because the executor hasn't received the scheduled task group yet
-        }
-      });
-    }
-  }
-
-  /**
-   * Retrieves the executor to which the given task group was scheduled.
-   * @param taskGroupId of the task group to search.
-   * @return the {@link ExecutorRepresenter} of the executor the task group was scheduled to.
-   */
-  private ExecutorRepresenter findExecutorForTaskGroup(final String taskGroupId) {
-    for (final ExecutorRepresenter executor : containerManager.getExecutorRepresenterMap().values()) {
-      if (executor.getRunningTaskGroups().contains(taskGroupId)
-          || executor.getExecutedTaskGroups().contains(taskGroupId)) {
-        return executor;
-      }
-    }
-    return null;
   }
 }

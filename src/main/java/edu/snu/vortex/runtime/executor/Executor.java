@@ -94,8 +94,9 @@ public final class Executor {
    */
   private void launchTaskGroup(final ScheduledTaskGroup scheduledTaskGroup) {
     try {
-      taskGroupStateManager = new TaskGroupStateManager(scheduledTaskGroup.getTaskGroup(),
-          executorId, persistentConnectionToMaster);
+      taskGroupStateManager =
+          new TaskGroupStateManager(scheduledTaskGroup.getTaskGroup(), scheduledTaskGroup.getAttemptIdx(), executorId,
+              persistentConnectionToMaster);
 
       scheduledTaskGroup.getTaskGroupIncomingEdges()
           .forEach(e -> partitionManagerWorker.registerCoder(e.getId(), e.getCoder()));

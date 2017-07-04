@@ -13,17 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.partition;
-
-import edu.snu.vortex.compiler.ir.Element;
-import java.util.Optional;
+package edu.snu.vortex.runtime.exception;
 
 /**
- * This interface represents an output data of each operation.
- * It might be divided in multiple blocks.
+ * PartitionFetchException.
+ * Thrown when any exception occurs while trying to fetch a block for task execution.
  */
-interface Partition {
-
-  Iterable<Element> asIterable();
-  Optional<Long> size();
+public final class PartitionFetchException extends RuntimeException {
+  /**
+   * PartitionFetchException.
+   * @param exception exception
+   */
+  public PartitionFetchException(final Throwable exception) {
+    super(exception);
+  }
 }

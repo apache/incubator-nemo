@@ -53,10 +53,14 @@ public final class RoundRobinSchedulingPolicyTest {
   private ContainerManager containerManager = mock(ContainerManager.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
 
+  // This schedule index will make sure that task group events are not ignored
+  private static final int MAGIC_SCHEDULE_ATTEMPT_INDEX = Integer.MAX_VALUE;
+
   @Before
   public void setUp() {
     final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();
     when(containerManager.getExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
+    when(containerManager.getFailedExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
 
     schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TIMEOUT_MS);
 
@@ -212,10 +216,12 @@ public final class RoundRobinSchedulingPolicyTest {
     assertEquals("b1", b3.get());
     schedulingPolicy.onTaskGroupScheduled(b3.get(), b3Wrapper);
 
+    containerManager.onExecutorRemoved(b1.get());
     Set<String> executingTaskGroups = schedulingPolicy.onExecutorRemoved(b1.get());
     assertEquals(1, executingTaskGroups.size());
     assertEquals("B3", executingTaskGroups.iterator().next());
 
+    containerManager.onExecutorRemoved(a1.get());
     executingTaskGroups = schedulingPolicy.onExecutorRemoved(a1.get());
     assertEquals(1, executingTaskGroups.size());
     assertEquals("A4", executingTaskGroups.iterator().next());
@@ -224,7 +230,8 @@ public final class RoundRobinSchedulingPolicyTest {
   }
 
   private ScheduledTaskGroup wrap(final TaskGroup taskGroup) {
-    return new ScheduledTaskGroup(taskGroup, Collections.emptyList(), Collections.emptyList());
+    return new ScheduledTaskGroup(taskGroup, Collections.emptyList(), Collections.emptyList(),
+        MAGIC_SCHEDULE_ATTEMPT_INDEX);
   }
 }
 

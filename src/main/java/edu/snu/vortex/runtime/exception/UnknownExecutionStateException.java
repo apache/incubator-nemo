@@ -21,7 +21,7 @@ package edu.snu.vortex.runtime.exception;
  */
 public final class UnknownExecutionStateException extends RuntimeException {
   /**
-   * UnsupportedAttributeException.
+   * UnknownExecutionStateException.
    * @param cause cause
    */
   public UnknownExecutionStateException(final Throwable cause) {

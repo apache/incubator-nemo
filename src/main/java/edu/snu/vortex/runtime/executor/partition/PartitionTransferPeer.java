@@ -22,6 +22,7 @@ import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
+import edu.snu.vortex.runtime.exception.NodeConnectionException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionStoreException;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.InjectionFuture;
@@ -112,7 +113,7 @@ final class PartitionTransferPeer {
       remoteAddress = nameResolver.lookup(remotePeerIdentifier);
     } catch (final Exception e) {
       LOG.log(Level.SEVERE, "Cannot lookup PartitionTransferPeer {0}", remotePeerIdentifier);
-      throw new RuntimeException(e);
+      throw new NodeConnectionException(e);
     }
     LOG.log(Level.INFO, "Looked up {0}", remoteAddress);
 
@@ -120,7 +121,7 @@ final class PartitionTransferPeer {
     try {
       link = transport.open(remoteAddress, REQUEST_MESSAGE_CODEC, LINK_LISTENER);
     } catch (final IOException e) {
-      throw new RuntimeException(e);
+      throw new NodeConnectionException(e);
     }
     final long requestId = requestIdCounter.getAndIncrement();
     final CompletableFuture<Iterable<Element>> future = new CompletableFuture<>();
@@ -172,8 +173,11 @@ final class PartitionTransferPeer {
     public void onNext(final TransportEvent transportEvent) {
       final PartitionManagerWorker worker = partitionManagerWorker.get();
       final ControlMessage.RequestPartitionMsg request = REQUEST_MESSAGE_CODEC.decode(transportEvent.getData());
+
+      // We are getting the partition from local store!
       final Iterable<Element> data = worker.getPartition(request.getPartitionId(), request.getRuntimeEdgeId(),
           convertPartitionStoreType(request.getPartitionStore()));
+
       final Coder coder = worker.getCoder(request.getRuntimeEdgeId());
       final ControlMessage.PartitionTransferMsg.Builder replyBuilder = ControlMessage.PartitionTransferMsg.newBuilder()
           .setRequestId(request.getRequestId());
