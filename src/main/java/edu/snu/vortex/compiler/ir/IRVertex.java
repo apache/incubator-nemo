@@ -39,6 +39,16 @@ public abstract class IRVertex extends Vertex {
   public abstract IRVertex getClone();
 
   /**
+   * Static function to copy attributes from a vertex to the other.
+   * @param fromVertex the edge to copy attributes from.
+   * @param toVertex the edge to copy attributes to.
+   */
+  public static void copyAttributes(final IRVertex fromVertex, final IRVertex toVertex) {
+    fromVertex.getAttributes().forEachAttr(toVertex::setAttr);
+    fromVertex.getAttributes().forEachIntAttr(toVertex::setAttr);
+  }
+
+  /**
    * Set an attribute to the IRVertex.
    * @param key key of the attribute.
    * @param val value of the attribute.

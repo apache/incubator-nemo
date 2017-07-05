@@ -236,8 +236,10 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
   private void attributeCheck() {
     // All vertices connected with OneToOne edge should have identical Parallelism attribute.
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge)
-        .filter(e -> ((IREdge) e).getType().equals(IREdge.Type.OneToOne)).forEach(e -> {
+        .filter(e -> ((IREdge) e).getType().equals(IREdge.Type.OneToOne))
+        .filter(e -> ((IREdge) e).getAttr(Attribute.Key.SideInput) == null).forEach(e -> {
           if (e.getSrc() instanceof IRVertex && e.getDst() instanceof IRVertex
+              && !(e.getSrc() instanceof LoopVertex) && !(e.getDst() instanceof LoopVertex)
               && ((IRVertex) e.getSrc()).getAttr(Attribute.IntegerKey.Parallelism) != null
               && ((IRVertex) e.getDst()).getAttr(Attribute.IntegerKey.Parallelism) != null
               && !((IRVertex) e.getSrc()).getAttr(Attribute.IntegerKey.Parallelism)

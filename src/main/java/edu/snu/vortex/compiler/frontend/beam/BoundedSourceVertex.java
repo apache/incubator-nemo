@@ -16,6 +16,7 @@
 package edu.snu.vortex.compiler.frontend.beam;
 
 import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.Reader;
 import edu.snu.vortex.compiler.ir.SourceVertex;
 import org.apache.beam.sdk.io.BoundedSource;
@@ -43,7 +44,9 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
 
   @Override
   public BoundedSourceVertex getClone() {
-    return new BoundedSourceVertex<>(this.source);
+    final BoundedSourceVertex that = new BoundedSourceVertex<>(this.source);
+    IRVertex.copyAttributes(this, that);
+    return that;
   }
 
   @Override
