@@ -76,6 +76,7 @@ public final class LoopVertex extends IRVertex {
     newLoopVertex.setMaxNumberOfIterations(maxNumberOfIterations);
     newLoopVertex.setTerminationCondition(terminationCondition);
 
+    IRVertex.copyAttributes(this, newLoopVertex);
     return newLoopVertex;
   }
 
