@@ -31,9 +31,9 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -154,13 +154,12 @@ public final class PartitionManagerWorker {
    * @param partitionId of the partition
    * @param runtimeEdgeId id of the runtime edge that corresponds to the partition
    * @param partitionStore for the data storage
-   * @return the partition data
+   * @return a {@link CompletableFuture} for the partition data
    */
-  public Iterable<Element> getPartition(final String partitionId,
-                                        final String runtimeEdgeId,
-                                        final RuntimeAttribute partitionStore) {
+  public CompletableFuture<Iterable<Element>> getPartition(final String partitionId,
+                                                           final String runtimeEdgeId,
+                                                           final RuntimeAttribute partitionStore) {
     LOG.log(Level.INFO, "GetPartition: {0}", partitionId);
-    // Local hit!
     final PartitionStore store = getPartitionStore(partitionStore);
     final Optional<Partition> optionalData;
 
@@ -171,43 +170,37 @@ public final class PartitionManagerWorker {
     }
 
     if (optionalData.isPresent()) {
-      return optionalData.get().asIterable();
-    } else {
-      // We don't have the partition here... let's see if a remote worker has it
-      // Ask Master for the location
-      final ControlMessage.Message responseFromMaster;
-      try {
-        responseFromMaster = persistentConnectionToMaster.getMessageSender().<ControlMessage.Message>request(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setType(ControlMessage.MessageType.RequestPartitionLocation)
-                .setRequestPartitionLocationMsg(
-                    ControlMessage.RequestPartitionLocationMsg.newBuilder()
-                        .setExecutorId(executorId)
-                        .setPartitionId(partitionId)
-                        .build())
-                .build()).get();
-      } catch (Exception e) {
-        throw new NodeConnectionException(e);
-      }
-
-      final ControlMessage.PartitionLocationInfoMsg partitionLocationInfoMsg =
-          responseFromMaster.getPartitionLocationInfoMsg();
-      assert (responseFromMaster.getType() == ControlMessage.MessageType.PartitionLocationInfo);
-      if (partitionLocationInfoMsg.getOwnerExecutorId().equals(NO_REMOTE_PARTITION)) {
-        throw new PartitionFetchException(
-            new Throwable("Partition " + partitionId + " not found both in the local storage and the remote storage"));
-      }
-      final String remoteWorkerId = partitionLocationInfoMsg.getOwnerExecutorId();
-
-      try {
-        // TODO #250: Fetch multiple partitions in parallel
-        return partitionTransferPeer.fetch(remoteWorkerId, partitionId, runtimeEdgeId, partitionStore).get();
-      } catch (final InterruptedException | ExecutionException e) {
-        LOG.log(Level.INFO, "Unable to fetch partition {0} from {1}", new Object[]{partitionId, remoteWorkerId});
-        throw new PartitionFetchException(e);
-      }
+      // Local hit!
+      return CompletableFuture.completedFuture(optionalData.get().asIterable());
     }
+    // We don't have the partition here... let's see if a remote worker has it
+    // Ask Master for the location
+    final ControlMessage.Message responseFromMaster;
+    try {
+      responseFromMaster = persistentConnectionToMaster.getMessageSender().<ControlMessage.Message>request(
+          ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdGenerator.generateMessageId())
+              .setType(ControlMessage.MessageType.RequestPartitionLocation)
+              .setRequestPartitionLocationMsg(
+                  ControlMessage.RequestPartitionLocationMsg.newBuilder()
+                      .setExecutorId(executorId)
+                      .setPartitionId(partitionId)
+                      .build())
+              .build()).get();
+    } catch (Exception e) {
+      throw new NodeConnectionException(e);
+    }
+
+    final ControlMessage.PartitionLocationInfoMsg partitionLocationInfoMsg =
+        responseFromMaster.getPartitionLocationInfoMsg();
+    assert (responseFromMaster.getType() == ControlMessage.MessageType.PartitionLocationInfo);
+    if (partitionLocationInfoMsg.getOwnerExecutorId().equals(NO_REMOTE_PARTITION)) {
+      throw new PartitionFetchException(
+          new Throwable("Partition " + partitionId + " not found both in the local storage and the remote storage"));
+    }
+    final String remoteWorkerId = partitionLocationInfoMsg.getOwnerExecutorId();
+
+    return partitionTransferPeer.fetch(remoteWorkerId, partitionId, runtimeEdgeId, partitionStore);
   }
 
   private PartitionStore getPartitionStore(final RuntimeAttribute partitionStore) {

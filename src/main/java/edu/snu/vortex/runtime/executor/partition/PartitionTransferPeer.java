@@ -43,6 +43,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -172,8 +173,13 @@ final class PartitionTransferPeer {
       final ControlMessage.RequestPartitionMsg request = REQUEST_MESSAGE_CODEC.decode(transportEvent.getData());
 
       // We are getting the partition from local store!
-      final Iterable<Element> data = worker.getPartition(request.getPartitionId(), request.getRuntimeEdgeId(),
-          convertPartitionStoreType(request.getPartitionStore()));
+      final Iterable<Element> data;
+      try {
+        data = worker.getPartition(request.getPartitionId(), request.getRuntimeEdgeId(),
+            convertPartitionStoreType(request.getPartitionStore())).get();
+      } catch (InterruptedException | ExecutionException e) {
+        throw new RuntimeException(e);
+      }
 
       final Coder coder = worker.getCoder(request.getRuntimeEdgeId());
 
