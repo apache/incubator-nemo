@@ -15,7 +15,6 @@
  */
 package edu.snu.vortex.runtime.executor.partition;
 
-import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.compiler.frontend.Coder;
@@ -39,9 +38,7 @@ import org.apache.reef.wake.remote.transport.netty.LoggingLinkListener;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
@@ -179,19 +176,22 @@ final class PartitionTransferPeer {
           convertPartitionStoreType(request.getPartitionStore()));
 
       final Coder coder = worker.getCoder(request.getRuntimeEdgeId());
-      final ControlMessage.PartitionTransferMsg.Builder replyBuilder = ControlMessage.PartitionTransferMsg.newBuilder()
-          .setRequestId(request.getRequestId());
-      for (final Element element : data) {
-        // Memory leak if we don't do try-with-resources here
-        try (final ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
-          coder.encode(element, stream);
-          replyBuilder.addData(ByteString.copyFrom(stream.toByteArray()));
-        } catch (IOException e) {
-          throw new RuntimeException(e);
+
+      int numOfElements = 0;
+      try (final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+           final ByteArrayOutputStream elementsOutputStream = new ByteArrayOutputStream();
+           final DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
+        for (final Element element : data) {
+          coder.encode(element, elementsOutputStream);
+          numOfElements++;
         }
+        dataOutputStream.writeLong(request.getRequestId());
+        dataOutputStream.writeInt(numOfElements);
+        elementsOutputStream.writeTo(outputStream);
+        transportEvent.getLink().write(outputStream.toByteArray());
+      } catch (IOException e) {
+        throw new RuntimeException(e);
       }
-      final byte[] serialized = replyBuilder.build().toByteArray();
-      transportEvent.getLink().write(serialized);
     }
   }
 
@@ -209,24 +209,25 @@ final class PartitionTransferPeer {
     @Override
     public void onNext(final TransportEvent transportEvent) {
       final PartitionTransferPeer peer = partitionTransferPeer.get();
-      final ControlMessage.PartitionTransferMsg reply;
-      try {
-        reply = ControlMessage.PartitionTransferMsg.parseFrom(transportEvent.getData());
-      } catch (InvalidProtocolBufferException e) {
+
+      final byte[] bytes = transportEvent.getData();
+
+      try (final InputStream inputStream = new ByteArrayInputStream(bytes);
+           final DataInputStream dataInputStream = new DataInputStream(inputStream)) {
+        final long requestId = dataInputStream.readLong();
+        final Coder coder = peer.requestIdToCoder.remove(requestId);
+        final int numOfElements = dataInputStream.readInt();
+
+        final ArrayList<Element> data = new ArrayList<>(numOfElements);
+        for (int i = 0; i < numOfElements; i++) {
+          data.add(coder.decode(inputStream));
+        }
+
+        final CompletableFuture<Iterable<Element>> future = peer.requestIdToFuture.remove(requestId);
+        future.complete(data);
+      } catch (IOException e) {
         throw new RuntimeException(e);
       }
-      final Coder coder = peer.requestIdToCoder.remove(reply.getRequestId());
-      final ArrayList<Element> deserializedData = new ArrayList<>(reply.getDataCount());
-      for (int i = 0; i < reply.getDataCount(); i++) {
-        // Memory leak if we don't do try-with-resources here
-        try (final InputStream inputStream = reply.getData(i).newInput()) {
-          deserializedData.add(coder.decode(inputStream));
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
-      }
-      final CompletableFuture<Iterable<Element>> future = peer.requestIdToFuture.remove(reply.getRequestId());
-      future.complete(deserializedData);
     }
   }
 
