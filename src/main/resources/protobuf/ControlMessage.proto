@@ -76,11 +76,6 @@ message RequestPartitionMsg {
     required string runtimeEdgeId = 4;
 }
 
-message PartitionTransferMsg {
-    required int64 requestId = 1; // Should be equal to requestId of the corresponding RequestPartitionMsg
-    repeated bytes data = 2;
-}
-
 enum TaskGroupStateFromExecutor {
     READY = 0;
     EXECUTING = 1;
