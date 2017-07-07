@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.compiler.ir;
 
-import edu.snu.vortex.compiler.frontend.Coder;
+import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.exception.UnsupportedAttributeException;

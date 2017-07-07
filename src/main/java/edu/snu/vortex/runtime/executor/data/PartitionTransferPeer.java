@@ -13,16 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.partition;
+package edu.snu.vortex.runtime.executor.data;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import edu.snu.vortex.client.JobConf;
-import edu.snu.vortex.compiler.frontend.Coder;
+import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.exception.NodeConnectionException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionStoreException;
+import edu.snu.vortex.runtime.executor.data.partition.LocalPartition;
+import edu.snu.vortex.runtime.executor.data.partition.Partition;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -63,7 +65,7 @@ final class PartitionTransferPeer {
 
   private final AtomicLong requestIdCounter;
   private final ConcurrentHashMap<Long, Coder> requestIdToCoder;
-  private final ConcurrentHashMap<Long, CompletableFuture<Iterable<Element>>> requestIdToFuture;
+  private final ConcurrentHashMap<Long, CompletableFuture<Partition>> requestIdToFuture;
 
   @Inject
   private PartitionTransferPeer(final NameResolver nameResolver,
@@ -100,10 +102,10 @@ final class PartitionTransferPeer {
    * @param partitionStore type of the partition store
    * @return {@link CompletableFuture} for the partition
    */
-  CompletableFuture<Iterable<Element>> fetch(final String remoteExecutorId,
-                                             final String partitionId,
-                                             final String runtimeEdgeId,
-                                             final RuntimeAttribute partitionStore) {
+  CompletableFuture<Partition> fetch(final String remoteExecutorId,
+                                     final String partitionId,
+                                     final String runtimeEdgeId,
+                                     final RuntimeAttribute partitionStore) {
     final Identifier remotePeerIdentifier = new PartitionTransferPeerIdentifier(remoteExecutorId);
     final InetSocketAddress remoteAddress;
     final Coder coder = partitionManagerWorker.get().getCoder(runtimeEdgeId);
@@ -122,7 +124,7 @@ final class PartitionTransferPeer {
       throw new NodeConnectionException(e);
     }
     final long requestId = requestIdCounter.getAndIncrement();
-    final CompletableFuture<Iterable<Element>> future = new CompletableFuture<>();
+    final CompletableFuture<Partition> future = new CompletableFuture<>();
     requestIdToCoder.put(requestId, coder);
     requestIdToFuture.put(requestId, future);
     final ControlMessage.RequestPartitionMsg msg = ControlMessage.RequestPartitionMsg.newBuilder()
@@ -173,21 +175,23 @@ final class PartitionTransferPeer {
       final ControlMessage.RequestPartitionMsg request = REQUEST_MESSAGE_CODEC.decode(transportEvent.getData());
 
       // We are getting the partition from local store!
-      final Iterable<Element> data;
+      final Partition partition;
       try {
-        data = worker.getPartition(request.getPartitionId(), request.getRuntimeEdgeId(),
+        partition = worker.getPartition(request.getPartitionId(), request.getRuntimeEdgeId(),
             convertPartitionStoreType(request.getPartitionStore())).get();
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
       }
 
+      // TODO #299: Separate Serialization from Here
+      // At now, we do unneeded deserialization and serialization for already serialized data.
       final Coder coder = worker.getCoder(request.getRuntimeEdgeId());
 
       int numOfElements = 0;
       try (final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
            final ByteArrayOutputStream elementsOutputStream = new ByteArrayOutputStream();
            final DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
-        for (final Element element : data) {
+        for (final Element element : partition.asIterable()) {
           coder.encode(element, elementsOutputStream);
           numOfElements++;
         }
@@ -229,8 +233,8 @@ final class PartitionTransferPeer {
           data.add(coder.decode(inputStream));
         }
 
-        final CompletableFuture<Iterable<Element>> future = peer.requestIdToFuture.remove(requestId);
-        future.complete(data);
+        final CompletableFuture<Partition> future = peer.requestIdToFuture.remove(requestId);
+        future.complete(new LocalPartition(data));
       } catch (IOException e) {
         throw new RuntimeException(e);
       }

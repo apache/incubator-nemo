@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.partition;
+package edu.snu.vortex.runtime.executor.data;
 
 import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.runtime.executor.data.partition.LocalPartition;
+import edu.snu.vortex.runtime.executor.data.partition.Partition;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -26,11 +28,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * Store data in local memory.
  */
 @ThreadSafe
-public final class LocalStore implements PartitionStore {
+final class LocalStore implements PartitionStore {
   private final ConcurrentHashMap<String, Partition> partitionIdToData;
 
   @Inject
-  public LocalStore() {
+  private LocalStore() {
     this.partitionIdToData = new ConcurrentHashMap<>();
   }
 
@@ -41,7 +43,8 @@ public final class LocalStore implements PartitionStore {
 
   @Override
   public Optional<Long> putPartition(final String partitionId, final Iterable<Element> data) {
-    if (partitionIdToData.containsKey(partitionId)) {
+    final Partition previousPartition = partitionIdToData.putIfAbsent(partitionId, new LocalPartition(data));
+    if (previousPartition != null) {
       throw new RuntimeException("Trying to overwrite an existing partition");
     }
 
@@ -52,29 +55,7 @@ public final class LocalStore implements PartitionStore {
   }
 
   @Override
-  public Optional<Partition> removePartition(final String partitionId) {
-    return Optional.ofNullable(partitionIdToData.remove(partitionId));
-  }
-
-  /**
-   * This class represents a {@link Partition} which is stored in {@link LocalStore} and not divided in multiple blocks.
-   */
-  private final class LocalPartition implements Partition {
-
-    private final Iterable<Element> data;
-
-    private LocalPartition(final Iterable<Element> data) {
-      this.data = data;
-    }
-
-    @Override
-    public Iterable<Element> asIterable() {
-      return data;
-    }
-
-    @Override
-    public Optional<Long> size() {
-      return Optional.empty();
-    }
+  public boolean removePartition(final String partitionId) {
+    return partitionIdToData.remove(partitionId) != null;
   }
 }

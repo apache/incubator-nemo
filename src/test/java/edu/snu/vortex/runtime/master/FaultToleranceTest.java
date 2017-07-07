@@ -15,9 +15,9 @@
  */
 package edu.snu.vortex.runtime.master;
 
+import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
-import edu.snu.vortex.compiler.frontend.Coder;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;

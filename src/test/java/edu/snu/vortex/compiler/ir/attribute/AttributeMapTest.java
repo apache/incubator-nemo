@@ -16,7 +16,7 @@
 package edu.snu.vortex.compiler.ir.attribute;
 
 import edu.snu.vortex.compiler.TestUtil;
-import edu.snu.vortex.compiler.frontend.Coder;
+import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;

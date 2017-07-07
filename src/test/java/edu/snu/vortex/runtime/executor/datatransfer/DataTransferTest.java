@@ -16,10 +16,10 @@
 package edu.snu.vortex.runtime.executor.datatransfer;
 
 import edu.snu.vortex.client.JobConf;
-import edu.snu.vortex.compiler.frontend.Coder;
+import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BeamElement;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
-import edu.snu.vortex.compiler.frontend.beam.coder.BeamCoder;
+import edu.snu.vortex.common.coder.BeamCoder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
@@ -32,7 +32,7 @@ import edu.snu.vortex.runtime.common.plan.logical.RuntimeBoundedSourceVertex;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 import edu.snu.vortex.runtime.executor.Executor;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
-import edu.snu.vortex.runtime.executor.partition.PartitionManagerWorker;
+import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
@@ -44,6 +44,7 @@ import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.values.KV;
+import org.apache.commons.io.FileUtils;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
@@ -56,6 +57,8 @@ import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -75,6 +78,8 @@ public final class DataTransferTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
   private static final int SCHEDULE_TIMEOUT = 1000;
   private static final RuntimeAttribute STORE = RuntimeAttribute.Local;
+  private static final RuntimeAttribute FILE_STORE = RuntimeAttribute.File;
+  private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final int PARALLELISM_TEN = 10;
   private static final String EDGE_ID = "Dummy";
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
@@ -120,6 +125,7 @@ public final class DataTransferTest {
     final Injector injector = nameClientInjector.forkInjector(executorConfiguration);
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
     injector.bindVolatileInstance(PersistentConnectionToMaster.class, conToMaster);
+    injector.bindVolatileParameter(JobConf.FileDirectory.class, TMP_FILE_DIRECTORY);
     final PartitionManagerWorker partitionManagerWorker;
     try {
       partitionManagerWorker = injector.getInstance(PartitionManagerWorker.class);
@@ -161,37 +167,50 @@ public final class DataTransferTest {
 
   @Test
   public void testOneToOneSameWorker() {
-    writeAndRead(worker1, worker1, RuntimeAttribute.OneToOne);
+    writeAndRead(worker1, worker1, RuntimeAttribute.OneToOne, STORE);
   }
 
   @Test
   public void testOneToOneDifferentWorker() {
-    writeAndRead(worker1, worker2, RuntimeAttribute.OneToOne);
+    writeAndRead(worker1, worker2, RuntimeAttribute.OneToOne, STORE);
   }
 
   @Test
   public void testOneToManySameWorker() {
-    writeAndRead(worker1, worker1, RuntimeAttribute.Broadcast);
+    writeAndRead(worker1, worker1, RuntimeAttribute.Broadcast, STORE);
   }
 
   @Test
   public void testOneToManyDifferentWorker() {
-    writeAndRead(worker1, worker2, RuntimeAttribute.Broadcast);
+    writeAndRead(worker1, worker2, RuntimeAttribute.Broadcast, STORE);
   }
 
   @Test
   public void testManyToManySameWorker() {
-    writeAndRead(worker1, worker1, RuntimeAttribute.ScatterGather);
+    writeAndRead(worker1, worker1, RuntimeAttribute.ScatterGather, STORE);
   }
 
   @Test
   public void testManyToManyDifferentWorker() {
-    writeAndRead(worker1, worker2, RuntimeAttribute.ScatterGather);
+    writeAndRead(worker1, worker2, RuntimeAttribute.ScatterGather, STORE);
+  }
+
+  @Test(timeout = 1000)
+  public void testFileManyToManySameWorker() throws IOException {
+    writeAndRead(worker1, worker1, RuntimeAttribute.ScatterGather, FILE_STORE);
+    FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
+  }
+
+  @Test(timeout = 1000)
+  public void testFileManyToManyDifferentWorker() throws IOException {
+    writeAndRead(worker1, worker2, RuntimeAttribute.ScatterGather, FILE_STORE);
+    FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
   }
 
   private void writeAndRead(final PartitionManagerWorker sender,
                             final PartitionManagerWorker receiver,
-                            final RuntimeAttribute commPattern) {
+                            final RuntimeAttribute commPattern,
+                            final RuntimeAttribute store) {
     // Src setup
     final RuntimeAttributeMap srcVertexAttributes = new RuntimeAttributeMap();
     srcVertexAttributes.put(RuntimeAttribute.IntegerKey.Parallelism, PARALLELISM_TEN);
@@ -210,7 +229,7 @@ public final class DataTransferTest {
     final RuntimeAttributeMap edgeAttributes = new RuntimeAttributeMap();
     edgeAttributes.put(RuntimeAttribute.Key.CommPattern, commPattern);
     edgeAttributes.put(RuntimeAttribute.Key.Partition, RuntimeAttribute.Hash);
-    edgeAttributes.put(RuntimeAttribute.Key.PartitionStore, STORE);
+    edgeAttributes.put(RuntimeAttribute.Key.PartitionStore, store);
     final RuntimeEdge<RuntimeVertex> dummyEdge
         = new RuntimeEdge<>(EDGE_ID, edgeAttributes, srcVertex, dstVertex, CODER);
 
