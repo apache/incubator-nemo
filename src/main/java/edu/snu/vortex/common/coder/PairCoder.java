@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.frontend.beam.coder;
+package edu.snu.vortex.common.coder;
 
 import edu.snu.vortex.common.Pair;
 import org.apache.beam.sdk.coders.Coder;

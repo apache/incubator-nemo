@@ -106,7 +106,7 @@ public final class RuntimeIdGenerator {
    * @return the generated ID
    */
   public static String generatePartitionId(final String runtimeEdgeId, final int taskIndex) {
-    return "Partition-" + runtimeEdgeId + "-" + taskIndex;
+    return "Partition_" + runtimeEdgeId + "_" + taskIndex;
   }
 
   /**
@@ -117,7 +117,7 @@ public final class RuntimeIdGenerator {
    * @return the generated ID
    */
   public static String generatePartitionId(final String runtimeEdgeId, final int taskIndex, final int partitionIndex) {
-    return generatePartitionId(runtimeEdgeId, taskIndex) + "-" + partitionIndex;
+    return generatePartitionId(runtimeEdgeId, taskIndex) + "_" + partitionIndex;
   }
 
   /**

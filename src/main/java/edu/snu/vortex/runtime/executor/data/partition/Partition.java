@@ -13,17 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.partition;
+package edu.snu.vortex.runtime.executor.data.partition;
 
 import edu.snu.vortex.compiler.ir.Element;
-import java.util.Optional;
 
 /**
  * This interface represents an output data of each operation.
  * It might be divided in multiple blocks.
  */
-interface Partition {
+public interface Partition {
 
   Iterable<Element> asIterable();
-  Optional<Long> size();
 }

@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.partition;
+package edu.snu.vortex.runtime.executor.data;
 
 import edu.snu.vortex.client.JobConf;
-import edu.snu.vortex.compiler.frontend.Coder;
+import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeAttribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
@@ -26,6 +26,7 @@ import edu.snu.vortex.runtime.exception.NodeConnectionException;
 import edu.snu.vortex.runtime.exception.PartitionWriteException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionStoreException;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
+import edu.snu.vortex.runtime.executor.data.partition.Partition;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -50,6 +51,8 @@ public final class PartitionManagerWorker {
 
   private final LocalStore localStore;
 
+  private final FileStore fileStore;
+
   private final PersistentConnectionToMaster persistentConnectionToMaster;
 
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder;
@@ -57,12 +60,14 @@ public final class PartitionManagerWorker {
   private final PartitionTransferPeer partitionTransferPeer;
 
   @Inject
-  public PartitionManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
-                                final LocalStore localStore,
-                                final PersistentConnectionToMaster persistentConnectionToMaster,
-                                final PartitionTransferPeer partitionTransferPeer) {
+  private PartitionManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
+                                 final LocalStore localStore,
+                                 final FileStore fileStore,
+                                 final PersistentConnectionToMaster persistentConnectionToMaster,
+                                 final PartitionTransferPeer partitionTransferPeer) {
     this.executorId = executorId;
     this.localStore = localStore;
+    this.fileStore = fileStore;
     this.persistentConnectionToMaster = persistentConnectionToMaster;
     this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
     this.partitionTransferPeer = partitionTransferPeer;
@@ -70,6 +75,7 @@ public final class PartitionManagerWorker {
 
   /**
    * Return the coder for the specified runtime edge.
+   *
    * @param runtimeEdgeId id of the runtime edge
    * @return the corresponding coder
    */
@@ -83,43 +89,51 @@ public final class PartitionManagerWorker {
 
   /**
    * Register a coder for runtime edge.
+   *
    * @param runtimeEdgeId id of the runtime edge
-   * @param coder the corresponding coder
+   * @param coder         the corresponding coder
    */
   public void registerCoder(final String runtimeEdgeId, final Coder coder) {
     runtimeEdgeIdToCoder.putIfAbsent(runtimeEdgeId, coder);
   }
 
-  public Iterable<Element> removePartition(final String partitionId,
-                                           final RuntimeAttribute partitionStore) {
+  /**
+   * Remove the partition from store.
+   *
+   * @param partitionId of the partition to remove.
+   * @param partitionStore tha the partition is stored.
+   * @return whether the partition is removed or not.
+   */
+  public boolean removePartition(final String partitionId,
+                                 final RuntimeAttribute partitionStore) {
     LOG.log(Level.INFO, "RemovePartition: {0}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
-    final Optional<Partition> optional = store.removePartition(partitionId);
-    if (!optional.isPresent()) {
-      throw new RuntimeException("Trying to remove a non-existent partition");
+    final boolean exist = store.removePartition(partitionId);
+
+    if (exist) {
+      persistentConnectionToMaster.getMessageSender().send(
+          ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdGenerator.generateMessageId())
+              .setType(ControlMessage.MessageType.PartitionStateChanged)
+              .setPartitionStateChangedMsg(
+                  ControlMessage.PartitionStateChangedMsg.newBuilder()
+                      .setExecutorId(executorId)
+                      .setPartitionId(partitionId)
+                      .setState(ControlMessage.PartitionStateFromExecutor.REMOVED)
+                      .build())
+              .build());
     }
 
-    persistentConnectionToMaster.getMessageSender().send(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setType(ControlMessage.MessageType.PartitionStateChanged)
-            .setPartitionStateChangedMsg(
-                ControlMessage.PartitionStateChangedMsg.newBuilder()
-                    .setExecutorId(executorId)
-                    .setPartitionId(partitionId)
-                    .setState(ControlMessage.PartitionStateFromExecutor.REMOVED)
-                    .build())
-            .build());
-
-    return optional.get().asIterable();
+    return exist;
   }
 
 
   /**
    * Store partition somewhere.
    * Invariant: This should be invoked only once per partitionId.
-   * @param partitionId of the partition
-   * @param data of the partition
+   *
+   * @param partitionId    of the partition
+   * @param data           of the partition
    * @param partitionStore for storing the partition
    */
   public void putPartition(final String partitionId,
@@ -151,27 +165,28 @@ public final class PartitionManagerWorker {
    * Get the stored partition.
    * Unlike putPartition, this can be invoked multiple times per partitionId (maybe due to failures).
    * Here, we first check if we have the partition here, and then try to fetch the partition from a remote worker.
-   * @param partitionId of the partition
-   * @param runtimeEdgeId id of the runtime edge that corresponds to the partition
+   *
+   * @param partitionId    of the partition
+   * @param runtimeEdgeId  id of the runtime edge that corresponds to the partition
    * @param partitionStore for the data storage
-   * @return a {@link CompletableFuture} for the partition data
+   * @return a {@link CompletableFuture} for the partition
    */
-  public CompletableFuture<Iterable<Element>> getPartition(final String partitionId,
-                                                           final String runtimeEdgeId,
-                                                           final RuntimeAttribute partitionStore) {
+  public CompletableFuture<Partition> getPartition(final String partitionId,
+                                                   final String runtimeEdgeId,
+                                                   final RuntimeAttribute partitionStore) {
     LOG.log(Level.INFO, "GetPartition: {0}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
-    final Optional<Partition> optionalData;
+    final Optional<Partition> optionalPartition;
 
     try {
-      optionalData = store.getPartition(partitionId);
+      optionalPartition = store.getPartition(partitionId);
     } catch (final Exception e) {
       throw new PartitionFetchException(e);
     }
 
-    if (optionalData.isPresent()) {
+    if (optionalPartition.isPresent()) {
       // Local hit!
-      return CompletableFuture.completedFuture(optionalData.get().asIterable());
+      return CompletableFuture.completedFuture(optionalPartition.get());
     }
     // We don't have the partition here... let's see if a remote worker has it
     // Ask Master for the location
@@ -211,10 +226,9 @@ public final class PartitionManagerWorker {
         // TODO #181: Implement MemoryPartitionStore
         return localStore;
       case File:
-        // TODO #69: Implement file channel in Runtime
-        return localStore;
+        return fileStore;
       case MemoryFile:
-        // TODO #69: Implement file channel in Runtime
+        // TODO #181: Implement MemoryPartitionStore
         return localStore;
       case DistributedStorage:
         // TODO #180: Implement DistributedStorageStore
@@ -223,5 +237,4 @@ public final class PartitionManagerWorker {
         throw new UnsupportedPartitionStoreException(new Exception(partitionStore + " is not supported."));
     }
   }
-
 }

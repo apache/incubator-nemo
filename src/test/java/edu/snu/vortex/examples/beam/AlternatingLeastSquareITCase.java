@@ -29,7 +29,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class AlternatingLeastSquareITCase {
-  private static final int TIMEOUT = 60000;
+  private static final int TIMEOUT = 120000;
   private static final String als = "edu.snu.vortex.examples.beam.AlternatingLeastSquare";
   private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_als";
   private static final String numFeatures = "10";

@@ -18,7 +18,7 @@ package edu.snu.vortex.runtime.common.state;
 import edu.snu.vortex.common.StateMachine;
 
 /**
- * Represents the states of a whole partition(a task output).
+ * Represents the states of a whole data(a task output).
  */
 public final class PartitionState {
   private final StateMachine stateMachine;
@@ -67,9 +67,9 @@ public final class PartitionState {
     MOVING,
     COMMITTED,
     /**
-     * A partition can be considered "lost" by PartitionManagerMaster for the following reasons:
+     * A data can be considered "lost" by PartitionManagerMaster for the following reasons:
      * 1) The executor that has the partition goes down
-     * 2) Local partition fetch failure (disk corruption, partition evicted due to memory pressure, etc)
+     * 2) Local data fetch failure (disk corruption, partition evicted due to memory pressure, etc)
      * 3) Remote partition fetch failure (network partitioning, network timeout, etc)
      *
      * Our current PartitionManager implementation does *not* properly handle the above cases.

@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.partition;
+package edu.snu.vortex.runtime.executor.data;
 
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.exception.PartitionFetchException;
 import edu.snu.vortex.runtime.exception.PartitionWriteException;
+import edu.snu.vortex.runtime.executor.data.partition.Partition;
 
 import java.util.Optional;
 
@@ -26,27 +27,28 @@ import java.util.Optional;
  */
 public interface PartitionStore {
   /**
-   * Retrieves a partition.
-   * @param partitionId of the partition
-   * @return the data of the partition (optionally)
+   * Retrieves a partition of data.
+   * @param partitionId of the partition.
+   * @return the partition (optionally).
    * @throws PartitionFetchException thrown for any error occurred while trying to fetch a partition
    */
   Optional<Partition> getPartition(String partitionId) throws PartitionFetchException;
 
   /**
-   * Saves a partition.
-   * @param partitionId of the partition
-   * @param data of the partition
-   * @return the size of the partition (only when the partition is serialized)
+   * Saves a partition of data.
+   * @param partitionId of the partition.
+   * @param data of the partition.
+   * @return the size of the data (only when the data is serialized).
    * @throws PartitionWriteException thrown for any error occurred while trying to write a partition
    */
   Optional<Long> putPartition(String partitionId, Iterable<Element> data) throws PartitionWriteException;
 
   /**
-   * Removes a partition.
-   * @param partitionId of the partition
-   * @return the data of the partition (optionally)
+   * Optional<Partition> removePartition(String partitionId) throws PartitionFetchException;
+   * Removes a partition of data.
+   * @param partitionId of the partition.
+   * @return whether the partition exists or not.
    * @throws PartitionFetchException thrown for any error occurred while trying to fetch a partition
    */
-  Optional<Partition> removePartition(String partitionId) throws PartitionFetchException;
+  boolean removePartition(String partitionId) throws PartitionFetchException;
 }

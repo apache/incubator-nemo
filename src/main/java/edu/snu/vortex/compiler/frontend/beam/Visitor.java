@@ -16,7 +16,7 @@
 package edu.snu.vortex.compiler.frontend.beam;
 
 import edu.snu.vortex.client.beam.LoopCompositeTransform;
-import edu.snu.vortex.compiler.frontend.beam.coder.BeamCoder;
+import edu.snu.vortex.common.coder.BeamCoder;
 import edu.snu.vortex.compiler.frontend.beam.transform.*;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;

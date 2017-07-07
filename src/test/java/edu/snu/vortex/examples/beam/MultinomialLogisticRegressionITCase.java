@@ -29,7 +29,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class MultinomialLogisticRegressionITCase {
-  private static final int TIMEOUT = 60000;
+  private static final int TIMEOUT = 120000;
   private static final String mlr = "edu.snu.vortex.examples.beam.MultinomialLogisticRegression";
   private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mlr";
   private static final String numFeatures = "100";

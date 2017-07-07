@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.runtime.common.plan;
 
-import edu.snu.vortex.compiler.frontend.Coder;
+import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.vortex.compiler.ir.*;
