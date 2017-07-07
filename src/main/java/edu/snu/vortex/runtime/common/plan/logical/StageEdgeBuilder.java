@@ -16,7 +16,7 @@
 package edu.snu.vortex.runtime.common.plan.logical;
 
 
-import edu.snu.vortex.compiler.frontend.Coder;
+import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 
 /**

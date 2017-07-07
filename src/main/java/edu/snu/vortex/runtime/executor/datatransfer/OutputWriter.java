@@ -22,7 +22,7 @@ import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 import edu.snu.vortex.runtime.exception.UnsupportedCommPatternException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionerException;
-import edu.snu.vortex.runtime.executor.partition.PartitionManagerWorker;
+import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
 
 import java.util.ArrayList;
 import java.util.List;

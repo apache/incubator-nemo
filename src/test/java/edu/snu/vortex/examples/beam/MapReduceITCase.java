@@ -29,7 +29,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class MapReduceITCase {
-  private static final int TIMEOUT = 30000;
+  private static final int TIMEOUT = 60000;
   private static final String mapReduce = "edu.snu.vortex.examples.beam.MapReduce";
   private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mr";
   private static final String output = TestUtil.rootDir + "/src/main/resources/sample_output";

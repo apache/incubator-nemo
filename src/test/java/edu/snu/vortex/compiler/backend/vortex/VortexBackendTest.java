@@ -17,7 +17,7 @@ package edu.snu.vortex.compiler.backend.vortex;
 
 import edu.snu.vortex.compiler.TestUtil;
 import edu.snu.vortex.compiler.backend.Backend;
-import edu.snu.vortex.compiler.frontend.Coder;
+import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.vortex.compiler.ir.*;

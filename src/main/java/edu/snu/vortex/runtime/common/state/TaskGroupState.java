@@ -53,6 +53,9 @@ public final class TaskGroupState {
     stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_RECOVERABLE,
         "Recoverable failure in a task/Container failure");
 
+    stateMachineBuilder.addTransition(State.COMPLETE, State.FAILED_RECOVERABLE,
+        "Recoverable failure in a task/Container failure");
+
     stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.READY,
         "Recoverable task group failure");
     stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.FAILED_UNRECOVERABLE,
