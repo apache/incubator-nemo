@@ -157,9 +157,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
    * @return the list of parent vertices.
    */
   public List<V> getParents(final String vertexId) {
-    final List<V> parentVertices = new ArrayList<>();
-    incomingEdges.get(vertexId).forEach(edge -> parentVertices.add(edge.getSrc()));
-    return parentVertices;
+    return incomingEdges.get(vertexId).stream().map(Edge::getSrc).collect(Collectors.toList());
   }
 
   /**
@@ -168,9 +166,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
    * @return the list of children vertices.
    */
   public List<V> getChildren(final String vertexId) {
-    final List<V> childrenVertices = new ArrayList<>();
-    outgoingEdges.get(vertexId).forEach(edge -> childrenVertices.add(edge.getDst()));
-    return childrenVertices;
+    return outgoingEdges.get(vertexId).stream().map(Edge::getDst).collect(Collectors.toList());
   }
 
   /**

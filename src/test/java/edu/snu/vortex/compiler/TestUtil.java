@@ -20,10 +20,7 @@ import edu.snu.vortex.client.JobLauncher;
 import edu.snu.vortex.compiler.frontend.Frontend;
 import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.ir.*;
-import edu.snu.vortex.examples.beam.AlternatingLeastSquareITCase;
-import edu.snu.vortex.examples.beam.AlternatingLeastSquareInefficient;
-import edu.snu.vortex.examples.beam.ArgBuilder;
-import edu.snu.vortex.examples.beam.MultinomialLogisticRegressionITCase;
+import edu.snu.vortex.examples.beam.*;
 import edu.snu.vortex.common.dag.DAG;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.BoundedSource;
@@ -42,6 +39,17 @@ import java.util.List;
  */
 public final class TestUtil {
   public static String rootDir = System.getProperty("user.dir");
+
+  public static DAG<IRVertex, IREdge> compileMRDAG() throws Exception {
+    final Frontend beamFrontend = new BeamFrontend();
+    final ArgBuilder mrArgBuilder = MapReduceITCase.builder;
+    final Configuration configuration = JobLauncher.getJobConf(mrArgBuilder.build());
+    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
+    final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
+    final String[] arguments = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
+
+    return beamFrontend.compile(className, arguments);
+  }
 
   public static DAG<IRVertex, IREdge> compileALSDAG() throws Exception {
     final Frontend beamFrontend = new BeamFrontend();
