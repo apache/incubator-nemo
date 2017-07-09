@@ -29,10 +29,10 @@ public enum Attribute {
   Storage(Key.Placement),
 
   /**
-   * IREdge partitioning attributes.
+   * IRVertex MetricCollection attribute.
    */
-  Hash(Key.Partitioning),
-  Range(Key.Partitioning),
+  MetricCollection(Key.MetricCollection),
+
 
   /**
    * IREdge channel data placement attributes.
@@ -60,6 +60,12 @@ public enum Attribute {
   Push(Key.ChannelTransferPolicy),
 
   /**
+   * IREdge partitioning attributes.
+   */
+  Hash(Key.Partitioning),
+  Range(Key.Partitioning),
+
+  /**
    * IREdge communication pattern attributes.
    */
   OneToOne(Key.CommunicationPattern),
@@ -77,11 +83,12 @@ public enum Attribute {
   public enum Key {
     // IRVertex
     Placement,
+    MetricCollection,
 
     // IREdge
-    Partitioning,
     ChannelDataPlacement,
     ChannelTransferPolicy,
+    Partitioning,
     CommunicationPattern,
     SideInput,
   }
@@ -92,8 +99,6 @@ public enum Attribute {
   public enum IntegerKey {
     // IRVertex
     Parallelism,
-
-    // IREdge
   }
 
   private final Key key;

@@ -17,6 +17,8 @@ package edu.snu.vortex.compiler.ir.attribute;
 
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -67,11 +69,15 @@ public final class AttributeMap implements Serializable {
    */
   private void setDefaultEdgeValues() {
     this.attributes.put(Attribute.Key.Partitioning, Attribute.Hash);
+    // TODO #319: Local should be changed to File, upon fixing the bug that prevents integration tests from passing.
+    this.attributes.put(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+    this.attributes.put(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
   }
   /**
    * Putting default attributes for vertices.
    */
   private void setDefaultVertexValues() {
+    this.attributes.put(Attribute.Key.Placement, Attribute.None);
     this.intAttributes.put(Attribute.IntegerKey.Parallelism, 1);
   }
 
@@ -130,6 +136,14 @@ public final class AttributeMap implements Serializable {
   public Attribute remove(final Attribute.Key key) {
     return attributes.remove(key);
   }
+  /**
+   * remove the attribute.
+   * @param key key of the attribute to remove.
+   * @return the removed attribute.
+   */
+  public Integer remove(final Attribute.IntegerKey key) {
+    return intAttributes.remove(key);
+  }
 
   /**
    * Same as forEach function in Java 8, but for attributes.
@@ -176,27 +190,30 @@ public final class AttributeMap implements Serializable {
     return sb.toString();
   }
 
+  // Apache commons-lang 3 Equals/HashCodeBuilder template.
   @Override
-  public boolean equals(final Object o) {
-    if (this == o) {
+  public boolean equals(final Object obj) {
+    if (this == obj) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+
+    if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
 
-    AttributeMap that = (AttributeMap) o;
+    AttributeMap that = (AttributeMap) obj;
 
-    if (!attributes.equals(that.attributes)) {
-      return false;
-    }
-    return intAttributes.equals(that.intAttributes);
+    return new EqualsBuilder()
+        .append(attributes, that.attributes)
+        .append(intAttributes, that.intAttributes)
+        .isEquals();
   }
 
   @Override
   public int hashCode() {
-    int result = attributes.hashCode();
-    result = 31 * result + intAttributes.hashCode();
-    return result;
+    return new HashCodeBuilder(17, 37)
+        .append(attributes)
+        .append(intAttributes)
+        .toHashCode();
   }
 }
