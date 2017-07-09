@@ -35,7 +35,7 @@ public final class MapReduceITCase {
   private static final String output = TestUtil.rootDir + "/src/main/resources/sample_output";
   private static final String dagDirectory = "./dag";
 
-  private static ArgBuilder builder = new ArgBuilder()
+  public static ArgBuilder builder = new ArgBuilder()
       .addJobId(MapReduceITCase.class.getSimpleName())
       .addUserMain(mapReduce)
       .addUserArgs(input, output)

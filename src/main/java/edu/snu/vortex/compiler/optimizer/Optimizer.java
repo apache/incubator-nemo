@@ -70,6 +70,7 @@ public final class Optimizer {
     Default,
     Pado,
     Disaggregation,
+    DataSkew,
   }
 
   /**
@@ -80,8 +81,7 @@ public final class Optimizer {
   static {
     POLICIES.put(PolicyType.Default,
         Arrays.asList(
-            new ParallelismPass(), // Provides parallelism information.
-            new DefaultPass()
+            new ParallelismPass() // Provides parallelism information.
         ));
     POLICIES.put(PolicyType.Pado,
         Arrays.asList(
@@ -101,6 +101,15 @@ public final class Optimizer {
             new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.
             new DisaggregationPass() // Processes vertices and edges with Disaggregation algorithm.
         ));
+    POLICIES.put(PolicyType.DataSkew,
+        Arrays.asList(
+            new ParallelismPass(), // Provides parallelism information.
+            new LoopGroupingPass(),
+            LoopOptimizations.getLoopFusionPass(),
+            LoopOptimizations.getLoopInvariantCodeMotionPass(),
+            new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.
+            new DataSkewPass()
+        ));
   }
 
   /**
@@ -111,5 +120,18 @@ public final class Optimizer {
     POLICY_NAME.put("default", PolicyType.Default);
     POLICY_NAME.put("pado", PolicyType.Pado);
     POLICY_NAME.put("disaggregation", PolicyType.Disaggregation);
+    POLICY_NAME.put("dataskew", PolicyType.DataSkew);
+  }
+
+  /**
+   * Dynamic optimization method to process the dag with an appropriate pass, decided by the stats.
+   * @param dag DAG to process.
+   * @param metricData metric data and statistic information to decide which pass to perform.
+   * @return processed DAG.
+   */
+  public static DAG<IRVertex, IREdge> dynamicOptimization(final DAG<IRVertex, IREdge> dag,
+                                                          final Map<String, List<Object>> metricData) {
+    // TODO #315: optimization.
+    return dag;
   }
 }
