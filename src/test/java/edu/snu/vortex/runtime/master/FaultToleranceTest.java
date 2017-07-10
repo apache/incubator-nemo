@@ -196,20 +196,23 @@ public final class FaultToleranceTest {
       assertTrue(state == TaskGroupState.State.READY || state == TaskGroupState.State.FAILED_RECOVERABLE);
     });
 
-    otherTaskGroupIds.forEach(taskGroupId ->
-        TestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
-            taskGroupId, TaskGroupState.State.COMPLETE, MAGIC_SCHEDULE_ATTEMPT_INDEX, null));
-
     partitionIdsToRecompute.forEach(partitionId -> {
       assertTrue(taskGroupIdsForFailingExecutor.contains(partitionManagerMaster.getParentTaskGroupId(partitionId)));
       assertTrue(partitionManagerMaster.getPartitionState(partitionId).getStateMachine().getCurrentState()
           == PartitionState.State.LOST);
     });
 
+    otherTaskGroupIds.forEach(taskGroupId ->
+        TestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+            taskGroupId, TaskGroupState.State.COMPLETE, MAGIC_SCHEDULE_ATTEMPT_INDEX, null));
+
     taskGroupIdsForFailingExecutor.forEach(failedTaskGroupId -> {
       final Enum state =
           jobStateManager.getTaskGroupState(failedTaskGroupId).getStateMachine().getCurrentState();
-      assertTrue(state == TaskGroupState.State.EXECUTING);
+
+      // wait until the failed task group is rescheduled to an executor, then send a completion event.
+      while (state != TaskGroupState.State.EXECUTING) {
+      }
       TestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
           failedTaskGroupId, TaskGroupState.State.COMPLETE, MAGIC_SCHEDULE_ATTEMPT_INDEX, null);
     });
