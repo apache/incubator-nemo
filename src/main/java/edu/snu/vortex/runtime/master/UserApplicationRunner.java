@@ -20,6 +20,8 @@ import edu.snu.vortex.compiler.backend.Backend;
 import edu.snu.vortex.compiler.backend.vortex.VortexBackend;
 import edu.snu.vortex.compiler.frontend.Frontend;
 import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
+import edu.snu.vortex.compiler.ir.IREdge;
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
 import edu.snu.vortex.common.dag.DAG;
@@ -43,6 +45,9 @@ public final class UserApplicationRunner implements Runnable {
   private final String policyName;
 
   private final RuntimeMaster runtimeMaster;
+  private final Frontend frontend;
+  private final Optimizer optimizer;
+  private final Backend<ExecutionPlan> backend;
 
   @Inject
   private UserApplicationRunner(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
@@ -55,24 +60,32 @@ public final class UserApplicationRunner implements Runnable {
     this.arguments = arguments.split(" ");
     this.policyName = policyName;
     this.runtimeMaster = runtimeMaster;
+    this.frontend = new BeamFrontend();
+    this.optimizer = new Optimizer();
+    this.backend = new VortexBackend();
   }
 
   @Override
   public void run() {
     try {
-      final Frontend frontend = new BeamFrontend();
-      final Optimizer optimizer = new Optimizer();
-      final Backend<ExecutionPlan> backend = new VortexBackend();
-
       LOG.log(Level.INFO, "##### VORTEX Compiler #####");
-      final DAG dag = frontend.compile(className, arguments);
+      final DAG<IRVertex, IREdge> dag = frontend.compile(className, arguments);
       dag.storeJSON(dagDirectory, "ir", "IR before optimization");
 
       final Optimizer.PolicyType optimizationPolicy = POLICY_NAME.get(policyName);
-      final DAG optimizedDAG = optimizer.optimize(dag, optimizationPolicy, dagDirectory);
+      final DAG<IRVertex, IREdge> optimizedDAG = optimizer.optimize(dag, optimizationPolicy, dagDirectory);
       optimizedDAG.storeJSON(dagDirectory, "ir-" + optimizationPolicy, "IR optimized for " + optimizationPolicy);
 
-      final ExecutionPlan executionPlan = backend.compile(optimizedDAG);
+      supplyDAGToRuntime(optimizedDAG);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public void supplyDAGToRuntime(final DAG<IRVertex, IREdge> dag) {
+    try {
+      final ExecutionPlan executionPlan = backend.compile(dag);
+
       executionPlan.getRuntimeStageDAG().storeJSON(dagDirectory, "plan", "execution plan by compiler");
       runtimeMaster.execute(executionPlan, frontend.getClientEndpoint());
       runtimeMaster.terminate();

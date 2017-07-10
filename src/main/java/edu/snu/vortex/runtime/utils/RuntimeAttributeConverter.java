@@ -43,28 +43,40 @@ public final class RuntimeAttributeConverter {
     irAttributes.forEachAttr(((irAttributeKey, irAttributeVal) -> {
       switch (irAttributeKey) {
         case Placement:
-          final RuntimeAttribute runtimeAttributeVal;
+          final RuntimeAttribute placementAttrVal;
           switch (irAttributeVal) {
             case None:
-              runtimeAttributeVal = RuntimeAttribute.None;
+              placementAttrVal = RuntimeAttribute.None;
               break;
             case Transient:
-              runtimeAttributeVal = RuntimeAttribute.Transient;
+              placementAttrVal = RuntimeAttribute.Transient;
               break;
             case Reserved:
-              runtimeAttributeVal = RuntimeAttribute.Reserved;
+              placementAttrVal = RuntimeAttribute.Reserved;
               break;
             case Compute:
-              runtimeAttributeVal = RuntimeAttribute.Compute;
+              placementAttrVal = RuntimeAttribute.Compute;
               break;
             case Storage:
-              runtimeAttributeVal = RuntimeAttribute.Storage;
+              placementAttrVal = RuntimeAttribute.Storage;
               break;
             default:
               throw new UnsupportedAttributeException(
                   "\'" + irAttributeVal + "\' can not be a value of " + irAttributeKey);
           }
-          runtimeVertexAttributes.put(RuntimeAttribute.Key.ContainerType, runtimeAttributeVal);
+          runtimeVertexAttributes.put(RuntimeAttribute.Key.ContainerType, placementAttrVal);
+          break;
+        case MetricCollection:
+          final RuntimeAttribute metricAttrVal;
+          switch (irAttributeVal) {
+            case MetricCollection:
+              metricAttrVal = RuntimeAttribute.MetricCollection;
+              break;
+            default:
+              throw new UnsupportedAttributeException(
+                  "\'" + irAttributeVal + "\' cannot be a value of " + irAttributeKey);
+          }
+          runtimeVertexAttributes.put(RuntimeAttribute.Key.MetricCollection, metricAttrVal);
           break;
         default:
           throw new UnsupportedAttributeException("this IR attribute (" + irAttributeKey + ") is not supported.");
@@ -108,7 +120,6 @@ public final class RuntimeAttributeConverter {
               throw new UnsupportedAttributeException(
                   "\'" + irAttributeVal + "\' can not be a value of " + irAttributeKey);
           }
-
           runtimeEdgeAttributes.put(RuntimeAttribute.Key.Partition, partitioningAttrVal);
           break;
         case ChannelDataPlacement:
@@ -130,7 +141,6 @@ public final class RuntimeAttributeConverter {
               throw new UnsupportedAttributeException(
                   "\'" + irAttributeVal + "\' can not be a value of " + irAttributeKey);
           }
-
           runtimeEdgeAttributes.put(RuntimeAttribute.Key.PartitionStore, channelPlacementAttrVal);
           break;
         case ChannelTransferPolicy:
@@ -146,7 +156,6 @@ public final class RuntimeAttributeConverter {
               throw new UnsupportedAttributeException(
                   "\'" + irAttributeVal + "\' can not be a value of " + irAttributeKey);
           }
-
           runtimeEdgeAttributes.put(RuntimeAttribute.Key.PullOrPush, channelTransferPolicyAttrVal);
           break;
         case CommunicationPattern:
@@ -166,7 +175,6 @@ public final class RuntimeAttributeConverter {
                   "\'" + irAttributeVal + "\' can not be a value of " + irAttributeKey);
 
           }
-
           runtimeEdgeAttributes.put(RuntimeAttribute.Key.CommPattern, commPatternAttrVal);
           break;
         case SideInput:
@@ -179,7 +187,6 @@ public final class RuntimeAttributeConverter {
               throw new UnsupportedAttributeException(
                   "\'" + irAttributeVal + "\' can not be a value of " + irAttributeKey);
           }
-
           runtimeEdgeAttributes.put(RuntimeAttribute.Key.SideInput, sideInput);
           break;
         default:

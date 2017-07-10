@@ -82,6 +82,7 @@ enum TaskGroupStateFromExecutor {
     COMPLETE = 2;
     FAILED_RECOVERABLE = 3;
     FAILED_UNRECOVERABLE = 4;
+    ON_HOLD = 5;
 }
 
 enum PartitionStateFromExecutor {

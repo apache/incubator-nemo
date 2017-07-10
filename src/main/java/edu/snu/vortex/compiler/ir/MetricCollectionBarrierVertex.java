@@ -23,7 +23,7 @@ import java.util.*;
  * IRVertex that collects statistics to send them to the optimizer for dynamic optimization.
  * This class is generated in the DAG through {@link edu.snu.vortex.compiler.optimizer.passes.DataSkewPass}.
  */
-public final class MetricCollectionVertex extends IRVertex {
+public final class MetricCollectionBarrierVertex extends IRVertex {
   // TODO #313: specify type of the metric data value.
   private final Map<String, List> metricData;
   // This DAG snapshot is taken at the end of the DataSkewPass, for the vertex to know the state of the DAG at its
@@ -33,14 +33,14 @@ public final class MetricCollectionVertex extends IRVertex {
   /**
    * Constructor for dynamic optimization vertex.
    */
-  public MetricCollectionVertex() {
+  public MetricCollectionBarrierVertex() {
     this.metricData = new HashMap<>();
     this.dagSnapshot = null;
   }
 
   @Override
-  public MetricCollectionVertex getClone() {
-    final MetricCollectionVertex that = new MetricCollectionVertex();
+  public MetricCollectionBarrierVertex getClone() {
+    final MetricCollectionBarrierVertex that = new MetricCollectionBarrierVertex();
     that.setDAGSnapshot(dagSnapshot);
     IRVertex.copyAttributes(this, that);
     return that;
@@ -60,7 +60,7 @@ public final class MetricCollectionVertex extends IRVertex {
    */
   private DAG<IRVertex, IREdge> getDAGSnapshot() {
     if (this.dagSnapshot == null) {
-      throw new RuntimeException("MetricCollectionVertex must have been set with a DAG.");
+      throw new RuntimeException("MetricCollectionBarrierVertex must have been set with a DAG.");
     }
     return this.dagSnapshot;
   }

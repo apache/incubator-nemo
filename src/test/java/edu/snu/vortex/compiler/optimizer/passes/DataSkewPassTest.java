@@ -19,7 +19,7 @@ import edu.snu.vortex.client.JobLauncher;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.compiler.TestUtil;
 import edu.snu.vortex.compiler.frontend.beam.transform.GroupByKeyTransform;
-import edu.snu.vortex.compiler.ir.MetricCollectionVertex;
+import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
@@ -46,7 +46,7 @@ public class DataSkewPassTest {
   }
 
   /**
-   * Test for {@link DataSkewPass} with MR workload. It must insert a {@link MetricCollectionVertex} before each
+   * Test for {@link DataSkewPass} with MR workload. It must insert a {@link MetricCollectionBarrierVertex} before each
    * {@link OperatorVertex} with {@link GroupByKeyTransform}.
    * @throws Exception exception on the way.
    */
@@ -62,6 +62,6 @@ public class DataSkewPassTest {
     processedDAG.getVertices().stream().filter(irVertex -> irVertex instanceof OperatorVertex
         && ((OperatorVertex) irVertex).getTransform() instanceof GroupByKeyTransform).forEach(irVertex ->
           processedDAG.getIncomingEdgesOf(irVertex).stream().map(IREdge::getSrc).forEach(irVertex1 ->
-            assertTrue(irVertex1 instanceof MetricCollectionVertex)));
+            assertTrue(irVertex1 instanceof MetricCollectionBarrierVertex)));
   }
 }
