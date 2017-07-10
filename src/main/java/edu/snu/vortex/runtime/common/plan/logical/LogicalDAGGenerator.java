@@ -19,6 +19,7 @@ package edu.snu.vortex.runtime.common.plan.logical;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
+import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
@@ -234,8 +235,12 @@ public final class LogicalDAGGenerator
     } else if (irVertex instanceof OperatorVertex) {
       newVertex = new RuntimeOperatorVertex((OperatorVertex) irVertex,
           RuntimeAttributeConverter.convertVertexAttributes(irVertex.getAttributes()));
+    } else if (irVertex instanceof MetricCollectionBarrierVertex) {
+      newVertex = new RuntimeMetricCollectionBarrierVertex((MetricCollectionBarrierVertex) irVertex,
+          RuntimeAttributeConverter.convertVertexAttributes(irVertex.getAttributes()));
     } else {
-      throw new IllegalVertexOperationException("Supported types: BoundedSourceVertex, OperatorVertex");
+      throw new IllegalVertexOperationException("Supported types: BoundedSourceVertex, OperatorVertex, "
+          + "MetricCollectionBarrierVertex");
     }
     return newVertex;
   }

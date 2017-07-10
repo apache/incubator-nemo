@@ -18,7 +18,7 @@ package edu.snu.vortex.compiler.optimizer.passes;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
 import edu.snu.vortex.compiler.frontend.beam.transform.GroupByKeyTransform;
-import edu.snu.vortex.compiler.ir.MetricCollectionVertex;
+import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
@@ -29,8 +29,8 @@ import java.util.List;
 
 /**
  * Pass to modify the DAG for the job to perform data skew.
- * It adds a {@link MetricCollectionVertex} before performing GroupByKey transform, to make a barrier before it, and
- * to use the metrics to repartition the skewed data.
+ * It adds a {@link MetricCollectionBarrierVertex} before performing GroupByKey transform, to make a barrier before it,
+ * and to use the metrics to repartition the skewed data.
  * NOTE: we currently put the DataSkewPass at the end of the list for each policies, as it needs to take a snapshot at
  * the end of the pass. This could be prevented by modifying other passes to take the snapshot of the DAG at the end of
  * each passes for metricCollectionVertices.
@@ -39,21 +39,22 @@ public final class DataSkewPass implements Pass {
   @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
-    final List<MetricCollectionVertex> metricCollectionVertices = new ArrayList<>();
+    final List<MetricCollectionBarrierVertex> metricCollectionVertices = new ArrayList<>();
 
     dag.topologicalDo(v -> {
       // We care about OperatorVertices that have GroupByKeyTransform.
       if (v instanceof OperatorVertex && ((OperatorVertex) v).getTransform() instanceof GroupByKeyTransform) {
-        final MetricCollectionVertex metricCollectionVertex = new MetricCollectionVertex();
-        metricCollectionVertices.add(metricCollectionVertex);
+        final MetricCollectionBarrierVertex metricCollectionBarrierVertex = new MetricCollectionBarrierVertex();
+        metricCollectionVertices.add(metricCollectionBarrierVertex);
         builder.addVertex(v);
-        builder.addVertex(metricCollectionVertex);
+        builder.addVertex(metricCollectionBarrierVertex);
         dag.getIncomingEdgesOf(v).forEach(edge -> {
           // we tell the vertex that it needs to collect the metrics.
           edge.getSrc().setAttr(Attribute.Key.MetricCollection, Attribute.MetricCollection);
           // We then insert the dynamicOptimizationVertex between the vertex and incoming vertices.
-          final IREdge newEdge = new IREdge(edge.getType(), edge.getSrc(), metricCollectionVertex, edge.getCoder());
-          final IREdge edgeToGbK = new IREdge(edge.getType(), metricCollectionVertex, v, edge.getCoder());
+          final IREdge newEdge =
+              new IREdge(edge.getType(), edge.getSrc(), metricCollectionBarrierVertex, edge.getCoder());
+          final IREdge edgeToGbK = new IREdge(edge.getType(), metricCollectionBarrierVertex, v, edge.getCoder());
           IREdge.copyAttributes(edge, newEdge);
           IREdge.copyAttributes(edge, edgeToGbK);
           builder.connectVertices(newEdge);
