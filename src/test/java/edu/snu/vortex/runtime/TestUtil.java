@@ -16,7 +16,7 @@
 package edu.snu.vortex.runtime;
 
 import edu.snu.vortex.common.dag.DAG;
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
@@ -104,13 +104,13 @@ public final class TestUtil {
 
     // Initialize states for blocks of inter-stage edges
     stageOutgoingEdges.forEach(physicalStageEdge -> {
-      final RuntimeAttribute commPattern =
-          physicalStageEdge.getEdgeAttributes().get(RuntimeAttribute.Key.CommPattern);
+      final Attribute commPattern =
+          physicalStageEdge.getEdgeAttributes().get(Attribute.Key.CommunicationPattern);
       final int srcParallelism = taskGroupsForStage.size();
       IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-        if (commPattern == RuntimeAttribute.ScatterGather) {
+        if (commPattern == Attribute.ScatterGather) {
           final int dstParallelism =
-              physicalStageEdge.getExternalVertexAttr().get(RuntimeAttribute.IntegerKey.Parallelism);
+              physicalStageEdge.getExternalVertexAttr().get(Attribute.IntegerKey.Parallelism);
           IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> {
             final String partitionId =
                 RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx);

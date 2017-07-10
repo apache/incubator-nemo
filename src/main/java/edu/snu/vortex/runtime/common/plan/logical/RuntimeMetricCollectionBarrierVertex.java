@@ -16,7 +16,7 @@
 package edu.snu.vortex.runtime.common.plan.logical;
 
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
-import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
+import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 
 /**
  * Represents a metric collection vertex for dynamic optimization.
@@ -25,7 +25,7 @@ public final class RuntimeMetricCollectionBarrierVertex extends RuntimeVertex {
   private final MetricCollectionBarrierVertex metricCollectionBarrierVertex;
 
   public RuntimeMetricCollectionBarrierVertex(final MetricCollectionBarrierVertex metricCollectionBarrierVertex,
-                                              final RuntimeAttributeMap vertexAttributes) {
+                                              final AttributeMap vertexAttributes) {
     super(metricCollectionBarrierVertex.getId(), vertexAttributes);
     this.metricCollectionBarrierVertex = metricCollectionBarrierVertex;
   }

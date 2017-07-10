@@ -16,16 +16,16 @@
 package edu.snu.vortex.runtime.common.plan;
 
 import edu.snu.vortex.common.coder.Coder;
-import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
 import edu.snu.vortex.common.dag.Edge;
 import edu.snu.vortex.common.dag.Vertex;
+import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 
 /**
  * Represents the edge between vertices in a logical/physical plan in runtime.
  * @param <V> the vertex type.
  */
 public class RuntimeEdge<V extends Vertex> extends Edge<V> {
-  private final RuntimeAttributeMap edgeAttributes;
+  private final AttributeMap edgeAttributes;
   private final Coder coder;
 
   /**
@@ -37,7 +37,7 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
    * @param coder coder.
    */
   public RuntimeEdge(final String runtimeEdgeId,
-                     final RuntimeAttributeMap edgeAttributes,
+                     final AttributeMap edgeAttributes,
                      final V src,
                      final V dst,
                      final Coder coder) {
@@ -46,7 +46,7 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
     this.coder = coder;
   }
 
-  public final RuntimeAttributeMap getEdgeAttributes() {
+  public final AttributeMap getEdgeAttributes() {
     return edgeAttributes;
   }
 

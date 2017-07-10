@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.runtime.master;
 
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.JobState;
@@ -140,13 +140,13 @@ public final class JobStateManager {
 
       // Initialize states for partitions of inter-stage edges
       stageOutgoingEdges.forEach(physicalStageEdge -> {
-        final RuntimeAttribute commPattern =
-            physicalStageEdge.getEdgeAttributes().get(RuntimeAttribute.Key.CommPattern);
+        final Attribute commPattern =
+            physicalStageEdge.getEdgeAttributes().get(Attribute.Key.CommunicationPattern);
         final int srcParallelism = taskGroupsForStage.size();
         IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-          if (commPattern == RuntimeAttribute.ScatterGather) {
+          if (commPattern == Attribute.ScatterGather) {
             final int dstParallelism =
-                physicalStageEdge.getExternalVertexAttr().get(RuntimeAttribute.IntegerKey.Parallelism);
+                physicalStageEdge.getExternalVertexAttr().get(Attribute.IntegerKey.Parallelism);
             IntStream.range(0, dstParallelism).forEach(dstTaskIdx ->
                 partitionManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx,
                     taskGroupsForStage.get(srcTaskIdx).getTaskGroupId()));

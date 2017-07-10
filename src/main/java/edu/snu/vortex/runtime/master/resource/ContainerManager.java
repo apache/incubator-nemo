@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.runtime.master.resource;
 
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.exception.ContainerException;
@@ -48,7 +48,7 @@ public final class ContainerManager {
   /**
    * A map containing a list of executor representations for each container type.
    */
-  private final Map<RuntimeAttribute, List<ExecutorRepresenter>> executorsByContainerType;
+  private final Map<Attribute, List<ExecutorRepresenter>> executorsByContainerType;
 
   /**
    * A map of executor ID to the corresponding {@link ExecutorRepresenter}.
@@ -64,7 +64,7 @@ public final class ContainerManager {
    * Keeps track of evaluator and context requests.
    */
   private final Map<String, ResourceSpecification> pendingContextIdToResourceSpec;
-  private final Map<RuntimeAttribute, List<ResourceSpecification>> pendingContainerRequestsByContainerType;
+  private final Map<Attribute, List<ResourceSpecification>> pendingContainerRequestsByContainerType;
 
   @Inject
   public ContainerManager(final EvaluatorRequestor evaluatorRequestor,
@@ -144,7 +144,7 @@ public final class ContainerManager {
    */
   private ResourceSpecification selectResourceSpecForContainer() {
     ResourceSpecification selectedResourceSpec = null;
-    for (final Map.Entry<RuntimeAttribute, List<ResourceSpecification>> entry
+    for (final Map.Entry<Attribute, List<ResourceSpecification>> entry
         : pendingContainerRequestsByContainerType.entrySet()) {
       if (entry.getValue().size() > 0) {
         selectedResourceSpec = entry.getValue().remove(0);

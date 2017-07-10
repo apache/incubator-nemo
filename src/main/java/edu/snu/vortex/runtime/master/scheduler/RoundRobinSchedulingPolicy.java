@@ -16,7 +16,7 @@
 package edu.snu.vortex.runtime.master.scheduler;
 
 import edu.snu.vortex.client.JobConf;
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.vortex.runtime.exception.SchedulingException;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
@@ -59,12 +59,12 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
    * The condition blocks when there is no executor of the container type available,
    * and is released when such an executor becomes available (either by an extra executor, or a task group completion).
    */
-  private final Map<RuntimeAttribute, Condition> conditionByContainerType;
+  private final Map<Attribute, Condition> conditionByContainerType;
 
   /**
    * The pool of executors available for each container type.
    */
-  private final Map<RuntimeAttribute, List<String>> executorIdByContainerType;
+  private final Map<Attribute, List<String>> executorIdByContainerType;
 
   /**
    * A copy of {@link ContainerManager#executorRepresenterMap}.
@@ -76,7 +76,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
    * The index of the next executor to be assigned for each container type.
    * This map allows the executor index computation of the RR scheduling.
    */
-  private final Map<RuntimeAttribute, Integer> nextExecutorIndexByContainerType;
+  private final Map<Attribute, Integer> nextExecutorIndexByContainerType;
 
   @Inject
   public RoundRobinSchedulingPolicy(final ContainerManager containerManager,
@@ -88,7 +88,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     this.executorRepresenterMap = new HashMap<>();
     this.conditionByContainerType = new HashMap<>();
     this.nextExecutorIndexByContainerType = new HashMap<>();
-    initializeContainerTypeIfAbsent(RuntimeAttribute.None); // Need this to avoid potential null errors
+    initializeContainerTypeIfAbsent(Attribute.None); // Need this to avoid potential null errors
   }
 
   public long getScheduleTimeoutMs() {
@@ -99,7 +99,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   public Optional<String> attemptSchedule(final ScheduledTaskGroup scheduledTaskGroup) {
     lock.lock();
     try {
-      final RuntimeAttribute containerType = scheduledTaskGroup.getTaskGroup().getContainerType();
+      final Attribute containerType = scheduledTaskGroup.getTaskGroup().getContainerType();
       initializeContainerTypeIfAbsent(containerType);
 
       final Optional<String> executorId = selectExecutorByRR(containerType);
@@ -127,8 +127,8 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
    * @param containerType to select an executor for.
    * @return (optionally) the selected executor.
    */
-  private Optional<String> selectExecutorByRR(final RuntimeAttribute containerType) {
-    final List<String> candidateExecutorIds = (containerType == RuntimeAttribute.None)
+  private Optional<String> selectExecutorByRR(final Attribute containerType) {
+    final List<String> candidateExecutorIds = (containerType == Attribute.None)
         ? getAllContainers() // all containers
         : executorIdByContainerType.get(containerType); // containers of a particular type
 
@@ -161,16 +161,16 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     return executor.getRunningTaskGroups().size() < executor.getExecutorCapacity();
   }
 
-  private void initializeContainerTypeIfAbsent(final RuntimeAttribute containerType) {
+  private void initializeContainerTypeIfAbsent(final Attribute containerType) {
     executorIdByContainerType.putIfAbsent(containerType, new ArrayList<>());
     nextExecutorIndexByContainerType.putIfAbsent(containerType, 0);
     conditionByContainerType.putIfAbsent(containerType, lock.newCondition());
   }
 
-  private void signalPossiblyWaitingScheduler(final RuntimeAttribute typeOfContainerWithNewFreeSlot) {
+  private void signalPossiblyWaitingScheduler(final Attribute typeOfContainerWithNewFreeSlot) {
     conditionByContainerType.get(typeOfContainerWithNewFreeSlot).signal();
-    if (typeOfContainerWithNewFreeSlot != RuntimeAttribute.None) {
-      conditionByContainerType.get(RuntimeAttribute.None).signal();
+    if (typeOfContainerWithNewFreeSlot != Attribute.None) {
+      conditionByContainerType.get(Attribute.None).signal();
     }
   }
 
@@ -180,7 +180,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     try {
       updateCachedExecutorRepresenterMap();
       final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
-      final RuntimeAttribute containerType = executor.getContainerType();
+      final Attribute containerType = executor.getContainerType();
       initializeContainerTypeIfAbsent(containerType);
 
       executorIdByContainerType.get(containerType)
@@ -196,7 +196,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     lock.lock();
     try {
       final ExecutorRepresenter executor = containerManager.getFailedExecutorRepresenterMap().get(executorId);
-      final RuntimeAttribute containerType = executor.getContainerType();
+      final Attribute containerType = executor.getContainerType();
 
       final List<String> executorIdList = executorIdByContainerType.get(containerType);
       int nextExecutorIndex = nextExecutorIndexByContainerType.get(containerType);
@@ -244,7 +244,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
       LOG.log(Level.INFO, "{" + taskGroupId + "} completed in [" + executorId + "]");
 
       // the scheduler thread may be waiting for a free slot...
-      final RuntimeAttribute containerType = executor.getContainerType();
+      final Attribute containerType = executor.getContainerType();
       signalPossiblyWaitingScheduler(containerType);
     } finally {
       lock.unlock();
@@ -260,7 +260,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
       LOG.log(Level.INFO, "{" + taskGroupId + "} failed in [" + executorId + "]");
 
       // the scheduler thread may be waiting for a free slot...
-      final RuntimeAttribute containerType = executor.getContainerType();
+      final Attribute containerType = executor.getContainerType();
       signalPossiblyWaitingScheduler(containerType);
     } finally {
       lock.unlock();

@@ -51,6 +51,7 @@ public enum Attribute {
   Local(Key.ChannelDataPlacement),
   Memory(Key.ChannelDataPlacement),
   File(Key.ChannelDataPlacement),
+  MemoryFile(Key.ChannelDataPlacement),
   DistributedStorage(Key.ChannelDataPlacement),
 
   /**
@@ -75,7 +76,18 @@ public enum Attribute {
   /**
    * IREdge type to specify edges that transfer SideInputs.
    */
-  SideInput(Key.SideInput);
+  SideInput(Key.SideInput),
+
+
+  /**
+   * SchedulingPolicy type attributes.
+   */
+  RoundRobin(Key.SchedulingPolicy),
+
+  /**
+   * Scheduler type attributes.
+   */
+  Batch(Key.Scheduler);
 
   /**
    * Attribute Keys.
@@ -91,6 +103,10 @@ public enum Attribute {
     Partitioning,
     CommunicationPattern,
     SideInput,
+
+    // Scheduling
+    SchedulingPolicy,
+    Scheduler,
   }
 
   /**
