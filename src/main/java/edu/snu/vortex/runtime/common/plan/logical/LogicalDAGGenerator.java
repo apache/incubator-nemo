@@ -23,7 +23,6 @@ import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
-import edu.snu.vortex.runtime.utils.RuntimeAttributeConverter;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
 
@@ -176,8 +175,7 @@ public final class LogicalDAGGenerator
 
           // either the edge is within the stage
           if (currentStageVertices.contains(srcRuntimeVertex) && currentStageVertices.contains(dstRuntimeVertex)) {
-            stageBuilder.connectInternalRuntimeVertices(irEdge.getId(),
-                RuntimeAttributeConverter.convertEdgeAttributes(irEdge.getAttributes()),
+            stageBuilder.connectInternalRuntimeVertices(irEdge.getId(), irEdge.getAttributes(),
                 srcRuntimeVertex, dstRuntimeVertex, irEdge.getCoder());
 
           // or the edge is from another stage
@@ -190,7 +188,7 @@ public final class LogicalDAGGenerator
             }
 
             final StageEdgeBuilder newEdgeBuilder = new StageEdgeBuilder(irEdge.getId());
-            newEdgeBuilder.setEdgeAttributes(RuntimeAttributeConverter.convertEdgeAttributes(irEdge.getAttributes()));
+            newEdgeBuilder.setEdgeAttributes(irEdge.getAttributes());
             newEdgeBuilder.setSrcRuntimeVertex(srcRuntimeVertex);
             newEdgeBuilder.setDstRuntimeVertex(dstRuntimeVertex);
             newEdgeBuilder.setSrcStage(srcStage);
@@ -230,14 +228,12 @@ public final class LogicalDAGGenerator
 
     // TODO #100: Add irVertex Type in IR
     if (irVertex instanceof BoundedSourceVertex) {
-      newVertex = new RuntimeBoundedSourceVertex((BoundedSourceVertex) irVertex,
-          RuntimeAttributeConverter.convertVertexAttributes(irVertex.getAttributes()));
+      newVertex = new RuntimeBoundedSourceVertex((BoundedSourceVertex) irVertex, irVertex.getAttributes());
     } else if (irVertex instanceof OperatorVertex) {
-      newVertex = new RuntimeOperatorVertex((OperatorVertex) irVertex,
-          RuntimeAttributeConverter.convertVertexAttributes(irVertex.getAttributes()));
+      newVertex = new RuntimeOperatorVertex((OperatorVertex) irVertex, irVertex.getAttributes());
     } else if (irVertex instanceof MetricCollectionBarrierVertex) {
       newVertex = new RuntimeMetricCollectionBarrierVertex((MetricCollectionBarrierVertex) irVertex,
-          RuntimeAttributeConverter.convertVertexAttributes(irVertex.getAttributes()));
+          irVertex.getAttributes());
     } else {
       throw new IllegalVertexOperationException("Supported types: BoundedSourceVertex, OperatorVertex, "
           + "MetricCollectionBarrierVertex");

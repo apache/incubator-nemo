@@ -16,7 +16,7 @@
 package edu.snu.vortex.runtime.master.resource;
 
 import com.google.protobuf.ByteString;
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageSender;
@@ -108,7 +108,7 @@ public final class ExecutorRepresenter {
     return executorId;
   }
 
-  public RuntimeAttribute getContainerType() {
+  public Attribute getContainerType() {
     return resourceSpecification.getContainerType();
   }
 

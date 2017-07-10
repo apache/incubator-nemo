@@ -16,7 +16,7 @@
 package edu.snu.vortex.runtime.common.plan.logical;
 
 import edu.snu.vortex.compiler.ir.OperatorVertex;
-import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
+import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 
 /**
  * Represents an operator.
@@ -25,7 +25,7 @@ public final class RuntimeOperatorVertex extends RuntimeVertex {
   private final OperatorVertex operatorVertex;
 
   public RuntimeOperatorVertex(final OperatorVertex operatorVertex,
-                               final RuntimeAttributeMap vertexAttributes) {
+                               final AttributeMap vertexAttributes) {
     super(operatorVertex.getId(), vertexAttributes);
     this.operatorVertex = operatorVertex;
   }

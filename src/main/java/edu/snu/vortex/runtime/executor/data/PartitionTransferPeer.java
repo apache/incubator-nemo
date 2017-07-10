@@ -19,7 +19,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.exception.NodeConnectionException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionStoreException;
@@ -105,7 +105,7 @@ final class PartitionTransferPeer {
   CompletableFuture<Partition> fetch(final String remoteExecutorId,
                                      final String partitionId,
                                      final String runtimeEdgeId,
-                                     final RuntimeAttribute partitionStore) {
+                                     final Attribute partitionStore) {
     final Identifier remotePeerIdentifier = new PartitionTransferPeerIdentifier(remoteExecutorId);
     final InetSocketAddress remoteAddress;
     final Coder coder = partitionManagerWorker.get().getCoder(runtimeEdgeId);
@@ -255,7 +255,7 @@ final class PartitionTransferPeer {
     }
   }
 
-  private static ControlMessage.PartitionStore convertPartitionStore(final RuntimeAttribute partitionStore) {
+  private static ControlMessage.PartitionStore convertPartitionStore(final Attribute partitionStore) {
     switch (partitionStore) {
       case Local:
         return ControlMessage.PartitionStore.LOCAL;
@@ -276,18 +276,18 @@ final class PartitionTransferPeer {
     }
   }
 
-  private static RuntimeAttribute convertPartitionStoreType(final ControlMessage.PartitionStore partitionStoreType) {
+  private static Attribute convertPartitionStoreType(final ControlMessage.PartitionStore partitionStoreType) {
     switch (partitionStoreType) {
       case LOCAL:
-        return RuntimeAttribute.Local;
+        return Attribute.Local;
       case MEMORY:
-        return RuntimeAttribute.Memory;
+        return Attribute.Memory;
       case FILE:
-        return RuntimeAttribute.File;
+        return Attribute.File;
       case MEMORY_FILE:
-        return RuntimeAttribute.MemoryFile;
+        return Attribute.MemoryFile;
       case DISTRIBUTED_STORAGE:
-        return RuntimeAttribute.DistributedStorage;
+        return Attribute.DistributedStorage;
       default:
         throw new UnsupportedPartitionStoreException(new Throwable("This partition store is not yet supported"));
     }

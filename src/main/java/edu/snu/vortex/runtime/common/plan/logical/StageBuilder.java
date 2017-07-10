@@ -16,7 +16,7 @@
 package edu.snu.vortex.runtime.common.plan.logical;
 
 import edu.snu.vortex.common.coder.Coder;
-import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
+import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.common.dag.DAGBuilder;
@@ -51,7 +51,7 @@ public final class StageBuilder {
    * @param coder coder.
    */
   public void connectInternalRuntimeVertices(final String irEdgeId,
-                                             final RuntimeAttributeMap edgeAttributes,
+                                             final AttributeMap edgeAttributes,
                                              final RuntimeVertex srcVertex,
                                              final RuntimeVertex dstVertex,
                                              final Coder coder) {

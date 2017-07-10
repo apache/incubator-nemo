@@ -18,7 +18,7 @@ package edu.snu.vortex.runtime.executor;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.Reader;
 import edu.snu.vortex.compiler.ir.Transform;
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeOperatorVertex;
@@ -203,7 +203,7 @@ public final class TaskGroupExecutor {
         .forEach(edge -> {
           final String partitionId = RuntimeIdGenerator.generatePartitionId(edge.getId(), edge.getSrc().getIndex());
           partitionManagerWorker
-              .removePartition(partitionId, edge.getEdgeAttributes().get(RuntimeAttribute.Key.PartitionStore));
+              .removePartition(partitionId, edge.getEdgeAttributes().get(Attribute.Key.ChannelDataPlacement));
         });
   }
 

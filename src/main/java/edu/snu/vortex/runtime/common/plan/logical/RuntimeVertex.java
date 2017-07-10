@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.runtime.common.plan.logical;
 
-import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
+import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.common.dag.Vertex;
 
@@ -23,15 +23,15 @@ import edu.snu.vortex.common.dag.Vertex;
  * Represents an operator of a job, tagged with attributes about the operator.
  */
 public abstract class RuntimeVertex extends Vertex {
-  private final RuntimeAttributeMap vertexAttributes;
+  private final AttributeMap vertexAttributes;
 
   public RuntimeVertex(final String irVertexId,
-                       final RuntimeAttributeMap vertexAttributes) {
+                       final AttributeMap vertexAttributes) {
     super(RuntimeIdGenerator.generateRuntimeVertexId(irVertexId));
     this.vertexAttributes = vertexAttributes;
   }
 
-  public final RuntimeAttributeMap getVertexAttributes() {
+  public final AttributeMap getVertexAttributes() {
     return vertexAttributes;
   }
 }
