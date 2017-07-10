@@ -23,11 +23,10 @@ import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageListener;
-import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
-import edu.snu.vortex.runtime.common.plan.logical.Stage;
-import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
+import edu.snu.vortex.runtime.common.plan.logical.*;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalDAGGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.vortex.runtime.common.plan.physical.Task;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
@@ -41,12 +40,14 @@ import edu.snu.vortex.common.dag.DAG;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * Runtime Master is the central controller of Runtime.
@@ -67,6 +68,7 @@ public final class RuntimeMaster {
   private JobStateManager jobStateManager;
 
   private final String dagDirectory;
+  private ExecutionPlan executionPlanSnapshot;
   private PhysicalPlan physicalPlan;
   private final int maxScheduleAttempt;
 
@@ -94,6 +96,7 @@ public final class RuntimeMaster {
    */
   public void execute(final ExecutionPlan executionPlan,
                       final ClientEndpoint clientEndpoint) {
+    executionPlanSnapshot = executionPlan;
     physicalPlan = generatePhysicalPlan(executionPlan);
     try {
       jobStateManager = scheduler.scheduleJob(physicalPlan, maxScheduleAttempt);
@@ -142,9 +145,34 @@ public final class RuntimeMaster {
       switch (message.getType()) {
       case TaskGroupStateChanged:
         final ControlMessage.TaskGroupStateChangedMsg taskGroupStateChangedMsg = message.getTaskStateChangedMsg();
+        final TaskGroupState.State newState = convertTaskGroupState(taskGroupStateChangedMsg.getState());
+
+        // We handle it separately if the new state is ON_HOLD, to perform dynamic optimization at the barrier vertex.
+        if (newState.equals(TaskGroupState.State.ON_HOLD)) {
+          // We first extract optimization runtime vertex ids.
+          final List<String> optimizationRuntimeVertexIds = physicalPlan.getStageDAG().getVertices().stream()
+              .flatMap(physicalStage -> physicalStage.getTaskGroupList().stream())
+              .flatMap(taskGroup -> taskGroup.getTaskDAG().getVertices().stream())
+              .filter(task -> taskGroupStateChangedMsg.getFailedTaskIdsList().contains(task.getId()))
+              .map(Task::getRuntimeVertexId).distinct()
+              .collect(Collectors.toList());
+          // then the vertices themselves.
+          final List<RuntimeMetricCollectionBarrierVertex> optimizationRuntimeVertices =
+              executionPlanSnapshot.getRuntimeStageDAG().getVertices().stream()
+                  .flatMap(stage -> stage.getStageInternalDAG().getVertices().stream())
+                  .filter(runtimeVertex -> optimizationRuntimeVertexIds.contains(runtimeVertex.getId()))
+                  .filter(runtimeVertex -> runtimeVertex instanceof RuntimeMetricCollectionBarrierVertex)
+                  .map(runtimeVertex -> (RuntimeMetricCollectionBarrierVertex) runtimeVertex)
+                  .collect(Collectors.toList());
+          // and we will use these vertices to perform metric collection and dynamic optimization.
+          optimizationRuntimeVertices.forEach(runtimeDynamicOptimizationVertex ->
+              runtimeDynamicOptimizationVertex.getMetricCollectionBarrierVertex().triggerDynamicOptimization());
+          // TODO #315: do stuff to scheduler before running it.
+        }
+
         scheduler.onTaskGroupStateChanged(taskGroupStateChangedMsg.getExecutorId(),
             taskGroupStateChangedMsg.getTaskGroupId(),
-            convertTaskGroupState(taskGroupStateChangedMsg.getState()),
+            newState,
             taskGroupStateChangedMsg.getAttemptIdx(),
             taskGroupStateChangedMsg.getFailedTaskIdsList(),
             convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
@@ -210,6 +238,8 @@ public final class RuntimeMaster {
       return TaskGroupState.State.FAILED_RECOVERABLE;
     case FAILED_UNRECOVERABLE:
       return TaskGroupState.State.FAILED_UNRECOVERABLE;
+    case ON_HOLD:
+      return TaskGroupState.State.ON_HOLD;
     default:
       throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
     }

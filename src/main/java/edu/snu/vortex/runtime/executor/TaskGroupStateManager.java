@@ -107,6 +107,10 @@ public final class TaskGroupStateManager {
       LOG.log(Level.FINE, "TaskGroup ID {0} failed (unrecoverable).", taskGroupId);
       notifyTaskGroupStateToMaster(newState, failedTaskIds, cause);
       break;
+    case ON_HOLD:
+      LOG.log(Level.FINE, "TaskGroup ID {0} put on hold.", taskGroupId);
+      notifyTaskGroupStateToMaster(newState, failedTaskIds, cause);
+      break;
     default:
       throw new IllegalStateException("Illegal state at this point");
     }
@@ -140,6 +144,9 @@ public final class TaskGroupStateManager {
       break;
     case FAILED_UNRECOVERABLE:
       onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE, Optional.of(Arrays.asList(taskId)), cause);
+      break;
+    case ON_HOLD:
+      onTaskGroupStateChanged(TaskGroupState.State.ON_HOLD, Optional.of(Arrays.asList(taskId)), cause);
       break;
     default:
       throw new IllegalStateException("Illegal state at this point");
@@ -195,6 +202,8 @@ public final class TaskGroupStateManager {
       return ControlMessage.TaskGroupStateFromExecutor.FAILED_RECOVERABLE;
     case FAILED_UNRECOVERABLE:
       return ControlMessage.TaskGroupStateFromExecutor.FAILED_UNRECOVERABLE;
+    case ON_HOLD:
+      return ControlMessage.TaskGroupStateFromExecutor.ON_HOLD;
     default:
       throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
     }

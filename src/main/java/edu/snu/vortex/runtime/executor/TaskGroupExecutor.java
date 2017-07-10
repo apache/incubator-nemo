@@ -172,6 +172,8 @@ public final class TaskGroupExecutor {
           launchOperatorTask((OperatorTask) task);
           garbageCollectLocalIntermediateData(task);
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.COMPLETE, Optional.empty());
+        } else if (task instanceof MetricCollectionBarrierTask) {
+          taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.ON_HOLD, Optional.empty());
         } else {
           throw new UnsupportedOperationException(task.toString());
         }

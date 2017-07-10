@@ -54,6 +54,10 @@ public final class RuntimeAttributeMap implements Serializable {
     return attributes.remove(key);
   }
 
+  public Integer remove(final RuntimeAttribute.IntegerKey key) {
+    return intAttributes.remove(key);
+  }
+
   public boolean containsKey(final RuntimeAttribute.Key key) {
     return attributes.containsKey(key);
   }

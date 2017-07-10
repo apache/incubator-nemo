@@ -37,6 +37,7 @@ public final class TaskState {
     stateMachineBuilder.addState(State.COMPLETE, "The task's execution is complete with its output committed.");
     stateMachineBuilder.addState(State.FAILED_RECOVERABLE, "Task failed, but is recoverable.");
     stateMachineBuilder.addState(State.FAILED_UNRECOVERABLE, "Task failed, and is unrecoverable. The job will fail.");
+    stateMachineBuilder.addState(State.ON_HOLD, "The task is paused for dynamic optimization.");
 
     // Add transitions
     stateMachineBuilder.addTransition(State.READY, State.PENDING_IN_EXECUTOR,
@@ -59,6 +60,9 @@ public final class TaskState {
         "Unexpected failure/Executor Failure");
     stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_RECOVERABLE,
         "Container Failure");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.ON_HOLD, "Task paused for dynamic optimization");
+
+    stateMachineBuilder.addTransition(State.ON_HOLD, State.EXECUTING, "Task resumed after dynamic optimization");
 
     stateMachineBuilder.addTransition(State.COMPLETE, State.FAILED_UNRECOVERABLE,
         "Executor Failure");
@@ -90,7 +94,8 @@ public final class TaskState {
     EXECUTING,
     COMPLETE,
     FAILED_RECOVERABLE,
-    FAILED_UNRECOVERABLE
+    FAILED_UNRECOVERABLE,
+    ON_HOLD, // for dynamic optimization
   }
 
   @Override

@@ -33,6 +33,11 @@ public enum RuntimeAttribute {
   Compute(Key.ContainerType),
   Storage(Key.ContainerType),
 
+  /**
+   * IRVertex Metric Collection attribute.
+   */
+  MetricCollection(Key.MetricCollection),
+
 
   /**
    * Block store attributes.
@@ -73,16 +78,16 @@ public enum RuntimeAttribute {
   Range(Key.Partition),
 
   /**
-   * IREdge type to specify edges that transfer SideInputs.
-   */
-  SideInput(Key.SideInput),
-
-  /**
    * IREdge communication pattern attributes.
    */
   OneToOne(Key.CommPattern),
   Broadcast(Key.CommPattern),
   ScatterGather(Key.CommPattern),
+
+  /**
+   * IREdge type to specify edges that transfer SideInputs.
+   */
+  SideInput(Key.SideInput),
 
   /**
    * SchedulingPolicy type attributes.
@@ -98,12 +103,18 @@ public enum RuntimeAttribute {
    * Runtime attribute keys.
    */
   public enum Key {
+    // Vertex
     ContainerType,
+    MetricCollection,
+
+    // Edge
     PartitionStore,
     PullOrPush,
     Partition,
-    SideInput,
     CommPattern,
+    SideInput,
+
+    // Scheduling
     SchedulingPolicy,
     Scheduler
   }
