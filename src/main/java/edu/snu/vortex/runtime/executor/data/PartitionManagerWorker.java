@@ -18,7 +18,7 @@ package edu.snu.vortex.runtime.executor.data;
 import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.exception.PartitionFetchException;
@@ -105,7 +105,7 @@ public final class PartitionManagerWorker {
    * @return whether the partition is removed or not.
    */
   public boolean removePartition(final String partitionId,
-                                 final RuntimeAttribute partitionStore) {
+                                 final Attribute partitionStore) {
     LOG.log(Level.INFO, "RemovePartition: {0}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
     final boolean exist = store.removePartition(partitionId);
@@ -138,7 +138,7 @@ public final class PartitionManagerWorker {
    */
   public void putPartition(final String partitionId,
                            final Iterable<Element> data,
-                           final RuntimeAttribute partitionStore) {
+                           final Attribute partitionStore) {
     LOG.log(Level.INFO, "PutPartition: {0}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
 
@@ -173,7 +173,7 @@ public final class PartitionManagerWorker {
    */
   public CompletableFuture<Partition> getPartition(final String partitionId,
                                                    final String runtimeEdgeId,
-                                                   final RuntimeAttribute partitionStore) {
+                                                   final Attribute partitionStore) {
     LOG.log(Level.INFO, "GetPartition: {0}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
     final Optional<Partition> optionalPartition;
@@ -218,7 +218,7 @@ public final class PartitionManagerWorker {
     return partitionTransferPeer.fetch(remoteWorkerId, partitionId, runtimeEdgeId, partitionStore);
   }
 
-  private PartitionStore getPartitionStore(final RuntimeAttribute partitionStore) {
+  private PartitionStore getPartitionStore(final Attribute partitionStore) {
     switch (partitionStore) {
       case Local:
         return localStore;

@@ -17,8 +17,8 @@ package edu.snu.vortex.runtime.common.plan.physical;
 
 
 import edu.snu.vortex.compiler.ir.Reader;
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
-import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.logical.*;
@@ -61,18 +61,18 @@ public final class PhysicalDAGGenerator
 
         final List<RuntimeVertex> stageVertices = stage.getStageInternalDAG().getVertices();
 
-        final RuntimeAttributeMap firstVertexAttrs = stageVertices.iterator().next().getVertexAttributes();
-        int stageParallelism = firstVertexAttrs.get(RuntimeAttribute.IntegerKey.Parallelism);
+        final AttributeMap firstVertexAttrs = stageVertices.iterator().next().getVertexAttributes();
+        int stageParallelism = firstVertexAttrs.get(Attribute.IntegerKey.Parallelism);
         stageVertices.forEach(runtimeVertex -> {
           // This check should be done in the compiler backend
           int vertexParallelism =
-              runtimeVertex.getVertexAttributes().get(RuntimeAttribute.IntegerKey.Parallelism);
+              runtimeVertex.getVertexAttributes().get(Attribute.IntegerKey.Parallelism);
           if (vertexParallelism != stageParallelism) {
             // TODO #103: Integrity check in execution plan.
             throw new RuntimeException("All vertices in a stage should have same parallelism");
           }
         });
-        final RuntimeAttribute containerType = firstVertexAttrs.get(RuntimeAttribute.Key.ContainerType);
+        final Attribute containerType = firstVertexAttrs.get(Attribute.Key.Placement);
 
         // Begin building a new stage in the physical plan.
         physicalStageBuilder = new PhysicalStageBuilder(stage.getStageId(), stageParallelism);

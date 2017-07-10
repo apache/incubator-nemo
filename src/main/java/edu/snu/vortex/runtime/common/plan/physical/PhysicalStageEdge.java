@@ -17,7 +17,7 @@ package edu.snu.vortex.runtime.common.plan.physical;
 
 
 import edu.snu.vortex.common.coder.Coder;
-import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
+import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 
@@ -40,13 +40,13 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
   /**
    * IRVertex attributes of the endpoint vertex.
    */
-  private final RuntimeAttributeMap externalVertexAttr;
+  private final AttributeMap externalVertexAttr;
 
   public PhysicalStageEdge(final String runtimeEdgeId,
-                           final RuntimeAttributeMap edgeAttributes,
+                           final AttributeMap edgeAttributes,
                            final RuntimeVertex srcVertex,
                            final RuntimeVertex dstVertex,
-                           final RuntimeAttributeMap externalVertexAttr,
+                           final AttributeMap externalVertexAttr,
                            final PhysicalStage srcStage,
                            final PhysicalStage dstStage,
                            final Coder coder) {
@@ -64,7 +64,7 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     return dstVertex;
   }
 
-  public RuntimeAttributeMap getExternalVertexAttr() {
+  public AttributeMap getExternalVertexAttr() {
     return externalVertexAttr;
   }
 

@@ -21,8 +21,9 @@ import edu.snu.vortex.compiler.frontend.beam.BeamElement;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.common.coder.BeamCoder;
 import edu.snu.vortex.compiler.ir.Element;
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
-import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
+import edu.snu.vortex.compiler.ir.IREdge;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
@@ -77,8 +78,8 @@ public final class DataTransferTest {
   private static final int EXECUTOR_CAPACITY = 1;
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
   private static final int SCHEDULE_TIMEOUT = 1000;
-  private static final RuntimeAttribute STORE = RuntimeAttribute.Local;
-  private static final RuntimeAttribute FILE_STORE = RuntimeAttribute.File;
+  private static final Attribute STORE = Attribute.Local;
+  private static final Attribute FILE_STORE = Attribute.File;
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final int PARALLELISM_TEN = 10;
   private static final String EDGE_ID = "Dummy";
@@ -167,75 +168,77 @@ public final class DataTransferTest {
 
   @Test
   public void testOneToOneSameWorker() {
-    writeAndRead(worker1, worker1, RuntimeAttribute.OneToOne, STORE);
+    writeAndRead(worker1, worker1, Attribute.OneToOne, STORE);
   }
 
   @Test
   public void testOneToOneDifferentWorker() {
-    writeAndRead(worker1, worker2, RuntimeAttribute.OneToOne, STORE);
+    writeAndRead(worker1, worker2, Attribute.OneToOne, STORE);
   }
 
   @Test
   public void testOneToManySameWorker() {
-    writeAndRead(worker1, worker1, RuntimeAttribute.Broadcast, STORE);
+    writeAndRead(worker1, worker1, Attribute.Broadcast, STORE);
   }
 
   @Test
   public void testOneToManyDifferentWorker() {
-    writeAndRead(worker1, worker2, RuntimeAttribute.Broadcast, STORE);
+    writeAndRead(worker1, worker2, Attribute.Broadcast, STORE);
   }
 
   @Test
   public void testManyToManySameWorker() {
-    writeAndRead(worker1, worker1, RuntimeAttribute.ScatterGather, STORE);
+    writeAndRead(worker1, worker1, Attribute.ScatterGather, STORE);
   }
 
   @Test
   public void testManyToManyDifferentWorker() {
-    writeAndRead(worker1, worker2, RuntimeAttribute.ScatterGather, STORE);
+    writeAndRead(worker1, worker2, Attribute.ScatterGather, STORE);
   }
 
   @Test(timeout = 1000)
   public void testFileManyToManySameWorker() throws IOException {
-    writeAndRead(worker1, worker1, RuntimeAttribute.ScatterGather, FILE_STORE);
+    writeAndRead(worker1, worker1, Attribute.ScatterGather, FILE_STORE);
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
   }
 
   @Test(timeout = 1000)
   public void testFileManyToManyDifferentWorker() throws IOException {
-    writeAndRead(worker1, worker2, RuntimeAttribute.ScatterGather, FILE_STORE);
+    writeAndRead(worker1, worker2, Attribute.ScatterGather, FILE_STORE);
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
   }
 
   private void writeAndRead(final PartitionManagerWorker sender,
                             final PartitionManagerWorker receiver,
-                            final RuntimeAttribute commPattern,
-                            final RuntimeAttribute store) {
+                            final Attribute commPattern,
+                            final Attribute store) {
     // Src setup
-    final RuntimeAttributeMap srcVertexAttributes = new RuntimeAttributeMap();
-    srcVertexAttributes.put(RuntimeAttribute.IntegerKey.Parallelism, PARALLELISM_TEN);
+
 
     final BoundedSource s = mock(BoundedSource.class);
     final BoundedSourceVertex v1 = new BoundedSourceVertex<>(s);
+    final AttributeMap srcVertexAttributes = AttributeMap.of(v1);
+    srcVertexAttributes.put(Attribute.IntegerKey.Parallelism, PARALLELISM_TEN);
     final RuntimeVertex srcVertex = new RuntimeBoundedSourceVertex(v1, srcVertexAttributes);
 
     // Dst setup
-    final RuntimeAttributeMap dstVertexAttributes = new RuntimeAttributeMap();
-    dstVertexAttributes.put(RuntimeAttribute.IntegerKey.Parallelism, PARALLELISM_TEN);
     final BoundedSourceVertex v2 = new BoundedSourceVertex<>(s);
+    final AttributeMap dstVertexAttributes = AttributeMap.of(v2);
+    dstVertexAttributes.put(Attribute.IntegerKey.Parallelism, PARALLELISM_TEN);
     final RuntimeVertex dstVertex = new RuntimeBoundedSourceVertex(v2, dstVertexAttributes);
 
     // Edge setup
-    final RuntimeAttributeMap edgeAttributes = new RuntimeAttributeMap();
-    edgeAttributes.put(RuntimeAttribute.Key.CommPattern, commPattern);
-    edgeAttributes.put(RuntimeAttribute.Key.Partition, RuntimeAttribute.Hash);
-    edgeAttributes.put(RuntimeAttribute.Key.PartitionStore, store);
+    final IREdge dummyIREdge = new IREdge(IREdge.Type.OneToOne, v1, v2, CODER);
+    final AttributeMap edgeAttributes = AttributeMap.of(dummyIREdge);
+    edgeAttributes.put(Attribute.Key.CommunicationPattern, commPattern);
+    edgeAttributes.put(Attribute.Key.Partitioning, Attribute.Hash);
+    edgeAttributes.put(Attribute.Key.ChannelDataPlacement, store);
     final RuntimeEdge<RuntimeVertex> dummyEdge
         = new RuntimeEdge<>(EDGE_ID, edgeAttributes, srcVertex, dstVertex, CODER);
 
     // Initialize states in Master
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
-      if (commPattern == RuntimeAttribute.ScatterGather) {
+      if (commPattern == Attribute.ScatterGather) {
         IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex ->
             master.initializeState(EDGE_ID, srcTaskIndex, dstTaskIndex, null));
       } else {
@@ -264,7 +267,7 @@ public final class DataTransferTest {
     // Compare (should be the same)
     final List<Element> flattenedWrittenData = flatten(dataWrittenList);
     final List<Element> flattenedReadData = flatten(dataReadList);
-    if (commPattern == RuntimeAttribute.Broadcast) {
+    if (commPattern == Attribute.Broadcast) {
       final List<Element> broadcastedWrittenData = new ArrayList<>();
       IntStream.range(0, PARALLELISM_TEN).forEach(i -> broadcastedWrittenData.addAll(flattenedWrittenData));
       assertEquals(broadcastedWrittenData.size(), flattenedReadData.size());

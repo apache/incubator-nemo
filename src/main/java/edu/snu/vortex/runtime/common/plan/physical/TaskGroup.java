@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.runtime.common.plan.physical;
 
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.common.dag.DAG;
 
@@ -32,13 +32,13 @@ public final class TaskGroup implements Serializable {
   private final String stageId;
   private final int taskGroupIdx;
   private final DAG<Task, RuntimeEdge<Task>> taskDAG;
-  private final RuntimeAttribute containerType;
+  private final Attribute containerType;
 
   public TaskGroup(final String taskGroupId,
                    final String stageId,
                    final int taskGroupIdx,
                    final DAG<Task, RuntimeEdge<Task>> taskDAG,
-                   final RuntimeAttribute containerType) {
+                   final Attribute containerType) {
     this.taskGroupId = taskGroupId;
     this.stageId = stageId;
     this.taskGroupIdx = taskGroupIdx;
@@ -58,7 +58,7 @@ public final class TaskGroup implements Serializable {
     return taskGroupIdx;
   }
 
-  public RuntimeAttribute getContainerType() {
+  public Attribute getContainerType() {
     return containerType;
   }
 

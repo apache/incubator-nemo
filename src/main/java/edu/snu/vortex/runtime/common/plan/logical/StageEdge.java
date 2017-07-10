@@ -17,7 +17,7 @@ package edu.snu.vortex.runtime.common.plan.logical;
 
 
 import edu.snu.vortex.common.coder.Coder;
-import edu.snu.vortex.runtime.common.RuntimeAttributeMap;
+import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 
@@ -39,7 +39,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    * @param dstRuntimeVertex destination vertex (in dstStage).
    */
   public StageEdge(final String irEdgeId,
-                   final RuntimeAttributeMap edgeAttributes,
+                   final AttributeMap edgeAttributes,
                    final Stage srcStage,
                    final Stage dstStage,
                    final Coder coder,

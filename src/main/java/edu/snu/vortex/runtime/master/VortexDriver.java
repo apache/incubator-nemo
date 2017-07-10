@@ -16,7 +16,7 @@
 package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.client.JobConf;
-import edu.snu.vortex.runtime.common.RuntimeAttribute;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.ncs.NcsMessageEnvironment;
@@ -52,7 +52,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
-import static edu.snu.vortex.runtime.common.RuntimeAttribute.*;
+import static edu.snu.vortex.compiler.ir.attribute.Attribute.*;
 
 /**
  * REEF Driver for Vortex.
@@ -100,7 +100,7 @@ public final class VortexDriver {
     @Override
     public void onNext(final StartTime startTime) {
       // Launch resources
-      final Set<RuntimeAttribute> completeSetOfContainerType =
+      final Set<Attribute> completeSetOfContainerType =
           new HashSet<>(Arrays.asList(Transient, Reserved, Compute, Storage));
       completeSetOfContainerType.forEach(containerType ->
         containerManager.requestContainer(executorNum,

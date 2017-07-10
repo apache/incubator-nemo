@@ -146,6 +146,21 @@ public final class AttributeMap implements Serializable {
   }
 
   /**
+   * @param key key to look for
+   * @return whether or not the attribute map contains the key.
+   */
+  public boolean containsKey(final Attribute.Key key) {
+    return attributes.containsKey(key);
+  }
+  /**
+   * @param key key to look for
+   * @return whether or not the attribute map contains the key.
+   */
+  public boolean containsKey(final Attribute.IntegerKey key) {
+    return attributes.containsKey(key);
+  }
+
+  /**
    * Same as forEach function in Java 8, but for attributes.
    * @param action action to apply to each attributes.
    */
