@@ -1,5 +1,5 @@
 # Vortex 
-[![Build Status](http://147.46.247.143:8080/buildStatus/icon?job=Vortex-master)](http://147.46.247.143:8080/job/Vortex-master/)
+[![Build Status](https://cmsbuild.snu.ac.kr/buildStatus/icon?job=Vortex-master)](https://cmsbuild.snu.ac.kr/job/Vortex-master/)
 
 ## Requirements
 * Java 8
