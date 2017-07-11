@@ -39,7 +39,7 @@ public final class BeamCoder<Data, Key, Value> implements Coder<Data, Key, Value
   @Override
   public void encode(final Element<Data, Key, Value> value, final OutputStream outStream) {
     try {
-      beamCoder.encode(value.getData(), outStream, org.apache.beam.sdk.coders.Coder.Context.OUTER);
+      beamCoder.encode(value.getData(), outStream);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -49,7 +49,7 @@ public final class BeamCoder<Data, Key, Value> implements Coder<Data, Key, Value
   public Element<Data, Key, Value> decode(final InputStream inStream) {
     try {
       return (Element<Data, Key, Value>)
-          new BeamElement(beamCoder.decode(inStream, org.apache.beam.sdk.coders.Coder.Context.OUTER));
+          new BeamElement(beamCoder.decode(inStream));
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
