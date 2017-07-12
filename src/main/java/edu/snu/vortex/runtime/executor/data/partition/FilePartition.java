@@ -110,6 +110,10 @@ public final class FilePartition implements Partition {
     // Deserialize the data
     // TODO 301: Divide a Task's Output Partitions into Smaller Blocks.
     final ArrayList<Element> deserializedData = new ArrayList<>();
+    if (size == 0) {
+      return deserializedData;
+    }
+
     try (
         final FileInputStream fileStream = new FileInputStream(filePath);
         final BufferedInputStream bufferedInputStream = new BufferedInputStream(fileStream, size)
