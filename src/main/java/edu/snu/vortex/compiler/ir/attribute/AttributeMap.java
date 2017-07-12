@@ -50,7 +50,7 @@ public final class AttributeMap implements Serializable {
    */
   public static AttributeMap of(final IREdge irEdge) {
     final AttributeMap map = new AttributeMap(irEdge.getId());
-    map.setDefaultEdgeValues();
+    map.setDefaultEdgeValues(irEdge.getType());
     return map;
   }
   /**
@@ -66,11 +66,18 @@ public final class AttributeMap implements Serializable {
 
   /**
    * Putting default attributes for edges.
+   * @param type type of the edge.
    */
-  private void setDefaultEdgeValues() {
+  private void setDefaultEdgeValues(final IREdge.Type type) {
     this.attributes.put(Attribute.Key.Partitioning, Attribute.Hash);
-    this.attributes.put(Attribute.Key.ChannelDataPlacement, Attribute.File);
     this.attributes.put(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
+    switch (type) {
+      case OneToOne:
+        this.attributes.put(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+        break;
+      default:
+        this.attributes.put(Attribute.Key.ChannelDataPlacement, Attribute.File);
+    }
   }
   /**
    * Putting default attributes for vertices.
