@@ -69,8 +69,7 @@ public final class AttributeMap implements Serializable {
    */
   private void setDefaultEdgeValues() {
     this.attributes.put(Attribute.Key.Partitioning, Attribute.Hash);
-    // TODO #319: Local should be changed to File, upon fixing the bug that prevents integration tests from passing.
-    this.attributes.put(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+    this.attributes.put(Attribute.Key.ChannelDataPlacement, Attribute.File);
     this.attributes.put(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
   }
   /**
