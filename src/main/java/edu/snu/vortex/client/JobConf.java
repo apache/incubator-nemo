@@ -128,6 +128,13 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class MaxScheduleAttempt implements Name<Integer> {
   }
 
+  /**
+   * Block size.
+   */
+  @NamedParameter(doc = "Block size (in KB)", short_name = "block_size", default_value = "128000")
+  public final class BlockSize implements Name<Integer> {
+  }
+
   public static final OptionalParameter<Integer> EXECUTOR_CAPACITY = new OptionalParameter<>();
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();
 
