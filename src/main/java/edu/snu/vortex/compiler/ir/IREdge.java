@@ -50,9 +50,9 @@ public final class IREdge extends Edge<IRVertex> {
                 final IRVertex dst,
                 final Coder coder) {
     super(IdManager.newEdgeId(), src, dst);
-    this.attributes = AttributeMap.of(this);
     this.type = type;
     this.coder = coder;
+    this.attributes = AttributeMap.of(this);
     switch (this.getType()) {
       case OneToOne:
         setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
