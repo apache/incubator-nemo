@@ -28,12 +28,15 @@ public final class RuntimeIdGenerator {
   private static AtomicInteger taskGroupIdGenerator = new AtomicInteger(1);
   private static AtomicInteger executorIdGenerator = new AtomicInteger(1);
   private static AtomicLong messageIdGenerator = new AtomicLong(1L);
+  private static String partitionPrefix = "Partition-";
+  private static String partitionIdSplitter = "_";
 
   private RuntimeIdGenerator() {
   }
 
   /**
    * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan}.
+   *
    * @return the generated ID
    */
   public static String generateExecutionPlanId() {
@@ -42,6 +45,7 @@ public final class RuntimeIdGenerator {
 
   /**
    * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex}.
+   *
    * @param irVertexId .
    * @return the generated ID
    */
@@ -51,6 +55,7 @@ public final class RuntimeIdGenerator {
 
   /**
    * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.logical.StageEdge}.
+   *
    * @param irEdgeId .
    * @return the generated ID
    */
@@ -60,6 +65,7 @@ public final class RuntimeIdGenerator {
 
   /**
    * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.RuntimeEdge}.
+   *
    * @param irEdgeId .
    * @return the generated ID
    */
@@ -69,6 +75,7 @@ public final class RuntimeIdGenerator {
 
   /**
    * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.logical.Stage}.
+   *
    * @return the generated ID
    */
   public static String generateStageId() {
@@ -77,6 +84,7 @@ public final class RuntimeIdGenerator {
 
   /**
    * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.physical.Task}.
+   *
    * @return the generated ID
    */
   public static String generateTaskId() {
@@ -85,6 +93,7 @@ public final class RuntimeIdGenerator {
 
   /**
    * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.physical.TaskGroup}.
+   *
    * @return the generated ID
    */
   public static String generateTaskGroupId() {
@@ -93,6 +102,7 @@ public final class RuntimeIdGenerator {
 
   /**
    * Generates the ID for executor.
+   *
    * @return the generated ID
    */
   public static String generateExecutorId() {
@@ -101,30 +111,60 @@ public final class RuntimeIdGenerator {
 
   /**
    * Generates the ID for a partition, whose data is the output of a task.
+   *
    * @param runtimeEdgeId of the partition
-   * @param taskIndex of the partition
+   * @param taskIndex     of the partition
    * @return the generated ID
    */
-  public static String generatePartitionId(final String runtimeEdgeId, final int taskIndex) {
-    return "Partition_" + runtimeEdgeId + "_" + taskIndex;
+  public static String generatePartitionId(final String runtimeEdgeId,
+                                           final int taskIndex) {
+    return partitionPrefix + runtimeEdgeId + partitionIdSplitter + taskIndex;
   }
 
   /**
-   * Generates the ID for a partition, whose data is a partition of a task's output.
-   * @param runtimeEdgeId of the partition
-   * @param taskIndex of the partition
-   * @param partitionIndex of the partition
+   * Generates the ID for a partition, whose data is a part of a task's output.
+   *
+   * @param runtimeEdgeId    of the partition
+   * @param taskIndex        of the partition
+   * @param destinationIndex of the partition
    * @return the generated ID
    */
-  public static String generatePartitionId(final String runtimeEdgeId, final int taskIndex, final int partitionIndex) {
-    return generatePartitionId(runtimeEdgeId, taskIndex) + "_" + partitionIndex;
+  public static String generatePartitionId(final String runtimeEdgeId,
+                                           final int taskIndex,
+                                           final int destinationIndex) {
+    return generatePartitionId(runtimeEdgeId, taskIndex) + partitionIdSplitter + destinationIndex;
   }
 
   /**
    * Generates the ID for a control message.
+   *
    * @return the generated ID
    */
   public static long generateMessageId() {
     return messageIdGenerator.getAndIncrement();
+  }
+
+  /**
+   * Parses a partition id.
+   * If the id represents a partition in scatter gather edge,
+   * the result array will contain runtime edge id, task index, and destination index in order.
+   * In other cases, the result array will contain runtime edge id and task index only.
+   *
+   * @param partitionId to parse.
+   * @return the array of parsed information.
+   */
+  public static String[] parsePartitionId(final String partitionId) {
+    final String woPrefix = partitionId.split(partitionPrefix)[1];
+    return woPrefix.split(partitionIdSplitter);
+  }
+
+  /**
+   * Checks whether a partition id represents a partition in scatter gather edge or not.
+   *
+   * @param partitionId to check.
+   * @return {@code true} if it represents a scatter gather partition, {@code false} if doesn't.
+   */
+  public static boolean isScatterGatherEdge(final String partitionId) {
+    return partitionId.split(partitionIdSplitter).length == 3;
   }
 }

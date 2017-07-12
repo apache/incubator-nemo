@@ -24,6 +24,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -33,48 +34,52 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class FilePartition implements Partition {
 
   private final AtomicBoolean written;
-  private Coder coder;
-  private String filePath;
-  private long numElement;
-  private int size;
+  private final Coder coder;
+  private final String filePath;
+  private final List<BlockInfo> blockInfoList;
 
   /**
    * Constructs a file partition.
-   * For the synchronicity of the partition map, it does not write data at the construction time.
+   *
+   * @param coder    the coder used to serialize and deserialize the data of this partition.
+   * @param filePath the path of the file which will contain the data of this partition.
    */
-  public FilePartition() {
+  public FilePartition(final Coder coder,
+                       final String filePath) {
+    this.coder = coder;
+    this.filePath = filePath;
     written = new AtomicBoolean(false);
+    blockInfoList = new ArrayList<>();
   }
 
   /**
-   * Writes the serialized data of this partition to a file (synchronously).
+   * Writes the serialized data of this partition as a block to the file where this partition resides.
    *
-   * @param serializedData  the serialized data of this partition.
-   * @param coderToSet      the coder used to serialize and deserialize the data of this partition.
-   * @param filePathToSet   the path of the file which will contain the data of this partition.
-   * @param numElementToSet the number of elements in the serialized data.
+   * @param serializedData the serialized data of this partition.
+   * @param numElement     the number of elements in the serialized data.
    * @throws RuntimeException if failed to write.
    */
-  public void writeData(final byte[] serializedData,
-                        final Coder coderToSet,
-                        final String filePathToSet,
-                        final long numElementToSet) throws RuntimeException {
-    this.coder = coderToSet;
-    this.filePath = filePathToSet;
-    this.numElement = numElementToSet;
-    this.size = serializedData.length;
+  public void writeBlock(final byte[] serializedData,
+                         final long numElement) throws RuntimeException {
+    blockInfoList.add(new BlockInfo(serializedData.length, numElement));
     // Wrap the given serialized data (but not copy it)
     final ByteBuffer buf = ByteBuffer.wrap(serializedData);
 
     // Write synchronously
     try (
-        final FileOutputStream fileOutputStream = new FileOutputStream(filePath);
+        final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true);
         final FileChannel fileChannel = fileOutputStream.getChannel()
     ) {
       fileChannel.write(buf);
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Notice the end of write.
+   */
+  public void finishWrite() {
     written.set(true);
   }
 
@@ -89,7 +94,7 @@ public final class FilePartition implements Partition {
     }
     try {
       Files.delete(Paths.get(filePath));
-    } catch (final Exception e) {
+    } catch (final IOException e) {
       throw new RuntimeException(e);
     }
   }
@@ -108,23 +113,46 @@ public final class FilePartition implements Partition {
     }
 
     // Deserialize the data
-    // TODO 301: Divide a Task's Output Partitions into Smaller Blocks.
     final ArrayList<Element> deserializedData = new ArrayList<>();
-    if (size == 0) {
-      return deserializedData;
-    }
-
-    try (
-        final FileInputStream fileStream = new FileInputStream(filePath);
-        final BufferedInputStream bufferedInputStream = new BufferedInputStream(fileStream, size)
-    ) {
-      for (int i = 0; i < numElement; i++) {
-        deserializedData.add(coder.decode(bufferedInputStream));
-      }
-    } catch (final Exception e) {
+    try (final FileInputStream fileStream = new FileInputStream(filePath)) {
+      blockInfoList.forEach(blockInfo -> {
+        // Deserialize a block
+        final int size = blockInfo.getBlockSize();
+        final long numElements = blockInfo.getNumElements();
+        if (size != 0) {
+          // This stream will be not closed, but it is okay as long as the file stream is closed well.
+          final BufferedInputStream bufferedInputStream = new BufferedInputStream(fileStream, size);
+          for (int i = 0; i < numElements; i++) {
+            deserializedData.add(coder.decode(bufferedInputStream));
+          }
+        }
+      });
+    } catch (final IOException e) {
       throw new RuntimeException(e);
     }
 
     return deserializedData;
+  }
+
+  /**
+   * This class represents the block information.
+   */
+  private final class BlockInfo {
+    private final int blockSize;
+    private final long numElements;
+
+    private BlockInfo(final int blockSize,
+                      final long numElements) {
+      this.blockSize = blockSize;
+      this.numElements = numElements;
+    }
+
+    private int getBlockSize() {
+      return blockSize;
+    }
+
+    private long getNumElements() {
+      return numElements;
+    }
   }
 }

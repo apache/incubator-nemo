@@ -18,6 +18,7 @@ package edu.snu.vortex.runtime.executor.data;
 import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.executor.data.partition.FilePartition;
 import edu.snu.vortex.runtime.executor.data.partition.LocalPartition;
 import edu.snu.vortex.runtime.executor.data.partition.Partition;
@@ -37,16 +38,42 @@ import java.util.concurrent.ConcurrentHashMap;
 final class FileStore implements PartitionStore {
 
   private final String fileDirectory;
+  private final int blockSize;
   private final Map<String, FilePartition> partitionIdToData;
   private final InjectionFuture<PartitionManagerWorker> partitionManagerWorker;
 
   @Inject
   private FileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
+                    @Parameter(JobConf.BlockSize.class) final int blockSize,
                     final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
     this.fileDirectory = fileDirectory;
+    this.blockSize = blockSize * 1000;
     this.partitionIdToData = new ConcurrentHashMap<>();
     this.partitionManagerWorker = partitionManagerWorker;
     new File(fileDirectory).mkdirs();
+  }
+
+  /**
+   * Makes the given stream to a block and write it to the given file partition.
+   *
+   * @param elementsInBlock the number of elements in this block.
+   * @param outputStream    the output stream containing data.
+   * @param partition       the partition to write the block.
+   * @return the size of serialized block.
+   */
+  private long writeBlock(final long elementsInBlock,
+                          final ByteArrayOutputStream outputStream,
+                          final FilePartition partition) {
+    try {
+      outputStream.close();
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    final byte[] serialized = outputStream.toByteArray();
+    partition.writeBlock(serialized, elementsInBlock);
+
+    return serialized.length;
   }
 
   /**
@@ -75,34 +102,39 @@ final class FileStore implements PartitionStore {
    */
   @Override
   public Optional<Long> putPartition(final String partitionId, final Iterable<Element> data) {
-    final FilePartition partition = new FilePartition();
+    final PartitionManagerWorker worker = partitionManagerWorker.get();
+    final String runtimeEdgeId = RuntimeIdGenerator.parsePartitionId(partitionId)[0];
+    final Coder coder = worker.getCoder(runtimeEdgeId);
+    final FilePartition partition = new FilePartition(coder, fileDirectory + "/" + partitionId);
     final Partition previousPartition = partitionIdToData.putIfAbsent(partitionId, partition);
     if (previousPartition != null) {
       throw new RuntimeException("Trying to overwrite an existing partition");
     }
 
-    // Serialize the given data
-    final PartitionManagerWorker worker = partitionManagerWorker.get();
-    final String runtimeEdgeId = partitionId.split("_")[1];
-    final Coder coder = worker.getCoder(runtimeEdgeId);
+    // Serialize the given data into blocks
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    long length = 0;
-    // TODO 301: Divide a Task's Output Partitions into Smaller Blocks.
+    long elementsInBlock = 0;
+    long partitionSize = 0;
     for (final Element element : data) {
       coder.encode(element, outputStream);
-      length++;
-    }
-    try {
-      outputStream.close();
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
-    final byte[] serialized = outputStream.toByteArray();
+      elementsInBlock++;
 
-    // Synchronously write the serialized data to file
-    partition.writeData(serialized, coder, fileDirectory + "/" + partitionId, length);
+      if (outputStream.size() >= blockSize) {
+        // If this block is large enough, synchronously append it to the file and reset the buffer
+        partitionSize += writeBlock(elementsInBlock, outputStream, partition);
 
-    return Optional.of(Long.valueOf(serialized.length));
+        outputStream.reset();
+        elementsInBlock = 0;
+      }
+    }
+
+    if (outputStream.size() > 0) {
+      // If there are any remaining data in stream, write it as another block.
+      partitionSize += writeBlock(elementsInBlock, outputStream, partition);
+    }
+    partition.finishWrite();
+
+    return Optional.of(partitionSize);
   }
 
   /**
