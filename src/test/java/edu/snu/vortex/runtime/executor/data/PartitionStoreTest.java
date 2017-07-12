@@ -54,6 +54,7 @@ import static org.mockito.Mockito.when;
 @PrepareForTest(PartitionManagerWorker.class)
 public final class PartitionStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
+  private static final int BLOCK_SIZE = 1; // 1 KB
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
   // Variables for scatter and gather test
   private static final int NUM_WRITE_TASKS = 3;
@@ -119,6 +120,7 @@ public final class PartitionStoreTest {
     when(worker.getCoder(any())).thenReturn(CODER);
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(JobConf.FileDirectory.class, TMP_FILE_DIRECTORY);
+    injector.bindVolatileParameter(JobConf.BlockSize.class, BLOCK_SIZE);
     injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
 
     final PartitionStore fileStore = injector.getInstance(FileStore.class);
