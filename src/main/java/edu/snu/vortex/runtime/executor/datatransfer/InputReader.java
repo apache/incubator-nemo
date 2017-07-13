@@ -25,9 +25,9 @@ import edu.snu.vortex.runtime.common.plan.physical.Task;
 import edu.snu.vortex.runtime.exception.PartitionFetchException;
 import edu.snu.vortex.runtime.exception.UnsupportedCommPatternException;
 import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
-import edu.snu.vortex.runtime.executor.data.partition.Partition;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -66,11 +66,11 @@ public final class InputReader extends DataTransfer {
    *
    * @return the read data.
    */
-  public Iterable<Element> read() {
+  public List<CompletableFuture<Iterable<Element>>> read() {
     try {
       switch (runtimeEdge.getEdgeAttributes().get(Attribute.Key.CommunicationPattern)) {
         case OneToOne:
-          return readOneToOne();
+          return Collections.singletonList(readOneToOne());
         case Broadcast:
           return readBroadcast();
         case ScatterGather:
@@ -83,48 +83,38 @@ public final class InputReader extends DataTransfer {
     }
   }
 
-  private Iterable<Element> readOneToOne() throws ExecutionException, InterruptedException {
+  private CompletableFuture<Iterable<Element>> readOneToOne() throws ExecutionException, InterruptedException {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), dstTaskIndex);
     return partitionManagerWorker.getPartition(partitionId, getId(),
-        runtimeEdge.getEdgeAttributes().get(Attribute.Key.ChannelDataPlacement)).get().asIterable();
+        runtimeEdge.getEdgeAttributes().get(Attribute.Key.ChannelDataPlacement));
   }
 
-  private Iterable<Element> readBroadcast() throws ExecutionException, InterruptedException {
+  private List<CompletableFuture<Iterable<Element>>> readBroadcast()
+      throws ExecutionException, InterruptedException {
     final int numSrcTasks = srcRuntimeVertex.getVertexAttributes().get(Attribute.IntegerKey.Parallelism);
 
-    final List<CompletableFuture<Partition>> futures = new ArrayList<>();
+    final List<CompletableFuture<Iterable<Element>>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
       futures.add(partitionManagerWorker.getPartition(partitionId, getId(),
           runtimeEdge.getEdgeAttributes().get(Attribute.Key.ChannelDataPlacement)));
     }
 
-    final List<Element> concatStreamBase = new ArrayList<>();
-    Stream<Element> concatStream = concatStreamBase.stream();
-    for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final Iterable<Element> dataFromATask = futures.get(srcTaskIdx).get().asIterable();
-      concatStream = Stream.concat(concatStream, StreamSupport.stream(dataFromATask.spliterator(), false));
-    }
-    return concatStream.collect(Collectors.toList());
+    return futures;
   }
 
-  private Iterable<Element> readScatterGather() throws ExecutionException, InterruptedException {
+  private List<CompletableFuture<Iterable<Element>>> readScatterGather()
+      throws ExecutionException, InterruptedException {
     final int numSrcTasks = srcRuntimeVertex.getVertexAttributes().get(Attribute.IntegerKey.Parallelism);
 
-    final List<CompletableFuture<Partition>> futures = new ArrayList<>();
+    final List<CompletableFuture<Iterable<Element>>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx, dstTaskIndex);
       futures.add(partitionManagerWorker.getPartition(partitionId, getId(),
           runtimeEdge.getEdgeAttributes().get(Attribute.Key.ChannelDataPlacement)));
     }
 
-    final List<Element> concatStreamBase = new ArrayList<>();
-    Stream<Element> concatStream = concatStreamBase.stream();
-    for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final Iterable<Element> dataFromATask = futures.get(srcTaskIdx).get().asIterable();
-      concatStream = Stream.concat(concatStream, StreamSupport.stream(dataFromATask.spliterator(), false));
-    }
-    return concatStream.collect(Collectors.toList());
+    return futures;
   }
 
   public RuntimeEdge getRuntimeEdge() {
@@ -150,7 +140,30 @@ public final class InputReader extends DataTransfer {
     if (!isSideInputReader()) {
       throw new RuntimeException();
     }
+    final List<CompletableFuture<Iterable<Element>>> futures = this.read();
 
-    return read().iterator().next().getData();
+    try {
+      return futures.get(0).get().iterator().next().getData();
+    } catch (InterruptedException | ExecutionException e) {
+      throw new PartitionFetchException(e);
+    }
+  }
+
+  /**
+   * Combine the given list of futures.
+   * @param futures to combine.
+   * @return the combined iterable of elements.
+   * @throws ExecutionException when fail to get results from futures.
+   * @throws InterruptedException when interrupted during getting results from futures.
+   */
+  public static Iterable<Element> combineFutures(final List<CompletableFuture<Iterable<Element>>> futures)
+      throws ExecutionException, InterruptedException {
+    final List<Element> concatStreamBase = new ArrayList<>();
+    Stream<Element> concatStream = concatStreamBase.stream();
+    for (int srcTaskIdx = 0; srcTaskIdx < futures.size(); srcTaskIdx++) {
+      final Iterable<Element> dataFromATask = futures.get(srcTaskIdx).get();
+      concatStream = Stream.concat(concatStream, StreamSupport.stream(dataFromATask.spliterator(), false));
+    }
+    return concatStream.collect(Collectors.toList());
   }
 }
