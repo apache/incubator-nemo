@@ -26,6 +26,7 @@ import edu.snu.vortex.runtime.exception.PartitionFetchException;
 import edu.snu.vortex.runtime.exception.UnsupportedCommPatternException;
 import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -46,7 +47,8 @@ public final class InputReader extends DataTransfer {
   /**
    * Attributes that specify how we should read the input.
    */
-  private final RuntimeVertex srcRuntimeVertex;
+  @Nullable
+  private final RuntimeVertex srcRuntimeVertex; // This vertex is null if this reader is a local reader.
   private final RuntimeEdge runtimeEdge;
 
   public InputReader(final int dstTaskIndex,
@@ -91,7 +93,7 @@ public final class InputReader extends DataTransfer {
 
   private List<CompletableFuture<Iterable<Element>>> readBroadcast()
       throws ExecutionException, InterruptedException {
-    final int numSrcTasks = srcRuntimeVertex.getVertexAttributes().get(Attribute.IntegerKey.Parallelism);
+    final int numSrcTasks = this.getSourceParallelism();
 
     final List<CompletableFuture<Iterable<Element>>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
@@ -105,7 +107,7 @@ public final class InputReader extends DataTransfer {
 
   private List<CompletableFuture<Iterable<Element>>> readScatterGather()
       throws ExecutionException, InterruptedException {
-    final int numSrcTasks = srcRuntimeVertex.getVertexAttributes().get(Attribute.IntegerKey.Parallelism);
+    final int numSrcTasks = this.getSourceParallelism();
 
     final List<CompletableFuture<Iterable<Element>>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
@@ -150,10 +152,26 @@ public final class InputReader extends DataTransfer {
   }
 
   /**
+   * Get the parallelism of the source task.
+   *
+   * @return the parallelism of the source task.
+   */
+  public int getSourceParallelism() {
+    if (srcRuntimeVertex != null) {
+      final Integer numSrcTasks = srcRuntimeVertex.getVertexAttributes().get(Attribute.IntegerKey.Parallelism);
+      return numSrcTasks == null ? 1 : numSrcTasks;
+    } else {
+      // Local input reader
+      return 1;
+    }
+  }
+
+  /**
    * Combine the given list of futures.
+   *
    * @param futures to combine.
    * @return the combined iterable of elements.
-   * @throws ExecutionException when fail to get results from futures.
+   * @throws ExecutionException   when fail to get results from futures.
    * @throws InterruptedException when interrupted during getting results from futures.
    */
   public static Iterable<Element> combineFutures(final List<CompletableFuture<Iterable<Element>>> futures)

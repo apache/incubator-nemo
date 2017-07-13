@@ -213,8 +213,6 @@ public final class DataTransferTest {
                             final Attribute commPattern,
                             final Attribute store) throws RuntimeException {
     // Src setup
-
-
     final BoundedSource s = mock(BoundedSource.class);
     final BoundedSourceVertex v1 = new BoundedSourceVertex<>(s);
     final AttributeMap srcVertexAttributes = AttributeMap.of(v1);
