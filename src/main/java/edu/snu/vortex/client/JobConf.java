@@ -110,7 +110,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   /**
    * Scheduler timeout in ms.
    */
-  @NamedParameter(doc = "Scheduler timeout in ms", short_name = "scheduler_timeout_ms", default_value = "2000")
+  @NamedParameter(doc = "Scheduler timeout in ms", short_name = "scheduler_timeout_ms", default_value = "10000")
   public final class SchedulerTimeoutMs implements Name<Integer> {
   }
 

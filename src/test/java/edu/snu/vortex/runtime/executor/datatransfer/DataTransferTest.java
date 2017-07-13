@@ -38,7 +38,7 @@ import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.scheduler.BatchScheduler;
-import edu.snu.vortex.runtime.master.scheduler.PendingTaskGroupQueue;
+import edu.snu.vortex.runtime.master.scheduler.PendingTaskGroupPriorityQueue;
 import edu.snu.vortex.runtime.master.scheduler.RoundRobinSchedulingPolicy;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -98,7 +98,7 @@ public final class DataTransferTest {
     final ContainerManager containerManager = new ContainerManager(null, messageEnvironment);
     final Scheduler scheduler =
         new BatchScheduler(master,
-            new RoundRobinSchedulingPolicy(containerManager, SCHEDULE_TIMEOUT), new PendingTaskGroupQueue());
+            new RoundRobinSchedulingPolicy(containerManager, SCHEDULE_TIMEOUT), new PendingTaskGroupPriorityQueue());
     final AtomicInteger executorCount = new AtomicInteger(0);
     final PartitionManagerMaster master = new PartitionManagerMaster();
 
