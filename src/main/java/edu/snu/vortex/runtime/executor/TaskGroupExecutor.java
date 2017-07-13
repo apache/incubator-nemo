@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.runtime.executor;
 
+import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.Reader;
 import edu.snu.vortex.compiler.ir.Transform;
@@ -36,11 +37,14 @@ import edu.snu.vortex.runtime.master.irimpl.OutputCollectorImpl;
 import edu.snu.vortex.common.dag.DAG;
 
 import java.util.*;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Executes a task group.
@@ -170,27 +174,33 @@ public final class TaskGroupExecutor {
         if (task instanceof BoundedSourceTask) {
           launchBoundedSourceTask((BoundedSourceTask) task);
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.COMPLETE, Optional.empty());
+          LOG.log(Level.INFO, "{0} Execution Complete!", taskGroup.getTaskGroupId());
         } else if (task instanceof OperatorTask) {
           launchOperatorTask((OperatorTask) task);
           garbageCollectLocalIntermediateData(task);
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.COMPLETE, Optional.empty());
+          LOG.log(Level.INFO, "{0} Execution Complete!", taskGroup.getTaskGroupId());
         } else if (task instanceof MetricCollectionBarrierTask) {
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.ON_HOLD, Optional.empty());
+          LOG.log(Level.INFO, "{0} Execution Complete!", taskGroup.getTaskGroupId());
         } else {
           throw new UnsupportedOperationException(task.toString());
         }
       } catch (final PartitionFetchException ex) {
         taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.FAILED_RECOVERABLE,
             Optional.of(TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
+        LOG.log(Level.WARNING, "{0} Execution Failed (Recoverable)! Exception: {1}",
+            new Object[] {taskGroup.getTaskGroupId(), ex.toString()});
       } catch (final PartitionWriteException ex2) {
         taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.FAILED_RECOVERABLE,
             Optional.of(TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
+        LOG.log(Level.WARNING, "{0} Execution Failed (Recoverable)! Exception: {1}",
+            new Object[] {taskGroup.getTaskGroupId(), ex2.toString()});
       } catch (final Exception e) {
         taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.FAILED_UNRECOVERABLE, Optional.empty());
         throw new RuntimeException(e);
       }
     });
-    LOG.log(Level.INFO, "{0} Execution Complete!", taskGroup.getTaskGroupId());
   }
 
   /**
@@ -252,21 +262,30 @@ public final class TaskGroupExecutor {
     transform.prepare(transformContext, outputCollector);
 
     // Check for non-side inputs
+    // This blocking queue contains the pairs having data and source vertex ids.
+    final BlockingQueue<Pair<Iterable<Element>, String>> dataQueue = new LinkedBlockingQueue<>();
+    final AtomicInteger sourceParallelism = new AtomicInteger(0);
     taskIdToInputReaderMap.get(operatorTask.getId())
         .stream()
         .filter(inputReader -> !inputReader.isSideInputReader())
         .forEach(inputReader -> {
-          // TODO #335: Introduce producer - consumer structure to task group execution
           final List<CompletableFuture<Iterable<Element>>> futures = inputReader.read();
-          final Iterable<Element> data;
-          try {
-             data = InputReader.combineFutures(futures);
-          } catch (InterruptedException | ExecutionException e) {
-            throw new PartitionFetchException(e);
-          }
-
-          transform.onData(data, inputReader.getSrcRuntimeVertexId());
+          final String srcVtxId = inputReader.getSrcRuntimeVertexId();
+          sourceParallelism.getAndAdd(inputReader.getSourceParallelism());
+          // Add consumers which will push the data to the data queue when it ready to the futures.
+          futures.forEach(compFuture -> compFuture.thenAccept(data -> dataQueue.add(Pair.of(data, srcVtxId))));
         });
+
+    // Consumes all of the partitions from incoming edges.
+    IntStream.range(0, sourceParallelism.get()).forEach(srcTaskNum -> {
+      try {
+        // Because the data queue is a blocking queue, we may need to wait some available data to be pushed.
+        final Pair<Iterable<Element>, String> availableData = dataQueue.take();
+        transform.onData(availableData.left(), availableData.right());
+      } catch (final InterruptedException e) {
+        throw new PartitionFetchException(e);
+      }
+    });
     transform.close();
 
     final Iterable<Element> output = outputCollector.getOutputList();

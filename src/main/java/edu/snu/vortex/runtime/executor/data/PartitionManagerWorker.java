@@ -98,7 +98,7 @@ public final class PartitionManagerWorker {
   /**
    * Remove the partition from store.
    *
-   * @param partitionId of the partition to remove.
+   * @param partitionId    of the partition to remove.
    * @param partitionStore tha the partition is stored.
    * @return whether the partition is removed or not.
    */
@@ -170,8 +170,8 @@ public final class PartitionManagerWorker {
    * @return a {@link CompletableFuture} for the partition
    */
   public CompletableFuture<Iterable<Element>> getPartition(final String partitionId,
-                                                   final String runtimeEdgeId,
-                                                   final Attribute partitionStore) {
+                                                           final String runtimeEdgeId,
+                                                           final Attribute partitionStore) {
     LOG.log(Level.INFO, "GetPartition: {0}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
     final Optional<Partition> optionalPartition;
