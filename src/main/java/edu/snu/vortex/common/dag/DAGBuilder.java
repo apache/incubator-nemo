@@ -234,16 +234,30 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
    * Helper method to check that all attributes are correct and makes sense.
    */
   private void attributeCheck() {
+    // SideInput edge must be one-to-one
+    vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
+        .filter(e -> e.getAttr(Attribute.Key.SideInput) != null)
+        .filter(e -> !e.getType().equals(IREdge.Type.OneToOne))
+        .forEach(e -> {
+          throw new RuntimeException("DAG attribute check: SideInput edge must be one-to-one: " + e.getId());
+        }));
+    // SideInput is not compatible with Push
+    vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
+        .filter(e -> e.getAttr(Attribute.Key.SideInput) != null)
+        .filter(e -> e.getAttr(Attribute.Key.ChannelTransferPolicy) == Attribute.Push)
+        .forEach(e -> {
+          throw new RuntimeException("DAG attribute check: SideInput is not compatible with push" + e.getId());
+        }));
     // All vertices connected with OneToOne edge should have identical Parallelism attribute.
-    vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge)
-        .filter(e -> ((IREdge) e).getType().equals(IREdge.Type.OneToOne))
-        .filter(e -> ((IREdge) e).getAttr(Attribute.Key.SideInput) == null).forEach(e -> {
+    vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
+        .filter(e -> e.getType().equals(IREdge.Type.OneToOne))
+        .filter(e -> e.getAttr(Attribute.Key.SideInput) == null).forEach(e -> {
           if (e.getSrc() instanceof IRVertex && e.getDst() instanceof IRVertex
               && !(e.getSrc() instanceof LoopVertex) && !(e.getDst() instanceof LoopVertex)
-              && ((IRVertex) e.getSrc()).getAttr(Attribute.IntegerKey.Parallelism) != null
-              && ((IRVertex) e.getDst()).getAttr(Attribute.IntegerKey.Parallelism) != null
-              && !((IRVertex) e.getSrc()).getAttr(Attribute.IntegerKey.Parallelism)
-              .equals(((IRVertex) e.getDst()).getAttr(Attribute.IntegerKey.Parallelism))) {
+              && (e.getSrc()).getAttr(Attribute.IntegerKey.Parallelism) != null
+              && (e.getDst()).getAttr(Attribute.IntegerKey.Parallelism) != null
+              && !(e.getSrc()).getAttr(Attribute.IntegerKey.Parallelism)
+              .equals((e.getDst()).getAttr(Attribute.IntegerKey.Parallelism))) {
             throw new RuntimeException("DAG attribute check: vertices are connected by OneToOne edge, "
                 + "but has different parallelism attributes: " + e.getId());
           }
