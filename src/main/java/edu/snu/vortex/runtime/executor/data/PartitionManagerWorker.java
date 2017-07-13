@@ -169,7 +169,7 @@ public final class PartitionManagerWorker {
    * @param partitionStore for the data storage
    * @return a {@link CompletableFuture} for the partition
    */
-  public CompletableFuture<Partition> getPartition(final String partitionId,
+  public CompletableFuture<Iterable<Element>> getPartition(final String partitionId,
                                                    final String runtimeEdgeId,
                                                    final Attribute partitionStore) {
     LOG.log(Level.INFO, "GetPartition: {0}", partitionId);
@@ -184,7 +184,7 @@ public final class PartitionManagerWorker {
 
     if (optionalPartition.isPresent()) {
       // Local hit!
-      return CompletableFuture.completedFuture(optionalPartition.get());
+      return CompletableFuture.completedFuture(optionalPartition.get().asIterable());
     }
     // We don't have the partition here... let's see if a remote worker has it
     // Ask Master for the location

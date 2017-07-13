@@ -36,6 +36,8 @@ import edu.snu.vortex.runtime.master.irimpl.OutputCollectorImpl;
 import edu.snu.vortex.common.dag.DAG;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -253,7 +255,18 @@ public final class TaskGroupExecutor {
     taskIdToInputReaderMap.get(operatorTask.getId())
         .stream()
         .filter(inputReader -> !inputReader.isSideInputReader())
-        .forEach(inputReader -> transform.onData(inputReader.read(), inputReader.getSrcRuntimeVertexId()));
+        .forEach(inputReader -> {
+          // TODO #335: Introduce producer - consumer structure to task group execution
+          final List<CompletableFuture<Iterable<Element>>> futures = inputReader.read();
+          final Iterable<Element> data;
+          try {
+             data = InputReader.combineFutures(futures);
+          } catch (InterruptedException | ExecutionException e) {
+            throw new PartitionFetchException(e);
+          }
+
+          transform.onData(data, inputReader.getSrcRuntimeVertexId());
+        });
     transform.close();
 
     final Iterable<Element> output = outputCollector.getOutputList();
