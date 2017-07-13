@@ -62,7 +62,7 @@ public final class BatchSchedulerTest {
   private Scheduler scheduler;
   private SchedulingPolicy schedulingPolicy;
   private ContainerManager containerManager;
-  private PendingTaskGroupQueue pendingTaskGroupQueue;
+  private PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue;
   private PartitionManagerMaster partitionManagerMaster;
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
 
@@ -75,10 +75,10 @@ public final class BatchSchedulerTest {
   public void setUp() {
     irDAGBuilder = new DAGBuilder<>();
     containerManager = mock(ContainerManager.class);
-    pendingTaskGroupQueue = new PendingTaskGroupQueue();
+    pendingTaskGroupPriorityQueue = new PendingTaskGroupPriorityQueue();
     schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TEST_TIMEOUT_MS);
     partitionManagerMaster = new PartitionManagerMaster();
-    scheduler = new BatchScheduler(partitionManagerMaster, schedulingPolicy, pendingTaskGroupQueue);
+    scheduler = new BatchScheduler(partitionManagerMaster, schedulingPolicy, pendingTaskGroupPriorityQueue);
     partitionManagerMaster = new PartitionManagerMaster();
 
     final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();

@@ -70,7 +70,7 @@ public final class FaultToleranceTest {
   private SchedulingPolicy schedulingPolicy;
   private Scheduler scheduler;
   private PartitionManagerMaster partitionManagerMaster;
-  private PendingTaskGroupQueue pendingTaskGroupQueue;
+  private PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue;
   private final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();
   private final Map<String, ExecutorRepresenter> failedExecutorRepresenterMap = new HashMap<>();
   private ContainerManager containerManager = mock(ContainerManager.class);
@@ -85,9 +85,9 @@ public final class FaultToleranceTest {
 
     irDAGBuilder = new DAGBuilder<>();
     partitionManagerMaster = new PartitionManagerMaster();
-    pendingTaskGroupQueue = new PendingTaskGroupQueue();
+    pendingTaskGroupPriorityQueue = new PendingTaskGroupPriorityQueue();
     schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TEST_TIMEOUT_MS);
-    scheduler = new BatchScheduler(partitionManagerMaster, schedulingPolicy, pendingTaskGroupQueue);
+    scheduler = new BatchScheduler(partitionManagerMaster, schedulingPolicy, pendingTaskGroupPriorityQueue);
 
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();

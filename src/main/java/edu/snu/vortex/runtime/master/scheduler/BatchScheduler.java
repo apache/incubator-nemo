@@ -46,7 +46,7 @@ public final class BatchScheduler implements Scheduler {
 
   private final PartitionManagerMaster partitionManagerMaster;
 
-  private final PendingTaskGroupQueue pendingTaskGroupQueue;
+  private final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue;
 
   /**
    * The current job being executed.
@@ -56,9 +56,9 @@ public final class BatchScheduler implements Scheduler {
   @Inject
   public BatchScheduler(final PartitionManagerMaster partitionManagerMaster,
                         final SchedulingPolicy schedulingPolicy,
-                        final PendingTaskGroupQueue pendingTaskGroupQueue) {
+                        final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue) {
     this.partitionManagerMaster = partitionManagerMaster;
-    this.pendingTaskGroupQueue = pendingTaskGroupQueue;
+    this.pendingTaskGroupPriorityQueue = pendingTaskGroupPriorityQueue;
     this.schedulingPolicy = schedulingPolicy;
   }
 
@@ -72,12 +72,14 @@ public final class BatchScheduler implements Scheduler {
                                                   final int maxScheduleAttempt) {
     this.physicalPlan = jobToSchedule;
     this.jobStateManager = new JobStateManager(jobToSchedule, partitionManagerMaster, maxScheduleAttempt);
+    pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
 
     LOG.log(Level.INFO, "Job to schedule: {0}", jobToSchedule.getId());
 
     // Launch scheduler
     final ExecutorService pendingTaskSchedulerThread = Executors.newSingleThreadExecutor();
-    pendingTaskSchedulerThread.execute(new SchedulerRunner(jobStateManager, schedulingPolicy, pendingTaskGroupQueue));
+    pendingTaskSchedulerThread.execute(
+        new SchedulerRunner(jobStateManager, schedulingPolicy, pendingTaskGroupPriorityQueue));
     pendingTaskSchedulerThread.shutdown();
 
     scheduleRootStages();
@@ -158,10 +160,9 @@ public final class BatchScheduler implements Scheduler {
       LOG.log(Level.INFO, "All task groups of {0} will be made failed_recoverable.", taskGroup.getStageId());
       for (final PhysicalStage stage : physicalPlan.getStageDAG().getTopologicalSort()) {
         if (stage.getId().equals(taskGroup.getStageId())) {
+          LOG.log(Level.INFO, "Removing TaskGroups for {0} before they are scheduled to an executor", stage.getId());
+          pendingTaskGroupPriorityQueue.removeStageAndDescendantsFromQueue(stage.getId());
           stage.getTaskGroupList().forEach(tg -> {
-            if (pendingTaskGroupQueue.remove(tg.getTaskGroupId())) {
-              LOG.log(Level.INFO, "Removing {0} before it is scheduled to an executor", tg.getTaskGroupId());
-            }
             if (jobStateManager.getTaskGroupState(tg.getTaskGroupId()).getStateMachine().getCurrentState()
                 != TaskGroupState.State.COMPLETE) {
               jobStateManager.onTaskGroupStateChanged(tg, TaskGroupState.State.FAILED_RECOVERABLE);
@@ -197,7 +198,6 @@ public final class BatchScheduler implements Scheduler {
 
     taskGroupsToRecompute.addAll(taskGroupsForLostBlocks);
     taskGroupsToRecompute.forEach(failedTaskGroupId -> {
-      pendingTaskGroupQueue.remove(failedTaskGroupId);
       onTaskGroupStateChanged(executorId, failedTaskGroupId, TaskGroupState.State.FAILED_RECOVERABLE,
           SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE, null, TaskGroupState.RecoverableFailureCause.CONTAINER_FAILURE);
     });
@@ -331,7 +331,7 @@ public final class BatchScheduler implements Scheduler {
           LOG.log(Level.INFO, "Re-scheduling {0} for failure recovery", taskGroup.getTaskGroupId());
           jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.READY);
         }
-        pendingTaskGroupQueue.addLast(
+        pendingTaskGroupPriorityQueue.enqueue(
             new ScheduledTaskGroup(taskGroup, stageIncomingEdges, stageOutgoingEdges, attemptIdx));
       }
     });
