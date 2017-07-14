@@ -105,7 +105,7 @@ public final class TestUtil {
     // Initialize states for blocks of inter-stage edges
     stageOutgoingEdges.forEach(physicalStageEdge -> {
       final Attribute commPattern =
-          physicalStageEdge.getEdgeAttributes().get(Attribute.Key.CommunicationPattern);
+          physicalStageEdge.getAttributes().get(Attribute.Key.CommunicationPattern);
       final int srcParallelism = taskGroupsForStage.size();
       IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
         if (commPattern == Attribute.ScatterGather) {

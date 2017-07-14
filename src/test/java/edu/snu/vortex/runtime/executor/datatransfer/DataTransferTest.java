@@ -22,6 +22,7 @@ import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.common.coder.BeamCoder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.IREdge;
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
@@ -29,8 +30,6 @@ import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.vortex.runtime.common.message.ncs.NcsParameters;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
-import edu.snu.vortex.runtime.common.plan.logical.RuntimeBoundedSourceVertex;
-import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 import edu.snu.vortex.runtime.executor.Executor;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
 import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
@@ -214,24 +213,22 @@ public final class DataTransferTest {
                             final Attribute store) throws RuntimeException {
     // Src setup
     final BoundedSource s = mock(BoundedSource.class);
-    final BoundedSourceVertex v1 = new BoundedSourceVertex<>(s);
-    final AttributeMap srcVertexAttributes = AttributeMap.of(v1);
+    final BoundedSourceVertex srcVertex = new BoundedSourceVertex<>(s);
+    final AttributeMap srcVertexAttributes = srcVertex.getAttributes();
     srcVertexAttributes.put(Attribute.IntegerKey.Parallelism, PARALLELISM_TEN);
-    final RuntimeVertex srcVertex = new RuntimeBoundedSourceVertex(v1, srcVertexAttributes);
 
     // Dst setup
-    final BoundedSourceVertex v2 = new BoundedSourceVertex<>(s);
-    final AttributeMap dstVertexAttributes = AttributeMap.of(v2);
+    final BoundedSourceVertex dstVertex = new BoundedSourceVertex<>(s);
+    final AttributeMap dstVertexAttributes = dstVertex.getAttributes();
     dstVertexAttributes.put(Attribute.IntegerKey.Parallelism, PARALLELISM_TEN);
-    final RuntimeVertex dstVertex = new RuntimeBoundedSourceVertex(v2, dstVertexAttributes);
 
     // Edge setup
-    final IREdge dummyIREdge = new IREdge(IREdge.Type.OneToOne, v1, v2, CODER);
-    final AttributeMap edgeAttributes = AttributeMap.of(dummyIREdge);
+    final IREdge dummyIREdge = new IREdge(IREdge.Type.OneToOne, srcVertex, dstVertex, CODER);
+    final AttributeMap edgeAttributes = dummyIREdge.getAttributes();
     edgeAttributes.put(Attribute.Key.CommunicationPattern, commPattern);
     edgeAttributes.put(Attribute.Key.Partitioning, Attribute.Hash);
     edgeAttributes.put(Attribute.Key.ChannelDataPlacement, store);
-    final RuntimeEdge<RuntimeVertex> dummyEdge
+    final RuntimeEdge<IRVertex> dummyEdge
         = new RuntimeEdge<>(EDGE_ID, edgeAttributes, srcVertex, dstVertex, CODER);
 
     // Initialize states in Master

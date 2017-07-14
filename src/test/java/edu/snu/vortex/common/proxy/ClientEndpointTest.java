@@ -19,11 +19,8 @@ import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.runtime.common.plan.logical.LogicalDAGGenerator;
-import edu.snu.vortex.runtime.common.plan.logical.Stage;
-import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
-import edu.snu.vortex.runtime.common.plan.physical.PhysicalDAGGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlanGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.vortex.runtime.common.state.JobState;
@@ -58,10 +55,11 @@ public class ClientEndpointTest {
     // Create a JobStateManager of an empty dag and create a DriverEndpoint with it.
     final DAGBuilder<IRVertex, IREdge> irDagBuilder = new DAGBuilder<>();
     final DAG<IRVertex, IREdge> irDAG = irDagBuilder.build();
-    final DAG<Stage, StageEdge> logicalDAG = irDAG.convert(new LogicalDAGGenerator());
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
+    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
     final JobStateManager jobStateManager = new JobStateManager(
-        new PhysicalPlan("TestPlan", physicalDAG), new PartitionManagerMaster(), MAX_SCHEDULE_ATTEMPT);
+        new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
+        new PartitionManagerMaster(), MAX_SCHEDULE_ATTEMPT);
 
     final DriverEndpoint driverEndpoint = new DriverEndpoint(jobStateManager, clientEndpoint);
 

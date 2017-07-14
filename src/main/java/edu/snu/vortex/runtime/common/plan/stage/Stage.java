@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.plan.logical;
+package edu.snu.vortex.runtime.common.plan.stage;
 
-import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
+import edu.snu.vortex.compiler.ir.IREdge;
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.Vertex;
 
@@ -25,20 +26,16 @@ import edu.snu.vortex.common.dag.Vertex;
  * Stage partitioning is determined by {@link edu.snu.vortex.compiler.backend.vortex.VortexBackend}.
  */
 public final class Stage extends Vertex {
-  private final DAG<RuntimeVertex, RuntimeEdge<RuntimeVertex>> stageInternalDAG;
+  private final DAG<IRVertex, IREdge> stageInternalDAG;
 
   public Stage(final String stageId,
-               final DAG<RuntimeVertex, RuntimeEdge<RuntimeVertex>> stageInternalDAG) {
+               final DAG<IRVertex, IREdge> stageInternalDAG) {
     super(stageId);
     this.stageInternalDAG = stageInternalDAG;
   }
 
-  public DAG<RuntimeVertex, RuntimeEdge<RuntimeVertex>> getStageInternalDAG() {
+  public DAG<IRVertex, IREdge> getStageInternalDAG() {
     return stageInternalDAG;
-  }
-
-  public String getStageId() {
-    return getId();
   }
 
   @Override

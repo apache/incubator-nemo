@@ -16,10 +16,10 @@
 package edu.snu.vortex.runtime.executor.datatransfer;
 
 import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
-import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 import edu.snu.vortex.runtime.exception.UnsupportedCommPatternException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionerException;
 import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
@@ -34,7 +34,7 @@ import java.util.stream.IntStream;
 public final class OutputWriter extends DataTransfer {
   private final int srcTaskIdx;
   private final RuntimeEdge runtimeEdge;
-  private final RuntimeVertex dstRuntimeVertex;
+  private final IRVertex dstVertex;
 
   /**
    * The Block Manager Worker.
@@ -42,12 +42,12 @@ public final class OutputWriter extends DataTransfer {
   private final PartitionManagerWorker partitionManagerWorker;
 
   public OutputWriter(final int srcTaskIdx,
-                      final RuntimeVertex dstRuntimeVertex,
+                      final IRVertex dstRuntimeVertex,
                       final RuntimeEdge runtimeEdge,
                       final PartitionManagerWorker partitionManagerWorker) {
     super(runtimeEdge.getId());
     this.runtimeEdge = runtimeEdge;
-    this.dstRuntimeVertex = dstRuntimeVertex;
+    this.dstVertex = dstRuntimeVertex;
     this.partitionManagerWorker = partitionManagerWorker;
     this.srcTaskIdx = srcTaskIdx;
   }
@@ -57,7 +57,7 @@ public final class OutputWriter extends DataTransfer {
    * @param dataToWrite An iterable for the elements to be written.
    */
   public void write(final Iterable<Element> dataToWrite) {
-    switch (runtimeEdge.getEdgeAttributes().get(Attribute.Key.CommunicationPattern)) {
+    switch (runtimeEdge.getAttributes().get(Attribute.Key.CommunicationPattern)) {
     case OneToOne:
       writeOneToOne(dataToWrite);
       break;
@@ -75,20 +75,20 @@ public final class OutputWriter extends DataTransfer {
   private void writeOneToOne(final Iterable<Element> dataToWrite) {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
     partitionManagerWorker.putPartition(partitionId, dataToWrite,
-        runtimeEdge.getEdgeAttributes().get(Attribute.Key.ChannelDataPlacement));
+        runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
   }
 
   private void writeBroadcast(final Iterable<Element> dataToWrite) {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
     partitionManagerWorker.putPartition(partitionId, dataToWrite,
-        runtimeEdge.getEdgeAttributes().get(Attribute.Key.ChannelDataPlacement));
+        runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
   }
 
   private void writeScatterGather(final Iterable<Element> dataToWrite) {
-    final Attribute partition = runtimeEdge.getEdgeAttributes().get(Attribute.Key.Partitioning);
+    final Attribute partition = runtimeEdge.getAttributes().get(Attribute.Key.Partitioning);
     switch (partition) {
     case Hash:
-      final int dstParallelism = dstRuntimeVertex.getVertexAttributes().get(Attribute.IntegerKey.Parallelism);
+      final int dstParallelism = dstVertex.getAttributes().get(Attribute.IntegerKey.Parallelism);
 
       // First partition the data to write,
       final List<List<Element>> partitionedOutputList = new ArrayList<>(dstParallelism);
@@ -105,7 +105,7 @@ public final class OutputWriter extends DataTransfer {
         final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx, partitionIdx);
         partitionManagerWorker.putPartition(partitionId,
             partitionedOutputList.get(partitionIdx),
-            runtimeEdge.getEdgeAttributes().get(Attribute.Key.ChannelDataPlacement));
+            runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
       });
       break;
     case Range:

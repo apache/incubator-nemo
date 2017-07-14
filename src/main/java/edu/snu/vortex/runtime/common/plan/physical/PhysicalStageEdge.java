@@ -17,25 +17,25 @@ package edu.snu.vortex.runtime.common.plan.physical;
 
 
 import edu.snu.vortex.common.coder.Coder;
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
-import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 
 /**
- * Contains information stage boundary {@link edu.snu.vortex.runtime.common.plan.logical.StageEdge}.
+ * Contains information stage boundary {@link edu.snu.vortex.runtime.common.plan.stage.StageEdge}.
  */
 public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
   /**
-   * The source {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex}.
-   * This could either belong to the external stage or this stage.
+   * The source {@link IRVertex}.
+   * This belongs to the srcStage.
    */
-  private final RuntimeVertex srcVertex;
+  private final IRVertex srcVertex;
 
   /**
-   * The destination {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex}.
-   * This could either belong to the external stage or this stage.
+   * The destination {@link IRVertex}.
+   * This belongs to the dstStage.
    */
-  private final RuntimeVertex dstVertex;
+  private final IRVertex dstVertex;
 
   /**
    * IRVertex attributes of the endpoint vertex.
@@ -44,8 +44,8 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
 
   public PhysicalStageEdge(final String runtimeEdgeId,
                            final AttributeMap edgeAttributes,
-                           final RuntimeVertex srcVertex,
-                           final RuntimeVertex dstVertex,
+                           final IRVertex srcVertex,
+                           final IRVertex dstVertex,
                            final AttributeMap externalVertexAttr,
                            final PhysicalStage srcStage,
                            final PhysicalStage dstStage,
@@ -56,11 +56,11 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     this.externalVertexAttr = externalVertexAttr;
   }
 
-  public RuntimeVertex getSrcVertex() {
+  public IRVertex getSrcVertex() {
     return srcVertex;
   }
 
-  public RuntimeVertex getDstVertex() {
+  public IRVertex getDstVertex() {
     return dstVertex;
   }
 
@@ -72,7 +72,7 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"runtimeEdgeId\": \"").append(getId());
-    sb.append("\", \"edgeAttributes\": ").append(getEdgeAttributes());
+    sb.append("\", \"edgeAttributes\": ").append(getAttributes());
     sb.append(", \"externalSrcVertexId\": \"").append(srcVertex.getId());
     sb.append("\", \"externalDstVertexId\": \"").append(dstVertex.getId());
     sb.append("\", \"externalVertexAttr\": ").append(externalVertexAttr);

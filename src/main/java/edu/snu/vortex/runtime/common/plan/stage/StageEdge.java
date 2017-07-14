@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.plan.logical;
+package edu.snu.vortex.runtime.common.plan.stage;
 
 
 import edu.snu.vortex.common.coder.Coder;
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
@@ -25,46 +26,46 @@ import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
  * Stage Edge.
  */
 public final class StageEdge extends RuntimeEdge<Stage> {
-  private final RuntimeVertex srcRuntimeVertex;
-  private final RuntimeVertex dstRuntimeVertex;
+  private final IRVertex srcVertex;
+  private final IRVertex dstVertex;
 
   /**
-   * Represents the edge between vertices in a logical plan.
+   * Represents the edge between stages.
    * @param irEdgeId id of this edge.
    * @param edgeAttributes to control the data flow on this edge.
    * @param srcStage source runtime stage.
    * @param dstStage destination runtime stage.
    * @param coder coder.
-   * @param srcRuntimeVertex source vertex (in srcStage).
-   * @param dstRuntimeVertex destination vertex (in dstStage).
+   * @param srcVertex source vertex (in srcStage).
+   * @param dstVertex destination vertex (in dstStage).
    */
   public StageEdge(final String irEdgeId,
                    final AttributeMap edgeAttributes,
                    final Stage srcStage,
                    final Stage dstStage,
                    final Coder coder,
-                   final RuntimeVertex srcRuntimeVertex,
-                   final RuntimeVertex dstRuntimeVertex) {
+                   final IRVertex srcVertex,
+                   final IRVertex dstVertex) {
     super(RuntimeIdGenerator.generateStageEdgeId(irEdgeId), edgeAttributes, srcStage, dstStage, coder);
-    this.srcRuntimeVertex = srcRuntimeVertex;
-    this.dstRuntimeVertex = dstRuntimeVertex;
+    this.srcVertex = srcVertex;
+    this.dstVertex = dstVertex;
   }
 
-  public RuntimeVertex getSrcRuntimeVertex() {
-    return srcRuntimeVertex;
+  public IRVertex getSrcVertex() {
+    return srcVertex;
   }
 
-  public RuntimeVertex getDstRuntimeVertex() {
-    return dstRuntimeVertex;
+  public IRVertex getDstVertex() {
+    return dstVertex;
   }
 
   @Override
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"runtimeEdgeId\": \"").append(getId());
-    sb.append("\", \"edgeAttributes\": ").append(getEdgeAttributes());
-    sb.append(", \"srcRuntimeVertex\": \"").append(srcRuntimeVertex.getId());
-    sb.append("\", \"dstRuntimeVertex\": \"").append(dstRuntimeVertex.getId());
+    sb.append("\", \"edgeAttributes\": ").append(getAttributes());
+    sb.append(", \"srcVertex\": \"").append(srcVertex.getId());
+    sb.append("\", \"dstVertex\": \"").append(dstVertex.getId());
     sb.append("\", \"coder\": \"").append(getCoder().toString());
     sb.append("\"}");
     return sb.toString();
