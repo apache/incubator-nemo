@@ -18,15 +18,13 @@ package edu.snu.vortex.runtime.master;
 import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.common.proxy.ClientEndpoint;
 import edu.snu.vortex.common.proxy.DriverEndpoint;
+import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageListener;
-import edu.snu.vortex.runtime.common.plan.logical.*;
-import edu.snu.vortex.runtime.common.plan.physical.PhysicalDAGGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.vortex.runtime.common.plan.physical.Task;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
@@ -36,7 +34,6 @@ import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
-import edu.snu.vortex.common.dag.DAG;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -68,7 +65,6 @@ public final class RuntimeMaster {
   private JobStateManager jobStateManager;
 
   private final String dagDirectory;
-  private ExecutionPlan executionPlanSnapshot;
   private PhysicalPlan physicalPlan;
   private final int maxScheduleAttempt;
 
@@ -90,16 +86,15 @@ public final class RuntimeMaster {
   }
 
   /**
-   * Submits the {@link ExecutionPlan} to Runtime.
-   * @param executionPlan to execute.
+   * Submits the {@link PhysicalPlan} to Runtime.
+   * @param plan to execute.
    * @param clientEndpoint of this plan.
    */
-  public void execute(final ExecutionPlan executionPlan,
+  public void execute(final PhysicalPlan plan,
                       final ClientEndpoint clientEndpoint) {
-    executionPlanSnapshot = executionPlan;
-    physicalPlan = generatePhysicalPlan(executionPlan);
+    this.physicalPlan = plan;
     try {
-      jobStateManager = scheduler.scheduleJob(physicalPlan, maxScheduleAttempt);
+      jobStateManager = scheduler.scheduleJob(plan, maxScheduleAttempt);
       final DriverEndpoint driverEndpoint = new DriverEndpoint(jobStateManager, clientEndpoint);
 
       // Schedule dag logging thread
@@ -110,7 +105,7 @@ public final class RuntimeMaster {
       dagLoggingExecutor.shutdown();
 
       jobStateManager.storeJSON(dagDirectory, "final");
-      LOG.log(Level.INFO, "{0} is complete!", executionPlan.getId());
+      LOG.log(Level.INFO, "{0} is complete!", plan.getId());
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -118,21 +113,6 @@ public final class RuntimeMaster {
 
   public void terminate() {
     containerManager.terminate();
-  }
-
-  /**
-   * Generates the {@link PhysicalPlan} to be executed.
-   * @param executionPlan that should be converted to a physical plan
-   * @return {@link PhysicalPlan} to execute.
-   */
-  private PhysicalPlan generatePhysicalPlan(final ExecutionPlan executionPlan) {
-    final DAG<Stage, StageEdge> logicalDAG = executionPlan.getRuntimeStageDAG();
-    logicalDAG.storeJSON(dagDirectory, "plan-logical", "logical execution plan");
-
-    final PhysicalPlan plan = new PhysicalPlan(executionPlan.getId(),
-        logicalDAG.convert(new PhysicalDAGGenerator()));
-    plan.getStageDAG().storeJSON(dagDirectory, "plan-physical", "physical execution plan");
-    return plan;
   }
 
   /**
@@ -149,24 +129,16 @@ public final class RuntimeMaster {
 
         // We handle it separately if the new state is ON_HOLD, to perform dynamic optimization at the barrier vertex.
         if (newState.equals(TaskGroupState.State.ON_HOLD)) {
-          // We first extract optimization runtime vertex ids.
-          final List<String> optimizationRuntimeVertexIds = physicalPlan.getStageDAG().getVertices().stream()
+          // get optimization vertices from tasks.
+          final List<MetricCollectionBarrierVertex> optimizationVertices =
+              physicalPlan.getStageDAG().getVertices().stream()
               .flatMap(physicalStage -> physicalStage.getTaskGroupList().stream())
               .flatMap(taskGroup -> taskGroup.getTaskDAG().getVertices().stream())
               .filter(task -> taskGroupStateChangedMsg.getFailedTaskIdsList().contains(task.getId()))
-              .map(Task::getRuntimeVertexId).distinct()
-              .collect(Collectors.toList());
-          // then the vertices themselves.
-          final List<RuntimeMetricCollectionBarrierVertex> optimizationRuntimeVertices =
-              executionPlanSnapshot.getRuntimeStageDAG().getVertices().stream()
-                  .flatMap(stage -> stage.getStageInternalDAG().getVertices().stream())
-                  .filter(runtimeVertex -> optimizationRuntimeVertexIds.contains(runtimeVertex.getId()))
-                  .filter(runtimeVertex -> runtimeVertex instanceof RuntimeMetricCollectionBarrierVertex)
-                  .map(runtimeVertex -> (RuntimeMetricCollectionBarrierVertex) runtimeVertex)
-                  .collect(Collectors.toList());
+              .map(physicalPlan::getIRVertexOf).filter(irVertex -> irVertex instanceof MetricCollectionBarrierVertex)
+              .map(irVertex -> (MetricCollectionBarrierVertex) irVertex).collect(Collectors.toList());
           // and we will use these vertices to perform metric collection and dynamic optimization.
-          optimizationRuntimeVertices.forEach(runtimeDynamicOptimizationVertex ->
-              runtimeDynamicOptimizationVertex.getMetricCollectionBarrierVertex().triggerDynamicOptimization());
+          optimizationVertices.forEach(MetricCollectionBarrierVertex::triggerDynamicOptimization);
           // TODO #315: do stuff to scheduler before running it.
         }
 

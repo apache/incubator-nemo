@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * ID Generator.
  */
 public final class RuntimeIdGenerator {
-  private static AtomicInteger executionPlanIdGenerator = new AtomicInteger(1);
+  private static AtomicInteger physicalPlanIdGenerator = new AtomicInteger(1);
   private static AtomicInteger stageIdGenerator = new AtomicInteger(1);
   private static AtomicInteger taskIdGenerator = new AtomicInteger(1);
   private static AtomicInteger taskGroupIdGenerator = new AtomicInteger(1);
@@ -35,26 +35,16 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan}.
+   * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan}.
    *
    * @return the generated ID
    */
-  public static String generateExecutionPlanId() {
-    return "Plan-" + executionPlanIdGenerator.getAndIncrement();
+  public static String generatePhysicalPlanId() {
+    return "Plan-" + physicalPlanIdGenerator.getAndIncrement();
   }
 
   /**
-   * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex}.
-   *
-   * @param irVertexId .
-   * @return the generated ID
-   */
-  public static String generateRuntimeVertexId(final String irVertexId) {
-    return "RVertex-" + irVertexId;
-  }
-
-  /**
-   * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.logical.StageEdge}.
+   * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.stage.StageEdge}.
    *
    * @param irEdgeId .
    * @return the generated ID
@@ -74,7 +64,7 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.logical.Stage}.
+   * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.stage.Stage}.
    *
    * @return the generated ID
    */

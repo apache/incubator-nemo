@@ -26,11 +26,8 @@ import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.TestUtil;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageSender;
-import edu.snu.vortex.runtime.common.plan.logical.LogicalDAGGenerator;
-import edu.snu.vortex.runtime.common.plan.logical.Stage;
-import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
-import edu.snu.vortex.runtime.common.plan.physical.PhysicalDAGGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlanGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.vortex.runtime.common.state.PartitionState;
@@ -153,11 +150,12 @@ public final class FaultToleranceTest {
     irDAGBuilder.connectVertices(e2);
 
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
-    final DAG<Stage, StageEdge> logicalDAG = irDAG.convert(new LogicalDAGGenerator());
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
+    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     jobStateManager = scheduler.scheduleJob(
-        new PhysicalPlan("SimpleJob", physicalDAG), MAX_SCHEDULE_ATTEMPT);
+        new PhysicalPlan("SimpleJob", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
+        MAX_SCHEDULE_ATTEMPT);
 
     // The physical DAG made from the above IR consists of 3 stages.
     final List<PhysicalStage> dagTopoSorted3Stages = physicalDAG.getTopologicalSort();

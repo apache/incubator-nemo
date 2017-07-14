@@ -22,9 +22,9 @@ import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
-import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -62,13 +62,11 @@ public final class VortexBackendTest<I, O> {
    */
   @Test
   public void testExecutionPlanGeneration() throws Exception {
-    final Backend<ExecutionPlan> backend = new VortexBackend();
-    final ExecutionPlan executionPlan = backend.compile(dag);
+    final Backend<PhysicalPlan> backend = new VortexBackend();
+    final PhysicalPlan executionPlan = backend.compile(dag);
 
-    assertEquals(2, executionPlan.getRuntimeStageDAG().getVertices().size());
-    assertEquals(2, executionPlan.getRuntimeStageDAG().getTopologicalSort().get(0)
-        .getStageInternalDAG().getVertices().size());
-    assertEquals(3, executionPlan.getRuntimeStageDAG().getTopologicalSort()
-        .get(1).getStageInternalDAG().getVertices().size());
+    assertEquals(2, executionPlan.getStageDAG().getVertices().size());
+    assertEquals(1, executionPlan.getStageDAG().getTopologicalSort().get(0).getTaskGroupList().size());
+    assertEquals(1, executionPlan.getStageDAG().getTopologicalSort().get(1).getTaskGroupList().size());
   }
 }

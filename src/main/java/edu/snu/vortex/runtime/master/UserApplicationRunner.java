@@ -23,8 +23,8 @@ import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
-import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
 import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -47,7 +47,7 @@ public final class UserApplicationRunner implements Runnable {
   private final RuntimeMaster runtimeMaster;
   private final Frontend frontend;
   private final Optimizer optimizer;
-  private final Backend<ExecutionPlan> backend;
+  private final Backend<PhysicalPlan> backend;
 
   @Inject
   private UserApplicationRunner(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
@@ -84,10 +84,10 @@ public final class UserApplicationRunner implements Runnable {
 
   public void supplyDAGToRuntime(final DAG<IRVertex, IREdge> dag) {
     try {
-      final ExecutionPlan executionPlan = backend.compile(dag);
+      final PhysicalPlan physicalPlan = backend.compile(dag);
 
-      executionPlan.getRuntimeStageDAG().storeJSON(dagDirectory, "plan", "execution plan by compiler");
-      runtimeMaster.execute(executionPlan, frontend.getClientEndpoint());
+      physicalPlan.getStageDAG().storeJSON(dagDirectory, "plan", "physical execution plan by compiler");
+      runtimeMaster.execute(physicalPlan, frontend.getClientEndpoint());
       runtimeMaster.terminate();
     } catch (Exception e) {
       throw new RuntimeException(e);

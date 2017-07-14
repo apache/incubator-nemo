@@ -23,9 +23,6 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.Transform;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
-import edu.snu.vortex.runtime.common.plan.logical.LogicalDAGGenerator;
-import edu.snu.vortex.runtime.common.plan.logical.Stage;
-import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.master.scheduler.*;
 import org.junit.Before;
@@ -34,7 +31,6 @@ import org.junit.Test;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -83,10 +79,11 @@ public final class PendingTaskGroupPriorityQueueTest {
     irDAGBuilder.connectVertices(e2);
 
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
-    final DAG<Stage, StageEdge> logicalDAG = irDAG.convert(new LogicalDAGGenerator());
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
+    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
-    pendingTaskGroupPriorityQueue.onJobScheduled(new PhysicalPlan("TestPlan", physicalDAG));
+    pendingTaskGroupPriorityQueue.onJobScheduled(
+        new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()));
 
     final List<PhysicalStage> dagOf3Stages = physicalDAG.getTopologicalSort();
 
@@ -160,10 +157,11 @@ public final class PendingTaskGroupPriorityQueueTest {
     irDAGBuilder.connectVertices(e2);
 
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
-    final DAG<Stage, StageEdge> logicalDAG = irDAG.convert(new LogicalDAGGenerator());
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
+    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
-    pendingTaskGroupPriorityQueue.onJobScheduled(new PhysicalPlan("TestPlan", physicalDAG));
+    pendingTaskGroupPriorityQueue.onJobScheduled(
+        new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()));
 
     final List<PhysicalStage> dagOf3Stages = physicalDAG.getTopologicalSort();
 
@@ -243,10 +241,11 @@ public final class PendingTaskGroupPriorityQueueTest {
     irDAGBuilder.connectVertices(e2);
 
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
-    final DAG<Stage, StageEdge> logicalDAG = irDAG.convert(new LogicalDAGGenerator());
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
+    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
-    pendingTaskGroupPriorityQueue.onJobScheduled(new PhysicalPlan("TestPlan", physicalDAG));
+    pendingTaskGroupPriorityQueue.onJobScheduled(
+        new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()));
 
     final List<PhysicalStage> dagOf3Stages = physicalDAG.getTopologicalSort();
 

@@ -46,7 +46,7 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
     this.coder = coder;
   }
 
-  public final AttributeMap getEdgeAttributes() {
+  public final AttributeMap getAttributes() {
     return edgeAttributes;
   }
 

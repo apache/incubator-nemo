@@ -19,14 +19,16 @@ import edu.snu.vortex.compiler.backend.Backend;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
-import edu.snu.vortex.runtime.common.plan.logical.ExecutionPlan;
-import edu.snu.vortex.runtime.common.plan.logical.LogicalDAGGenerator;
 import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlanGenerator;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
 
 /**
  * Backend component for Vortex Runtime.
  */
-public final class VortexBackend implements Backend<ExecutionPlan> {
+public final class VortexBackend implements Backend<PhysicalPlan> {
   /**
    * Constructor.
    */
@@ -34,15 +36,16 @@ public final class VortexBackend implements Backend<ExecutionPlan> {
   }
 
   /**
-   * Compiles an IR DAG into an {@link ExecutionPlan} to be submitted to Runtime.
-   * The IR DAG is converted to an execution plan encapsulating a logical DAG using {@link LogicalDAGGenerator}.
+   * Compiles an IR DAG into a {@link PhysicalPlan} to be submitted to Runtime.
    * @param irDAG to compile.
    * @return the execution plan to be submitted to Runtime.
    * @throws Exception any exception occurred during the compilation.
    */
-  public ExecutionPlan compile(final DAG<IRVertex, IREdge> irDAG) throws Exception {
-    final ExecutionPlan executionPlan =
-        new ExecutionPlan(RuntimeIdGenerator.generateExecutionPlanId(), irDAG.convert(new LogicalDAGGenerator()));
-    return executionPlan;
+  public PhysicalPlan compile(final DAG<IRVertex, IREdge> irDAG) throws Exception {
+    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final DAG<PhysicalStage, PhysicalStageEdge> physicalStageDAG = irDAG.convert(physicalPlanGenerator);
+    final PhysicalPlan physicalPlan = new PhysicalPlan(RuntimeIdGenerator.generatePhysicalPlanId(),
+        physicalStageDAG, physicalPlanGenerator.getTaskIRVertexMap());
+    return physicalPlan;
   }
 }

@@ -371,8 +371,8 @@ class PhysicalStageEdge:
 
 class StageEdge:
     def __init__(self, src, dst, properties):
-        self.src = src.internalDAG.vertices[properties['srcRuntimeVertex']]
-        self.dst = dst.internalDAG.vertices[properties['dstRuntimeVertex']]
+        self.src = src.internalDAG.vertices[properties['srcVertex']]
+        self.dst = dst.internalDAG.vertices[properties['dstVertex']]
         self.runtimeEdgeId = properties['runtimeEdgeId']
         self.edgeAttributes = properties['edgeAttributes']
         self.coder = properties['coder']
