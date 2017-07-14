@@ -16,11 +16,11 @@
 package edu.snu.vortex.runtime.executor.datatransfer;
 
 import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
-import edu.snu.vortex.runtime.common.plan.logical.RuntimeVertex;
 import edu.snu.vortex.runtime.common.plan.physical.Task;
 import edu.snu.vortex.runtime.exception.PartitionFetchException;
 import edu.snu.vortex.runtime.exception.UnsupportedCommPatternException;
@@ -48,29 +48,29 @@ public final class InputReader extends DataTransfer {
    * Attributes that specify how we should read the input.
    */
   @Nullable
-  private final RuntimeVertex srcRuntimeVertex; // This vertex is null if this reader is a local reader.
+  private final IRVertex srcVertex;
   private final RuntimeEdge runtimeEdge;
 
   public InputReader(final int dstTaskIndex,
-                     final RuntimeVertex srcRuntimeVertex,
-                     final RuntimeEdge runtimeEdge,
+                     final IRVertex srcVertex,
+                     final RuntimeEdge irEdge,
                      final PartitionManagerWorker partitionManagerWorker) {
 
-    super(runtimeEdge.getId());
+    super(irEdge.getId());
     this.dstTaskIndex = dstTaskIndex;
-    this.srcRuntimeVertex = srcRuntimeVertex;
-    this.runtimeEdge = runtimeEdge;
+    this.srcVertex = srcVertex;
+    this.runtimeEdge = irEdge;
     this.partitionManagerWorker = partitionManagerWorker;
   }
 
   /**
-   * Reads input data depending on the communication pattern of the srcRuntimeVertex.
+   * Reads input data depending on the communication pattern of the srcVertex.
    *
    * @return the read data.
    */
   public List<CompletableFuture<Iterable<Element>>> read() {
     try {
-      switch (runtimeEdge.getEdgeAttributes().get(Attribute.Key.CommunicationPattern)) {
+      switch (runtimeEdge.getAttributes().get(Attribute.Key.CommunicationPattern)) {
         case OneToOne:
           return Collections.singletonList(readOneToOne());
         case Broadcast:
@@ -88,7 +88,7 @@ public final class InputReader extends DataTransfer {
   private CompletableFuture<Iterable<Element>> readOneToOne() throws ExecutionException, InterruptedException {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), dstTaskIndex);
     return partitionManagerWorker.getPartition(partitionId, getId(),
-        runtimeEdge.getEdgeAttributes().get(Attribute.Key.ChannelDataPlacement));
+        runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
   }
 
   private List<CompletableFuture<Iterable<Element>>> readBroadcast()
@@ -99,7 +99,7 @@ public final class InputReader extends DataTransfer {
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
       futures.add(partitionManagerWorker.getPartition(partitionId, getId(),
-          runtimeEdge.getEdgeAttributes().get(Attribute.Key.ChannelDataPlacement)));
+          runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement)));
     }
 
     return futures;
@@ -113,7 +113,7 @@ public final class InputReader extends DataTransfer {
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx, dstTaskIndex);
       futures.add(partitionManagerWorker.getPartition(partitionId, getId(),
-          runtimeEdge.getEdgeAttributes().get(Attribute.Key.ChannelDataPlacement)));
+          runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement)));
     }
 
     return futures;
@@ -123,17 +123,17 @@ public final class InputReader extends DataTransfer {
     return runtimeEdge;
   }
 
-  public String getSrcRuntimeVertexId() {
-    // this src runtime vertex can be either a real vertex or a task. we must check!
-    if (srcRuntimeVertex != null) {
-      return srcRuntimeVertex.getId();
+  public String getSrcVertexId() {
+    // this src vertex can be either a real vertex or a task. we must check!
+    if (srcVertex != null) {
+      return srcVertex.getId();
     }
 
     return ((Task) runtimeEdge.getSrc()).getRuntimeVertexId();
   }
 
   public boolean isSideInputReader() {
-    AttributeMap edgeAttributes = runtimeEdge.getEdgeAttributes();
+    AttributeMap edgeAttributes = runtimeEdge.getAttributes();
 
     return edgeAttributes.containsKey(Attribute.Key.SideInput);
   }
@@ -157,8 +157,8 @@ public final class InputReader extends DataTransfer {
    * @return the parallelism of the source task.
    */
   public int getSourceParallelism() {
-    if (srcRuntimeVertex != null) {
-      final Integer numSrcTasks = srcRuntimeVertex.getVertexAttributes().get(Attribute.IntegerKey.Parallelism);
+    if (srcVertex != null) {
+      final Integer numSrcTasks = srcVertex.getAttributes().get(Attribute.IntegerKey.Parallelism);
       return numSrcTasks == null ? 1 : numSrcTasks;
     } else {
       // Local input reader

@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.plan.logical;
+package edu.snu.vortex.runtime.common.plan.stage;
 
 
 import edu.snu.vortex.common.coder.Coder;
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 
 /**
@@ -27,8 +28,8 @@ public final class StageEdgeBuilder {
   private AttributeMap edgeAttributes;
   private Stage srcStage;
   private Stage dstStage;
-  private RuntimeVertex srcRuntimeVertex;
-  private RuntimeVertex dstRuntimeVertex;
+  private IRVertex srcVertex;
+  private IRVertex dstVertex;
   private Coder coder;
 
   /**
@@ -39,32 +40,38 @@ public final class StageEdgeBuilder {
     this.stageEdgeId = irEdgeId;
   }
 
-  public void setEdgeAttributes(final AttributeMap edgeAttributes) {
-    this.edgeAttributes = edgeAttributes;
+  public StageEdgeBuilder setEdgeAttributes(final AttributeMap ea) {
+    this.edgeAttributes = ea;
+    return this;
   }
 
-  public void setSrcStage(final Stage srcStage) {
-    this.srcStage = srcStage;
+  public StageEdgeBuilder setSrcStage(final Stage ss) {
+    this.srcStage = ss;
+    return this;
   }
 
-  public void setDstStage(final Stage dstStage) {
-    this.dstStage = dstStage;
+  public StageEdgeBuilder setDstStage(final Stage ds) {
+    this.dstStage = ds;
+    return this;
   }
 
-  public void setSrcRuntimeVertex(final RuntimeVertex srcRuntimeVertex) {
-    this.srcRuntimeVertex = srcRuntimeVertex;
+  public StageEdgeBuilder setSrcVertex(final IRVertex sv) {
+    this.srcVertex = sv;
+    return this;
   }
 
-  public void setDstRuntimeVertex(final RuntimeVertex dstRuntimeVertex) {
-    this.dstRuntimeVertex = dstRuntimeVertex;
+  public StageEdgeBuilder setDstVertex(final IRVertex dv) {
+    this.dstVertex = dv;
+    return this;
   }
 
-  public void setCoder(final Coder coder) {
-    this.coder = coder;
+  public StageEdgeBuilder setCoder(final Coder c) {
+    this.coder = c;
+    return this;
   }
 
   public StageEdge build() {
     return new StageEdge(stageEdgeId,
-        edgeAttributes, srcStage, dstStage, coder, srcRuntimeVertex, dstRuntimeVertex);
+        edgeAttributes, srcStage, dstStage, coder, srcVertex, dstVertex);
   }
 }

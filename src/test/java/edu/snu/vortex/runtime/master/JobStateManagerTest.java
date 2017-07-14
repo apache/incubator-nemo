@@ -21,9 +21,6 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.Transform;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
-import edu.snu.vortex.runtime.common.plan.logical.LogicalDAGGenerator;
-import edu.snu.vortex.runtime.common.plan.logical.Stage;
-import edu.snu.vortex.runtime.common.plan.logical.StageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.JobState;
 import edu.snu.vortex.runtime.common.state.StageState;
@@ -103,11 +100,12 @@ public final class JobStateManagerTest {
     irDAGBuilder.connectVertices(e5);
 
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
-    final DAG<Stage, StageEdge> logicalDAG = irDAG.convert(new LogicalDAGGenerator());
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
+    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     final JobStateManager jobStateManager = new JobStateManager(
-            new PhysicalPlan("TestPlan", physicalDAG), new PartitionManagerMaster(), MAX_SCHEDULE_ATTEMPT);
+        new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
+        new PartitionManagerMaster(), MAX_SCHEDULE_ATTEMPT);
 
     assertEquals(jobStateManager.getJobId(), "TestPlan");
 
@@ -147,10 +145,11 @@ public final class JobStateManagerTest {
   public void testWaitUntilFinish() throws Exception {
     // Create a JobStateManager of an empty dag.
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.build();
-    final DAG<Stage, StageEdge> logicalDAG = irDAG.convert(new LogicalDAGGenerator());
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
+    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
     final JobStateManager jobStateManager = new JobStateManager(
-        new PhysicalPlan("TestPlan", physicalDAG), new PartitionManagerMaster(), MAX_SCHEDULE_ATTEMPT);
+        new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
+        new PartitionManagerMaster(), MAX_SCHEDULE_ATTEMPT);
 
     assertFalse(jobStateManager.checkJobTermination());
 
