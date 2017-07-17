@@ -1,6 +1,6 @@
 package edu.snu.vortex.runtime.common.message;
 
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * This class sends messages to {@link MessageListener} with some defined semantics.
@@ -24,7 +24,7 @@ public interface MessageSender<T> {
    * @param <U> reply message type.
    * @return a future
    */
-  <U> Future<U> request(T message);
+  <U> CompletableFuture<U> request(T message);
 
   /**
    * Closes the connection.

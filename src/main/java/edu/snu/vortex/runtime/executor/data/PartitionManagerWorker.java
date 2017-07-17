@@ -22,7 +22,6 @@ import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.exception.PartitionFetchException;
-import edu.snu.vortex.runtime.exception.NodeConnectionException;
 import edu.snu.vortex.runtime.exception.PartitionWriteException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionStoreException;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
@@ -188,7 +187,7 @@ public final class PartitionManagerWorker {
     }
     // We don't have the partition here... let's see if a remote worker has it
     // Ask Master for the location
-    final Future<ControlMessage.Message> responseFromMasterFuture =
+    final CompletableFuture<ControlMessage.Message> responseFromMasterFuture =
         persistentConnectionToMaster.getMessageSender().request(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
@@ -200,21 +199,12 @@ public final class PartitionManagerWorker {
                         .build())
                 .build());
 
-    // Convert Future<ControlMessage.Message> to CompletableFuture<ControlMessage.Message>
-    final CompletableFuture<ControlMessage.Message> responseFromMaster = CompletableFuture.supplyAsync(() -> {
-      try {
-        return responseFromMasterFuture.get();
-      } catch (InterruptedException | ExecutionException e) {
-        throw new NodeConnectionException(e);
-      }
-    });
-
     // PartitionTransferPeer#fetch returns a CompletableFuture.
     // Composing two CompletableFuture so that fetching partition data starts after getting response from master.
-    return responseFromMaster.thenCompose(response -> {
-      assert (response.getType() == ControlMessage.MessageType.PartitionLocationInfo);
+    return responseFromMasterFuture.thenCompose(responseFromMaster -> {
+      assert (responseFromMaster.getType() == ControlMessage.MessageType.PartitionLocationInfo);
       final ControlMessage.PartitionLocationInfoMsg partitionLocationInfoMsg =
-          response.getPartitionLocationInfoMsg();
+          responseFromMaster.getPartitionLocationInfoMsg();
       if (partitionLocationInfoMsg.getOwnerExecutorId().equals(NO_REMOTE_PARTITION)) {
         throw new PartitionFetchException(
             new Throwable("Partition " + partitionId + " not found both in the local storage and the remote storage"));
