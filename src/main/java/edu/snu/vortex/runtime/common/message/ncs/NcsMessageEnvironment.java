@@ -1,5 +1,6 @@
 package edu.snu.vortex.runtime.common.message.ncs;
 
+import edu.snu.vortex.runtime.common.ReplyFutureMap;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
@@ -36,7 +37,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
   private final IdentifierFactory idFactory;
   private final String senderId;
 
-  private final ReplyWaitingLock replyWaitingLock;
+  private final ReplyFutureMap<ControlMessage.Message> replyFutureMap;
   private final ConcurrentMap<String, MessageListener> listenerConcurrentMap;
   private final ConnectionFactory<ControlMessage.Message> connectionFactory;
 
@@ -45,12 +46,11 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
   private NcsMessageEnvironment(
       final NetworkConnectionService networkConnectionService,
       final IdentifierFactory idFactory,
-      final ReplyWaitingLock replyWaitingLock,
       @Parameter(NcsParameters.SenderId.class) final String senderId) {
     this.networkConnectionService = networkConnectionService;
     this.idFactory = idFactory;
     this.senderId = senderId;
-    this.replyWaitingLock = replyWaitingLock;
+    this.replyFutureMap = new ReplyFutureMap<>();
     this.listenerConcurrentMap = new ConcurrentHashMap<>();
     this.connectionFactory = networkConnectionService.registerConnectionFactory(
         idFactory.getNewInstance(NCS_CONN_FACTORY_ID),
@@ -73,7 +73,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       final Connection<ControlMessage.Message> connection = connectionFactory.newConnection(
           idFactory.getNewInstance(receiverId));
       connection.open();
-      return CompletableFuture.completedFuture((MessageSender) new NcsMessageSender(connection, replyWaitingLock));
+      return CompletableFuture.completedFuture((MessageSender) new NcsMessageSender(connection, replyFutureMap));
     } catch (final Exception e) {
       final CompletableFuture<MessageSender<T>> failedFuture = new CompletableFuture<>();
       failedFuture.completeExceptionally(e);
@@ -129,7 +129,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
     private void processReplyMessage(final ControlMessage.Message controlMessage) {
       final long requestId = getRequestId(controlMessage);
-      replyWaitingLock.onSuccessMessage(requestId, controlMessage);
+      replyFutureMap.onSuccessMessage(requestId, controlMessage);
     }
   }
 

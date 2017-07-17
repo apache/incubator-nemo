@@ -2,7 +2,7 @@ package edu.snu.vortex.runtime.common.message.local;
 
 import edu.snu.vortex.runtime.common.message.MessageSender;
 
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * A simple {@link MessageSender} implementation that works on a single node.
@@ -36,7 +36,7 @@ public final class LocalMessageSender<T> implements MessageSender<T> {
   }
 
   @Override
-  public <U> Future<U> request(final T message) {
+  public <U> CompletableFuture<U> request(final T message) {
     if (isClosed) {
       throw new RuntimeException("Closed");
     }
