@@ -18,7 +18,9 @@ package edu.snu.vortex.runtime.master;
 import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.common.proxy.ClientEndpoint;
 import edu.snu.vortex.common.proxy.DriverEndpoint;
+import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
+import edu.snu.vortex.compiler.optimizer.passes.DataSkewPass;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
@@ -48,7 +50,7 @@ import java.util.stream.Collectors;
 
 /**
  * Runtime Master is the central controller of Runtime.
- * Compiler submits an {@link ExecutionPlan} to Runtime Master to execute a job.
+ * Compiler submits an {@link PhysicalPlan} to Runtime Master to execute a job.
  * Runtime Master handles:
  *    a) Physical conversion of a job's DAG into a physical plan.
  *    b) Scheduling the job with {@link Scheduler}.
@@ -151,6 +153,20 @@ public final class RuntimeMaster {
         break;
       case PartitionStateChanged:
         final ControlMessage.PartitionStateChangedMsg partitionStateChangedMsg = message.getPartitionStateChangedMsg();
+        // process message with partition size.
+        if (partitionStateChangedMsg.hasPartitionSize()) {
+          final Long partitionSize = partitionStateChangedMsg.getPartitionSize();
+          final String dstVertexId = partitionStateChangedMsg.getDstVertexId();
+          final IRVertex vertexToSendMetricDataTo = physicalPlan.findIRVertexCalled(dstVertexId);
+
+          if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
+            final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
+                (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
+            metricCollectionBarrierVertex.accumulateMetrics(partitionStateChangedMsg.getPartitionId(), partitionSize);
+          } else {
+            throw new RuntimeException("Something wrong happened at " + DataSkewPass.class.getSimpleName() + ". ");
+          }
+        }
         partitionManagerMaster.onPartitionStateChanged(
             partitionStateChangedMsg.getExecutorId(), partitionStateChangedMsg.getPartitionId(),
             convertPartitionState(partitionStateChangedMsg.getState()));
