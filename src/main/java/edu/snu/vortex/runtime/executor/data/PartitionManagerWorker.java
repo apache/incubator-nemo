@@ -129,32 +129,42 @@ public final class PartitionManagerWorker {
    * Store partition somewhere.
    * Invariant: This should be invoked only once per partitionId.
    *
-   * @param partitionId    of the partition
-   * @param data           of the partition
-   * @param partitionStore for storing the partition
+   * @param partitionId of the partition.
+   * @param dstIRVertexId of the source task.
+   * @param data of the partition.
+   * @param partitionStore for storing the partition.
+   * @param isMetricCollectionEdge boolean flag to indicate whether or not to collect metrics.
    */
   public void putPartition(final String partitionId,
+                           final String dstIRVertexId,
                            final Iterable<Element> data,
-                           final Attribute partitionStore) {
+                           final Attribute partitionStore,
+                           final Boolean isMetricCollectionEdge) {
     LOG.log(Level.INFO, "PutPartition: {0}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
+    final Long dataSize;
 
     try {
-      store.putPartition(partitionId, data);
+      dataSize = store.putPartition(partitionId, data).orElse(0L);
     } catch (final Exception e) {
       throw new PartitionWriteException(e);
+    }
+
+    final ControlMessage.PartitionStateChangedMsg.Builder partitionStateChangedMsgBuilder =
+        ControlMessage.PartitionStateChangedMsg.newBuilder().setExecutorId(executorId)
+            .setPartitionId(partitionId)
+            .setState(ControlMessage.PartitionStateFromExecutor.COMMITTED);
+
+    if (isMetricCollectionEdge) {
+      partitionStateChangedMsgBuilder.setPartitionSize(dataSize);
+      partitionStateChangedMsgBuilder.setDstVertexId(dstIRVertexId);
     }
 
     persistentConnectionToMaster.getMessageSender().send(
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
             .setType(ControlMessage.MessageType.PartitionStateChanged)
-            .setPartitionStateChangedMsg(
-                ControlMessage.PartitionStateChangedMsg.newBuilder()
-                    .setExecutorId(executorId)
-                    .setPartitionId(partitionId)
-                    .setState(ControlMessage.PartitionStateFromExecutor.COMMITTED)
-                    .build())
+            .setPartitionStateChangedMsg(partitionStateChangedMsgBuilder.build())
             .build());
   }
 

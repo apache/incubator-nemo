@@ -28,11 +28,6 @@ public enum Attribute {
   Compute(Key.Placement),
   Storage(Key.Placement),
 
-  /**
-   * IRVertex MetricCollection attribute.
-   */
-  MetricCollection(Key.MetricCollection),
-
 
   /**
    * IREdge channel data placement attributes.
@@ -78,6 +73,10 @@ public enum Attribute {
    */
   SideInput(Key.SideInput),
 
+  /**
+   * IREdge MetricCollection attribute.
+   */
+  MetricCollection(Key.MetricCollection),
 
   /**
    * SchedulingPolicy type attributes.
@@ -95,7 +94,6 @@ public enum Attribute {
   public enum Key {
     // IRVertex
     Placement,
-    MetricCollection,
 
     // IREdge
     ChannelDataPlacement,
@@ -103,6 +101,7 @@ public enum Attribute {
     Partitioning,
     CommunicationPattern,
     SideInput,
+    MetricCollection,
 
     // Scheduling
     SchedulingPolicy,
