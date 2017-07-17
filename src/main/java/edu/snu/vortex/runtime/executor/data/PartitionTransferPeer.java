@@ -20,6 +20,7 @@ import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.runtime.common.ReplyFutureMap;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.exception.NodeConnectionException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionStoreException;
@@ -63,7 +64,7 @@ final class PartitionTransferPeer {
 
   private final AtomicLong requestIdCounter;
   private final ConcurrentHashMap<Long, Coder> requestIdToCoder;
-  private final ConcurrentHashMap<Long, CompletableFuture<Iterable<Element>>> requestIdToFuture;
+  private final ReplyFutureMap<Iterable<Element>> replyFutureMap;
 
   @Inject
   private PartitionTransferPeer(final NameResolver nameResolver,
@@ -77,7 +78,7 @@ final class PartitionTransferPeer {
     this.partitionManagerWorker = partitionManagerWorker;
     this.requestIdCounter = new AtomicLong(1);
     this.requestIdToCoder = new ConcurrentHashMap<>();
-    this.requestIdToFuture = new ConcurrentHashMap<>();
+    this.replyFutureMap = new ReplyFutureMap<>();
 
     transport = transportFactory.newInstance(0, partitionClientHandler, partitionServerHandler, exceptionHandler);
     final InetSocketAddress serverAddress = (InetSocketAddress) transport.getLocalAddress();
@@ -124,9 +125,8 @@ final class PartitionTransferPeer {
       throw new NodeConnectionException(e);
     }
     final long requestId = requestIdCounter.getAndIncrement();
-    final CompletableFuture<Iterable<Element>> future = new CompletableFuture<>();
     requestIdToCoder.put(requestId, coder);
-    requestIdToFuture.put(requestId, future);
+    final CompletableFuture<Iterable<Element>> future = replyFutureMap.beforeRequest(requestId);
     final ControlMessage.RequestPartitionMsg msg = ControlMessage.RequestPartitionMsg.newBuilder()
         .setRequestId(requestId)
         .setPartitionId(partitionId)
@@ -233,8 +233,7 @@ final class PartitionTransferPeer {
           data.add(coder.decode(inputStream));
         }
 
-        final CompletableFuture<Iterable<Element>> future = peer.requestIdToFuture.remove(requestId);
-        future.complete(data);
+        peer.replyFutureMap.onSuccessMessage(requestId, data);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }

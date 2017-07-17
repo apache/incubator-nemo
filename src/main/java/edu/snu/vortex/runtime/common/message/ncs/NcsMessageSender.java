@@ -1,10 +1,11 @@
 package edu.snu.vortex.runtime.common.message.ncs;
 
+import edu.snu.vortex.runtime.common.ReplyFutureMap;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageSender;
 import org.apache.reef.io.network.Connection;
 
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -16,13 +17,13 @@ final class NcsMessageSender implements MessageSender<ControlMessage.Message> {
   private static final Logger LOG = Logger.getLogger(NcsMessageSender.class.getName());
 
   private final Connection<ControlMessage.Message> connection;
-  private final ReplyWaitingLock replyWaitingLock;
+  private final ReplyFutureMap<ControlMessage.Message> replyFutureMap;
 
   NcsMessageSender(
       final Connection<ControlMessage.Message> connection,
-      final ReplyWaitingLock replyWaitingLock) {
+      final ReplyFutureMap replyFutureMap) {
     this.connection = connection;
-    this.replyWaitingLock = replyWaitingLock;
+    this.replyFutureMap = replyFutureMap;
   }
 
   @Override
@@ -32,10 +33,11 @@ final class NcsMessageSender implements MessageSender<ControlMessage.Message> {
   }
 
   @Override
-  public <U> Future<U> request(final ControlMessage.Message message) {
+  public CompletableFuture<ControlMessage.Message> request(final ControlMessage.Message message) {
     LOG.log(Level.FINE, "request: {0}", message);
+    final CompletableFuture<ControlMessage.Message> future = replyFutureMap.beforeRequest(message.getId());
     connection.write(message);
-    return (Future) replyWaitingLock.waitingReply(message.getId());
+    return future;
   }
 
   @Override
