@@ -34,36 +34,40 @@ public final class PartitionManagerMaster {
   private static final Logger LOG = Logger.getLogger(PartitionManagerMaster.class.getName());
   private final Map<String, PartitionState> partitionIdToState;
   private final Map<String, String> committedPartitionIdToWorkerId;
-  private final Map<String, String> partitionIdToParentTaskGroupId;
+  private final Map<String, Set<String>> producerTaskGroupIdToPartitionIds;
 
   @Inject
   public PartitionManagerMaster() {
     this.partitionIdToState = new HashMap<>();
     this.committedPartitionIdToWorkerId = new HashMap<>();
-    this.partitionIdToParentTaskGroupId = new HashMap<>();
+    this.producerTaskGroupIdToPartitionIds = new HashMap<>();
   }
 
   public synchronized void initializeState(final String edgeId, final int srcTaskIndex,
-                                           final String parentTaskGroupId) {
+                                           final String producerTaskGroupId) {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex);
     partitionIdToState.put(partitionId, new PartitionState());
-    partitionIdToParentTaskGroupId.put(partitionId, parentTaskGroupId);
+    producerTaskGroupIdToPartitionIds.putIfAbsent(producerTaskGroupId, new HashSet<>());
+    producerTaskGroupIdToPartitionIds.get(producerTaskGroupId).add(partitionId);
   }
 
   public synchronized void initializeState(final String edgeId, final int srcTaskIndex, final int partitionIndex,
-                                           final String parentTaskGroupId) {
+                                           final String producerTaskGroupId) {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex, partitionIndex);
     partitionIdToState.put(partitionId, new PartitionState());
-    partitionIdToParentTaskGroupId.put(partitionId, parentTaskGroupId);
+    producerTaskGroupIdToPartitionIds.putIfAbsent(producerTaskGroupId, new HashSet<>());
+    producerTaskGroupIdToPartitionIds.get(producerTaskGroupId).add(partitionId);
   }
 
   public synchronized Set<String> removeWorker(final String executorId) {
     final Set<String> taskGroupsToRecompute = new HashSet<>();
 
-    // Set partition states to lost
-    getPartitionsByWorker(executorId).forEach(partitionId -> {
-      onPartitionStateChanged(executorId, partitionId, PartitionState.State.LOST);
-      taskGroupsToRecompute.add(partitionIdToParentTaskGroupId.get(partitionId));
+    // Set committed partition states to lost
+    getCommittedPartitionsByWorker(executorId).forEach(partitionId -> {
+      onPartitionStateChanged(partitionId, PartitionState.State.LOST, executorId);
+      final Optional<String> producerTaskGroupForPartition = getProducerTaskGroupId(partitionId);
+      // producerTaskGroupForPartition should always be non-empty.
+      taskGroupsToRecompute.add(producerTaskGroupForPartition.get());
     });
 
     // Update worker-related global variables
@@ -77,11 +81,41 @@ public final class PartitionManagerMaster {
     return Optional.ofNullable(executorId);
   }
 
-  public synchronized String getParentTaskGroupId(final String partitionId) {
-    return partitionIdToParentTaskGroupId.get(partitionId);
+  public synchronized Optional<String> getProducerTaskGroupId(final String partitionId) {
+    for (Map.Entry<String, Set<String>> entry : producerTaskGroupIdToPartitionIds.entrySet()) {
+      if (entry.getValue().contains(partitionId)) {
+        return Optional.of(entry.getKey());
+      }
+    }
+    return Optional.empty();
   }
 
-  public synchronized Set<String> getPartitionsByWorker(final String executorId) {
+  /**
+   * To be called when a potential producer task group is scheduled.
+   * To be precise, it is called when the task group is enqueued to
+   * {@link edu.snu.vortex.runtime.master.scheduler.PendingTaskGroupPriorityQueue}
+   * @param scheduledTaskGroupId the ID of the scheduled task group.
+   */
+  public synchronized void onProducerTaskGroupScheduled(final String scheduledTaskGroupId) {
+    if (producerTaskGroupIdToPartitionIds.containsKey(scheduledTaskGroupId)) {
+      producerTaskGroupIdToPartitionIds.get(scheduledTaskGroupId).forEach(partitionId ->
+          onPartitionStateChanged(partitionId, PartitionState.State.SCHEDULED, null));
+    } // else this task group does not produce any partition
+  }
+
+  /**
+   * To be called when a potential producer task group fails.
+   * Only the TaskGroups that have not yet completed (i.e. partitions not yet committed) will call this method.
+   * @param failedTaskGroupId the ID of the task group that failed.
+   */
+  public synchronized void onProducerTaskGroupFailed(final String failedTaskGroupId) {
+    if (producerTaskGroupIdToPartitionIds.containsKey(failedTaskGroupId)) {
+      producerTaskGroupIdToPartitionIds.get(failedTaskGroupId).forEach(partitionId ->
+          onPartitionStateChanged(partitionId, PartitionState.State.LOST_BEFORE_COMMIT, null));
+    } // else this task group does not produce any partition
+  }
+
+  public synchronized Set<String> getCommittedPartitionsByWorker(final String executorId) {
     final Set<String> partitionIds = new HashSet<>();
     committedPartitionIdToWorkerId.forEach((partitionId, workerId) -> {
       if (workerId.equals(executorId)) {
@@ -95,9 +129,9 @@ public final class PartitionManagerMaster {
     return partitionIdToState.get(partitionId);
   }
 
-  public synchronized void onPartitionStateChanged(final String executorId,
-                                                   final String partitionId,
-                                                   final PartitionState.State newState) {
+  public synchronized void onPartitionStateChanged(final String partitionId,
+                                                   final PartitionState.State newState,
+                                                   final String committedWorkerId) {
     final StateMachine sm = partitionIdToState.get(partitionId).getStateMachine();
     final Enum oldState = sm.getCurrentState();
     LOG.log(Level.FINE, "Partition State Transition: id {0} from {1} to {2}",
@@ -106,21 +140,18 @@ public final class PartitionManagerMaster {
     sm.setState(newState);
 
     switch (newState) {
-      case MOVING:
-        if (oldState == PartitionState.State.COMMITTED) {
-          LOG.log(Level.WARNING, "Transition from committed to moving: "
-              + "reset to commited since receiver probably reached us before the sender");
-          sm.setState(PartitionState.State.COMMITTED);
-        }
+      case SCHEDULED:
+      case LOST_BEFORE_COMMIT:
+        // No maintained state to update.
         break;
       case COMMITTED:
-        committedPartitionIdToWorkerId.put(partitionId, executorId);
+        committedPartitionIdToWorkerId.put(partitionId, committedWorkerId);
         break;
       case REMOVED:
         committedPartitionIdToWorkerId.remove(partitionId);
         break;
       case LOST:
-        LOG.log(Level.INFO, "Partition {0} lost in {1}", new Object[]{partitionId, executorId});
+        LOG.log(Level.INFO, "Partition {0} lost in {1}", new Object[]{partitionId, committedWorkerId});
         committedPartitionIdToWorkerId.remove(partitionId);
         break;
       default:

@@ -89,10 +89,11 @@ enum TaskGroupStateFromExecutor {
 
 enum PartitionStateFromExecutor {
     PARTITION_READY = 0;
-    MOVING = 1;
+    SCHEDULED = 1;
     COMMITTED = 2;
     LOST = 3;
-    REMOVED = 4;
+    LOST_BEFORE_COMMIT = 4;
+    REMOVED = 5;
 }
 
 enum PartitionStore {

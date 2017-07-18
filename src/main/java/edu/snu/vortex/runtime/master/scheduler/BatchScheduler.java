@@ -166,6 +166,7 @@ public final class BatchScheduler implements Scheduler {
             if (jobStateManager.getTaskGroupState(tg.getTaskGroupId()).getStateMachine().getCurrentState()
                 != TaskGroupState.State.COMPLETE) {
               jobStateManager.onTaskGroupStateChanged(tg, TaskGroupState.State.FAILED_RECOVERABLE);
+              partitionManagerMaster.onProducerTaskGroupFailed(tg.getTaskGroupId());
             }
           });
           break;
@@ -331,6 +332,7 @@ public final class BatchScheduler implements Scheduler {
           LOG.log(Level.INFO, "Re-scheduling {0} for failure recovery", taskGroup.getTaskGroupId());
           jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.READY);
         }
+        partitionManagerMaster.onProducerTaskGroupScheduled(taskGroup.getTaskGroupId());
         pendingTaskGroupPriorityQueue.enqueue(
             new ScheduledTaskGroup(taskGroup, stageIncomingEdges, stageOutgoingEdges, attemptIdx));
       }

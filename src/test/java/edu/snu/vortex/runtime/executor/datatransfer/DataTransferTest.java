@@ -25,6 +25,7 @@ import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
@@ -82,6 +83,7 @@ public final class DataTransferTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final int PARALLELISM_TEN = 10;
   private static final String EDGE_ID = "Dummy";
+  private static final String TASKGROUP_PREFIX = "Dummy_TG_";
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
   private static final Tang TANG = Tang.Factory.getTang();
 
@@ -234,11 +236,13 @@ public final class DataTransferTest {
     // Initialize states in Master
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       if (commPattern == Attribute.ScatterGather) {
-        IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex ->
-            master.initializeState(EDGE_ID, srcTaskIndex, dstTaskIndex, null));
+        IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
+          master.initializeState(EDGE_ID, srcTaskIndex, dstTaskIndex, TASKGROUP_PREFIX + srcTaskIndex);
+        });
       } else {
-        master.initializeState(EDGE_ID, srcTaskIndex, null);
+        master.initializeState(EDGE_ID, srcTaskIndex, TASKGROUP_PREFIX + srcTaskIndex);
       }
+      master.onProducerTaskGroupScheduled(TASKGROUP_PREFIX + srcTaskIndex);
     });
 
     // Write

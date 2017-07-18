@@ -146,7 +146,7 @@ public final class JobStateManager {
         IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
           if (commPattern == Attribute.ScatterGather) {
             final int dstParallelism =
-                physicalStageEdge.getExternalVertexAttr().get(Attribute.IntegerKey.Parallelism);
+                physicalStageEdge.getDstVertex().getAttributes().get(Attribute.IntegerKey.Parallelism);
             IntStream.range(0, dstParallelism).forEach(dstTaskIdx ->
                 partitionManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx,
                     taskGroupsForStage.get(srcTaskIdx).getTaskGroupId()));
