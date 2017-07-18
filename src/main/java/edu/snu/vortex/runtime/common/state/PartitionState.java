@@ -32,23 +32,24 @@ public final class PartitionState {
 
     // Add states
     stateMachineBuilder.addState(State.READY, "The partition is ready to be created.");
-    stateMachineBuilder.addState(State.MOVING, "The partition is moving.");
+    stateMachineBuilder.addState(State.SCHEDULED, "The partition is scheduled for creation.");
     stateMachineBuilder.addState(State.COMMITTED, "The partition has been committed.");
+    stateMachineBuilder.addState(State.LOST_BEFORE_COMMIT, "The task group that produces the partition is scheduled, "
+        + "but failed before committing");
     stateMachineBuilder.addState(State.REMOVED, "The partition has been removed (e.g., GC-ed).");
     stateMachineBuilder.addState(State.LOST, "Partition lost.");
 
     // Add transitions
-    stateMachineBuilder.addTransition(State.READY, State.COMMITTED, "Committed as soon as created");
-    stateMachineBuilder.addTransition(State.READY, State.MOVING, "Partition moving");
-    stateMachineBuilder.addTransition(State.MOVING, State.COMMITTED, "Successfully moved and committed");
-    stateMachineBuilder.addTransition(State.MOVING, State.LOST, "Lost before committed");
+    stateMachineBuilder.addTransition(State.READY, State.SCHEDULED,
+        "The task group that produces the partition is scheduled.");
+    stateMachineBuilder.addTransition(State.SCHEDULED, State.COMMITTED, "Successfully moved and committed");
+    stateMachineBuilder.addTransition(State.SCHEDULED, State.LOST_BEFORE_COMMIT, "The partition is lost before commit");
     stateMachineBuilder.addTransition(State.COMMITTED, State.LOST, "Lost after committed");
     stateMachineBuilder.addTransition(State.COMMITTED, State.REMOVED, "Removed after committed");
 
-    stateMachineBuilder.addTransition(State.COMMITTED, State.MOVING,
-        "(WARNING) Possible race condition: receiver may have reached us before the sender, or there's sth wrong");
-
-    stateMachineBuilder.addTransition(State.LOST, State.COMMITTED, "Recomputation successful and committed");
+    stateMachineBuilder.addTransition(State.LOST, State.SCHEDULED, "The producer of the lost partition is rescheduled");
+    stateMachineBuilder.addTransition(State.LOST_BEFORE_COMMIT, State.SCHEDULED,
+        "The producer of the lost partition is rescheduled");
 
     stateMachineBuilder.setInitialState(State.READY);
 
@@ -64,21 +65,9 @@ public final class PartitionState {
    */
   public enum State {
     READY,
-    MOVING,
+    SCHEDULED,
     COMMITTED,
-    /**
-     * A data can be considered "lost" by PartitionManagerMaster for the following reasons:
-     * 1) The executor that has the partition goes down
-     * 2) Local data fetch failure (disk corruption, partition evicted due to memory pressure, etc)
-     * 3) Remote partition fetch failure (network partitioning, network timeout, etc)
-     *
-     * Our current PartitionManager implementation does *not* properly handle the above cases.
-     * They should be handled in the future with the issue, TODO #163: Handle Fault Tolerance
-     *
-     * Moreover, we assume that all lost partitions are recoverable,
-     * meaning that we do not fail the job upon the event of a lost partition.
-     * Thus, we only have a single state(LOST) that represents failure.
-     */
+    LOST_BEFORE_COMMIT,
     LOST,
     REMOVED
   }
