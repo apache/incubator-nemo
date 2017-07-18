@@ -183,20 +183,23 @@ public final class FaultToleranceTest {
       }
     });
 
-    Set<String> partitionIdsToRecompute = partitionManagerMaster.getPartitionsByWorker("a1");
+    Set<String> partitionIdsToRecompute = partitionManagerMaster.getCommittedPartitionsByWorker("a1");
     scheduler.onExecutorRemoved("a1");
+
+    partitionIdsToRecompute.forEach(partitionId -> {
+      assertTrue(taskGroupIdsForFailingExecutor.contains(
+          partitionManagerMaster.getProducerTaskGroupId(partitionId).get()));
+      final Enum lostPartitionState =
+          partitionManagerMaster.getPartitionState(partitionId).getStateMachine().getCurrentState();
+      assertTrue(
+          lostPartitionState == PartitionState.State.LOST || lostPartitionState == PartitionState.State.SCHEDULED);
+    });
 
     // There are 2 executors, a2 and a3 left.
     taskGroupIdsForFailingExecutor.forEach(failedTaskGroupId -> {
       final Enum state =
           jobStateManager.getTaskGroupState(failedTaskGroupId).getStateMachine().getCurrentState();
       assertTrue(state == TaskGroupState.State.READY || state == TaskGroupState.State.FAILED_RECOVERABLE);
-    });
-
-    partitionIdsToRecompute.forEach(partitionId -> {
-      assertTrue(taskGroupIdsForFailingExecutor.contains(partitionManagerMaster.getParentTaskGroupId(partitionId)));
-      assertTrue(partitionManagerMaster.getPartitionState(partitionId).getStateMachine().getCurrentState()
-          == PartitionState.State.LOST);
     });
 
     otherTaskGroupIds.forEach(taskGroupId ->

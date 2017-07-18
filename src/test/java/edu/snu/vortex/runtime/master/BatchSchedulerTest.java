@@ -53,14 +53,14 @@ import static org.mockito.Mockito.when;
  * Tests {@link BatchScheduler}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(ContainerManager.class)
+@PrepareForTest({ContainerManager.class, PartitionManagerMaster.class})
 public final class BatchSchedulerTest {
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
   private Scheduler scheduler;
   private SchedulingPolicy schedulingPolicy;
   private ContainerManager containerManager;
   private PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue;
-  private PartitionManagerMaster partitionManagerMaster;
+  private PartitionManagerMaster partitionManagerMaster = mock(PartitionManagerMaster.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
 
   private static final int TEST_TIMEOUT_MS = 1000;
@@ -74,7 +74,6 @@ public final class BatchSchedulerTest {
     containerManager = mock(ContainerManager.class);
     pendingTaskGroupPriorityQueue = new PendingTaskGroupPriorityQueue();
     schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TEST_TIMEOUT_MS);
-    partitionManagerMaster = new PartitionManagerMaster();
     scheduler = new BatchScheduler(partitionManagerMaster, schedulingPolicy, pendingTaskGroupPriorityQueue);
     partitionManagerMaster = new PartitionManagerMaster();
 
