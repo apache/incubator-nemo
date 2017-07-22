@@ -66,6 +66,7 @@ public final class PartitionManagerMaster {
     getCommittedPartitionsByWorker(executorId).forEach(partitionId -> {
       onPartitionStateChanged(partitionId, PartitionState.State.LOST, executorId);
       final Optional<String> producerTaskGroupForPartition = getProducerTaskGroupId(partitionId);
+
       // producerTaskGroupForPartition should always be non-empty.
       taskGroupsToRecompute.add(producerTaskGroupForPartition.get());
     });
