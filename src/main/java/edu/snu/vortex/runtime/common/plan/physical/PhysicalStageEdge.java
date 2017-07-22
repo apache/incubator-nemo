@@ -37,23 +37,16 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
    */
   private final IRVertex dstVertex;
 
-  /**
-   * IRVertex attributes of the endpoint vertex.
-   */
-  private final AttributeMap externalVertexAttr;
-
   public PhysicalStageEdge(final String runtimeEdgeId,
                            final AttributeMap edgeAttributes,
                            final IRVertex srcVertex,
                            final IRVertex dstVertex,
-                           final AttributeMap externalVertexAttr,
                            final PhysicalStage srcStage,
                            final PhysicalStage dstStage,
                            final Coder coder) {
     super(runtimeEdgeId, edgeAttributes, srcStage, dstStage, coder);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
-    this.externalVertexAttr = externalVertexAttr;
   }
 
   public IRVertex getSrcVertex() {
@@ -64,10 +57,6 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     return dstVertex;
   }
 
-  public AttributeMap getExternalVertexAttr() {
-    return externalVertexAttr;
-  }
-
   @Override
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
@@ -75,8 +64,7 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     sb.append("\", \"edgeAttributes\": ").append(getAttributes());
     sb.append(", \"externalSrcVertexId\": \"").append(srcVertex.getId());
     sb.append("\", \"externalDstVertexId\": \"").append(dstVertex.getId());
-    sb.append("\", \"externalVertexAttr\": ").append(externalVertexAttr);
-    sb.append(", \"coder\": \"").append(getCoder().toString());
+    sb.append("\", \"coder\": \"").append(getCoder().toString());
     sb.append("\"}");
     return sb.toString();
   }
