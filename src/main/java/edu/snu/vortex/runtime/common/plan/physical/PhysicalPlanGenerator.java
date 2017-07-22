@@ -314,7 +314,7 @@ public final class PhysicalPlanGenerator
         physicalDAGBuilder.connectVertices(new PhysicalStageEdge(stageEdge.getId(),
             stageEdge.getAttributes(),
             stageEdge.getSrcVertex(), stageEdge.getDstVertex(),
-            stageEdge.getSrcVertex().getAttributes(), srcStage, dstStage,
+            srcStage, dstStage,
             stageEdge.getCoder()));
       }));
 

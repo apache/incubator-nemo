@@ -111,7 +111,7 @@ public final class TestUtil {
       IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
         if (commPattern == Attribute.ScatterGather) {
           final int dstParallelism =
-              physicalStageEdge.getExternalVertexAttr().get(Attribute.IntegerKey.Parallelism);
+              physicalStageEdge.getDstVertex().getAttributes().get(Attribute.IntegerKey.Parallelism);
           IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> {
             final String partitionId =
                 RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx);
