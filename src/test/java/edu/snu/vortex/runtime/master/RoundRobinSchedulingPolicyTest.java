@@ -72,7 +72,7 @@ public final class RoundRobinSchedulingPolicyTest {
     final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
     final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
 
-    final ResourceSpecification storageSpec = new ResourceSpecification(Attribute.Storage, 1, 0);
+    final ResourceSpecification storageSpec = new ResourceSpecification(Attribute.Transient, 1, 0);
     final ExecutorRepresenter b2 = new ExecutorRepresenter("b2", storageSpec, mockMsgSender, activeContext);
     final ExecutorRepresenter b1 = new ExecutorRepresenter("b1", storageSpec, mockMsgSender, activeContext);
 
@@ -145,9 +145,9 @@ public final class RoundRobinSchedulingPolicyTest {
     final TaskGroup A3 = new TaskGroup("A3", "Stage A", 2, null, Attribute.Compute);
     final TaskGroup A4 = new TaskGroup("A4", "Stage A", 3, null, Attribute.Compute);
     final TaskGroup A5 = new TaskGroup("A4", "Stage A", 4, null, Attribute.Compute);
-    final TaskGroup B1 = new TaskGroup("B1", "Stage B", 0, null, Attribute.Storage);
-    final TaskGroup B2 = new TaskGroup("B2", "Stage B", 1, null, Attribute.Storage);
-    final TaskGroup B3 = new TaskGroup("B3", "Stage B", 2, null, Attribute.Storage);
+    final TaskGroup B1 = new TaskGroup("B1", "Stage B", 0, null, Attribute.Transient);
+    final TaskGroup B2 = new TaskGroup("B2", "Stage B", 1, null, Attribute.Transient);
+    final TaskGroup B3 = new TaskGroup("B3", "Stage B", 2, null, Attribute.Transient);
 
     final ScheduledTaskGroup a1Wrapper = wrap(A1);
     final ScheduledTaskGroup a2Wrapper = wrap(A2);
