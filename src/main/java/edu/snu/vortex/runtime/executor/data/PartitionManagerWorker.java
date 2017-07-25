@@ -26,6 +26,7 @@ import edu.snu.vortex.runtime.exception.PartitionWriteException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionStoreException;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
 import edu.snu.vortex.runtime.executor.data.partition.Partition;
+import edu.snu.vortex.runtime.master.RuntimeMaster;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -41,8 +42,6 @@ import java.util.logging.Logger;
 @ThreadSafe
 public final class PartitionManagerWorker {
   private static final Logger LOG = Logger.getLogger(PartitionManagerWorker.class.getName());
-
-  public static final String NO_REMOTE_PARTITION = "";
 
   private final String executorId;
 
@@ -215,9 +214,10 @@ public final class PartitionManagerWorker {
       assert (responseFromMaster.getType() == ControlMessage.MessageType.PartitionLocationInfo);
       final ControlMessage.PartitionLocationInfoMsg partitionLocationInfoMsg =
           responseFromMaster.getPartitionLocationInfoMsg();
-      if (partitionLocationInfoMsg.getOwnerExecutorId().equals(NO_REMOTE_PARTITION)) {
+      if (!partitionLocationInfoMsg.hasOwnerExecutorId()) {
         throw new PartitionFetchException(
-            new Throwable("Partition " + partitionId + " not found both in the local storage and the remote storage"));
+            new Throwable("Partition " + partitionId + " not found both in the local storage and the remote storage: "
+            + "The partition state is " + RuntimeMaster.convertPartitionState(partitionLocationInfoMsg.getState())));
       }
       // This is the executor id that we wanted to know
       final String remoteWorkerId = partitionLocationInfoMsg.getOwnerExecutorId();

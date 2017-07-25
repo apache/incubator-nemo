@@ -33,7 +33,8 @@ message ScheduleTaskGroupMsg {
 message PartitionLocationInfoMsg {
     required int64 requestId = 1; // To find the matching request msg
     required string partitionId = 2;
-    required string ownerExecutorId = 3;
+    optional PartitionStateFromExecutor state = 3;
+    optional string ownerExecutorId = 4;
 }
 
 // Messages from Executors to Master
