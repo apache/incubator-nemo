@@ -24,9 +24,9 @@ package edu.snu.vortex.runtime.exception;
 public final class IllegalEdgeOperationException extends RuntimeException {
   /**
    * IllegalEdgeOperationException.
-   * @param message message
+   * @param cause cause
    */
-  public IllegalEdgeOperationException(final String message) {
-    super(message);
+  public IllegalEdgeOperationException(final Throwable cause) {
+    super(cause);
   }
 }
