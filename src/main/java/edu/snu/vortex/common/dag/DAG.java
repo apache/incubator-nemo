@@ -16,6 +16,7 @@
 package edu.snu.vortex.common.dag;
 
 import edu.snu.vortex.compiler.ir.LoopVertex;
+import edu.snu.vortex.runtime.exception.IllegalEdgeOperationException;
 
 import java.io.File;
 import java.io.IOException;
@@ -167,6 +168,23 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
    */
   public List<V> getChildren(final String vertexId) {
     return outgoingEdges.get(vertexId).stream().map(Edge::getDst).collect(Collectors.toList());
+  }
+
+  /**
+   * Retrieves the edge between two vertices.
+   * @param srcVertexId the ID of the source vertex.
+   * @param dstVertexId the ID of the destination vertex.
+   * @return the edge if exists.
+   * @throws IllegalEdgeOperationException otherwise.
+   */
+  public E getEdgeBetween(final String srcVertexId, final String dstVertexId) throws IllegalEdgeOperationException {
+    for (E e : incomingEdges.get(dstVertexId)) {
+      if (e.getSrc().getId().equals(srcVertexId)) {
+        return e;
+      }
+    }
+    throw new IllegalEdgeOperationException(
+        new Throwable("There exists no edge from " + srcVertexId + " to " + dstVertexId));
   }
 
   /**
