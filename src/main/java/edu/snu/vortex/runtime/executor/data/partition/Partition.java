@@ -23,5 +23,9 @@ import edu.snu.vortex.compiler.ir.Element;
  */
 public interface Partition {
 
+  /**
+   * Gets the representation of this partition as an iterable.
+   * @return the iterable of the partition.
+   */
   Iterable<Element> asIterable();
 }
