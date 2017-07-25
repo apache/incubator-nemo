@@ -16,12 +16,16 @@
 package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
+import edu.snu.vortex.runtime.common.comm.ControlMessage;
+import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.common.StateMachine;
+import edu.snu.vortex.runtime.exception.AbsentPartitionException;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -35,12 +39,14 @@ public final class PartitionManagerMaster {
   private final Map<String, PartitionState> partitionIdToState;
   private final Map<String, String> committedPartitionIdToWorkerId;
   private final Map<String, Set<String>> producerTaskGroupIdToPartitionIds;
+  private final Map<String, CompletableFuture<String>> partitionIdToLocationFuture;
 
   @Inject
   public PartitionManagerMaster() {
     this.partitionIdToState = new HashMap<>();
     this.committedPartitionIdToWorkerId = new HashMap<>();
     this.producerTaskGroupIdToPartitionIds = new HashMap<>();
+    this.partitionIdToLocationFuture = new HashMap<>();
   }
 
   public synchronized void initializeState(final String edgeId, final int srcTaskIndex,
@@ -80,6 +86,32 @@ public final class PartitionManagerMaster {
   public synchronized Optional<String> getPartitionLocation(final String partitionId) {
     final String executorId = committedPartitionIdToWorkerId.get(partitionId);
     return Optional.ofNullable(executorId);
+  }
+
+  /**
+   * Return a {@link CompletableFuture} of partition location, which is not yet resolved in {@code SCHEDULED} state.
+   * @param partitionId id of the specified partition
+   * @return {@link CompletableFuture} of partition location, which completes exceptionally when the partition
+   *         is not {@code SCHEDULED} or {@code COMMITTED}.
+   */
+  public synchronized CompletableFuture<String> getPartitionLocationFuture(final String partitionId) {
+    final PartitionState.State state =
+        (PartitionState.State) getPartitionState(partitionId).getStateMachine().getCurrentState();
+    switch (state) {
+      case SCHEDULED:
+        return partitionIdToLocationFuture.computeIfAbsent(partitionId, pId -> new CompletableFuture<>());
+      case COMMITTED:
+        return CompletableFuture.completedFuture(getPartitionLocation(partitionId).get());
+      case READY:
+      case LOST_BEFORE_COMMIT:
+      case LOST:
+      case REMOVED:
+        final CompletableFuture<String> future = new CompletableFuture<>();
+        future.completeExceptionally(new AbsentPartitionException(partitionId, state));
+        return future;
+      default:
+        throw new UnsupportedOperationException(state.toString());
+    }
   }
 
   public synchronized Optional<String> getProducerTaskGroupId(final String partitionId) {
@@ -142,21 +174,66 @@ public final class PartitionManagerMaster {
 
     switch (newState) {
       case SCHEDULED:
+        break;
       case LOST_BEFORE_COMMIT:
-        // No maintained state to update.
+        completeLocationFuture(partitionId, newState, Optional.empty());
         break;
       case COMMITTED:
         committedPartitionIdToWorkerId.put(partitionId, committedWorkerId);
+        completeLocationFuture(partitionId, newState, Optional.of(committedWorkerId));
         break;
       case REMOVED:
         committedPartitionIdToWorkerId.remove(partitionId);
+        completeLocationFuture(partitionId, newState, Optional.empty());
         break;
       case LOST:
         LOG.log(Level.INFO, "Partition {0} lost in {1}", new Object[]{partitionId, committedWorkerId});
         committedPartitionIdToWorkerId.remove(partitionId);
+        completeLocationFuture(partitionId, newState, Optional.empty());
         break;
       default:
         throw new UnsupportedOperationException(newState.toString());
     }
+  }
+
+  private synchronized void completeLocationFuture(final String partitionId,
+                                                   final PartitionState.State state,
+                                                   final Optional<String> result) {
+    partitionIdToLocationFuture.entrySet().removeIf(e -> {
+      if (e.getKey().equals(partitionId)) {
+        if (result.isPresent()) {
+          e.getValue().complete(result.get());
+        } else {
+          e.getValue().completeExceptionally(new AbsentPartitionException(partitionId, state));
+        }
+        return true;
+      }
+      return false;
+    });
+  }
+
+  public synchronized void onRequestPartitionLocation(final ControlMessage.Message message,
+                                                      final MessageContext messageContext) {
+    final ControlMessage.RequestPartitionLocationMsg requestPartitionLocationMsg =
+        message.getRequestPartitionLocationMsg();
+    final CompletableFuture<String> locationFuture
+        = getPartitionLocationFuture(requestPartitionLocationMsg.getPartitionId());
+    locationFuture.whenComplete((location, throwable) -> {
+      final ControlMessage.PartitionLocationInfoMsg.Builder infoMsgBuilder =
+          ControlMessage.PartitionLocationInfoMsg.newBuilder()
+              .setRequestId(message.getId())
+              .setPartitionId(requestPartitionLocationMsg.getPartitionId());
+      if (throwable == null) {
+        infoMsgBuilder.setOwnerExecutorId(location);
+      } else {
+        infoMsgBuilder.setState(RuntimeMaster.convertPartitionState(((AbsentPartitionException) throwable).getState()));
+      }
+      messageContext.reply(
+          ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdGenerator.generateMessageId())
+              .setType(ControlMessage.MessageType.PartitionLocationInfo)
+              .setPartitionLocationInfoMsg(infoMsgBuilder.build())
+              .build());
+    });
   }
 }
