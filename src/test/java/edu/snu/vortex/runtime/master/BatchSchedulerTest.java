@@ -90,7 +90,7 @@ public final class BatchSchedulerTest {
     final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
     final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
 
-    final ResourceSpecification storageSpec = new ResourceSpecification(Attribute.Storage, 1, 0);
+    final ResourceSpecification storageSpec = new ResourceSpecification(Attribute.Transient, 1, 0);
     final ExecutorRepresenter b2 = new ExecutorRepresenter("b2", storageSpec, mockMsgSender, activeContext);
     final ExecutorRepresenter b1 = new ExecutorRepresenter("b1", storageSpec, mockMsgSender, activeContext);
 
@@ -135,12 +135,12 @@ public final class BatchSchedulerTest {
 
     final IRVertex v4 = new OperatorVertex(t);
     v4.setAttr(Attribute.IntegerKey.Parallelism, 2);
-    v4.setAttr(Attribute.Key.Placement, Attribute.Storage);
+    v4.setAttr(Attribute.Key.Placement, Attribute.Transient);
     irDAGBuilder.addVertex(v4);
 
     final IRVertex v5 = new OperatorVertex(t);
     v5.setAttr(Attribute.IntegerKey.Parallelism, 2);
-    v5.setAttr(Attribute.Key.Placement, Attribute.Storage);
+    v5.setAttr(Attribute.Key.Placement, Attribute.Transient);
     irDAGBuilder.addVertex(v5);
 
     final IREdge e1 = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);
