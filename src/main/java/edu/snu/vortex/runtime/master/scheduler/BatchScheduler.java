@@ -342,7 +342,7 @@ public final class BatchScheduler implements Scheduler {
     } else if (stageState == StageState.State.EXECUTING) {
       // An 'executing' stage has been selected as the next stage to execute.
       // This is due to the "Push" data transfer policy. We can skip this round.
-      LOG.log(Level.INFO, "{0} has already been scheduled! Skipping this round.");
+      LOG.log(Level.INFO, "{0} has already been scheduled! Skipping this round.", stageToSchedule.getId());
       return;
     }
 
