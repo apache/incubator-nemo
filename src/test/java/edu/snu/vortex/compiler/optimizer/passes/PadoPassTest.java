@@ -59,7 +59,7 @@ public class PadoPassTest {
     final IRVertex vertex6 = processedDAG.getTopologicalSort().get(2);
     assertEquals(Attribute.Reserved, vertex6.getAttr(Attribute.Key.Placement));
     processedDAG.getIncomingEdgesOf(vertex6).forEach(irEdge -> {
-      assertEquals(Attribute.Memory, irEdge.getAttr(Attribute.Key.ChannelDataPlacement));
+      assertEquals(Attribute.LocalFile, irEdge.getAttr(Attribute.Key.ChannelDataPlacement));
       assertEquals(Attribute.Push, irEdge.getAttr(Attribute.Key.ChannelTransferPolicy));
     });
 
