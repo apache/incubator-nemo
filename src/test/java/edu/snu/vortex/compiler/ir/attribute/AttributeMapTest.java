@@ -54,8 +54,8 @@ public class AttributeMapTest {
 
   @Test
   public void testPutGetAndRemove() {
-    edgeMap.put(Attribute.Key.ChannelDataPlacement, Attribute.Local);
-    assertEquals(Attribute.Local, edgeMap.get(Attribute.Key.ChannelDataPlacement));
+    edgeMap.put(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
+    assertEquals(Attribute.Memory, edgeMap.get(Attribute.Key.ChannelDataPlacement));
     edgeMap.put(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     assertEquals(Attribute.Pull, edgeMap.get(Attribute.Key.ChannelTransferPolicy));
 

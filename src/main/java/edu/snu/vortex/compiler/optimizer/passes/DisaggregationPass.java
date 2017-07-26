@@ -37,10 +37,10 @@ public final class DisaggregationPass implements Pass {
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
           if (edge.getType().equals(IREdge.Type.OneToOne)) {
-            edge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+            edge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
             edge.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
           } else {
-            edge.setAttr(Attribute.Key.ChannelDataPlacement,  Attribute.DistributedStorage);
+            edge.setAttr(Attribute.Key.ChannelDataPlacement,  Attribute.RemoteFile);
             edge.setAttr(Attribute.Key.ChannelTransferPolicy,  Attribute.Pull);
           }
         });

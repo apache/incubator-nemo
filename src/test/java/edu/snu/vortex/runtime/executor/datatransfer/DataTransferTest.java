@@ -25,7 +25,6 @@ import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
-import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
@@ -59,7 +58,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -78,8 +76,8 @@ public final class DataTransferTest {
   private static final int EXECUTOR_CAPACITY = 1;
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
   private static final int SCHEDULE_TIMEOUT = 1000;
-  private static final Attribute STORE = Attribute.Local;
-  private static final Attribute FILE_STORE = Attribute.File;
+  private static final Attribute STORE = Attribute.Memory;
+  private static final Attribute FILE_STORE = Attribute.LocalFile;
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final int PARALLELISM_TEN = 10;
   private static final String EDGE_ID = "Dummy";

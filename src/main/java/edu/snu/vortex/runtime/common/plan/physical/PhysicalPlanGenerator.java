@@ -33,7 +33,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static edu.snu.vortex.compiler.ir.attribute.Attribute.Local;
+import static edu.snu.vortex.compiler.ir.attribute.Attribute.Memory;
 
 /**
  * A function that converts an IR DAG to physical DAG.
@@ -161,7 +161,7 @@ public final class PhysicalPlanGenerator
         // Filter candidate incoming edges that can be included in a stage with the vertex.
         final Optional<List<IREdge>> inEdgesForStage = inEdgeList.map(e -> e.stream()
             .filter(edge -> edge.getType().equals(IREdge.Type.OneToOne)) // One to one edges
-            .filter(edge -> edge.getAttr(Attribute.Key.ChannelDataPlacement).equals(Local)) // Local data placement
+            .filter(edge -> edge.getAttr(Attribute.Key.ChannelDataPlacement).equals(Memory)) // Memory data placement
             .filter(edge -> edge.getSrc().getAttributes().equals(edge.getDst().getAttributes())) //Src and Dst same attr
             .filter(edge -> vertexStageNumHashMap.containsKey(edge.getSrc())) // Src that is already included in a stage
             // Others don't depend on the candidate stage.

@@ -73,10 +73,10 @@ public final class AttributeMap implements Serializable {
     this.attributes.put(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     switch (type) {
       case OneToOne:
-        this.attributes.put(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+        this.attributes.put(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
         break;
       default:
-        this.attributes.put(Attribute.Key.ChannelDataPlacement, Attribute.File);
+        this.attributes.put(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
     }
   }
   /**

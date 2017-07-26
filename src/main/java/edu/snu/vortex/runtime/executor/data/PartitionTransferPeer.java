@@ -256,20 +256,14 @@ final class PartitionTransferPeer {
 
   private static ControlMessage.PartitionStore convertPartitionStore(final Attribute partitionStore) {
     switch (partitionStore) {
-      case Local:
-        return ControlMessage.PartitionStore.LOCAL;
       case Memory:
-        // TODO #181: Implement MemoryPartitionStore
         return ControlMessage.PartitionStore.MEMORY;
-      case File:
+      case LocalFile:
         // TODO #69: Implement file channel in Runtime
-        return ControlMessage.PartitionStore.FILE;
-      case MemoryFile:
-        // TODO #69: Implement file channel in Runtime
-        return ControlMessage.PartitionStore.MEMORY_FILE;
-      case DistributedStorage:
+        return ControlMessage.PartitionStore.LOCAL_FILE;
+      case RemoteFile:
         // TODO #180: Implement DistributedStorageStore
-        return ControlMessage.PartitionStore.DISTRIBUTED_STORAGE;
+        return ControlMessage.PartitionStore.REMOTE_FILE;
       default:
         throw new UnsupportedPartitionStoreException(new Exception(partitionStore + " is not supported."));
     }
@@ -277,16 +271,12 @@ final class PartitionTransferPeer {
 
   private static Attribute convertPartitionStoreType(final ControlMessage.PartitionStore partitionStoreType) {
     switch (partitionStoreType) {
-      case LOCAL:
-        return Attribute.Local;
       case MEMORY:
         return Attribute.Memory;
-      case FILE:
-        return Attribute.File;
-      case MEMORY_FILE:
-        return Attribute.MemoryFile;
-      case DISTRIBUTED_STORAGE:
-        return Attribute.DistributedStorage;
+      case LOCAL_FILE:
+        return Attribute.LocalFile;
+      case REMOTE_FILE:
+        return Attribute.RemoteFile;
       default:
         throw new UnsupportedPartitionStoreException(new Throwable("This partition store is not yet supported"));
     }

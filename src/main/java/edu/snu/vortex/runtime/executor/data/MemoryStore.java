@@ -28,11 +28,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * Store data in local memory.
  */
 @ThreadSafe
-final class LocalStore implements PartitionStore {
+final class MemoryStore implements PartitionStore {
   private final ConcurrentHashMap<String, Partition> partitionIdToData;
 
   @Inject
-  private LocalStore() {
+  private MemoryStore() {
     this.partitionIdToData = new ConcurrentHashMap<>();
   }
 

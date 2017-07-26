@@ -45,9 +45,9 @@ public final class PartitionManagerWorker {
 
   private final String executorId;
 
-  private final LocalStore localStore;
+  private final MemoryStore memoryStore;
 
-  private final FileStore fileStore;
+  private final LocalFileStore localFileStore;
 
   private final PersistentConnectionToMaster persistentConnectionToMaster;
 
@@ -57,13 +57,13 @@ public final class PartitionManagerWorker {
 
   @Inject
   private PartitionManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
-                                 final LocalStore localStore,
-                                 final FileStore fileStore,
+                                 final MemoryStore memoryStore,
+                                 final LocalFileStore localFileStore,
                                  final PersistentConnectionToMaster persistentConnectionToMaster,
                                  final PartitionTransferPeer partitionTransferPeer) {
     this.executorId = executorId;
-    this.localStore = localStore;
-    this.fileStore = fileStore;
+    this.memoryStore = memoryStore;
+    this.localFileStore = localFileStore;
     this.persistentConnectionToMaster = persistentConnectionToMaster;
     this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
     this.partitionTransferPeer = partitionTransferPeer;
@@ -191,7 +191,7 @@ public final class PartitionManagerWorker {
     }
 
     if (optionalPartition.isPresent()) {
-      // Local hit!
+      // Memory hit!
       return CompletableFuture.completedFuture(optionalPartition.get().asIterable());
     }
     // We don't have the partition here... let's see if a remote worker has it
@@ -228,19 +228,13 @@ public final class PartitionManagerWorker {
 
   private PartitionStore getPartitionStore(final Attribute partitionStore) {
     switch (partitionStore) {
-      case Local:
-        return localStore;
       case Memory:
-        // TODO #181: Implement MemoryPartitionStore
-        return localStore;
-      case File:
-        return fileStore;
-      case MemoryFile:
-        // TODO #181: Implement MemoryPartitionStore
-        return localStore;
-      case DistributedStorage:
+        return memoryStore;
+      case LocalFile:
+        return localFileStore;
+      case RemoteFile:
         // TODO #180: Implement DistributedStorageStore
-        return localStore;
+        return memoryStore;
       default:
         throw new UnsupportedPartitionStoreException(new Exception(partitionStore + " is not supported."));
     }
