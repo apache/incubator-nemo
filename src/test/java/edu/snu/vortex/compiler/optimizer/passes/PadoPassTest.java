@@ -52,7 +52,7 @@ public class PadoPassTest {
     final IRVertex vertex5 = processedDAG.getTopologicalSort().get(1);
     assertEquals(Attribute.Transient, vertex5.getAttr(Attribute.Key.Placement));
     processedDAG.getIncomingEdgesOf(vertex5).forEach(irEdge -> {
-      assertEquals(Attribute.Local, irEdge.getAttr(Attribute.Key.ChannelDataPlacement));
+      assertEquals(Attribute.Memory, irEdge.getAttr(Attribute.Key.ChannelDataPlacement));
       assertEquals(Attribute.Pull, irEdge.getAttr(Attribute.Key.ChannelTransferPolicy));
     });
 
@@ -66,21 +66,21 @@ public class PadoPassTest {
     final IRVertex vertex4 = processedDAG.getTopologicalSort().get(6);
     assertEquals(Attribute.Reserved, vertex4.getAttr(Attribute.Key.Placement));
     processedDAG.getIncomingEdgesOf(vertex4).forEach(irEdge -> {
-      assertEquals(Attribute.Local, irEdge.getAttr(Attribute.Key.ChannelDataPlacement));
+      assertEquals(Attribute.Memory, irEdge.getAttr(Attribute.Key.ChannelDataPlacement));
       assertEquals(Attribute.Pull, irEdge.getAttr(Attribute.Key.ChannelTransferPolicy));
     });
 
     final IRVertex vertex12 = processedDAG.getTopologicalSort().get(10);
     assertEquals(Attribute.Reserved, vertex12.getAttr(Attribute.Key.Placement));
     processedDAG.getIncomingEdgesOf(vertex12).forEach(irEdge -> {
-      assertEquals(Attribute.File, irEdge.getAttr(Attribute.Key.ChannelDataPlacement));
+      assertEquals(Attribute.LocalFile, irEdge.getAttr(Attribute.Key.ChannelDataPlacement));
       assertEquals(Attribute.Pull, irEdge.getAttr(Attribute.Key.ChannelTransferPolicy));
     });
 
     final IRVertex vertex13 = processedDAG.getTopologicalSort().get(11);
     assertEquals(Attribute.Reserved, vertex13.getAttr(Attribute.Key.Placement));
     processedDAG.getIncomingEdgesOf(vertex13).forEach(irEdge -> {
-      assertEquals(Attribute.Local, irEdge.getAttr(Attribute.Key.ChannelDataPlacement));
+      assertEquals(Attribute.Memory, irEdge.getAttr(Attribute.Key.ChannelDataPlacement));
       assertEquals(Attribute.Pull, irEdge.getAttr(Attribute.Key.ChannelTransferPolicy));
     });
   }

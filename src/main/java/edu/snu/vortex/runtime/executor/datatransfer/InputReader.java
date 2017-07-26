@@ -161,7 +161,7 @@ public final class InputReader extends DataTransfer {
       final Integer numSrcTasks = srcVertex.getAttributes().get(Attribute.IntegerKey.Parallelism);
       return numSrcTasks == null ? 1 : numSrcTasks;
     } else {
-      // Local input reader
+      // Memory input reader
       return 1;
     }
   }

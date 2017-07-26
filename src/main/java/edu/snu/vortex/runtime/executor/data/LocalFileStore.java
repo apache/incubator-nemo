@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Stores partitions in files.
  * It writes and reads synchronously.
  */
-final class FileStore implements PartitionStore {
+final class LocalFileStore implements PartitionStore {
 
   private final String fileDirectory;
   private final int blockSize;
@@ -43,9 +43,9 @@ final class FileStore implements PartitionStore {
   private final InjectionFuture<PartitionManagerWorker> partitionManagerWorker;
 
   @Inject
-  private FileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
-                    @Parameter(JobConf.BlockSize.class) final int blockSize,
-                    final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
+  private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
+                         @Parameter(JobConf.BlockSize.class) final int blockSize,
+                         final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
     this.fileDirectory = fileDirectory;
     this.blockSize = blockSize * 1000;
     this.partitionIdToData = new ConcurrentHashMap<>();

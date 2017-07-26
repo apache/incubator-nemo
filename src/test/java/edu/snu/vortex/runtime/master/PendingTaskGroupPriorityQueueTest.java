@@ -69,12 +69,12 @@ public final class PendingTaskGroupPriorityQueueTest {
     irDAGBuilder.addVertex(v3);
 
     final IREdge e1 = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);
-    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
     e1.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e1);
 
     final IREdge e2 = new IREdge(IREdge.Type.ScatterGather, v2, v3, Coder.DUMMY_CODER);
-    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.File);
+    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
     e2.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e2);
 
@@ -147,12 +147,12 @@ public final class PendingTaskGroupPriorityQueueTest {
     irDAGBuilder.addVertex(v3);
 
     final IREdge e1 = new IREdge(IREdge.Type.ScatterGather, v1, v3, Coder.DUMMY_CODER);
-    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
     e1.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e1);
 
     final IREdge e2 = new IREdge(IREdge.Type.ScatterGather, v2, v3, Coder.DUMMY_CODER);
-    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.File);
+    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
     e2.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e2);
 
@@ -231,12 +231,12 @@ public final class PendingTaskGroupPriorityQueueTest {
     irDAGBuilder.addVertex(v3);
 
     final IREdge e1 = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);
-    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
     e1.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e1);
 
     final IREdge e2 = new IREdge(IREdge.Type.ScatterGather, v2, v3, Coder.DUMMY_CODER);
-    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.File);
+    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
     e2.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e2);
 
