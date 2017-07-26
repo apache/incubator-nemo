@@ -33,7 +33,7 @@ public final class PadoEdgePass implements Pass {
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
           if (fromTransientToReserved(edge)) {
-            edge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
+            edge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
             edge.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Push);
           } else if (fromReservedToTransient(edge)) {
             edge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
