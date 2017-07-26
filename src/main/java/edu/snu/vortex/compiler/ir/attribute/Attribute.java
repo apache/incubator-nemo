@@ -26,28 +26,22 @@ public enum Attribute {
   Transient(Key.Placement),
   Reserved(Key.Placement),
   Compute(Key.Placement),
-  Storage(Key.Placement),
-
 
   /**
    * IREdge channel data placement attributes.
-   * Local: Intermediate data are placed without serialization
-   * and the receiver on the same machine task will take the data.
    *
-   * Memory: Intermediate data are serialized and stored in sender task's memory,
-   * until they are sent to the receiver task.
+   * Memory: Intermediate data is stored in sender task's memory,
+   * until it is sent to the receiver task.
    *
-   * File: Intermediate data are serialized and stored in local file,
-   * until they are sent to the receiver task.
+   * LocalFile: Intermediate data is serialized and stored in the local file system of the sender task's executor,,
+   * until it is consumed by the receiver task.
    *
-   * DistributedStorage: Intermediate data are serialized and stored in a distributed storage,
-   * until the receiver task takes them.
+   * RemoteFile: Intermediate data is serialized and stored in a remote file system,
+   * until it is consumed by the receiver task.
    */
-  Local(Key.ChannelDataPlacement),
   Memory(Key.ChannelDataPlacement),
-  File(Key.ChannelDataPlacement),
-  MemoryFile(Key.ChannelDataPlacement),
-  DistributedStorage(Key.ChannelDataPlacement),
+  LocalFile(Key.ChannelDataPlacement),
+  RemoteFile(Key.ChannelDataPlacement),
 
   /**
    * IREdge channel transfer policy attributes.

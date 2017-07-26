@@ -39,7 +39,6 @@ import edu.snu.vortex.runtime.master.resource.ResourceSpecification;
 import edu.snu.vortex.runtime.master.scheduler.*;
 import org.apache.reef.driver.context.ActiveContext;
 import org.junit.Before;
-import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -140,12 +139,12 @@ public final class FaultToleranceTest {
     irDAGBuilder.addVertex(v3);
 
     final IREdge e1 = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);
-    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
     e1.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e1);
 
     final IREdge e2 = new IREdge(IREdge.Type.ScatterGather, v2, v3, Coder.DUMMY_CODER);
-    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.File);
+    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
     e2.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e2);
 

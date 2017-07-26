@@ -155,12 +155,12 @@ public final class DAGConverterTest {
 //    irDAGBuilder.addVertex(v7);
 
     final IREdge e1 = new IREdge(IREdge.Type.OneToOne, v1, v2, Coder.DUMMY_CODER);
-    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
     e1.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     e1.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 
     final IREdge e2 = new IREdge(IREdge.Type.OneToOne, v1, v3, Coder.DUMMY_CODER);
-    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
     e2.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     e2.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 
@@ -175,12 +175,12 @@ public final class DAGConverterTest {
     e4.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
 
     final IREdge e5 = new IREdge(IREdge.Type.OneToOne, v4, v6, Coder.DUMMY_CODER);
-    e5.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.File);
+    e5.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
     e5.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     e5.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 
     final IREdge e6 = new IREdge(IREdge.Type.OneToOne, v4, v8, Coder.DUMMY_CODER);
-    e6.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.File);
+    e6.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
     e6.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
     e6.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 
@@ -191,7 +191,7 @@ public final class DAGConverterTest {
 //    e7.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 //
 //    final IREdge e8 = new IREdge(IREdge.Type.OneToOne, v5, v8);
-//    e8.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Local);
+//    e8.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
 //    e8.setAttr(Attribute.Key.PullOrPush, Attribute.Pull);
 //    e8.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
 

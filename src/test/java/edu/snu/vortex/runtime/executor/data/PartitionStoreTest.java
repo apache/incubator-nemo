@@ -102,17 +102,17 @@ public final class PartitionStoreTest {
   }
 
   /**
-   * Test {@link LocalStore}.
+   * Test {@link MemoryStore}.
    */
   @Test(timeout = 10000)
   public void testLocalStore() throws Exception {
-    final PartitionStore localStore = Tang.Factory.getTang().newInjector().getInstance(LocalStore.class);
+    final PartitionStore localStore = Tang.Factory.getTang().newInjector().getInstance(MemoryStore.class);
     scatterGather(localStore);
     concurrentRead(localStore);
   }
 
   /**
-   * Test {@link FileStore}.
+   * Test {@link LocalFileStore}.
    */
   @Test(timeout = 10000)
   public void testFileStore() throws Exception {
@@ -123,14 +123,14 @@ public final class PartitionStoreTest {
     injector.bindVolatileParameter(JobConf.BlockSize.class, BLOCK_SIZE);
     injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
 
-    final PartitionStore fileStore = injector.getInstance(FileStore.class);
+    final PartitionStore fileStore = injector.getInstance(LocalFileStore.class);
     scatterGather(fileStore);
     concurrentRead(fileStore);
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
   }
 
   // TODO #181: Implement MemoryPartitionStore (add test for Memory, MemoryFile)
-  // TODO #180: Implement DistributedStorageStore (add test for DistributedStorage)
+  // TODO #180: Implement DistributedStorageStore (add test for RemoteFile)
 
   /**
    * Tests scatter and gather for {@link PartitionStore}s.

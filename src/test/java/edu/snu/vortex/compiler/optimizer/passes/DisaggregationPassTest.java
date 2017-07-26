@@ -54,12 +54,12 @@ public class DisaggregationPassTest {
 
     final IRVertex vertex4 = processedDAG.getTopologicalSort().get(6);
     processedDAG.getIncomingEdgesOf(vertex4).forEach(irEdge ->
-      assertEquals(Attribute.Local, irEdge.getAttr(Attribute.Key.ChannelDataPlacement)));
+      assertEquals(Attribute.Memory, irEdge.getAttr(Attribute.Key.ChannelDataPlacement)));
     processedDAG.getOutgoingEdgesOf(vertex4).forEach(irEdge ->
-      assertEquals(Attribute.Local, irEdge.getAttr(Attribute.Key.ChannelDataPlacement)));
+      assertEquals(Attribute.Memory, irEdge.getAttr(Attribute.Key.ChannelDataPlacement)));
 
     final IRVertex vertex12 = processedDAG.getTopologicalSort().get(10);
     processedDAG.getIncomingEdgesOf(vertex12).forEach(irEdge ->
-      assertEquals(Attribute.DistributedStorage, irEdge.getAttr(Attribute.Key.ChannelDataPlacement)));
+      assertEquals(Attribute.RemoteFile, irEdge.getAttr(Attribute.Key.ChannelDataPlacement)));
   }
 }
