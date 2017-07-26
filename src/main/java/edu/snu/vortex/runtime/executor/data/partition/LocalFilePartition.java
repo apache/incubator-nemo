@@ -31,12 +31,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * This class represents a {@link Partition} which is stored in file.
  * It does not contain any actual data.
  */
-public final class FilePartition implements Partition {
+public final class LocalFilePartition implements Partition {
 
+  private final AtomicBoolean opened;
   private final AtomicBoolean written;
   private final Coder coder;
   private final String filePath;
   private final List<BlockInfo> blockInfoList;
+  private FileOutputStream fileOutputStream;
+  private FileChannel fileChannel;
 
   /**
    * Constructs a file partition.
@@ -44,12 +47,29 @@ public final class FilePartition implements Partition {
    * @param coder    the coder used to serialize and deserialize the data of this partition.
    * @param filePath the path of the file which will contain the data of this partition.
    */
-  public FilePartition(final Coder coder,
-                       final String filePath) {
+  public LocalFilePartition(final Coder coder,
+                            final String filePath) {
     this.coder = coder;
     this.filePath = filePath;
+    opened = new AtomicBoolean(false);
     written = new AtomicBoolean(false);
     blockInfoList = new ArrayList<>();
+  }
+
+  /**
+   * Opens partition for writing. The corresponding {@link LocalFilePartition#finishWrite()} is required.
+   * @throws RuntimeException if failed to open
+   */
+  public void openPartitionForWrite() throws RuntimeException {
+    if (opened.getAndSet(true)) {
+      throw new RuntimeException("Trying to re-open a partition for write");
+    }
+    try {
+      fileOutputStream = new FileOutputStream(filePath, true);
+      fileChannel = fileOutputStream.getChannel();
+    } catch (final FileNotFoundException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**
@@ -61,15 +81,15 @@ public final class FilePartition implements Partition {
    */
   public void writeBlock(final byte[] serializedData,
                          final long numElement) throws RuntimeException {
+    if (!opened.get()) {
+      throw new RuntimeException("Trying to write a block in a partition that has not been opened for write.");
+    }
     blockInfoList.add(new BlockInfo(serializedData.length, numElement));
     // Wrap the given serialized data (but not copy it)
     final ByteBuffer buf = ByteBuffer.wrap(serializedData);
 
     // Write synchronously
-    try (
-        final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true);
-        final FileChannel fileChannel = fileOutputStream.getChannel()
-    ) {
+    try {
       fileChannel.write(buf);
     } catch (final IOException e) {
       throw new RuntimeException(e);
@@ -78,9 +98,21 @@ public final class FilePartition implements Partition {
 
   /**
    * Notice the end of write.
+   * @throws RuntimeException if failed to close.
    */
-  public void finishWrite() {
-    written.set(true);
+  public void finishWrite() throws RuntimeException {
+    if (!opened.get()) {
+      throw new RuntimeException("Trying to finish writing a partition that has not been opened for write.");
+    }
+    if (written.getAndSet(true)) {
+      throw new RuntimeException("Trying to finish writing that has been already finished.");
+    }
+    try {
+      fileChannel.close();
+      fileOutputStream.close();
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**
