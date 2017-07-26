@@ -80,8 +80,9 @@ public final class DataTransferTest {
   private static final Attribute FILE_STORE = Attribute.LocalFile;
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final int PARALLELISM_TEN = 10;
-  private static final String EDGE_ID = "Dummy";
-  private static final String TASKGROUP_PREFIX = "Dummy_TG_";
+  private static final String EDGE_PREFIX_TEMPLATE = "Dummy(%d)";
+  private static final AtomicInteger TEST_INDEX = new AtomicInteger(0);
+  private static final String TASKGROUP_PREFIX_TEMPLATE = "DummyTG(%d)_";
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
   private static final Tang TANG = Tang.Factory.getTang();
 
@@ -132,7 +133,6 @@ public final class DataTransferTest {
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
-    partitionManagerWorker.registerCoder(EDGE_ID, CODER);
 
     // Unused, but necessary for wiring up the message environments
     final Executor executor = new Executor(
@@ -166,44 +166,32 @@ public final class DataTransferTest {
   }
 
   @Test
-  public void testOneToOneSameWorker() throws Exception {
+  public void testWriteAndRead() throws Exception {
+    // test OneToOne same worker
     writeAndRead(worker1, worker1, Attribute.OneToOne, STORE);
-  }
 
-  @Test
-  public void testOneToOneDifferentWorker() throws Exception {
+    // test OneToOne different worker
     writeAndRead(worker1, worker2, Attribute.OneToOne, STORE);
-  }
 
-  @Test
-  public void testOneToManySameWorker() throws Exception {
+    // test OneToMany same worker
     writeAndRead(worker1, worker1, Attribute.Broadcast, STORE);
-  }
 
-  @Test
-  public void testOneToManyDifferentWorker() throws Exception {
+    // test OneToMany different worker
     writeAndRead(worker1, worker2, Attribute.Broadcast, STORE);
-  }
 
-  @Test
-  public void testManyToManySameWorker() throws Exception {
+    // test ManyToMany same worker
     writeAndRead(worker1, worker1, Attribute.ScatterGather, STORE);
-  }
 
-  @Test
-  public void testManyToManyDifferentWorker() throws Exception {
+    // test ManyToMany different worker
     writeAndRead(worker1, worker2, Attribute.ScatterGather, STORE);
-  }
 
-  @Test(timeout = 1000)
-  public void testFileManyToManySameWorker() throws Exception {
+    // test ManyToMany same worker (file)
     writeAndRead(worker1, worker1, Attribute.ScatterGather, FILE_STORE);
-    FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
-  }
 
-  @Test(timeout = 1000)
-  public void testFileManyToManyDifferentWorker() throws Exception {
+    // test ManyToMany different worker (file)
     writeAndRead(worker1, worker2, Attribute.ScatterGather, FILE_STORE);
+
+    // Cleanup
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
   }
 
@@ -211,6 +199,12 @@ public final class DataTransferTest {
                             final PartitionManagerWorker receiver,
                             final Attribute commPattern,
                             final Attribute store) throws RuntimeException {
+    final int testIndex = TEST_INDEX.getAndIncrement();
+    final String edgeId = String.format(EDGE_PREFIX_TEMPLATE, testIndex);
+    final String taskGroupPrefix = String.format(TASKGROUP_PREFIX_TEMPLATE, testIndex);
+    sender.registerCoder(edgeId, CODER);
+    receiver.registerCoder(edgeId, CODER);
+
     // Src setup
     final BoundedSource s = mock(BoundedSource.class);
     final BoundedSourceVertex srcVertex = new BoundedSourceVertex<>(s);
@@ -229,18 +223,18 @@ public final class DataTransferTest {
     edgeAttributes.put(Attribute.Key.Partitioning, Attribute.Hash);
     edgeAttributes.put(Attribute.Key.ChannelDataPlacement, store);
     final RuntimeEdge<IRVertex> dummyEdge
-        = new RuntimeEdge<>(EDGE_ID, edgeAttributes, srcVertex, dstVertex, CODER);
+        = new RuntimeEdge<>(edgeId, edgeAttributes, srcVertex, dstVertex, CODER);
 
     // Initialize states in Master
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       if (commPattern == Attribute.ScatterGather) {
         IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
-          master.initializeState(EDGE_ID, srcTaskIndex, dstTaskIndex, TASKGROUP_PREFIX + srcTaskIndex);
+          master.initializeState(edgeId, srcTaskIndex, dstTaskIndex, taskGroupPrefix + srcTaskIndex);
         });
       } else {
-        master.initializeState(EDGE_ID, srcTaskIndex, TASKGROUP_PREFIX + srcTaskIndex);
+        master.initializeState(edgeId, srcTaskIndex, taskGroupPrefix + srcTaskIndex);
       }
-      master.onProducerTaskGroupScheduled(TASKGROUP_PREFIX + srcTaskIndex);
+      master.onProducerTaskGroupScheduled(taskGroupPrefix + srcTaskIndex);
     });
 
     // Write
