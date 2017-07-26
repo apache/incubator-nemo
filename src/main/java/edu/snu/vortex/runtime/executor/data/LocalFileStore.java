@@ -19,7 +19,7 @@ import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
-import edu.snu.vortex.runtime.executor.data.partition.FilePartition;
+import edu.snu.vortex.runtime.executor.data.partition.LocalFilePartition;
 import edu.snu.vortex.runtime.executor.data.partition.LocalPartition;
 import edu.snu.vortex.runtime.executor.data.partition.Partition;
 import org.apache.reef.tang.InjectionFuture;
@@ -39,7 +39,7 @@ final class LocalFileStore implements PartitionStore {
 
   private final String fileDirectory;
   private final int blockSize;
-  private final Map<String, FilePartition> partitionIdToData;
+  private final Map<String, LocalFilePartition> partitionIdToData;
   private final InjectionFuture<PartitionManagerWorker> partitionManagerWorker;
 
   @Inject
@@ -63,7 +63,7 @@ final class LocalFileStore implements PartitionStore {
    */
   private long writeBlock(final long elementsInBlock,
                           final ByteArrayOutputStream outputStream,
-                          final FilePartition partition) {
+                          final LocalFilePartition partition) {
     try {
       outputStream.close();
     } catch (final IOException e) {
@@ -85,7 +85,7 @@ final class LocalFileStore implements PartitionStore {
   @Override
   public Optional<Partition> getPartition(final String partitionId) {
     // Deserialize the target data in the corresponding file and pass it as a local data.
-    final FilePartition partition = partitionIdToData.get(partitionId);
+    final LocalFilePartition partition = partitionIdToData.get(partitionId);
     if (partition == null) {
       return Optional.empty();
     } else {
@@ -105,13 +105,14 @@ final class LocalFileStore implements PartitionStore {
     final PartitionManagerWorker worker = partitionManagerWorker.get();
     final String runtimeEdgeId = RuntimeIdGenerator.parsePartitionId(partitionId)[0];
     final Coder coder = worker.getCoder(runtimeEdgeId);
-    final FilePartition partition = new FilePartition(coder, fileDirectory + "/" + partitionId);
+    final LocalFilePartition partition = new LocalFilePartition(coder, fileDirectory + "/" + partitionId);
     final Partition previousPartition = partitionIdToData.putIfAbsent(partitionId, partition);
     if (previousPartition != null) {
       throw new RuntimeException("Trying to overwrite an existing partition");
     }
 
     // Serialize the given data into blocks
+    partition.openPartitionForWrite();
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     long elementsInBlock = 0;
     long partitionSize = 0;
@@ -145,7 +146,7 @@ final class LocalFileStore implements PartitionStore {
    */
   @Override
   public boolean removePartition(final String partitionId) {
-    final FilePartition serializedPartition = partitionIdToData.remove(partitionId);
+    final LocalFilePartition serializedPartition = partitionIdToData.remove(partitionId);
     if (serializedPartition == null) {
       return false;
     } else {
