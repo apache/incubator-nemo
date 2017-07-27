@@ -15,8 +15,11 @@
  */
 package edu.snu.vortex.runtime.master.scheduler;
 
+import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -32,6 +35,7 @@ import java.util.concurrent.LinkedBlockingDeque;
  * Keep tracks of all pending task groups.
  * This class provides two-level queue scheduling by prioritizing TaskGroups of parent stages to be scheduled first.
  * Stages that are mutually independent alternate turns in scheduling each of their TaskGroups.
+ * When two stages are connected by a push edge, the child stage's priority is bumped up to match the parent's.
  * This PQ assumes that stages/task groups of higher priorities are never enqueued without first removing
  * those of lower priorities (which is how Scheduler behaves) for simplicity.
  */
@@ -122,10 +126,14 @@ public final class PendingTaskGroupPriorityQueue {
    */
   private void updateSchedulableStages(final String candidateStageId) {
     boolean readyToScheduleImmediately = true;
-    for (final PhysicalStage parentStage : physicalPlan.getStageDAG().getParents(candidateStageId)) {
+    final DAG<PhysicalStage, PhysicalStageEdge> jobDAG = physicalPlan.getStageDAG();
+    for (final PhysicalStage parentStage : jobDAG.getParents(candidateStageId)) {
       if (schedulableStages.contains(parentStage.getId())) {
-        readyToScheduleImmediately = false;
-        break;
+        if ((jobDAG.getEdgeBetween(parentStage.getId(),
+            candidateStageId).getAttributes().get(Attribute.Key.ChannelTransferPolicy) == Attribute.Pull)) {
+          readyToScheduleImmediately = false;
+          break;
+        }
       }
     }
 
