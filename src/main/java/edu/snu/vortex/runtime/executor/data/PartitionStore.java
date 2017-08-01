@@ -20,6 +20,7 @@ import edu.snu.vortex.runtime.exception.PartitionFetchException;
 import edu.snu.vortex.runtime.exception.PartitionWriteException;
 import edu.snu.vortex.runtime.executor.data.partition.Partition;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -35,13 +36,41 @@ public interface PartitionStore {
   Optional<Partition> getPartition(String partitionId) throws PartitionFetchException;
 
   /**
-   * Saves a partition of data.
+   * Retrieves data in a specific hash range from a partition.
+   * The result data will be treated as another partition.
+   * @param partitionId of the target partition.
+   * @param startInclusiveHashVal of the hash range.
+   * @param endExclusiveHashVal of the hash range.
+   * @return the result data as a new partition (if the target partition exists).
+   * @throws PartitionFetchException thrown for any error occurred while trying to fetch a partition
+   */
+  Optional<Partition> retrieveDataFromPartition(String partitionId,
+                                                int startInclusiveHashVal,
+                                                int endExclusiveHashVal)
+      throws PartitionFetchException;
+
+  /**
+   * Saves data as a partition.
    * @param partitionId of the partition.
-   * @param data of the partition.
+   * @param data of to save as a partition.
    * @return the size of the data (only when the data is serialized).
    * @throws PartitionWriteException thrown for any error occurred while trying to write a partition
    */
-  Optional<Long> putPartition(String partitionId, Iterable<Element> data) throws PartitionWriteException;
+  Optional<Long> putDataAsPartition(String partitionId,
+                                    Iterable<Element> data) throws PartitionWriteException;
+
+  /**
+   * Saves an iterable of data blocks as a partition.
+   * Each block has a specific hash value, and these blocks are sorted by this hash value.
+   * The block becomes a unit of read & write.
+   * @param partitionId of the partition.
+   * @param sortedData to save as a partition.
+   * @return the size of data per hash value (only when the data is serialized).
+   * @throws PartitionWriteException thrown for any error occurred while trying to write a partition
+   */
+  Optional<List<Long>> putSortedDataAsPartition(String partitionId,
+                                                Iterable<Iterable<Element>> sortedData)
+      throws PartitionWriteException;
 
   /**
    * Optional<Partition> removePartition(String partitionId) throws PartitionFetchException;

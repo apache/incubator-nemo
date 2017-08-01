@@ -57,7 +57,7 @@ message PartitionStateChangedMsg {
     required string executorId = 1;
     required string partitionId = 2;
     required PartitionStateFromExecutor state = 3;
-    optional int64 partitionSize = 4;
+    repeated int64 blockSizeInfo = 4;
     optional string dstVertexId = 5;
 }
 

@@ -32,6 +32,7 @@ import java.util.stream.IntStream;
  * Represents the output data transfer from a task.
  */
 public final class OutputWriter extends DataTransfer {
+  private final int hashRangeMultiplier;
   private final int srcTaskIdx;
   private final RuntimeEdge runtimeEdge;
   private final IRVertex dstVertex;
@@ -41,11 +42,13 @@ public final class OutputWriter extends DataTransfer {
    */
   private final PartitionManagerWorker partitionManagerWorker;
 
-  public OutputWriter(final int srcTaskIdx,
+  public OutputWriter(final int hashRangeMultiplier,
+                      final int srcTaskIdx,
                       final IRVertex dstRuntimeVertex,
                       final RuntimeEdge runtimeEdge,
                       final PartitionManagerWorker partitionManagerWorker) {
     super(runtimeEdge.getId());
+    this.hashRangeMultiplier = hashRangeMultiplier;
     this.runtimeEdge = runtimeEdge;
     this.dstVertex = dstRuntimeVertex;
     this.partitionManagerWorker = partitionManagerWorker;
@@ -57,40 +60,43 @@ public final class OutputWriter extends DataTransfer {
    * @param dataToWrite An iterable for the elements to be written.
    */
   public void write(final Iterable<Element> dataToWrite) {
-    final Boolean isMetricCollectionEdge = runtimeEdge.getAttributes().get(Attribute.Key.MetricCollection) != null;
+    final Boolean isDataSizeMetricCollectionEdge =
+        runtimeEdge.getAttributes().get(Attribute.Key.DataSizeMetricCollection) != null;
     final String dstVertexId = dstVertex == null ? null : dstVertex.getId();
 
-    switch (runtimeEdge.getAttributes().get(Attribute.Key.CommunicationPattern)) {
-    case OneToOne:
-      writeOneToOne(dataToWrite, dstVertexId, isMetricCollectionEdge);
-      break;
-    case Broadcast:
-      writeBroadcast(dataToWrite, dstVertexId, isMetricCollectionEdge);
-      break;
-    case ScatterGather:
-      writeScatterGather(dataToWrite, dstVertexId, isMetricCollectionEdge);
-      break;
-    default:
-      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    // If the dynamic optimization which detects data skew is enabled, sort the data and write it.
+    if (isDataSizeMetricCollectionEdge) {
+      sortAndWrite(dataToWrite, dstVertexId);
+    } else {
+      switch (runtimeEdge.getAttributes().get(Attribute.Key.CommunicationPattern)) {
+        case OneToOne:
+          writeOneToOne(dataToWrite);
+          break;
+        case Broadcast:
+          writeBroadcast(dataToWrite);
+          break;
+        case ScatterGather:
+          writeScatterGather(dataToWrite);
+          break;
+        default:
+          throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+      }
     }
   }
 
-  private void writeOneToOne(final Iterable<Element> dataToWrite, final String dstVertexId,
-                             final Boolean isMetricCollection) {
+  private void writeOneToOne(final Iterable<Element> dataToWrite) {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
-    partitionManagerWorker.putPartition(partitionId, dstVertexId, dataToWrite,
-        runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement), isMetricCollection);
+    partitionManagerWorker.putPartition(partitionId, dataToWrite,
+        runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
   }
 
-  private void writeBroadcast(final Iterable<Element> dataToWrite, final String dstVertexId,
-                              final Boolean isMetricCollection) {
+  private void writeBroadcast(final Iterable<Element> dataToWrite) {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
-    partitionManagerWorker.putPartition(partitionId, dstVertexId, dataToWrite,
-        runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement), isMetricCollection);
+    partitionManagerWorker.putPartition(partitionId, dataToWrite,
+        runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
   }
 
-  private void writeScatterGather(final Iterable<Element> dataToWrite, final String dstVertexId,
-                                  final Boolean isMetricCollection) {
+  private void writeScatterGather(final Iterable<Element> dataToWrite) {
     final Attribute partition = runtimeEdge.getAttributes().get(Attribute.Key.Partitioning);
     switch (partition) {
     case Hash:
@@ -109,14 +115,46 @@ public final class OutputWriter extends DataTransfer {
       IntStream.range(0, dstParallelism).forEach(partitionIdx -> {
         // Give each partition its own partition id
         final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx, partitionIdx);
-        partitionManagerWorker.putPartition(partitionId, dstVertexId,
-            partitionedOutputList.get(partitionIdx),
-            runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement), isMetricCollection);
+        partitionManagerWorker.putPartition(partitionId, partitionedOutputList.get(partitionIdx),
+            runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
       });
       break;
     case Range:
     default:
       throw new UnsupportedPartitionerException(new Exception(partition + " partitioning not yet supported"));
     }
+  }
+
+  /**
+   * Sorts an output according to the hash value and writes it as a single partition.
+   * This function will be called only when we need to split or recombine an output data from a task after it is stored
+   * (e.g., dynamic data skew handling, I-file write).
+   * We extend the hash range with the factor {@link edu.snu.vortex.client.JobConf.HashRangeMultiplier} in advance
+   * to prevent the extra deserialize - rehash - serialize process.
+   * Each data of this partition having same key hash value will be collected as a single block.
+   * This block will be the unit of retrieval and recombination of this partition.
+   * TODO #378: Elaborate block construction during data skew pass
+   *
+   * @param dataToWrite an iterable for the elements to be written.
+   * @param dstVertexId the id of the destination vertex.
+   */
+  private void sortAndWrite(final Iterable<Element> dataToWrite,
+                            final String dstVertexId) {
+    final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
+    final int dstParallelism = dstVertex.getAttributes().get(Attribute.IntegerKey.Parallelism);
+    // For this hash range, please check the description of HashRangeMultiplier
+    final int hashRange = hashRangeMultiplier * dstParallelism;
+
+    // Separate the data into blocks according to the hash of their key.
+    final List<Iterable<Element>> blockedOutputList = new ArrayList<>(hashRange);
+    IntStream.range(0, hashRange).forEach(hashVal -> blockedOutputList.add(new ArrayList<>()));
+    dataToWrite.forEach(element -> {
+      // Hash the data by its key, and "modulo" by the hash range.
+      final int hashVal = Math.abs(element.getKey().hashCode() % hashRange);
+      ((List) blockedOutputList.get(hashVal)).add(element);
+    });
+
+    partitionManagerWorker.putSortedPartition(partitionId, dstVertexId, blockedOutputList,
+        runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
   }
 }

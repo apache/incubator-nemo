@@ -50,7 +50,7 @@ public final class DataSkewPass implements Pass {
         builder.addVertex(metricCollectionBarrierVertex);
         dag.getIncomingEdgesOf(v).forEach(edge -> {
           // we tell the edge that it needs to collect the metrics when transferring data.
-          edge.setAttr(Attribute.Key.MetricCollection, Attribute.MetricCollection);
+          edge.setAttr(Attribute.Key.DataSizeMetricCollection, Attribute.MetricCollection);
           // We then insert the dynamicOptimizationVertex between the vertex and incoming vertices.
           final IREdge newEdge =
               new IREdge(edge.getType(), edge.getSrc(), metricCollectionBarrierVertex, edge.getCoder());
