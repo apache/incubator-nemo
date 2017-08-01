@@ -258,19 +258,22 @@ public final class BatchScheduler implements Scheduler {
           break;
         }
       }
+      // the stage this task group belongs to has become failed recoverable.
+      // it is a good point to start searching for another stage to schedule.
+      scheduleNextStage(taskGroup.getStageId());
       break;
     // The task group executed successfully but there is something wrong with the output store.
     case OUTPUT_WRITE_FAILURE:
+      // the stage this task group belongs to has become failed recoverable.
+      // it is a good point to start searching for another stage to schedule.
+      scheduleNextStage(taskGroup.getStageId());
+      break;
     case CONTAINER_FAILURE:
       LOG.log(Level.INFO, "Only the failed task group will be retried.");
       break;
     default:
       throw new UnknownFailureCauseException(new Throwable("Unknown cause: " + failureCause));
     }
-
-    // the stage this task group belongs to has become failed recoverable.
-    // it is a good point to start searching for another stage to schedule.
-    scheduleNextStage(taskGroup.getStageId());
   }
 
   @Override
@@ -280,14 +283,24 @@ public final class BatchScheduler implements Scheduler {
 
   @Override
   public synchronized void onExecutorRemoved(final String executorId) {
-    final Set<String> taskGroupsForLostBlocks = partitionManagerMaster.removeWorker(executorId);
-    final Set<String> taskGroupsToRecompute = schedulingPolicy.onExecutorRemoved(executorId);
+    final Set<String> taskGroupsToReExecute = new HashSet<>();
 
-    taskGroupsToRecompute.addAll(taskGroupsForLostBlocks);
-    taskGroupsToRecompute.forEach(failedTaskGroupId -> {
+    // TaskGroups for lost blocks
+    taskGroupsToReExecute.addAll(partitionManagerMaster.removeWorker(executorId));
+
+    // TaskGroups executing on the removed executor
+    taskGroupsToReExecute.addAll(schedulingPolicy.onExecutorRemoved(executorId));
+
+    taskGroupsToReExecute.forEach(failedTaskGroupId ->
       onTaskGroupStateChanged(executorId, failedTaskGroupId, TaskGroupState.State.FAILED_RECOVERABLE,
-          SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE, null, TaskGroupState.RecoverableFailureCause.CONTAINER_FAILURE);
-    });
+          SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE, null, TaskGroupState.RecoverableFailureCause.CONTAINER_FAILURE));
+
+    if (!taskGroupsToReExecute.isEmpty()) {
+      // Schedule a stage after marking the necessary task groups to failed_recoverable.
+      // The stage for one of the task groups that failed is a starting point to look
+      // for the next stage to be scheduled.
+      scheduleNextStage(getTaskGroupById(taskGroupsToReExecute.iterator().next()).getStageId());
+    }
   }
 
   private synchronized void scheduleRootStages() {
