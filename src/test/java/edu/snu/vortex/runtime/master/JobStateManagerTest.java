@@ -28,6 +28,7 @@ import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
+import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -57,7 +58,7 @@ public final class JobStateManagerTest {
    * State changes are explicitly called to check whether states are managed correctly or not.
    */
   @Test
-  public void testPhysicalPlanStateChanges() {
+  public void testPhysicalPlanStateChanges() throws Exception {
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
     v1.setAttr(Attribute.IntegerKey.Parallelism, 3);
@@ -100,7 +101,8 @@ public final class JobStateManagerTest {
     irDAGBuilder.connectVertices(e5);
 
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
-    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final PhysicalPlanGenerator physicalPlanGenerator =
+        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     final JobStateManager jobStateManager = new JobStateManager(
@@ -145,7 +147,8 @@ public final class JobStateManagerTest {
   public void testWaitUntilFinish() throws Exception {
     // Create a JobStateManager of an empty dag.
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.build();
-    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final PhysicalPlanGenerator physicalPlanGenerator =
+        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
     final JobStateManager jobStateManager = new JobStateManager(
         new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),

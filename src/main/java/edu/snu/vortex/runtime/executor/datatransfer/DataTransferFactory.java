@@ -34,8 +34,8 @@ public final class DataTransferFactory {
   public OutputWriter createWriter(final Task srcTask,
                                    final IRVertex dstRuntimeVertex,
                                    final RuntimeEdge runtimeEdge) {
-    return new OutputWriter(hashRangeMultiplier, srcTask.getIndex(), dstRuntimeVertex,
-        runtimeEdge, partitionManagerWorker);
+    return new OutputWriter(hashRangeMultiplier, srcTask.getIndex(),
+        srcTask.getRuntimeVertexId(), dstRuntimeVertex, runtimeEdge, partitionManagerWorker);
   }
 
   public OutputWriter createLocalWriter(final Task srcTask,

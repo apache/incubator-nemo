@@ -272,6 +272,7 @@ public final class JobStateManager {
     final String stageId = taskGroup.getStageId();
 
     switch (newState) {
+    case ON_HOLD:
     case COMPLETE:
       taskGroupState.setState(newState);
       // TODO #235: Cleanup Task State Management

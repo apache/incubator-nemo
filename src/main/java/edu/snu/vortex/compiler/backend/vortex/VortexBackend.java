@@ -24,6 +24,7 @@ import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlanGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
+import org.apache.reef.tang.Tang;
 
 /**
  * Backend component for Vortex Runtime.
@@ -42,7 +43,8 @@ public final class VortexBackend implements Backend<PhysicalPlan> {
    * @throws Exception any exception occurred during the compilation.
    */
   public PhysicalPlan compile(final DAG<IRVertex, IREdge> irDAG) throws Exception {
-    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final PhysicalPlanGenerator physicalPlanGenerator =
+        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalStageDAG = irDAG.convert(physicalPlanGenerator);
     final PhysicalPlan physicalPlan = new PhysicalPlan(RuntimeIdGenerator.generatePhysicalPlanId(),
         physicalStageDAG, physicalPlanGenerator.getTaskIRVertexMap());

@@ -38,6 +38,7 @@ import edu.snu.vortex.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.resource.ResourceSpecification;
 import edu.snu.vortex.runtime.master.scheduler.*;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -120,7 +121,7 @@ public final class FaultToleranceTest {
    *    - all task groups of stage 3 must be made failed_recoverable
    */
 //  @Test(timeout = 10000)
-  public void testSimpleJob() {
+  public void testSimpleJob() throws Exception {
     final JobStateManager jobStateManager;
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
@@ -149,7 +150,8 @@ public final class FaultToleranceTest {
     irDAGBuilder.connectVertices(e2);
 
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
-    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final PhysicalPlanGenerator physicalPlanGenerator =
+        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     jobStateManager = scheduler.scheduleJob(

@@ -25,6 +25,7 @@ import edu.snu.vortex.compiler.ir.Transform;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.master.scheduler.*;
+import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,7 +52,7 @@ public final class PendingTaskGroupPriorityQueueTest {
    * Tests whether the dequeued TaskGroups are according to the stage-dependency priority.
    */
   @Test
-  public void testSimpleStageDependency() throws InterruptedException {
+  public void testSimpleStageDependency() throws Exception {
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
     v1.setAttr(Attribute.IntegerKey.Parallelism, 3);
@@ -79,7 +80,8 @@ public final class PendingTaskGroupPriorityQueueTest {
     irDAGBuilder.connectVertices(e2);
 
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
-    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final PhysicalPlanGenerator physicalPlanGenerator =
+        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     pendingTaskGroupPriorityQueue.onJobScheduled(
@@ -129,7 +131,7 @@ public final class PendingTaskGroupPriorityQueueTest {
    * Tests whether the dequeued TaskGroups are according to the stage-dependency priority.
    */
   @Test
-  public void test2RootStageDependency() throws InterruptedException {
+  public void test2RootStageDependency() throws Exception {
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
     v1.setAttr(Attribute.IntegerKey.Parallelism, 3);
@@ -157,7 +159,8 @@ public final class PendingTaskGroupPriorityQueueTest {
     irDAGBuilder.connectVertices(e2);
 
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
-    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final PhysicalPlanGenerator physicalPlanGenerator =
+        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     pendingTaskGroupPriorityQueue.onJobScheduled(
@@ -213,7 +216,7 @@ public final class PendingTaskGroupPriorityQueueTest {
    * Tests whether the dequeued TaskGroups are according to the stage-dependency priority.
    */
   @Test
-  public void testStageDependencyRemoval() throws InterruptedException {
+  public void testStageDependencyRemoval() throws Exception {
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
     v1.setAttr(Attribute.IntegerKey.Parallelism, 3);
@@ -241,7 +244,8 @@ public final class PendingTaskGroupPriorityQueueTest {
     irDAGBuilder.connectVertices(e2);
 
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
-    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final PhysicalPlanGenerator physicalPlanGenerator =
+        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     pendingTaskGroupPriorityQueue.onJobScheduled(

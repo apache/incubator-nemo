@@ -26,6 +26,7 @@ import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.vortex.runtime.common.state.JobState;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.JobStateManager;
+import org.apache.reef.tang.Tang;
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -55,7 +56,8 @@ public class ClientEndpointTest {
     // Create a JobStateManager of an empty dag and create a DriverEndpoint with it.
     final DAGBuilder<IRVertex, IREdge> irDagBuilder = new DAGBuilder<>();
     final DAG<IRVertex, IREdge> irDAG = irDagBuilder.build();
-    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final PhysicalPlanGenerator physicalPlanGenerator =
+        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
     final JobStateManager jobStateManager = new JobStateManager(
         new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),

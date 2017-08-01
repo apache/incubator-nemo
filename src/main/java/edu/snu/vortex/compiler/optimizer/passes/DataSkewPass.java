@@ -45,18 +45,29 @@ public final class DataSkewPass implements Pass {
       // We care about OperatorVertices that have GroupByKeyTransform.
       if (v instanceof OperatorVertex && ((OperatorVertex) v).getTransform() instanceof GroupByKeyTransform) {
         final MetricCollectionBarrierVertex metricCollectionBarrierVertex = new MetricCollectionBarrierVertex();
+        metricCollectionBarrierVertex.setAttr(Attribute.Key.DynamicOptimizationType, Attribute.DataSkew);
         metricCollectionVertices.add(metricCollectionBarrierVertex);
         builder.addVertex(v);
         builder.addVertex(metricCollectionBarrierVertex);
+        // We use memory for just a single inEdge, to make use of locality of stages: {@link PhysicalPlanGenerator}.
+        final IREdge edgeToUseMemory = dag.getIncomingEdgesOf(v).stream().findFirst().orElseThrow(() ->
+            new RuntimeException("This GroupByKey operator doesn't have any incoming edges: " + v.getId()));
         dag.getIncomingEdgesOf(v).forEach(edge -> {
-          // we tell the edge that it needs to collect the metrics when transferring data.
-          edge.setAttr(Attribute.Key.DataSizeMetricCollection, Attribute.MetricCollection);
           // We then insert the dynamicOptimizationVertex between the vertex and incoming vertices.
           final IREdge newEdge =
-              new IREdge(edge.getType(), edge.getSrc(), metricCollectionBarrierVertex, edge.getCoder());
+              new IREdge(IREdge.Type.OneToOne, edge.getSrc(), metricCollectionBarrierVertex, edge.getCoder());
+          // we tell the edge that it needs to collect the metrics when transferring data.
+          // we want it to be in the same stage
+          newEdge.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
+          if (edge.equals(edgeToUseMemory)) {
+            newEdge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
+          } else {
+            newEdge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
+          }
+
           final IREdge edgeToGbK = new IREdge(edge.getType(), metricCollectionBarrierVertex, v, edge.getCoder());
-          IREdge.copyAttributes(edge, newEdge);
           IREdge.copyAttributes(edge, edgeToGbK);
+          edgeToGbK.setAttr(Attribute.Key.DataSizeMetricCollection, Attribute.MetricCollection);
           builder.connectVertices(newEdge);
           builder.connectVertices(edgeToGbK);
         });
