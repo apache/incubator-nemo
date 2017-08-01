@@ -68,9 +68,9 @@ public enum Attribute {
   SideInput(Key.SideInput),
 
   /**
-   * IREdge MetricCollection attribute.
+   * IREdge DataSizeMetricCollection attribute.
    */
-  MetricCollection(Key.MetricCollection),
+  MetricCollection(Key.DataSizeMetricCollection),
 
   /**
    * SchedulingPolicy type attributes.
@@ -95,7 +95,7 @@ public enum Attribute {
     Partitioning,
     CommunicationPattern,
     SideInput,
-    MetricCollection,
+    DataSizeMetricCollection,
 
     // Scheduling
     SchedulingPolicy,

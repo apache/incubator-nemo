@@ -25,7 +25,7 @@ import java.util.*;
  */
 public final class MetricCollectionBarrierVertex extends IRVertex {
   // Partition ID to Size data
-  private final Map<String, Long> metricData;
+  private final Map<String, Iterable<Long>> metricData;
   // This DAG snapshot is taken at the end of the DataSkewPass, for the vertex to know the state of the DAG at its
   // optimization, and to be able to figure out exactly where in the DAG the vertex exists.
   private DAG<IRVertex, IREdge> dagSnapshot;
@@ -68,10 +68,10 @@ public final class MetricCollectionBarrierVertex extends IRVertex {
   /**
    * Method for accumulating metrics in the vertex.
    * @param partitionID key, or ID of the partition.
-   * @param partitionSize value of the size of the partition data.
+   * @param blockSizeInfo the block size information of the partition data.
    */
-  public void accumulateMetrics(final String partitionID, final Long partitionSize) {
-    metricData.putIfAbsent(partitionID, partitionSize);
+  public void accumulateMetrics(final String partitionID, final Iterable<Long> blockSizeInfo) {
+    metricData.putIfAbsent(partitionID, blockSizeInfo);
   }
 
   /**

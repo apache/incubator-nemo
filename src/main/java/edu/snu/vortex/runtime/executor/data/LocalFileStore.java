@@ -20,13 +20,17 @@ import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.executor.data.partition.LocalFilePartition;
-import edu.snu.vortex.runtime.executor.data.partition.LocalPartition;
+import edu.snu.vortex.runtime.exception.PartitionFetchException;
+import edu.snu.vortex.runtime.exception.PartitionWriteException;
+import edu.snu.vortex.runtime.executor.data.partition.MemoryPartition;
 import edu.snu.vortex.runtime.executor.data.partition.Partition;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -89,23 +93,43 @@ final class LocalFileStore implements PartitionStore {
     if (partition == null) {
       return Optional.empty();
     } else {
-      return Optional.of(new LocalPartition(partition.asIterable()));
+      return Optional.of(new MemoryPartition(partition.asIterable()));
     }
   }
 
   /**
-   * Saves a partition of data as a file.
+   * @see PartitionStore#retrieveDataFromPartition(String, int, int).
+   */
+  @Override
+  public Optional<Partition> retrieveDataFromPartition(final String partitionId,
+                                                       final int startInclusiveHashVal,
+                                                       final int endExclusiveHashVal)
+      throws PartitionFetchException {
+    // Deserialize the target data in the corresponding file and pass it as a local data.
+    final LocalFilePartition partition = partitionIdToData.get(partitionId);
+    if (partition == null) {
+      return Optional.empty();
+    } else {
+      return Optional.of(
+          new MemoryPartition(partition.retrieveInHashRange(startInclusiveHashVal, endExclusiveHashVal)));
+    }
+  }
+
+  /**
+   * Saves data in a file as a partition.
    *
    * @param partitionId of the partition.
-   * @param data        of the partition.
+   * @param data        of to save as a partition.
    * @return the size of the data.
    */
   @Override
-  public Optional<Long> putPartition(final String partitionId, final Iterable<Element> data) {
+  public Optional<Long> putDataAsPartition(final String partitionId,
+                                           final Iterable<Element> data) {
     final PartitionManagerWorker worker = partitionManagerWorker.get();
     final String runtimeEdgeId = RuntimeIdGenerator.parsePartitionId(partitionId)[0];
     final Coder coder = worker.getCoder(runtimeEdgeId);
-    final LocalFilePartition partition = new LocalFilePartition(coder, fileDirectory + "/" + partitionId);
+    final LocalFilePartition partition =
+        new LocalFilePartition(coder, fileDirectory + "/" + partitionId, false);
     final Partition previousPartition = partitionIdToData.putIfAbsent(partitionId, partition);
     if (previousPartition != null) {
       throw new RuntimeException("Trying to overwrite an existing partition");
@@ -136,6 +160,50 @@ final class LocalFileStore implements PartitionStore {
     partition.finishWrite();
 
     return Optional.of(partitionSize);
+  }
+
+  /**
+   * Saves an iterable of data blocks as a partition.
+   * Each block has a specific hash value, and these blocks are sorted by this hash value.
+   * The block becomes a unit of read & write.
+   *
+   * @param partitionId  of the partition.
+   * @param sortedData to save as a partition.
+   * @return the size of data per hash value.
+   * @throws PartitionWriteException thrown for any error occurred while trying to write a partition
+   */
+  @Override
+  public Optional<List<Long>> putSortedDataAsPartition(final String partitionId,
+                                                           final Iterable<Iterable<Element>> sortedData)
+      throws PartitionWriteException {
+    final PartitionManagerWorker worker = partitionManagerWorker.get();
+    final String runtimeEdgeId = RuntimeIdGenerator.parsePartitionId(partitionId)[0];
+    final Coder coder = worker.getCoder(runtimeEdgeId);
+    final LocalFilePartition partition =
+        new LocalFilePartition(coder, fileDirectory + "/" + partitionId, true);
+    final Partition previousPartition = partitionIdToData.putIfAbsent(partitionId, partition);
+    if (previousPartition != null) {
+      throw new RuntimeException("Trying to overwrite an existing partition");
+    }
+
+    // Serialize the given blocks
+    partition.openPartitionForWrite();
+    final List<Long> blockSizeList = new ArrayList<>();
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    for (Iterable<Element> block : sortedData) {
+      long elementsInBlock = 0;
+      for (final Element element : block) {
+        coder.encode(element, outputStream);
+        elementsInBlock++;
+      }
+      // Synchronously append the serialized block to the file and reset the buffer
+      blockSizeList.add(writeBlock(elementsInBlock, outputStream, partition));
+
+      outputStream.reset();
+    }
+    partition.finishWrite();
+
+    return Optional.of(blockSizeList);
   }
 
   /**
