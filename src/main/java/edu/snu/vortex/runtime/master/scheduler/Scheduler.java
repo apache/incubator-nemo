@@ -34,8 +34,8 @@ public interface Scheduler {
    * @param maxScheduleAttempt the max. number of times a stage can be attempted for execution.
    * @return the {@link JobStateManager} for the submitted job to keep track of the execution states.
    */
-  JobStateManager scheduleJob(final PhysicalPlan physicalPlan,
-                              final int maxScheduleAttempt);
+  JobStateManager scheduleJob(PhysicalPlan physicalPlan,
+                              int maxScheduleAttempt);
 
   /**
    * Called when an executor is added to Runtime, so that the extra resource can be used to execute the job.
@@ -59,12 +59,12 @@ public interface Scheduler {
    * @param failedTaskIds the IDs of the failed Tasks of the TaskGroup upon failure.
    * @param failureCause for which the TaskGroup failed in the case of a recoverable failure.
    */
-  void onTaskGroupStateChanged(final String executorId,
-                               final String taskGroupId,
-                               final TaskGroupState.State newState,
-                               final int attemptIdx,
-                               final List<String> failedTaskIds,
-                               final TaskGroupState.RecoverableFailureCause failureCause);
+  void onTaskGroupStateChanged(String executorId,
+                               String taskGroupId,
+                               TaskGroupState.State newState,
+                               int attemptIdx,
+                               List<String> failedTaskIds,
+                               TaskGroupState.RecoverableFailureCause failureCause);
 
   /**
    * To be called when a job should be terminated.

@@ -17,7 +17,7 @@ package edu.snu.vortex.runtime.common.plan.stage;
 
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.common.dag.DAGBuilder;
 
@@ -72,9 +72,9 @@ public final class StageBuilder {
   private void integrityCheck(final Stage stage) {
     final List<IRVertex> vertices = stage.getStageInternalDAG().getVertices();
 
-    final AttributeMap firstAttrMap = vertices.iterator().next().getAttributes();
+    final Attribute firstPlacement = vertices.iterator().next().getAttr(Attribute.Key.Placement);
     vertices.forEach(irVertex -> {
-      if (!irVertex.getAttributes().equals(firstAttrMap)) {
+      if (!irVertex.getAttr(Attribute.Key.Placement).equals(firstPlacement)) {
         throw new RuntimeException("Vertices of the same stage have different attributes: " + irVertex.getId());
       }
     });

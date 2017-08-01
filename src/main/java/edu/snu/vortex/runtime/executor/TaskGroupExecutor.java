@@ -16,10 +16,7 @@
 package edu.snu.vortex.runtime.executor;
 
 import edu.snu.vortex.common.Pair;
-import edu.snu.vortex.compiler.ir.Element;
-import edu.snu.vortex.compiler.ir.OperatorVertex;
-import edu.snu.vortex.compiler.ir.Reader;
-import edu.snu.vortex.compiler.ir.Transform;
+import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
@@ -181,6 +178,8 @@ public final class TaskGroupExecutor {
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.COMPLETE, Optional.empty());
           LOG.log(Level.INFO, "{0} Execution Complete!", taskGroup.getTaskGroupId());
         } else if (task instanceof MetricCollectionBarrierTask) {
+          launchMetricCollectionBarrierTask((MetricCollectionBarrierTask) task);
+          garbageCollectLocalIntermediateData(task);
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.ON_HOLD, Optional.empty());
           LOG.log(Level.INFO, "{0} Execution Complete!", taskGroup.getTaskGroupId());
         } else {
@@ -296,5 +295,31 @@ public final class TaskGroupExecutor {
     } else {
       LOG.log(Level.INFO, "This is a sink task: {0}", operatorTask.getId());
     }
+  }
+
+  /**
+   * Pass on the data to the following tasks.
+   * @param task the task to carry on the data.
+   */
+  private void launchMetricCollectionBarrierTask(final MetricCollectionBarrierTask task) {
+    final BlockingQueue<Iterable<Element>> dataQueue = new LinkedBlockingQueue<>();
+    final AtomicInteger sourceParallelism = new AtomicInteger(0);
+    taskIdToInputReaderMap.get(task.getId()).stream()
+        .filter(inputReader -> !inputReader.isSideInputReader())
+        .forEach(inputReader -> {
+          sourceParallelism.getAndAdd(inputReader.getSourceParallelism());
+          inputReader.read().forEach(compFuture -> compFuture.thenAccept(dataQueue::add));
+        });
+
+    final List<Element> data = new ArrayList<>();
+    IntStream.range(0, sourceParallelism.get()).forEach(srcTaskNum -> {
+      try {
+        final Iterable<Element> availableData = dataQueue.take();
+        availableData.forEach(data::add);
+      } catch (final InterruptedException e) {
+        throw new PartitionFetchException(e);
+      }
+    });
+    taskIdToOutputWriterMap.get(task.getId()).forEach(outputWriter -> outputWriter.write(data));
   }
 }

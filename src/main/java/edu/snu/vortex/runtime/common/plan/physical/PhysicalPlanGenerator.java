@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.runtime.common.plan.physical;
 
+import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
@@ -26,7 +27,9 @@ import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.stage.*;
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
 import edu.snu.vortex.runtime.exception.PhysicalPlanGenerationException;
+import org.apache.reef.tang.annotations.Parameter;
 
+import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -40,6 +43,14 @@ import static edu.snu.vortex.compiler.ir.attribute.Attribute.Memory;
  */
 public final class PhysicalPlanGenerator
     implements Function<DAG<IRVertex, IREdge>, DAG<PhysicalStage, PhysicalStageEdge>> {
+
+  final String dagDirectory;
+
+  @Inject
+  private PhysicalPlanGenerator(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
+    this.dagDirectory = dagDirectory;
+  }
+
   /**
    * Generates the {@link PhysicalPlan} to be executed.
    * @param irDAG that should be converted to a physical execution plan
@@ -49,7 +60,8 @@ public final class PhysicalPlanGenerator
   public DAG<PhysicalStage, PhysicalStageEdge> apply(final DAG<IRVertex, IREdge> irDAG) {
     // first, stage-partition the IR DAG.
     final DAG<Stage, StageEdge> dagOfStages = stagePartitionIrDAG(irDAG);
-//    dagOfStages.storeJSON(DAG_DIRECTORY, "plan-logical", "logical execution plan");
+    // for debugging purposes.
+    dagOfStages.storeJSON(dagDirectory, "plan-logical", "logical execution plan");
     // then create tasks and make it into a physical execution plan.
     return stagesIntoPlan(dagOfStages);
   }
@@ -162,7 +174,8 @@ public final class PhysicalPlanGenerator
         final Optional<List<IREdge>> inEdgesForStage = inEdgeList.map(e -> e.stream()
             .filter(edge -> edge.getType().equals(IREdge.Type.OneToOne)) // One to one edges
             .filter(edge -> edge.getAttr(Attribute.Key.ChannelDataPlacement).equals(Memory)) // Memory data placement
-            .filter(edge -> edge.getSrc().getAttributes().equals(edge.getDst().getAttributes())) //Src and Dst same attr
+            .filter(edge -> edge.getSrc().getAttr(Attribute.Key.Placement)
+                .equals(edge.getDst().getAttr(Attribute.Key.Placement))) //Src and Dst same placement
             .filter(edge -> vertexStageNumHashMap.containsKey(edge.getSrc())) // Src that is already included in a stage
             // Others don't depend on the candidate stage.
             .filter(edge -> !dependentStagesList.contains(vertexStageNumHashMap.get(edge.getSrc())))

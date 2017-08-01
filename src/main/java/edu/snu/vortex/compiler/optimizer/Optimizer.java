@@ -15,11 +15,20 @@
  */
 package edu.snu.vortex.compiler.optimizer;
 
+import edu.snu.vortex.common.dag.DAGBuilder;
+import edu.snu.vortex.compiler.exception.DynamicOptimizationException;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
+import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.compiler.optimizer.passes.*;
 import edu.snu.vortex.compiler.optimizer.passes.optimization.LoopOptimizations;
 import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import java.util.*;
 
@@ -125,13 +134,60 @@ public final class Optimizer {
 
   /**
    * Dynamic optimization method to process the dag with an appropriate pass, decided by the stats.
-   * @param dag DAG to process.
-   * @param metricData metric data and statistic information to decide which pass to perform.
+   * @param originalPlan original physical execution plan.
+   * @param metricCollectionBarrierVertex the vertex that collects metrics and chooses which optimization to perform.
    * @return processed DAG.
    */
-  public static DAG<IRVertex, IREdge> dynamicOptimization(final DAG<IRVertex, IREdge> dag,
-                                                          final Map<String, List<Object>> metricData) {
-    // TODO #315: optimization.
-    return dag;
+  public static PhysicalPlan dynamicOptimization(final PhysicalPlan originalPlan,
+                                                 final MetricCollectionBarrierVertex metricCollectionBarrierVertex) {
+    final Map<String, Iterable> metricData = metricCollectionBarrierVertex.getMetricData();
+    final Attribute dynamicOptimizationType =
+        metricCollectionBarrierVertex.getAttr(Attribute.Key.DynamicOptimizationType);
+
+    switch (dynamicOptimizationType) {
+      case DataSkew:
+        final DescriptiveStatistics stats = new DescriptiveStatistics();
+
+        metricData.forEach((k, vs) -> vs.forEach(v -> stats.addValue(((Long) v).doubleValue())));
+
+        // We find out the outliers using quartiles.
+        final double median = stats.getPercentile(50);
+        final double q1 = stats.getPercentile(25);
+        final double q3 = stats.getPercentile(75);
+
+        // We find the gap between the quartiles and use it as a parameter to calculate the outer fences for outliers.
+        final double interquartile = q3 - q1;
+        final double outerfence = interquartile * interquartile * 2;
+
+        // Builder to create new stages.
+        final DAGBuilder<PhysicalStage, PhysicalStageEdge> physicalDAGBuilder =
+            new DAGBuilder<>(originalPlan.getStageDAG());
+
+        // Do the optimization using the information derived above.
+        metricData.forEach((partitionId, partitionSizes) -> {
+          final String runtimeEdgeId = RuntimeIdGenerator.parsePartitionId(partitionId)[0];
+          final DAG<PhysicalStage, PhysicalStageEdge> stageDAG = originalPlan.getStageDAG();
+          // Edge of the partition.
+          final PhysicalStageEdge optimizationEdge = stageDAG.getVertices().stream()
+              .flatMap(physicalStage -> stageDAG.getIncomingEdgesOf(physicalStage).stream())
+              .filter(physicalStageEdge -> physicalStageEdge.getId().equals(runtimeEdgeId))
+              .findFirst().orElseThrow(() ->
+                  new DynamicOptimizationException("physical stage DAG doesn't contain this edge: " + runtimeEdgeId));
+
+          // The following stage to receive the data.
+          final PhysicalStage optimizationStage = optimizationEdge.getDst();
+
+          partitionSizes.forEach(partitionSize -> {
+            if (((Long) partitionSize).doubleValue() > median + outerfence) { // outlier with too much data.
+              // TODO #362: handle outliers using the new method of observing hash histogram.
+              optimizationEdge.getAttributes();
+            }
+          });
+        });
+
+        return new PhysicalPlan(originalPlan.getId(), physicalDAGBuilder.build(), originalPlan.getTaskIRVertexMap());
+      default:
+        return originalPlan;
+    }
   }
 }

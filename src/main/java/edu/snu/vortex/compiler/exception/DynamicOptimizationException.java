@@ -13,24 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.exception;
+package edu.snu.vortex.compiler.exception;
 
 /**
- * PhysicalPlanGenerationException.
- * Thrown when any exception occurs during the conversion
- * from {@link edu.snu.vortex.common.dag.DAG}
- * to {@link edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan}
+ * DynamicOptimizationException.
+ * Thrown for dynamic optimization related exceptions.
  */
-public final class PhysicalPlanGenerationException extends RuntimeException {
+public class DynamicOptimizationException extends RuntimeException {
   /**
-   * PhysicalPlanGenerationException.
-   * @param message message
+   * Constructor of DynamicOptimizationException.
+   * @param cause cause.
    */
-  public PhysicalPlanGenerationException(final String message) {
-    super(message);
+  public DynamicOptimizationException(final Throwable cause) {
+    super(cause);
   }
 
-  public PhysicalPlanGenerationException(final Throwable e) {
-    super(e);
+  /**
+   * Constructor of DynamicOptimizationException.
+   * @param message message.
+   */
+  public DynamicOptimizationException(final String message) {
+    super(message);
   }
 }

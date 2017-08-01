@@ -58,7 +58,7 @@ message PartitionStateChangedMsg {
     required string partitionId = 2;
     required PartitionStateFromExecutor state = 3;
     repeated int64 blockSizeInfo = 4;
-    optional string dstVertexId = 5;
+    optional string srcVertexId = 5;
 }
 
 message RequestPartitionLocationMsg {

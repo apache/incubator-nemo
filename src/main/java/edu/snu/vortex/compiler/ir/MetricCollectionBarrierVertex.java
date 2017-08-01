@@ -16,6 +16,7 @@
 package edu.snu.vortex.compiler.ir;
 
 import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.compiler.exception.DynamicOptimizationException;
 
 import java.util.*;
 
@@ -25,7 +26,7 @@ import java.util.*;
  */
 public final class MetricCollectionBarrierVertex extends IRVertex {
   // Partition ID to Size data
-  private final Map<String, Iterable<Long>> metricData;
+  private final Map<String, Iterable> metricData;
   // This DAG snapshot is taken at the end of the DataSkewPass, for the vertex to know the state of the DAG at its
   // optimization, and to be able to figure out exactly where in the DAG the vertex exists.
   private DAG<IRVertex, IREdge> dagSnapshot;
@@ -58,28 +59,28 @@ public final class MetricCollectionBarrierVertex extends IRVertex {
    * Access the DAG snapshot when triggering dynamic optimization.
    * @return the DAG set to the vertex, or throws an exception otherwise.
    */
-  private DAG<IRVertex, IREdge> getDAGSnapshot() {
+  public DAG<IRVertex, IREdge> getDAGSnapshot() {
     if (this.dagSnapshot == null) {
-      throw new RuntimeException("MetricCollectionBarrierVertex must have been set with a DAG.");
+      throw new DynamicOptimizationException("MetricCollectionBarrierVertex must have been set with a DAG.");
     }
     return this.dagSnapshot;
   }
 
   /**
    * Method for accumulating metrics in the vertex.
-   * @param partitionID key, or ID of the partition.
-   * @param blockSizeInfo the block size information of the partition data.
+   * @param key metric key, e.g. ID of the partition.
+   * @param values metric values, e.g. the block size information of the partition data.
    */
-  public void accumulateMetrics(final String partitionID, final Iterable<Long> blockSizeInfo) {
-    metricData.putIfAbsent(partitionID, blockSizeInfo);
+  public void accumulateMetric(final String key, final Iterable values) {
+    metricData.putIfAbsent(key, values);
   }
 
   /**
-   * Method for triggering dynamic optimization.
-   * It can be accessed by the Runtime Master, and it will trigger dynamic optimization through this method.
+   * Method for retrieving metrics from the vertex.
+   * @return the accumulated metric data.
    */
-  public void triggerDynamicOptimization() {
-    // TODO #315: resubmitting DAG to runtime.
+  public Map<String, Iterable> getMetricData() {
+    return metricData;
   }
 
   @Override

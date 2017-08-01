@@ -28,6 +28,12 @@ public enum Attribute {
   Compute(Key.Placement),
 
   /**
+   * MetricCollectionBarrierVertex dynamic optimization type.
+   */
+  DataSkew(Key.DynamicOptimizationType),
+
+
+  /**
    * IREdge channel data placement attributes.
    *
    * Memory: Intermediate data is stored in sender task's memory,
@@ -88,6 +94,7 @@ public enum Attribute {
   public enum Key {
     // IRVertex
     Placement,
+    DynamicOptimizationType,
 
     // IREdge
     ChannelDataPlacement,
