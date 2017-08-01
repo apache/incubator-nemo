@@ -85,6 +85,7 @@ public final class DataTransferTest {
   private static final String TASKGROUP_PREFIX_TEMPLATE = "DummyTG(%d)_";
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
   private static final Tang TANG = Tang.Factory.getTang();
+  private static final int HASH_RANGE_MULTIPLIER = 10;
 
   private PartitionManagerMaster master;
   private PartitionManagerWorker worker1;
@@ -141,7 +142,7 @@ public final class DataTransferTest {
         conToMaster,
         messageEnvironment,
         partitionManagerWorker,
-        new DataTransferFactory(partitionManagerWorker));
+        new DataTransferFactory(HASH_RANGE_MULTIPLIER, partitionManagerWorker));
     injector.bindVolatileInstance(Executor.class, executor);
 
     return partitionManagerWorker;
@@ -241,7 +242,7 @@ public final class DataTransferTest {
     final List<List<Element>> dataWrittenList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       final List<Element> dataWritten = getListOfZeroToNine();
-      final OutputWriter writer = new OutputWriter(srcTaskIndex, dstVertex, dummyEdge, sender);
+      final OutputWriter writer = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, dstVertex, dummyEdge, sender);
       writer.write(dataWritten);
       dataWrittenList.add(dataWritten);
     });

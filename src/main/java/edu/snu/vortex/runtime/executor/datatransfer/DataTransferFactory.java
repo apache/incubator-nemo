@@ -1,9 +1,11 @@
 package edu.snu.vortex.runtime.executor.datatransfer;
 
+import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.physical.Task;
 import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
+import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 
@@ -13,9 +15,12 @@ import javax.inject.Inject;
 public final class DataTransferFactory {
 
   private final PartitionManagerWorker partitionManagerWorker;
+  private final int hashRangeMultiplier;
 
   @Inject
-  public DataTransferFactory(final PartitionManagerWorker partitionManagerWorker) {
+  public DataTransferFactory(@Parameter(JobConf.HashRangeMultiplier.class) final int hashRangeMultiplier,
+                             final PartitionManagerWorker partitionManagerWorker) {
+    this.hashRangeMultiplier = hashRangeMultiplier;
     this.partitionManagerWorker = partitionManagerWorker;
   }
 
@@ -29,7 +34,8 @@ public final class DataTransferFactory {
   public OutputWriter createWriter(final Task srcTask,
                                    final IRVertex dstRuntimeVertex,
                                    final RuntimeEdge runtimeEdge) {
-    return new OutputWriter(srcTask.getIndex(), dstRuntimeVertex, runtimeEdge, partitionManagerWorker);
+    return new OutputWriter(hashRangeMultiplier, srcTask.getIndex(), dstRuntimeVertex,
+        runtimeEdge, partitionManagerWorker);
   }
 
   public OutputWriter createLocalWriter(final Task srcTask,

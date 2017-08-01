@@ -20,11 +20,11 @@ import edu.snu.vortex.compiler.ir.Element;
 /**
  * This class represents a {@link Partition} which is stored in local memory and not serialized.
  */
-public final class LocalPartition implements Partition {
+public final class MemoryPartition implements Partition {
 
   private final Iterable<Element> data;
 
-  public LocalPartition(final Iterable<Element> data) {
+  public MemoryPartition(final Iterable<Element> data) {
     this.data = data;
   }
 
