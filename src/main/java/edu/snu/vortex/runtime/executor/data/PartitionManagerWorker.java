@@ -123,7 +123,6 @@ public final class PartitionManagerWorker {
     return exist;
   }
 
-
   /**
    * Store partition to the target {@code PartitionStore}.
    * Invariant: This should be invoked only once per partitionId.
@@ -163,12 +162,12 @@ public final class PartitionManagerWorker {
    * Invariant: This should be invoked only once per partitionId.
    *
    * @param partitionId of the partition.
-   * @param dstIRVertexId of the source task.
+   * @param srcIRVertexId IRVertex gof the source task.
    * @param sortedData of the partition.
    * @param partitionStore to store the partition.
    */
   public void putSortedPartition(final String partitionId,
-                                 final String dstIRVertexId,
+                                 final String srcIRVertexId,
                                  final Iterable<Iterable<Element>> sortedData,
                                  final Attribute partitionStore) {
     LOG.log(Level.INFO, "PutSortedPartition: {0}", partitionId);
@@ -188,7 +187,7 @@ public final class PartitionManagerWorker {
 
     // TODO #355 Support I-file write: send block size information only when it is requested.
     partitionStateChangedMsgBuilder.addAllBlockSizeInfo(blockSizeInfo);
-    partitionStateChangedMsgBuilder.setDstVertexId(dstIRVertexId);
+    partitionStateChangedMsgBuilder.setSrcVertexId(srcIRVertexId);
 
     persistentConnectionToMaster.getMessageSender().send(
         ControlMessage.Message.newBuilder()

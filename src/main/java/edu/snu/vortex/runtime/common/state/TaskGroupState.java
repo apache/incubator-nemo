@@ -37,7 +37,8 @@ public final class TaskGroupState {
     stateMachineBuilder.addState(State.FAILED_RECOVERABLE, "Task group failed, but is recoverable.");
     stateMachineBuilder.addState(State.FAILED_UNRECOVERABLE,
         "Task group failed, and is unrecoverable. The job will fail.");
-    stateMachineBuilder.addState(State.ON_HOLD, "Tasks on hold for dynamic optimization.");
+    stateMachineBuilder.addState(State.ON_HOLD, "The task group is paused for dynamic optimization.");
+
 
     // Add transitions
     stateMachineBuilder.addTransition(State.READY, State.EXECUTING,
@@ -53,11 +54,8 @@ public final class TaskGroupState {
         "Unrecoverable failure in a task/Executor failure");
     stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_RECOVERABLE,
         "Recoverable failure in a task/Container failure");
-    stateMachineBuilder.addTransition(State.EXECUTING, State.ON_HOLD,
-        "Tasks on hold for dynamic optimization");
-
-    stateMachineBuilder.addTransition(State.ON_HOLD, State.EXECUTING,
-        "Dynamic optimization and resuming job execution.");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.ON_HOLD, "Task group paused for dynamic optimization");
+    stateMachineBuilder.addTransition(State.ON_HOLD, State.COMPLETE, "Task group completed after dynamic optimization");
 
     stateMachineBuilder.addTransition(State.COMPLETE, State.FAILED_RECOVERABLE,
         "Recoverable failure in a task/Container failure");

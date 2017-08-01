@@ -62,7 +62,7 @@ public final class TaskState {
         "Container Failure");
     stateMachineBuilder.addTransition(State.EXECUTING, State.ON_HOLD, "Task paused for dynamic optimization");
 
-    stateMachineBuilder.addTransition(State.ON_HOLD, State.EXECUTING, "Task resumed after dynamic optimization");
+    stateMachineBuilder.addTransition(State.ON_HOLD, State.COMPLETE, "Task completed after dynamic optimization");
 
     stateMachineBuilder.addTransition(State.COMPLETE, State.FAILED_UNRECOVERABLE,
         "Executor Failure");

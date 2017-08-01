@@ -53,13 +53,13 @@ public final class InputReader extends DataTransfer {
 
   public InputReader(final int dstTaskIndex,
                      final IRVertex srcVertex,
-                     final RuntimeEdge irEdge,
+                     final RuntimeEdge runtimeEdge,
                      final PartitionManagerWorker partitionManagerWorker) {
 
-    super(irEdge.getId());
+    super(runtimeEdge.getId());
     this.dstTaskIndex = dstTaskIndex;
     this.srcVertex = srcVertex;
-    this.runtimeEdge = irEdge;
+    this.runtimeEdge = runtimeEdge;
     this.partitionManagerWorker = partitionManagerWorker;
   }
 

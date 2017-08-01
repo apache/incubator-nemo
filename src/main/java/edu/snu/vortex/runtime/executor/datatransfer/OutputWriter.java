@@ -35,6 +35,7 @@ public final class OutputWriter extends DataTransfer {
   private final int hashRangeMultiplier;
   private final int srcTaskIdx;
   private final RuntimeEdge runtimeEdge;
+  private final String srcVertexId;
   private final IRVertex dstVertex;
 
   /**
@@ -44,12 +45,14 @@ public final class OutputWriter extends DataTransfer {
 
   public OutputWriter(final int hashRangeMultiplier,
                       final int srcTaskIdx,
+                      final String srcRuntimeVertexId,
                       final IRVertex dstRuntimeVertex,
                       final RuntimeEdge runtimeEdge,
                       final PartitionManagerWorker partitionManagerWorker) {
     super(runtimeEdge.getId());
     this.hashRangeMultiplier = hashRangeMultiplier;
     this.runtimeEdge = runtimeEdge;
+    this.srcVertexId = srcRuntimeVertexId;
     this.dstVertex = dstRuntimeVertex;
     this.partitionManagerWorker = partitionManagerWorker;
     this.srcTaskIdx = srcTaskIdx;
@@ -62,11 +65,10 @@ public final class OutputWriter extends DataTransfer {
   public void write(final Iterable<Element> dataToWrite) {
     final Boolean isDataSizeMetricCollectionEdge =
         runtimeEdge.getAttributes().get(Attribute.Key.DataSizeMetricCollection) != null;
-    final String dstVertexId = dstVertex == null ? null : dstVertex.getId();
 
     // If the dynamic optimization which detects data skew is enabled, sort the data and write it.
     if (isDataSizeMetricCollectionEdge) {
-      sortAndWrite(dataToWrite, dstVertexId);
+      sortAndWrite(dataToWrite);
     } else {
       switch (runtimeEdge.getAttributes().get(Attribute.Key.CommunicationPattern)) {
         case OneToOne:
@@ -136,10 +138,8 @@ public final class OutputWriter extends DataTransfer {
    * TODO #378: Elaborate block construction during data skew pass
    *
    * @param dataToWrite an iterable for the elements to be written.
-   * @param dstVertexId the id of the destination vertex.
    */
-  private void sortAndWrite(final Iterable<Element> dataToWrite,
-                            final String dstVertexId) {
+  private void sortAndWrite(final Iterable<Element> dataToWrite) {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
     final int dstParallelism = dstVertex.getAttributes().get(Attribute.IntegerKey.Parallelism);
     // For this hash range, please check the description of HashRangeMultiplier
@@ -154,7 +154,7 @@ public final class OutputWriter extends DataTransfer {
       ((List) blockedOutputList.get(hashVal)).add(element);
     });
 
-    partitionManagerWorker.putSortedPartition(partitionId, dstVertexId, blockedOutputList,
+    partitionManagerWorker.putSortedPartition(partitionId, srcVertexId, blockedOutputList,
         runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
   }
 }

@@ -34,6 +34,7 @@ import edu.snu.vortex.runtime.master.scheduler.*;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -115,7 +116,7 @@ public final class BatchSchedulerTest {
    * TaskGroup state changes are explicitly submitted to scheduler instead of executor messages.
    */
   @Test
-  public void testMultiInputOutputScheduling() {
+  public void testMultiInputOutputScheduling() throws Exception {
 
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
@@ -164,7 +165,8 @@ public final class BatchSchedulerTest {
     irDAGBuilder.connectVertices(e5);
 
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
-    final PhysicalPlanGenerator physicalPlanGenerator = new PhysicalPlanGenerator();
+    final PhysicalPlanGenerator physicalPlanGenerator =
+        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     final JobStateManager jobStateManager =

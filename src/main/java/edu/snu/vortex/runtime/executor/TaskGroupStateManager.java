@@ -146,7 +146,10 @@ public final class TaskGroupStateManager {
       onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE, Optional.of(Arrays.asList(taskId)), cause);
       break;
     case ON_HOLD:
-      onTaskGroupStateChanged(TaskGroupState.State.ON_HOLD, Optional.of(Arrays.asList(taskId)), cause);
+      currentTaskGroupTaskIds.remove(taskId);
+      if (currentTaskGroupTaskIds.isEmpty()) {
+        onTaskGroupStateChanged(TaskGroupState.State.ON_HOLD, Optional.of(Arrays.asList(taskId)), cause);
+      }
       break;
     default:
       throw new IllegalStateException("Illegal state at this point");

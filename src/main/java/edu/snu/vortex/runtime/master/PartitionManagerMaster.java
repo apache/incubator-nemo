@@ -29,6 +29,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static edu.snu.vortex.runtime.common.state.PartitionState.State.SCHEDULED;
+
 /**
  * Master-side partition manager.
  * For now, all its operations are synchronized to guarantee thread safety.
@@ -132,7 +134,7 @@ public final class PartitionManagerMaster {
   public synchronized void onProducerTaskGroupScheduled(final String scheduledTaskGroupId) {
     if (producerTaskGroupIdToPartitionIds.containsKey(scheduledTaskGroupId)) {
       producerTaskGroupIdToPartitionIds.get(scheduledTaskGroupId).forEach(partitionId ->
-          onPartitionStateChanged(partitionId, PartitionState.State.SCHEDULED, null));
+          onPartitionStateChanged(partitionId, SCHEDULED, null));
     } // else this task group does not produce any partition
   }
 
