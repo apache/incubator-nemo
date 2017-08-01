@@ -211,7 +211,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
 
       updateCachedExecutorRepresenterMap();
 
-      return executor.getRunningTaskGroups();
+      return Collections.unmodifiableSet(executor.getRunningTaskGroups());
     } finally {
       lock.unlock();
     }
@@ -255,7 +255,13 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   public void onTaskGroupExecutionFailed(final String executorId, final String taskGroupId) {
     lock.lock();
     try {
-      final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
+      ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
+
+      // When this method is called due to container failure and the executor has been moved to the failed map.
+      if (executor == null) {
+        executor = containerManager.getFailedExecutorRepresenterMap().get(executorId);
+      }
+
       executor.onTaskGroupExecutionFailed(taskGroupId);
       LOG.log(Level.INFO, "{" + taskGroupId + "} failed in [" + executorId + "]");
 
