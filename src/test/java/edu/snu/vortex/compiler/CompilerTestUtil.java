@@ -37,7 +37,7 @@ import java.util.List;
 /**
  * Utility methods for tests.
  */
-public final class TestUtil {
+public final class CompilerTestUtil {
   public static String rootDir = System.getProperty("user.dir");
 
   public static DAG<IRVertex, IREdge> compileMRDAG() throws Exception {

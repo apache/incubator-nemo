@@ -16,7 +16,7 @@
 package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.client.JobLauncher;
-import edu.snu.vortex.compiler.TestUtil;
+import edu.snu.vortex.compiler.CompilerTestUtil;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -31,8 +31,8 @@ import org.powermock.modules.junit4.PowerMockRunner;
 public final class MapReduceITCase {
   private static final int TIMEOUT = 60000;
   private static final String mapReduce = "edu.snu.vortex.examples.beam.MapReduce";
-  private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mr";
-  private static final String output = TestUtil.rootDir + "/src/main/resources/sample_output";
+  private static final String input = CompilerTestUtil.rootDir + "/src/main/resources/sample_input_mr";
+  private static final String output = CompilerTestUtil.rootDir + "/src/main/resources/sample_output";
   private static final String dagDirectory = "./dag";
 
   public static ArgBuilder builder = new ArgBuilder()

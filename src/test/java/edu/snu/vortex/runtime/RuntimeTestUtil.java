@@ -36,7 +36,7 @@ import java.util.stream.IntStream;
 /**
  * Utility class for runtime unit tests.
  */
-public final class TestUtil {
+public final class RuntimeTestUtil {
 
   /**
    * Sends a stage's completion event to scheduler, with all its task groups marked as complete as well.

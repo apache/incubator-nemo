@@ -16,12 +16,13 @@
 package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.common.coder.Coder;
+import edu.snu.vortex.compiler.CompilerTestUtil;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.Transform;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
-import edu.snu.vortex.runtime.TestUtil;
+import edu.snu.vortex.runtime.RuntimeTestUtil;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.common.plan.physical.*;
@@ -76,7 +77,6 @@ public final class BatchSchedulerTest {
     pendingTaskGroupPriorityQueue = new PendingTaskGroupPriorityQueue();
     schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TEST_TIMEOUT_MS);
     scheduler = new BatchScheduler(partitionManagerMaster, schedulingPolicy, pendingTaskGroupPriorityQueue);
-    partitionManagerMaster = new PartitionManagerMaster();
 
     final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();
     when(containerManager.getExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
@@ -118,7 +118,7 @@ public final class BatchSchedulerTest {
   @Test
   public void testMultiInputOutputScheduling() throws Exception {
 
-    final Transform t = mock(Transform.class);
+    final Transform t = new CompilerTestUtil.EmptyTransform("empty");
     final IRVertex v1 = new OperatorVertex(t);
     v1.setAttr(Attribute.IntegerKey.Parallelism, 3);
     v1.setAttr(Attribute.Key.Placement, Attribute.Compute);
@@ -175,14 +175,14 @@ public final class BatchSchedulerTest {
 
     // Start off with the root stages.
     physicalDAG.getRootVertices().forEach(physicalStage ->
-        TestUtil.sendStageCompletionEventToScheduler(
+        RuntimeTestUtil.sendStageCompletionEventToScheduler(
             jobStateManager, scheduler, containerManager, physicalStage, MAGIC_SCHEDULE_ATTEMPT_INDEX));
 
     // Then, for the rest of the stages.
     while (!jobStateManager.checkJobTermination()) {
       final List<PhysicalStage> stageList = physicalDAG.getTopologicalSort();
       stageList.forEach(physicalStage ->
-          TestUtil.sendStageCompletionEventToScheduler(
+          RuntimeTestUtil.sendStageCompletionEventToScheduler(
               jobStateManager, scheduler, containerManager, physicalStage, MAGIC_SCHEDULE_ATTEMPT_INDEX));
     }
 

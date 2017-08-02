@@ -16,7 +16,7 @@
 package edu.snu.vortex.compiler.optimizer.passes.optimization;
 
 import edu.snu.vortex.client.JobLauncher;
-import edu.snu.vortex.compiler.TestUtil;
+import edu.snu.vortex.compiler.CompilerTestUtil;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.LoopVertex;
@@ -53,7 +53,7 @@ public class LoopFusionPassTest {
     final DAGBuilder<IRVertex, IREdge> dagToBeFusedBuilder = new DAGBuilder<>();
     final DAGBuilder<IRVertex, IREdge> dagNotToBeFusedBuilder = new DAGBuilder<>();
 
-    originalALSDAG = TestUtil.compileALSDAG();
+    originalALSDAG = CompilerTestUtil.compileALSDAG();
     groupedDAG = new LoopGroupingPass().process(originalALSDAG);
 
     groupedDAG.topologicalDo(v -> {
