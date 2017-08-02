@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.compiler.backend.vortex;
 
-import edu.snu.vortex.compiler.TestUtil;
+import edu.snu.vortex.compiler.CompilerTestUtil;
 import edu.snu.vortex.compiler.backend.Backend;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
@@ -35,10 +35,10 @@ import static org.junit.Assert.assertEquals;
  * Test Vortex Backend.
  */
 public final class VortexBackendTest<I, O> {
-  private final IRVertex source = new BoundedSourceVertex<>(new TestUtil.EmptyBoundedSource("Source"));
-  private final IRVertex map1 = new OperatorVertex(new TestUtil.EmptyTransform("MapElements"));
-  private final IRVertex groupByKey = new OperatorVertex(new TestUtil.EmptyTransform("GroupByKey"));
-  private final IRVertex combine = new OperatorVertex(new TestUtil.EmptyTransform("Combine"));
+  private final IRVertex source = new BoundedSourceVertex<>(new CompilerTestUtil.EmptyBoundedSource("Source"));
+  private final IRVertex map1 = new OperatorVertex(new CompilerTestUtil.EmptyTransform("MapElements"));
+  private final IRVertex groupByKey = new OperatorVertex(new CompilerTestUtil.EmptyTransform("GroupByKey"));
+  private final IRVertex combine = new OperatorVertex(new CompilerTestUtil.EmptyTransform("Combine"));
   private final IRVertex map2 = new OperatorVertex(new DoTransform(null, null));
 
   private final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();

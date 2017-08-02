@@ -23,7 +23,7 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.Transform;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
-import edu.snu.vortex.runtime.TestUtil;
+import edu.snu.vortex.runtime.RuntimeTestUtil;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
@@ -164,7 +164,7 @@ public final class FaultToleranceTest {
 
     // HACK: Set all partition states to committed to see if they are correctly set to lost later.
     dagTopoSorted3Stages.forEach(physicalStage ->
-        TestUtil.sendPartitionStateEventForAStage(partitionManagerMaster, containerManager,
+        RuntimeTestUtil.sendPartitionStateEventForAStage(partitionManagerMaster, containerManager,
             physicalDAG.getOutgoingEdgesOf(physicalStage), physicalStage, PartitionState.State.COMMITTED));
 
     // Wait upto 2 seconds for task groups to be scheduled.
@@ -204,7 +204,7 @@ public final class FaultToleranceTest {
     });
 
     otherTaskGroupIds.forEach(taskGroupId ->
-        TestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+        RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
             taskGroupId, TaskGroupState.State.COMPLETE, MAGIC_SCHEDULE_ATTEMPT_INDEX, null));
 
     taskGroupIdsForFailingExecutor.forEach(failedTaskGroupId -> {
@@ -214,7 +214,7 @@ public final class FaultToleranceTest {
       // wait until the failed task group is rescheduled to an executor, then send a completion event.
       while (state != TaskGroupState.State.EXECUTING) {
       }
-      TestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+      RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
           failedTaskGroupId, TaskGroupState.State.COMPLETE, MAGIC_SCHEDULE_ATTEMPT_INDEX, null);
     });
 
@@ -234,7 +234,7 @@ public final class FaultToleranceTest {
 
     // The 2nd stage will complete without trouble.
     dagTopoSorted3Stages.get(1).getTaskGroupList().forEach(taskGroup ->
-      TestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+      RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
           taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, MAGIC_SCHEDULE_ATTEMPT_INDEX, null));
 
     // Check every 0.5 second for the 2nd stage to complete and 3rd stage's task groups to be scheduled.
@@ -264,7 +264,7 @@ public final class FaultToleranceTest {
 
     final String taskGroupIdToFail = taskGroupIdsForFailingExecutor.iterator().next();
 
-    TestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+    RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
         taskGroupIdToFail, TaskGroupState.State.FAILED_RECOVERABLE, MAGIC_SCHEDULE_ATTEMPT_INDEX,
         TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE);
 

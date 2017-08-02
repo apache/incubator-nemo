@@ -16,7 +16,7 @@
 package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.client.JobLauncher;
-import edu.snu.vortex.compiler.TestUtil;
+import edu.snu.vortex.compiler.CompilerTestUtil;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -31,7 +31,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 public final class MultinomialLogisticRegressionITCase {
   private static final int TIMEOUT = 120000;
   private static final String mlr = "edu.snu.vortex.examples.beam.MultinomialLogisticRegression";
-  private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_mlr";
+  private static final String input = CompilerTestUtil.rootDir + "/src/main/resources/sample_input_mlr";
   private static final String numFeatures = "100";
   private static final String numClasses = "5";
   private static final String numIteration = "3";

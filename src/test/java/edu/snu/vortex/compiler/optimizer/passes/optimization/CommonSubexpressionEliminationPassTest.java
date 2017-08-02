@@ -16,7 +16,7 @@
 package edu.snu.vortex.compiler.optimizer.passes.optimization;
 
 import edu.snu.vortex.client.JobLauncher;
-import edu.snu.vortex.compiler.TestUtil;
+import edu.snu.vortex.compiler.CompilerTestUtil;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
@@ -39,15 +39,15 @@ import static org.junit.Assert.assertEquals;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public class CommonSubexpressionEliminationPassTest {
-  private final IRVertex source = new BoundedSourceVertex<>(new TestUtil.EmptyBoundedSource("Source"));
-  private final IRVertex map1 = new OperatorVertex(new TestUtil.EmptyTransform("MapElements"));
-  private final IRVertex groupByKey = new OperatorVertex(new TestUtil.EmptyTransform("GroupByKey"));
-  private final IRVertex combine = new OperatorVertex(new TestUtil.EmptyTransform("Combine"));
+  private final IRVertex source = new BoundedSourceVertex<>(new CompilerTestUtil.EmptyBoundedSource("Source"));
+  private final IRVertex map1 = new OperatorVertex(new CompilerTestUtil.EmptyTransform("MapElements"));
+  private final IRVertex groupByKey = new OperatorVertex(new CompilerTestUtil.EmptyTransform("GroupByKey"));
+  private final IRVertex combine = new OperatorVertex(new CompilerTestUtil.EmptyTransform("Combine"));
   private final IRVertex map2 = new OperatorVertex(new DoTransform(null, null));
 
   private final IRVertex map1clone = map1.getClone();
-  private final IRVertex groupByKey2 = new OperatorVertex(new TestUtil.EmptyTransform("GroupByKey2"));
-  private final IRVertex combine2 = new OperatorVertex(new TestUtil.EmptyTransform("Combine2"));
+  private final IRVertex groupByKey2 = new OperatorVertex(new CompilerTestUtil.EmptyTransform("GroupByKey2"));
+  private final IRVertex combine2 = new OperatorVertex(new CompilerTestUtil.EmptyTransform("Combine2"));
   private final IRVertex map22 = new OperatorVertex(new DoTransform(null, null));
 
   private DAG<IRVertex, IREdge> dagNotToOptimize;
