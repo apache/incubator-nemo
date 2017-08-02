@@ -16,7 +16,7 @@
 package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.client.JobLauncher;
-import edu.snu.vortex.compiler.TestUtil;
+import edu.snu.vortex.compiler.CompilerTestUtil;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -31,7 +31,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 public final class AlternatingLeastSquareITCase {
   private static final int TIMEOUT = 120000;
   private static final String als = "edu.snu.vortex.examples.beam.AlternatingLeastSquare";
-  private static final String input = TestUtil.rootDir + "/src/main/resources/sample_input_als";
+  private static final String input = CompilerTestUtil.rootDir + "/src/main/resources/sample_input_als";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
   private static final String dagDirectory = "./dag";

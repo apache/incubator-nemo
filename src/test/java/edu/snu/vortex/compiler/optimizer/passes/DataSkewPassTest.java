@@ -17,7 +17,7 @@ package edu.snu.vortex.compiler.optimizer.passes;
 
 import edu.snu.vortex.client.JobLauncher;
 import edu.snu.vortex.common.dag.DAG;
-import edu.snu.vortex.compiler.TestUtil;
+import edu.snu.vortex.compiler.CompilerTestUtil;
 import edu.snu.vortex.compiler.frontend.beam.transform.GroupByKeyTransform;
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.compiler.ir.IREdge;
@@ -42,7 +42,7 @@ public class DataSkewPassTest {
 
   @Before
   public void setUp() throws Exception {
-    mrDAG = TestUtil.compileMRDAG();
+    mrDAG = CompilerTestUtil.compileMRDAG();
   }
 
   /**

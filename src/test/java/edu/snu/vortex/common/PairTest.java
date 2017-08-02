@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.common;
 
-import edu.snu.vortex.compiler.TestUtil;
+import edu.snu.vortex.compiler.CompilerTestUtil;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import org.junit.Test;
@@ -28,8 +28,8 @@ import static org.junit.Assert.assertEquals;
 public class PairTest {
   final Object leftObject = new Object();
   final Object rightObject = new Object();
-  private final IRVertex leftSource = new BoundedSourceVertex<>(new TestUtil.EmptyBoundedSource("leftSource"));
-  private final IRVertex rightSource = new BoundedSourceVertex<>(new TestUtil.EmptyBoundedSource("rightSource"));
+  private final IRVertex leftSource = new BoundedSourceVertex<>(new CompilerTestUtil.EmptyBoundedSource("leftSource"));
+  private final IRVertex rightSource = new BoundedSourceVertex<>(new CompilerTestUtil.EmptyBoundedSource("rightSource"));
 
   @Test
   public void testPair() {
