@@ -76,23 +76,18 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Number of vortex executors.
-   * TODO #205: Allow for Per-ContainerType Configurations
-   *
-   * WARNING: THE ACTUAL NUMBER WILL BE 4 * Executor Num due to hacks to get around.
-   * TODO #60: Specify Types in Requesting Containers
-   * See VortexDriver for the hacks. :-)
+   * Path to the JSON file that specifies resource layout.
    */
-  @NamedParameter(doc = "Number of vortex executors", short_name = "executor_num", default_value = "1")
-  public final class ExecutorNum implements Name<Integer> {
+  @NamedParameter(doc = "Path to the JSON file that specifies resources for executors", short_name = "executor_json",
+  default_value = "default.json")
+  public final class ExecutorJsonPath implements Name<String> {
   }
 
   /**
-   * Vortex executor memory.
-   * TODO #205: Allow for Per-ContainerType Configurations
+   * Contents of the JSON file that specifies resource layout.
    */
-  @NamedParameter(doc = "Vortex executor memory", short_name = "executor_mem_mb", default_value = "1024")
-  public final class ExecutorMemMb implements Name<Integer> {
+  @NamedParameter(doc = "Contents of JSON file that specifies resources for executors")
+  public final class ExecutorJsonContents implements Name<String> {
   }
 
   /**
@@ -101,7 +96,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * 1) Master's TaskGroup scheduler can use this number in scheduling.
    *    (e.g., schedule TaskGroup to the executor currently with the maximum number of available slots)
    * 2) Executor's number of TaskGroup execution threads is set to this number.
-   * TODO #205: Allow for Per-ContainerType Configurations
    */
   @NamedParameter(doc = "VortexExecutor capacity", short_name = "executor_capacity", default_value = "1")
   public final class ExecutorCapacity implements Name<Integer> {
@@ -148,8 +142,8 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class HashRangeMultiplier implements Name<Integer> {
   }
 
-  public static final OptionalParameter<Integer> EXECUTOR_CAPACITY = new OptionalParameter<>();
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();
+  public static final OptionalParameter<Integer> EXECUTOR_CAPACITY = new OptionalParameter<>();
 
   public static final ConfigurationModule EXECUTOR_CONF = new JobConf()
       .bindNamedParameter(ExecutorId.class, EXECUTOR_ID)
