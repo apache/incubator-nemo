@@ -35,6 +35,9 @@ import org.apache.reef.util.Optional;
 import org.apache.reef.wake.IdentifierFactory;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,6 +45,7 @@ import java.util.logging.Logger;
  * Job launcher.
  */
 public final class JobLauncher {
+  private static final Tang TANG = Tang.Factory.getTang();
   private static final Logger LOG = Logger.getLogger(JobLauncher.class.getName());
   private static final int LOCAL_NUMBER_OF_EVALUATORS = 100; // hopefully large enough for our use....
   private static final double YARN_JVM_HEAP_SLACK = 0.2; // prevent YARN nodemanagers from prematurely killing us
@@ -63,9 +67,11 @@ public final class JobLauncher {
     final Configuration driverConf = getDriverConf(jobConf);
     final Configuration driverNcsConf = getDriverNcsConf();
     final Configuration driverMessageConfg = getDriverMessageConf();
+    final Configuration executorResourceConfig = getExecutorResourceConf(jobConf);
 
     // Merge Job and Driver Confs
-    final Configuration jobAndDriverConf = Configurations.merge(jobConf, driverConf, driverNcsConf, driverMessageConfg);
+    final Configuration jobAndDriverConf = Configurations.merge(jobConf, driverConf, driverNcsConf, driverMessageConfg,
+        executorResourceConfig);
 
     // Get DeployMode Conf
     final Configuration deployModeConf = getDeployModeConf(jobConf);
@@ -83,20 +89,20 @@ public final class JobLauncher {
   private static Configuration getDriverNcsConf() throws InjectionException {
     return Configurations.merge(NameServerConfiguration.CONF.build(),
         LocalNameResolverConfiguration.CONF.build(),
-        Tang.Factory.getTang().newConfigurationBuilder()
+        TANG.newConfigurationBuilder()
             .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
             .build());
   }
 
   private static Configuration getDriverMessageConf() throws InjectionException {
-    return Tang.Factory.getTang().newConfigurationBuilder()
+    return TANG.newConfigurationBuilder()
         .bindImplementation(MessageEnvironment.class, NcsMessageEnvironment.class)
         .bindNamedParameter(NcsParameters.SenderId.class, MessageEnvironment.MASTER_COMMUNICATION_ID)
         .build();
   }
 
   private static Configuration getDriverConf(final Configuration jobConf) throws InjectionException {
-    final Injector injector = Tang.Factory.getTang().newInjector(jobConf);
+    final Injector injector = TANG.newInjector(jobConf);
     final String jobId = injector.getNamedInstance(JobConf.JobId.class);
     final int driverMemory = injector.getNamedInstance(JobConf.DriverMemMb.class);
     return DriverConfiguration.CONF
@@ -113,7 +119,7 @@ public final class JobLauncher {
   }
 
   public static Configuration getJobConf(final String[] args) throws IOException, InjectionException {
-    final JavaConfigurationBuilder confBuilder = Tang.Factory.getTang().newConfigurationBuilder();
+    final JavaConfigurationBuilder confBuilder = TANG.newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
     cl.registerShortNameOfClass(JobConf.JobId.class);
     cl.registerShortNameOfClass(JobConf.UserMainClass.class);
@@ -122,9 +128,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.OptimizationPolicy.class);
     cl.registerShortNameOfClass(JobConf.DeployMode.class);
     cl.registerShortNameOfClass(JobConf.DriverMemMb.class);
-    cl.registerShortNameOfClass(JobConf.ExecutorMemMb.class);
-    cl.registerShortNameOfClass(JobConf.ExecutorNum.class);
-    cl.registerShortNameOfClass(JobConf.ExecutorCapacity.class);
+    cl.registerShortNameOfClass(JobConf.ExecutorJsonPath.class);
     cl.registerShortNameOfClass(JobConf.SchedulerTimeoutMs.class);
     cl.registerShortNameOfClass(JobConf.MaxScheduleAttempt.class);
     cl.processCommandLine(args);
@@ -132,7 +136,7 @@ public final class JobLauncher {
   }
 
   public static Configuration getDeployModeConf(final Configuration jobConf) throws InjectionException {
-    final Injector injector = Tang.Factory.getTang().newInjector(jobConf);
+    final Injector injector = TANG.newInjector(jobConf);
     final String deployMode = injector.getNamedInstance(JobConf.DeployMode.class);
     switch (deployMode) {
       case "local":
@@ -145,6 +149,19 @@ public final class JobLauncher {
             .build();
       default:
         throw new UnsupportedOperationException(deployMode);
+    }
+  }
+
+  public static Configuration getExecutorResourceConf(final Configuration jobConf) throws InjectionException {
+    final Injector injector = TANG.newInjector(jobConf);
+    try {
+      final String path = injector.getNamedInstance(JobConf.ExecutorJsonPath.class);
+      final String contents = new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
+      return TANG.newConfigurationBuilder()
+          .bindNamedParameter(JobConf.ExecutorJsonContents.class, contents)
+          .build();
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
     }
   }
 }

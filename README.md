@@ -22,9 +22,34 @@
 ./bin/run.sh -job_id mlr_pado -user_main edu.snu.vortex.examples.beam.MultinomialLogisticRegression -optimization_policy pado -user_args "`pwd`/src/main/resources/sample_input_mlr 100 5 3"
 java -cp target/vortex-0.1-SNAPSHOT-shaded.jar edu.snu.vortex.compiler.optimizer.examples.MapReduce
 
-# yarn cluster example
-./bin/run.sh -deploy_mode yarn -job_id mr_pado -user_main edu.snu.vortex.examples.beam.MapReduce -optimization_policy pado -user_args "hdfs://maas-14:9000/sample_input_mr hdfs://maas-14:9000/sample_output_mr"
+## yarn cluster example
+./bin/run.sh -deploy_mode yarn -job_id mr_pado -user_main edu.snu.vortex.examples.beam.MapReduce -optimization_policy pado -user_args "hdfs://v-m:9000/sample_input_mr hdfs://v-m:9000/sample_output_mr"
 ```
+
+## Resource Configuration
+The command line parameter `-executor_json` is the path to the JSON file that describes resource configuration for executors. Its default value is `default.json`, which initializes one of each `Transient`, `Reserved`, and `Compute` executor, each of which has one core and 1024MB memory.
+
+The following example describes the schema:
+
+```json
+[
+  {
+    "num": 12,
+    "type": "Transient",
+    "memory_mb": 1024,
+    "capacity": 4
+  },
+  {
+    "type": "Reserved",
+    "memory_mb": 1024,
+    "capacity": 2
+  }
+]
+```
+
+It specifies 12 transient containers with 4 cores and 1024MB memory each, and one reserved container with 2 cores and 1024MB memory.
+
+The property `num` is optional and its default value is 1. `capacity` is the number of `TaskGroup`s that can be run in an executor. We define this value to be identical to the number of CPU cores of the container.
 
 ## DAG Visualization
 Vortex Compiler and Engine stores JSON representation of intermediate DAGs.
