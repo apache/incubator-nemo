@@ -13,22 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.data.partition;
+package edu.snu.vortex.runtime.executor.data;
 
-import edu.snu.vortex.compiler.ir.Element;
-
-import java.io.IOException;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * This interface represents an output data of each operation.
- * It might be divided in multiple blocks.
+ * Interface for remote partition stores (e.g., GlusterFS, ...).
  */
-public interface Partition {
-
-  /**
-   * Gets the representation of this partition as an iterable.
-   * @return the iterable of the partition.
-   * @throws IOException if fail to get the iterable.
-   */
-  Iterable<Element> asIterable() throws IOException;
+@DefaultImplementation(GlusterFileStore.class)
+interface RemoteFileStore extends PartitionStore {
 }

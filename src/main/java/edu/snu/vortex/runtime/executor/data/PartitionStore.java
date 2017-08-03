@@ -30,8 +30,8 @@ public interface PartitionStore {
   /**
    * Retrieves a partition of data.
    * @param partitionId of the partition.
-   * @return the partition (optionally).
-   * @throws PartitionFetchException thrown for any error occurred while trying to fetch a partition
+   * @return the partition if exist, or an empty optional else.
+   * @throws PartitionFetchException thrown if the partition is exist but fail to get the partition.
    */
   Optional<Partition> getPartition(String partitionId) throws PartitionFetchException;
 
@@ -77,7 +77,7 @@ public interface PartitionStore {
    * Removes a partition of data.
    * @param partitionId of the partition.
    * @return whether the partition exists or not.
-   * @throws PartitionFetchException thrown for any error occurred while trying to fetch a partition
+   * @throws PartitionFetchException thrown for any error occurred while trying to remove a partition
    */
   boolean removePartition(String partitionId) throws PartitionFetchException;
 }
