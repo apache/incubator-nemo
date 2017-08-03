@@ -36,6 +36,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -74,7 +75,7 @@ public final class PartitionStoreTest {
   // Variables for scatter and gather in range test
   private static final int NUM_WRITE_HASH_TASKS = 2;
   private static final int NUM_READ_HASH_TASKS = 3;
-  private static final int HASH_DATA_SIZE = 100;
+  private static final int HASH_DATA_SIZE = 10000;
   private static final int HASH_RANGE = 4;
   private List<String> sortedPartitionIdList;
   private List<List<Iterable<Element>>> sortedDataInPartitionList;
@@ -181,18 +182,18 @@ public final class PartitionStoreTest {
    * Test {@link MemoryStore}.
    */
   @Test(timeout = 10000)
-  public void testLocalStore() throws Exception {
-    final PartitionStore localStore = Tang.Factory.getTang().newInjector().getInstance(MemoryStore.class);
-    scatterGather(localStore);
-    concurrentRead(localStore);
-    scatterGatherInHashRange(localStore);
+  public void testMemoryStore() throws Exception {
+    final PartitionStore memoryStore = Tang.Factory.getTang().newInjector().getInstance(MemoryStore.class);
+    scatterGather(memoryStore, memoryStore);
+    concurrentRead(memoryStore, memoryStore);
+    scatterGatherInHashRange(memoryStore, memoryStore);
   }
 
   /**
    * Test {@link LocalFileStore}.
    */
   @Test(timeout = 10000)
-  public void testFileStore() throws Exception {
+  public void testLocalFileStore() throws Exception {
     final PartitionManagerWorker worker = mock(PartitionManagerWorker.class);
     when(worker.getCoder(any())).thenReturn(CODER);
     final Injector injector = Tang.Factory.getTang().newInjector();
@@ -200,15 +201,41 @@ public final class PartitionStoreTest {
     injector.bindVolatileParameter(JobConf.BlockSize.class, BLOCK_SIZE);
     injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
 
-    final PartitionStore fileStore = injector.getInstance(LocalFileStore.class);
-    scatterGather(fileStore);
-    concurrentRead(fileStore);
-    scatterGatherInHashRange(fileStore);
+    final PartitionStore localFileStore = injector.getInstance(LocalFileStore.class);
+    scatterGather(localFileStore, localFileStore);
+    concurrentRead(localFileStore, localFileStore);
+    scatterGatherInHashRange(localFileStore, localFileStore);
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
   }
 
-  // TODO #181: Implement MemoryPartitionStore (add test for Memory, MemoryFile)
-  // TODO #180: Implement DistributedStorageStore (add test for RemoteFile)
+  /**
+   * Test {@link GlusterFileStore}.
+   * Actually, we cannot create a virtual GFS volume in here.
+   * Instead, this test mimics the GFS circumstances by doing the read and write on separate file stores.
+   */
+  @Test(timeout = 10000)
+  public void testGlusterFileStore() throws Exception {
+    final PartitionManagerWorker worker = mock(PartitionManagerWorker.class);
+    when(worker.getCoder(any())).thenReturn(CODER);
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_FILE_DIRECTORY);
+    injector.bindVolatileParameter(JobConf.BlockSize.class, BLOCK_SIZE);
+    injector.bindVolatileParameter(JobConf.JobId.class, "GFS test");
+    injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
+    final PartitionStore writerSideRemoteFileStore = injector.getInstance(GlusterFileStore.class);
+
+    final Injector injector2 = Tang.Factory.getTang().newInjector();
+    injector2.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_FILE_DIRECTORY);
+    injector2.bindVolatileParameter(JobConf.BlockSize.class, BLOCK_SIZE);
+    injector2.bindVolatileParameter(JobConf.JobId.class, "GFS test");
+    injector2.bindVolatileInstance(PartitionManagerWorker.class, worker);
+    final PartitionStore readerSideRemoteFileStore = injector2.getInstance(GlusterFileStore.class);
+
+    scatterGather(writerSideRemoteFileStore, readerSideRemoteFileStore);
+    concurrentRead(writerSideRemoteFileStore, readerSideRemoteFileStore);
+    scatterGatherInHashRange(writerSideRemoteFileStore, readerSideRemoteFileStore);
+    FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
+  }
 
   /**
    * Tests scatter and gather for {@link PartitionStore}s.
@@ -219,7 +246,8 @@ public final class PartitionStoreTest {
    * It checks that each writer and reader does not throw any exception
    * and the read data is identical with written data (including the order).
    */
-  private void scatterGather(final PartitionStore store) {
+  private void scatterGather(final PartitionStore writerSideStore,
+                             final PartitionStore readerSideStore) {
     final ExecutorService writeExecutor = Executors.newFixedThreadPool(NUM_WRITE_TASKS);
     final ExecutorService readExecutor = Executors.newFixedThreadPool(NUM_READ_TASKS);
     final List<Future<Boolean>> writeFutureList = new ArrayList<>(NUM_WRITE_TASKS);
@@ -233,7 +261,7 @@ public final class PartitionStoreTest {
           public Boolean call() {
             try {
               IntStream.range(writeTaskNumber * NUM_READ_TASKS, (writeTaskNumber + 1) * NUM_READ_TASKS).forEach(
-                  partitionNumber -> store.putDataAsPartition(
+                  partitionNumber -> writerSideStore.putDataAsPartition(
                       partitionIdList.get(partitionNumber), dataInPartitionList.get(partitionNumber)));
               return true;
             } catch (final Exception e) {
@@ -262,18 +290,25 @@ public final class PartitionStoreTest {
               IntStream.range(0, NUM_WRITE_TASKS).forEach(
                   writeTaskNumber -> {
                     final int partitionNumber = writeTaskNumber * NUM_READ_TASKS + readTaskNumber;
-                    final Optional<Partition> partition = store.getPartition(partitionIdList.get(partitionNumber));
+                    final Optional<Partition> partition =
+                        readerSideStore.getPartition(partitionIdList.get(partitionNumber));
                     if (!partition.isPresent()) {
                       throw new RuntimeException("The result of getPartition(" +
                           partitionIdList.get(partitionNumber) + ") is empty");
                     }
-                    final boolean exist = store.removePartition(partitionIdList.get(partitionNumber));
+                    final Iterable<Element> getData;
+                    try {
+                       getData = partition.get().asIterable();
+                    } catch (final IOException e) {
+                      throw new RuntimeException(e);
+                    }
+                    assertEquals(dataInPartitionList.get(partitionNumber), getData);
+
+                    final boolean exist = readerSideStore.removePartition(partitionIdList.get(partitionNumber));
                     if (!exist) {
                       throw new RuntimeException("The result of removePartition(" +
                           partitionIdList.get(partitionNumber) + ") is false");
                     }
-                    final Iterable<Element> getData = partition.get().asIterable();
-                    assertEquals(dataInPartitionList.get(partitionNumber), getData);
                   });
               return true;
             } catch (final Exception e) {
@@ -299,7 +334,7 @@ public final class PartitionStoreTest {
     System.out.println(
         "Scatter and gather - write time in millis: " + (writeEndNano - startNano) / 1000000 +
             ", Read time in millis: " + (readEndNano - writeEndNano) / 1000000 + " in store " +
-            store.getClass().toString());
+            writerSideStore.getClass().toString());
   }
 
   /**
@@ -311,7 +346,8 @@ public final class PartitionStoreTest {
    * It checks that each writer and reader does not throw any exception
    * and the read data is identical with written data (including the order).
    */
-  private void concurrentRead(final PartitionStore store) {
+  private void concurrentRead(final PartitionStore writerSideStore,
+                              final PartitionStore readerSideStore) {
     final ExecutorService writeExecutor = Executors.newSingleThreadExecutor();
     final ExecutorService readExecutor = Executors.newFixedThreadPool(NUM_CONC_READ_TASKS);
     final Future<Boolean> writeFuture;
@@ -323,7 +359,7 @@ public final class PartitionStoreTest {
       @Override
       public Boolean call() {
         try {
-          store.putDataAsPartition(concPartitionId, dataInConcPartition);
+          writerSideStore.putDataAsPartition(concPartitionId, dataInConcPartition);
           return true;
         } catch (final Exception e) {
           e.printStackTrace();
@@ -346,7 +382,7 @@ public final class PartitionStoreTest {
           @Override
           public Boolean call() {
             try {
-              final Optional<Partition> partition = store.getPartition(concPartitionId);
+              final Optional<Partition> partition = readerSideStore.getPartition(concPartitionId);
               if (!partition.isPresent()) {
                 throw new RuntimeException("The result of getPartition(" +
                     concPartitionId + ") is empty");
@@ -371,7 +407,7 @@ public final class PartitionStoreTest {
     });
 
     // Remove the partition
-    final boolean exist = store.removePartition(concPartitionId);
+    final boolean exist = writerSideStore.removePartition(concPartitionId);
     if (!exist) {
       throw new RuntimeException("The result of removePartition(" + concPartitionId + ") is false");
     }
@@ -383,7 +419,7 @@ public final class PartitionStoreTest {
     System.out.println(
         "Concurrent read - write time in millis: " + (writeEndNano - startNano) / 1000000 +
             ", Read time in millis: " + (readEndNano - writeEndNano) / 1000000 + " in store " +
-            store.getClass().toString());
+            writerSideStore.getClass().toString());
   }
 
   /**
@@ -395,7 +431,8 @@ public final class PartitionStoreTest {
    * It checks that each writer and reader does not throw any exception
    * and the read data is identical with written data (including the order).
    */
-  private void scatterGatherInHashRange(final PartitionStore store) {
+  private void scatterGatherInHashRange(final PartitionStore writerSideStore,
+                                        final PartitionStore readerSideStore) {
     final ExecutorService writeExecutor = Executors.newFixedThreadPool(NUM_WRITE_HASH_TASKS);
     final ExecutorService readExecutor = Executors.newFixedThreadPool(NUM_READ_HASH_TASKS);
     final List<Future<Boolean>> writeFutureList = new ArrayList<>(NUM_WRITE_HASH_TASKS);
@@ -408,7 +445,7 @@ public final class PartitionStoreTest {
           @Override
           public Boolean call() {
             try {
-              store.putSortedDataAsPartition(
+              writerSideStore.putSortedDataAsPartition(
                   sortedPartitionIdList.get(writeTaskNumber), sortedDataInPartitionList.get(writeTaskNumber));
               return true;
             } catch (final Exception e) {
@@ -437,7 +474,7 @@ public final class PartitionStoreTest {
               IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(
                   writeTaskNumber -> {
                     final Pair<Integer, Integer> hashRangeToRetrieve = readHashRangeList.get(readTaskNumber);
-                    final Optional<Partition> partition = store.retrieveDataFromPartition(
+                    final Optional<Partition> partition = readerSideStore.retrieveDataFromPartition(
                         sortedPartitionIdList.get(writeTaskNumber),
                         hashRangeToRetrieve.left(), hashRangeToRetrieve.right());
                     if (!partition.isPresent()) {
@@ -445,7 +482,13 @@ public final class PartitionStoreTest {
                           sortedPartitionIdList.get(writeTaskNumber) + " in range " + hashRangeToRetrieve.toString() +
                           " is empty");
                     }
-                    final Iterable<Element> getData = partition.get().asIterable();
+                    final Iterable<Element> getData;
+                    try {
+                      getData = partition.get().asIterable();
+                    } catch (final IOException e) {
+                      e.printStackTrace();
+                      throw new RuntimeException(e);
+                    }
                     assertEquals(expectedDataInRange.get(readTaskNumber).get(writeTaskNumber), getData);
                   });
               return true;
@@ -461,6 +504,7 @@ public final class PartitionStoreTest {
       try {
         assertTrue(readFutureList.get(reader).get());
       } catch (final Exception e) {
+        e.printStackTrace();
         throw new RuntimeException(e);
       }
     });
@@ -468,7 +512,7 @@ public final class PartitionStoreTest {
 
     // Remove stored partitions
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writer -> {
-          final boolean exist = store.removePartition(sortedPartitionIdList.get(writer));
+          final boolean exist = writerSideStore.removePartition(sortedPartitionIdList.get(writer));
           if (!exist) {
             throw new RuntimeException("The result of removePartition(" +
                 sortedPartitionIdList.get(writer) + ") is false");
@@ -480,7 +524,7 @@ public final class PartitionStoreTest {
     System.out.println(
         "Scatter and gather in hash range - write time in millis: " + (writeEndNano - startNano) / 1000000 +
             ", Read time in millis: " + (readEndNano - writeEndNano) / 1000000 + " in store " +
-            store.getClass().toString());
+            writerSideStore.getClass().toString());
   }
 
   private List<Element> getRangedNumList(final int start,

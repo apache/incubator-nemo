@@ -77,8 +77,10 @@ public final class DataTransferTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
   private static final int SCHEDULE_TIMEOUT = 1000;
   private static final Attribute STORE = Attribute.Memory;
-  private static final Attribute FILE_STORE = Attribute.LocalFile;
-  private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
+  private static final Attribute LOCAL_FILE_STORE = Attribute.LocalFile;
+  private static final Attribute REMOTE_FILE_STORE = Attribute.RemoteFile;
+  private static final String TMP_LOCAL_FILE_DIRECTORY = "./tmpLocalFiles";
+  private static final String TMP_REMOTE_FILE_DIRECTORY = "./tmpRemoteFiles";
   private static final int PARALLELISM_TEN = 10;
   private static final String EDGE_PREFIX_TEMPLATE = "Dummy(%d)";
   private static final AtomicInteger TEST_INDEX = new AtomicInteger(0);
@@ -108,6 +110,7 @@ public final class DataTransferTest {
         messageEnvironment, master, EMPTY_DAG_DIRECTORY, MAX_SCHEDULE_ATTEMPT);
 
     final Injector injector = createNameClientInjector();
+    injector.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
 
     this.master = master;
     this.worker1 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher,
@@ -127,7 +130,8 @@ public final class DataTransferTest {
     final Injector injector = nameClientInjector.forkInjector(executorConfiguration);
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
     injector.bindVolatileInstance(PersistentConnectionToMaster.class, conToMaster);
-    injector.bindVolatileParameter(JobConf.FileDirectory.class, TMP_FILE_DIRECTORY);
+    injector.bindVolatileParameter(JobConf.FileDirectory.class, TMP_LOCAL_FILE_DIRECTORY);
+    injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_REMOTE_FILE_DIRECTORY);
     final PartitionManagerWorker partitionManagerWorker;
     try {
       partitionManagerWorker = injector.getInstance(PartitionManagerWorker.class);
@@ -186,14 +190,21 @@ public final class DataTransferTest {
     // test ManyToMany different worker
     writeAndRead(worker1, worker2, Attribute.ScatterGather, STORE);
 
-    // test ManyToMany same worker (file)
-    writeAndRead(worker1, worker1, Attribute.ScatterGather, FILE_STORE);
+    // test ManyToMany same worker (local file)
+    writeAndRead(worker1, worker1, Attribute.ScatterGather, LOCAL_FILE_STORE);
 
-    // test ManyToMany different worker (file)
-    writeAndRead(worker1, worker2, Attribute.ScatterGather, FILE_STORE);
+    // test ManyToMany different worker (local file)
+    writeAndRead(worker1, worker2, Attribute.ScatterGather, LOCAL_FILE_STORE);
+
+    // test ManyToMany same worker (remote file)
+    writeAndRead(worker1, worker1, Attribute.ScatterGather, REMOTE_FILE_STORE);
+
+    // test ManyToMany different worker (remote file)
+    writeAndRead(worker1, worker2, Attribute.ScatterGather, REMOTE_FILE_STORE);
 
     // Cleanup
-    FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
+    FileUtils.deleteDirectory(new File(TMP_LOCAL_FILE_DIRECTORY));
+    FileUtils.deleteDirectory(new File(TMP_REMOTE_FILE_DIRECTORY));
   }
 
   private void writeAndRead(final PartitionManagerWorker sender,

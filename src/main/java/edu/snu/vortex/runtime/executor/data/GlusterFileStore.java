@@ -20,34 +20,30 @@ import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.exception.PartitionFetchException;
 import edu.snu.vortex.runtime.exception.PartitionWriteException;
-import edu.snu.vortex.runtime.executor.data.partition.LocalFilePartition;
+import edu.snu.vortex.runtime.executor.data.partition.GlusterFilePartition;
 import edu.snu.vortex.runtime.executor.data.partition.MemoryPartition;
 import edu.snu.vortex.runtime.executor.data.partition.Partition;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Stores partitions in local files.
- * It writes and reads synchronously.
+ * Stores partitions in a mounted GlusterFS volume.
  */
-final class LocalFileStore extends FileStore {
-
-  private final Map<String, LocalFilePartition> partitionIdToData;
+final class GlusterFileStore extends FileStore implements RemoteFileStore {
 
   @Inject
-  private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
-                         @Parameter(JobConf.BlockSize.class) final int blockSizeInKb,
-                         final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
-    super(blockSizeInKb, fileDirectory, partitionManagerWorker);
-    this.partitionIdToData = new ConcurrentHashMap<>();
-    new File(fileDirectory).mkdirs();
+  private GlusterFileStore(@Parameter(JobConf.GlusterVolumeDirectory.class) final String volumeDirectory,
+                           @Parameter(JobConf.BlockSize.class) final int blockSizeInKb,
+                           @Parameter(JobConf.JobId.class) final String jobId,
+                           final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
+    super(blockSizeInKb, volumeDirectory + "/" + jobId, partitionManagerWorker);
+    new File(getFileDirectory()).mkdirs();
   }
 
   /**
@@ -60,15 +56,17 @@ final class LocalFileStore extends FileStore {
   @Override
   public Optional<Partition> getPartition(final String partitionId) throws PartitionFetchException {
     // Deserialize the target data in the corresponding file and pass it as a local data.
-    final LocalFilePartition partition = partitionIdToData.get(partitionId);
-    if (partition == null) {
-      return Optional.empty();
-    } else {
-      try {
-        return Optional.of(new MemoryPartition(partition.asIterable()));
-      } catch (final IOException e) {
-        throw new PartitionFetchException(e);
+    final Coder coder = getCoderFromWorker(partitionId);
+    try {
+      final Optional<GlusterFilePartition> partition =
+          GlusterFilePartition.open(coder, partitionIdToFileName(partitionId));
+      if (partition.isPresent()) {
+        return Optional.of(new MemoryPartition(partition.get().asIterable()));
+      } else {
+        return Optional.empty();
       }
+    } catch (final IOException e) {
+      throw new PartitionFetchException(e);
     }
   }
 
@@ -81,16 +79,18 @@ final class LocalFileStore extends FileStore {
                                                        final int endExclusiveHashVal)
       throws PartitionFetchException {
     // Deserialize the target data in the corresponding file and pass it as a local data.
-    final LocalFilePartition partition = partitionIdToData.get(partitionId);
-    if (partition == null) {
-      return Optional.empty();
-    } else {
-      try {
-        return Optional.of(
-            new MemoryPartition(partition.retrieveInHashRange(startInclusiveHashVal, endExclusiveHashVal)));
-      } catch (final IOException e) {
-        throw new PartitionFetchException(e);
+    final Coder coder = getCoderFromWorker(partitionId);
+    try {
+      final Optional<GlusterFilePartition> partition =
+          GlusterFilePartition.open(coder, partitionIdToFileName(partitionId));
+      if (partition.isPresent()) {
+        return Optional.of(new MemoryPartition(
+            partition.get().retrieveInHashRange(startInclusiveHashVal, endExclusiveHashVal)));
+      } else {
+        return Optional.empty();
       }
+    } catch (final IOException e) {
+      throw new PartitionFetchException(e);
     }
   }
 
@@ -108,15 +108,9 @@ final class LocalFileStore extends FileStore {
       throws PartitionWriteException {
     final Coder coder = getCoderFromWorker(partitionId);
 
-    try (final LocalFilePartition partition =
-             new LocalFilePartition(coder, partitionIdToFileName(partitionId), false)) {
-      final Partition previousPartition = partitionIdToData.putIfAbsent(partitionId, partition);
-      if (previousPartition != null) {
-        throw new PartitionWriteException(new Throwable("Trying to overwrite an existing partition"));
-      }
-
+    try (final GlusterFilePartition partition =
+             GlusterFilePartition.create(coder, partitionIdToFileName(partitionId), false)) {
       // Serialize and write the given data into blocks
-      partition.openPartitionForWrite();
       final long partitionSize = divideAndPutData(coder, partition, data);
       partition.finishWrite();
       return Optional.of(partitionSize);
@@ -130,8 +124,8 @@ final class LocalFileStore extends FileStore {
    * Each block has a specific hash value, and these blocks are sorted by this hash value.
    * The block becomes a unit of read & write.
    *
-   * @param partitionId  of the partition.
-   * @param sortedData to save as a partition.
+   * @param partitionId of the partition.
+   * @param sortedData  to save as a partition.
    * @return the size of data per hash value.
    * @throws PartitionWriteException thrown for any error occurred while trying to write a partition
    */
@@ -142,15 +136,9 @@ final class LocalFileStore extends FileStore {
     final Coder coder = getCoderFromWorker(partitionId);
     final List<Long> blockSizeList;
 
-    try (final LocalFilePartition partition =
-             new LocalFilePartition(coder, partitionIdToFileName(partitionId), true)) {
-      final Partition previousPartition = partitionIdToData.putIfAbsent(partitionId, partition);
-      if (previousPartition != null) {
-        throw new PartitionWriteException(new Throwable("Trying to overwrite an existing partition"));
-      }
-
+    try (final GlusterFilePartition partition =
+             GlusterFilePartition.create(coder, partitionIdToFileName(partitionId), true)) {
       // Serialize and write the given data into blocks
-      partition.openPartitionForWrite();
       blockSizeList = putSortedData(coder, partition, sortedData);
       partition.finishWrite();
     } catch (final IOException e) {
@@ -165,20 +153,22 @@ final class LocalFileStore extends FileStore {
    *
    * @param partitionId of the partition.
    * @return whether the partition exists or not.
-   * @throws PartitionFetchException if fail to remove the partition.
+   * @throws PartitionFetchException if the partition is exist but fail to remove the partition.
    */
   @Override
   public boolean removePartition(final String partitionId) throws PartitionFetchException {
-    final LocalFilePartition serializedPartition = partitionIdToData.remove(partitionId);
-    if (serializedPartition == null) {
-      return false;
-    } else {
-      try {
-        serializedPartition.deleteFile();
-      } catch (final IOException e) {
-        throw new PartitionFetchException(e);
+    final Coder coder = getCoderFromWorker(partitionId);
+    try {
+      final Optional<GlusterFilePartition> partition =
+          GlusterFilePartition.open(coder, partitionIdToFileName(partitionId));
+      if (partition.isPresent()) {
+        partition.get().deleteFile();
+        return true;
+      } else {
+        return false;
       }
-      return true;
+    } catch (final IOException e) {
+      throw new PartitionFetchException(e);
     }
   }
 }

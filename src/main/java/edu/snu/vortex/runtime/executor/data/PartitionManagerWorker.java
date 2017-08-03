@@ -49,6 +49,8 @@ public final class PartitionManagerWorker {
 
   private final LocalFileStore localFileStore;
 
+  private final RemoteFileStore remoteFileStore;
+
   private final PersistentConnectionToMaster persistentConnectionToMaster;
 
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder;
@@ -59,11 +61,13 @@ public final class PartitionManagerWorker {
   private PartitionManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
                                  final MemoryStore memoryStore,
                                  final LocalFileStore localFileStore,
+                                 final RemoteFileStore remoteFileStore,
                                  final PersistentConnectionToMaster persistentConnectionToMaster,
                                  final PartitionTransferPeer partitionTransferPeer) {
     this.executorId = executorId;
     this.memoryStore = memoryStore;
     this.localFileStore = localFileStore;
+    this.remoteFileStore = remoteFileStore;
     this.persistentConnectionToMaster = persistentConnectionToMaster;
     this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
     this.partitionTransferPeer = partitionTransferPeer;
@@ -72,8 +76,8 @@ public final class PartitionManagerWorker {
   /**
    * Return the coder for the specified runtime edge.
    *
-   * @param runtimeEdgeId id of the runtime edge
-   * @return the corresponding coder
+   * @param runtimeEdgeId id of the runtime edge.
+   * @return the corresponding coder.
    */
   public Coder getCoder(final String runtimeEdgeId) {
     final Coder coder = runtimeEdgeIdToCoder.get(runtimeEdgeId);
@@ -86,8 +90,8 @@ public final class PartitionManagerWorker {
   /**
    * Register a coder for runtime edge.
    *
-   * @param runtimeEdgeId id of the runtime edge
-   * @param coder         the corresponding coder
+   * @param runtimeEdgeId id of the runtime edge.
+   * @param coder         the corresponding coder.
    */
   public void registerCoder(final String runtimeEdgeId, final Coder coder) {
     runtimeEdgeIdToCoder.putIfAbsent(runtimeEdgeId, coder);
@@ -199,7 +203,7 @@ public final class PartitionManagerWorker {
 
   /**
    * Get the stored partition.
-   * Unlike putDataAsPartition, this can be invoked multiple times per partitionId (maybe due to failures).
+   * Unlike putPartition, this can be invoked multiple times per partitionId (maybe due to failures).
    * Here, we first check if we have the partition here, and then try to fetch the partition from a remote worker.
    *
    * @param partitionId    of the partition
@@ -216,16 +220,21 @@ public final class PartitionManagerWorker {
 
     try {
       optionalPartition = store.getPartition(partitionId);
+      if (optionalPartition.isPresent()) {
+        // Partition resides in this evaluator!
+        // TODO #387: Make the PartitionStore to support asynchronous write and read.
+        return CompletableFuture.completedFuture(optionalPartition.get().asIterable());
+      }
     } catch (final Exception e) {
       throw new PartitionFetchException(e);
     }
 
-    if (optionalPartition.isPresent()) {
-      // Memory hit!
-      return CompletableFuture.completedFuture(optionalPartition.get().asIterable());
-    }
     // We don't have the partition here... let's see if a remote worker has it
     // Ask Master for the location
+    if (partitionStore == Attribute.RemoteFile) {
+      LOG.log(Level.WARNING, "The target partition {0} is not found in the remote storage. "
+          + "Maybe the storage is not mounted or linked properly.", partitionId);
+    }
     final CompletableFuture<ControlMessage.Message> responseFromMasterFuture =
         persistentConnectionToMaster.getMessageSender().request(
             ControlMessage.Message.newBuilder()
@@ -263,8 +272,7 @@ public final class PartitionManagerWorker {
       case LocalFile:
         return localFileStore;
       case RemoteFile:
-        // TODO #180: Implement DistributedStorageStore
-        return memoryStore;
+        return remoteFileStore;
       default:
         throw new UnsupportedPartitionStoreException(new Exception(partitionStore + " is not supported."));
     }

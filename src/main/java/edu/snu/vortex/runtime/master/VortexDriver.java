@@ -72,6 +72,7 @@ public final class VortexDriver {
   private final UserApplicationRunner userApplicationRunner;
   private final ContainerManager containerManager;
   private final Scheduler scheduler;
+  private final String jobId;
 
 
   @Inject
@@ -80,13 +81,15 @@ public final class VortexDriver {
                        final UserApplicationRunner userApplicationRunner,
                        final NameServer nameServer,
                        final LocalAddressProvider localAddressProvider,
-                       @Parameter(JobConf.ExecutorJsonContents.class) final String resourceSpecificationString) {
+                       @Parameter(JobConf.ExecutorJsonContents.class) final String resourceSpecificationString,
+                       @Parameter(JobConf.JobId.class) final String jobId) {
     this.userApplicationRunner = userApplicationRunner;
     this.containerManager = containerManager;
     this.scheduler = scheduler;
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.resourceSpecificationString = resourceSpecificationString;
+    this.jobId = jobId;
   }
 
   /**
@@ -184,6 +187,7 @@ public final class VortexDriver {
     final Configuration executorConfiguration = JobConf.EXECUTOR_CONF
         .set(JobConf.EXECUTOR_ID, executorId)
         .set(JobConf.EXECUTOR_CAPACITY, executorCapacity)
+        .set(JobConf.JOB_ID, jobId)
         .build();
 
     final Configuration contextConfiguration = ContextConfiguration.CONF
