@@ -43,5 +43,8 @@ echo "export LANG=en_US.UTF-8" >> ~/.profile
 # Install Maven
 sudo apt-get install -y maven
 
+# Install Protobuf
+sudo apt-get install -y protobuf-compiler
+
 # Wrap Up
 source ~/.profile
