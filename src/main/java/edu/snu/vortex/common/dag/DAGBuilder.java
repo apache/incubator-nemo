@@ -248,6 +248,14 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
         .forEach(e -> {
           throw new RuntimeException("DAG attribute check: SideInput is not compatible with push" + e.getId());
         }));
+    // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection)
+    vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
+        .filter(e -> e.getAttr(Attribute.Key.DataSizeMetricCollection) != null)
+        .filter(e -> e.getAttr(Attribute.Key.ChannelTransferPolicy) == Attribute.Push)
+        .forEach(e -> {
+          throw new RuntimeException("DAG attribute check: DataSizeMetricCollection is not compatible with push"
+              + e.getId());
+        }));
     // All vertices connected with OneToOne edge should have identical Parallelism attribute.
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
         .filter(e -> e.getType().equals(IREdge.Type.OneToOne))
