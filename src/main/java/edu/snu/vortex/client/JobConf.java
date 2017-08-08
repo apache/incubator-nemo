@@ -88,7 +88,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * Path to the JSON file that specifies resource layout.
    */
   @NamedParameter(doc = "Path to the JSON file that specifies resources for executors", short_name = "executor_json",
-  default_value = "default.json")
+  default_value = "config/default.json")
   public final class ExecutorJsonPath implements Name<String> {
   }
 
