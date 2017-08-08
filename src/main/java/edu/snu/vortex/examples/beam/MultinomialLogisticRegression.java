@@ -31,14 +31,14 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Sample Multinomial Logistic Regression application.
  */
 public final class MultinomialLogisticRegression {
-  private static final Logger LOG = Logger.getLogger(MultinomialLogisticRegression.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(MultinomialLogisticRegression.class.getName());
 
   /**
    * Private constructor.
@@ -227,7 +227,7 @@ public final class MultinomialLogisticRegression {
       for (Integer i = 0; i < gradients.size(); i++) {
         context.output(KV.of(i, gradients.get(i)), null, null);
       }
-      LOG.log(Level.INFO, "stats: " + gradients.get(numClasses - 1).toString());
+      LOG.info("stats: " + gradients.get(numClasses - 1).toString());
     }
   }
 
@@ -281,7 +281,7 @@ public final class MultinomialLogisticRegression {
       if (kv.getKey() == numClasses - 1) {
         final Integer numData = gradient.get(0).intValue();
         final Double lossSum = gradient.get(2);
-        LOG.log(Level.INFO, "[" + iterationNum + "-th] Num Data: " + numData + " Loss : " + lossSum / numData);
+        LOG.info("[" + iterationNum + "-th] Num Data: " + numData + " Loss : " + lossSum / numData);
         c.output(KV.of(kv.getKey(), prevModel));
       } else {
         final Integer numData = gradient.get(numFeatures).intValue();
@@ -404,7 +404,7 @@ public final class MultinomialLogisticRegression {
    */
   public static void main(final String[] args) {
     final long start = System.currentTimeMillis();
-    LOG.log(Level.INFO, Arrays.toString(args));
+    LOG.info(Arrays.toString(args));
     final String inputFilePath = args[0];
     final Integer numFeatures = Integer.parseInt(args[1]);
     final Integer numClasses = Integer.parseInt(args[2]);
@@ -454,6 +454,6 @@ public final class MultinomialLogisticRegression {
     }
 
     p.run();
-    LOG.log(Level.INFO, "JCT " + (System.currentTimeMillis() - start));
+    LOG.info("JCT " + (System.currentTimeMillis() - start));
   }
 }

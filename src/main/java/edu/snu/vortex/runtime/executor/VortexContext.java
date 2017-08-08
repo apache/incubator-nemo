@@ -21,8 +21,8 @@ import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 
 import javax.inject.Inject;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * REEF Context for Vortex Executor.
@@ -31,7 +31,7 @@ import java.util.logging.Logger;
 @Unit
 public final class VortexContext {
 
-  private static final Logger LOG = Logger.getLogger(VortexContext.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(VortexContext.class.getName());
   private final Executor executor;
 
   @Inject
@@ -45,7 +45,7 @@ public final class VortexContext {
   public final class ContextStartHandler implements EventHandler<ContextStart> {
     @Override
     public void onNext(final ContextStart contextStart) {
-      LOG.log(Level.INFO, "Context Started: Executor is now ready and listening for messages");
+      LOG.info("Context Started: Executor is now ready and listening for messages");
     }
   }
 }

@@ -38,8 +38,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -48,7 +48,7 @@ import java.util.stream.IntStream;
  */
 public final class TaskGroupExecutor {
 
-  private static final Logger LOG = Logger.getLogger(TaskGroupExecutor.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(TaskGroupExecutor.class.getName());
 
   private final TaskGroup taskGroup;
   private final TaskGroupStateManager taskGroupStateManager;
@@ -156,7 +156,7 @@ public final class TaskGroupExecutor {
    * Executes the task group.
    */
   public void execute() {
-    LOG.log(Level.INFO, "{0} Execution Started!", taskGroup.getTaskGroupId());
+    LOG.info("{} Execution Started!", taskGroup.getTaskGroupId());
     if (isExecutionRequested) {
       throw new RuntimeException("TaskGroup {" + taskGroup.getTaskGroupId() + "} execution called again!");
     } else {
@@ -171,29 +171,29 @@ public final class TaskGroupExecutor {
         if (task instanceof BoundedSourceTask) {
           launchBoundedSourceTask((BoundedSourceTask) task);
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.COMPLETE, Optional.empty());
-          LOG.log(Level.INFO, "{0} Execution Complete!", taskGroup.getTaskGroupId());
+          LOG.info("{} Execution Complete!", taskGroup.getTaskGroupId());
         } else if (task instanceof OperatorTask) {
           launchOperatorTask((OperatorTask) task);
           garbageCollectLocalIntermediateData(task);
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.COMPLETE, Optional.empty());
-          LOG.log(Level.INFO, "{0} Execution Complete!", taskGroup.getTaskGroupId());
+          LOG.info("{} Execution Complete!", taskGroup.getTaskGroupId());
         } else if (task instanceof MetricCollectionBarrierTask) {
           launchMetricCollectionBarrierTask((MetricCollectionBarrierTask) task);
           garbageCollectLocalIntermediateData(task);
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.ON_HOLD, Optional.empty());
-          LOG.log(Level.INFO, "{0} Execution Complete!", taskGroup.getTaskGroupId());
+          LOG.info("{} Execution Complete!", taskGroup.getTaskGroupId());
         } else {
           throw new UnsupportedOperationException(task.toString());
         }
       } catch (final PartitionFetchException ex) {
         taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.FAILED_RECOVERABLE,
             Optional.of(TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
-        LOG.log(Level.WARNING, "{0} Execution Failed (Recoverable)! Exception: {1}",
+        LOG.warn("{} Execution Failed (Recoverable)! Exception: {}",
             new Object[] {taskGroup.getTaskGroupId(), ex.toString()});
       } catch (final PartitionWriteException ex2) {
         taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.FAILED_RECOVERABLE,
             Optional.of(TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
-        LOG.log(Level.WARNING, "{0} Execution Failed (Recoverable)! Exception: {1}",
+        LOG.warn("{} Execution Failed (Recoverable)! Exception: {}",
             new Object[] {taskGroup.getTaskGroupId(), ex2.toString()});
       } catch (final Exception e) {
         taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.FAILED_UNRECOVERABLE, Optional.empty());
@@ -293,7 +293,7 @@ public final class TaskGroupExecutor {
     if (taskIdToOutputWriterMap.containsKey(operatorTask.getId())) {
       taskIdToOutputWriterMap.get(operatorTask.getId()).forEach(outputWriter -> outputWriter.write(output));
     } else {
-      LOG.log(Level.INFO, "This is a sink task: {0}", operatorTask.getId());
+      LOG.info("This is a sink task: {}", operatorTask.getId());
     }
   }
 

@@ -17,6 +17,7 @@ package edu.snu.vortex.common.dag;
 
 import edu.snu.vortex.compiler.ir.LoopVertex;
 import edu.snu.vortex.runtime.exception.IllegalEdgeOperationException;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,8 +26,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
 import java.util.stream.Collectors;
 
 /**
@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  * @param <E> the edge type
  */
 public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializable {
-  private static final Logger LOG = Logger.getLogger(DAG.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(DAG.class.getName());
 
   private final List<V> vertices;
   private final List<V> rootVertices;
@@ -353,10 +353,10 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
       final PrintWriter printWriter = new PrintWriter(file);
       printWriter.println(toString());
       printWriter.close();
-      LOG.log(Level.INFO, String.format("DAG JSON for %s is saved at %s"
+      LOG.info(String.format("DAG JSON for %s is saved at %s"
           + " (Use https://service.jangho.kr/vortex-dag/ to visualize it.)", description, file.getPath()));
     } catch (IOException e) {
-      LOG.log(Level.WARNING, String.format("Cannot store JSON representation of %s to %s: %s",
+      LOG.warn(String.format("Cannot store JSON representation of %s to %s: %s",
           description, file.getPath(), e.toString()));
     }
   }

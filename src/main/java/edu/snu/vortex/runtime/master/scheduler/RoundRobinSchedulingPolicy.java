@@ -30,8 +30,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
 
 /**
@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
  */
 @ThreadSafe
 public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
-  private static final Logger LOG = Logger.getLogger(RoundRobinSchedulingPolicy.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(RoundRobinSchedulingPolicy.class.getName());
 
   private final ContainerManager containerManager;
 
@@ -227,7 +227,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     lock.lock();
     try {
       final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
-      LOG.log(Level.INFO, "Scheduling {0} to {1}",
+      LOG.info("Scheduling {} to {}",
           new Object[]{scheduledTaskGroup.getTaskGroup().getTaskGroupId(), executorId});
       executor.onTaskGroupScheduled(scheduledTaskGroup);
     } finally {
@@ -241,7 +241,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     try {
       final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
       executor.onTaskGroupExecutionComplete(taskGroupId);
-      LOG.log(Level.INFO, "{" + taskGroupId + "} completed in [" + executorId + "]");
+      LOG.info("{" + taskGroupId + "} completed in [" + executorId + "]");
 
       // the scheduler thread may be waiting for a free slot...
       final Attribute containerType = executor.getContainerType();
@@ -263,7 +263,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
       }
 
       executor.onTaskGroupExecutionFailed(taskGroupId);
-      LOG.log(Level.INFO, "{" + taskGroupId + "} failed in [" + executorId + "]");
+      LOG.info("{" + taskGroupId + "} failed in [" + executorId + "]");
 
       // the scheduler thread may be waiting for a free slot...
       final Attribute containerType = executor.getContainerType();

@@ -38,15 +38,16 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Job launcher.
  */
 public final class JobLauncher {
   private static final Tang TANG = Tang.Factory.getTang();
-  private static final Logger LOG = Logger.getLogger(JobLauncher.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(JobLauncher.class.getName());
   private static final int LOCAL_NUMBER_OF_EVALUATORS = 100; // hopefully large enough for our use....
   private static final double YARN_JVM_HEAP_SLACK = 0.2; // prevent YARN nodemanagers from prematurely killing us
 
@@ -82,7 +83,7 @@ public final class JobLauncher {
     if (possibleError.isPresent()) {
       throw new RuntimeException(possibleError.get());
     } else {
-      LOG.log(Level.INFO, "Job successfully completed (at least it seems...)");
+      LOG.info("Job successfully completed (at least it seems...)");
     }
   }
 

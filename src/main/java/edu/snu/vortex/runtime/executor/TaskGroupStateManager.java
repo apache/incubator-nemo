@@ -25,8 +25,8 @@ import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
 import edu.snu.vortex.common.StateMachine;
 
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Manages the states related to a task group.
@@ -34,7 +34,7 @@ import java.util.logging.Logger;
  */
 // TODO #163: Handle Fault Tolerance
 public final class TaskGroupStateManager {
-  private static final Logger LOG = Logger.getLogger(TaskGroupStateManager.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(TaskGroupStateManager.class.getName());
 
   private final String taskGroupId;
   private final int attemptIdx;
@@ -92,23 +92,23 @@ public final class TaskGroupStateManager {
                                                    final Optional<TaskGroupState.RecoverableFailureCause> cause) {
     switch (newState) {
     case EXECUTING:
-      LOG.log(Level.FINE, "Executing TaskGroup ID {0}...", taskGroupId);
+      LOG.debug("Executing TaskGroup ID {}...", taskGroupId);
       idToTaskStates.forEach((taskId, state) -> state.getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR));
       break;
     case COMPLETE:
-      LOG.log(Level.FINE, "TaskGroup ID {0} complete!", taskGroupId);
+      LOG.debug("TaskGroup ID {} complete!", taskGroupId);
       notifyTaskGroupStateToMaster(newState, failedTaskIds, cause);
       break;
     case FAILED_RECOVERABLE:
-      LOG.log(Level.FINE, "TaskGroup ID {0} failed (recoverable).", taskGroupId);
+      LOG.debug("TaskGroup ID {} failed (recoverable).", taskGroupId);
       notifyTaskGroupStateToMaster(newState, failedTaskIds, cause);
       break;
     case FAILED_UNRECOVERABLE:
-      LOG.log(Level.FINE, "TaskGroup ID {0} failed (unrecoverable).", taskGroupId);
+      LOG.debug("TaskGroup ID {} failed (unrecoverable).", taskGroupId);
       notifyTaskGroupStateToMaster(newState, failedTaskIds, cause);
       break;
     case ON_HOLD:
-      LOG.log(Level.FINE, "TaskGroup ID {0} put on hold.", taskGroupId);
+      LOG.debug("TaskGroup ID {} put on hold.", taskGroupId);
       notifyTaskGroupStateToMaster(newState, failedTaskIds, cause);
       break;
     default:
@@ -126,7 +126,7 @@ public final class TaskGroupStateManager {
   public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newState,
                                               final Optional<TaskGroupState.RecoverableFailureCause> cause) {
     final StateMachine taskStateChanged = idToTaskStates.get(taskId).getStateMachine();
-    LOG.log(Level.FINE, "Task State Transition: id {0} from {1} to {2}",
+    LOG.debug("Task State Transition: id {} from {} to {}",
         new Object[]{taskGroupId, taskStateChanged.getCurrentState(), newState});
     taskStateChanged.setState(newState);
     switch (newState) {

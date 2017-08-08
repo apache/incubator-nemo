@@ -33,15 +33,15 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Executor-side partition manager.
  */
 @ThreadSafe
 public final class PartitionManagerWorker {
-  private static final Logger LOG = Logger.getLogger(PartitionManagerWorker.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(PartitionManagerWorker.class.getName());
 
   private final String executorId;
 
@@ -106,7 +106,7 @@ public final class PartitionManagerWorker {
    */
   public boolean removePartition(final String partitionId,
                                  final Attribute partitionStore) {
-    LOG.log(Level.INFO, "RemovePartition: {0}", partitionId);
+    LOG.info("RemovePartition: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
     final boolean exist = store.removePartition(partitionId);
 
@@ -138,7 +138,7 @@ public final class PartitionManagerWorker {
   public void putPartition(final String partitionId,
                            final Iterable<Element> data,
                            final Attribute partitionStore) {
-    LOG.log(Level.INFO, "PutPartition: {0}", partitionId);
+    LOG.info("PutPartition: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
 
     try {
@@ -174,7 +174,7 @@ public final class PartitionManagerWorker {
                                  final String srcIRVertexId,
                                  final Iterable<Iterable<Element>> sortedData,
                                  final Attribute partitionStore) {
-    LOG.log(Level.INFO, "PutSortedPartition: {0}", partitionId);
+    LOG.info("PutSortedPartition: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
     final Iterable<Long> blockSizeInfo;
 
@@ -214,7 +214,7 @@ public final class PartitionManagerWorker {
   public CompletableFuture<Iterable<Element>> getPartition(final String partitionId,
                                                            final String runtimeEdgeId,
                                                            final Attribute partitionStore) {
-    LOG.log(Level.INFO, "GetPartition: {0}", partitionId);
+    LOG.info("GetPartition: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
     final Optional<Partition> optionalPartition;
 
@@ -232,7 +232,7 @@ public final class PartitionManagerWorker {
     // We don't have the partition here... let's see if a remote worker has it
     // Ask Master for the location
     if (partitionStore == Attribute.RemoteFile) {
-      LOG.log(Level.WARNING, "The target partition {0} is not found in the remote storage. "
+      LOG.warn("The target partition {} is not found in the remote storage. "
           + "Maybe the storage is not mounted or linked properly.", partitionId);
     }
     final CompletableFuture<ControlMessage.Message> responseFromMasterFuture =

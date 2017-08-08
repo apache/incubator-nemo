@@ -21,8 +21,8 @@ import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static edu.snu.vortex.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 
@@ -30,7 +30,7 @@ import static edu.snu.vortex.common.dag.DAG.EMPTY_DAG_DIRECTORY;
  * A sample MapReduce application.
  */
 public final class MapReduce {
-  private static final Logger LOG = Logger.getLogger(MapReduce.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(MapReduce.class.getName());
 
   /**
    * Private constructor.
@@ -61,16 +61,16 @@ public final class MapReduce {
     builder.connectVertices(edge2);
 
     final DAG dag = builder.build();
-    LOG.log(Level.INFO, "Before Optimization");
-    LOG.log(Level.INFO, dag.toString());
+    LOG.info("Before Optimization");
+    LOG.info(dag.toString());
 
     // Optimize
     final Optimizer optimizer = new Optimizer();
     final DAG optimizedDAG = optimizer.optimize(dag, Optimizer.PolicyType.Disaggregation, EMPTY_DAG_DIRECTORY);
 
     // After
-    LOG.log(Level.INFO, "After Optimization");
-    LOG.log(Level.INFO, optimizedDAG.toString());
+    LOG.info("After Optimization");
+    LOG.info(optimizedDAG.toString());
   }
 
   /**

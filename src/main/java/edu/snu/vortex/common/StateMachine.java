@@ -18,8 +18,8 @@ package edu.snu.vortex.common;
 import edu.snu.vortex.runtime.exception.IllegalStateTransitionException;
 
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A finite state machine that can be created with user defined states and transitions.
@@ -27,7 +27,7 @@ import java.util.logging.Logger;
 // TODO #171: Enable StateMachine with Handlers for State Transitions
 // TODO #306: StateMachine Visualization
 public final class StateMachine {
-  private static final Logger LOG = Logger.getLogger(StateMachine.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(StateMachine.class.getName());
 
   private final Map<Enum, State> stateMap;
   private State currentState;
@@ -100,7 +100,7 @@ public final class StateMachine {
     if (compared) {
       setState(state);
     } else {
-      LOG.log(Level.FINE, "The expected current state [" + expectedCurrentState
+      LOG.debug("The expected current state [" + expectedCurrentState
           + "] is different from the actual state [" + currentState.stateEnum + "]");
     }
 

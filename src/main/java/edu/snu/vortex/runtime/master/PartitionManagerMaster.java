@@ -26,8 +26,8 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static edu.snu.vortex.runtime.common.state.PartitionState.State.SCHEDULED;
 
@@ -37,7 +37,7 @@ import static edu.snu.vortex.runtime.common.state.PartitionState.State.SCHEDULED
  */
 @ThreadSafe
 public final class PartitionManagerMaster {
-  private static final Logger LOG = Logger.getLogger(PartitionManagerMaster.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(PartitionManagerMaster.class.getName());
   private final Map<String, PartitionState> partitionIdToState;
   private final Map<String, String> committedPartitionIdToWorkerId;
   private final Map<String, Set<String>> producerTaskGroupIdToPartitionIds;
@@ -169,7 +169,7 @@ public final class PartitionManagerMaster {
                                                    final String committedWorkerId) {
     final StateMachine sm = partitionIdToState.get(partitionId).getStateMachine();
     final Enum oldState = sm.getCurrentState();
-    LOG.log(Level.FINE, "Partition State Transition: id {0} from {1} to {2}",
+    LOG.debug("Partition State Transition: id {} from {} to {}",
         new Object[]{partitionId, oldState, newState});
 
     sm.setState(newState);
@@ -189,7 +189,7 @@ public final class PartitionManagerMaster {
         completeLocationFuture(partitionId, newState, Optional.empty());
         break;
       case LOST:
-        LOG.log(Level.INFO, "Partition {0} lost in {1}", new Object[]{partitionId, committedWorkerId});
+        LOG.info("Partition {} lost in {}", new Object[]{partitionId, committedWorkerId});
         committedPartitionIdToWorkerId.remove(partitionId);
         completeLocationFuture(partitionId, newState, Optional.empty());
         break;

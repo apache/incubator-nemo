@@ -28,8 +28,8 @@ import org.apache.reef.tang.Configuration;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Encapsulates REEF's evaluator management for executors.
@@ -40,7 +40,7 @@ import java.util.logging.Logger;
 // We need an overall cleanup of this class after #60 is resolved.
 @DriverSide
 public final class ContainerManager {
-  private static final Logger LOG = Logger.getLogger(ContainerManager.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(ContainerManager.class.getName());
 
   private final EvaluatorRequestor evaluatorRequestor;
   private final MessageEnvironment messageEnvironment;
@@ -130,7 +130,7 @@ public final class ContainerManager {
                                     final String executorId,
                                     final AllocatedEvaluator allocatedContainer,
                                     final Configuration executorConfiguration) {
-    LOG.log(Level.INFO, "Container type (" + resourceSpecification.getContainerType()
+    LOG.info("Container type (" + resourceSpecification.getContainerType()
         + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
 
@@ -167,7 +167,7 @@ public final class ContainerManager {
     // We set contextId = executorId in VortexDriver when we generate executor configuration.
     final String executorId = activeContext.getId();
 
-    LOG.log(Level.INFO, "[" + executorId + "] is up and running");
+    LOG.info("[" + executorId + "] is up and running");
 
     final ResourceSpecification resourceSpec = pendingContextIdToResourceSpec.remove(executorId);
 
@@ -190,7 +190,7 @@ public final class ContainerManager {
   }
 
   public synchronized void onExecutorRemoved(final String failedExecutorId) {
-    LOG.log(Level.INFO, "[" + failedExecutorId + "] failure reported.");
+    LOG.info("[" + failedExecutorId + "] failure reported.");
 
     final ExecutorRepresenter failedExecutor = executorRepresenterMap.remove(failedExecutorId);
     failedExecutor.onExecutorFailed();
