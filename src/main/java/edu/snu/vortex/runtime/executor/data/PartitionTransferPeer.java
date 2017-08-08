@@ -46,15 +46,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Handles partition transfer between {@link edu.snu.vortex.runtime.executor.Executor}s.
  */
 @ThreadSafe
 final class PartitionTransferPeer {
-  private static final Logger LOG = Logger.getLogger(PartitionTransferPeer.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(PartitionTransferPeer.class.getName());
   private static final RequestPartitionMessageCodec REQUEST_MESSAGE_CODEC = new RequestPartitionMessageCodec();
   private static final LinkListener LINK_LISTENER = new LoggingLinkListener();
 
@@ -82,13 +82,13 @@ final class PartitionTransferPeer {
 
     transport = transportFactory.newInstance(0, partitionClientHandler, partitionServerHandler, exceptionHandler);
     final InetSocketAddress serverAddress = (InetSocketAddress) transport.getLocalAddress();
-    LOG.log(Level.FINE, "PartitionTransferPeer starting, listening at {0}", serverAddress);
+    LOG.debug("PartitionTransferPeer starting, listening at {}", serverAddress);
 
     final Identifier serverIdentifier = new PartitionTransferPeerIdentifier(executorId);
     try {
       nameResolver.register(serverIdentifier, serverAddress);
     } catch (final Exception e) {
-      LOG.log(Level.SEVERE, "Cannot register PartitionTransferPeer to name server");
+      LOG.error("Cannot register PartitionTransferPeer to name server");
       throw new RuntimeException(e);
     }
   }
@@ -113,10 +113,10 @@ final class PartitionTransferPeer {
     try {
       remoteAddress = nameResolver.lookup(remotePeerIdentifier);
     } catch (final Exception e) {
-      LOG.log(Level.SEVERE, "Cannot lookup PartitionTransferPeer {0}", remotePeerIdentifier);
+      LOG.error("Cannot lookup PartitionTransferPeer {}", remotePeerIdentifier);
       throw new NodeConnectionException(e);
     }
-    LOG.log(Level.INFO, "Looked up {0}", remoteAddress);
+    LOG.info("Looked up {}", remoteAddress);
 
     final Link<ControlMessage.RequestPartitionMsg> link;
     try {
@@ -135,7 +135,7 @@ final class PartitionTransferPeer {
         .build();
     link.write(msg);
 
-    LOG.log(Level.INFO, "Wrote request {0}", msg);
+    LOG.info("Wrote request {}", msg);
     return future;
   }
 

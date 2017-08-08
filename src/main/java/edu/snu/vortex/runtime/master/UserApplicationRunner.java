@@ -28,8 +28,8 @@ import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static edu.snu.vortex.compiler.optimizer.Optimizer.POLICY_NAME;
 
@@ -37,7 +37,7 @@ import static edu.snu.vortex.compiler.optimizer.Optimizer.POLICY_NAME;
  * Compiles and runs User application.
  */
 public final class UserApplicationRunner implements Runnable {
-  private static final Logger LOG = Logger.getLogger(UserApplicationRunner.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(UserApplicationRunner.class.getName());
 
   private final String dagDirectory;
   private final String className;
@@ -68,7 +68,7 @@ public final class UserApplicationRunner implements Runnable {
   @Override
   public void run() {
     try {
-      LOG.log(Level.INFO, "##### VORTEX Compiler #####");
+      LOG.info("##### VORTEX Compiler #####");
       final DAG<IRVertex, IREdge> dag = frontend.compile(className, arguments);
       dag.storeJSON(dagDirectory, "ir", "IR before optimization");
 

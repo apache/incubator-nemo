@@ -36,14 +36,14 @@ import org.apache.commons.lang.ArrayUtils;
 import org.netlib.util.intW;
 
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Sample Alternating Least Square application.
  */
 public final class AlternatingLeastSquare {
-  private static final Logger LOG = Logger.getLogger(AlternatingLeastSquare.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(AlternatingLeastSquare.class.getName());
 
   /**
    * Private constructor.
@@ -206,7 +206,7 @@ public final class AlternatingLeastSquare {
         final Integer ratingIndex = indexArr.get(i);
         final Double rating = ratingArr.get(i);
         for (Integer j = 0; j < numFeatures; j++) {
-//          LOG.log(Level.INFO, "Rating index " + ratingIndex);
+//          LOG.info("Rating index " + ratingIndex);
           if (j < fixedMatrix.get(ratingIndex).size()) {
             tmp[j] = fixedMatrix.get(ratingIndex).get(j).doubleValue();
           } else {
@@ -303,7 +303,7 @@ public final class AlternatingLeastSquare {
    */
   public static void main(final String[] args) {
     final Long start = System.currentTimeMillis();
-    LOG.log(Level.INFO, Arrays.toString(args));
+    LOG.info(Arrays.toString(args));
     final String inputFilePath = args[0];
     final Integer numFeatures = Integer.parseInt(args[1]);
     final Integer numItr = Integer.parseInt(args[2]);
@@ -365,6 +365,6 @@ public final class AlternatingLeastSquare {
     }
 
     p.run();
-    LOG.log(Level.INFO, "JCT " + (System.currentTimeMillis() - start));
+    LOG.info("JCT " + (System.currentTimeMillis() - start));
   }
 }

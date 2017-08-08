@@ -36,8 +36,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -49,7 +49,7 @@ import static edu.snu.vortex.common.dag.DAG.EMPTY_DAG_DIRECTORY;
  * The methods of this class are synchronized.
  */
 public final class JobStateManager {
-  private static final Logger LOG = Logger.getLogger(JobStateManager.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(JobStateManager.class.getName());
 
   private final String jobId;
 
@@ -176,10 +176,10 @@ public final class JobStateManager {
    */
   public synchronized void onJobStateChanged(final JobState.State newState) {
     if (newState == JobState.State.EXECUTING) {
-      LOG.log(Level.FINE, "Executing Job ID {0}...", jobId);
+      LOG.debug("Executing Job ID {}...", jobId);
       jobState.getStateMachine().setState(newState);
     } else if (newState == JobState.State.COMPLETE) {
-      LOG.log(Level.FINE, "Job ID {0} complete!", jobId);
+      LOG.debug("Job ID {} complete!", jobId);
       // Awake all threads waiting the finish of this job.
       finishLock.lock();
       try {
@@ -189,7 +189,7 @@ public final class JobStateManager {
         finishLock.unlock();
       }
     } else if (newState == JobState.State.FAILED) {
-      LOG.log(Level.FINE, "Job ID {0} failed.", jobId);
+      LOG.debug("Job ID {} failed.", jobId);
       // Awake all threads waiting the finish of this job.
       finishLock.lock();
       try {
@@ -211,7 +211,7 @@ public final class JobStateManager {
    */
   public synchronized void onStageStateChanged(final String stageId, final StageState.State newState) {
     final StateMachine stageStateMachine = idToStageStates.get(stageId).getStateMachine();
-    LOG.log(Level.FINE, "Stage State Transition: id {0} from {1} to {2}",
+    LOG.debug("Stage State Transition: id {} from {} to {}",
         new Object[]{stageId, stageStateMachine.getCurrentState(), newState});
     stageStateMachine.setState(newState);
     if (newState == StageState.State.EXECUTING) {
@@ -267,7 +267,7 @@ public final class JobStateManager {
    */
   public synchronized void onTaskGroupStateChanged(final TaskGroup taskGroup, final TaskGroupState.State newState) {
     final StateMachine taskGroupState = idToTaskGroupStates.get(taskGroup.getTaskGroupId()).getStateMachine();
-    LOG.log(Level.FINE, "Task Group State Transition: id {0} from {1} to {2}",
+    LOG.debug("Task Group State Transition: id {} from {} to {}",
         new Object[]{taskGroup.getTaskGroupId(), taskGroupState.getCurrentState(), newState});
     final String stageId = taskGroup.getStageId();
 
@@ -321,7 +321,7 @@ public final class JobStateManager {
               new Throwable("The stage has not yet been submitted for execution"));
         }
       } else {
-        LOG.log(Level.INFO, "{0} state is already FAILED_RECOVERABLE. Skipping this event.",
+        LOG.info("{} state is already FAILED_RECOVERABLE. Skipping this event.",
             taskGroup.getTaskGroupId());
       }
       break;
@@ -367,7 +367,7 @@ public final class JobStateManager {
         jobFinishedCondition.await();
       }
     } catch (final InterruptedException e) {
-      LOG.log(Level.WARNING, "Interrupted during waiting the finish of Job ID {0}", jobId);
+      LOG.warn("Interrupted during waiting the finish of Job ID {}", jobId);
     } finally {
       finishLock.unlock();
     }
@@ -389,7 +389,7 @@ public final class JobStateManager {
         jobFinishedCondition.await(timeout, unit);
       }
     } catch (final InterruptedException e) {
-      LOG.log(Level.WARNING, "Interrupted during waiting the finish of Job ID {0}", jobId);
+      LOG.warn("Interrupted during waiting the finish of Job ID {}", jobId);
     } finally {
       finishLock.unlock();
     }
@@ -440,10 +440,10 @@ public final class JobStateManager {
       final PrintWriter printWriter = new PrintWriter(file);
       printWriter.println(toStringWithPhysicalPlan());
       printWriter.close();
-      LOG.log(Level.INFO, String.format("JSON representation of job state for %s(%s) was saved to %s",
+      LOG.info(String.format("JSON representation of job state for %s(%s) was saved to %s",
           jobId, suffix, file.getPath()));
     } catch (IOException e) {
-      LOG.log(Level.WARNING, String.format("Cannot store JSON representation of job state for %s(%s) to %s: %s",
+      LOG.warn(String.format("Cannot store JSON representation of job state for %s(%s) to %s: %s",
           jobId, suffix, file.getPath(), e.toString()));
     }
   }

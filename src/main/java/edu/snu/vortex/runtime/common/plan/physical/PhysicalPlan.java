@@ -20,13 +20,15 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 
 import java.io.Serializable;
 import java.util.Map;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A job's physical plan, to be executed by the Runtime.
  */
 public final class PhysicalPlan implements Serializable {
-  private static final Logger LOG = Logger.getLogger(PhysicalPlan.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(PhysicalPlan.class.getName());
 
   private final String id;
 
