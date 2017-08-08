@@ -46,6 +46,8 @@ public final class PartitionState {
     stateMachineBuilder.addTransition(State.SCHEDULED, State.LOST_BEFORE_COMMIT, "The partition is lost before commit");
     stateMachineBuilder.addTransition(State.COMMITTED, State.LOST, "Lost after committed");
     stateMachineBuilder.addTransition(State.COMMITTED, State.REMOVED, "Removed after committed");
+    stateMachineBuilder.addTransition(State.REMOVED, State.SCHEDULED,
+        "Re-scheduled after removal due to fault tolerance");
 
     stateMachineBuilder.addTransition(State.LOST, State.SCHEDULED, "The producer of the lost partition is rescheduled");
     stateMachineBuilder.addTransition(State.LOST_BEFORE_COMMIT, State.SCHEDULED,
