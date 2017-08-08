@@ -87,7 +87,7 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
   @Override
   public void visitPrimitiveTransform(final TransformHierarchy.Node beamNode) {
 //    Print if needed for development
-//    LOG.log(Level.INFO, "visitp " + beamNode.getTransform());
+//    LOG.info("visitp " + beamNode.getTransform());
     if (beamNode.getOutputs().size() > 1) {
       throw new UnsupportedOperationException(beamNode.toString());
     }

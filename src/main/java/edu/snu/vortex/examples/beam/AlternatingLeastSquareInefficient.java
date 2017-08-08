@@ -32,8 +32,8 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Sample Alternating Least Square application.
@@ -41,7 +41,7 @@ import java.util.logging.Logger;
  * This takes the unnecessarily repetitive code that parses user data in every loop, to be performed just a single time.
  */
 public final class AlternatingLeastSquareInefficient {
-  private static final Logger LOG = Logger.getLogger(AlternatingLeastSquare.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(AlternatingLeastSquare.class.getName());
 
   /**
    * Private constructor.
@@ -103,7 +103,7 @@ public final class AlternatingLeastSquareInefficient {
    */
   public static void main(final String[] args) {
     final Long start = System.currentTimeMillis();
-    LOG.log(Level.INFO, Arrays.toString(args));
+    LOG.info(Arrays.toString(args));
     final String inputFilePath = args[0];
     final Integer numFeatures = Integer.parseInt(args[1]);
     final Integer numItr = Integer.parseInt(args[2]);
@@ -159,6 +159,6 @@ public final class AlternatingLeastSquareInefficient {
     }
 
     p.run();
-    LOG.log(Level.INFO, "JCT " + (System.currentTimeMillis() - start));
+    LOG.info("JCT " + (System.currentTimeMillis() - start));
   }
 }

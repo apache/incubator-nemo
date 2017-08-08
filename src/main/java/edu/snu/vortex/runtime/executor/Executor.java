@@ -32,14 +32,14 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Executor.
  */
 public final class Executor {
-  private static final Logger LOG = Logger.getLogger(Executor.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(Executor.class.getName());
 
   private final String executorId;
 
@@ -83,7 +83,7 @@ public final class Executor {
   }
 
   private synchronized void onTaskGroupReceived(final ScheduledTaskGroup scheduledTaskGroup) {
-    LOG.log(Level.FINE, "Executor [{0}] received TaskGroup [{1}] to execute.",
+    LOG.debug("Executor [{}] received TaskGroup [{}] to execute.",
         new Object[]{executorId, scheduledTaskGroup.getTaskGroup().getTaskGroupId()});
     executorService.execute(() -> launchTaskGroup(scheduledTaskGroup));
   }

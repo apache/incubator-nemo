@@ -6,14 +6,14 @@ import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.wake.IdentifierFactory;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Message context for NCS.
  */
 final class NcsMessageContext implements MessageContext {
-  private static final Logger LOG = Logger.getLogger(NcsMessageContext.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(NcsMessageContext.class.getName());
 
   private final String senderId;
   private final ConnectionFactory connectionFactory;
@@ -35,7 +35,7 @@ final class NcsMessageContext implements MessageContext {
   @Override
   public <U> void reply(final U replyMessage) {
     // TODO #200: Track whether the replied message is successfully sent in NcsMessageContext
-    LOG.log(Level.FINE, "reply: {0}", replyMessage);
+    LOG.debug("reply: {}", replyMessage);
     final Connection connection = connectionFactory.newConnection(idFactory.getNewInstance(senderId));
     try {
       connection.open();

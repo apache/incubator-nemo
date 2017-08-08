@@ -16,7 +16,9 @@
 package edu.snu.vortex.common.dag;
 
 import java.io.Serializable;
-import java.util.logging.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Connects two vertices of a DAG.
@@ -25,7 +27,7 @@ import java.util.logging.Logger;
  * @param <V> the vertex type.
  */
 public class Edge<V extends Vertex> implements Serializable {
-  private static final Logger LOG = Logger.getLogger(Edge.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(Edge.class.getName());
 
   private final String id;
   private final V src;

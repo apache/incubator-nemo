@@ -22,15 +22,15 @@ import edu.snu.vortex.runtime.master.JobStateManager;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Takes a TaskGroup from the pending queue and schedules it to an executor.
  */
 @DriverSide
 public final class SchedulerRunner implements Runnable {
-  private static final Logger LOG = Logger.getLogger(SchedulerRunner.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(SchedulerRunner.class.getName());
   private final JobStateManager jobStateManager;
   private final SchedulingPolicy schedulingPolicy;
   private final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue;
@@ -53,7 +53,7 @@ public final class SchedulerRunner implements Runnable {
         final ScheduledTaskGroup nextTaskGroupToSchedule = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup();
         final Optional<String> executorId = schedulingPolicy.attemptSchedule(nextTaskGroupToSchedule);
         if (!executorId.isPresent()) {
-          LOG.log(Level.INFO, "Failed to assign an executor for {0} before the timeout: {1}",
+          LOG.info("Failed to assign an executor for {} before the timeout: {}",
               new Object[] {nextTaskGroupToSchedule.getTaskGroup().getTaskGroupId(),
                   schedulingPolicy.getScheduleTimeoutMs()});
 
@@ -71,9 +71,9 @@ public final class SchedulerRunner implements Runnable {
       }
     }
     if (jobStateManager.getJobState().getStateMachine().getCurrentState() == JobState.State.COMPLETE) {
-      LOG.log(Level.INFO, "Job is complete, scheduler runner will terminate.");
+      LOG.info("Job is complete, scheduler runner will terminate.");
     } else {
-      LOG.log(Level.INFO, "Job is failed, scheduler runner will terminate.");
+      LOG.info("Job is failed, scheduler runner will terminate.");
     }
   }
 }

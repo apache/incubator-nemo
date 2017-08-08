@@ -49,12 +49,11 @@ import org.apache.reef.wake.time.event.StopTime;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Logger;
 
-import static edu.snu.vortex.compiler.ir.attribute.Attribute.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * REEF Driver for Vortex.
@@ -62,7 +61,7 @@ import static edu.snu.vortex.compiler.ir.attribute.Attribute.*;
 @Unit
 @DriverSide
 public final class VortexDriver {
-  private static final Logger LOG = Logger.getLogger(VortexDriver.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(VortexDriver.class.getName());
 
   private final NameServer nameServer;
   private final LocalAddressProvider localAddressProvider;

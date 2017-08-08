@@ -43,8 +43,8 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static edu.snu.vortex.runtime.common.state.TaskGroupState.State.COMPLETE;
 import static edu.snu.vortex.runtime.common.state.TaskGroupState.State.ON_HOLD;
@@ -57,7 +57,7 @@ import static edu.snu.vortex.runtime.common.state.TaskGroupState.State.ON_HOLD;
  *    b) (Please list others done by Runtime Master as features are added).
  */
 public final class RuntimeMaster {
-  private static final Logger LOG = Logger.getLogger(RuntimeMaster.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(RuntimeMaster.class.getName());
   private static final int DAG_LOGGING_PERIOD = 3000;
 
   private final Scheduler scheduler;
@@ -108,7 +108,7 @@ public final class RuntimeMaster {
       dagLoggingExecutor.shutdown();
 
       jobStateManager.storeJSON(dagDirectory, "final");
-      LOG.log(Level.INFO, "{0} is complete!", plan.getId());
+      LOG.info("{} is complete!", plan.getId());
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -162,7 +162,7 @@ public final class RuntimeMaster {
         final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
         final String failedExecutorId = executorFailedMsg.getExecutorId();
         final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
-        LOG.log(Level.SEVERE, failedExecutorId + " failed, Stack Trace: ", exception);
+        LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
         containerManager.onExecutorRemoved(failedExecutorId);
         throw new RuntimeException(exception);
       default:
