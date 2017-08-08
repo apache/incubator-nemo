@@ -27,7 +27,7 @@ java -cp target/vortex-0.1-SNAPSHOT-shaded.jar edu.snu.vortex.compiler.optimizer
 ```
 
 ## Resource Configuration
-The command line parameter `-executor_json` is the path to the JSON file that describes resource configuration for executors. Its default value is `default.json`, which initializes one of each `Transient`, `Reserved`, and `Compute` executor, each of which has one core and 1024MB memory.
+The command line parameter `-executor_json` is the path to the JSON file that describes resource configuration for executors. Its default value is `config/default.json`, which initializes one of each `Transient`, `Reserved`, and `Compute` executor, each of which has one core and 1024MB memory.
 
 The following example describes the schema:
 
