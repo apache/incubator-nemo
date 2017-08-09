@@ -203,8 +203,8 @@ public final class GlusterFilePartition implements FilePartition {
    * @see FilePartition#retrieveInHashRange(int, int);
    */
   @Override
-  public Iterable<Element> retrieveInHashRange(final int startInclusiveHashVal,
-                                               final int endExclusiveHashVal) throws IOException {
+  public Iterable<Element> retrieveInHashRange(final int hashRangeStartVal,
+                                               final int hashRangeEndVal) throws IOException {
     final ArrayList<Element> deserializedData = new ArrayList<>();
     try (
         final FileInputStream fileInputStream = new FileInputStream(dataFilePath);
@@ -223,7 +223,7 @@ public final class GlusterFilePartition implements FilePartition {
       }
 
       // Find the offset of the first block to read.
-      final int expectedSkipBytes = blockMetadataSize * startInclusiveHashVal;
+      final int expectedSkipBytes = blockMetadataSize * hashRangeStartVal;
       final long skippedMetadata =
           metaFilePrimInputStream.skipBytes(expectedSkipBytes);
       if (skippedMetadata != expectedSkipBytes) {
@@ -244,7 +244,7 @@ public final class GlusterFilePartition implements FilePartition {
       deserializeBlock(serializedDataLength, numElements, fileInputStream, deserializedData);
 
       // Read the blocks in the given hash range.
-      for (int hashVal = startInclusiveHashVal + 1; hashVal < endExclusiveHashVal; hashVal++) {
+      for (int hashVal = hashRangeStartVal + 1; hashVal < hashRangeEndVal; hashVal++) {
         final int skippedOffset = metaFilePrimInputStream.skipBytes(8);
         if (skippedOffset != 8) {
           throw new IOException("The input stream cannot skipped the \"offset\" metadata.");

@@ -71,4 +71,16 @@ public final class MapReduceITCase {
         .addOptimizationPolicy("pado")
         .build());
   }
+
+  /**
+   * Testing data skew dynamic optimization.
+   * @throws Exception exception on the way.
+   */
+  @Test (timeout = TIMEOUT)
+  public void testDataSkew() throws Exception {
+    JobLauncher.main(builder
+        .addJobId(MapReduceITCase.class.getSimpleName() + "_dataskew")
+        .addOptimizationPolicy("dataskew")
+        .build());
+  }
 }

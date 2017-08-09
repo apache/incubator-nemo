@@ -142,9 +142,12 @@ public final class JobStateManager {
       stageOutgoingEdges.forEach(physicalStageEdge -> {
         final Attribute commPattern =
             physicalStageEdge.getAttributes().get(Attribute.Key.CommunicationPattern);
+        final Boolean isDataSizeMetricCollectionEdge =
+            physicalStageEdge.getAttributes().get(Attribute.Key.DataSizeMetricCollection) != null;
+
         final int srcParallelism = taskGroupsForStage.size();
         IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-          if (commPattern == Attribute.ScatterGather) {
+          if (commPattern == Attribute.ScatterGather && !isDataSizeMetricCollectionEdge) {
             final int dstParallelism =
                 physicalStageEdge.getDstVertex().getAttributes().get(Attribute.IntegerKey.Parallelism);
             IntStream.range(0, dstParallelism).forEach(dstTaskIdx ->

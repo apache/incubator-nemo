@@ -45,11 +45,11 @@ public interface FilePartition extends Partition, AutoCloseable {
   /**
    * Retrieves the data of this partition from the file in a specific hash range and deserializes it.
    *
-   * @param startInclusiveHashVal of the hash range.
-   * @param endExclusiveHashVal   of the hash range.
+   * @param hashRangeStartVal of the hash range (included in the range).
+   * @param hashRangeEndVal   of the hash range (excluded from the range).
    * @return an iterable of deserialized data.
    * @throws IOException if failed to deserialize.
    */
-  Iterable<Element> retrieveInHashRange(final int startInclusiveHashVal,
-                                        final int endExclusiveHashVal) throws IOException;
+  Iterable<Element> retrieveInHashRange(final int hashRangeStartVal,
+                                        final int hashRangeEndVal) throws IOException;
 }

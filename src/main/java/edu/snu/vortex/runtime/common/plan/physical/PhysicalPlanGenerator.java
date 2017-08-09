@@ -261,6 +261,7 @@ public final class PhysicalPlanGenerator
       IntStream.range(0, stageParallelism).forEach(taskGroupIndex -> {
 
         final DAGBuilder<Task, RuntimeEdge<Task>> stageInternalDAGBuilder = new DAGBuilder<>();
+        final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId();
 
         // Iterate over the vertices contained in this stage to convert to tasks.
         stageVertices.forEach(irVertex -> {
@@ -275,20 +276,20 @@ public final class PhysicalPlanGenerator
                     + readers.size() + " and " + stageParallelism);
               }
               newTaskToAdd = new BoundedSourceTask<>(RuntimeIdGenerator.generateTaskId(), sourceVertex.getId(),
-                  taskGroupIndex, readers.get(taskGroupIndex));
+                  taskGroupIndex, readers.get(taskGroupIndex), taskGroupId);
             } catch (Exception e) {
               throw new PhysicalPlanGenerationException(e);
             }
           } else if (irVertex instanceof OperatorVertex) {
             final OperatorVertex operatorVertex = (OperatorVertex) irVertex;
             newTaskToAdd = new OperatorTask(RuntimeIdGenerator.generateTaskId(), operatorVertex.getId(),
-                taskGroupIndex, operatorVertex.getTransform());
+                taskGroupIndex, operatorVertex.getTransform(), taskGroupId);
 
           } else if (irVertex instanceof MetricCollectionBarrierVertex) {
             final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
                 (MetricCollectionBarrierVertex) irVertex;
             newTaskToAdd = new MetricCollectionBarrierTask(RuntimeIdGenerator.generateTaskId(),
-                metricCollectionBarrierVertex.getId(), taskGroupIndex);
+                metricCollectionBarrierVertex.getId(), taskGroupIndex, taskGroupId);
           } else {
             throw new IllegalVertexOperationException("This vertex type is not supported");
           }
@@ -307,7 +308,7 @@ public final class PhysicalPlanGenerator
         });
 
         // Create the task group to add for this stage.
-        final TaskGroup newTaskGroup = new TaskGroup(RuntimeIdGenerator.generateTaskGroupId(), stage.getId(),
+        final TaskGroup newTaskGroup = new TaskGroup(taskGroupId, stage.getId(),
             taskGroupIndex, stageInternalDAGBuilder.build(), containerType);
         physicalStageBuilder.addTaskGroup(newTaskGroup);
         irVertexTaskMap.clear();
