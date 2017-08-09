@@ -65,24 +65,23 @@ public final class OutputWriter extends DataTransfer {
   public void write(final Iterable<Element> dataToWrite) {
     final Boolean isDataSizeMetricCollectionEdge =
         runtimeEdge.getAttributes().get(Attribute.Key.DataSizeMetricCollection) != null;
-
-    // If the dynamic optimization which detects data skew is enabled, sort the data and write it.
-    if (isDataSizeMetricCollectionEdge) {
-      sortAndWrite(dataToWrite);
-    } else {
-      switch (runtimeEdge.getAttributes().get(Attribute.Key.CommunicationPattern)) {
-        case OneToOne:
-          writeOneToOne(dataToWrite);
-          break;
-        case Broadcast:
-          writeBroadcast(dataToWrite);
-          break;
-        case ScatterGather:
+    switch (runtimeEdge.getAttributes().get(Attribute.Key.CommunicationPattern)) {
+      case OneToOne:
+        writeOneToOne(dataToWrite);
+        break;
+      case Broadcast:
+        writeBroadcast(dataToWrite);
+        break;
+      case ScatterGather:
+        // If the dynamic optimization which detects data skew is enabled, sort the data and write it.
+        if (isDataSizeMetricCollectionEdge) {
+          sortAndWrite(dataToWrite);
+        } else {
           writeScatterGather(dataToWrite);
-          break;
-        default:
-          throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
-      }
+        }
+        break;
+      default:
+        throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
   }
 
@@ -135,6 +134,7 @@ public final class OutputWriter extends DataTransfer {
    * to prevent the extra deserialize - rehash - serialize process.
    * Each data of this partition having same key hash value will be collected as a single block.
    * This block will be the unit of retrieval and recombination of this partition.
+   * Constraint: If a partition is written by this method, it have to be read by {@link InputReader#readDataInRange()}.
    * TODO #378: Elaborate block construction during data skew pass
    *
    * @param dataToWrite an iterable for the elements to be written.

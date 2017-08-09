@@ -21,7 +21,8 @@ package edu.snu.vortex.runtime.common.plan.physical;
 public final class MetricCollectionBarrierTask extends Task {
   MetricCollectionBarrierTask(final String taskId,
                               final String runtimeVertexId,
-                              final int index) {
-    super(taskId, runtimeVertexId, index);
+                              final int index,
+                              final String taskGroupId) {
+    super(taskId, runtimeVertexId, index, taskGroupId);
   }
 }

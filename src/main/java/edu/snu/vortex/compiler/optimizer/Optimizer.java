@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.compiler.optimizer;
 
+import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.common.dag.DAGBuilder;
 import edu.snu.vortex.compiler.exception.DynamicOptimizationException;
 import edu.snu.vortex.compiler.ir.IREdge;
@@ -28,7 +29,7 @@ import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 
 import java.util.*;
 
@@ -140,28 +141,21 @@ public final class Optimizer {
    */
   public static PhysicalPlan dynamicOptimization(final PhysicalPlan originalPlan,
                                                  final MetricCollectionBarrierVertex metricCollectionBarrierVertex) {
-    final Map<String, Iterable> metricData = metricCollectionBarrierVertex.getMetricData();
+    // Map between a partition ID to corresponding metric data (e.g., the size of each block).
+    final Map<String, List> metricData = metricCollectionBarrierVertex.getMetricData();
     final Attribute dynamicOptimizationType =
         metricCollectionBarrierVertex.getAttr(Attribute.Key.DynamicOptimizationType);
 
     switch (dynamicOptimizationType) {
       case DataSkew:
-        final DescriptiveStatistics stats = new DescriptiveStatistics();
-
-        metricData.forEach((k, vs) -> vs.forEach(v -> stats.addValue(((Long) v).doubleValue())));
-
-        // We find out the outliers using quartiles.
-        final double median = stats.getPercentile(50);
-        final double q1 = stats.getPercentile(25);
-        final double q3 = stats.getPercentile(75);
-
-        // We find the gap between the quartiles and use it as a parameter to calculate the outer fences for outliers.
-        final double interquartile = q3 - q1;
-        final double outerfence = interquartile * interquartile * 2;
 
         // Builder to create new stages.
         final DAGBuilder<PhysicalStage, PhysicalStageEdge> physicalDAGBuilder =
             new DAGBuilder<>(originalPlan.getStageDAG());
+
+        // Count the hash range.
+        final int hashRange = metricData.values().stream().findFirst().orElseThrow(() ->
+            new DynamicOptimizationException("no valid metric data.")).size();
 
         // Do the optimization using the information derived above.
         metricData.forEach((partitionId, partitionSizes) -> {
@@ -173,16 +167,29 @@ public final class Optimizer {
               .filter(physicalStageEdge -> physicalStageEdge.getId().equals(runtimeEdgeId))
               .findFirst().orElseThrow(() ->
                   new DynamicOptimizationException("physical stage DAG doesn't contain this edge: " + runtimeEdgeId));
-
           // The following stage to receive the data.
           final PhysicalStage optimizationStage = optimizationEdge.getDst();
 
-          partitionSizes.forEach(partitionSize -> {
-            if (((Long) partitionSize).doubleValue() > median + outerfence) { // outlier with too much data.
-              // TODO #362: handle outliers using the new method of observing hash histogram.
-              optimizationEdge.getAttributes();
+          // Assign the hash value range to each receiving task group.
+          // TODO #390: DynOpt-Update data skew handling policy
+          final List<TaskGroup> taskGroups = optimizationEdge.getDst().getTaskGroupList();
+          final Map<String, Pair<Integer, Integer>> taskGroupIdToHashRangeMap =
+              optimizationEdge.getTaskGroupIdToHashRangeMap();
+          final int quotient = hashRange / taskGroups.size();
+          final int remainder = hashRange % taskGroups.size();
+          int assignedHashValue = 0;
+          for (int i = 0; i < taskGroups.size(); i++) {
+            final TaskGroup taskGroup = taskGroups.get(i);
+            final Pair<Integer, Integer> hashRangeToAssign;
+            if (i == taskGroups.size() - 1) {
+              // last one.
+              hashRangeToAssign = Pair.of(assignedHashValue, assignedHashValue + quotient + remainder);
+            } else {
+              hashRangeToAssign = Pair.of(assignedHashValue, assignedHashValue + quotient);
             }
-          });
+            assignedHashValue += quotient;
+            taskGroupIdToHashRangeMap.put(taskGroup.getTaskGroupId(), hashRangeToAssign);
+          }
         });
 
         return new PhysicalPlan(originalPlan.getId(), physicalDAGBuilder.build(), originalPlan.getTaskIRVertexMap());

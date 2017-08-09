@@ -262,7 +262,8 @@ public final class DataTransferTest {
     // Read
     final List<List<Element>> dataReadList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
-      final InputReader reader = new InputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
+      final InputReader reader =
+          new InputReader(dstTaskIndex, taskGroupPrefix + dstTaskIndex, srcVertex, dummyEdge, receiver);
       final List<Element> dataRead = new ArrayList<>();
       try {
         InputReader.combineFutures(reader.read()).forEach(dataRead::add);

@@ -24,13 +24,16 @@ import edu.snu.vortex.common.dag.Vertex;
 public abstract class Task extends Vertex {
   private final String runtimeVertexId;
   private final int index;
+  private final String taskGroupId;
 
   public Task(final String taskId,
               final String runtimeVertexId,
-              final int index) {
+              final int index,
+              final String taskGroupId) {
     super(taskId);
     this.runtimeVertexId = runtimeVertexId;
     this.index = index;
+    this.taskGroupId = taskGroupId;
   }
 
   public final String getRuntimeVertexId() {
@@ -39,6 +42,10 @@ public abstract class Task extends Vertex {
 
   public final int getIndex() {
     return index;
+  }
+
+  public final String getTaskGroupId() {
+    return taskGroupId;
   }
 
   @Override
