@@ -94,19 +94,24 @@ final class PartitionTransferPeer {
   }
 
   /**
-   * Fetches a partition asynchronously.
+   * Fetches data in a specific hash value range from a partition which resides in remote worker asynchronously.
+   * If the hash value range is [0, int.max), it will retrieve the whole data from the partition.
    *
    * @param remoteExecutorId id of the remote executor
    * @param partitionId      id of the partition
    * @param runtimeEdgeId    id of the {@link edu.snu.vortex.runtime.common.plan.RuntimeEdge}
    *                         corresponds to the partition
    * @param partitionStore   type of the partition store
+   * @param hashRangeStartVal of the hash range (included in the range).
+   * @param hashRangeEndVal   of the hash range (excluded from the range).
    * @return {@link CompletableFuture} for the partition
    */
   CompletableFuture<Iterable<Element>> fetch(final String remoteExecutorId,
                                              final String partitionId,
                                              final String runtimeEdgeId,
-                                             final Attribute partitionStore) {
+                                             final Attribute partitionStore,
+                                             final int hashRangeStartVal,
+                                             final int hashRangeEndVal) {
     final Identifier remotePeerIdentifier = new PartitionTransferPeerIdentifier(remoteExecutorId);
     final InetSocketAddress remoteAddress;
     final Coder coder = partitionManagerWorker.get().getCoder(runtimeEdgeId);
@@ -132,6 +137,8 @@ final class PartitionTransferPeer {
         .setPartitionId(partitionId)
         .setRuntimeEdgeId(runtimeEdgeId)
         .setPartitionStore(convertPartitionStore(partitionStore))
+        .setHashRangeStartVal(hashRangeStartVal)
+        .setHashRangeEndVal(hashRangeEndVal)
         .build();
     link.write(msg);
 
@@ -175,10 +182,19 @@ final class PartitionTransferPeer {
       final ControlMessage.RequestPartitionMsg request = REQUEST_MESSAGE_CODEC.decode(transportEvent.getData());
 
       // We are getting the partition from local store!
+      final int hashRangeStartVal = request.getHashRangeStartVal(); // Inclusive
+      final int hashRangeEndVal = request.getHashRangeEndVal(); // Exclusive
       final Iterable<Element> partition;
       try {
-        partition = worker.getPartition(request.getPartitionId(), request.getRuntimeEdgeId(),
-            convertPartitionStoreType(request.getPartitionStore())).get();
+        if (hashRangeStartVal == 0 && hashRangeEndVal == Integer.MAX_VALUE) {
+          // Retrieve whole data.
+          partition = worker.retrieveDataFromPartition(request.getPartitionId(), request.getRuntimeEdgeId(),
+              convertPartitionStoreType(request.getPartitionStore())).get();
+        } else {
+          // Retrieve data in a specific hash value range.
+          partition = worker.retrieveDataFromPartition(request.getPartitionId(), request.getRuntimeEdgeId(),
+              convertPartitionStoreType(request.getPartitionStore()), hashRangeStartVal, hashRangeEndVal).get();
+        }
       } catch (InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
       }

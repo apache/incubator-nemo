@@ -144,8 +144,8 @@ public final class LocalFilePartition implements FilePartition {
    * @see FilePartition#retrieveInHashRange(int, int);
    */
   @Override
-  public Iterable<Element> retrieveInHashRange(final int startInclusiveHashVal,
-                                               final int endExclusiveHashVal) throws IOException {
+  public Iterable<Element> retrieveInHashRange(final int hashRangeStartVal,
+                                               final int hashRangeEndVal) throws IOException {
     // Check whether this partition is fully written and sorted by the hash value.
     if (!written.get()) {
       throw new IOException("This partition is not written yet.");
@@ -157,13 +157,13 @@ public final class LocalFilePartition implements FilePartition {
     final ArrayList<Element> deserializedData = new ArrayList<>();
     try (final FileInputStream fileStream = new FileInputStream(filePath)) {
       // Skip to the offset of the first block.
-      final long startOffset = blockInfoList.get(startInclusiveHashVal).getOffset();
+      final long startOffset = blockInfoList.get(hashRangeStartVal).getOffset();
       final long skippedBytes = fileStream.skip(startOffset);
       if (skippedBytes != startOffset) {
         throw new IOException("The file stream failed to skip to the offset.");
       }
 
-      IntStream.range(startInclusiveHashVal, endExclusiveHashVal).forEach(hashVal -> {
+      IntStream.range(hashRangeStartVal, hashRangeEndVal).forEach(hashVal -> {
         final BlockInfo blockInfo = blockInfoList.get(hashVal);
         deserializeBlock(blockInfo, fileStream, deserializedData);
       });

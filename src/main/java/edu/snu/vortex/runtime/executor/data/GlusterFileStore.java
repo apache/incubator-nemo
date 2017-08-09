@@ -54,7 +54,7 @@ final class GlusterFileStore extends FileStore implements RemoteFileStore {
    * @throws PartitionFetchException if the partition is exist but fail to get the partition.
    */
   @Override
-  public Optional<Partition> getPartition(final String partitionId) throws PartitionFetchException {
+  public Optional<Partition> retrieveDataFromPartition(final String partitionId) throws PartitionFetchException {
     // Deserialize the target data in the corresponding file and pass it as a local data.
     final Coder coder = getCoderFromWorker(partitionId);
     try {
@@ -75,8 +75,8 @@ final class GlusterFileStore extends FileStore implements RemoteFileStore {
    */
   @Override
   public Optional<Partition> retrieveDataFromPartition(final String partitionId,
-                                                       final int startInclusiveHashVal,
-                                                       final int endExclusiveHashVal)
+                                                       final int hashRangeStartVal,
+                                                       final int hashRangeEndVal)
       throws PartitionFetchException {
     // Deserialize the target data in the corresponding file and pass it as a local data.
     final Coder coder = getCoderFromWorker(partitionId);
@@ -85,7 +85,7 @@ final class GlusterFileStore extends FileStore implements RemoteFileStore {
           GlusterFilePartition.open(coder, partitionIdToFileName(partitionId));
       if (partition.isPresent()) {
         return Optional.of(new MemoryPartition(
-            partition.get().retrieveInHashRange(startInclusiveHashVal, endExclusiveHashVal)));
+            partition.get().retrieveInHashRange(hashRangeStartVal, hashRangeEndVal)));
       } else {
         return Optional.empty();
       }

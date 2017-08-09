@@ -16,10 +16,14 @@
 package edu.snu.vortex.runtime.common.plan.physical;
 
 
+import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Contains information stage boundary {@link edu.snu.vortex.runtime.common.plan.stage.StageEdge}.
@@ -37,6 +41,13 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
    */
   private final IRVertex dstVertex;
 
+  /**
+   * The map between the task group id and hash range to read.
+   * The left of the hash range pair means the inclusive start hash value of the range.
+   * The right of the hash range pair means the exclusive end hash value of the range.
+   */
+  private final Map<String, Pair<Integer, Integer>> taskGroupIdToHashRangeMap;
+
   public PhysicalStageEdge(final String runtimeEdgeId,
                            final AttributeMap edgeAttributes,
                            final IRVertex srcVertex,
@@ -47,6 +58,7 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     super(runtimeEdgeId, edgeAttributes, srcStage, dstStage, coder);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
+    this.taskGroupIdToHashRangeMap = new HashMap<>();
   }
 
   public IRVertex getSrcVertex() {
@@ -67,5 +79,9 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     sb.append("\", \"coder\": \"").append(getCoder().toString());
     sb.append("\"}");
     return sb.toString();
+  }
+
+  public Map<String, Pair<Integer, Integer>> getTaskGroupIdToHashRangeMap() {
+    return taskGroupIdToHashRangeMap;
   }
 }

@@ -291,9 +291,9 @@ public final class PartitionStoreTest {
                   writeTaskNumber -> {
                     final int partitionNumber = writeTaskNumber * NUM_READ_TASKS + readTaskNumber;
                     final Optional<Partition> partition =
-                        readerSideStore.getPartition(partitionIdList.get(partitionNumber));
+                        readerSideStore.retrieveDataFromPartition(partitionIdList.get(partitionNumber));
                     if (!partition.isPresent()) {
-                      throw new RuntimeException("The result of getPartition(" +
+                      throw new RuntimeException("The result of retrieveDataFromPartition(" +
                           partitionIdList.get(partitionNumber) + ") is empty");
                     }
                     final Iterable<Element> getData;
@@ -382,9 +382,9 @@ public final class PartitionStoreTest {
           @Override
           public Boolean call() {
             try {
-              final Optional<Partition> partition = readerSideStore.getPartition(concPartitionId);
+              final Optional<Partition> partition = readerSideStore.retrieveDataFromPartition(concPartitionId);
               if (!partition.isPresent()) {
-                throw new RuntimeException("The result of getPartition(" +
+                throw new RuntimeException("The result of retrieveDataFromPartition(" +
                     concPartitionId + ") is empty");
               }
               final Iterable<Element> getData = partition.get().asIterable();
