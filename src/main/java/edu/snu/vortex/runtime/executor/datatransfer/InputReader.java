@@ -180,17 +180,12 @@ public final class InputReader extends DataTransfer {
     return edgeAttributes.containsKey(Attribute.Key.SideInput);
   }
 
-  public Object getSideInput() {
+  public CompletableFuture<Object> getSideInput() {
     if (!isSideInputReader()) {
       throw new RuntimeException();
     }
-    final List<CompletableFuture<Iterable<Element>>> futures = this.read();
-
-    try {
-      return futures.get(0).get().iterator().next().getData();
-    } catch (InterruptedException | ExecutionException e) {
-      throw new PartitionFetchException(e);
-    }
+    final CompletableFuture<Iterable<Element>> future = this.read().get(0);
+    return future.thenApply(f -> f.iterator().next().getData());
   }
 
   /**
