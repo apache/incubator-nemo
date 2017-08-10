@@ -36,6 +36,7 @@ import edu.snu.vortex.common.dag.DAG;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
@@ -242,16 +243,20 @@ public final class TaskGroupExecutor {
         .stream()
         .filter(InputReader::isSideInputReader)
         .forEach(inputReader -> {
-          final Object sideInput = inputReader.getSideInput();
-          final RuntimeEdge inEdge = inputReader.getRuntimeEdge();
-          final Transform srcTransform;
-          if (inEdge instanceof PhysicalStageEdge) {
-            srcTransform = ((OperatorVertex) ((PhysicalStageEdge) inEdge).getSrcVertex())
-                .getTransform();
-          } else {
-            srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
+          try {
+            final Object sideInput = inputReader.getSideInput().get();
+            final RuntimeEdge inEdge = inputReader.getRuntimeEdge();
+            final Transform srcTransform;
+            if (inEdge instanceof PhysicalStageEdge) {
+              srcTransform = ((OperatorVertex) ((PhysicalStageEdge) inEdge).getSrcVertex())
+                  .getTransform();
+            } else {
+              srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
+            }
+            sideInputMap.put(srcTransform, sideInput);
+          } catch (final InterruptedException | ExecutionException e) {
+            throw new PartitionFetchException(e);
           }
-          sideInputMap.put(srcTransform, sideInput);
         });
 
     final Transform.Context transformContext = new ContextImpl(sideInputMap);
@@ -272,7 +277,12 @@ public final class TaskGroupExecutor {
           final String srcVtxId = inputReader.getSrcVertexId();
           sourceParallelism.getAndAdd(inputReader.getSourceParallelism());
           // Add consumers which will push the data to the data queue when it ready to the futures.
-          futures.forEach(compFuture -> compFuture.thenAccept(data -> dataQueue.add(Pair.of(data, srcVtxId))));
+          futures.forEach(compFuture -> compFuture.whenComplete((data, exception) -> {
+            if (exception != null) {
+              throw new PartitionFetchException(exception);
+            }
+            dataQueue.add(Pair.of(data, srcVtxId));
+          }));
         });
 
     // Consumes all of the partitions from incoming edges.
