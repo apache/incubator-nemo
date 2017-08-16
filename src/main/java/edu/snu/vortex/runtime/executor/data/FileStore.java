@@ -31,14 +31,14 @@ import java.util.List;
  */
 abstract class FileStore implements PartitionStore {
 
-  private final int blockSizeInMb;
+  private final int blockSizeInBytes;
   private final String fileDirectory;
   private final InjectionFuture<PartitionManagerWorker> partitionManagerWorker;
 
   protected FileStore(final int blockSizeInKb,
                       final String fileDirectory,
                       final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
-    this.blockSizeInMb = blockSizeInKb * 1000;
+    this.blockSizeInBytes = blockSizeInKb * 1000;
     this.fileDirectory = fileDirectory;
     this.partitionManagerWorker = partitionManagerWorker;
   }
@@ -59,6 +59,28 @@ abstract class FileStore implements PartitionStore {
 
     final byte[] serialized = outputStream.toByteArray();
     partition.writeBlock(serialized, elementsInBlock);
+
+    return serialized.length;
+  }
+
+  /**
+   * Makes the given stream to a block and write it to the given file partition.
+   *
+   * @param elementsInBlock the number of elements in this block.
+   * @param outputStream    the output stream containing data.
+   * @param partition       the partition to write the block.
+   * @param hashVal         the hash value of the block.
+   * @return the size of serialized block.
+   * @throws IOException if fail to write.
+   */
+  private long writeBlock(final long elementsInBlock,
+                          final ByteArrayOutputStream outputStream,
+                          final FilePartition partition,
+                          final int hashVal) throws IOException {
+    outputStream.close();
+
+    final byte[] serialized = outputStream.toByteArray();
+    partition.writeBlock(serialized, elementsInBlock, hashVal);
 
     return serialized.length;
   }
@@ -96,7 +118,7 @@ abstract class FileStore implements PartitionStore {
       coder.encode(element, outputStream);
       elementsInBlock++;
 
-      if (outputStream.size() >= blockSizeInMb) {
+      if (outputStream.size() >= blockSizeInBytes) {
         // If this block is large enough, synchronously append it to the file and reset the buffer
         partitionSize += writeBlock(elementsInBlock, outputStream, partition);
 
@@ -109,47 +131,51 @@ abstract class FileStore implements PartitionStore {
       // If there are any remaining data in stream, write it as another block.
       partitionSize += writeBlock(elementsInBlock, outputStream, partition);
     }
+    partition.finishWrite();
 
     return partitionSize;
   }
 
   /**
    * Serializes and puts the data to a file partition.
-   * The blocks in this data have to be already sorted by their hash value.
+   * The data consists of multiple blocks and each block has a single value.
    *
    * @param coder      the coder used to serialize the data of this partition.
    * @param partition  to store this data.
-   * @param sortedData to be stored.
+   * @param hashedData to be stored.
    * @return the size of the data.
    * @throws IOException if fail to write the data.
    */
-  protected List<Long> putSortedData(final Coder coder,
+  protected List<Long> putHashedData(final Coder coder,
                                      final FilePartition partition,
-                                     final Iterable<Iterable<Element>> sortedData) throws IOException {
+                                     final Iterable<Iterable<Element>> hashedData) throws IOException {
     final List<Long> blockSizeList = new ArrayList<>();
     // Serialize the given blocks
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    for (Iterable<Element> block : sortedData) {
+    int hashIdx = 0;
+    for (final Iterable<Element> block : hashedData) {
       long elementsInBlock = 0;
       for (final Element element : block) {
         coder.encode(element, outputStream);
         elementsInBlock++;
       }
       // Synchronously append the serialized block to the file and reset the buffer
-      blockSizeList.add(writeBlock(elementsInBlock, outputStream, partition));
+      blockSizeList.add(writeBlock(elementsInBlock, outputStream, partition, hashIdx++));
 
       outputStream.reset();
     }
+    partition.finishWrite();
+
     return blockSizeList;
   }
 
   /**
-   * Converts a partition id to the corresponding file name.
+   * Converts a partition id to the corresponding file path.
    *
    * @param partitionId of the partition
-   * @return the file name of the partition.
+   * @return the file path of the partition.
    */
-  protected String partitionIdToFileName(final String partitionId) {
+  protected String partitionIdToFilePath(final String partitionId) {
     return fileDirectory + "/" + partitionId;
   }
 

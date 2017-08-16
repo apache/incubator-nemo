@@ -77,8 +77,8 @@ public final class PartitionStoreTest {
   private static final int NUM_READ_HASH_TASKS = 3;
   private static final int HASH_DATA_SIZE = 10000;
   private static final int HASH_RANGE = 4;
-  private List<String> sortedPartitionIdList;
-  private List<List<Iterable<Element>>> sortedDataInPartitionList;
+  private List<String> hashedPartitionIdList;
+  private List<List<Iterable<Element>>> hashedDataInPartitionList;
   private List<Pair<Integer, Integer>> readHashRangeList;
   private List<List<Iterable<Element>>> expectedDataInRange;
 
@@ -121,12 +121,12 @@ public final class PartitionStoreTest {
     dataInConcPartition = getRangedNumList(0, CONC_DATA_SIZE);
 
     // Following part is for the scatter and gather in hash range test
-    final int numSortedPartitions = NUM_WRITE_HASH_TASKS;
+    final int numHashedPartitions = NUM_WRITE_HASH_TASKS;
     final List<String> writeHashTaskIdList = new ArrayList<>(NUM_WRITE_HASH_TASKS);
     final List<String> readHashTaskIdList = new ArrayList<>(NUM_READ_HASH_TASKS);
     readHashRangeList = new ArrayList<>(NUM_READ_HASH_TASKS);
-    sortedPartitionIdList = new ArrayList<>(numSortedPartitions);
-    sortedDataInPartitionList = new ArrayList<>(numSortedPartitions);
+    hashedPartitionIdList = new ArrayList<>(numHashedPartitions);
+    hashedDataInPartitionList = new ArrayList<>(numHashedPartitions);
     expectedDataInRange = new ArrayList<>(NUM_READ_HASH_TASKS);
 
     // Generates the ids of the tasks to be used.
@@ -137,18 +137,18 @@ public final class PartitionStoreTest {
 
     // Generates the ids and the data of the partitions to be used.
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writeTaskNumber -> {
-      sortedPartitionIdList.add(RuntimeIdGenerator.generatePartitionId(
+      hashedPartitionIdList.add(RuntimeIdGenerator.generatePartitionId(
           RuntimeIdGenerator.generateRuntimeEdgeId("scatter gather in range"),
           NUM_WRITE_TASKS + NUM_READ_TASKS + 1 + writeTaskNumber));
-      final ArrayList<Iterable<Element>> sortedPartition = new ArrayList<>(HASH_RANGE);
+      final ArrayList<Iterable<Element>> hashedPartition = new ArrayList<>(HASH_RANGE);
       // Generates the data having each hash value.
       IntStream.range(0, HASH_RANGE).forEach(hashValue -> {
-        sortedPartition.add(getFixedKeyRangedNumList(
+        hashedPartition.add(getFixedKeyRangedNumList(
             hashValue,
             writeTaskNumber * HASH_DATA_SIZE * HASH_RANGE + hashValue * HASH_DATA_SIZE,
             writeTaskNumber * HASH_DATA_SIZE * HASH_RANGE  + (hashValue + 1) * HASH_DATA_SIZE));
       });
-      sortedDataInPartitionList.add(sortedPartition);
+      hashedDataInPartitionList.add(hashedPartition);
     });
 
     // Generates the range of hash value to read for each read task.
@@ -165,7 +165,7 @@ public final class PartitionStoreTest {
       IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writeTaskNumber -> {
         final List<Iterable<Element>> appendingList = new ArrayList<>();
         IntStream.range(hashRange.left(), hashRange.right()).forEach(hashVal -> {
-          appendingList.add(sortedDataInPartitionList.get(writeTaskNumber).get(hashVal));
+          appendingList.add(hashedDataInPartitionList.get(writeTaskNumber).get(hashVal));
         });
         final List<Element> concatStreamBase = new ArrayList<>();
         Stream<Element> concatStream = concatStreamBase.stream();
@@ -459,8 +459,8 @@ public final class PartitionStoreTest {
           @Override
           public Boolean call() {
             try {
-              writerSideStore.putSortedDataAsPartition(
-                  sortedPartitionIdList.get(writeTaskNumber), sortedDataInPartitionList.get(writeTaskNumber)).get();
+              writerSideStore.putHashedDataAsPartition(
+                  hashedPartitionIdList.get(writeTaskNumber), hashedDataInPartitionList.get(writeTaskNumber)).get();
               return true;
             } catch (final Exception e) {
               e.printStackTrace();
@@ -490,11 +490,11 @@ public final class PartitionStoreTest {
                     try {
                       final Pair<Integer, Integer> hashRangeToRetrieve = readHashRangeList.get(readTaskNumber);
                       final Optional<Partition> partition = readerSideStore.retrieveDataFromPartition(
-                          sortedPartitionIdList.get(writeTaskNumber),
+                          hashedPartitionIdList.get(writeTaskNumber),
                           hashRangeToRetrieve.left(), hashRangeToRetrieve.right()).get();
                       if (!partition.isPresent()) {
                         throw new RuntimeException("The result of get partition" +
-                            sortedPartitionIdList.get(writeTaskNumber) + " in range " + hashRangeToRetrieve.toString() +
+                            hashedPartitionIdList.get(writeTaskNumber) + " in range " + hashRangeToRetrieve.toString() +
                             " is empty");
                       }
                       final Iterable<Element> getData;
@@ -531,11 +531,10 @@ public final class PartitionStoreTest {
     // Remove stored partitions
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writer -> {
       try {
-
-        final boolean exist = writerSideStore.removePartition(sortedPartitionIdList.get(writer)).get();
+        final boolean exist = writerSideStore.removePartition(hashedPartitionIdList.get(writer)).get();
         if (!exist) {
           throw new RuntimeException("The result of removePartition(" +
-              sortedPartitionIdList.get(writer) + ") is false");
+              hashedPartitionIdList.get(writer) + ") is false");
         }
       } catch (final InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
