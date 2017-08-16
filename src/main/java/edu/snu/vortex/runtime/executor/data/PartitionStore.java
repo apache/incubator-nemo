@@ -62,16 +62,15 @@ public interface PartitionStore {
 
   /**
    * Saves an iterable of data blocks as a partition.
-   * Each block has a specific hash value, and these blocks are sorted by this hash value.
-   * The block becomes a unit of read & write.
+   * Each block has a specific hash value, and the block becomes a unit of read & write.
    * @param partitionId of the partition.
-   * @param sortedData to save as a partition.
+   * @param hashedData to save as a partition.
    * @return the size of data per hash value (only when the data is serialized).
    *         (the future completes exceptionally with {@link edu.snu.vortex.runtime.exception.PartitionWriteException}
    *          for any error occurred while trying to write a partition.)
    */
-  CompletableFuture<Optional<List<Long>>> putSortedDataAsPartition(String partitionId,
-                                                                   Iterable<Iterable<Element>> sortedData);
+  CompletableFuture<Optional<List<Long>>> putHashedDataAsPartition(String partitionId,
+                                                                   Iterable<Iterable<Element>> hashedData);
 
   /**
    * Optional<Partition> removePartition(String partitionId) throws PartitionFetchException;

@@ -167,25 +167,25 @@ public final class PartitionManagerWorker {
   }
 
   /**
-   * Store a sorted partition to the target {@code PartitionStore}.
-   * The data in this partition is sorted by the hash value of their key to handle the data skew.
+   * Store a hashed partition to the target {@code PartitionStore}.
+   * Each block (an {@link Iterable} of elements} has a single hash value.
    * Invariant: This should be invoked only once per partitionId.
    *
    * @param partitionId    of the partition.
    * @param srcIRVertexId  IRVertex gof the source task.
-   * @param sortedData     of the partition.
+   * @param hashedData     of the partition.
    * @param partitionStore to store the partition.
    */
-  public void putSortedPartition(final String partitionId,
+  public void putHashedPartition(final String partitionId,
                                  final String srcIRVertexId,
-                                 final Iterable<Iterable<Element>> sortedData,
+                                 final Iterable<Iterable<Element>> hashedData,
                                  final Attribute partitionStore) {
-    LOG.info("PutSortedPartition: {}", partitionId);
+    LOG.info("PutHashedPartition: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
     final Iterable<Long> blockSizeInfo;
 
     try {
-      blockSizeInfo = store.putSortedDataAsPartition(partitionId, sortedData).get().orElse(Collections.emptyList());
+      blockSizeInfo = store.putHashedDataAsPartition(partitionId, hashedData).get().orElse(Collections.emptyList());
     } catch (final Exception e) {
       throw new PartitionWriteException(e);
     }
@@ -252,11 +252,11 @@ public final class PartitionManagerWorker {
    * Unlike putPartition, this can be invoked multiple times per partitionId (maybe due to failures).
    * Here, we first check if we have the partition here, and then try to fetch the data from a remote worker.
    *
-   * @param partitionId           of the partition.
-   * @param runtimeEdgeId         id of the runtime edge that corresponds to the partition.
-   * @param partitionStore        for the data storage.
-   * @param hashRangeStartVal     of the hash range (included in the range).
-   * @param hashRangeEndVal       of the hash range (excluded from the range).
+   * @param partitionId       of the partition.
+   * @param runtimeEdgeId     id of the runtime edge that corresponds to the partition.
+   * @param partitionStore    for the data storage.
+   * @param hashRangeStartVal of the hash range (included in the range).
+   * @param hashRangeEndVal   of the hash range (excluded from the range).
    * @return a {@link CompletableFuture} for the partition.
    */
   public CompletableFuture<Iterable<Element>> retrieveDataFromPartition(final String partitionId,
@@ -292,11 +292,11 @@ public final class PartitionManagerWorker {
    * Requests data in a specific hash value range from a partition which resides in a remote worker asynchronously.
    * If the hash value range is [0, int.max), it will retrieve the whole data from the partition.
    *
-   * @param partitionId           of the partition.
-   * @param runtimeEdgeId         id of the runtime edge that corresponds to the partition.
-   * @param partitionStore        for the data storage.
-   * @param hashRangeStartVal     of the hash range (included in the range).
-   * @param hashRangeEndVal       of the hash range (excluded from the range).
+   * @param partitionId       of the partition.
+   * @param runtimeEdgeId     id of the runtime edge that corresponds to the partition.
+   * @param partitionStore    for the data storage.
+   * @param hashRangeStartVal of the hash range (included in the range).
+   * @param hashRangeEndVal   of the hash range (excluded from the range).
    * @return the {@link CompletableFuture} of the partition.
    */
   private CompletableFuture<Iterable<Element>> requestPartitionInRemoteWorker(final String partitionId,
