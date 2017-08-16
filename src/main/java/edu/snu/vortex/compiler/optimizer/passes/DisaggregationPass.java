@@ -40,8 +40,8 @@ public final class DisaggregationPass implements Pass {
             edge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
             edge.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
           } else {
-            edge.setAttr(Attribute.Key.ChannelDataPlacement,  Attribute.RemoteFile);
-            edge.setAttr(Attribute.Key.ChannelTransferPolicy,  Attribute.Pull);
+            edge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.RemoteFile);
+            edge.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
           }
         });
       }

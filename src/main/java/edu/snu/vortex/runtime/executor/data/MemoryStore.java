@@ -40,7 +40,7 @@ import java.util.stream.StreamSupport;
 final class MemoryStore implements PartitionStore {
   // A map between partition id and data.
   private final ConcurrentHashMap<String, Iterable<Element>> partitionIdToData;
-  // A map between partition id and data blocked and sorted by the hash value.
+  // A map between partition id and data blocked and hashed by the hash value.
   private final ConcurrentHashMap<String, Iterable<Iterable<Element>>> partitionDataInBlocks;
 
   @Inject
@@ -122,18 +122,19 @@ final class MemoryStore implements PartitionStore {
   }
 
   /**
-   * @see PartitionStore#putSortedDataAsPartition(String, Iterable).
+   * @see PartitionStore#putHashedDataAsPartition(String, Iterable).
    */
   @Override
-  public CompletableFuture<Optional<List<Long>>> putSortedDataAsPartition(
-      final String partitionId, final Iterable<Iterable<Element>> sortedData) {
+  public CompletableFuture<Optional<List<Long>>> putHashedDataAsPartition(
+      final String partitionId,
+      final Iterable<Iterable<Element>> hashedData) {
     final Iterable<Iterable<Element>> previousBlockedData =
-        partitionDataInBlocks.putIfAbsent(partitionId, sortedData);
+        partitionDataInBlocks.putIfAbsent(partitionId, hashedData);
     if (previousBlockedData != null) {
       throw new RuntimeException("Trying to overwrite an existing partition");
     }
 
-    partitionDataInBlocks.put(partitionId, sortedData);
+    partitionDataInBlocks.put(partitionId, hashedData);
 
     // The partition is not serialized.
     return CompletableFuture.completedFuture(Optional.empty());

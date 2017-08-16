@@ -75,7 +75,7 @@ public final class OutputWriter extends DataTransfer {
       case ScatterGather:
         // If the dynamic optimization which detects data skew is enabled, sort the data and write it.
         if (isDataSizeMetricCollectionEdge) {
-          sortAndWrite(dataToWrite);
+          hashAndWrite(dataToWrite);
         } else {
           writeScatterGather(dataToWrite);
         }
@@ -127,7 +127,7 @@ public final class OutputWriter extends DataTransfer {
   }
 
   /**
-   * Sorts an output according to the hash value and writes it as a single partition.
+   * Hashes an output according to the hash value and writes it as a single partition.
    * This function will be called only when we need to split or recombine an output data from a task after it is stored
    * (e.g., dynamic data skew handling, I-file write).
    * We extend the hash range with the factor {@link edu.snu.vortex.client.JobConf.HashRangeMultiplier} in advance
@@ -139,7 +139,7 @@ public final class OutputWriter extends DataTransfer {
    *
    * @param dataToWrite an iterable for the elements to be written.
    */
-  private void sortAndWrite(final Iterable<Element> dataToWrite) {
+  private void hashAndWrite(final Iterable<Element> dataToWrite) {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
     final int dstParallelism = dstVertex.getAttributes().get(Attribute.IntegerKey.Parallelism);
     // For this hash range, please check the description of HashRangeMultiplier
@@ -154,7 +154,7 @@ public final class OutputWriter extends DataTransfer {
       ((List) blockedOutputList.get(hashVal)).add(element);
     });
 
-    partitionManagerWorker.putSortedPartition(partitionId, srcVertexId, blockedOutputList,
+    partitionManagerWorker.putHashedPartition(partitionId, srcVertexId, blockedOutputList,
         runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
   }
 }
