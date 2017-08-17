@@ -50,20 +50,24 @@ public final class SchedulerRunner implements Runnable {
   public void run() {
     while (!jobStateManager.checkJobTermination()) {
       try {
-        final ScheduledTaskGroup nextTaskGroupToSchedule = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup();
-        final Optional<String> executorId = schedulingPolicy.attemptSchedule(nextTaskGroupToSchedule);
+        Optional<ScheduledTaskGroup> nextTaskGroupToSchedule;
+        do {
+          nextTaskGroupToSchedule = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup();
+        } while (!nextTaskGroupToSchedule.isPresent());
+
+        final Optional<String> executorId = schedulingPolicy.attemptSchedule(nextTaskGroupToSchedule.get());
         if (!executorId.isPresent()) {
           LOG.info("Failed to assign an executor for {} before the timeout: {}",
-              new Object[] {nextTaskGroupToSchedule.getTaskGroup().getTaskGroupId(),
+              new Object[] {nextTaskGroupToSchedule.get().getTaskGroup().getTaskGroupId(),
                   schedulingPolicy.getScheduleTimeoutMs()});
 
           // Put this TaskGroup back to the queue since we failed to schedule it.
-          pendingTaskGroupPriorityQueue.enqueue(nextTaskGroupToSchedule);
+          pendingTaskGroupPriorityQueue.enqueue(nextTaskGroupToSchedule.get());
         } else {
           // Must send this scheduledTaskGroup to the destination executor.
-          jobStateManager.onTaskGroupStateChanged(nextTaskGroupToSchedule.getTaskGroup(),
+          jobStateManager.onTaskGroupStateChanged(nextTaskGroupToSchedule.get().getTaskGroup(),
               TaskGroupState.State.EXECUTING);
-          schedulingPolicy.onTaskGroupScheduled(executorId.get(), nextTaskGroupToSchedule);
+          schedulingPolicy.onTaskGroupScheduled(executorId.get(), nextTaskGroupToSchedule.get());
         }
       } catch (final Exception e) {
         e.printStackTrace(System.err);

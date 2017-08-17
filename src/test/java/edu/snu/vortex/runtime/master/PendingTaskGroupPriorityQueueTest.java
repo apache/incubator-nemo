@@ -94,7 +94,7 @@ public final class PendingTaskGroupPriorityQueueTest {
         pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
 
     // The 1st dequeued TaskGroup should belong to the 1st stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(0).getId());
 
     // Add TaskGroups of the second stage to the queue (this is the earliest point 2nd stage can be scheduled)
@@ -102,15 +102,15 @@ public final class PendingTaskGroupPriorityQueueTest {
         pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
 
     // The 2nd dequeued TaskGroup should also belong to the 1st stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(0).getId());
 
     // The 3rd dequeued TaskGroup should also belong to the 1st stage.
-    ScheduledTaskGroup dequeued = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup();
+    ScheduledTaskGroup dequeued = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get();
     assertEquals(dequeued.getTaskGroup().getStageId(), dagOf3Stages.get(0).getId());
 
     // The dequeued TaskGroup should belong to the 2nd stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(1).getId());
 
     // Add TaskGroups of the third stage to the queue. (this is the earliest point 3rd stage can be scheduled)
@@ -118,11 +118,11 @@ public final class PendingTaskGroupPriorityQueueTest {
         pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
 
     // The 2nd dequeued TaskGroup should also belong to the 2nd stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(1).getId());
 
     // The dequeued TaskGroup should belong to the 3rd stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(2).getId());
   }
 
@@ -177,7 +177,7 @@ public final class PendingTaskGroupPriorityQueueTest {
         pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
 
     // The 1st dequeued TaskGroup should belong to the 1st stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(0).getId());
 
     // Add TaskGroups of the third stage to the queue. (this is the earliest point 3rd stage can be scheduled)
@@ -185,29 +185,29 @@ public final class PendingTaskGroupPriorityQueueTest {
         pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
 
     // The 2nd dequeued TaskGroup should belong to the 2nd stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(1).getId());
 
     // The 3rd dequeued TaskGroup should also belong to the 1st stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(0).getId());
 
     // The 4th dequeued TaskGroup should belong to the 2nd stage.
-    ScheduledTaskGroup dequeued = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup();
+    ScheduledTaskGroup dequeued = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get();
     assertEquals(dequeued.getTaskGroup().getStageId(), dagOf3Stages.get(1).getId());
 
     pendingTaskGroupPriorityQueue.enqueue(dequeued);
 
     // The 5th dequeued TaskGroup should belong to the 1st stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(0).getId());
 
     // The 6th dequeued TaskGroup should again belong to the 2nd stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(1).getId());
 
     // The dequeued TaskGroup should belong to the 3rd stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(2).getId());
   }
 
@@ -258,7 +258,7 @@ public final class PendingTaskGroupPriorityQueueTest {
         pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
 
     // The 1st dequeued TaskGroup should belong to the 1st stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(0).getId());
 
     // Add TaskGroups of the second stage to the queue (this is the earliest point 2nd stage can be scheduled)
@@ -266,11 +266,11 @@ public final class PendingTaskGroupPriorityQueueTest {
         pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
 
     // The 2nd dequeued TaskGroup should also belong to the 1st stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(0).getId());
 
     // The 3rd dequeued TaskGroup should also belong to the 1st stage.
-    ScheduledTaskGroup dequeued = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup();
+    ScheduledTaskGroup dequeued = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get();
     assertEquals(dequeued.getTaskGroup().getStageId(), dagOf3Stages.get(0).getId());
 
     // Remove the 2nd stage from dependencies.
@@ -280,7 +280,7 @@ public final class PendingTaskGroupPriorityQueueTest {
     pendingTaskGroupPriorityQueue.enqueue(dequeued);
 
     // The dequeued TaskGroup should again belong to the 1st stage.
-    dequeued = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup();
+    dequeued = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get();
     assertEquals(dequeued.getTaskGroup().getStageId(), dagOf3Stages.get(0).getId());
 
     // Add TaskGroups of the second stage to the queue (this is the earliest point 2nd stage can be scheduled)
@@ -288,7 +288,7 @@ public final class PendingTaskGroupPriorityQueueTest {
         pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
 
     // The dequeued TaskGroup should belong to the 2nd stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(1).getId());
 
     // Add TaskGroups of the third stage to the queue. (this is the earliest point 3rd stage can be scheduled)
@@ -296,11 +296,11 @@ public final class PendingTaskGroupPriorityQueueTest {
         pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
 
     // The 2nd dequeued TaskGroup should also belong to the 2nd stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(1).getId());
 
     // The dequeued TaskGroup should belong to the 3rd stage.
-    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().getTaskGroup().getStageId(),
+    assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(2).getId());
   }
 }

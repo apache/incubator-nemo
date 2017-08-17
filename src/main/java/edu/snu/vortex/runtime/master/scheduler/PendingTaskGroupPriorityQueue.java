@@ -26,10 +26,8 @@ import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.*;
+import java.util.function.BiFunction;
 
 /**
  * Keep tracks of all pending task groups.
@@ -67,15 +65,22 @@ public final class PendingTaskGroupPriorityQueue {
   public void enqueue(final ScheduledTaskGroup scheduledTaskGroup) {
     final String stageId = scheduledTaskGroup.getTaskGroup().getStageId();
 
-    if (stageIdToPendingTaskGroups.containsKey(stageId)) {
-      stageIdToPendingTaskGroups.get(stageId).addLast(scheduledTaskGroup);
-    } else {
-      final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = new ArrayDeque<>();
-      pendingTaskGroupsForStage.add(scheduledTaskGroup);
-
-      stageIdToPendingTaskGroups.put(stageId, pendingTaskGroupsForStage);
-      updateSchedulableStages(stageId);
-    }
+    stageIdToPendingTaskGroups.compute(stageId,
+        new BiFunction<String, Deque<ScheduledTaskGroup>, Deque<ScheduledTaskGroup>>() {
+          @Override
+          public Deque<ScheduledTaskGroup> apply(final String s,
+                                                         final Deque<ScheduledTaskGroup> scheduledTaskGroups) {
+            if (scheduledTaskGroups == null) {
+              final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = new ArrayDeque<>();
+              pendingTaskGroupsForStage.add(scheduledTaskGroup);
+              updateSchedulableStages(stageId);
+              return pendingTaskGroupsForStage;
+            } else {
+              scheduledTaskGroups.add(scheduledTaskGroup);
+              return scheduledTaskGroups;
+            }
+          }
+        });
   }
 
   /**
@@ -83,20 +88,25 @@ public final class PendingTaskGroupPriorityQueue {
    * @return the next TaskGroup to be scheduled
    * @throws InterruptedException can be thrown while trying to take a pending stage ID.
    */
-  public ScheduledTaskGroup dequeueNextTaskGroup() throws InterruptedException {
+  public Optional<ScheduledTaskGroup> dequeueNextTaskGroup() throws InterruptedException {
+    ScheduledTaskGroup taskGroupToSchedule = null;
     final String stageId = schedulableStages.takeFirst();
 
     final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = stageIdToPendingTaskGroups.get(stageId);
-    final ScheduledTaskGroup taskGroupToSchedule = pendingTaskGroupsForStage.poll();
 
-    if (pendingTaskGroupsForStage.isEmpty()) {
-      stageIdToPendingTaskGroups.remove(stageId);
-      stageIdToPendingTaskGroups.keySet().forEach(scheduledStageId -> updateSchedulableStages(scheduledStageId));
-    } else {
+    if (pendingTaskGroupsForStage == null) {
       schedulableStages.addLast(stageId);
+    } else {
+      taskGroupToSchedule = pendingTaskGroupsForStage.poll();
+      if (pendingTaskGroupsForStage.isEmpty()) {
+        stageIdToPendingTaskGroups.remove(stageId);
+        stageIdToPendingTaskGroups.keySet().forEach(scheduledStageId -> updateSchedulableStages(scheduledStageId));
+      } else {
+        schedulableStages.addLast(stageId);
+      }
     }
 
-    return taskGroupToSchedule;
+    return (taskGroupToSchedule == null) ? Optional.empty() : Optional.of(taskGroupToSchedule);
   }
 
   /**
