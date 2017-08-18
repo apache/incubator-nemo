@@ -84,11 +84,11 @@ public final class TaskGroupStateManager {
   /**
    * Updates the state of the task group.
    * @param newState of the task group.
-   * @param failedTaskIds the ID of the task on which this task group failed if failed, empty otherwise.
+   * @param tasksPutOnHold the IDs of the tasks put on hold, empty otherwise.
    * @param cause only provided as non-empty upon recoverable failures.
    */
   public synchronized void onTaskGroupStateChanged(final TaskGroupState.State newState,
-                                                   final Optional<List<String>> failedTaskIds,
+                                                   final Optional<List<String>> tasksPutOnHold,
                                                    final Optional<TaskGroupState.RecoverableFailureCause> cause) {
     switch (newState) {
     case EXECUTING:
@@ -97,19 +97,19 @@ public final class TaskGroupStateManager {
       break;
     case COMPLETE:
       LOG.debug("TaskGroup ID {} complete!", taskGroupId);
-      notifyTaskGroupStateToMaster(newState, failedTaskIds, cause);
+      notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case FAILED_RECOVERABLE:
       LOG.debug("TaskGroup ID {} failed (recoverable).", taskGroupId);
-      notifyTaskGroupStateToMaster(newState, failedTaskIds, cause);
+      notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case FAILED_UNRECOVERABLE:
       LOG.debug("TaskGroup ID {} failed (unrecoverable).", taskGroupId);
-      notifyTaskGroupStateToMaster(newState, failedTaskIds, cause);
+      notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case ON_HOLD:
       LOG.debug("TaskGroup ID {} put on hold.", taskGroupId);
-      notifyTaskGroupStateToMaster(newState, failedTaskIds, cause);
+      notifyTaskGroupStateToMaster(newState, tasksPutOnHold, cause);
       break;
     default:
       throw new IllegalStateException("Illegal state at this point");
@@ -140,10 +140,10 @@ public final class TaskGroupStateManager {
       }
       break;
     case FAILED_RECOVERABLE:
-      onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE, Optional.of(Arrays.asList(taskId)), cause);
+      onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE, Optional.empty(), cause);
       break;
     case FAILED_UNRECOVERABLE:
-      onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE, Optional.of(Arrays.asList(taskId)), cause);
+      onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE, Optional.empty(), cause);
       break;
     case ON_HOLD:
       currentTaskGroupTaskIds.remove(taskId);
@@ -159,17 +159,17 @@ public final class TaskGroupStateManager {
   /**
    * Notifies the change in task group state to master.
    * @param newState of the task group.
-   * @param failedTaskIds the id of the task that caused this task group to fail, empty otherwise.
+   * @param tasksPutOnHold the IDs of the task that is put on hold, empty otherwise.
    * @param cause only provided as non-empty upon recoverable failures.
    */
   private void notifyTaskGroupStateToMaster(final TaskGroupState.State newState,
-                                            final Optional<List<String>> failedTaskIds,
+                                            final Optional<List<String>> tasksPutOnHold,
                                             final Optional<TaskGroupState.RecoverableFailureCause> cause) {
-    final Optional<List<String>> failedTaskIdList;
-    if (!failedTaskIds.isPresent()) {
-      failedTaskIdList = Optional.of(Collections.emptyList());
+    final Optional<List<String>> tasksPutOnHoldList;
+    if (!tasksPutOnHold.isPresent()) {
+      tasksPutOnHoldList = Optional.of(Collections.emptyList());
     } else {
-      failedTaskIdList = failedTaskIds;
+      tasksPutOnHoldList = tasksPutOnHold;
     }
 
     final ControlMessage.TaskGroupStateChangedMsg.Builder msgBuilder =
@@ -178,7 +178,7 @@ public final class TaskGroupStateManager {
           .setTaskGroupId(taskGroupId)
           .setAttemptIdx(attemptIdx)
           .setState(convertState(newState))
-          .addAllFailedTaskIds(failedTaskIdList.get());
+          .addAllTasksPutOnHoldIds(tasksPutOnHoldList.get());
     if (cause.isPresent()) {
       msgBuilder.setFailureCause(convertFailureCause(cause.get()));
     }

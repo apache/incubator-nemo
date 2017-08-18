@@ -56,14 +56,14 @@ public interface Scheduler {
    * @param newState for the TaskGroup.
    * @param attemptIdx the number of times this TaskGroup has executed.
    *************** the below parameters are only valid for failures *****************
-   * @param failedTaskIds the IDs of the failed Tasks of the TaskGroup upon failure.
+   * @param tasksPutOnHold the IDs of tasks that are put on hold. It is null otherwise.
    * @param failureCause for which the TaskGroup failed in the case of a recoverable failure.
    */
   void onTaskGroupStateChanged(String executorId,
                                String taskGroupId,
                                TaskGroupState.State newState,
                                int attemptIdx,
-                               List<String> failedTaskIds,
+                               List<String> tasksPutOnHold,
                                TaskGroupState.RecoverableFailureCause failureCause);
 
   /**
