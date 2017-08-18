@@ -22,6 +22,7 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.Transform;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.vortex.runtime.RuntimeTestUtil;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageSender;
@@ -118,7 +119,7 @@ public final class BatchSchedulerTest {
   @Test
   public void testMultiInputOutputScheduling() throws Exception {
 
-    final Transform t = new CompilerTestUtil.EmptyTransform("empty");
+    final Transform t = new EmptyComponents.EmptyTransform("empty");
     final IRVertex v1 = new OperatorVertex(t);
     v1.setAttr(Attribute.IntegerKey.Parallelism, 3);
     v1.setAttr(Attribute.Key.Placement, Attribute.Compute);

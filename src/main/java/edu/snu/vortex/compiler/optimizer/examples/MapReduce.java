@@ -16,6 +16,8 @@
 package edu.snu.vortex.compiler.optimizer.examples;
 
 import edu.snu.vortex.common.coder.Coder;
+import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
+import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.common.dag.DAG;
@@ -44,9 +46,9 @@ public final class MapReduce {
    * @throws Exception Exceptions on the way.
    */
   public static void main(final String[] args) throws Exception {
-    final IRVertex source = new OperatorVertex(new EmptyTransform("SourceVertex"));
-    final IRVertex map = new OperatorVertex(new EmptyTransform("MapVertex"));
-    final IRVertex reduce = new OperatorVertex(new EmptyTransform("ReduceVertex"));
+    final IRVertex source = new BoundedSourceVertex<>(new EmptyComponents.EmptyBoundedSource("Source"));
+    final IRVertex map = new OperatorVertex(new EmptyComponents.EmptyTransform("MapVertex"));
+    final IRVertex reduce = new OperatorVertex(new DoTransform(null, null));
 
     // Before
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
@@ -73,39 +75,4 @@ public final class MapReduce {
     LOG.info(optimizedDAG.toString());
   }
 
-  /**
-   * An empty transform.
-   */
-  private static class EmptyTransform implements Transform {
-    private final String name;
-
-    /**
-     * Default constructor.
-     * @param name name of the empty transform.
-     */
-    EmptyTransform(final String name) {
-      this.name = name;
-    }
-
-    @Override
-    public final String toString() {
-      final StringBuilder sb = new StringBuilder();
-      sb.append(super.toString());
-      sb.append(", name: ");
-      sb.append(name);
-      return sb.toString();
-    }
-
-    @Override
-    public void prepare(final Context context, final OutputCollector outputCollector) {
-    }
-
-    @Override
-    public void onData(final Iterable<Element> data, final String srcVertexId) {
-    }
-
-    @Override
-    public void close() {
-    }
-  }
 }
