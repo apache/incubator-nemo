@@ -21,6 +21,7 @@ import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
+import edu.snu.vortex.compiler.optimizer.examples.EmptyComponents;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -31,8 +32,8 @@ import static org.junit.Assert.assertNull;
  * Test {@link AttributeMap}.
  */
 public class AttributeMapTest {
-  private final IRVertex source = new BoundedSourceVertex<>(new CompilerTestUtil.EmptyBoundedSource("Source"));
-  private final IRVertex destination = new OperatorVertex(new CompilerTestUtil.EmptyTransform("MapElements"));
+  private final IRVertex source = new BoundedSourceVertex<>(new EmptyComponents.EmptyBoundedSource("Source"));
+  private final IRVertex destination = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
   private final IREdge edge = new IREdge(IREdge.Type.OneToOne, source, destination, Coder.DUMMY_CODER);
 
   private AttributeMap edgeMap;

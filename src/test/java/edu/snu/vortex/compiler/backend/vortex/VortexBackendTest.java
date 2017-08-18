@@ -24,6 +24,7 @@ import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
+import edu.snu.vortex.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,10 +36,10 @@ import static org.junit.Assert.assertEquals;
  * Test Vortex Backend.
  */
 public final class VortexBackendTest<I, O> {
-  private final IRVertex source = new BoundedSourceVertex<>(new CompilerTestUtil.EmptyBoundedSource("Source"));
-  private final IRVertex map1 = new OperatorVertex(new CompilerTestUtil.EmptyTransform("MapElements"));
-  private final IRVertex groupByKey = new OperatorVertex(new CompilerTestUtil.EmptyTransform("GroupByKey"));
-  private final IRVertex combine = new OperatorVertex(new CompilerTestUtil.EmptyTransform("Combine"));
+  private final IRVertex source = new BoundedSourceVertex<>(new EmptyComponents.EmptyBoundedSource("Source"));
+  private final IRVertex map1 = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
+  private final IRVertex groupByKey = new OperatorVertex(new EmptyComponents.EmptyTransform("GroupByKey"));
+  private final IRVertex combine = new OperatorVertex(new EmptyComponents.EmptyTransform("Combine"));
   private final IRVertex map2 = new OperatorVertex(new DoTransform(null, null));
 
   private final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
