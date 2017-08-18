@@ -105,14 +105,14 @@ public final class BatchScheduler implements Scheduler {
    * @param executorId the id of the executor where the message was sent from.
    * @param taskGroupId whose state has changed
    * @param newState the state to change to
-   * @param failedTaskIds if the task group failed. It is null otherwise.
+   * @param tasksPutOnHold the IDs of tasks that are put on hold. It is null otherwise.
    */
   @Override
   public void onTaskGroupStateChanged(final String executorId,
                                       final String taskGroupId,
                                       final TaskGroupState.State newState,
                                       final int attemptIdx,
-                                      final List<String> failedTaskIds,
+                                      final List<String> tasksPutOnHold,
                                       final TaskGroupState.RecoverableFailureCause failureCause) {
     final TaskGroup taskGroup = getTaskGroupById(taskGroupId);
     jobStateManager.onTaskGroupStateChanged(taskGroup, newState);
@@ -125,7 +125,7 @@ public final class BatchScheduler implements Scheduler {
       final int attemptIndexForStage =
           jobStateManager.getAttemptCountForStage(getTaskGroupById(taskGroupId).getStageId());
       if (attemptIdx == attemptIndexForStage || attemptIdx == SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE) {
-        onTaskGroupExecutionFailedRecoverable(executorId, taskGroup, failedTaskIds, failureCause);
+        onTaskGroupExecutionFailedRecoverable(executorId, taskGroup, failureCause);
       } else if (attemptIdx < attemptIndexForStage) {
         // if attemptIdx < attemptIndexForStage, we can ignore this late arriving message.
         LOG.info("{} state change to failed_recoverable arrived late, we will ignore this.", taskGroupId);
@@ -134,7 +134,7 @@ public final class BatchScheduler implements Scheduler {
       }
       break;
     case ON_HOLD:
-      onTaskGroupExecutionOnHold(executorId, taskGroup, failedTaskIds);
+      onTaskGroupExecutionOnHold(executorId, taskGroup, tasksPutOnHold);
       break;
     case FAILED_UNRECOVERABLE:
       throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The job failed on TaskGroup #")
@@ -202,7 +202,7 @@ public final class BatchScheduler implements Scheduler {
    * Action for after task group execution is put on hold.
    * @param executorId executor id.
    * @param taskGroup task group.
-   * @param tasksPutOnHold the task that is put on hold.
+   * @param tasksPutOnHold the IDs of task that is put on hold.
    */
   private void onTaskGroupExecutionOnHold(final String executorId,
                                           final TaskGroup taskGroup,
@@ -235,7 +235,6 @@ public final class BatchScheduler implements Scheduler {
   }
 
   private void onTaskGroupExecutionFailedRecoverable(final String executorId, final TaskGroup taskGroup,
-                                                     final List<String> taskIdOnFailure,
                                                      final TaskGroupState.RecoverableFailureCause failureCause) {
     LOG.info("{} failed in {} by {}", new Object[]{taskGroup.getTaskGroupId(), executorId, failureCause});
     schedulingPolicy.onTaskGroupExecutionFailed(executorId, taskGroup.getTaskGroupId());
