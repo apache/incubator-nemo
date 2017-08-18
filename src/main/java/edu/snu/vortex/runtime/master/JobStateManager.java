@@ -278,10 +278,6 @@ public final class JobStateManager {
     case ON_HOLD:
     case COMPLETE:
       taskGroupState.setState(newState);
-      // TODO #235: Cleanup Task State Management
-      taskGroup.getTaskDAG().getVertices().forEach(task -> {
-        idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.COMPLETE);
-      });
 
       if (stageIdToRemainingTaskGroupSet.containsKey(stageId)) {
         final Set<String> remainingTaskGroups = stageIdToRemainingTaskGroupSet.get(stageId);
@@ -297,11 +293,6 @@ public final class JobStateManager {
       break;
     case EXECUTING:
       taskGroupState.setState(newState);
-      // TODO #235: Cleanup Task State Management
-      taskGroup.getTaskDAG().getVertices().forEach(task -> {
-        idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR);
-        idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.EXECUTING);
-      });
       break;
     case FAILED_RECOVERABLE:
       // Multiple calls to set a task group's state to failed_recoverable can occur when
@@ -309,8 +300,6 @@ public final class JobStateManager {
       // and the task group finds itself failed_recoverable later, propagating the state change event only then.
       if (taskGroupState.getCurrentState() != TaskGroupState.State.FAILED_RECOVERABLE) {
         taskGroupState.setState(newState);
-        taskGroup.getTaskDAG().getVertices().forEach(task ->
-            idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.FAILED_RECOVERABLE));
 
         // Mark this stage as failed_recoverable as long as it contains at least one failed_recoverable task group
         if (idToStageStates.get(stageId).getStateMachine().getCurrentState() != StageState.State.FAILED_RECOVERABLE) {
@@ -329,9 +318,6 @@ public final class JobStateManager {
       }
       break;
     case READY:
-      // TODO #235: Cleanup Task State Management
-      taskGroup.getTaskDAG().getVertices().forEach(task ->
-          idToTaskStates.get(task.getId()).getStateMachine().setState(TaskState.State.READY));
       taskGroupState.setState(newState);
       break;
     case FAILED_UNRECOVERABLE:

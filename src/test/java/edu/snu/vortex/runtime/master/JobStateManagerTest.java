@@ -125,13 +125,9 @@ public final class JobStateManagerTest {
         }
       });
       final Map<String, TaskGroupState> taskGroupStateMap = jobStateManager.getIdToTaskGroupStates();
-      final Map<String, TaskState> taskStateMap = jobStateManager.getIdToTaskStates();
       taskGroupList.forEach(taskGroup -> {
         assertEquals(taskGroupStateMap.get(taskGroup.getTaskGroupId()).getStateMachine().getCurrentState(),
             TaskGroupState.State.COMPLETE);
-        taskGroup.getTaskDAG().getVertices().forEach(
-            task -> assertEquals(taskStateMap.get(task.getId()).getStateMachine().getCurrentState(),
-                TaskState.State.COMPLETE));
       });
 
       if (stageIdx == stageList.size() - 1) {
