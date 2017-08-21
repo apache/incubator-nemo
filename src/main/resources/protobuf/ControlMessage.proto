@@ -12,6 +12,7 @@ enum MessageType {
     RequestPartitionLocation = 3;
     PartitionLocationInfo = 4;
     ExecutorFailed = 5;
+    MetricMessageReceived = 6;
 }
 
 message Message {
@@ -23,6 +24,7 @@ message Message {
     optional RequestPartitionLocationMsg requestPartitionLocationMsg = 6;
     optional PartitionLocationInfoMsg partitionLocationInfoMsg = 7;
     optional ExecutorFailedMsg executorFailedMsg = 8;
+    optional MetricMsg metricMsg = 9;
 }
 
 // Messages from Master to Executors
@@ -69,6 +71,11 @@ message RequestPartitionLocationMsg {
 message ExecutorFailedMsg {
     required string executorId = 1;
     required bytes exception = 2;
+}
+
+message MetricMsg {
+    required string executorId = 1;
+    repeated string messages = 2;
 }
 
 // Messages between Executors
