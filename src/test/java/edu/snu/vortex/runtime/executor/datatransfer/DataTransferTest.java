@@ -33,6 +33,7 @@ import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.executor.Executor;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
 import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
+import edu.snu.vortex.runtime.master.DefaultMetricMessageHandler;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
@@ -107,7 +108,7 @@ public final class DataTransferTest {
 
     // Unused, but necessary for wiring up the message environments
     final RuntimeMaster runtimeMaster = new RuntimeMaster(scheduler, containerManager,
-        messageEnvironment, master, EMPTY_DAG_DIRECTORY, MAX_SCHEDULE_ATTEMPT);
+        messageEnvironment, master, new DefaultMetricMessageHandler(), EMPTY_DAG_DIRECTORY, MAX_SCHEDULE_ATTEMPT);
 
     final Injector injector = createNameClientInjector();
     injector.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
