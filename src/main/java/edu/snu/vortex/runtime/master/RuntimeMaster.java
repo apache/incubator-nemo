@@ -15,6 +15,8 @@
  */
 package edu.snu.vortex.runtime.master;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.common.proxy.ClientEndpoint;
 import edu.snu.vortex.common.proxy.DriverEndpoint;
@@ -35,16 +37,16 @@ import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.io.IOException;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.function.Function;
 
 import static edu.snu.vortex.runtime.common.state.TaskGroupState.State.COMPLETE;
 import static edu.snu.vortex.runtime.common.state.TaskGroupState.State.ON_HOLD;
@@ -65,6 +67,10 @@ public final class RuntimeMaster {
   private final MessageEnvironment masterMessageEnvironment;
   private final PartitionManagerMaster partitionManagerMaster;
   private JobStateManager jobStateManager;
+  private final MetricMessageHandler metricMessageHandler;
+  // For converting json data. This is a thread safe.
+  // [Vortex-420] Create a Singleton ObjectMapper
+  private final ObjectMapper objectMapper;
 
   private final String dagDirectory;
   private final Set<IRVertex> irVertices;
@@ -75,6 +81,7 @@ public final class RuntimeMaster {
                        final ContainerManager containerManager,
                        final MessageEnvironment masterMessageEnvironment,
                        final PartitionManagerMaster partitionManagerMaster,
+                       final MetricMessageHandler metricMessageHandler,
                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
                        @Parameter(JobConf.MaxScheduleAttempt.class) final int maxScheduleAttempt) {
     this.scheduler = scheduler;
@@ -85,7 +92,9 @@ public final class RuntimeMaster {
         .setupListener(MessageEnvironment.MASTER_MESSAGE_RECEIVER, new MasterMessageReceiver());
     this.partitionManagerMaster = partitionManagerMaster;
     this.dagDirectory = dagDirectory;
+    this.metricMessageHandler = metricMessageHandler;
     this.irVertices = new HashSet<>();
+    this.objectMapper = new ObjectMapper();
   }
 
   /**
@@ -165,9 +174,16 @@ public final class RuntimeMaster {
         LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
         containerManager.onExecutorRemoved(failedExecutorId);
         throw new RuntimeException(exception);
-      default:
-        throw new IllegalMessageException(
-            new Exception("This message should not be received by Master :" + message.getType()));
+      case MetricMessageReceived:
+        final ControlMessage.MetricMsg metricMsg = message.getMetricMsg();
+        final String executorId = metricMsg.getExecutorId();
+        metricMsg.getMessagesList().stream()
+            .map(new JsonStringToMapFunction())
+            .forEach((msg) -> metricMessageHandler.onMetricMessageReceived(executorId, msg));
+        break;
+        default:
+          throw new IllegalMessageException(
+              new Exception("This message should not be received by Master :" + message.getType()));
       }
     }
 
@@ -274,5 +290,21 @@ public final class RuntimeMaster {
     }, DAG_LOGGING_PERIOD, DAG_LOGGING_PERIOD, TimeUnit.MILLISECONDS);
 
     return dagLoggingExecutor;
+  }
+
+  /**
+   * Map function that converts a json string to a java map object.
+   */
+  final class JsonStringToMapFunction implements Function<String, Map<String, Object>> {
+    @Override
+    public Map<String, Object> apply(final String s) {
+      try {
+        return objectMapper.readValue(s, new TypeReference<Map<String, String>>() { });
+      } catch (final IOException e) {
+        e.printStackTrace();
+        throw new IllegalMessageException(
+            new Exception("The metric message format is incorrect. It should be in Json format: " + s));
+      }
+    }
   }
 }
