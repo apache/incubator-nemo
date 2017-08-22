@@ -36,6 +36,7 @@ import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.vortex.runtime.master.DefaultMetricMessageHandler;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
+import edu.snu.vortex.runtime.master.metadata.MetadataManager;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.scheduler.BatchScheduler;
 import edu.snu.vortex.runtime.master.scheduler.PendingTaskGroupPriorityQueue;
@@ -55,10 +56,12 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -95,7 +98,7 @@ public final class DataTransferTest {
   private PartitionManagerWorker worker2;
 
   @Before
-  public void setUp() {
+  public void setUp() throws InjectionException {
     final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
     final LocalMessageEnvironment messageEnvironment =
         new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
@@ -104,20 +107,28 @@ public final class DataTransferTest {
         new BatchScheduler(master,
             new RoundRobinSchedulingPolicy(containerManager, SCHEDULE_TIMEOUT), new PendingTaskGroupPriorityQueue());
     final AtomicInteger executorCount = new AtomicInteger(0);
-    final PartitionManagerMaster master = new PartitionManagerMaster();
 
+    final Injector injector1 = Tang.Factory.getTang().newInjector();
+    final PartitionManagerMaster master = injector1.getInstance(PartitionManagerMaster.class);
+    final MetadataManager metadataManager = injector1.getInstance(MetadataManager.class);
     // Unused, but necessary for wiring up the message environments
-    final RuntimeMaster runtimeMaster = new RuntimeMaster(scheduler, containerManager,
-        messageEnvironment, master, new DefaultMetricMessageHandler(), EMPTY_DAG_DIRECTORY, MAX_SCHEDULE_ATTEMPT);
+    final RuntimeMaster runtimeMaster = new RuntimeMaster(scheduler, containerManager, messageEnvironment,
+        master, new DefaultMetricMessageHandler(), EMPTY_DAG_DIRECTORY, MAX_SCHEDULE_ATTEMPT);
 
-    final Injector injector = createNameClientInjector();
-    injector.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
+    final Injector injector2 = createNameClientInjector();
+    injector2.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
 
     this.master = master;
     this.worker1 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher,
-        injector);
+        injector2);
     this.worker2 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher,
-        injector);
+        injector2);
+  }
+
+  @After
+  public void tearDown() throws IOException {
+    FileUtils.deleteDirectory(new File(TMP_LOCAL_FILE_DIRECTORY));
+    FileUtils.deleteDirectory(new File(TMP_REMOTE_FILE_DIRECTORY));
   }
 
   private PartitionManagerWorker createWorker(final String executorId, final LocalMessageDispatcher messageDispatcher,
@@ -202,10 +213,6 @@ public final class DataTransferTest {
 
     // test ManyToMany different worker (remote file)
     writeAndRead(worker1, worker2, Attribute.ScatterGather, REMOTE_FILE_STORE);
-
-    // Cleanup
-    FileUtils.deleteDirectory(new File(TMP_LOCAL_FILE_DIRECTORY));
-    FileUtils.deleteDirectory(new File(TMP_REMOTE_FILE_DIRECTORY));
   }
 
   private void writeAndRead(final PartitionManagerWorker sender,

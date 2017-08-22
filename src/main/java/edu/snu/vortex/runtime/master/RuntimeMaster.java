@@ -89,7 +89,7 @@ public final class RuntimeMaster {
     this.containerManager = containerManager;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
-        .setupListener(MessageEnvironment.MASTER_MESSAGE_RECEIVER, new MasterMessageReceiver());
+        .setupListener(MessageEnvironment.MASTER_MESSAGE_RECEIVER, new MasterControlMessageReceiver());
     this.partitionManagerMaster = partitionManagerMaster;
     this.dagDirectory = dagDirectory;
     this.metricMessageHandler = metricMessageHandler;
@@ -128,9 +128,9 @@ public final class RuntimeMaster {
   }
 
   /**
-   * Handler for messages received by Master.
+   * Handler for control messages received by Master.
    */
-  public final class MasterMessageReceiver implements MessageListener<ControlMessage.Message> {
+  public final class MasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
 
     @Override
     public void onMessage(final ControlMessage.Message message) {
@@ -181,9 +181,15 @@ public final class RuntimeMaster {
             .map(new JsonStringToMapFunction())
             .forEach((msg) -> metricMessageHandler.onMetricMessageReceived(executorId, msg));
         break;
-        default:
-          throw new IllegalMessageException(
-              new Exception("This message should not be received by Master :" + message.getType()));
+      case StoreMetadata:
+        partitionManagerMaster.getMetadataManager().onStoreMetadata(message);
+        break;
+      case RemoveMetadata:
+        partitionManagerMaster.getMetadataManager().onRemoveMetadata(message);
+        break;
+      default:
+        throw new IllegalMessageException(
+            new Exception("This message should not be received by Master :" + message.getType()));
       }
     }
 
@@ -192,6 +198,9 @@ public final class RuntimeMaster {
       switch (message.getType()) {
       case RequestPartitionLocation:
         partitionManagerMaster.onRequestPartitionLocation(message, messageContext);
+        break;
+      case RequestMetadata:
+        partitionManagerMaster.getMetadataManager().onRequestMetadata(message, messageContext);
         break;
       default:
         throw new IllegalMessageException(
