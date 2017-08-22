@@ -22,13 +22,23 @@ import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BeamElement;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
+import edu.snu.vortex.runtime.common.comm.ControlMessage;
+import edu.snu.vortex.runtime.common.message.MessageContext;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
+import edu.snu.vortex.runtime.common.message.MessageListener;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
+import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.executor.data.partition.Partition;
+import edu.snu.vortex.runtime.master.PartitionManagerMaster;
+import edu.snu.vortex.runtime.master.metadata.MetadataManager;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.values.KV;
 import org.apache.commons.io.FileUtils;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -56,7 +66,7 @@ import static org.mockito.Mockito.when;
  * Tests write and read for {@link PartitionStore}s.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(PartitionManagerWorker.class)
+@PrepareForTest({PartitionManagerWorker.class, PartitionManagerMaster.class})
 public final class PartitionStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final int BLOCK_SIZE = 1; // 1 KB
@@ -146,7 +156,7 @@ public final class PartitionStoreTest {
         hashedPartition.add(getFixedKeyRangedNumList(
             hashValue,
             writeTaskNumber * HASH_DATA_SIZE * HASH_RANGE + hashValue * HASH_DATA_SIZE,
-            writeTaskNumber * HASH_DATA_SIZE * HASH_RANGE  + (hashValue + 1) * HASH_DATA_SIZE));
+            writeTaskNumber * HASH_DATA_SIZE * HASH_RANGE + (hashValue + 1) * HASH_DATA_SIZE));
       });
       hashedDataInPartitionList.add(hashedPartition);
     });
@@ -215,26 +225,48 @@ public final class PartitionStoreTest {
    */
   @Test(timeout = 10000)
   public void testGlusterFileStore() throws Exception {
-    final PartitionManagerWorker worker = mock(PartitionManagerWorker.class);
-    when(worker.getCoder(any())).thenReturn(CODER);
-    final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_FILE_DIRECTORY);
-    injector.bindVolatileParameter(JobConf.BlockSize.class, BLOCK_SIZE);
-    injector.bindVolatileParameter(JobConf.JobId.class, "GFS test");
-    injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
-    final PartitionStore writerSideRemoteFileStore = injector.getInstance(GlusterFileStore.class);
+    final PartitionManagerWorker pmw = mock(PartitionManagerWorker.class);
+    when(pmw.getCoder(any())).thenReturn(CODER);
 
-    final Injector injector2 = Tang.Factory.getTang().newInjector();
-    injector2.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_FILE_DIRECTORY);
-    injector2.bindVolatileParameter(JobConf.BlockSize.class, BLOCK_SIZE);
-    injector2.bindVolatileParameter(JobConf.JobId.class, "GFS test");
-    injector2.bindVolatileInstance(PartitionManagerWorker.class, worker);
-    final PartitionStore readerSideRemoteFileStore = injector2.getInstance(GlusterFileStore.class);
+    // Mimic the metadata server with local message handler.
+    final PartitionManagerMaster pmm = mock(PartitionManagerMaster.class);
+    // This master always saying that is already located. The actual location is not important.
+    when(pmm.getPartitionLocationFuture(any())).thenReturn(CompletableFuture.completedFuture("writer"));
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(PartitionManagerMaster.class, pmm);
+    final MetadataManager metadataManager = injector.getInstance(MetadataManager.class);
+
+    final LocalMessageDispatcher localMessageDispatcher = new LocalMessageDispatcher();
+    final LocalMessageEnvironment metaserverMessageEnvironment =
+        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, localMessageDispatcher);
+    metaserverMessageEnvironment.setupListener(
+        MessageEnvironment.MASTER_MESSAGE_RECEIVER, new LocalMetadataServerMessageReceiver(metadataManager));
+
+    final PartitionStore writerSideRemoteFileStore =
+        createGlusterFileStore("writer", pmw, localMessageDispatcher);
+    final PartitionStore readerSideRemoteFileStore =
+        createGlusterFileStore("reader", pmw, localMessageDispatcher);
 
     scatterGather(writerSideRemoteFileStore, readerSideRemoteFileStore);
     concurrentRead(writerSideRemoteFileStore, readerSideRemoteFileStore);
     scatterGatherInHashRange(writerSideRemoteFileStore, readerSideRemoteFileStore);
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
+  }
+
+  private GlusterFileStore createGlusterFileStore(final String executorId,
+                                                  final PartitionManagerWorker worker,
+                                                  final LocalMessageDispatcher localMessageDispatcher)
+      throws InjectionException {
+    final LocalMessageEnvironment localMessageEnvironment =
+        new LocalMessageEnvironment(executorId, localMessageDispatcher);
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_FILE_DIRECTORY);
+    injector.bindVolatileParameter(JobConf.BlockSize.class, BLOCK_SIZE);
+    injector.bindVolatileParameter(JobConf.JobId.class, "GFS test");
+    injector.bindVolatileParameter(JobConf.ExecutorId.class, executorId);
+    injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
+    injector.bindVolatileInstance(MessageEnvironment.class, localMessageEnvironment);
+    return injector.getInstance(GlusterFileStore.class);
   }
 
   /**
@@ -305,7 +337,7 @@ public final class PartitionStoreTest {
                       }
                       final Iterable<Element> getData;
                       try {
-                         getData = partition.get().asIterable();
+                        getData = partition.get().asIterable();
                       } catch (final IOException e) {
                         throw new RuntimeException(e);
                       }
@@ -350,9 +382,9 @@ public final class PartitionStoreTest {
   /**
    * Tests concurrent read for {@link PartitionStore}s.
    * Assumes following circumstances:
-   *                                             -> Task 2
+   * -> Task 2
    * Task 1 (write)-> broadcast (concurrent read)-> ...
-   *                                              -> Task 11
+   * -> Task 11
    * It checks that each writer and reader does not throw any exception
    * and the read data is identical with written data (including the order).
    */
@@ -441,7 +473,7 @@ public final class PartitionStoreTest {
    * Assumes following circumstances:
    * Task 1 (write (hash 0~3))->         (read (hash 0~1))-> Task 3
    * Task 2 (write (hash 0~3))-> shuffle (read (hash 2))-> Task 4
-   *                                     (read (hash 3))-> Task 5
+   * (read (hash 3))-> Task 5
    * It checks that each writer and reader does not throw any exception
    * and the read data is identical with written data (including the order).
    */
@@ -563,5 +595,44 @@ public final class PartitionStoreTest {
     final List<Element> numList = new ArrayList<>(end - start);
     IntStream.range(start, end).forEach(number -> numList.add(new BeamElement<>(KV.of(key, number))));
     return numList;
+  }
+
+  /**
+   * Handler for metadata request & response in the metadata server side for this test.
+   */
+  private final class LocalMetadataServerMessageReceiver implements MessageListener<ControlMessage.Message> {
+
+    private final MetadataManager metadataManager;
+
+    private LocalMetadataServerMessageReceiver(final MetadataManager metadataManager) {
+      this.metadataManager = metadataManager;
+    }
+
+    @Override
+    public void onMessage(final ControlMessage.Message message) {
+      switch (message.getType()) {
+        case StoreMetadata:
+          metadataManager.onStoreMetadata(message);
+          break;
+        case RemoveMetadata:
+          metadataManager.onRemoveMetadata(message);
+          break;
+        default:
+          throw new IllegalMessageException(
+              new Exception("This message should not be received by metadata server :" + message.getType()));
+      }
+    }
+
+    @Override
+    public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
+      switch (message.getType()) {
+        case RequestMetadata:
+          metadataManager.onRequestMetadata(message, messageContext);
+          break;
+        default:
+          throw new IllegalMessageException(
+              new Exception("This message should not be received by metadata server :" + message.getType()));
+      }
+    }
   }
 }

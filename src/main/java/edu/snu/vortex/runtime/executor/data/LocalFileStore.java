@@ -27,6 +27,7 @@ import edu.snu.vortex.runtime.executor.data.partition.Partition;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.io.*;
 import java.util.List;
@@ -39,6 +40,7 @@ import java.util.function.Supplier;
  * Stores partitions in local files.
  * It writes and reads synchronously.
  */
+@ThreadSafe
 final class LocalFileStore extends FileStore {
 
   private final Map<String, LocalFilePartition> partitionIdToData;

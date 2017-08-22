@@ -26,6 +26,8 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+
+import edu.snu.vortex.runtime.master.metadata.MetadataManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +36,8 @@ import static edu.snu.vortex.runtime.common.state.PartitionState.State.SCHEDULED
 /**
  * Master-side partition manager.
  * For now, all its operations are synchronized to guarantee thread safety.
+ * TODO #430: Handle Concurrency at Partition Level.
+ * TODO #431: Include Partition Metadata in a Partition.
  */
 @ThreadSafe
 public final class PartitionManagerMaster {
@@ -42,13 +46,15 @@ public final class PartitionManagerMaster {
   private final Map<String, String> committedPartitionIdToWorkerId;
   private final Map<String, Set<String>> producerTaskGroupIdToPartitionIds;
   private final Map<String, CompletableFuture<String>> partitionIdToLocationFuture;
+  private final MetadataManager metadataManager;
 
   @Inject
-  public PartitionManagerMaster() {
+  private PartitionManagerMaster(final MetadataManager metadataManager) {
     this.partitionIdToState = new HashMap<>();
     this.committedPartitionIdToWorkerId = new HashMap<>();
     this.producerTaskGroupIdToPartitionIds = new HashMap<>();
     this.partitionIdToLocationFuture = new HashMap<>();
+    this.metadataManager = metadataManager;
   }
 
   public synchronized void initializeState(final String edgeId, final int srcTaskIndex,
@@ -237,5 +243,14 @@ public final class PartitionManagerMaster {
               .setPartitionLocationInfoMsg(infoMsgBuilder.build())
               .build());
     });
+  }
+
+  /**
+   * Gets the metadata manger.
+   *
+   * @return the metadata manager.
+   */
+  MetadataManager getMetadataManager() {
+    return metadataManager;
   }
 }
