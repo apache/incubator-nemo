@@ -144,20 +144,32 @@ public final class JobStateManager {
             physicalStageEdge.getAttributes().get(Attribute.Key.CommunicationPattern);
         final Boolean isDataSizeMetricCollectionEdge =
             physicalStageEdge.getAttributes().get(Attribute.Key.DataSizeMetricCollection) != null;
+        final Attribute writeOptAtt = physicalStageEdge.getAttributes().get(Attribute.Key.WriteOptimization);
+        final Boolean isIFileWriteEdge =
+            writeOptAtt != null && writeOptAtt.equals(Attribute.IFileWrite);
 
         final int srcParallelism = taskGroupsForStage.size();
-        IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-          if (commPattern == Attribute.ScatterGather && !isDataSizeMetricCollectionEdge) {
-            final int dstParallelism =
-                physicalStageEdge.getDstVertex().getAttributes().get(Attribute.IntegerKey.Parallelism);
+
+        if (commPattern == Attribute.ScatterGather && isIFileWriteEdge) {
+          final int dstParallelism =
+              physicalStageEdge.getDstVertex().getAttributes().get(Attribute.IntegerKey.Parallelism);
+          final Set<String> taskGroupIds = new HashSet<>();
+          taskGroupsForStage.forEach(taskGroup -> taskGroupIds.add(taskGroup.getTaskGroupId()));
+          IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> partitionManagerMaster.initializeState(
+              physicalStageEdge.getId(), dstTaskIdx, taskGroupIds));
+        } else if (commPattern == Attribute.ScatterGather && !isDataSizeMetricCollectionEdge) {
+          final int dstParallelism =
+              physicalStageEdge.getDstVertex().getAttributes().get(Attribute.IntegerKey.Parallelism);
+          IntStream.range(0, srcParallelism).forEach(srcTaskIdx ->
             IntStream.range(0, dstParallelism).forEach(dstTaskIdx ->
                 partitionManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx,
-                    taskGroupsForStage.get(srcTaskIdx).getTaskGroupId()));
-          } else {
+                    taskGroupsForStage.get(srcTaskIdx).getTaskGroupId())));
+        } else {
+          IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
             partitionManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx,
                 taskGroupsForStage.get(srcTaskIdx).getTaskGroupId());
-          }
-        });
+          });
+        }
       });
 
       // Initialize states for partitions of stage internal edges

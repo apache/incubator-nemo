@@ -93,7 +93,7 @@ public final class PartitionManagerMasterTest {
     checkPendingFuture(future);
 
     // The partition is COMMITTED
-    partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED, executorId);
+    partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED, executorId, null);
     checkPartitionLocation(future, executorId); // A future, previously pending on SCHEDULED state, is now resolved.
     checkPartitionLocation(partitionManagerMaster.getPartitionLocationFuture(partitionId), executorId);
 
@@ -135,12 +135,12 @@ public final class PartitionManagerMasterTest {
     checkPendingFuture(future1);
 
     // Committed.
-    partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED, executorId);
+    partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED, executorId, null);
     checkPartitionLocation(future1, executorId); // A future, previously pending on SCHEDULED state, is now resolved.
     checkPartitionLocation(partitionManagerMaster.getPartitionLocationFuture(partitionId), executorId);
 
     // Then removed.
-    partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.REMOVED, executorId);
+    partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.REMOVED, executorId, null);
     checkPartitionAbsentException(partitionManagerMaster.getPartitionLocationFuture(partitionId), partitionId,
         PartitionState.State.REMOVED);
   }

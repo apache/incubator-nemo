@@ -16,6 +16,7 @@
 package edu.snu.vortex.runtime.executor.data;
 
 import edu.snu.vortex.client.JobConf;
+import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
@@ -172,13 +173,13 @@ public final class PartitionManagerWorker {
    * Invariant: This should be invoked only once per partitionId.
    *
    * @param partitionId    of the partition.
-   * @param srcIRVertexId  IRVertex gof the source task.
-   * @param hashedData     of the partition.
+   * @param srcIRVertexId  of the source task.
+   * @param hashedData     of the partition. Each pair consists of the hash value and the block data.
    * @param partitionStore to store the partition.
    */
   public void putHashedPartition(final String partitionId,
                                  final String srcIRVertexId,
-                                 final Iterable<Iterable<Element>> hashedData,
+                                 final Iterable<Pair<Integer, Iterable<Element>>> hashedData,
                                  final Attribute partitionStore) {
     LOG.info("PutHashedPartition: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
@@ -195,9 +196,9 @@ public final class PartitionManagerWorker {
             .setPartitionId(partitionId)
             .setState(ControlMessage.PartitionStateFromExecutor.COMMITTED);
 
-    // TODO #355 Support I-file write: send block size information only when it is requested.
+    // TODO 428: DynOpt-clean up the metric collection flow
     partitionStateChangedMsgBuilder.addAllBlockSizeInfo(blockSizeInfo);
-    partitionStateChangedMsgBuilder.setSrcVertexId(srcIRVertexId);
+    partitionStateChangedMsgBuilder.setSrcIRVertexId(srcIRVertexId);
 
     persistentConnectionToMaster.getMessageSender().send(
         ControlMessage.Message.newBuilder()
@@ -208,7 +209,48 @@ public final class PartitionManagerWorker {
   }
 
   /**
-   * Retrieves whole data from the stored partition. A specific hash value range can be designated.
+   * Appends a hashed data blocks to a partition in the target {@code PartitionStore}.
+   * Each block (an {@link Iterable} of elements} has a single hash value, and the block becomes a unit of read & write.
+   * Because this method is designed to support concurrent write, this can be invoked multiple times per partitionId,
+   * and the blocks may not be saved consecutively.
+   *
+   * @param partitionId    of the partition.
+   * @param srcTaskIdx     of the source task.
+   * @param hashedData     of the partition. Each pair consists of the hash value and the block data.
+   * @param partitionStore to store the partition.
+   */
+  public void appendHashedDataToPartition(final String partitionId,
+                                          final int srcTaskIdx,
+                                          final Iterable<Pair<Integer, Iterable<Element>>> hashedData,
+                                          final Attribute partitionStore) {
+    LOG.info("AppendHashedDataToPartition: {}", partitionId);
+    final PartitionStore store = getPartitionStore(partitionStore);
+
+    try {
+      // At now, appending blocks to an existing partition is supported for remote file only.
+      assert store instanceof RemoteFileStore;
+      ((RemoteFileStore) store).appendHashedData(partitionId, hashedData).get();
+    } catch (final Exception e) {
+      throw new PartitionWriteException(e);
+    }
+
+    final ControlMessage.PartitionStateChangedMsg.Builder partitionStateChangedMsgBuilder =
+        ControlMessage.PartitionStateChangedMsg.newBuilder()
+            .setExecutorId(executorId)
+            .setPartitionId(partitionId)
+            .setSrcTaskIdx(srcTaskIdx)
+            .setState(ControlMessage.PartitionStateFromExecutor.PARTIAL_COMMITTED);
+
+    persistentConnectionToMaster.getMessageSender().send(
+        ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdGenerator.generateMessageId())
+            .setType(ControlMessage.MessageType.PartitionStateChanged)
+            .setPartitionStateChangedMsg(partitionStateChangedMsgBuilder.build())
+            .build());
+  }
+
+  /**
+   * Retrieves data from the stored partition. A specific hash value range can be designated.
    * Unlike putPartition, this can be invoked multiple times per partitionId (maybe due to failures).
    * Here, we first check if we have the partition here, and then try to fetch the partition from a remote worker.
    *
@@ -223,8 +265,6 @@ public final class PartitionManagerWorker {
                                                                         final Attribute partitionStore,
                                                                         final HashRange hashRange) {
     LOG.info("retrieveDataFromPartition: {}", partitionId);
-    final CompletableFuture<Iterable<Element>> future = new CompletableFuture<>();
-
     final PartitionStore store = getPartitionStore(partitionStore);
 
     // First, try to fetch the partition from local PartitionStore.
@@ -236,6 +276,7 @@ public final class PartitionManagerWorker {
       localPartition = store.retrieveDataFromPartition(partitionId, hashRange);
     }
 
+    final CompletableFuture<Iterable<Element>> future = new CompletableFuture<>();
     localPartition.thenAccept(optionalPartition -> {
       if (optionalPartition.isPresent()) {
         // Partition resides in this evaluator!
@@ -244,6 +285,8 @@ public final class PartitionManagerWorker {
         } catch (final IOException e) {
           future.completeExceptionally(new PartitionFetchException(e));
         }
+      } else if (partitionStore.equals(Attribute.RemoteFile)) {
+        throw new PartitionFetchException(new Throwable("Cannot find a partition in remote store."));
       } else {
         // We don't have the partition here...
         requestPartitionInRemoteWorker(partitionId, runtimeEdgeId, partitionStore, hashRange)

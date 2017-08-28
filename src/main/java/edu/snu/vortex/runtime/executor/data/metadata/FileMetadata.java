@@ -16,7 +16,6 @@
 package edu.snu.vortex.runtime.executor.data.metadata;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -37,32 +36,29 @@ public abstract class FileMetadata {
                          final List<BlockMetadata> blockMetadataList) {
     this.hashed = hashed;
     this.blockMetadataList = blockMetadataList;
+    this.position = 0;
   }
 
   /**
    * Appends a metadata for a block.
-   * This method is not designed for concurrent write.
-   * Therefore, it does not do any synchronization and this change will valid in local only.
-   * Further synchronization will be done in {@link FileMetadata#getAndSetWritten()} if needed.
    *
    * @param hashValue   of the block.
    * @param blockSize   of the block.
    * @param numElements of the block.
+   * @return the position in the file to write the block.
+   * @throws IOException if fail to append the block metadata.
    */
-  public final void appendBlockMetadata(final int hashValue,
-                                        final int blockSize,
-                                        final long numElements) {
-    blockMetadataList.add(new BlockMetadata(hashValue, blockSize, position, numElements));
-    position += blockSize;
-  }
+  public abstract long appendBlockMetadata(final int hashValue,
+                                           final int blockSize,
+                                           final long numElements) throws IOException;
 
   /**
-   * Gets the un-modifiable form of block metadata list.
+   * Gets the list of block metadata.
    *
    * @return the list of block metadata.
    */
   public final List<BlockMetadata> getBlockMetadataList() {
-    return Collections.unmodifiableList(blockMetadataList);
+    return blockMetadataList;
   }
 
   /**
@@ -95,4 +91,12 @@ public abstract class FileMetadata {
    * @throws IOException if fail to delete.
    */
   public abstract void deleteMetadata() throws IOException;
+
+  protected final long getPosition() {
+    return position;
+  }
+
+  protected final void setPosition(final long position) {
+    this.position = position;
+  }
 }
