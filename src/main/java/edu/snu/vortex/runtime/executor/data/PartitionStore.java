@@ -39,15 +39,13 @@ public interface PartitionStore {
    * Retrieves data in a specific hash range from a partition.
    * The result data will be treated as another partition.
    * @param partitionId of the target partition.
-   * @param hashRangeStartVal of the hash range (included in the range).
-   * @param hashRangeEndVal of the hash range (excluded from the range).
+   * @param hashRange   the hash range
    * @return the result data as a new partition (if the target partition exists).
    *         (the future completes exceptionally with {@link edu.snu.vortex.runtime.exception.PartitionFetchException}
    *          for any error occurred while trying to fetch a partition.)
    */
   CompletableFuture<Optional<Partition>> retrieveDataFromPartition(String partitionId,
-                                                                   int hashRangeStartVal,
-                                                                   int hashRangeEndVal);
+                                                                   HashRange hashRange);
 
   /**
    * Saves data as a partition.

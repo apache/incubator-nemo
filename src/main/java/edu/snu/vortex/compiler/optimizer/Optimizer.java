@@ -15,7 +15,6 @@
  */
 package edu.snu.vortex.compiler.optimizer;
 
-import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.common.dag.DAGBuilder;
 import edu.snu.vortex.compiler.exception.DynamicOptimizationException;
 import edu.snu.vortex.compiler.ir.IREdge;
@@ -30,6 +29,7 @@ import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
+import edu.snu.vortex.runtime.executor.data.HashRange;
 
 import java.util.*;
 
@@ -173,19 +173,19 @@ public final class Optimizer {
           // Assign the hash value range to each receiving task group.
           // TODO #390: DynOpt-Update data skew handling policy
           final List<TaskGroup> taskGroups = optimizationEdge.getDst().getTaskGroupList();
-          final Map<String, Pair<Integer, Integer>> taskGroupIdToHashRangeMap =
+          final Map<String, HashRange> taskGroupIdToHashRangeMap =
               optimizationEdge.getTaskGroupIdToHashRangeMap();
           final int quotient = hashRange / taskGroups.size();
           final int remainder = hashRange % taskGroups.size();
           int assignedHashValue = 0;
           for (int i = 0; i < taskGroups.size(); i++) {
             final TaskGroup taskGroup = taskGroups.get(i);
-            final Pair<Integer, Integer> hashRangeToAssign;
+            final HashRange hashRangeToAssign;
             if (i == taskGroups.size() - 1) {
               // last one.
-              hashRangeToAssign = Pair.of(assignedHashValue, assignedHashValue + quotient + remainder);
+              hashRangeToAssign = HashRange.of(assignedHashValue, assignedHashValue + quotient + remainder);
             } else {
-              hashRangeToAssign = Pair.of(assignedHashValue, assignedHashValue + quotient);
+              hashRangeToAssign = HashRange.of(assignedHashValue, assignedHashValue + quotient);
             }
             assignedHashValue += quotient;
             taskGroupIdToHashRangeMap.put(taskGroup.getTaskGroupId(), hashRangeToAssign);
