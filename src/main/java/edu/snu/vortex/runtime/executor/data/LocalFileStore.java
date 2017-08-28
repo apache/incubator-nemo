@@ -82,12 +82,11 @@ final class LocalFileStore extends FileStore {
   }
 
   /**
-   * @see PartitionStore#retrieveDataFromPartition(String, int, int).
+   * @see PartitionStore#retrieveDataFromPartition(String, HashRange).
    */
   @Override
   public CompletableFuture<Optional<Partition>> retrieveDataFromPartition(final String partitionId,
-                                                                          final int hashRangeStartVal,
-                                                                          final int hashRangeEndVal) {
+                                                                          final HashRange hashRange) {
     // Deserialize the target data in the corresponding file and pass it as a local data.
     final LocalFilePartition partition = partitionIdToData.get(partitionId);
     if (partition == null) {
@@ -96,7 +95,7 @@ final class LocalFileStore extends FileStore {
     final Supplier<Optional<Partition>> supplier = () -> {
       try {
         return Optional.of(
-            new MemoryPartition(partition.retrieveInHashRange(hashRangeStartVal, hashRangeEndVal)));
+            new MemoryPartition(partition.retrieveInHashRange(hashRange)));
       } catch (final IOException e) {
         throw new PartitionFetchException(e);
       }
@@ -190,5 +189,19 @@ final class LocalFileStore extends FileStore {
       return true;
     };
     return CompletableFuture.supplyAsync(supplier, executorService);
+  }
+
+  @Override
+  public List<FileArea> getFileAreas(final String partitionId, final HashRange hashRange) {
+    try {
+      final LocalFilePartition partition = partitionIdToData.get(partitionId);
+      if (partition == null) {
+        throw new PartitionFetchException(new Exception(String.format("%s does not exists", partitionId)));
+      } else {
+        return partition.asFileAreas(hashRange);
+      }
+    } catch (final IOException e) {
+      throw new PartitionFetchException(e);
+    }
   }
 }

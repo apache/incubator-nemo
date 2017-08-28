@@ -44,6 +44,15 @@ abstract class FileStore implements PartitionStore {
   }
 
   /**
+   * Gets the list of {@link FileArea}s for the specified partition.
+   *
+   * @param partitionId the partition id
+   * @param hashRange   the hash range
+   * @return the list of file areas
+   */
+  public abstract List<FileArea> getFileAreas(final String partitionId, final HashRange hashRange);
+
+  /**
    * Makes the given stream to a block and write it to the given file partition.
    *
    * @param elementsInBlock the number of elements in this block.

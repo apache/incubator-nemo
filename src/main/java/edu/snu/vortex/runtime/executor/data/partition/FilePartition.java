@@ -17,13 +17,12 @@ package edu.snu.vortex.runtime.executor.data.partition;
 
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.runtime.executor.data.HashRange;
 import edu.snu.vortex.runtime.executor.data.metadata.BlockMetadata;
 import edu.snu.vortex.runtime.executor.data.metadata.FileMetadata;
+import edu.snu.vortex.runtime.executor.data.FileArea;
 
-import java.io.BufferedInputStream;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -148,13 +147,11 @@ public abstract class FilePartition implements Partition, AutoCloseable {
   /**
    * Retrieves the data of this partition from the file in a specific hash range and deserializes it.
    *
-   * @param hashRangeStartVal of the hash range (included in the range).
-   * @param hashRangeEndVal   of the hash range (excluded from the range).
+   * @param hashRange the hash range
    * @return an iterable of deserialized data.
    * @throws IOException if failed to deserialize.
    */
-  public final Iterable<Element> retrieveInHashRange(final int hashRangeStartVal,
-                                                     final int hashRangeEndVal) throws IOException {
+  public final Iterable<Element> retrieveInHashRange(final HashRange hashRange) throws IOException {
     // Check whether this partition is fully written and sorted by the hash value.
     if (!metadata.isWritten()) {
       throw new IOException("This partition is not written yet.");
@@ -167,7 +164,7 @@ public abstract class FilePartition implements Partition, AutoCloseable {
     try (final FileInputStream fileStream = new FileInputStream(filePath)) {
       for (final BlockMetadata blockMetadata : metadata.getBlockMetadataList()) {
         final int hashVal = blockMetadata.getHashValue();
-        if (hashVal >= hashRangeStartVal && hashVal < hashRangeEndVal) {
+        if (hashRange.includes(hashVal)) {
           // The hash value of this block is in the range.
           deserializeBlock(blockMetadata, fileStream, deserializedData);
         } else {
@@ -182,6 +179,23 @@ public abstract class FilePartition implements Partition, AutoCloseable {
     }
 
     return deserializedData;
+  }
+
+  /**
+   * Retrieves the list of {@link FileArea}s for the specified {@link HashRange}.
+   *
+   * @param hashRange     the hash range
+   * @return list of the file areas
+   * @throws IOException if failed to open a file channel
+   */
+  public final List<FileArea> asFileAreas(final HashRange hashRange) throws IOException {
+    final List<FileArea> fileAreas = new ArrayList<>();
+    for (final BlockMetadata blockMetadata : metadata.getBlockMetadataList()) {
+      if (hashRange.includes(blockMetadata.getHashValue())) {
+        fileAreas.add(new FileArea(filePath, blockMetadata.getOffset(), blockMetadata.getBlockSize()));
+      }
+    }
+    return fileAreas;
   }
 
   /**

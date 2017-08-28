@@ -69,26 +69,25 @@ final class MemoryStore implements PartitionStore {
   }
 
   /**
-   * @see PartitionStore#retrieveDataFromPartition(String, int, int).
+   * @see PartitionStore#retrieveDataFromPartition(String, HashRange).
    */
   @Override
   public CompletableFuture<Optional<Partition>> retrieveDataFromPartition(final String partitionId,
-                                                                          final int hashRangeStartVal,
-                                                                          final int hashRangeEndVal) {
+                                                                          final HashRange hashRange) {
     final CompletableFuture<Optional<Partition>> future = new CompletableFuture<>();
     final Iterable<Iterable<Element>> blocks = partitionDataInBlocks.get(partitionId);
 
     if (blocks != null) {
       // Retrieves data in the hash range from the target partition
-      final List<Iterable<Element>> retrievedData = new ArrayList<>(hashRangeEndVal - hashRangeStartVal);
+      final List<Iterable<Element>> retrievedData = new ArrayList<>(hashRange.length());
       final Iterator<Iterable<Element>> iterator = blocks.iterator();
-      IntStream.range(0, hashRangeEndVal).forEach(hashVal -> {
+      IntStream.range(0, hashRange.rangeEndExclusive()).forEach(hashVal -> {
         // We cannot start from the startInclusiveHashVal because `blocks` is an iterable.
         if (!iterator.hasNext()) {
           future.completeExceptionally(new PartitionFetchException(
               new Throwable("Illegal hash range. There are only " + hashVal + " blocks in this partition.")));
         }
-        if (hashVal < hashRangeStartVal) {
+        if (hashVal < hashRange.rangeStartInclusive()) {
           iterator.next();
         } else {
           retrievedData.add(iterator.next());
