@@ -16,6 +16,7 @@
 package edu.snu.vortex.runtime.executor.data;
 
 import edu.snu.vortex.client.JobConf;
+import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.exception.PartitionFetchException;
@@ -138,13 +139,14 @@ final class LocalFileStore extends FileStore {
    * Saves an iterable of data blocks as a partition.
    * Each block has a specific hash value, and the block becomes a unit of read & write.
    *
-   * @param partitionId  of the partition.
-   * @param hashedData to save as a partition.
+   * @param partitionId of the partition.
+   * @param hashedData  to save as a partition. Each pair consists of the hash value and the block data.
    * @return the size of data per hash value.
    */
   @Override
   public CompletableFuture<Optional<List<Long>>> putHashedDataAsPartition(
-      final String partitionId, final Iterable<Iterable<Element>> hashedData) {
+      final String partitionId,
+      final Iterable<Pair<Integer, Iterable<Element>>> hashedData) {
     final Supplier<Optional<List<Long>>> supplier = () -> {
       final Coder coder = getCoderFromWorker(partitionId);
       final List<Long> blockSizeList;

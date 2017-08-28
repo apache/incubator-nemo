@@ -32,7 +32,6 @@ public enum Attribute {
    */
   DataSkew(Key.DynamicOptimizationType),
 
-
   /**
    * IREdge channel data placement attributes.
    *
@@ -79,6 +78,11 @@ public enum Attribute {
   MetricCollection(Key.DataSizeMetricCollection),
 
   /**
+   * IREdge WriteOptimization attributes.
+   */
+  IFileWrite(Key.WriteOptimization),
+
+  /**
    * SchedulingPolicy type attributes.
    */
   RoundRobin(Key.SchedulingPolicy),
@@ -103,6 +107,7 @@ public enum Attribute {
     CommunicationPattern,
     SideInput,
     DataSizeMetricCollection,
+    WriteOptimization,
 
     // Scheduling
     SchedulingPolicy,

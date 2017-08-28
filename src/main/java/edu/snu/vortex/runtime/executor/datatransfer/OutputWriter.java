@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.runtime.executor.datatransfer;
 
+import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
@@ -24,6 +25,7 @@ import edu.snu.vortex.runtime.exception.UnsupportedCommPatternException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionerException;
 import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -46,7 +48,7 @@ public final class OutputWriter extends DataTransfer {
   public OutputWriter(final int hashRangeMultiplier,
                       final int srcTaskIdx,
                       final String srcRuntimeVertexId,
-                      final IRVertex dstRuntimeVertex,
+                      @Nullable final IRVertex dstRuntimeVertex, // Null if it is not a runtime vertex.
                       final RuntimeEdge runtimeEdge,
                       final PartitionManagerWorker partitionManagerWorker) {
     super(runtimeEdge.getId());
@@ -65,6 +67,9 @@ public final class OutputWriter extends DataTransfer {
   public void write(final Iterable<Element> dataToWrite) {
     final Boolean isDataSizeMetricCollectionEdge =
         runtimeEdge.getAttributes().get(Attribute.Key.DataSizeMetricCollection) != null;
+    final Attribute writeOptAtt = runtimeEdge.getAttributes().get(Attribute.Key.WriteOptimization);
+    final Boolean isIFileWriteEdge =
+        writeOptAtt != null && writeOptAtt.equals(Attribute.IFileWrite);
     switch (runtimeEdge.getAttributes().get(Attribute.Key.CommunicationPattern)) {
       case OneToOne:
         writeOneToOne(dataToWrite);
@@ -76,6 +81,8 @@ public final class OutputWriter extends DataTransfer {
         // If the dynamic optimization which detects data skew is enabled, sort the data and write it.
         if (isDataSizeMetricCollectionEdge) {
           hashAndWrite(dataToWrite);
+        } else if (isIFileWriteEdge) {
+          writeIFile(dataToWrite);
         } else {
           writeScatterGather(dataToWrite);
         }
@@ -129,13 +136,14 @@ public final class OutputWriter extends DataTransfer {
   /**
    * Hashes an output according to the hash value and writes it as a single partition.
    * This function will be called only when we need to split or recombine an output data from a task after it is stored
-   * (e.g., dynamic data skew handling, I-file write).
+   * (e.g., dynamic data skew handling).
    * We extend the hash range with the factor {@link edu.snu.vortex.client.JobConf.HashRangeMultiplier} in advance
    * to prevent the extra deserialize - rehash - serialize process.
    * Each data of this partition having same key hash value will be collected as a single block.
    * This block will be the unit of retrieval and recombination of this partition.
    * Constraint: If a partition is written by this method, it have to be read by {@link InputReader#readDataInRange()}.
    * TODO #378: Elaborate block construction during data skew pass
+   * TODO 428: DynOpt-clean up the metric collection flow
    *
    * @param dataToWrite an iterable for the elements to be written.
    */
@@ -146,15 +154,56 @@ public final class OutputWriter extends DataTransfer {
     final int hashRange = hashRangeMultiplier * dstParallelism;
 
     // Separate the data into blocks according to the hash of their key.
-    final List<Iterable<Element>> blockedOutputList = new ArrayList<>(hashRange);
-    IntStream.range(0, hashRange).forEach(hashVal -> blockedOutputList.add(new ArrayList<>()));
+    final List<Pair<Integer, Iterable<Element>>> outputBlockList = new ArrayList<>(hashRange);
+    IntStream.range(0, hashRange).forEach(hashVal -> outputBlockList.add(Pair.of(hashVal, new ArrayList<>())));
     dataToWrite.forEach(element -> {
       // Hash the data by its key, and "modulo" by the hash range.
       final int hashVal = Math.abs(element.getKey().hashCode() % hashRange);
-      ((List) blockedOutputList.get(hashVal)).add(element);
+      ((List) outputBlockList.get(hashVal).right()).add(element);
     });
 
-    partitionManagerWorker.putHashedPartition(partitionId, srcVertexId, blockedOutputList,
+    partitionManagerWorker.putHashedPartition(partitionId, srcVertexId, outputBlockList,
         runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
+  }
+
+  /**
+   * Hashes an output according to the hash value and constructs I-Files with the hashed data blocks.
+   * Each destination task will have a single I-File to read regardless of the input parallelism.
+   * To prevent the extra sort process in the source task and deserialize - merge process in the destination task,
+   * we hash the data into blocks and make the blocks as the unit of write and retrieval.
+   * Constraint: If a partition is written by this method, it have to be read by {@link InputReader#readIFile()}.
+   * TODO #378: Elaborate block construction during data skew pass
+   *
+   * @param dataToWrite an iterable for the elements to be written.
+   */
+  private void writeIFile(final Iterable<Element> dataToWrite) {
+    final int dstParallelism = dstVertex.getAttributes().get(Attribute.IntegerKey.Parallelism);
+    // For this hash range, please check the description of HashRangeMultiplier
+    final int hashRange = hashRangeMultiplier * dstParallelism;
+    final List<List<Pair<Integer, Iterable<Element>>>> outputList = new ArrayList<>(dstParallelism);
+    // Create data blocks for each I-File.
+    IntStream.range(0, dstParallelism).forEach(dstIdx -> {
+      final List<Pair<Integer, Iterable<Element>>> outputBlockList = new ArrayList<>(hashRangeMultiplier);
+      IntStream.range(0, hashRangeMultiplier).forEach(hashValRemainder -> {
+        final int hashVal = hashRangeMultiplier * dstIdx + hashValRemainder;
+        outputBlockList.add(Pair.of(hashVal, new ArrayList<>()));
+      });
+      outputList.add(outputBlockList);
+    });
+
+    // Assigns data to the corresponding hashed block.
+    dataToWrite.forEach(element -> {
+      final int hashVal = Math.abs(element.getKey().hashCode() % hashRange);
+      final int dstIdx = hashVal / hashRangeMultiplier;
+      final int blockIdx = Math.abs(hashVal % hashRangeMultiplier);
+      ((List) outputList.get(dstIdx).get(blockIdx).right()).add(element);
+    });
+
+    // Then append each blocks to corresponding partition appropriately.
+    IntStream.range(0, dstParallelism).forEach(dstIdx -> {
+      final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), dstIdx);
+      partitionManagerWorker.appendHashedDataToPartition(partitionId, srcTaskIdx, outputList.get(dstIdx),
+          runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
+    });
   }
 }

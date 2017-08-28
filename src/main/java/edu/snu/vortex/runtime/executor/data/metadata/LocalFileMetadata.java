@@ -31,6 +31,26 @@ public final class LocalFileMetadata extends FileMetadata {
   }
 
   /**
+   * Appends a metadata for a block.
+   * This method is not designed for concurrent write.
+   * Therefore, it does not do any synchronization and this change will valid in local only.
+   * Further synchronization will be done in {@link FileMetadata#getAndSetWritten()} if needed.
+   *
+   * @param hashValue   of the block.
+   * @param blockSize   of the block.
+   * @param numElements of the block.
+   */
+  @Override
+  public long appendBlockMetadata(final int hashValue,
+                                  final int blockSize,
+                                  final long numElements) {
+    final long currentPosition = getPosition();
+    getBlockMetadataList().add(new BlockMetadata(hashValue, blockSize, currentPosition, numElements));
+    setPosition(currentPosition + blockSize);
+    return currentPosition;
+  }
+
+  /**
    * Gets whether the whole data for this partition is written or not yet.
    *
    * @return whether the whole data for this partition is written or not yet.

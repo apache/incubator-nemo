@@ -109,7 +109,8 @@ public final class Optimizer {
             LoopOptimizations.getLoopFusionPass(),
             LoopOptimizations.getLoopInvariantCodeMotionPass(),
             new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.
-            new DisaggregationPass() // Processes vertices and edges with Disaggregation algorithm.
+            new DisaggregationPass(), // Processes vertices and edges with Disaggregation algorithm.
+            new IFilePass() // Enables I-File style write optimization.
         ));
     POLICIES.put(PolicyType.DataSkew,
         Arrays.asList(

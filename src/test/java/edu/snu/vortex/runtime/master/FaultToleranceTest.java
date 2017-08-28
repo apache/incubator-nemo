@@ -189,8 +189,8 @@ public final class FaultToleranceTest {
     scheduler.onExecutorRemoved("a1");
 
     partitionIdsToRecompute.forEach(partitionId -> {
-      assertTrue(taskGroupIdsForFailingExecutor.contains(
-          partitionManagerMaster.getProducerTaskGroupId(partitionId).get()));
+      final Set<String> producerTaskGroupIds = partitionManagerMaster.getProducerTaskGroupIds(partitionId).get();
+      producerTaskGroupIds.forEach(taskGroupId -> assertTrue(taskGroupIdsForFailingExecutor.contains(taskGroupId)));
       final Enum lostPartitionState =
           partitionManagerMaster.getPartitionState(partitionId).getStateMachine().getCurrentState();
       assertTrue(

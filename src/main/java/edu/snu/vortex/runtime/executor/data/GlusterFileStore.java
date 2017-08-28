@@ -16,6 +16,7 @@
 package edu.snu.vortex.runtime.executor.data;
 
 import edu.snu.vortex.client.JobConf;
+import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.exception.PartitionFetchException;
@@ -79,9 +80,9 @@ final class GlusterFileStore extends FileStore implements RemoteFileStore {
       final String filePath = partitionIdToFilePath(partitionId);
       try {
         final RemoteFileMetadata metadata =
-            RemoteFileMetadata.get(partitionId, executorId, persistentConnectionToMaster);
+            RemoteFileMetadata.openToRead(partitionId, executorId, persistentConnectionToMaster);
         final Optional<GlusterFilePartition> partition =
-            GlusterFilePartition.open(coder, filePath, metadata);
+            GlusterFilePartition.openToRead(coder, filePath, metadata);
         if (partition.isPresent()) {
           return Optional.of(new MemoryPartition(partition.get().asIterable()));
         } else {
@@ -106,9 +107,9 @@ final class GlusterFileStore extends FileStore implements RemoteFileStore {
       final String filePath = partitionIdToFilePath(partitionId);
       try {
         final RemoteFileMetadata metadata =
-            RemoteFileMetadata.get(partitionId, executorId, persistentConnectionToMaster);
+            RemoteFileMetadata.openToRead(partitionId, executorId, persistentConnectionToMaster);
         final Optional<GlusterFilePartition> partition =
-            GlusterFilePartition.open(coder, filePath, metadata);
+            GlusterFilePartition.openToRead(coder, filePath, metadata);
         if (partition.isPresent()) {
           return Optional.of(new MemoryPartition(
               partition.get().retrieveInHashRange(hashRange)));
@@ -135,10 +136,11 @@ final class GlusterFileStore extends FileStore implements RemoteFileStore {
     final Supplier<Optional<Long>> supplier = () -> {
       final Coder coder = getCoderFromWorker(partitionId);
       final String filePath = partitionIdToFilePath(partitionId);
-      final RemoteFileMetadata metadata = RemoteFileMetadata.create(partitionId, false, persistentConnectionToMaster);
+      final RemoteFileMetadata metadata =
+          RemoteFileMetadata.openToWrite(false, false, partitionId, executorId, persistentConnectionToMaster);
 
       try (final GlusterFilePartition partition =
-               GlusterFilePartition.create(coder, filePath, metadata)) {
+               GlusterFilePartition.openToWrite(coder, filePath, metadata)) {
         // Serialize and write the given data into blocks
         final long partitionSize = divideAndPutData(coder, partition, data);
         return Optional.of(partitionSize);
@@ -154,26 +156,54 @@ final class GlusterFileStore extends FileStore implements RemoteFileStore {
    * Each block has a specific hash value, and the block becomes a unit of read & write.
    *
    * @param partitionId of the partition.
-   * @param hashedData  to save as a partition.
+   * @param hashedData  to save as a partition. Each pair consists of the hash value and the block data.
    * @return the size of data per hash value.
    */
   @Override
   public CompletableFuture<Optional<List<Long>>> putHashedDataAsPartition(
-      final String partitionId, final Iterable<Iterable<Element>> hashedData) {
+      final String partitionId,
+      final Iterable<Pair<Integer, Iterable<Element>>> hashedData) {
     final Supplier<Optional<List<Long>>> supplier = () -> {
       final Coder coder = getCoderFromWorker(partitionId);
       final String filePath = partitionIdToFilePath(partitionId);
+      final RemoteFileMetadata metadata =
+          RemoteFileMetadata.openToWrite(true, false, partitionId, executorId, persistentConnectionToMaster);
       final List<Long> blockSizeList;
-      final RemoteFileMetadata metadata = RemoteFileMetadata.create(partitionId, true, persistentConnectionToMaster);
 
       try (final GlusterFilePartition partition =
-               GlusterFilePartition.create(coder, filePath, metadata)) {
+               GlusterFilePartition.openToWrite(coder, filePath, metadata)) {
         // Serialize and write the given data into blocks
         blockSizeList = putHashedData(coder, partition, hashedData);
       } catch (final IOException e) {
         throw new PartitionWriteException(e);
       }
       return Optional.of(blockSizeList);
+    };
+    return CompletableFuture.supplyAsync(supplier, executorService);
+  }
+
+  /**
+   * Concurrently appends an iterable of data blocks to a partition.
+   * @see RemoteFileStore#appendHashedData(String, Iterable).
+   */
+  @Override
+  public CompletableFuture<List<Long>> appendHashedData(final String partitionId,
+                                                        final Iterable<Pair<Integer, Iterable<Element>>> hashedData) {
+    final Supplier<List<Long>> supplier = () -> {
+      final Coder coder = getCoderFromWorker(partitionId);
+      final String filePath = partitionIdToFilePath(partitionId);
+      final RemoteFileMetadata metadata =
+          RemoteFileMetadata.openToWrite(true, true, partitionId, executorId, persistentConnectionToMaster);
+      final List<Long> blockSizeList;
+
+      try (final GlusterFilePartition partition =
+               GlusterFilePartition.openToWrite(coder, filePath, metadata)) {
+        // Serialize and write the given data into blocks
+        blockSizeList = putHashedData(coder, partition, hashedData);
+      } catch (final IOException e) {
+        throw new PartitionWriteException(e);
+      }
+      return blockSizeList;
     };
     return CompletableFuture.supplyAsync(supplier, executorService);
   }
@@ -192,9 +222,9 @@ final class GlusterFileStore extends FileStore implements RemoteFileStore {
 
       try {
         final RemoteFileMetadata metadata =
-            RemoteFileMetadata.get(partitionId, executorId, persistentConnectionToMaster);
+            RemoteFileMetadata.openToRead(partitionId, executorId, persistentConnectionToMaster);
         final Optional<GlusterFilePartition> partition =
-            GlusterFilePartition.open(coder, filePath, metadata);
+            GlusterFilePartition.openToRead(coder, filePath, metadata);
         if (partition.isPresent()) {
           partition.get().deleteFile();
           return true;
@@ -214,9 +244,9 @@ final class GlusterFileStore extends FileStore implements RemoteFileStore {
     final String filePath = partitionIdToFilePath(partitionId);
     try {
       final RemoteFileMetadata metadata =
-          RemoteFileMetadata.get(partitionId, executorId, persistentConnectionToMaster);
+          RemoteFileMetadata.openToRead(partitionId, executorId, persistentConnectionToMaster);
       final Optional<GlusterFilePartition> partition =
-          GlusterFilePartition.open(coder, filePath, metadata);
+          GlusterFilePartition.openToRead(coder, filePath, metadata);
       if (partition.isPresent()) {
         return partition.get().asFileAreas(hashRange);
       } else {

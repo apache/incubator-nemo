@@ -18,6 +18,8 @@ enum MessageType {
     RemoveMetadata = 8;
     RequestMetadata = 9;
     MetadataResponse = 10;
+    ReserveBlock = 11;
+    ReserveBlockResponse = 12;
 }
 
 message Message {
@@ -35,6 +37,8 @@ message Message {
     optional StoreMetadataMsg storeMetadataMsg = 11;
     optional RemoveMetadataMsg removeMetadataMsg = 12;
     optional RequestMetadataMsg requestMetadataMsg = 13;
+    optional ReserveBlockMsg reserveBlockMsg = 14;
+    optional ReserveBlockResponseMsg reserveBlockResponseMsg = 15;
 }
 
 // Messages from Master to Executors
@@ -69,8 +73,9 @@ message PartitionStateChangedMsg {
     required string executorId = 1;
     required string partitionId = 2;
     required PartitionStateFromExecutor state = 3;
-    repeated int64 blockSizeInfo = 4;
-    optional string srcVertexId = 5;
+    optional int32 srcTaskIdx = 4;
+    repeated int64 blockSizeInfo = 5;
+    optional string srcIRVertexId = 6;
 }
 
 message RequestPartitionLocationMsg {
@@ -111,9 +116,10 @@ enum PartitionStateFromExecutor {
     PARTITION_READY = 0;
     SCHEDULED = 1;
     COMMITTED = 2;
-    LOST = 3;
-    LOST_BEFORE_COMMIT = 4;
-    REMOVED = 5;
+    PARTIAL_COMMITTED = 3;
+    LOST = 4;
+    LOST_BEFORE_COMMIT = 5;
+    REMOVED = 6;
 }
 
 enum PartitionStore {
@@ -131,11 +137,23 @@ message MetadataResponseMsg {
     optional PartitionStateFromExecutor state = 4;
 }
 
+message ReserveBlockResponseMsg {
+    required int64 requestId = 1; // To find the matching request msg
+    optional int64 positionToWrite = 2;
+}
+
 // Messages from Executors to Master
 message StoreMetadataMsg {
     required bool hashed = 1;
     required string partitionId = 2;
     repeated BlockMetadataMsg blockMetadata = 3;
+}
+
+message ReserveBlockMsg {
+    required string executorId = 1;
+    required bool hashed = 2;
+    required string partitionId = 3;
+    required BlockMetadataMsg blockMetadata = 4;
 }
 
 message RemoveMetadataMsg {
@@ -151,6 +169,6 @@ message RequestMetadataMsg {
 message BlockMetadataMsg {
     required int32 hashValue = 1;
     required int32 blockSize = 2;
-    required int64 offset = 3;
+    optional int64 offset = 3;
     required int64 numElements = 4;
 }

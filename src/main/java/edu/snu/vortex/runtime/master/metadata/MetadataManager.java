@@ -19,6 +19,7 @@ import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.exception.AbsentPartitionException;
+import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 import org.apache.reef.tang.InjectionFuture;
@@ -67,6 +68,40 @@ public final class MetadataManager {
     if (previousMetadata != null) {
       LOG.error("Metadata for {} already exists. It will be replaced.", partitionId);
     }
+  }
+
+  /**
+   * Reserves the region for a block, appends the block metadata,
+   * and replies with the starting point of the block in the file.
+   *
+   * @param message        the message having the block metadata to append.
+   * @param messageContext the context to reply.
+   */
+  public synchronized void onReserveBlock(final ControlMessage.Message message,
+                                          final MessageContext messageContext) {
+    assert (message.getType() == ControlMessage.MessageType.ReserveBlock);
+    final ControlMessage.ReserveBlockMsg reserveBlockMsg = message.getReserveBlockMsg();
+    final String partitionId = reserveBlockMsg.getPartitionId();
+    partitionIdToMetadata.putIfAbsent(partitionId, new MetadataInServer(reserveBlockMsg.getHashed()));
+    final MetadataInServer metadata = partitionIdToMetadata.get(partitionId);
+    final ControlMessage.ReserveBlockResponseMsg.Builder responseBuilder =
+        ControlMessage.ReserveBlockResponseMsg.newBuilder()
+            .setRequestId(message.getId());
+
+    try {
+      // Reserve a region for this block and append the metadata.
+      final long positionToWrite = metadata.appendBlockMetadata(reserveBlockMsg.getBlockMetadata());
+      responseBuilder.setPositionToWrite(positionToWrite);
+    } catch (final IllegalMessageException e) {
+      LOG.error("Cannot append a block metadata to {}.", partitionId);
+    }
+    // Reply with the position to write in the file.
+    messageContext.reply(
+        ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdGenerator.generateMessageId())
+            .setType(ControlMessage.MessageType.ReserveBlockResponse)
+            .setReserveBlockResponseMsg(responseBuilder.build())
+            .build());
   }
 
   /**

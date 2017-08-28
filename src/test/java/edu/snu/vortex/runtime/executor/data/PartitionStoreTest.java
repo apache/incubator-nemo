@@ -16,6 +16,7 @@
 package edu.snu.vortex.runtime.executor.data;
 
 import edu.snu.vortex.client.JobConf;
+import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.common.coder.BeamCoder;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BeamElement;
@@ -55,6 +56,8 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static edu.snu.vortex.runtime.RuntimeTestUtil.flatten;
+import static edu.snu.vortex.runtime.RuntimeTestUtil.getRangedNumList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
@@ -73,23 +76,27 @@ public final class PartitionStoreTest {
   // Variables for scatter and gather test
   private static final int NUM_WRITE_TASKS = 3;
   private static final int NUM_READ_TASKS = 3;
-  private static final int DATA_SIZE = 10000;
+  private static final int DATA_SIZE = 1000;
   private List<String> partitionIdList;
   private List<Iterable<Element>> dataInPartitionList;
   // Variables for concurrent read test
   private static final int NUM_CONC_READ_TASKS = 10;
-  private static final int CONC_DATA_SIZE = 10000;
+  private static final int CONC_READ_DATA_SIZE = 1000;
   private String concPartitionId;
   private Iterable<Element> dataInConcPartition;
   // Variables for scatter and gather in range test
   private static final int NUM_WRITE_HASH_TASKS = 2;
   private static final int NUM_READ_HASH_TASKS = 3;
-  private static final int HASH_DATA_SIZE = 10000;
+  private static final int HASH_DATA_SIZE = 1000;
   private static final int HASH_RANGE = 4;
   private List<String> hashedPartitionIdList;
-  private List<List<Iterable<Element>>> hashedDataInPartitionList;
+  private List<List<Pair<Integer, Iterable<Element>>>> hashedDataInPartitionList;
   private List<HashRange> readHashRangeList;
   private List<List<Iterable<Element>>> expectedDataInRange;
+  // Variables for concurrent write test
+  private static final int NUM_CONC_WRITE_TASKS = 2;
+  private static final int CONC_WRITE_DATA_IN_BLOCK = 100;
+  private static final int CONC_WRITE_BLOCK_NUM = 10;
 
   /**
    * Generates the ids and the data which will be used for the partition store tests.
@@ -127,7 +134,7 @@ public final class PartitionStoreTest {
         RuntimeIdGenerator.generateRuntimeEdgeId("concurrent read"), NUM_WRITE_TASKS + NUM_READ_TASKS + 1);
     IntStream.range(0, NUM_CONC_READ_TASKS).forEach(
         number -> concReadTaskIdList.add(RuntimeIdGenerator.generateTaskId()));
-    dataInConcPartition = getRangedNumList(0, CONC_DATA_SIZE);
+    dataInConcPartition = getRangedNumList(0, CONC_READ_DATA_SIZE);
 
     // Following part is for the scatter and gather in hash range test
     final int numHashedPartitions = NUM_WRITE_HASH_TASKS;
@@ -149,14 +156,15 @@ public final class PartitionStoreTest {
       hashedPartitionIdList.add(RuntimeIdGenerator.generatePartitionId(
           RuntimeIdGenerator.generateRuntimeEdgeId("scatter gather in range"),
           NUM_WRITE_TASKS + NUM_READ_TASKS + 1 + writeTaskNumber));
-      final ArrayList<Iterable<Element>> hashedPartition = new ArrayList<>(HASH_RANGE);
+      final ArrayList<Pair<Integer, Iterable<Element>>> hashedPartition = new ArrayList<>(HASH_RANGE);
       // Generates the data having each hash value.
-      IntStream.range(0, HASH_RANGE).forEach(hashValue -> {
-        hashedPartition.add(getFixedKeyRangedNumList(
+      IntStream.range(0, HASH_RANGE).forEach(hashValue ->
+        hashedPartition.add(Pair.of(
             hashValue,
-            writeTaskNumber * HASH_DATA_SIZE * HASH_RANGE + hashValue * HASH_DATA_SIZE,
-            writeTaskNumber * HASH_DATA_SIZE * HASH_RANGE + (hashValue + 1) * HASH_DATA_SIZE));
-      });
+            getFixedKeyRangedNumList(hashValue,
+                writeTaskNumber * HASH_DATA_SIZE * HASH_RANGE + hashValue * HASH_DATA_SIZE,
+                writeTaskNumber * HASH_DATA_SIZE * HASH_RANGE + (hashValue + 1) * HASH_DATA_SIZE)))
+      );
       hashedDataInPartitionList.add(hashedPartition);
     });
 
@@ -173,9 +181,8 @@ public final class PartitionStoreTest {
       final List<Iterable<Element>> expectedRangeBlocks = new ArrayList<>(NUM_WRITE_HASH_TASKS);
       IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writeTaskNumber -> {
         final List<Iterable<Element>> appendingList = new ArrayList<>();
-        IntStream.range(hashRange.rangeStartInclusive(), hashRange.rangeEndExclusive()).forEach(hashVal -> {
-          appendingList.add(hashedDataInPartitionList.get(writeTaskNumber).get(hashVal));
-        });
+        IntStream.range(hashRange.rangeStartInclusive(), hashRange.rangeEndExclusive()).forEach(hashVal ->
+            appendingList.add(hashedDataInPartitionList.get(writeTaskNumber).get(hashVal).right()));
         final List<Element> concatStreamBase = new ArrayList<>();
         Stream<Element> concatStream = concatStreamBase.stream();
         for (final Iterable<Element> data : appendingList) {
@@ -241,14 +248,15 @@ public final class PartitionStoreTest {
     metaserverMessageEnvironment.setupListener(
         MessageEnvironment.MASTER_MESSAGE_RECEIVER, new LocalMetadataServerMessageReceiver(metadataManager));
 
-    final PartitionStore writerSideRemoteFileStore =
+    final RemoteFileStore writerSideRemoteFileStore =
         createGlusterFileStore("writer", pmw, localMessageDispatcher);
-    final PartitionStore readerSideRemoteFileStore =
+    final RemoteFileStore readerSideRemoteFileStore =
         createGlusterFileStore("reader", pmw, localMessageDispatcher);
 
     scatterGather(writerSideRemoteFileStore, readerSideRemoteFileStore);
     concurrentRead(writerSideRemoteFileStore, readerSideRemoteFileStore);
     scatterGatherInHashRange(writerSideRemoteFileStore, readerSideRemoteFileStore);
+    concurrentWrite(writerSideRemoteFileStore, readerSideRemoteFileStore);
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
   }
 
@@ -381,15 +389,15 @@ public final class PartitionStoreTest {
   /**
    * Tests concurrent read for {@link PartitionStore}s.
    * Assumes following circumstances:
-   * -> Task 2
+   *                                             -> Task 2
    * Task 1 (write)-> broadcast (concurrent read)-> ...
-   * -> Task 11
+   *                                             -> Task 11
    * It checks that each writer and reader does not throw any exception
    * and the read data is identical with written data (including the order).
    */
   private void concurrentRead(final PartitionStore writerSideStore,
                               final PartitionStore readerSideStore) {
-    final ExecutorService writeExecutor = Executors.newSingleThreadExecutor();
+    final ExecutorService writeExecutor = Executors.newSingleThreadExecutor() ;
     final ExecutorService readExecutor = Executors.newFixedThreadPool(NUM_CONC_READ_TASKS);
     final Future<Boolean> writeFuture;
     final List<Future<Boolean>> readFutureList = new ArrayList<>(NUM_CONC_READ_TASKS);
@@ -472,7 +480,7 @@ public final class PartitionStoreTest {
    * Assumes following circumstances:
    * Task 1 (write (hash 0~3))->         (read (hash 0~1))-> Task 3
    * Task 2 (write (hash 0~3))-> shuffle (read (hash 2))-> Task 4
-   * (read (hash 3))-> Task 5
+   *                                     (read (hash 3))-> Task 5
    * It checks that each writer and reader does not throw any exception
    * and the read data is identical with written data (including the order).
    */
@@ -580,11 +588,109 @@ public final class PartitionStoreTest {
             writerSideStore.getClass().toString());
   }
 
-  private List<Element> getRangedNumList(final int start,
-                                         final int end) {
-    final List<Element> numList = new ArrayList<>(end - start);
-    IntStream.range(start, end).forEach(number -> numList.add(new BeamElement<>(KV.of(number, number))));
-    return numList;
+  /**
+   * Tests concurrent write for a store by using {@link RemoteFileStore#appendHashedData(String, Iterable)}.
+   * Assumes following circumstances:
+   * Task 1 (write)-> partition (read)-> Task 3
+   * Task 2 (write)->
+   * It checks that each writer and reader does not throw any exception,
+   * the read data is identical with written data, and the written data blocks are consistent.
+   */
+  private void concurrentWrite(final RemoteFileStore writerSideStore,
+                               final RemoteFileStore readerSideStore) {
+    final ExecutorService writeExecutor = Executors.newFixedThreadPool(NUM_CONC_WRITE_TASKS);
+    final ExecutorService readExecutor = Executors.newFixedThreadPool(1);
+    final List<Future<Boolean>> writeFutureList = new ArrayList<>(NUM_CONC_WRITE_TASKS);
+    final List<Element> blockToWrite = getRangedNumList(0, CONC_WRITE_DATA_IN_BLOCK);
+    final String partitionId = RuntimeIdGenerator.generatePartitionId("TestEdge", 0);
+    final long startNano = System.nanoTime();
+
+    // Write concurrently.
+    IntStream.range(0, NUM_CONC_WRITE_TASKS).forEach(writeTaskNumber ->
+        writeFutureList.add(writeExecutor.submit(new Callable<Boolean>() {
+          @Override
+          public Boolean call() {
+            try {
+              final List<Pair<Integer, Iterable<Element>>> dataToAppend = new ArrayList<>(CONC_WRITE_BLOCK_NUM);
+              IntStream.range(0, CONC_WRITE_BLOCK_NUM).forEach(blockIdx ->
+                  dataToAppend.add(Pair.of(blockIdx, blockToWrite)));
+              try {
+                writerSideStore.appendHashedData(partitionId, dataToAppend).get();
+              } catch (final InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e);
+              }
+              return true;
+            } catch (final Exception e) {
+              e.printStackTrace();
+              return false;
+            }
+          }
+        })));
+
+    // Wait each writer to success.
+    IntStream.range(0, NUM_CONC_WRITE_TASKS).forEach(writer -> {
+      try {
+        assertTrue(writeFutureList.get(writer).get());
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
+      }
+    });
+    final long writeEndNano = System.nanoTime();
+
+    // Read and check whether the result is proper.
+    final Future<Boolean> readFuture = readExecutor.submit(new Callable<Boolean>() {
+      @Override
+      public Boolean call() {
+        try {
+          try {
+            final Optional<Partition> partition =
+                readerSideStore.retrieveDataFromPartition(partitionId).get();
+            if (!partition.isPresent()) {
+              throw new RuntimeException("The result of retrieveDataFromPartition(" + partitionId + ") is empty");
+            }
+            final Iterable<Element> getData;
+            try {
+              getData = partition.get().asIterable();
+            } catch (final IOException e) {
+              throw new RuntimeException(e);
+            }
+            final List<List<Element>> expectedResults =
+                new ArrayList<>(CONC_WRITE_BLOCK_NUM * NUM_CONC_WRITE_TASKS);
+            IntStream.range(0, CONC_WRITE_BLOCK_NUM * NUM_CONC_WRITE_TASKS).
+                forEach(blockIdx -> expectedResults.add(blockToWrite));
+            assertEquals(flatten(expectedResults), getData);
+
+            final boolean exist = readerSideStore.removePartition(partitionId).get();
+            if (!exist) {
+              throw new RuntimeException("The result of removePartition(" + partitionId + ") is false");
+            }
+          } catch (final InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+          }
+
+          return true;
+        } catch (final Exception e) {
+          e.printStackTrace();
+          return false;
+        }
+      }
+    });
+
+    // Wait each reader to success
+    try {
+      assertTrue(readFuture.get());
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
+    final long readEndNano = System.nanoTime();
+
+    writeExecutor.shutdown();
+    readExecutor.shutdown();
+
+    System.out.println(
+        "Concurrent write - write time in millis: " + (writeEndNano - startNano) / 1000000 +
+            ", Read time in millis: " + (readEndNano - writeEndNano) / 1000000 + " in store " +
+            writerSideStore.getClass().toString());
   }
 
   private List<Element> getFixedKeyRangedNumList(final int key,
@@ -627,9 +733,12 @@ public final class PartitionStoreTest {
         case RequestMetadata:
           metadataManager.onRequestMetadata(message, messageContext);
           break;
+        case ReserveBlock:
+          metadataManager.onReserveBlock(message, messageContext);
+          break;
         default:
           throw new IllegalMessageException(
-              new Exception("This message should not be received by metadata server :" + message.getType()));
+              new Exception("This message should not be received by metadata server:" + message.getType()));
       }
     }
   }

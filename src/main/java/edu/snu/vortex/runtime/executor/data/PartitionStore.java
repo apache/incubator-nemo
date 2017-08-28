@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.runtime.executor.data;
 
+import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.executor.data.partition.Partition;
 
@@ -62,13 +63,14 @@ public interface PartitionStore {
    * Saves an iterable of data blocks as a partition.
    * Each block has a specific hash value, and the block becomes a unit of read & write.
    * @param partitionId of the partition.
-   * @param hashedData to save as a partition.
+   * @param hashedData to save as a partition. Each pair consists of the hash value and the block data.
    * @return the size of data per hash value (only when the data is serialized).
    *         (the future completes exceptionally with {@link edu.snu.vortex.runtime.exception.PartitionWriteException}
    *          for any error occurred while trying to write a partition.)
    */
-  CompletableFuture<Optional<List<Long>>> putHashedDataAsPartition(String partitionId,
-                                                                   Iterable<Iterable<Element>> hashedData);
+  CompletableFuture<Optional<List<Long>>> putHashedDataAsPartition(
+      String partitionId,
+      Iterable<Pair<Integer, Iterable<Element>>> hashedData);
 
   /**
    * Optional<Partition> removePartition(String partitionId) throws PartitionFetchException;

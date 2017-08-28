@@ -34,6 +34,8 @@ public final class PartitionState {
     stateMachineBuilder.addState(State.READY, "The partition is ready to be created.");
     stateMachineBuilder.addState(State.SCHEDULED, "The partition is scheduled for creation.");
     stateMachineBuilder.addState(State.COMMITTED, "The partition has been committed.");
+    // TODO #444: Introduce BlockState -> remove PARTIAL_COMMITTED and manage the block state in PartitionStores.
+    stateMachineBuilder.addState(State.PARTIAL_COMMITTED, "The partition has been partially committed.");
     stateMachineBuilder.addState(State.LOST_BEFORE_COMMIT, "The task group that produces the partition is scheduled, "
         + "but failed before committing");
     stateMachineBuilder.addState(State.REMOVED, "The partition has been removed (e.g., GC-ed).");
@@ -43,7 +45,15 @@ public final class PartitionState {
     stateMachineBuilder.addTransition(State.READY, State.SCHEDULED,
         "The task group that produces the partition is scheduled.");
     stateMachineBuilder.addTransition(State.SCHEDULED, State.COMMITTED, "Successfully moved and committed");
+    stateMachineBuilder.addTransition(State.SCHEDULED, State.PARTIAL_COMMITTED,
+        "Some part of this partition is successfully moved and committed");
     stateMachineBuilder.addTransition(State.SCHEDULED, State.LOST_BEFORE_COMMIT, "The partition is lost before commit");
+    stateMachineBuilder.addTransition(State.PARTIAL_COMMITTED, State.LOST_BEFORE_COMMIT,
+        "The partition is lost before commit");
+    stateMachineBuilder.addTransition(State.PARTIAL_COMMITTED, State.COMMITTED,
+        "Whole partition is successfully moved and committed");
+    stateMachineBuilder.addTransition(State.PARTIAL_COMMITTED, State.PARTIAL_COMMITTED,
+        "Another part of this partition is successfully moved and committed");
     stateMachineBuilder.addTransition(State.COMMITTED, State.LOST, "Lost after committed");
     stateMachineBuilder.addTransition(State.COMMITTED, State.REMOVED, "Removed after committed");
     stateMachineBuilder.addTransition(State.REMOVED, State.SCHEDULED,
@@ -69,6 +79,8 @@ public final class PartitionState {
     READY,
     SCHEDULED,
     COMMITTED,
+    // TODO #444: Introduce BlockState -> remove PARTIAL_COMMITTED and manage the block state in PartitionStores.
+    PARTIAL_COMMITTED,
     LOST_BEFORE_COMMIT,
     LOST,
     REMOVED

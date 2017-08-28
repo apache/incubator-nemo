@@ -16,6 +16,8 @@
 package edu.snu.vortex.runtime;
 
 import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.compiler.frontend.beam.BeamElement;
+import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
@@ -28,9 +30,10 @@ import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.scheduler.*;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import org.apache.beam.sdk.values.KV;
+
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -151,14 +154,17 @@ public final class RuntimeTestUtil {
                                                                final ContainerManager containerManager,
                                                                final String partitionId,
                                                                final PartitionState.State newState) {
-    final Optional<String> parentTaskGroupId = partitionManagerMaster.getProducerTaskGroupId(partitionId);
-    if (parentTaskGroupId.isPresent()) {
-      final ExecutorRepresenter scheduledExecutor = findExecutorForTaskGroup(containerManager, parentTaskGroupId.get());
+    final Optional<Set<String>> optionalParentTaskGroupIds = partitionManagerMaster.getProducerTaskGroupIds(partitionId);
+    if (optionalParentTaskGroupIds.isPresent()) {
+      final Set<String> parentTaskGroupIds = optionalParentTaskGroupIds.get();
+      parentTaskGroupIds.forEach(taskGroupId -> {
+        final ExecutorRepresenter scheduledExecutor = findExecutorForTaskGroup(containerManager, taskGroupId);
 
-
-      if (scheduledExecutor != null) {
-        partitionManagerMaster.onPartitionStateChanged(partitionId, newState, scheduledExecutor.getExecutorId());
-      }
+        if (scheduledExecutor != null) {
+          partitionManagerMaster.onPartitionStateChanged(
+              partitionId, newState, scheduledExecutor.getExecutorId(), null);
+        }
+      });
     }
   }
 
@@ -177,5 +183,28 @@ public final class RuntimeTestUtil {
       }
     }
     return null;
+  }
+
+  /**
+   * Gets a list of integer pair elements in range.
+   * @param start value of the range (inclusive).
+   * @param end   value of the range (exclusive).
+   * @return the list of elements.
+   */
+  public static List<Element> getRangedNumList(final int start,
+                                               final int end) {
+    final List<Element> numList = new ArrayList<>(end - start);
+    IntStream.range(start, end).forEach(number -> numList.add(new BeamElement<>(KV.of(number, number))));
+    return numList;
+  }
+
+  /**
+   * Flattens a nested list of elements.
+   *
+   * @param listOfList to flattens.
+   * @return the flattened list of elements.
+   */
+  public static List<Element> flatten(final List<List<Element>> listOfList) {
+    return listOfList.stream().flatMap(list -> list.stream()).collect(Collectors.toList());
   }
 }

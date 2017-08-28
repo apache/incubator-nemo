@@ -147,14 +147,4 @@ public final class RuntimeIdGenerator {
     final String woPrefix = partitionId.split(partitionPrefix)[1];
     return woPrefix.split(partitionIdSplitter);
   }
-
-  /**
-   * Checks whether a partition id represents a partition in scatter gather edge or not.
-   *
-   * @param partitionId to check.
-   * @return {@code true} if it represents a scatter gather partition, {@code false} if doesn't.
-   */
-  public static boolean isScatterGatherEdge(final String partitionId) {
-    return partitionId.split(partitionIdSplitter).length == 3;
-  }
 }

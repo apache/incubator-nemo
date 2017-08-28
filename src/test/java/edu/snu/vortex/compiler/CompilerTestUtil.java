@@ -22,17 +22,9 @@ import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.examples.beam.*;
 import edu.snu.vortex.common.dag.DAG;
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.io.BoundedSource;
-import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * Utility methods for tests.
