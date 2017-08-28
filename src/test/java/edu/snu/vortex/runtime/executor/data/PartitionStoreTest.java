@@ -16,7 +16,6 @@
 package edu.snu.vortex.runtime.executor.data;
 
 import edu.snu.vortex.client.JobConf;
-import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.common.coder.BeamCoder;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BeamElement;
@@ -89,7 +88,7 @@ public final class PartitionStoreTest {
   private static final int HASH_RANGE = 4;
   private List<String> hashedPartitionIdList;
   private List<List<Iterable<Element>>> hashedDataInPartitionList;
-  private List<Pair<Integer, Integer>> readHashRangeList;
+  private List<HashRange> readHashRangeList;
   private List<List<Iterable<Element>>> expectedDataInRange;
 
   /**
@@ -163,18 +162,18 @@ public final class PartitionStoreTest {
 
     // Generates the range of hash value to read for each read task.
     final int smallDataRangeEnd = 1 + NUM_READ_HASH_TASKS - NUM_WRITE_HASH_TASKS;
-    readHashRangeList.add(Pair.of(0, smallDataRangeEnd));
+    readHashRangeList.add(HashRange.of(0, smallDataRangeEnd));
     IntStream.range(0, NUM_READ_HASH_TASKS - 1).forEach(readTaskNumber -> {
-      readHashRangeList.add(Pair.of(smallDataRangeEnd + readTaskNumber, smallDataRangeEnd + readTaskNumber + 1));
+      readHashRangeList.add(HashRange.of(smallDataRangeEnd + readTaskNumber, smallDataRangeEnd + readTaskNumber + 1));
     });
 
     // Generates the expected result of hash range retrieval for each read task.
     IntStream.range(0, NUM_READ_HASH_TASKS).forEach(readTaskNumber -> {
-      final Pair<Integer, Integer> hashRange = readHashRangeList.get(readTaskNumber);
+      final HashRange hashRange = readHashRangeList.get(readTaskNumber);
       final List<Iterable<Element>> expectedRangeBlocks = new ArrayList<>(NUM_WRITE_HASH_TASKS);
       IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writeTaskNumber -> {
         final List<Iterable<Element>> appendingList = new ArrayList<>();
-        IntStream.range(hashRange.left(), hashRange.right()).forEach(hashVal -> {
+        IntStream.range(hashRange.rangeStartInclusive(), hashRange.rangeEndExclusive()).forEach(hashVal -> {
           appendingList.add(hashedDataInPartitionList.get(writeTaskNumber).get(hashVal));
         });
         final List<Element> concatStreamBase = new ArrayList<>();
@@ -520,10 +519,9 @@ public final class PartitionStoreTest {
               IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(
                   writeTaskNumber -> {
                     try {
-                      final Pair<Integer, Integer> hashRangeToRetrieve = readHashRangeList.get(readTaskNumber);
+                      final HashRange hashRangeToRetrieve = readHashRangeList.get(readTaskNumber);
                       final Optional<Partition> partition = readerSideStore.retrieveDataFromPartition(
-                          hashedPartitionIdList.get(writeTaskNumber),
-                          hashRangeToRetrieve.left(), hashRangeToRetrieve.right()).get();
+                          hashedPartitionIdList.get(writeTaskNumber), hashRangeToRetrieve).get();
                       if (!partition.isPresent()) {
                         throw new RuntimeException("The result of get partition" +
                             hashedPartitionIdList.get(writeTaskNumber) + " in range " + hashRangeToRetrieve.toString() +
