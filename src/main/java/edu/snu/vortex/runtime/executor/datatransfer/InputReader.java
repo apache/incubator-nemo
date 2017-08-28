@@ -76,6 +76,9 @@ public final class InputReader extends DataTransfer {
   public List<CompletableFuture<Iterable<Element>>> read() {
     final Boolean isDataSizeMetricCollectionEdge =
         runtimeEdge.getAttributes().get(Attribute.Key.DataSizeMetricCollection) != null;
+    final Attribute writeOptAtt = runtimeEdge.getAttributes().get(Attribute.Key.WriteOptimization);
+    final Boolean isIFileWriteEdge =
+        writeOptAtt != null && writeOptAtt.equals(Attribute.IFileWrite);
     try {
       switch (runtimeEdge.getAttributes().get(Attribute.Key.CommunicationPattern)) {
         case OneToOne:
@@ -86,6 +89,8 @@ public final class InputReader extends DataTransfer {
           // If the dynamic optimization which detects data skew is enabled, read the data in the assigned range.
           if (isDataSizeMetricCollectionEdge) {
             return readDataInRange();
+          } else if (isIFileWriteEdge) {
+            return Collections.singletonList(readIFile());
           } else {
             return readScatterGather();
           }
@@ -133,7 +138,7 @@ public final class InputReader extends DataTransfer {
 
   /**
    * Read data in the assigned range of hash value.
-   * Constraint: If a partition is written by {@link OutputWriter#sortAndWrite(Iterable)},
+   * Constraint: If a partition is written by {@link OutputWriter#hashAndWrite(Iterable)},
    * it must be read using this method.
    *
    * @return the list of the completable future of the data.
@@ -157,6 +162,17 @@ public final class InputReader extends DataTransfer {
     }
 
     return futures;
+  }
+
+  /**
+   * Read the I-File prepared for this task by using {@link OutputWriter#writeIFile(Iterable)}.
+   *
+   * @return the completable future of the data.
+   */
+  private CompletableFuture<Iterable<Element>> readIFile() {
+    final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), dstTaskIndex);
+    return partitionManagerWorker.retrieveDataFromPartition(partitionId, getId(),
+        runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement), HashRange.all());
   }
 
   public RuntimeEdge getRuntimeEdge() {

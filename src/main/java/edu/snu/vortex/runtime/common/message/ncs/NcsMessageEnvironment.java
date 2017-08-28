@@ -180,9 +180,11 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
         return MessageType.Send;
       case RequestPartitionLocation:
       case RequestMetadata:
+      case ReserveBlock:
         return MessageType.Request;
       case PartitionLocationInfo:
       case MetadataResponse:
+      case ReserveBlockResponse:
         return MessageType.Reply;
       default:
         throw new IllegalArgumentException(controlMessage.toString());
@@ -195,6 +197,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
         return controlMessage.getRequestPartitionLocationMsg().getExecutorId();
       case RequestMetadata:
         return controlMessage.getRequestMetadataMsg().getExecutorId();
+      case ReserveBlock:
+        return controlMessage.getReserveBlockMsg().getExecutorId();
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }
@@ -206,6 +210,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
         return controlMessage.getPartitionLocationInfoMsg().getRequestId();
       case MetadataResponse:
         return controlMessage.getMetadataResponseMsg().getRequestId();
+      case ReserveBlockResponse:
+        return controlMessage.getReserveBlockResponseMsg().getRequestId();
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }
@@ -220,6 +226,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case StoreMetadata:
       case RemoveMetadata:
       case RequestMetadata:
+      case ReserveBlock:
         return MessageEnvironment.MASTER_MESSAGE_RECEIVER;
       case ScheduleTaskGroup:
         return MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER;

@@ -45,42 +45,76 @@ public final class GlusterFilePartition extends FilePartition {
   }
 
   /**
-   * Opens partition for writing. The corresponding {@link FilePartition#finishWrite()} is required.
+   * Prepare the partition to write. The corresponding {@link FilePartition#finishWrite()} is required.
    *
    * @throws IOException if fail to open this partition for writing.
    */
-  private void openPartitionForWrite() throws IOException {
+  private void initializeWrite() throws IOException {
     openFileStream();
 
-    // Prevent concurrent write by using the file lock of this file.
-    // If once this lock is acquired, it have to be released to prevent the locked leftover in the remote storage.
-    // Because this lock will be released when the file channel is closed, we need to close the file channel well.
-    final FileLock fileLock = getFileChannel().tryLock();
-    if (fileLock == null) {
-      throw new IOException("Other thread (maybe in another node) is writing on this file.");
+    if (!((RemoteFileMetadata) getMetadata()).needToSyncPerWrite()) {
+      // Prevent concurrent write by using the file lock of this file.
+      // If once this lock is acquired, it have to be released to prevent the locked leftover in the remote storage.
+      // Because this lock will be released when the file channel is closed, we need to close the file channel well.
+      final FileLock fileLock = getFileChannel().tryLock();
+      if (fileLock == null) {
+        throw new IOException("Other thread (maybe in another node) is writing on this file.");
+      }
     }
   }
 
   /**
-   * Creates a file for this partition in the storage to write.
+   * Writes the serialized data of this partition having a specific hash value as a block to the file
+   * where this partition resides.
+   *
+   * @param serializedData the serialized data which will become a block.
+   * @param numElement     the number of elements in the serialized data.
+   * @param hashVal        the hash value of this block.
+   * @throws IOException if fail to write.
+   */
+  @Override
+  public void writeBlock(final byte[] serializedData,
+                         final long numElement,
+                         final int hashVal) throws IOException {
+    if (!isWritable()) {
+      throw new IOException("This partition is non-writable.");
+    }
+
+    // Reserve the block write and move to the reserved position.
+    final long positionToWrite =
+        getMetadata().appendBlockMetadata(hashVal, serializedData.length, numElement);
+    getFileChannel().position(positionToWrite);
+
+    if (((RemoteFileMetadata) getMetadata()).needToSyncPerWrite()) {
+      try (final FileLock fileLock = getFileChannel().tryLock(positionToWrite, serializedData.length, false)) {
+        if (fileLock == null) {
+          throw new IOException("Other thread (maybe in another node) is writing on this file region.");
+        }
+
+        writeBytes(serializedData);
+      }
+    } else {
+      writeBytes(serializedData);
+    }
+  }
+
+  /**
+   * Opens the corresponding file for this partition in the storage to write.
+   * It creates a file if does not exist.
    * The corresponding {@link FilePartition#finishWrite()} for the returned partition is required.
    *
-   * @param coder    the coder used to serialize and deserialize the data of this partition.
-   * @param filePath the path of the file which will contain the data of this partition.
-   * @param metadata the metadata for this partition.
+   * @param coder         the coder used to serialize and deserialize the data of this partition.
+   * @param filePath      the path of the file which will contain the data of this partition.
+   * @param metadata      the metadata for this partition.
    * @return the corresponding partition.
-   * @throws IOException if the file exist already.
+   * @throws IOException if fail to create the file exist already.
    */
-  public static GlusterFilePartition create(final Coder coder,
-                                            final String filePath,
-                                            final RemoteFileMetadata metadata) throws IOException {
-    if (!new File(filePath).isFile()) {
-      final GlusterFilePartition partition = new GlusterFilePartition(coder, filePath, metadata);
-      partition.openPartitionForWrite();
-      return partition;
-    } else {
-      throw new IOException("Trying to overwrite an existing partition.");
-    }
+  public static GlusterFilePartition openToWrite(final Coder coder,
+                                                 final String filePath,
+                                                 final RemoteFileMetadata metadata) throws IOException {
+    final GlusterFilePartition partition = new GlusterFilePartition(coder, filePath, metadata);
+    partition.initializeWrite();
+    return partition;
   }
 
   /**
@@ -91,9 +125,9 @@ public final class GlusterFilePartition extends FilePartition {
    * @param metadata the metadata for this partition.
    * @return the partition if success to open the file and partition, or an empty optional if the file does not exist.
    */
-  public static Optional<GlusterFilePartition> open(final Coder coder,
-                                                    final String filePath,
-                                                    final RemoteFileMetadata metadata) {
+  public static Optional<GlusterFilePartition> openToRead(final Coder coder,
+                                                          final String filePath,
+                                                          final RemoteFileMetadata metadata) {
     if (new File(filePath).isFile()) {
       return Optional.of(new GlusterFilePartition(coder, filePath, metadata));
     } else {

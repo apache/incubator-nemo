@@ -22,15 +22,18 @@ import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.common.StateMachine;
 import edu.snu.vortex.runtime.exception.AbsentPartitionException;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.IntStream;
 
 import edu.snu.vortex.runtime.master.metadata.MetadataManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static edu.snu.vortex.runtime.common.state.PartitionState.State.COMMITTED;
 import static edu.snu.vortex.runtime.common.state.PartitionState.State.SCHEDULED;
 
 /**
@@ -38,22 +41,28 @@ import static edu.snu.vortex.runtime.common.state.PartitionState.State.SCHEDULED
  * For now, all its operations are synchronized to guarantee thread safety.
  * TODO #430: Handle Concurrency at Partition Level.
  * TODO #431: Include Partition Metadata in a Partition.
+ * TODO #433: Reconsider fault tolerance for partitions in remote storage.
  */
 @ThreadSafe
 public final class PartitionManagerMaster {
   private static final Logger LOG = LoggerFactory.getLogger(PartitionManagerMaster.class.getName());
+  private static final String REMOTE_FILE_LOCATION = "REMOTE_FILE_STORE";
   private final Map<String, PartitionState> partitionIdToState;
-  private final Map<String, String> committedPartitionIdToWorkerId;
+  // Committed partition id to the location (worker id, remote file store, ...)
+  private final Map<String, String> committedPartitionIdToLocation;
   private final Map<String, Set<String>> producerTaskGroupIdToPartitionIds;
   private final Map<String, CompletableFuture<String>> partitionIdToLocationFuture;
+  // Partition id to the remaining partial committers (task idx).
+  private final Map<String, Set<Integer>> partitionIdToRemainingCommitterIdx;
   private final MetadataManager metadataManager;
 
   @Inject
   private PartitionManagerMaster(final MetadataManager metadataManager) {
     this.partitionIdToState = new HashMap<>();
-    this.committedPartitionIdToWorkerId = new HashMap<>();
+    this.committedPartitionIdToLocation = new HashMap<>();
     this.producerTaskGroupIdToPartitionIds = new HashMap<>();
     this.partitionIdToLocationFuture = new HashMap<>();
+    this.partitionIdToRemainingCommitterIdx = new HashMap<>();
     this.metadataManager = metadataManager;
   }
 
@@ -73,26 +82,39 @@ public final class PartitionManagerMaster {
     producerTaskGroupIdToPartitionIds.get(producerTaskGroupId).add(partitionId);
   }
 
+  public synchronized void initializeState(final String edgeId,
+                                           final int dstTaskIndex,
+                                           final Set<String> producerTaskGroupIds) {
+    final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, dstTaskIndex);
+    partitionIdToState.put(partitionId, new PartitionState());
+    producerTaskGroupIds.forEach(producerTaskGroupId -> {
+      producerTaskGroupIdToPartitionIds.putIfAbsent(producerTaskGroupId, new HashSet<>());
+      producerTaskGroupIdToPartitionIds.get(producerTaskGroupId).add(partitionId);
+    });
+    final Set<Integer> remainingCommitterIdx = new HashSet<>();
+    IntStream.range(0, producerTaskGroupIds.size()).forEach(remainingCommitterIdx::add);
+    partitionIdToRemainingCommitterIdx.put(partitionId, remainingCommitterIdx);
+  }
+
   public synchronized Set<String> removeWorker(final String executorId) {
     final Set<String> taskGroupsToRecompute = new HashSet<>();
 
     // Set committed partition states to lost
     getCommittedPartitionsByWorker(executorId).forEach(partitionId -> {
-      onPartitionStateChanged(partitionId, PartitionState.State.LOST, executorId);
-      final Optional<String> producerTaskGroupForPartition = getProducerTaskGroupId(partitionId);
-
+      onPartitionStateChanged(partitionId, PartitionState.State.LOST, executorId, null);
       // producerTaskGroupForPartition should always be non-empty.
-      taskGroupsToRecompute.add(producerTaskGroupForPartition.get());
+      final Set<String> producerTaskGroupForPartition = getProducerTaskGroupIds(partitionId).get();
+      producerTaskGroupForPartition.forEach(taskGroupsToRecompute::add);
     });
 
     // Update worker-related global variables
-    committedPartitionIdToWorkerId.entrySet().removeIf(e -> e.getValue().equals(executorId));
+    committedPartitionIdToLocation.entrySet().removeIf(e -> e.getValue().equals(executorId));
 
     return taskGroupsToRecompute;
   }
 
   public synchronized Optional<String> getPartitionLocation(final String partitionId) {
-    final String executorId = committedPartitionIdToWorkerId.get(partitionId);
+    final String executorId = committedPartitionIdToLocation.get(partitionId);
     return Optional.ofNullable(executorId);
   }
 
@@ -107,6 +129,8 @@ public final class PartitionManagerMaster {
         (PartitionState.State) getPartitionState(partitionId).getStateMachine().getCurrentState();
     switch (state) {
       case SCHEDULED:
+      case PARTIAL_COMMITTED:
+        // TODO #444: Introduce BlockState -> remove PARTIAL_COMMITTED and manage the block state in PartitionStores.
         return partitionIdToLocationFuture.computeIfAbsent(partitionId, pId -> new CompletableFuture<>());
       case COMMITTED:
         return CompletableFuture.completedFuture(getPartitionLocation(partitionId).get());
@@ -122,13 +146,19 @@ public final class PartitionManagerMaster {
     }
   }
 
-  public synchronized Optional<String> getProducerTaskGroupId(final String partitionId) {
+  public synchronized Optional<Set<String>> getProducerTaskGroupIds(final String partitionId) {
+    final Set<String> producerTaskGroupIds = new HashSet<>();
     for (Map.Entry<String, Set<String>> entry : producerTaskGroupIdToPartitionIds.entrySet()) {
       if (entry.getValue().contains(partitionId)) {
-        return Optional.of(entry.getKey());
+        producerTaskGroupIds.add(entry.getKey());
       }
     }
-    return Optional.empty();
+
+    if (producerTaskGroupIds.isEmpty()) {
+      return Optional.empty();
+    } else {
+      return Optional.of(producerTaskGroupIds);
+    }
   }
 
   /**
@@ -139,8 +169,11 @@ public final class PartitionManagerMaster {
    */
   public synchronized void onProducerTaskGroupScheduled(final String scheduledTaskGroupId) {
     if (producerTaskGroupIdToPartitionIds.containsKey(scheduledTaskGroupId)) {
-      producerTaskGroupIdToPartitionIds.get(scheduledTaskGroupId).forEach(partitionId ->
-          onPartitionStateChanged(partitionId, SCHEDULED, null));
+      producerTaskGroupIdToPartitionIds.get(scheduledTaskGroupId).forEach(partitionId -> {
+        if (!partitionIdToState.get(partitionId).getStateMachine().getCurrentState().equals(SCHEDULED)) {
+          onPartitionStateChanged(partitionId, SCHEDULED, null, null);
+        }
+      });
     } // else this task group does not produce any partition
   }
 
@@ -152,13 +185,13 @@ public final class PartitionManagerMaster {
   public synchronized void onProducerTaskGroupFailed(final String failedTaskGroupId) {
     if (producerTaskGroupIdToPartitionIds.containsKey(failedTaskGroupId)) {
       producerTaskGroupIdToPartitionIds.get(failedTaskGroupId).forEach(partitionId ->
-          onPartitionStateChanged(partitionId, PartitionState.State.LOST_BEFORE_COMMIT, null));
+          onPartitionStateChanged(partitionId, PartitionState.State.LOST_BEFORE_COMMIT, null, null));
     } // else this task group does not produce any partition
   }
 
   public synchronized Set<String> getCommittedPartitionsByWorker(final String executorId) {
     final Set<String> partitionIds = new HashSet<>();
-    committedPartitionIdToWorkerId.forEach((partitionId, workerId) -> {
+    committedPartitionIdToLocation.forEach((partitionId, workerId) -> {
       if (workerId.equals(executorId)) {
         partitionIds.add(partitionId);
       }
@@ -172,7 +205,8 @@ public final class PartitionManagerMaster {
 
   public synchronized void onPartitionStateChanged(final String partitionId,
                                                    final PartitionState.State newState,
-                                                   final String committedWorkerId) {
+                                                   @Nullable final String committedWorkerId,
+                                                   @Nullable final Integer committedTaskIdx) {
     final StateMachine sm = partitionIdToState.get(partitionId).getStateMachine();
     final Enum oldState = sm.getCurrentState();
     LOG.debug("Partition State Transition: id {} from {} to {}",
@@ -187,16 +221,24 @@ public final class PartitionManagerMaster {
         completeLocationFuture(partitionId, newState, Optional.empty());
         break;
       case COMMITTED:
-        committedPartitionIdToWorkerId.put(partitionId, committedWorkerId);
+        committedPartitionIdToLocation.put(partitionId, committedWorkerId);
         completeLocationFuture(partitionId, newState, Optional.of(committedWorkerId));
         break;
+      case PARTIAL_COMMITTED:
+        final Set<Integer> remainingCommitters = partitionIdToRemainingCommitterIdx.get(partitionId);
+        remainingCommitters.remove(committedTaskIdx);
+        if (remainingCommitters.isEmpty()) { // All committers committed their data.
+          partitionIdToRemainingCommitterIdx.remove(remainingCommitters);
+          onPartitionStateChanged(partitionId, COMMITTED, REMOTE_FILE_LOCATION, null);
+        }
+        break;
       case REMOVED:
-        committedPartitionIdToWorkerId.remove(partitionId);
+        committedPartitionIdToLocation.remove(partitionId);
         completeLocationFuture(partitionId, newState, Optional.empty());
         break;
       case LOST:
         LOG.info("Partition {} lost in {}", new Object[]{partitionId, committedWorkerId});
-        committedPartitionIdToWorkerId.remove(partitionId);
+        committedPartitionIdToLocation.remove(partitionId);
         completeLocationFuture(partitionId, newState, Optional.empty());
         break;
       default:

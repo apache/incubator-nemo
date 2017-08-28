@@ -44,4 +44,24 @@ public final class LocalFilePartition extends FilePartition {
     super(coder, filePath, metadata);
     openFileStream();
   }
+
+  /**
+   * Writes the serialized data of this partition having a specific hash value as a block to the file
+   * where this partition resides.
+   *
+   * @param serializedData the serialized data which will become a block.
+   * @param numElement     the number of elements in the serialized data.
+   * @param hashVal        the hash value of this block.
+   * @throws IOException if fail to write.
+   */
+  @Override
+  public void writeBlock(final byte[] serializedData,
+                         final long numElement,
+                         final int hashVal) throws IOException {
+    if (!isWritable()) {
+      throw new IOException("This partition is non-writable.");
+    }
+    getMetadata().appendBlockMetadata(hashVal, serializedData.length, numElement);
+    writeBytes(serializedData);
+  }
 }

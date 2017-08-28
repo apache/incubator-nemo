@@ -15,21 +15,17 @@
  */
 package edu.snu.vortex.runtime.executor.data;
 
+import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.compiler.ir.Element;
-import edu.snu.vortex.runtime.exception.PartitionFetchException;
 import edu.snu.vortex.runtime.executor.data.partition.MemoryPartition;
 import edu.snu.vortex.runtime.executor.data.partition.Partition;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -40,8 +36,8 @@ import java.util.stream.StreamSupport;
 final class MemoryStore implements PartitionStore {
   // A map between partition id and data.
   private final ConcurrentHashMap<String, Iterable<Element>> partitionIdToData;
-  // A map between partition id and data blocked and hashed by the hash value.
-  private final ConcurrentHashMap<String, Iterable<Iterable<Element>>> partitionDataInBlocks;
+  // A map between partition id and pair hash value and data block.
+  private final ConcurrentHashMap<String, Iterable<Pair<Integer, Iterable<Element>>>> partitionDataInBlocks;
 
   @Inject
   private MemoryStore() {
@@ -55,13 +51,15 @@ final class MemoryStore implements PartitionStore {
   @Override
   public CompletableFuture<Optional<Partition>> retrieveDataFromPartition(final String partitionId) {
     final Iterable<Element> partitionData = partitionIdToData.get(partitionId);
-    final Iterable<Iterable<Element>> blockedPartitionData = partitionDataInBlocks.get(partitionId);
+    final Iterable<Pair<Integer, Iterable<Element>>> blockInfo = partitionDataInBlocks.get(partitionId);
 
     final Optional<Partition> partitionOptional;
     if (partitionData != null) {
       partitionOptional = Optional.of(new MemoryPartition(partitionData));
-    } else if (blockedPartitionData != null) {
-      partitionOptional = Optional.of(new MemoryPartition(concatBlocks(blockedPartitionData)));
+    } else if (blockInfo != null) {
+      final List<Iterable<Element>> blocks = new LinkedList<>();
+      blockInfo.forEach(pair -> blocks.add(pair.right()));
+      partitionOptional = Optional.of(new MemoryPartition(concatBlocks(blocks)));
     } else {
       partitionOptional = Optional.empty();
     }
@@ -75,22 +73,17 @@ final class MemoryStore implements PartitionStore {
   public CompletableFuture<Optional<Partition>> retrieveDataFromPartition(final String partitionId,
                                                                           final HashRange hashRange) {
     final CompletableFuture<Optional<Partition>> future = new CompletableFuture<>();
-    final Iterable<Iterable<Element>> blocks = partitionDataInBlocks.get(partitionId);
+    final Iterable<Pair<Integer, Iterable<Element>>> blockInfo = partitionDataInBlocks.get(partitionId);
 
-    if (blocks != null) {
+    if (blockInfo != null) {
       // Retrieves data in the hash range from the target partition
       final List<Iterable<Element>> retrievedData = new ArrayList<>(hashRange.length());
-      final Iterator<Iterable<Element>> iterator = blocks.iterator();
-      IntStream.range(0, hashRange.rangeEndExclusive()).forEach(hashVal -> {
-        // We cannot start from the startInclusiveHashVal because `blocks` is an iterable.
-        if (!iterator.hasNext()) {
-          future.completeExceptionally(new PartitionFetchException(
-              new Throwable("Illegal hash range. There are only " + hashVal + " blocks in this partition.")));
-        }
-        if (hashVal < hashRange.rangeStartInclusive()) {
-          iterator.next();
+      final Iterator<Pair<Integer, Iterable<Element>>> iterator = blockInfo.iterator();
+      iterator.forEachRemaining(pair -> {
+        if (hashRange.includes(pair.left())) {
+          retrievedData.add(pair.right());
         } else {
-          retrievedData.add(iterator.next());
+          iterator.next();
         }
       });
 
@@ -126,8 +119,8 @@ final class MemoryStore implements PartitionStore {
   @Override
   public CompletableFuture<Optional<List<Long>>> putHashedDataAsPartition(
       final String partitionId,
-      final Iterable<Iterable<Element>> hashedData) {
-    final Iterable<Iterable<Element>> previousBlockedData =
+      final Iterable<Pair<Integer, Iterable<Element>>> hashedData) {
+    final Iterable<Pair<Integer, Iterable<Element>>> previousBlockedData =
         partitionDataInBlocks.putIfAbsent(partitionId, hashedData);
     if (previousBlockedData != null) {
       throw new RuntimeException("Trying to overwrite an existing partition");
