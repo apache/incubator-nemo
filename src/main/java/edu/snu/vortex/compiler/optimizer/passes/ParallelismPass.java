@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 /**
  * Optimization pass for tagging parallelism attributes.
  */
-public final class ParallelismPass implements Pass {
+public final class ParallelismPass implements StaticOptimizationPass {
   @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     // Propagate forward source parallelism

@@ -23,6 +23,7 @@ import edu.snu.vortex.compiler.frontend.Frontend;
 import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
+import edu.snu.vortex.runtime.master.eventhandler.DynamicOptimizationEventHandler;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import org.apache.reef.tang.annotations.Parameter;
@@ -53,6 +54,7 @@ public final class UserApplicationRunner implements Runnable {
                                 @Parameter(JobConf.UserMainClass.class) final String className,
                                 @Parameter(JobConf.UserMainArguments.class) final String arguments,
                                 @Parameter(JobConf.OptimizationPolicy.class) final String policyName,
+                                final DynamicOptimizationEventHandler handler,
                                 final RuntimeMaster runtimeMaster) {
     this.dagDirectory = dagDirectory;
     this.className = className;

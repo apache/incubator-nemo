@@ -18,9 +18,9 @@ package edu.snu.vortex.compiler.optimizer.passes.optimization;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.LoopVertex;
-import edu.snu.vortex.compiler.optimizer.passes.Pass;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
+import edu.snu.vortex.compiler.optimizer.passes.StaticOptimizationPass;
 
 import java.util.*;
 import java.util.function.IntPredicate;
@@ -96,7 +96,7 @@ public final class LoopOptimizations {
   /**
    * Pass for Loop Fusion optimization.
    */
-  public static final class LoopFusionPass implements Pass {
+  public static final class LoopFusionPass implements StaticOptimizationPass {
     @Override
     public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
       final List<LoopVertex> loopVertices = new ArrayList<>();
@@ -236,7 +236,7 @@ public final class LoopOptimizations {
   /**
    * Pass for Loop Invariant Code Motion optimization.
    */
-  public static final class LoopInvariantCodeMotionPass implements Pass {
+  public static final class LoopInvariantCodeMotionPass implements StaticOptimizationPass {
     @Override
     public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
       final List<LoopVertex> loopVertices = new ArrayList<>();
