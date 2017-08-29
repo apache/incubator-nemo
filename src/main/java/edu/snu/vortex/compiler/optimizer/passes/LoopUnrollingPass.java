@@ -24,7 +24,7 @@ import edu.snu.vortex.common.dag.DAGBuilder;
  * It first unrolls the root LoopVertex, which is in the form of linked list, into a straight line in the DAG.
  * Then, it decomposes each of the LoopVertices with the DAG information that each of them contain.
  */
-public final class LoopUnrollingPass implements Pass {
+public final class LoopUnrollingPass implements StaticOptimizationPass {
   @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     return recursivelyUnroll(dag);

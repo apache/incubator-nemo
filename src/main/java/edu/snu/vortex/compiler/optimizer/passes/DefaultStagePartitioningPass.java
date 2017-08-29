@@ -35,7 +35,7 @@ import static edu.snu.vortex.compiler.ir.attribute.Attribute.Memory;
  * to a new stage. We filter out the candidate incoming edges to connect to an existing stage, and if it exists, we
  * connect it to the stage, and otherwise we don't.
  */
-public final class DefaultStagePartitioningPass implements Pass {
+public final class DefaultStagePartitioningPass implements StaticOptimizationPass {
   @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> irDAG) {
     final AtomicInteger stageNum = new AtomicInteger(0);

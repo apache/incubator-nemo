@@ -25,7 +25,7 @@ import java.util.List;
 /**
  * Disaggregated Resources pass for tagging vertices.
  */
-public final class DisaggregationPass implements Pass {
+public final class DisaggregationPass implements StaticOptimizationPass {
   @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     dag.topologicalDo(vertex -> {

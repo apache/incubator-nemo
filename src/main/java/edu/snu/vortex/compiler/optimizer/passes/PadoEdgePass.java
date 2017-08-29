@@ -25,7 +25,7 @@ import java.util.List;
 /**
  * Pado pass for tagging edges.
  */
-public final class PadoEdgePass implements Pass {
+public final class PadoEdgePass implements StaticOptimizationPass {
   @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     dag.getVertices().forEach(vertex -> {

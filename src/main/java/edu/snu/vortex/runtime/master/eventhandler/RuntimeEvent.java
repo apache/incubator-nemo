@@ -13,21 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.optimizer.passes;
-
-import edu.snu.vortex.compiler.ir.IREdge;
-import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.common.dag.DAG;
+package edu.snu.vortex.runtime.master.eventhandler;
 
 /**
- * Interface for optimization passes.
+ * An empty interface to indicate events that are sent from Runtime.
  */
-public interface Pass {
-  /**
-   * A pass processes the DAG.
-   * @param dag the DAG to process.
-   * @return the processed DAG.
-   * @throws Exception Exceptions on the way.
-   */
-  DAG<IRVertex, IREdge> process(DAG<IRVertex, IREdge> dag) throws Exception;
+interface RuntimeEvent {
 }

@@ -15,7 +15,9 @@
  */
 package edu.snu.vortex.runtime.master.scheduler;
 
+import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.master.JobStateManager;
 import org.apache.reef.tang.annotations.DefaultImplementation;
@@ -36,6 +38,14 @@ public interface Scheduler {
    */
   JobStateManager scheduleJob(PhysicalPlan physicalPlan,
                               int maxScheduleAttempt);
+
+  /**
+   * Receive and update the scheduler with a new physical plan (job).
+   * @param newPhysicalPlan new physical plan submitted to scheduler.
+   * @param taskInfo pair containing the information of the executor id and task group to mark as complete after the
+   *                 update.
+   */
+  void updateJob(PhysicalPlan newPhysicalPlan, Pair<String, TaskGroup> taskInfo);
 
   /**
    * Called when an executor is added to Runtime, so that the extra resource can be used to execute the job.

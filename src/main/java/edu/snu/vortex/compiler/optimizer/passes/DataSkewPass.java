@@ -35,7 +35,7 @@ import java.util.List;
  * the end of the pass. This could be prevented by modifying other passes to take the snapshot of the DAG at the end of
  * each passes for metricCollectionVertices.
  */
-public final class DataSkewPass implements Pass {
+public final class DataSkewPass implements StaticOptimizationPass {
   @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
