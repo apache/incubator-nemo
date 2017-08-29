@@ -20,6 +20,7 @@ import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.runtime.common.plan.stage.Stage;
 import edu.snu.vortex.runtime.common.plan.stage.StageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
@@ -55,16 +56,15 @@ public final class DAGConverterTest {
     v1.setAttr(Attribute.IntegerKey.Parallelism, 3);
     irDAGBuilder.addVertex(v1);
 
-    final IRVertex v2 = new OperatorVertex(t);
+    final IRVertex v2 = new OperatorVertex(new DoTransform(null, null));
     v2.setAttr(Attribute.IntegerKey.Parallelism, 2);
     irDAGBuilder.addVertex(v2);
 
     final IREdge e = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);
-    e.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-    e.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e);
 
-    final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
+    final DAG<IRVertex, IREdge> irDAG = Optimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
+            Optimizer.PolicyType.TestingPolicy, "");
     final PhysicalPlanGenerator physicalPlanGenerator =
         Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<Stage, StageEdge> DAGOfStages = physicalPlanGenerator.stagePartitionIrDAG(irDAG);
@@ -222,7 +222,8 @@ public final class DAGConverterTest {
     // Stage 5 = {v6}
     irDAGBuilder.connectVertices(e5);
 
-    final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.build();
+    final DAG<IRVertex, IREdge> irDAG = Optimizer.optimize(irDAGBuilder.build(),
+            Optimizer.PolicyType.TestingPolicy, "");
     final PhysicalPlanGenerator physicalPlanGenerator =
         Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<Stage, StageEdge> logicalDAG = physicalPlanGenerator.stagePartitionIrDAG(irDAG);

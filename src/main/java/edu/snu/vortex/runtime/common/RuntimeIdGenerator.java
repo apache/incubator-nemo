@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class RuntimeIdGenerator {
   private static AtomicInteger physicalPlanIdGenerator = new AtomicInteger(1);
-  private static AtomicInteger stageIdGenerator = new AtomicInteger(1);
   private static AtomicInteger taskIdGenerator = new AtomicInteger(1);
   private static AtomicInteger taskGroupIdGenerator = new AtomicInteger(1);
   private static AtomicInteger executorIdGenerator = new AtomicInteger(1);
@@ -65,11 +64,11 @@ public final class RuntimeIdGenerator {
 
   /**
    * Generates the ID for {@link edu.snu.vortex.runtime.common.plan.stage.Stage}.
-   *
+   * @param stageId stage ID in numeric form.
    * @return the generated ID
    */
-  public static String generateStageId() {
-    return "Stage-" + stageIdGenerator.getAndIncrement();
+  public static String generateStageId(final Integer stageId) {
+    return "Stage-" + stageId;
   }
 
   /**

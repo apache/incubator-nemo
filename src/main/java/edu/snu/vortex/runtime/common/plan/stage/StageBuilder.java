@@ -28,11 +28,14 @@ import java.util.List;
  */
 public final class StageBuilder {
   private final DAGBuilder<IRVertex, IREdge> stageInternalDAGBuilder;
+  private final Integer stageId;
 
   /**
    * Builds a {@link Stage}.
+   * @param stageId stage ID in numeric form.
    */
-  public StageBuilder() {
+  public StageBuilder(final Integer stageId) {
+    this.stageId = stageId;
     this.stageInternalDAGBuilder = new DAGBuilder<>();
   }
 
@@ -85,7 +88,7 @@ public final class StageBuilder {
    * @return the runtime stage.
    */
   public Stage build() {
-    final Stage stage = new Stage(RuntimeIdGenerator.generateStageId(),
+    final Stage stage = new Stage(RuntimeIdGenerator.generateStageId(stageId),
         stageInternalDAGBuilder.buildWithoutSourceSinkCheck());
     integrityCheck(stage);
     return stage;
