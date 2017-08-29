@@ -19,9 +19,9 @@ import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.Transform;
-import edu.snu.vortex.compiler.optimizer.passes.Pass;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
+import edu.snu.vortex.compiler.optimizer.passes.StaticOptimizationPass;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  * they include the same transform, and has incoming edges from an identical set of vertices.
  * Refer to CommonSubexpressionEliminationPassTest for such cases.
  */
-public final class CommonSubexpressionEliminationPass implements Pass {
+public final class CommonSubexpressionEliminationPass implements StaticOptimizationPass {
   @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     // find and collect vertices with equivalent transforms

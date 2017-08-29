@@ -27,7 +27,7 @@ import java.util.*;
  * Then, it rolls repetitive operators into one root LoopOperator, which contains enough information to produce all
  * other iterative computations.
  */
-public final class LoopGroupingPass implements Pass {
+public final class LoopGroupingPass implements StaticOptimizationPass {
   @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) throws Exception {
     final Integer maxStackDepth = this.findMaxLoopVertexStackDepth(dag);

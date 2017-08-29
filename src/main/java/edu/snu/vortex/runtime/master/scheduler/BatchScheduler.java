@@ -15,9 +15,11 @@
  */
 package edu.snu.vortex.runtime.master.scheduler;
 
+import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
-import edu.snu.vortex.compiler.optimizer.Optimizer;
+import edu.snu.vortex.common.PubSubEventHandlerWrapper;
+import edu.snu.vortex.runtime.master.eventhandler.DynamicOptimizationEvent;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
@@ -53,6 +55,8 @@ public final class BatchScheduler implements Scheduler {
 
   private final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue;
 
+  private final PubSubEventHandlerWrapper pubSubEventHandlerWrapper;
+
   /**
    * The current job being executed.
    */
@@ -61,10 +65,12 @@ public final class BatchScheduler implements Scheduler {
   @Inject
   public BatchScheduler(final PartitionManagerMaster partitionManagerMaster,
                         final SchedulingPolicy schedulingPolicy,
-                        final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue) {
+                        final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue,
+                        final PubSubEventHandlerWrapper pubSubEventHandlerWrapper) {
     this.partitionManagerMaster = partitionManagerMaster;
     this.pendingTaskGroupPriorityQueue = pendingTaskGroupPriorityQueue;
     this.schedulingPolicy = schedulingPolicy;
+    this.pubSubEventHandlerWrapper = pubSubEventHandlerWrapper;
   }
 
   /**
@@ -91,12 +97,14 @@ public final class BatchScheduler implements Scheduler {
     return jobStateManager;
   }
 
-  /**
-   * Receive and update the scheduled job.
-   * @param newPhysicalPlan new physical plan submitted to scheduler.
-   */
-  private void updateJob(final PhysicalPlan newPhysicalPlan) {
+  @Override
+  public void updateJob(final PhysicalPlan newPhysicalPlan, final Pair<String, TaskGroup> taskInfo) {
+    // update the job in the scheduler.
+    // NOTE: what's already been executed is not modified in the new physical plan.
     this.physicalPlan = newPhysicalPlan;
+    if (taskInfo != null) {
+      onTaskGroupExecutionComplete(taskInfo.left(), taskInfo.right(), true);
+    }
   }
 
   /**
@@ -226,12 +234,12 @@ public final class BatchScheduler implements Scheduler {
               + " called with failed task ids by some other task than "
               + MetricCollectionBarrierTask.class.getSimpleName()));
       // and we will use this vertex to perform metric collection and dynamic optimization.
-      final PhysicalPlan newPlan = Optimizer.dynamicOptimization(physicalPlan, metricCollectionBarrierVertex);
-      // update the job in the scheduler.
-      // NOTE: what's already been executed is not modified in the new physical plan.
-      this.updateJob(newPlan);
+
+      pubSubEventHandlerWrapper.getPubSubEventHandler().onNext(
+          new DynamicOptimizationEvent(physicalPlan, metricCollectionBarrierVertex, Pair.of(executorId, taskGroup)));
+    } else {
+      onTaskGroupExecutionComplete(executorId, taskGroup, true);
     }
-    onTaskGroupExecutionComplete(executorId, taskGroup, true);
   }
 
   private void onTaskGroupExecutionFailedRecoverable(final String executorId, final TaskGroup taskGroup,
