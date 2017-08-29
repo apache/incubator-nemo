@@ -94,6 +94,23 @@ message MetricMsg {
 }
 
 // Messages between Executors
+enum PartitionTransferType {
+    PULL = 0;
+    PUSH = 1;
+}
+
+message DataTransferControlMessage {
+    required string controlMessageSourceId = 1;
+    optional PartitionStore partitionStore = 2;
+    required PartitionTransferType type = 3;
+    required int32 transferId = 4;
+    required bool encodePartialPartition = 5;
+    required string partitionId = 6;
+    required string runtimeEdgeId = 7;
+    optional int32 startRangeInclusive = 8;
+    optional int32 endRangeExclusive = 9;
+}
+
 message RequestPartitionMsg {
     required int64 requestId = 1; // To handle multiple outstanding requests on one link between PartitionTransferPeers
     required string partitionId = 2;
