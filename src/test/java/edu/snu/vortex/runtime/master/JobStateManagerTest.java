@@ -16,16 +16,17 @@
 package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.common.coder.Coder;
+import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.Transform;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.JobState;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
-import edu.snu.vortex.runtime.common.state.TaskState;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
 import org.apache.reef.tang.Tang;
@@ -76,31 +77,24 @@ public final class JobStateManagerTest {
     v4.setAttr(Attribute.IntegerKey.Parallelism, 2);
     irDAGBuilder.addVertex(v4);
 
-    final IRVertex v5 = new OperatorVertex(t);
+    final IRVertex v5 = new OperatorVertex(new DoTransform(null, null));
     v5.setAttr(Attribute.IntegerKey.Parallelism, 2);
     irDAGBuilder.addVertex(v5);
 
     final IREdge e1 = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);
-    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-    e1.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e1);
 
     final IREdge e2 = new IREdge(IREdge.Type.ScatterGather, v3, v2, Coder.DUMMY_CODER);
-    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-    e2.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e2);
 
     final IREdge e4 = new IREdge(IREdge.Type.ScatterGather, v2, v4, Coder.DUMMY_CODER);
-    e4.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-    e4.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e4);
 
     final IREdge e5 = new IREdge(IREdge.Type.ScatterGather, v2, v5, Coder.DUMMY_CODER);
-    e5.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-    e5.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
     irDAGBuilder.connectVertices(e5);
 
-    final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
+    final DAG<IRVertex, IREdge> irDAG = Optimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
+            Optimizer.PolicyType.TestingPolicy, "");
     final PhysicalPlanGenerator physicalPlanGenerator =
         Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
