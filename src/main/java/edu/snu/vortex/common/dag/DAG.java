@@ -343,7 +343,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
    * @param description description of this DAG
    */
   public void storeJSON(final String directory, final String name, final String description) {
-    if (directory.equals(EMPTY_DAG_DIRECTORY)) {
+    if (directory == null || directory.equals(EMPTY_DAG_DIRECTORY)) {
       return;
     }
 

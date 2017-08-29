@@ -46,7 +46,6 @@ public final class UserApplicationRunner implements Runnable {
 
   private final RuntimeMaster runtimeMaster;
   private final Frontend frontend;
-  private final Optimizer optimizer;
   private final Backend<PhysicalPlan> backend;
 
   @Inject
@@ -61,7 +60,6 @@ public final class UserApplicationRunner implements Runnable {
     this.policyName = policyName;
     this.runtimeMaster = runtimeMaster;
     this.frontend = new BeamFrontend();
-    this.optimizer = new Optimizer();
     this.backend = new VortexBackend();
   }
 
@@ -73,7 +71,7 @@ public final class UserApplicationRunner implements Runnable {
       dag.storeJSON(dagDirectory, "ir", "IR before optimization");
 
       final Optimizer.PolicyType optimizationPolicy = POLICY_NAME.get(policyName);
-      final DAG<IRVertex, IREdge> optimizedDAG = optimizer.optimize(dag, optimizationPolicy, dagDirectory);
+      final DAG<IRVertex, IREdge> optimizedDAG = Optimizer.optimize(dag, optimizationPolicy, dagDirectory);
       optimizedDAG.storeJSON(dagDirectory, "ir-" + optimizationPolicy, "IR optimized for " + optimizationPolicy);
 
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);

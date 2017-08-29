@@ -31,12 +31,8 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static edu.snu.vortex.compiler.ir.attribute.Attribute.Memory;
 
 /**
  * A function that converts an IR DAG to physical DAG.
@@ -67,26 +63,32 @@ public final class PhysicalPlanGenerator
   }
 
   /**
-   * Partitions an IR DAG into stages.
-   * We traverse the DAG topologically to observe each vertex if it can be added to a stage or if it should be assigned
-   * to a new stage. We filter out the candidate incoming edges to connect to an existing stage, and if it exists, we
-   * connect it to the stage, and otherwise we don't.
-   * @param irDAG to partition.
-   * @return the partitioned DAG, composed of stages and stage edges.
+   * We take the stage-partitioned DAG and create actual stage and stage edge objects to create a DAG of stages.
+   * @param irDAG stage-partitioned IR DAG.
+   * @return the DAG composed of stages and stage edges.
    */
   public DAG<Stage, StageEdge> stagePartitionIrDAG(final DAG<IRVertex, IREdge> irDAG) {
     final DAGBuilder<Stage, StageEdge> dagOfStagesBuilder = new DAGBuilder<>();
 
-    final List<List<IRVertex>> vertexListForEachStage = groupVerticesByStage(irDAG);
+    final SortedMap<Integer, List<IRVertex>> vertexListForEachStage = new TreeMap<>();
+    irDAG.topologicalDo(irVertex -> {
+      final Integer stageNum = irVertex.getAttr(Attribute.IntegerKey.StageId);
+      if (!vertexListForEachStage.containsKey(stageNum)) {
+        vertexListForEachStage.put(stageNum, new ArrayList<>());
+      }
+      vertexListForEachStage.get(stageNum).add(irVertex);
+    });
 
     final Map<IRVertex, Stage> vertexStageMap = new HashMap<>();
 
-    for (final List<IRVertex> stageVertices : vertexListForEachStage) {
+    for (final List<IRVertex> stageVertices : vertexListForEachStage.values()) {
       final Set<IRVertex> currentStageVertices = new HashSet<>();
       final Set<StageEdgeBuilder> currentStageIncomingEdges = new HashSet<>();
 
       // Create a new stage builder.
-      final StageBuilder stageBuilder = new StageBuilder();
+      final StageBuilder stageBuilder = new StageBuilder(stageVertices.stream().findAny()
+              .orElseThrow(() -> new RuntimeException("Error: List " + stageVertices.getClass() + " is Empty"))
+              .getAttr(Attribute.IntegerKey.StageId));
 
       // For each vertex in the stage,
       for (final IRVertex irVertex : stageVertices) {
@@ -147,82 +149,6 @@ public final class PhysicalPlanGenerator
     }
 
     return dagOfStagesBuilder.build();
-  }
-
-  /**
-   * This method traverses the IR DAG to group each of the vertices by stages.
-   * @param irDAG to traverse.
-   * @return List of groups of vertices that are each divided by stages.
-   */
-  private List<List<IRVertex>> groupVerticesByStage(final DAG<IRVertex, IREdge> irDAG) {
-    // Data structures used for stage partitioning.
-    final HashMap<IRVertex, Integer> vertexStageNumHashMap = new HashMap<>();
-    final List<List<IRVertex>> vertexListForEachStage = new ArrayList<>();
-    final AtomicInteger stageNumber = new AtomicInteger(0);
-    final List<Integer> dependentStagesList = new ArrayList<>();
-
-    // First, traverse the DAG topologically to add each vertices to a list associated with each of the stage number.
-    irDAG.topologicalDo(vertex -> {
-      final List<IREdge> inEdges = irDAG.getIncomingEdgesOf(vertex);
-      final Optional<List<IREdge>> inEdgeList = (inEdges == null || inEdges.isEmpty())
-          ? Optional.empty() : Optional.of(inEdges);
-
-      if (!inEdgeList.isPresent()) { // If Source vertex
-        createNewStage(vertex, vertexStageNumHashMap, stageNumber, vertexListForEachStage);
-      } else {
-        // Filter candidate incoming edges that can be included in a stage with the vertex.
-        final Optional<List<IREdge>> inEdgesForStage = inEdgeList.map(e -> e.stream()
-            .filter(edge -> edge.getType().equals(IREdge.Type.OneToOne)) // One to one edges
-            .filter(edge -> edge.getAttr(Attribute.Key.ChannelDataPlacement).equals(Memory)) // Memory data placement
-            .filter(edge -> edge.getSrc().getAttr(Attribute.Key.Placement)
-                .equals(edge.getDst().getAttr(Attribute.Key.Placement))) //Src and Dst same placement
-            .filter(edge -> vertexStageNumHashMap.containsKey(edge.getSrc())) // Src that is already included in a stage
-            // Others don't depend on the candidate stage.
-            .filter(edge -> !dependentStagesList.contains(vertexStageNumHashMap.get(edge.getSrc())))
-            .collect(Collectors.toList()));
-        // Choose one to connect out of the candidates. We want to connect the vertex to a single stage.
-        final Optional<IREdge> edgeToConnect = inEdgesForStage.map(edges -> edges.stream().findAny())
-            .orElse(Optional.empty());
-
-        // Mark stages that other stages depend on
-        inEdgeList.ifPresent(edges -> edges.stream()
-            .filter(e -> !e.equals(edgeToConnect.orElse(null))) // e never equals null
-            .forEach(inEdge -> dependentStagesList.add(vertexStageNumHashMap.get(inEdge.getSrc()))));
-
-        if (!inEdgesForStage.isPresent() || inEdgesForStage.get().isEmpty() || !edgeToConnect.isPresent()) {
-          // when we cannot connect vertex in other stages
-          createNewStage(vertex, vertexStageNumHashMap, stageNumber, vertexListForEachStage);
-        } else {
-          // otherwise connect with a stage.
-          final IRVertex irVertexToConnect = edgeToConnect.get().getSrc();
-          vertexStageNumHashMap.put(vertex, vertexStageNumHashMap.get(irVertexToConnect));
-          final Optional<List<IRVertex>> listOfIRVerticesOfTheStage =
-              vertexListForEachStage.stream().filter(l -> l.contains(irVertexToConnect)).findFirst();
-          listOfIRVerticesOfTheStage.ifPresent(lst -> {
-            vertexListForEachStage.remove(lst);
-            lst.add(vertex);
-            vertexListForEachStage.add(lst);
-          });
-        }
-      }
-    });
-    return vertexListForEachStage;
-  }
-
-  /**
-   * Creates a new stage.
-   * @param irVertex the vertex which begins the stage.
-   * @param vertexStageNumHashMap to keep track of vertex and its stage number.
-   * @param stageNumber to atomically number stages.
-   * @param vertexListForEachStage to group each vertex lists for each stages.
-   */
-  private static void createNewStage(final IRVertex irVertex, final HashMap<IRVertex, Integer> vertexStageNumHashMap,
-                                     final AtomicInteger stageNumber,
-                                     final List<List<IRVertex>> vertexListForEachStage) {
-    vertexStageNumHashMap.put(irVertex, stageNumber.getAndIncrement());
-    final List<IRVertex> newList = new ArrayList<>();
-    newList.add(irVertex);
-    vertexListForEachStage.add(newList);
   }
 
   // Map that keeps track of the IRVertex of each tasks
