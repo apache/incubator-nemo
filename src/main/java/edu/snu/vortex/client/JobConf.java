@@ -93,6 +93,14 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
+   * The fraction of container memory not to use fo the JVM heap.
+   */
+  @NamedParameter(doc = "The fraction of the container memory not to use for the JVM heap", short_name = "heap_slack",
+      default_value = "0.3")
+  public final class JVMHeapSlack implements Name<Double> {
+  }
+
+  /**
    * Contents of the JSON file that specifies resource layout.
    */
   @NamedParameter(doc = "Contents of JSON file that specifies resources for executors")
