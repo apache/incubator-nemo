@@ -174,7 +174,7 @@ public final class BatchScheduler implements Scheduler {
   private void onTaskGroupExecutionComplete(final String executorId,
                                             final TaskGroup taskGroup,
                                             final Boolean isOnHoldToComplete) {
-    LOG.info("{} completed in {}", new Object[]{taskGroup.getTaskGroupId(), executorId});
+    LOG.debug("{} completed in {}", new Object[]{taskGroup.getTaskGroupId(), executorId});
     if (!isOnHoldToComplete) {
       schedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroup.getTaskGroupId());
     }
