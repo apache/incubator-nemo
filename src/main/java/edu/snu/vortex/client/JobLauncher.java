@@ -49,7 +49,6 @@ public final class JobLauncher {
   private static final Tang TANG = Tang.Factory.getTang();
   private static final Logger LOG = LoggerFactory.getLogger(JobLauncher.class.getName());
   private static final int LOCAL_NUMBER_OF_EVALUATORS = 100; // hopefully large enough for our use....
-  private static final double YARN_JVM_HEAP_SLACK = 0.2; // prevent YARN nodemanagers from prematurely killing us
 
   /**
    * private constructor.
@@ -130,6 +129,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.DeployMode.class);
     cl.registerShortNameOfClass(JobConf.DriverMemMb.class);
     cl.registerShortNameOfClass(JobConf.ExecutorJsonPath.class);
+    cl.registerShortNameOfClass(JobConf.JVMHeapSlack.class);
     cl.registerShortNameOfClass(JobConf.LocalFileStoreNumThreads.class);
     cl.registerShortNameOfClass(JobConf.GlusterFileStoreNumThreads.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransferClientNumThreads.class);
@@ -150,7 +150,7 @@ public final class JobLauncher {
             .build();
       case "yarn":
         return YarnClientConfiguration.CONF
-            .set(YarnClientConfiguration.JVM_HEAP_SLACK, YARN_JVM_HEAP_SLACK)
+            .set(YarnClientConfiguration.JVM_HEAP_SLACK, injector.getNamedInstance(JobConf.JVMHeapSlack.class))
             .build();
       default:
         throw new UnsupportedOperationException(deployMode);
