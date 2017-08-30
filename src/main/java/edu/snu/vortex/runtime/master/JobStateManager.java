@@ -293,6 +293,7 @@ public final class JobStateManager {
 
       if (stageIdToRemainingTaskGroupSet.containsKey(stageId)) {
         final Set<String> remainingTaskGroups = stageIdToRemainingTaskGroupSet.get(stageId);
+        LOG.info("{}: {} TaskGroup(s) to go", stageId, remainingTaskGroups.size());
         remainingTaskGroups.remove(taskGroup.getTaskGroupId());
 
         if (remainingTaskGroups.isEmpty()) {
@@ -441,7 +442,7 @@ public final class JobStateManager {
       final PrintWriter printWriter = new PrintWriter(file);
       printWriter.println(toStringWithPhysicalPlan());
       printWriter.close();
-      LOG.info(String.format("JSON representation of job state for %s(%s) was saved to %s",
+      LOG.debug(String.format("JSON representation of job state for %s(%s) was saved to %s",
           jobId, suffix, file.getPath()));
     } catch (IOException e) {
       LOG.warn(String.format("Cannot store JSON representation of job state for %s(%s) to %s: %s",
