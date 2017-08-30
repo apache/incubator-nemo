@@ -18,5 +18,5 @@ package edu.snu.vortex.runtime.master.eventhandler;
 /**
  * An empty interface to indicate events that are sent from Runtime.
  */
-interface RuntimeEvent {
+public interface RuntimeEvent {
 }

@@ -16,16 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package edu.snu.vortex.runtime.master.eventhandler;
+package edu.snu.vortex.compiler.eventhandler;
 
 import edu.snu.vortex.common.PubSubEventHandlerWrapper;
 import edu.snu.vortex.common.Pair;
-import edu.snu.vortex.compiler.eventhandler.UpdatePhysicalPlanEvent;
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
-import edu.snu.vortex.runtime.master.scheduler.Scheduler;
+import edu.snu.vortex.runtime.master.eventhandler.DynamicOptimizationEvent;
 import org.apache.reef.wake.impl.PubSubEventHandler;
 
 import javax.inject.Inject;
@@ -35,14 +34,10 @@ import javax.inject.Inject;
  */
 public final class DynamicOptimizationEventHandler implements RuntimeEventHandler<DynamicOptimizationEvent> {
   private final PubSubEventHandler pubSubEventHandler;
-  private final Scheduler scheduler;
 
   @Inject
-  private DynamicOptimizationEventHandler(final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
-                                          final Scheduler scheduler) {
+  private DynamicOptimizationEventHandler(final PubSubEventHandlerWrapper pubSubEventHandlerWrapper) {
     this.pubSubEventHandler = pubSubEventHandlerWrapper.getPubSubEventHandler();
-    this.scheduler = scheduler;
-    // You can see the list of events that are handled by this handler.
     pubSubEventHandlerWrapper.getPubSubEventHandler().subscribe(DynamicOptimizationEvent.class, this);
   }
 
@@ -56,6 +51,6 @@ public final class DynamicOptimizationEventHandler implements RuntimeEventHandle
 
     final PhysicalPlan newPlan = Optimizer.dynamicOptimization(physicalPlan, metricCollectionBarrierVertex);
 
-    pubSubEventHandler.onNext(new UpdatePhysicalPlanEvent(scheduler, newPlan, taskInfo));
+    pubSubEventHandler.onNext(new UpdatePhysicalPlanEvent(newPlan, taskInfo));
   }
 }

@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package edu.snu.vortex.runtime.master.eventhandler;
+package edu.snu.vortex.compiler.eventhandler;
 
+import edu.snu.vortex.runtime.master.eventhandler.RuntimeEvent;
 import org.apache.reef.wake.EventHandler;
 
 /**

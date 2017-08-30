@@ -39,15 +39,15 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
     this.taskInfo = taskInfo;
   }
 
-  PhysicalPlan getPhysicalPlan() {
+  public PhysicalPlan getPhysicalPlan() {
     return this.physicalPlan;
   }
 
-  MetricCollectionBarrierVertex getMetricCollectionBarrierVertex() {
+  public MetricCollectionBarrierVertex getMetricCollectionBarrierVertex() {
     return this.metricCollectionBarrierVertex;
   }
 
-  Pair<String, TaskGroup> getTaskInfo() {
+  public Pair<String, TaskGroup> getTaskInfo() {
     return this.taskInfo;
   }
 }

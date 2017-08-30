@@ -18,32 +18,25 @@ package edu.snu.vortex.compiler.eventhandler;
 import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
-import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 
 /**
  * An event for updating the physical plan in the scheduler.
  */
 public final class UpdatePhysicalPlanEvent implements CompilerEvent {
-  private final Scheduler scheduler;
   private final PhysicalPlan newPhysicalPlan;
   private final Pair<String, TaskGroup> taskInfo;
 
-  public UpdatePhysicalPlanEvent(final Scheduler scheduler, final PhysicalPlan newPhysicalPlan,
+  UpdatePhysicalPlanEvent(final PhysicalPlan newPhysicalPlan,
                                  final Pair<String, TaskGroup> taskInfo) {
-    this.scheduler = scheduler;
     this.newPhysicalPlan = newPhysicalPlan;
     this.taskInfo = taskInfo;
   }
 
-  Scheduler getScheduler() {
-    return this.scheduler;
-  }
-
-  PhysicalPlan getNewPhysicalPlan() {
+  public PhysicalPlan getNewPhysicalPlan() {
     return this.newPhysicalPlan;
   }
 
-  Pair<String, TaskGroup> getTaskInfo() {
+  public Pair<String, TaskGroup> getTaskInfo() {
     return this.taskInfo;
   }
 }
