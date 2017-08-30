@@ -36,7 +36,7 @@ import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
 import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.vortex.runtime.master.DefaultMetricMessageHandler;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
-import edu.snu.vortex.compiler.eventhandler.UpdatePhysicalPlanEventHandler;
+import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.scheduler.*;
