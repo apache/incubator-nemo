@@ -27,6 +27,13 @@ import java.util.Map;
  */
 final class ControlMessageToPartitionStreamCodec extends MessageToMessageCodec<ControlMessage, Object> {
   /**
+   * Creates a {@link ControlMessageToPartitionStreamCodec}.
+   * @param localExecutorId the id of this executor
+   */
+  ControlMessageToPartitionStreamCodec(final String localExecutorId) {
+  }
+
+  /**
    * For an outbound {@link PartitionInputStream} or "partition output stream" (not implemented yet), which indicates
    * "partition transfer" (not implemented yet) decided to initiate a new transport context, responds to it by emitting
    * a new control message.
@@ -41,7 +48,7 @@ final class ControlMessageToPartitionStreamCodec extends MessageToMessageCodec<C
   }
 
   /**
-   * For inbound control messages ("pull request" or "push notification"), which initiates transport context,
+   * For inbound control messages ("fetch request" or "send notification"), which initiates transport context,
    * responds to it by emitting a new {@link PartitionInputStream} or "partition output stream" (not implemented yet),
    * which will be handled by "partition transfer" (not implemented yet).
    *
@@ -55,19 +62,19 @@ final class ControlMessageToPartitionStreamCodec extends MessageToMessageCodec<C
     // not implemented
   }
 
-  Map<Short, PartitionInputStream> getPullTransferIdToInputStream() {
+  Map<Short, PartitionInputStream> getFetchTransferIdToInputStream() {
     return null;
   }
 
-  Map<Short, PartitionInputStream> getPushTransferIdToInputStream() {
+  Map<Short, PartitionInputStream> getSendTransferIdToInputStream() {
     return null;
   }
 
-  Map<Short, Object> getPullTransferIdToOutputStream() {
+  Map<Short, Object> getFetchTransferIdToOutputStream() {
     return null;
   }
 
-  Map<Short, Object> getPushTransferIdToOutputStream() {
+  Map<Short, Object> getSendTransferIdToOutputStream() {
     return null;
   }
 }

@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import javax.inject.Inject;
 import java.util.List;
 
 /**
@@ -45,23 +46,27 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
   // the maximum length of a frame body. 2**32 - 1
   static final long LENGTH_MAX = 4294967295L;
 
+  @Inject
+  private DataFrameEncoder() {
+  }
+
   @Override
   protected void encode(final ChannelHandlerContext ctx, final DataFrame in, final List<Object> out) {
     // encode header
     final ByteBuf header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
     final short type;
-    final boolean isPull = in.type == ControlMessage.PartitionTransferType.PULL;
-    if (isPull) {
+    final boolean isFetch = in.type == ControlMessage.PartitionTransferType.FETCH;
+    if (isFetch) {
       if (in.isLastFrame) {
-        type = FrameDecoder.PULL_LASTFRAME;
+        type = FrameDecoder.FETCH_LASTFRAME;
       } else {
-        type = FrameDecoder.PULL_INTERMEDIATE_FRAME;
+        type = FrameDecoder.FETCH_INTERMEDIATE_FRAME;
       }
     } else {
       if (in.isLastFrame) {
-        type = FrameDecoder.PUSH_LASTFRAME;
+        type = FrameDecoder.SEND_LASTFRAME;
       } else {
-        type = FrameDecoder.PUSH_INTERMEDIATE_FRAME;
+        type = FrameDecoder.SEND_INTERMEDIATE_FRAME;
       }
     }
     header.writeShort(type);
@@ -85,10 +90,10 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
     if (in.isLastFrame) {
       final ControlMessageToPartitionStreamCodec duplexHandler
           = ctx.channel().pipeline().get(ControlMessageToPartitionStreamCodec.class);
-      (isPull ? duplexHandler.getPullTransferIdToOutputStream() : duplexHandler.getPushTransferIdToOutputStream())
+      (isFetch ? duplexHandler.getFetchTransferIdToOutputStream() : duplexHandler.getSendTransferIdToOutputStream())
           .remove(in.transferId);
       LOG.debug("Closing transport {}:{}, where the partition sender is {} and the receiver is {}", new Object[]{
-          isPull ? "pull" : "push", in.transferId, ctx.channel().localAddress(), ctx.channel().remoteAddress()});
+          isFetch ? "fetch" : "send", in.transferId, ctx.channel().localAddress(), ctx.channel().remoteAddress()});
     }
   }
 
@@ -125,7 +130,7 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
     /**
      * Creates a {@link DataFrame}.
      *
-     * @param type        the transfer type, namely pull or push
+     * @param type        the transfer type, namely fetch or send
      * @param isLastFrame whether or not this frame is the last frame of a data message
      * @param transferId  the transfer id
      * @param length      the length of the body, in bytes

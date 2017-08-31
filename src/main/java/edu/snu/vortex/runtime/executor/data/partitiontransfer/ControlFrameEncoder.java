@@ -22,6 +22,7 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 
+import javax.inject.Inject;
 import java.util.List;
 
 /**
@@ -41,6 +42,13 @@ final class ControlFrameEncoder extends MessageToMessageEncoder<ControlMessage.D
 
   static final ByteBuf TYPE_AND_UNUSED = Unpooled.directBuffer(TYPE_AND_UNUSED_LENGTH, TYPE_AND_UNUSED_LENGTH)
       .writeShort(FrameDecoder.CONTROL_TYPE).writeZero(UNUSED_LENGTH);
+
+  /**
+   * Private constructor.
+   */
+  @Inject
+  private ControlFrameEncoder() {
+  }
 
   @Override
   protected void encode(final ChannelHandlerContext ctx,
