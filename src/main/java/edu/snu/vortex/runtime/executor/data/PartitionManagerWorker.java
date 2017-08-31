@@ -27,6 +27,8 @@ import edu.snu.vortex.runtime.exception.PartitionWriteException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionStoreException;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
 import edu.snu.vortex.runtime.executor.data.partition.Partition;
+import edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionInputStream;
+import edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionOutputStream;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -357,5 +359,31 @@ public final class PartitionManagerWorker {
       default:
         throw new UnsupportedPartitionStoreException(new Exception(partitionStore + " is not supported."));
     }
+  }
+
+  /**
+   * Respond to a fetch request by another executor.
+   *
+   * This method is executed by {@link edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionTransport}
+   * thread. Never execute a blocking call in this method!
+   *
+   * @param outputStream {@link PartitionOutputStream}
+   */
+  public void onFetchRequest(final PartitionOutputStream outputStream) {
+  }
+
+  /**
+   * Respond to a send notification by another executor.
+   *
+   * A send notification is generated when a remote executor invokes {@link edu.snu.vortex.runtime.executor.data
+   * .partitiontransfer.PartitionTransfer#initiateSend(String, boolean, String, String, HashRange)} to transfer
+   * a partition to another executor.
+   *
+   * This method is executed by {@link edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionTransport}
+   * thread. Never execute a blocking call in this method!
+   *
+   * @param inputStream {@link PartitionInputStream}
+   */
+  public void onSendNotification(final PartitionInputStream inputStream) {
   }
 }

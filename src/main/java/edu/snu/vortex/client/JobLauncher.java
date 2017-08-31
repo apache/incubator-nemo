@@ -136,6 +136,14 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.PartitionTransferServerNumThreads.class);
     cl.registerShortNameOfClass(JobConf.SchedulerTimeoutMs.class);
     cl.registerShortNameOfClass(JobConf.MaxScheduleAttempt.class);
+    cl.registerShortNameOfClass(JobConf.PartitionTransferInboundNumThreads.class);
+    cl.registerShortNameOfClass(JobConf.PartitionTransferOutboundNumThreads.class);
+    cl.registerShortNameOfClass(JobConf.PartitionTransferOutboundBufferSize.class);
+    cl.registerShortNameOfClass(JobConf.PartitionTransportServerPort.class);
+    cl.registerShortNameOfClass(JobConf.PartitionTransportServerBacklog.class);
+    cl.registerShortNameOfClass(JobConf.PartitionTransportServerNumListeningThreads.class);
+    cl.registerShortNameOfClass(JobConf.PartitionTransportServerNumWorkingThreads.class);
+    cl.registerShortNameOfClass(JobConf.PartitionTransportClientNumThreads.class);
     cl.processCommandLine(args);
     return confBuilder.build();
   }

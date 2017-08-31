@@ -23,7 +23,6 @@ import io.netty.handler.codec.ByteToMessageDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.SocketAddress;
 import java.util.List;
 import java.util.Map;
 
@@ -67,34 +66,32 @@ import java.util.Map;
  *   <li>Type
  *     <ul>
  *       <li>0: control frame</li>
- *       <li>2: data frame for pull-based transfer</li>
- *       <li>3: data frame for pull-based transfer, the last frame of the message</li>
- *       <li>4: data frame for push-based transfer</li>
- *       <li>5: data frame for push-based transfer, the last frame of the message</li>
+ *       <li>2: data frame for fetch-based transfer</li>
+ *       <li>3: data frame for fetch-based transfer, the last frame of the message</li>
+ *       <li>4: data frame for send-based transfer</li>
+ *       <li>5: data frame for send-based transfer, the last frame of the message</li>
  *     </ul>
  *   </li>
  *   <li>TransferId: the transfer id to distinguish which transfer this frame belongs to</li>
  *   <li>Length: the number of bytes in the body, not the entire frame</li>
  * </ul>
  *
- * @see ChannelInitializer
+ * @see PartitionTransportChannelInitializer
  */
 final class FrameDecoder extends ByteToMessageDecoder {
 
   private static final Logger LOG = LoggerFactory.getLogger(FrameDecoder.class);
 
   static final short CONTROL_TYPE = 0;
-  static final short PULL_INTERMEDIATE_FRAME = 2;
-  static final short PULL_LASTFRAME = 3;
-  static final short PUSH_INTERMEDIATE_FRAME = 4;
-  static final short PUSH_LASTFRAME = 5;
+  static final short FETCH_INTERMEDIATE_FRAME = 2;
+  static final short FETCH_LASTFRAME = 3;
+  static final short SEND_INTERMEDIATE_FRAME = 4;
+  static final short SEND_LASTFRAME = 5;
 
   static final int HEADER_LENGTH = ControlFrameEncoder.HEADER_LENGTH;
 
-  private Map<Short, PartitionInputStream> pullTransferIdToInputStream;
-  private Map<Short, PartitionInputStream> pushTransferIdToInputStream;
-  private SocketAddress localAddress;
-  private SocketAddress remoteAddress;
+  private Map<Short, PartitionInputStream> fetchTransferIdToInputStream;
+  private Map<Short, PartitionInputStream> sendTransferIdToInputStream;
 
   /**
    * The number of bytes consisting body of a control frame to be read next.
@@ -117,9 +114,9 @@ final class FrameDecoder extends ByteToMessageDecoder {
   private boolean isLastFrame;
 
   /**
-   * Whether or not the data frame currently being read consists a pull-based transfer.
+   * Whether or not the data frame currently being read consists a fetch-based transfer.
    */
-  private boolean isPullTransfer;
+  private boolean isFetchTransfer;
 
   /**
    * The id of transfer currently being executed.
@@ -137,10 +134,8 @@ final class FrameDecoder extends ByteToMessageDecoder {
   public void channelActive(final ChannelHandlerContext ctx) {
     final ControlMessageToPartitionStreamCodec duplexHandler
         = ctx.channel().pipeline().get(ControlMessageToPartitionStreamCodec.class);
-    pullTransferIdToInputStream = duplexHandler.getPullTransferIdToInputStream();
-    pushTransferIdToInputStream = duplexHandler.getPushTransferIdToInputStream();
-    localAddress = ctx.channel().localAddress();
-    remoteAddress = ctx.channel().remoteAddress();
+    fetchTransferIdToInputStream = duplexHandler.getFetchTransferIdToInputStream();
+    sendTransferIdToInputStream = duplexHandler.getSendTransferIdToInputStream();
     ctx.fireChannelActive();
   }
 
@@ -191,17 +186,17 @@ final class FrameDecoder extends ByteToMessageDecoder {
     } else {
       // setup context for reading data frame body
       dataBodyBytesToRead = length;
-      isPullTransfer = type == PULL_INTERMEDIATE_FRAME || type == PULL_LASTFRAME;
-      final boolean isPushTransfer = type == PUSH_INTERMEDIATE_FRAME || type == PUSH_LASTFRAME;
-      if (!isPullTransfer && !isPushTransfer) {
+      isFetchTransfer = type == FETCH_INTERMEDIATE_FRAME || type == FETCH_LASTFRAME;
+      final boolean isSendTransfer = type == SEND_INTERMEDIATE_FRAME || type == SEND_LASTFRAME;
+      if (!isFetchTransfer && !isSendTransfer) {
         throw new IllegalStateException(String.format("Illegal frame type: %d", type));
       }
-      isLastFrame = type == PULL_LASTFRAME || type == PUSH_LASTFRAME;
-      inputStream = (isPullTransfer ? pullTransferIdToInputStream : pushTransferIdToInputStream).get(transferId);
+      isLastFrame = type == FETCH_LASTFRAME || type == SEND_LASTFRAME;
+      inputStream = (isFetchTransfer ? fetchTransferIdToInputStream : sendTransferIdToInputStream).get(transferId);
       if (inputStream == null) {
         throw new IllegalStateException(String.format("Transport context for %s:%d was not found between the local"
-            + "endpoint %s and the remote endpoint %s", isPullTransfer ? "pull" : "push", transferId, localAddress,
-            remoteAddress));
+            + "address %s and the remote address %s", isFetchTransfer ? "fetch" : "send", transferId,
+            ctx.channel().localAddress(), ctx.channel().remoteAddress()));
       }
       if (dataBodyBytesToRead == 0) {
         onDataFrameEnd(ctx);
@@ -286,10 +281,10 @@ final class FrameDecoder extends ByteToMessageDecoder {
     inputStream.startDecodingThreadIfNeeded();
     if (isLastFrame) {
       LOG.debug("Transport {}:{}, where the partition sender is {} and the receiver is {}, is now closed",
-          new Object[]{isPullTransfer ? "pull" : "push", transferId, ctx.channel().remoteAddress(),
+          new Object[]{isFetchTransfer ? "fetch" : "send", transferId, ctx.channel().remoteAddress(),
           ctx.channel().localAddress()});
       inputStream.markAsEnded();
-      (isPullTransfer ? pullTransferIdToInputStream : pushTransferIdToInputStream).remove(transferId);
+      (isFetchTransfer ? fetchTransferIdToInputStream : sendTransferIdToInputStream).remove(transferId);
     }
     inputStream = null;
   }

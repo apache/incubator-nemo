@@ -193,6 +193,81 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class HashRangeMultiplier implements Name<Integer> {
   }
 
+  /**
+   * The number of threads in thread pool for inbound
+   * {@link edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionTransfer}.
+   *
+   * These threads are responsible for de-serializing bytes into partition.
+   */
+  @NamedParameter(doc = "Number of threads for inbound partition transfer", short_name = "partition_threads_inbound",
+      default_value = "5")
+  public final class PartitionTransferInboundNumThreads implements Name<Integer> {
+  }
+
+  /**
+   * The number of threads in thread pool for outbound
+   * {@link edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionTransfer}.
+   *
+   * These threads are responsible for serializing partition into bytes.
+   */
+  @NamedParameter(doc = "Number of threads for outbound partition transfer", short_name = "partition_threads_outbound",
+      default_value = "5")
+  public final class PartitionTransferOutboundNumThreads implements Name<Integer> {
+  }
+
+  /**
+   * The size of outbound buffers for {@link edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionTransfer},
+   * in bytes.
+   */
+  @NamedParameter(doc = "Size of outbound buffers for partition transfer, in bytes",
+      short_name = "partition_outbound_buffer", default_value = "10485760")
+  public final class PartitionTransferOutboundBufferSize implements Name<Integer> {
+  }
+
+  /**
+   * The TCP port to which local
+   * {@link edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionTransport} binds. 0 means random port.
+   */
+  @NamedParameter(doc = "Port to which PartitionTransport binds (0 means random port)",
+      short_name = "partition_port", default_value = "0")
+  public final class PartitionTransportServerPort implements Name<Integer> {
+  }
+
+  /**
+   * The maximum length which the pending connection queue of
+   * {@link edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionTransport} may grow to.
+   */
+  @NamedParameter(doc = "The maximum number of pending connections to PartitionTransport server",
+      short_name = "partition_backlog", default_value = "128")
+  public final class PartitionTransportServerBacklog implements Name<Integer> {
+  }
+
+  /**
+   * The number of listening threads of
+   * {@link edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionTransport} server.
+   */
+  @NamedParameter(doc = "The number of listening threads of PartitionTransport server",
+      short_name = "partition_threads_listening", default_value = "3")
+  public final class PartitionTransportServerNumListeningThreads implements Name<Integer> {
+  }
+
+  /**
+   * The number of {@link edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionTransport} server threads
+   * which work on accepted connections.
+   */
+  @NamedParameter(doc = "The number of working threads of PartitionTransport server",
+      short_name = "partition_threads_working", default_value = "10")
+  public final class PartitionTransportServerNumWorkingThreads implements Name<Integer> {
+  }
+
+  /**
+   * The number of threads of {@link edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionTransport} client.
+   */
+  @NamedParameter(doc = "The number of threads of PartitionTransport client",
+      short_name = "partition_threads_client", default_value = "10")
+  public final class PartitionTransportClientNumThreads implements Name<Integer> {
+  }
+
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();
   public static final OptionalParameter<Integer> EXECUTOR_CAPACITY = new OptionalParameter<>();
   public static final RequiredParameter<String> JOB_ID = new RequiredParameter<>();

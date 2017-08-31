@@ -95,8 +95,8 @@ message MetricMsg {
 
 // Messages between Executors
 enum PartitionTransferType {
-    PULL = 0;
-    PUSH = 1;
+    FETCH = 0;
+    SEND = 1;
 }
 
 message DataTransferControlMessage {
