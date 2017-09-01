@@ -100,7 +100,27 @@ public final class PartitionInputStream<T> implements PartitionStream {
   }
 
   @Override
+  public boolean isEncodePartialPartitionEnabled() {
+    return false;
+  }
+
+  @Override
+  public Optional<Attribute> getPartitionStore() {
+    return null;
+  }
+
+  @Override
+  public String getPartitionId() {
+    return null;
+  }
+
+  @Override
   public String getRuntimeEdgeId() {
     return "";
+  }
+
+  @Override
+  public HashRange getHashRange() {
+    return null;
   }
 }
