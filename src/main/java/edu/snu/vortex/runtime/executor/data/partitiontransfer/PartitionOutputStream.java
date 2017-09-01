@@ -17,7 +17,9 @@ package edu.snu.vortex.runtime.executor.data.partitiontransfer;
 
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.executor.data.HashRange;
+import io.netty.channel.Channel;
 
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
@@ -58,6 +60,17 @@ public final class PartitionOutputStream<T> implements PartitionStream {
   }
 
   /**
+   * Sets transfer type, transfer id, and {@link io.netty.channel.Channel}.
+   *
+   * @param type  the transfer type
+   * @param id    the transfer id
+   * @param ch    the channel
+   */
+  void setTransferIdAndChannel(final ControlMessage.PartitionTransferType type, final short id, final Channel ch) {
+  }
+
+
+  /**
    * Sets {@link Coder}, {@link ExecutorService} and sizes to serialize bytes into partition.
    *
    * @param cdr     the coder
@@ -75,8 +88,28 @@ public final class PartitionOutputStream<T> implements PartitionStream {
   }
 
   @Override
+  public boolean isEncodePartialPartitionEnabled() {
+    return false;
+  }
+
+  @Override
+  public Optional<Attribute> getPartitionStore() {
+    return null;
+  }
+
+  @Override
+  public String getPartitionId() {
+    return null;
+  }
+
+  @Override
   public String getRuntimeEdgeId() {
     return "";
+  }
+
+  @Override
+  public HashRange getHashRange() {
+    return null;
   }
 
   /**

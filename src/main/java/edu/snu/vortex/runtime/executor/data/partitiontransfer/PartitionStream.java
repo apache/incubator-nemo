@@ -15,6 +15,11 @@
  */
 package edu.snu.vortex.runtime.executor.data.partitiontransfer;
 
+import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.runtime.executor.data.HashRange;
+
+import java.util.Optional;
+
 /**
  * {@link PartitionInputStream} and {@link PartitionOutputStream}.
  */
@@ -28,9 +33,38 @@ public interface PartitionStream {
   String getRemoteExecutorId();
 
   /**
+   * Gets whether the sender should start encoding even though the whole partition has not been written yet.
+   *
+   * @return whether the sender should start encoding even though the whole partition has not been written yet
+   */
+  boolean isEncodePartialPartitionEnabled();
+
+  /**
+   * Gets the partition store type.
+   *
+   * @return an {@link Optional} with partition store type if this stream belongs to a pull-based transfer,
+   *         an empty {@link Optional} otherwise.
+   */
+  Optional<Attribute> getPartitionStore();
+
+  /**
+   * Gets the partition id.
+   *
+   * @return the partition id
+   */
+  String getPartitionId();
+
+  /**
    * Gets the runtime edge id.
    *
    * @return the runtime edge id
    */
   String getRuntimeEdgeId();
+
+  /**
+   * Gets the hash range.
+   *
+   * @return the hash range
+   */
+  HashRange getHashRange();
 }
