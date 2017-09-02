@@ -17,7 +17,6 @@ package edu.snu.vortex.compiler.optimizer.passes;
 
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
-import edu.snu.vortex.compiler.frontend.beam.transform.GroupByKeyTransform;
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
@@ -42,8 +41,9 @@ public final class DataSkewPass implements StaticOptimizationPass {
     final List<MetricCollectionBarrierVertex> metricCollectionVertices = new ArrayList<>();
 
     dag.topologicalDo(v -> {
-      // We care about OperatorVertices that have GroupByKeyTransform.
-      if (v instanceof OperatorVertex && ((OperatorVertex) v).getTransform() instanceof GroupByKeyTransform) {
+      // We care about OperatorVertices that have any incoming edges that are of type ScatterGather.
+      if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
+          irEdge.getType().equals(IREdge.Type.ScatterGather))) {
         final MetricCollectionBarrierVertex metricCollectionBarrierVertex = new MetricCollectionBarrierVertex();
         metricCollectionBarrierVertex.setAttr(Attribute.Key.DynamicOptimizationType, Attribute.DataSkew);
         metricCollectionVertices.add(metricCollectionBarrierVertex);

@@ -151,14 +151,13 @@ public final class Optimizer {
   public static synchronized PhysicalPlan dynamicOptimization(
           final PhysicalPlan originalPlan,
           final MetricCollectionBarrierVertex metricCollectionBarrierVertex) {
-    // TODO #437: change this to IR DAG by using stage/scheduler domain info instead of the info in physical dag.
-    // Map between a partition ID to corresponding metric data (e.g., the size of each block).
-    final Map<String, List> metricData = metricCollectionBarrierVertex.getMetricData();
     final Attribute dynamicOptimizationType =
         metricCollectionBarrierVertex.getAttr(Attribute.Key.DynamicOptimizationType);
 
     switch (dynamicOptimizationType) {
       case DataSkew:
+        // Map between a partition ID to corresponding metric data (e.g., the size of each block).
+        final Map<String, List<Long>> metricData = metricCollectionBarrierVertex.getMetricData();
         return new DataSkewDynamicOptimizationPass().process(originalPlan, metricData);
       default:
         return originalPlan;
