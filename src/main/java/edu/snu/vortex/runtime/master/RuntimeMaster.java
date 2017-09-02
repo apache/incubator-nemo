@@ -158,7 +158,7 @@ public final class RuntimeMaster {
               .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
 
           if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
-            final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
+            final MetricCollectionBarrierVertex<Long> metricCollectionBarrierVertex =
                 (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
             metricCollectionBarrierVertex.accumulateMetric(partitionStateChangedMsg.getPartitionId(), blockSizeInfo);
           } else {
