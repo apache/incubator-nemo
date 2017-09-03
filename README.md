@@ -5,6 +5,7 @@
 * Java 8
 * Maven
 * Protobuf 2.5.0
+* Latest REEF snapshot
 
 ## Installing Vortex
 * Run all tests and install: `mvn clean install -T 2C`
