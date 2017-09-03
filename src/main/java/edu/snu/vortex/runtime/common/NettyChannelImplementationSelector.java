@@ -25,8 +25,7 @@ import java.util.concurrent.ThreadFactory;
 /**
  * Selects appropriate {@link io.netty.channel.Channel} implementation.
  */
-// TODO #448 Upgrade Netty version to use Epoll-based transfer
-@DefaultImplementation(NioChannelImplementationSelector.class)
+@DefaultImplementation(NativeChannelImplementationSelector.class)
 public interface NettyChannelImplementationSelector {
 
   /**

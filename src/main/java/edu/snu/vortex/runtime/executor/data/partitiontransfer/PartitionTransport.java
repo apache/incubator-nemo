@@ -119,25 +119,41 @@ final class PartitionTransport implements AutoCloseable {
     if (port == 0) {
       for (final int candidatePort : tcpPortProvider) {
         try {
-          listeningChannel = serverBootstrap.bind(host, candidatePort).sync().channel();
-          break;
+          final ChannelFuture future = serverBootstrap.bind(host, candidatePort).await();
+          if (future.cause() != null) {
+            LOG.debug(String.format("Cannot bind to %s:%d", host, candidatePort), future.cause());
+          } else if (!future.isSuccess()) {
+            LOG.debug("Cannot bind to {}:{}", host, candidatePort);
+          } else {
+            listeningChannel = future.channel();
+            break;
+          }
         } catch (final InterruptedException e) {
-          LOG.debug(String.format("Cannot bind to %s:%d", host, candidatePort), e);
+          LOG.debug(String.format("Interrupted while binding to %s:%d", host, candidatePort), e);
         }
       }
       if (listeningChannel == null) {
         serverListeningGroup.shutdownGracefully();
         serverWorkingGroup.shutdownGracefully();
         clientGroup.shutdownGracefully();
+        LOG.error("Cannot bind to {} with tcpPortProvider", host);
         throw new RuntimeException(String.format("Cannot bind to %s with tcpPortProvider", host));
       }
     } else {
       try {
-        listeningChannel = serverBootstrap.bind(host, port).sync().channel();
-      } catch (final InterruptedException e) {
+        final ChannelFuture future = serverBootstrap.bind(host, port).await();
+        if (future.cause() != null) {
+          throw future.cause();
+        } else if (!future.isSuccess()) {
+          throw new RuntimeException("Cannot bind");
+        } else {
+          listeningChannel = future.channel();
+        }
+      } catch (final Throwable e) {
         serverListeningGroup.shutdownGracefully();
         serverWorkingGroup.shutdownGracefully();
         clientGroup.shutdownGracefully();
+        LOG.error(String.format("Cannot bind to %s:%d", host, port), e);
         throw new RuntimeException(String.format("Cannot bind to %s:%d", host, port), e);
       }
     }
