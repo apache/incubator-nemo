@@ -121,6 +121,7 @@ public enum Attribute {
     // IRVertex
     Parallelism,
     StageId,
+    ScheduleGroupIndex,
   }
 
   private final Key key;
