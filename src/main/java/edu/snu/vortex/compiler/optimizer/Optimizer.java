@@ -92,7 +92,8 @@ public final class Optimizer {
     POLICIES.put(PolicyType.Default,
         Arrays.asList(
             new ParallelismPass(), // Provides parallelism information.
-            new DefaultStagePartitioningPass()
+            new DefaultStagePartitioningPass(),
+            new ScheduleGroupPass()
         ));
     POLICIES.put(PolicyType.Pado,
         Arrays.asList(
@@ -102,8 +103,9 @@ public final class Optimizer {
             LoopOptimizations.getLoopInvariantCodeMotionPass(),
             new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.
             new PadoVertexPass(), new PadoEdgePass(), // Processes vertices and edges with Pado algorithm.
-            new DefaultStagePartitioningPass()
-        ));
+            new DefaultStagePartitioningPass(),
+            new ScheduleGroupPass()
+       ));
     POLICIES.put(PolicyType.Disaggregation,
         Arrays.asList(
             new ParallelismPass(), // Provides parallelism information.
@@ -113,7 +115,8 @@ public final class Optimizer {
             new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.
             new DisaggregationPass(), // Processes vertices and edges with Disaggregation algorithm.
             new IFilePass(), // Enables I-File style write optimization.
-            new DefaultStagePartitioningPass()
+            new DefaultStagePartitioningPass(),
+            new ScheduleGroupPass()
         ));
     POLICIES.put(PolicyType.DataSkew,
         Arrays.asList(
@@ -123,12 +126,14 @@ public final class Optimizer {
             LoopOptimizations.getLoopInvariantCodeMotionPass(),
             new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.
             new DataSkewPass(),
-            new DefaultStagePartitioningPass()
+            new DefaultStagePartitioningPass(),
+            new ScheduleGroupPass()
         ));
     POLICIES.put(PolicyType.TestingPolicy, // Simply build stages for tests
-            Arrays.asList(
-                    new DefaultStagePartitioningPass()
-            ));
+        Arrays.asList(
+            new DefaultStagePartitioningPass(),
+            new ScheduleGroupPass()
+        ));
   }
 
   /**
