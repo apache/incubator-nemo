@@ -26,7 +26,7 @@ import java.util.Optional;
 public interface PartitionStream {
 
   /**
-   * Gets the remote executor id.
+   * Gets the id of the remote executor.
    *
    * @return the remote executor id
    */
@@ -64,7 +64,7 @@ public interface PartitionStream {
   /**
    * Gets the hash range.
    *
-   * @return the hash range
+   * @return the {@link HashRange}
    */
   HashRange getHashRange();
 }
