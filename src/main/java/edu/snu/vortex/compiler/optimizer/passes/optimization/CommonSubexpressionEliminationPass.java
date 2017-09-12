@@ -78,10 +78,11 @@ public final class CommonSubexpressionEliminationPass implements StaticOptimizat
         // compare if incoming vertices are identical.
         final Set<IRVertex> incomingVertices = dag.getIncomingEdgesOf(operatorVertex).stream().map(IREdge::getSrc)
             .collect(Collectors.toSet());
-        if (verticesToBeMergedWithIdenticalSources.keySet().stream().anyMatch(lst ->
-            lst.containsAll(incomingVertices) && incomingVertices.containsAll(lst))) {
-          final Set<IRVertex> foundKey = verticesToBeMergedWithIdenticalSources.keySet().stream().filter(vs ->
-              vs.containsAll(incomingVertices) && incomingVertices.containsAll(vs)).findFirst().get();
+        if (verticesToBeMergedWithIdenticalSources.keySet().stream()
+            .anyMatch(lst -> lst.containsAll(incomingVertices) && incomingVertices.containsAll(lst))) {
+          final Set<IRVertex> foundKey = verticesToBeMergedWithIdenticalSources.keySet().stream()
+              .filter(vs -> vs.containsAll(incomingVertices) && incomingVertices.containsAll(vs))
+              .findFirst().get();
           verticesToBeMergedWithIdenticalSources.get(foundKey).add(operatorVertex);
         } else {
           verticesToBeMergedWithIdenticalSources.putIfAbsent(incomingVertices, new ArrayList<>());

@@ -94,14 +94,12 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
 
     final IRVertex vortexIRVertex = convertToVertex(beamNode, builder, pValueToVertex, pValueToCoder, options,
         loopVertexStack);
-    beamNode.getOutputs().values().stream()
-        .filter(v -> v instanceof PCollection).map(v -> (PCollection) v)
+    beamNode.getOutputs().values().stream().filter(v -> v instanceof PCollection).map(v -> (PCollection) v)
         .forEach(output -> pValueToCoder.put(output, new BeamCoder(output.getCoder())));
 
     beamNode.getOutputs().values().forEach(output -> pValueToVertex.put(output, vortexIRVertex));
 
-    beamNode.getInputs().values().stream()
-        .filter(pValueToVertex::containsKey)
+    beamNode.getInputs().values().stream().filter(pValueToVertex::containsKey)
         .forEach(pValue -> {
           final IRVertex src = pValueToVertex.get(pValue);
           final BeamCoder coder = pValueToCoder.get(pValue);
@@ -188,8 +186,7 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
                                         final Map<PValue, IRVertex> pValueToVertex,
                                         final Map<PValue, BeamCoder> pValueToCoder,
                                         final IRVertex vortexIRVertex) {
-    sideInputs.stream()
-        .filter(pValueToVertex::containsKey)
+    sideInputs.stream().filter(pValueToVertex::containsKey)
         .forEach(pValue -> {
           final IRVertex src = pValueToVertex.get(pValue);
           final BeamCoder coder = pValueToCoder.get(pValue);

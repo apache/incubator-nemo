@@ -56,8 +56,7 @@ public final class GroupByKeyTransform implements Transform {
 
   @Override
   public void close() {
-    keyToValues.entrySet().stream()
-        .map(entry -> KV.of(entry.getKey(), entry.getValue()))
+    keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
         .forEach(wv -> outputCollector.emit(new BeamElement<>(wv)));
     keyToValues.clear();
   }
