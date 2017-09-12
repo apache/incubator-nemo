@@ -16,12 +16,20 @@
 package edu.snu.vortex.runtime.executor.data.partitiontransfer;
 
 import edu.snu.vortex.common.coder.Coder;
+import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.executor.data.HashRange;
 import io.netty.buffer.ByteBuf;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Iterator;
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
+import java.util.Spliterator;
+import java.util.concurrent.*;
+import java.util.function.Consumer;
 
 /**
  * Decodes and stores inbound data elements from other executors.
@@ -32,13 +40,36 @@ import java.util.concurrent.ExecutorService;
  *   by {@link #append(ByteBuf)}</li>
  *   <li>{@link PartitionTransfer#inboundExecutorService} decodes {@link ByteBuf}s into
  *   {@link edu.snu.vortex.compiler.ir.Element}s (not implemented yet)</li>
- *   <li>User thread iterates over this object and uses {@link java.util.Iterator} for its own work
- *   (not implemented yet)</li>
+ *   <li>User threads may use {@link java.util.Iterator} to iterate over this object for their own work.</li>
  * </ul>
  *
  * @param <T> the type of element
  */
-public final class PartitionInputStream<T> implements PartitionStream {
+public final class PartitionInputStream<T> implements Iterable<Element<T, ?, ?>>, PartitionStream {
+
+  private static final Logger LOG = LoggerFactory.getLogger(PartitionInputStream.class);
+
+  private final String senderExecutorId;
+  private final boolean encodePartialPartition;
+  private final Optional<Attribute> partitionStore;
+  private final String partitionId;
+  private final String runtimeEdgeId;
+  private final HashRange hashRange;
+  private Coder<T, ?, ?> coder;
+  private ExecutorService executorService;
+
+  private final CompletableFuture<PartitionInputStream<T>> completeFuture = new CompletableFuture<>();
+  private final ByteBufInputStream byteBufInputStream = new ByteBufInputStream();
+  private final ClosableBlockingIterable<Element<T, ?, ?>> elementQueue = new ClosableBlockingIterable<>();
+  private volatile boolean started = false;
+
+  @Override
+  public String toString() {
+    return String.format("PartitionInputStream(%s of %s%s from %s, %s, encodePartial: %b)",
+        hashRange.toString(), partitionId, partitionStore.isPresent() ? " in " + partitionStore.get() : "",
+        senderExecutorId, runtimeEdgeId, encodePartialPartition);
+  }
+
   /**
    * Creates a partition input stream.
    *
@@ -56,6 +87,12 @@ public final class PartitionInputStream<T> implements PartitionStream {
                        final String partitionId,
                        final String runtimeEdgeId,
                        final HashRange hashRange) {
+    this.senderExecutorId = senderExecutorId;
+    this.encodePartialPartition = encodePartialPartition;
+    this.partitionStore = partitionStore;
+    this.partitionId = partitionId;
+    this.runtimeEdgeId = runtimeEdgeId;
+    this.hashRange = hashRange;
   }
 
   /**
@@ -65,25 +102,59 @@ public final class PartitionInputStream<T> implements PartitionStream {
    * @param service the executor service
    */
   void setCoderAndExecutorService(final Coder<T, ?, ?> cdr, final ExecutorService service) {
+    this.coder = cdr;
+    this.executorService = service;
   }
 
   /**
-   * Accepts inbound {@link ByteBuf}.
-   * @param byteBuf the byte buffer
+   * Supply {@link ByteBuf} to this stream.
+   *
+   * @param byteBuf the {@link ByteBuf} to supply
    */
   void append(final ByteBuf byteBuf) {
+    if (byteBuf.readableBytes() > 0) {
+      byteBufInputStream.byteBufQueue.put(byteBuf);
+    } else {
+      // ignore empty data frames
+      byteBuf.release();
+    }
   }
 
   /**
-   * Called when all the inbound {@link ByteBuf}s are received.
+   * Mark as {@link #append(ByteBuf)} event is no longer expected.
    */
   void markAsEnded() {
+    byteBufInputStream.byteBufQueue.close();
   }
 
   /**
-   * Starts the decoding thread, if this has not started already.
+   * Start decoding {@link ByteBuf}s into {@link Element}s, if it has not been started.
    */
   void startDecodingThreadIfNeeded() {
+    if (started) {
+      return;
+    }
+    started = true;
+    executorService.submit(() -> {
+      try {
+        final long startTime = System.currentTimeMillis();
+        while (!byteBufInputStream.isEnded()) {
+          elementQueue.add(coder.decode(byteBufInputStream));
+        }
+        final long endTime = System.currentTimeMillis();
+        elementQueue.close();
+        if (!completeFuture.isCompletedExceptionally()) {
+          completeFuture.complete(this);
+          // If encodePartialPartition option is on, the elapsed time is not only determined by the speed of decoder
+          // but also by the rate of byte stream through the network.
+          // Before investigating on low rate of decoding, check the rate of the byte stream.
+          LOG.debug("Decoding task took {} ms to complete for {}", endTime - startTime, toString());
+        }
+      } catch (final Exception e) {
+        LOG.error(String.format("An exception in decoding thread for %s", toString()), e);
+        throw new RuntimeException(e);
+      }
+    });
   }
 
   /**
@@ -92,35 +163,195 @@ public final class PartitionInputStream<T> implements PartitionStream {
    * @param cause the cause of exception handling
    */
   void onExceptionCaught(final Throwable cause) {
+    LOG.error(String.format("A channel exception closes %s", toString()), cause);
+    markAsEnded();
+    if (!started) {
+      // There's no decoding thread to close the element queue.
+      elementQueue.close();
+    }
+    completeFuture.completeExceptionally(cause);
   }
 
   @Override
   public String getRemoteExecutorId() {
-    return "";
+    return senderExecutorId;
   }
 
   @Override
   public boolean isEncodePartialPartitionEnabled() {
-    return false;
+    return encodePartialPartition;
   }
 
   @Override
   public Optional<Attribute> getPartitionStore() {
-    return null;
+    return partitionStore;
   }
 
   @Override
   public String getPartitionId() {
-    return null;
+    return partitionId;
   }
 
   @Override
   public String getRuntimeEdgeId() {
-    return "";
+    return runtimeEdgeId;
   }
 
   @Override
   public HashRange getHashRange() {
-    return null;
+    return hashRange;
+  }
+
+  /**
+   * Returns an {@link Iterator} for this {@link Iterable}.
+   * The end of this {@link Iterable} can possibly mean an error during the partition transfer.
+   * Consider using {@link #completeFuture} and {@link CompletableFuture#isCompletedExceptionally()} to check it.
+   *
+   * @return an {@link Iterator} for this {@link Iterable}
+   */
+  @Override
+  public Iterator<Element<T, ?, ?>> iterator() {
+    return elementQueue.iterator();
+  }
+
+  @Override
+  public void forEach(final Consumer<? super Element<T, ?, ?>> consumer) {
+    elementQueue.forEach(consumer);
+  }
+
+  @Override
+  public Spliterator<Element<T, ?, ?>> spliterator() {
+    return elementQueue.spliterator();
+  }
+
+  /**
+   * Gets a {@link CompletableFuture} that completes with the partition transfer being done.
+   * This future is completed by one of the decoding thread. Consider using separate {@link ExecutorService} when
+   * chaining a task to this future.
+   *
+   * @return a {@link CompletableFuture} that completes with the partition transfer being done
+   */
+  public CompletableFuture<PartitionInputStream<T>> getCompleteFuture() {
+    return completeFuture;
+  }
+
+  /**
+   * An {@link InputStream} implementation that reads data from a composition of {@link ByteBuf}s.
+   */
+  private static final class ByteBufInputStream extends InputStream {
+
+    private final ClosableBlockingQueue<ByteBuf> byteBufQueue = new ClosableBlockingQueue<>();
+
+    @Override
+    public int read() throws IOException {
+      try {
+        final ByteBuf head = byteBufQueue.peek();
+        if (head == null) {
+          // end of stream event
+          return -1;
+        }
+        final int b = head.readUnsignedByte();
+        if (head.readableBytes() == 0) {
+          // remove and release header if no longer required
+          byteBufQueue.take();
+          head.release();
+        }
+        return b;
+      } catch (final InterruptedException e) {
+        throw new IOException(e);
+      }
+    }
+
+    @Override
+    public int read(final byte[] bytes, final int baseOffset, final int maxLength) throws IOException {
+      if (bytes == null) {
+        throw new NullPointerException();
+      }
+      if (baseOffset < 0 || maxLength < 0 || maxLength > bytes.length - baseOffset) {
+        throw new IndexOutOfBoundsException();
+      }
+      try {
+        // the number of bytes that has been read so far
+        int readBytes = 0;
+        // the number of bytes to read
+        int capacity = maxLength;
+        while (capacity > 0) {
+          final ByteBuf head = byteBufQueue.peek();
+          if (head == null) {
+            // end of stream event
+            return readBytes == 0 ? -1 : readBytes;
+          }
+          final int toRead = Math.min(head.readableBytes(), capacity);
+          head.readBytes(bytes, baseOffset + readBytes, toRead);
+          if (head.readableBytes() == 0) {
+            byteBufQueue.take();
+            head.release();
+          }
+          readBytes += toRead;
+          capacity -= toRead;
+        }
+        return readBytes;
+      } catch (final InterruptedException e) {
+        throw new IOException(e);
+      }
+    }
+
+    @Override
+    public long skip(final long n) throws IOException {
+      if (n <= 0) {
+        return 0;
+      }
+      try {
+        // the number of bytes that has been skipped so far
+        long skippedBytes = 0;
+        // the number of bytes to skip
+        long toSkip = n;
+        while (toSkip > 0) {
+          final ByteBuf head = byteBufQueue.peek();
+          if (head == null) {
+            // end of stream event
+            return skippedBytes;
+          }
+          if (head.readableBytes() > toSkip) {
+            head.skipBytes((int) toSkip);
+            skippedBytes += toSkip;
+            return skippedBytes;
+          } else {
+            // discard the whole ByteBuf
+            skippedBytes += head.readableBytes();
+            toSkip -= head.readableBytes();
+            byteBufQueue.take();
+            head.release();
+          }
+        }
+        return skippedBytes;
+      } catch (final InterruptedException e) {
+        throw new IOException(e);
+      }
+    }
+
+    @Override
+    public int available() throws IOException {
+      try {
+        final ByteBuf head = byteBufQueue.peek();
+        if (head == null) {
+          return 0;
+        } else {
+          return head.readableBytes();
+        }
+      } catch (final InterruptedException e) {
+        throw new IOException(e);
+      }
+    }
+
+    /**
+     * Returns whether or not the end of this stream is reached.
+     *
+     * @return whether or not the end of this stream is reached
+     * @throws InterruptedException when interrupted while waiting
+     */
+    private boolean isEnded() throws InterruptedException {
+      return byteBufQueue.peek() == null;
+    }
   }
 }
