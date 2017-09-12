@@ -186,7 +186,8 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
     if (outgoingEdges.get(vertex).stream().map(Edge::getDst).anyMatch(stack::contains)) {
       throw new RuntimeException("DAG contains a cycle");
     } else {
-      outgoingEdges.get(vertex).stream().map(Edge::getDst).filter(v -> !visited.contains(v))
+      outgoingEdges.get(vertex).stream().map(Edge::getDst)
+          .filter(v -> !visited.contains(v))
           .forEachOrdered(v -> cycleCheck(stack, visited, v));
     }
     stack.pop();
@@ -201,8 +202,10 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
         .filter(v -> v instanceof IRVertex);
     // They should all match SourceVertex
     if (verticesToObserve.get().anyMatch(v -> !(v instanceof SourceVertex))) {
-      final String problematicVertices = verticesToObserve.get().filter(v -> !(v instanceof SourceVertex))
-          .map(V::getId).collect(Collectors.toList()).toString();
+      final String problematicVertices = verticesToObserve.get()
+          .filter(v -> !(v instanceof SourceVertex))
+          .map(V::getId)
+          .collect(Collectors.toList()).toString();
       throw new RuntimeException("DAG source check failed while building DAG. " + problematicVertices);
     }
   }
@@ -212,7 +215,8 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
    */
   private void sinkCheck() {
     // We observe IRVertex that do not have any outgoing edges.
-    final Supplier<Stream<V>> verticesToObserve = () -> vertices.stream().filter(v -> outgoingEdges.get(v).isEmpty())
+    final Supplier<Stream<V>> verticesToObserve = () -> vertices.stream()
+        .filter(v -> outgoingEdges.get(v).isEmpty())
         .filter(v -> v instanceof IRVertex);
     // They should either be OperatorVertex or LoopVertex
     if (verticesToObserve.get().anyMatch(v -> !(v instanceof OperatorVertex || v instanceof LoopVertex))) {

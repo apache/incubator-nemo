@@ -239,9 +239,7 @@ public final class TaskGroupExecutor {
     final Map<Transform, Object> sideInputMap = new HashMap<>();
 
     // Check for side inputs
-    taskIdToInputReaderMap.get(operatorTask.getId())
-        .stream()
-        .filter(InputReader::isSideInputReader)
+    taskIdToInputReaderMap.get(operatorTask.getId()).stream().filter(InputReader::isSideInputReader)
         .forEach(inputReader -> {
           try {
             final Object sideInput = inputReader.getSideInput().get();
@@ -269,9 +267,7 @@ public final class TaskGroupExecutor {
     // This blocking queue contains the pairs having data and source vertex ids.
     final BlockingQueue<Pair<Iterable<Element>, String>> dataQueue = new LinkedBlockingQueue<>();
     final AtomicInteger sourceParallelism = new AtomicInteger(0);
-    taskIdToInputReaderMap.get(operatorTask.getId())
-        .stream()
-        .filter(inputReader -> !inputReader.isSideInputReader())
+    taskIdToInputReaderMap.get(operatorTask.getId()).stream().filter(inputReader -> !inputReader.isSideInputReader())
         .forEach(inputReader -> {
           final List<CompletableFuture<Iterable<Element>>> futures = inputReader.read();
           final String srcVtxId = inputReader.getSrcVertexId();
@@ -314,8 +310,7 @@ public final class TaskGroupExecutor {
   private void launchMetricCollectionBarrierTask(final MetricCollectionBarrierTask task) {
     final BlockingQueue<Iterable<Element>> dataQueue = new LinkedBlockingQueue<>();
     final AtomicInteger sourceParallelism = new AtomicInteger(0);
-    taskIdToInputReaderMap.get(task.getId()).stream()
-        .filter(inputReader -> !inputReader.isSideInputReader())
+    taskIdToInputReaderMap.get(task.getId()).stream().filter(inputReader -> !inputReader.isSideInputReader())
         .forEach(inputReader -> {
           sourceParallelism.getAndAdd(inputReader.getSourceParallelism());
           inputReader.read().forEach(compFuture -> compFuture.thenAccept(dataQueue::add));

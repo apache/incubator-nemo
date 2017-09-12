@@ -180,8 +180,7 @@ public final class RuntimeMaster {
       case MetricMessageReceived:
         final ControlMessage.MetricMsg metricMsg = message.getMetricMsg();
         final String executorId = metricMsg.getExecutorId();
-        metricMsg.getMessagesList().stream()
-            .map(new JsonStringToMapFunction())
+        metricMsg.getMessagesList().stream().map(new JsonStringToMapFunction())
             .forEach((msg) -> metricMessageHandler.onMetricMessageReceived(executorId, msg));
         break;
       case StoreMetadata:

@@ -226,8 +226,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
    */
   private void dfsTraverse(final Consumer<V> function, final TraversalOrder traversalOrder) {
     final Set<V> visited = new HashSet<>();
-    getVertices().stream()
-        .filter(vertex -> incomingEdges.get(vertex.getId()).isEmpty()) // root Operators
+    getVertices().stream().filter(vertex -> incomingEdges.get(vertex.getId()).isEmpty()) // root Operators
         .filter(vertex -> !visited.contains(vertex))
         .forEachOrdered(vertex -> dfsDo(vertex, function, traversalOrder, visited));
   }
@@ -249,8 +248,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
     }
     final List<E> outEdges = getOutgoingEdgesOf(vertex);
     if (!outEdges.isEmpty()) {
-      outEdges.stream()
-          .map(Edge::getDst)
+      outEdges.stream().map(Edge::getDst)
           .filter(outOperator -> !visited.contains(outOperator))
           .forEachOrdered(outOperator -> dfsDo(outOperator, vertexConsumer, traversalOrder, visited));
     }
