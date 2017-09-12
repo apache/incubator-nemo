@@ -70,23 +70,23 @@ public final class DefaultStagePartitioningPass implements StaticOptimizationPas
       } else {
         // Filter candidate incoming edges that can be included in a stage with the vertex.
         final Optional<List<IREdge>> inEdgesForStage = inEdgeList.map(e -> e.stream()
-                .filter(edge -> edge.getType().equals(IREdge.Type.OneToOne)) // One to one edges
-                .filter(edge -> edge.getAttr(Attribute.Key.ChannelDataPlacement).equals(Memory))// Memory data placement
-                .filter(edge -> edge.getSrc().getAttr(Attribute.Key.Placement)
-                        .equals(edge.getDst().getAttr(Attribute.Key.Placement))) //Src and Dst same placement
-                // Src that is already included in a stage
-                .filter(edge -> vertexStageNumHashMap.containsKey(edge.getSrc()))
-                // Others don't depend on the candidate stage.
-                .filter(edge -> !dependentStagesList.contains(vertexStageNumHashMap.get(edge.getSrc())))
-                .collect(Collectors.toList()));
+            .filter(edge -> edge.getType().equals(IREdge.Type.OneToOne)) // One to one edges
+            .filter(edge -> edge.getAttr(Attribute.Key.ChannelDataPlacement).equals(Memory))// Memory data placement
+            .filter(edge -> edge.getSrc().getAttr(Attribute.Key.Placement)
+                .equals(edge.getDst().getAttr(Attribute.Key.Placement))) //Src and Dst same placement
+            // Src that is already included in a stage
+            .filter(edge -> vertexStageNumHashMap.containsKey(edge.getSrc()))
+            // Others don't depend on the candidate stage.
+            .filter(edge -> !dependentStagesList.contains(vertexStageNumHashMap.get(edge.getSrc())))
+            .collect(Collectors.toList()));
         // Choose one to connect out of the candidates. We want to connect the vertex to a single stage.
         final Optional<IREdge> edgeToConnect = inEdgesForStage.map(edges -> edges.stream().findAny())
-                .orElse(Optional.empty());
+            .orElse(Optional.empty());
 
         // Mark stages that other stages depend on
         inEdgeList.ifPresent(edges -> edges.stream()
-                .filter(e -> !e.equals(edgeToConnect.orElse(null))) // e never equals null
-                .forEach(inEdge -> dependentStagesList.add(vertexStageNumHashMap.get(inEdge.getSrc()))));
+            .filter(e -> !e.equals(edgeToConnect.orElse(null))) // e never equals null
+            .forEach(inEdge -> dependentStagesList.add(vertexStageNumHashMap.get(inEdge.getSrc()))));
 
         if (!inEdgesForStage.isPresent() || inEdgesForStage.get().isEmpty() || !edgeToConnect.isPresent()) {
           // when we cannot connect vertex in other stages
@@ -96,7 +96,7 @@ public final class DefaultStagePartitioningPass implements StaticOptimizationPas
           final IRVertex irVertexToConnect = edgeToConnect.get().getSrc();
           vertexStageNumHashMap.put(vertex, vertexStageNumHashMap.get(irVertexToConnect));
           final Optional<List<IRVertex>> listOfIRVerticesOfTheStage =
-                  vertexListForEachStage.stream().filter(l -> l.contains(irVertexToConnect)).findFirst();
+              vertexListForEachStage.stream().filter(l -> l.contains(irVertexToConnect)).findFirst();
           listOfIRVerticesOfTheStage.ifPresent(lst -> {
             vertexListForEachStage.remove(lst);
             lst.add(vertex);

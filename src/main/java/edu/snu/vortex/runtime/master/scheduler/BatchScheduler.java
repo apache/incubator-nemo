@@ -229,7 +229,8 @@ public final class BatchScheduler implements Scheduler {
               .filter(task -> tasksPutOnHold.contains(task.getId())) // find it
               .map(physicalPlan::getIRVertexOf) // get the corresponding IRVertex, the MetricCollectionBarrierVertex
               .filter(irVertex -> irVertex instanceof MetricCollectionBarrierVertex)
-              .distinct().map(irVertex -> (MetricCollectionBarrierVertex) irVertex) // convert types
+              .distinct()
+              .map(irVertex -> (MetricCollectionBarrierVertex) irVertex) // convert types
               .findFirst().orElseThrow(() -> new RuntimeException(ON_HOLD.name() // get it
               + " called with failed task ids by some other task than "
               + MetricCollectionBarrierTask.class.getSimpleName()));

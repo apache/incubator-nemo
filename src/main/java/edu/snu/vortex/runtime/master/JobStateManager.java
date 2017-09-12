@@ -250,9 +250,7 @@ public final class JobStateManager {
           if (stage.getId().equals(stageId)) {
             Set<String> remainingTaskGroupIds = new HashSet<>();
             remainingTaskGroupIds.addAll(
-                stage.getTaskGroupList()
-                    .stream()
-                    .map(taskGroup -> taskGroup.getTaskGroupId())
+                stage.getTaskGroupList().stream().map(taskGroup -> taskGroup.getTaskGroupId())
                     .collect(Collectors.toSet()));
             stageIdToRemainingTaskGroupSet.put(stageId, remainingTaskGroupIds);
             break;

@@ -36,7 +36,8 @@ public final class ParallelismPass implements StaticOptimizationPass {
     dag.topologicalDo(vertex -> {
       try {
         final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex).stream()
-            .filter(edge -> edge.getAttr(Attribute.Key.SideInput) == null).collect(Collectors.toList());
+            .filter(edge -> edge.getAttr(Attribute.Key.SideInput) == null)
+            .collect(Collectors.toList());
         if (inEdges.isEmpty() && vertex instanceof SourceVertex) {
           final SourceVertex sourceVertex = (SourceVertex) vertex;
           vertex.setAttr(Attribute.IntegerKey.Parallelism, sourceVertex.getReaders(1).size());
@@ -45,7 +46,8 @@ public final class ParallelismPass implements StaticOptimizationPass {
               // No reason to propagate via Broadcast edges, as the data streams that will use the broadcasted data
               // as a sideInput will have their own number of parallelism
               .filter(edge -> !edge.getAttr(Attribute.Key.CommunicationPattern).equals(Attribute.Broadcast))
-              .mapToInt(edge -> edge.getSrc().getAttr(Attribute.IntegerKey.Parallelism)).max();
+              .mapToInt(edge -> edge.getSrc().getAttr(Attribute.IntegerKey.Parallelism))
+              .max();
           if (parallelism.isPresent()) {
             vertex.setAttr(Attribute.IntegerKey.Parallelism, parallelism.getAsInt());
           }

@@ -114,7 +114,8 @@ public final class LoopOptimizations {
         // We want loopVertices that are not dependent on each other or the list that is potentially going to be merged.
         final List<LoopVertex> independentLoops = loopVertices.stream().filter(loop ->
             setOfLoopsToBeFused.stream().anyMatch(list -> list.contains(loop))
-                ? setOfLoopsToBeFused.stream().filter(list -> list.contains(loop)).findFirst()
+                ? setOfLoopsToBeFused.stream().filter(list -> list.contains(loop))
+                .findFirst()
                 .map(list -> list.stream().noneMatch(loopV -> dag.pathExistsBetween(loopV, loopVertex)))
                 .orElse(false)
                 : !dag.pathExistsBetween(loop, loopVertex)).collect(Collectors.toList());
