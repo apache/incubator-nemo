@@ -1,6 +1,7 @@
 package edu.snu.vortex.runtime.master.resource;
 
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 
 /**
  * Represents the specifications of a resource.
@@ -8,6 +9,7 @@ import edu.snu.vortex.compiler.ir.attribute.Attribute;
 // TODO #249: Clean up Attributes
 // We should clean up and add attributes related to resource specification.
 public final class ResourceSpecification {
+  private final String resourceSpecId;
   private final Attribute containerType;
   private final int capacity;
   private final int memory;
@@ -15,6 +17,7 @@ public final class ResourceSpecification {
   public ResourceSpecification(final Attribute containerType,
                                final int capacity,
                                final int memory) {
+    this.resourceSpecId = RuntimeIdGenerator.generateResourceSpecId();
     this.containerType = containerType;
     this.capacity = capacity;
     this.memory = memory;
@@ -39,6 +42,10 @@ public final class ResourceSpecification {
    */
   public int getMemory() {
     return memory;
+  }
+
+  public String getResourceSpecId() {
+    return resourceSpecId;
   }
 
   /**

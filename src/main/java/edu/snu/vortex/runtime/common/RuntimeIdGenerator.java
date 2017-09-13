@@ -27,6 +27,7 @@ public final class RuntimeIdGenerator {
   private static AtomicInteger taskGroupIdGenerator = new AtomicInteger(1);
   private static AtomicInteger executorIdGenerator = new AtomicInteger(1);
   private static AtomicLong messageIdGenerator = new AtomicLong(1L);
+  private static AtomicLong resourceSpecIdGenerator = new AtomicLong(1);
   private static String partitionPrefix = "Partition-";
   private static String partitionIdSplitter = "_";
 
@@ -131,6 +132,15 @@ public final class RuntimeIdGenerator {
    */
   public static long generateMessageId() {
     return messageIdGenerator.getAndIncrement();
+  }
+
+  /**
+   * Generates the ID for a resource specification.
+   *
+   * @return the generated ID
+   */
+  public static String generateResourceSpecId() {
+    return "ResourceSpec-" + resourceSpecIdGenerator.getAndIncrement();
   }
 
   /**
