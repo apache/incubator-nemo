@@ -30,6 +30,7 @@ import edu.snu.vortex.runtime.common.message.MessageListener;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
+import edu.snu.vortex.runtime.exception.ContainerException;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
 import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
@@ -44,9 +45,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.Function;
 
 import static edu.snu.vortex.runtime.common.state.TaskGroupState.State.COMPLETE;
@@ -126,7 +125,16 @@ public final class RuntimeMaster {
   }
 
   public void terminate() {
-    containerManager.terminate();
+    final Future<Boolean> allExecutorsClosed = containerManager.terminate();
+
+    try {
+      if (allExecutorsClosed.get()) {
+        LOG.info("All executors were closed successfully!");
+      }
+    } catch (Exception e) {
+      new ContainerException(new Throwable("An exception occurred while trying to terminate ContainerManager"));
+      e.printStackTrace();
+    }
   }
 
   /**
