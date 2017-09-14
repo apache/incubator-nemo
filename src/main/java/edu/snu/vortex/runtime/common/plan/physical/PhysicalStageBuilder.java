@@ -24,17 +24,21 @@ import java.util.List;
 public final class PhysicalStageBuilder {
   private final String id;
   private final List<TaskGroup> taskGroupList;
+  private final int scheduleGroupIndex;
 
   public PhysicalStageBuilder(final String stageId,
-                              final int parallelism) {
+                              final int parallelism,
+                              final int scheduleGroupIndex) {
     this.id = stageId;
     this.taskGroupList = new ArrayList<>(parallelism);
+    this.scheduleGroupIndex = scheduleGroupIndex;
   }
 
   @Override
   public String toString() {
     final StringBuffer sb = new StringBuffer("PhysicalStage{");
     sb.append("id='").append(id).append('\'');
+    sb.append("scheduleGroupIndex='").append(scheduleGroupIndex).append('\'');
     sb.append(", taskGroupList=").append(taskGroupList);
     sb.append('}');
     return sb.toString();
@@ -45,6 +49,6 @@ public final class PhysicalStageBuilder {
   }
 
   public PhysicalStage build() {
-    return new PhysicalStage(id, taskGroupList);
+    return new PhysicalStage(id, taskGroupList, scheduleGroupIndex);
   }
 }

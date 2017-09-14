@@ -29,13 +29,17 @@ import java.util.List;
 public final class StageBuilder {
   private final DAGBuilder<IRVertex, IREdge> stageInternalDAGBuilder;
   private final Integer stageId;
+  private final int scheduleGroupIndex;
 
   /**
    * Builds a {@link Stage}.
    * @param stageId stage ID in numeric form.
+   * @param scheduleGroupIndex indicating its scheduling order.
    */
-  public StageBuilder(final Integer stageId) {
+  public StageBuilder(final Integer stageId,
+                      final int scheduleGroupIndex) {
     this.stageId = stageId;
+    this.scheduleGroupIndex = scheduleGroupIndex;
     this.stageInternalDAGBuilder = new DAGBuilder<>();
   }
 
@@ -76,8 +80,10 @@ public final class StageBuilder {
     final List<IRVertex> vertices = stage.getStageInternalDAG().getVertices();
 
     final Attribute firstPlacement = vertices.iterator().next().getAttr(Attribute.Key.Placement);
+    final int scheduleGroupIdx = vertices.iterator().next().getAttr(Attribute.IntegerKey.ScheduleGroupIndex);
     vertices.forEach(irVertex -> {
-      if (!irVertex.getAttr(Attribute.Key.Placement).equals(firstPlacement)) {
+      if (!irVertex.getAttr(Attribute.Key.Placement).equals(firstPlacement)
+          || irVertex.getAttr(Attribute.IntegerKey.ScheduleGroupIndex) != scheduleGroupIdx) {
         throw new RuntimeException("Vertices of the same stage have different attributes: " + irVertex.getId());
       }
     });
@@ -89,7 +95,7 @@ public final class StageBuilder {
    */
   public Stage build() {
     final Stage stage = new Stage(RuntimeIdGenerator.generateStageId(stageId),
-        stageInternalDAGBuilder.buildWithoutSourceSinkCheck());
+        stageInternalDAGBuilder.buildWithoutSourceSinkCheck(), scheduleGroupIndex);
     integrityCheck(stage);
     return stage;
   }
