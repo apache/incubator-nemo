@@ -24,21 +24,29 @@ import java.util.List;
  */
 public final class PhysicalStage extends Vertex {
   private final List<TaskGroup> taskGroupList;
+  private final int scheduleGroupIndex;
 
   public PhysicalStage(final String stageId,
-                       final List<TaskGroup> taskGroupList) {
+                       final List<TaskGroup> taskGroupList,
+                       final int scheduleGroupIndex) {
     super(stageId);
     this.taskGroupList = taskGroupList;
+    this.scheduleGroupIndex = scheduleGroupIndex;
   }
 
   public List<TaskGroup> getTaskGroupList() {
     return taskGroupList;
   }
 
+  public int getScheduleGroupIndex() {
+    return scheduleGroupIndex;
+  }
+
   @Override
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("{\"taskGroupList\": ").append(taskGroupList);
+    sb.append("{\"scheduleGroupIndex\": ").append(scheduleGroupIndex);
+    sb.append(", \"taskGroupList\": ").append(taskGroupList);
     sb.append('}');
     return sb.toString();
   }
