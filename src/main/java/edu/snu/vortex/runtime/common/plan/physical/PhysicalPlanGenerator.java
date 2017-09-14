@@ -86,9 +86,10 @@ public final class PhysicalPlanGenerator
       final Set<StageEdgeBuilder> currentStageIncomingEdges = new HashSet<>();
 
       // Create a new stage builder.
-      final StageBuilder stageBuilder = new StageBuilder(stageVertices.stream().findAny()
-              .orElseThrow(() -> new RuntimeException("Error: List " + stageVertices.getClass() + " is Empty"))
-              .getAttr(Attribute.IntegerKey.StageId));
+      final IRVertex irVertexOfNewStage = stageVertices.stream().findAny()
+          .orElseThrow(() -> new RuntimeException("Error: List " + stageVertices.getClass() + " is Empty"));
+      final StageBuilder stageBuilder = new StageBuilder(irVertexOfNewStage.getAttr(Attribute.IntegerKey.StageId),
+          irVertexOfNewStage.getAttr(Attribute.IntegerKey.ScheduleGroupIndex));
 
       // For each vertex in the stage,
       for (final IRVertex irVertex : stageVertices) {
@@ -181,7 +182,7 @@ public final class PhysicalPlanGenerator
       final Attribute containerType = firstVertexAttrs.get(Attribute.Key.Placement);
 
       // Begin building a new stage in the physical plan.
-      physicalStageBuilder = new PhysicalStageBuilder(stage.getId(), stageParallelism);
+      physicalStageBuilder = new PhysicalStageBuilder(stage.getId(), stageParallelism, stage.getScheduleGroupIndex());
 
       // (parallelism) number of task groups will be created.
       IntStream.range(0, stageParallelism).forEach(taskGroupIndex -> {
