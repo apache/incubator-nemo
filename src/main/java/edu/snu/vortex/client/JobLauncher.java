@@ -132,8 +132,6 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.JVMHeapSlack.class);
     cl.registerShortNameOfClass(JobConf.LocalFileStoreNumThreads.class);
     cl.registerShortNameOfClass(JobConf.GlusterFileStoreNumThreads.class);
-    cl.registerShortNameOfClass(JobConf.PartitionTransferClientNumThreads.class);
-    cl.registerShortNameOfClass(JobConf.PartitionTransferServerNumThreads.class);
     cl.registerShortNameOfClass(JobConf.SchedulerTimeoutMs.class);
     cl.registerShortNameOfClass(JobConf.MaxScheduleAttempt.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransferInboundNumThreads.class);

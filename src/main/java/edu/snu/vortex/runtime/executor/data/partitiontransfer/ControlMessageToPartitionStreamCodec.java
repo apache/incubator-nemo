@@ -36,8 +36,8 @@ import java.util.Optional;
  *
  * <h3>Type of partition transfer:</h3>
  * <ul>
- *   <li>In send-based transfer, the sender initiates partition transfer and issues transfer id.</li>
- *   <li>In fetch-based transfer, the receiver initiates partition transfer and issues transfer id.</li>
+ *   <li>In push-based transfer, the sender initiates partition transfer and issues transfer id.</li>
+ *   <li>In pull-based transfer, the receiver initiates partition transfer and issues transfer id.</li>
  * </ul>
  *
  * @see PartitionTransportChannelInitializer
@@ -47,17 +47,17 @@ final class ControlMessageToPartitionStreamCodec
 
   private static final Logger LOG = LoggerFactory.getLogger(ControlMessageToPartitionStreamCodec.class);
 
-  private final Map<Short, PartitionInputStream> fetchTransferIdToInputStream = new HashMap<>();
-  private final Map<Short, PartitionInputStream> sendTransferIdToInputStream = new HashMap<>();
-  private final Map<Short, PartitionOutputStream> fetchTransferIdToOutputStream = new HashMap<>();
-  private final Map<Short, PartitionOutputStream> sendTransferIdToOutputStream = new HashMap<>();
+  private final Map<Short, PartitionInputStream> pullTransferIdToInputStream = new HashMap<>();
+  private final Map<Short, PartitionInputStream> pushTransferIdToInputStream = new HashMap<>();
+  private final Map<Short, PartitionOutputStream> pullTransferIdToOutputStream = new HashMap<>();
+  private final Map<Short, PartitionOutputStream> pushTransferIdToOutputStream = new HashMap<>();
 
   private final String localExecutorId;
   private SocketAddress localAddress;
   private SocketAddress remoteAddress;
 
-  private short nextOutboundFetchTransferId = 0;
-  private short nextOutboundSendTransferId = 0;
+  private short nextOutboundPullTransferId = 0;
+  private short nextOutboundPushTransferId = 0;
 
   /**
    * Creates a {@link ControlMessageToPartitionStreamCodec}.
@@ -88,54 +88,54 @@ final class ControlMessageToPartitionStreamCodec
                         final PartitionStream in,
                         final List<Object> out) {
     if (in instanceof PartitionInputStream) {
-      onOutboundFetchRequest(ctx, (PartitionInputStream) in, out);
+      onOutboundPullRequest(ctx, (PartitionInputStream) in, out);
     } else {
-      onOutboundSendNotification(ctx, (PartitionOutputStream) in, out);
+      onOutboundPushNotification(ctx, (PartitionOutputStream) in, out);
     }
   }
 
   /**
-   * Respond to {@link PartitionInputStream} by emitting outbound fetch request.
+   * Respond to {@link PartitionInputStream} by emitting outbound pull request.
    *
    * @param ctx the {@link ChannelHandlerContext} which this handler belongs to
    * @param in  the {@link PartitionInputStream}
    * @param out the {@link List} into which the created control message is added
    */
-  private void onOutboundFetchRequest(final ChannelHandlerContext ctx,
-                                      final PartitionInputStream in,
-                                      final List<Object> out) {
-    final short transferId = nextOutboundFetchTransferId++;
-    checkTransferIdAvailability(fetchTransferIdToInputStream, ControlMessage.PartitionTransferType.FETCH, transferId);
-    fetchTransferIdToInputStream.put(transferId, in);
-    emitControlMessage(ControlMessage.PartitionTransferType.FETCH, transferId, in, out);
-    LOG.debug("Sending fetch request {} from {}({}) to {}({}) for {} ({}, {} in {})",
+  private void onOutboundPullRequest(final ChannelHandlerContext ctx,
+                                     final PartitionInputStream in,
+                                     final List<Object> out) {
+    final short transferId = nextOutboundPullTransferId++;
+    checkTransferIdAvailability(pullTransferIdToInputStream, ControlMessage.PartitionTransferType.PULL, transferId);
+    pullTransferIdToInputStream.put(transferId, in);
+    emitControlMessage(ControlMessage.PartitionTransferType.PULL, transferId, in, out);
+    LOG.debug("Sending pull request {} from {}({}) to {}({}) for {} ({}, {} in {})",
         new Object[]{transferId, localExecutorId, localAddress, in.getRemoteExecutorId(), remoteAddress,
         in.getPartitionId(), in.getRuntimeEdgeId(), in.getHashRange().toString(),
         in.getPartitionStore().get().toString()});
   }
 
   /**
-   * Respond to {@link PartitionOutputStream} by emitting outbound send notification.
+   * Respond to {@link PartitionOutputStream} by emitting outbound push notification.
    *
    * @param ctx the {@link ChannelHandlerContext} which this handler belongs to
    * @param in  the {@link PartitionOutputStream}
    * @param out the {@link List} into which the created control message is added
    */
-  private void onOutboundSendNotification(final ChannelHandlerContext ctx,
+  private void onOutboundPushNotification(final ChannelHandlerContext ctx,
                                           final PartitionOutputStream in,
                                           final List<Object> out) {
-    final short transferId = nextOutboundSendTransferId++;
-    checkTransferIdAvailability(sendTransferIdToOutputStream, ControlMessage.PartitionTransferType.SEND, transferId);
-    sendTransferIdToOutputStream.put(transferId, in);
-    in.setTransferIdAndChannel(ControlMessage.PartitionTransferType.SEND, transferId, ctx.channel());
-    emitControlMessage(ControlMessage.PartitionTransferType.SEND, transferId, in, out);
-    LOG.debug("Sending send notification {} from {}({}) to {}({}) for {} ({}, {})",
+    final short transferId = nextOutboundPushTransferId++;
+    checkTransferIdAvailability(pushTransferIdToOutputStream, ControlMessage.PartitionTransferType.PUSH, transferId);
+    pushTransferIdToOutputStream.put(transferId, in);
+    in.setTransferIdAndChannel(ControlMessage.PartitionTransferType.PUSH, transferId, ctx.channel());
+    emitControlMessage(ControlMessage.PartitionTransferType.PUSH, transferId, in, out);
+    LOG.debug("Sending push notification {} from {}({}) to {}({}) for {} ({}, {})",
         new Object[]{transferId, localExecutorId, localAddress, in.getRemoteExecutorId(), remoteAddress,
         in.getPartitionId(), in.getRuntimeEdgeId(), in.getHashRange().toString()});
   }
 
   /**
-   * For an inbound control message (fetch request or send notification), which initiates a transport context, responds
+   * For an inbound control message (pull request or push notification), which initiates a transport context, responds
    * to it by registering the transport context to the internal mapping, and emitting a new {@link PartitionStream},
    * which will be handled by {@link PartitionTransfer}.
    *
@@ -147,46 +147,46 @@ final class ControlMessageToPartitionStreamCodec
   protected void decode(final ChannelHandlerContext ctx,
                         final ControlMessage.DataTransferControlMessage in,
                         final List<Object> out) {
-    if (in.getType() == ControlMessage.PartitionTransferType.FETCH) {
-      onInboundFetchRequest(ctx, in, out);
+    if (in.getType() == ControlMessage.PartitionTransferType.PULL) {
+      onInboundPullRequest(ctx, in, out);
     } else {
-      onInboundSendNotification(ctx, in, out);
+      onInboundPushNotification(ctx, in, out);
     }
   }
 
   /**
-   * Respond to fetch request by other executors by emitting a new {@link PartitionOutputStream}.
+   * Respond to pull request by other executors by emitting a new {@link PartitionOutputStream}.
    *
    * @param ctx the {@link ChannelHandlerContext} which this handler belongs to
    * @param in  the control message
    * @param out the {@link List} into which the created {@link PartitionOutputStream} is added
    */
-  private void onInboundFetchRequest(final ChannelHandlerContext ctx,
-                                     final ControlMessage.DataTransferControlMessage in,
-                                     final List<Object> out) {
+  private void onInboundPullRequest(final ChannelHandlerContext ctx,
+                                    final ControlMessage.DataTransferControlMessage in,
+                                    final List<Object> out) {
     final short transferId = (short) in.getTransferId();
     final HashRange hashRange = in.hasStartRangeInclusive() && in.hasEndRangeExclusive()
         ? HashRange.of(in.getStartRangeInclusive(), in.getEndRangeExclusive()) : HashRange.all();
     final PartitionOutputStream outputStream = new PartitionOutputStream(in.getControlMessageSourceId(),
         in.getEncodePartialPartition(), Optional.of(convertPartitionStore(in.getPartitionStore())), in.getPartitionId(),
         in.getRuntimeEdgeId(), hashRange);
-    fetchTransferIdToOutputStream.put(transferId, outputStream);
-    outputStream.setTransferIdAndChannel(ControlMessage.PartitionTransferType.FETCH, transferId, ctx.channel());
+    pullTransferIdToOutputStream.put(transferId, outputStream);
+    outputStream.setTransferIdAndChannel(ControlMessage.PartitionTransferType.PULL, transferId, ctx.channel());
     out.add(outputStream);
-    LOG.debug("Received fetch request {} from {}({}) to {}({}) for {} ({}, {} in {})",
+    LOG.debug("Received pull request {} from {}({}) to {}({}) for {} ({}, {} in {})",
         new Object[]{transferId, in.getControlMessageSourceId(), remoteAddress, localExecutorId, localAddress,
         in.getPartitionId(), in.getRuntimeEdgeId(), outputStream.getHashRange().toString(),
         outputStream.getPartitionStore().get().toString()});
   }
 
   /**
-   * Respond to send notification by other executors by emitting a new {@link PartitionInputStream}.
+   * Respond to push notification by other executors by emitting a new {@link PartitionInputStream}.
    *
    * @param ctx the {@link ChannelHandlerContext} which this handler belongs to
    * @param in  the control message
    * @param out the {@link List} into which the created {@link PartitionInputStream} is added
    */
-  private void onInboundSendNotification(final ChannelHandlerContext ctx,
+  private void onInboundPushNotification(final ChannelHandlerContext ctx,
                                          final ControlMessage.DataTransferControlMessage in,
                                          final List<Object> out) {
     final short transferId = (short) in.getTransferId();
@@ -194,9 +194,9 @@ final class ControlMessageToPartitionStreamCodec
         ? HashRange.of(in.getStartRangeInclusive(), in.getEndRangeExclusive()) : HashRange.all();
     final PartitionInputStream inputStream = new PartitionInputStream(in.getControlMessageSourceId(),
         in.getEncodePartialPartition(), Optional.empty(), in.getPartitionId(), in.getRuntimeEdgeId(), hashRange);
-    sendTransferIdToInputStream.put(transferId, inputStream);
+    pushTransferIdToInputStream.put(transferId, inputStream);
     out.add(inputStream);
-    LOG.debug("Received send notification {} from {}({}) to {}({}) for {} ({}, {})",
+    LOG.debug("Received push notification {} from {}({}) to {}({}) for {} ({}, {})",
         new Object[]{transferId, in.getControlMessageSourceId(), remoteAddress, localExecutorId, localAddress,
         in.getPartitionId(), in.getRuntimeEdgeId(), inputStream.getHashRange().toString()});
   }
@@ -250,55 +250,55 @@ final class ControlMessageToPartitionStreamCodec
 
   @Override
   public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) {
-    for (final PartitionInputStream stream : fetchTransferIdToInputStream.values()) {
+    for (final PartitionInputStream stream : pullTransferIdToInputStream.values()) {
       stream.onExceptionCaught(cause);
     }
-    for (final PartitionInputStream stream : sendTransferIdToInputStream.values()) {
+    for (final PartitionInputStream stream : pushTransferIdToInputStream.values()) {
       stream.onExceptionCaught(cause);
     }
-    for (final PartitionOutputStream stream : fetchTransferIdToOutputStream.values()) {
+    for (final PartitionOutputStream stream : pullTransferIdToOutputStream.values()) {
       stream.onExceptionCaught(cause);
     }
-    for (final PartitionOutputStream stream : sendTransferIdToOutputStream.values()) {
+    for (final PartitionOutputStream stream : pushTransferIdToOutputStream.values()) {
       stream.onExceptionCaught(cause);
     }
     ctx.fireExceptionCaught(cause);
   }
 
   /**
-   * Gets {@code fetchTransferIdToInputStream}.
+   * Gets {@code pullTransferIdToInputStream}.
    *
-   * @return {@code fetchTransferIdToInputStream}
+   * @return {@code pullTransferIdToInputStream}
    */
-  Map<Short, PartitionInputStream> getFetchTransferIdToInputStream() {
-    return fetchTransferIdToInputStream;
+  Map<Short, PartitionInputStream> getPullTransferIdToInputStream() {
+    return pullTransferIdToInputStream;
   }
 
   /**
-   * Gets {@code sendTransferIdToInputStream}.
+   * Gets {@code pushTransferIdToInputStream}.
    *
-   * @return {@code sendTransferIdToInputStream}
+   * @return {@code pushTransferIdToInputStream}
    */
-  Map<Short, PartitionInputStream> getSendTransferIdToInputStream() {
-    return sendTransferIdToInputStream;
+  Map<Short, PartitionInputStream> getPushTransferIdToInputStream() {
+    return pushTransferIdToInputStream;
   }
 
   /**
-   * Gets {@code fetchTransferIdToOutputStream}.
+   * Gets {@code pullTransferIdToOutputStream}.
    *
-   * @return {@code fetchTransferIdToOutputStream}
+   * @return {@code pullTransferIdToOutputStream}
    */
-  Map<Short, PartitionOutputStream> getFetchTransferIdToOutputStream() {
-    return fetchTransferIdToOutputStream;
+  Map<Short, PartitionOutputStream> getPullTransferIdToOutputStream() {
+    return pullTransferIdToOutputStream;
   }
 
   /**
-   * Gets {@code sendTransferIdToOutputStream}.
+   * Gets {@code pushTransferIdToOutputStream}.
    *
-   * @return {@code sendTransferIdToOutputStream}
+   * @return {@code pushTransferIdToOutputStream}
    */
-  Map<Short, PartitionOutputStream> getSendTransferIdToOutputStream() {
-    return sendTransferIdToOutputStream;
+  Map<Short, PartitionOutputStream> getPushTransferIdToOutputStream() {
+    return pushTransferIdToOutputStream;
   }
 
   private static ControlMessage.PartitionStore convertPartitionStore(final Attribute partitionStore) {

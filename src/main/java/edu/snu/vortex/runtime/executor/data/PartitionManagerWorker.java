@@ -29,6 +29,7 @@ import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
 import edu.snu.vortex.runtime.executor.data.partition.Partition;
 import edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionInputStream;
 import edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionOutputStream;
+import edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionTransfer;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -59,7 +60,7 @@ public final class PartitionManagerWorker {
 
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder;
 
-  private final PartitionTransferPeer partitionTransferPeer;
+  private final PartitionTransfer partitionTransfer;
 
   @Inject
   private PartitionManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -67,14 +68,14 @@ public final class PartitionManagerWorker {
                                  final LocalFileStore localFileStore,
                                  final RemoteFileStore remoteFileStore,
                                  final PersistentConnectionToMaster persistentConnectionToMaster,
-                                 final PartitionTransferPeer partitionTransferPeer) {
+                                 final PartitionTransfer partitionTransfer) {
     this.executorId = executorId;
     this.memoryStore = memoryStore;
     this.localFileStore = localFileStore;
     this.remoteFileStore = remoteFileStore;
     this.persistentConnectionToMaster = persistentConnectionToMaster;
     this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
-    this.partitionTransferPeer = partitionTransferPeer;
+    this.partitionTransfer = partitionTransfer;
   }
 
   /**
@@ -331,7 +332,6 @@ public final class PartitionManagerWorker {
                         .setPartitionId(partitionId)
                         .build())
                 .build());
-    // responseFromMasterFuture is a CompletableFuture, and PartitionTransferPeer#fetch returns a CompletableFuture.
     // Using thenCompose so that fetching partition data starts after getting response from master.
     return responseFromMasterFuture.thenCompose(responseFromMaster -> {
       assert (responseFromMaster.getType() == ControlMessage.MessageType.PartitionLocationInfo);
@@ -344,7 +344,8 @@ public final class PartitionManagerWorker {
       }
       // This is the executor id that we wanted to know
       final String remoteWorkerId = partitionLocationInfoMsg.getOwnerExecutorId();
-      return partitionTransferPeer.fetch(remoteWorkerId, partitionId, runtimeEdgeId, partitionStore, hashRange);
+      return partitionTransfer.initiatePull(remoteWorkerId, false, partitionStore, partitionId, runtimeEdgeId,
+          hashRange).getCompleteFuture();
     });
   }
 
@@ -362,20 +363,46 @@ public final class PartitionManagerWorker {
   }
 
   /**
-   * Respond to a fetch request by another executor.
+   * Respond to a pull request by another executor.
    *
    * This method is executed by {@link edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionTransport}
    * thread. Never execute a blocking call in this method!
    *
    * @param outputStream {@link PartitionOutputStream}
    */
-  public void onFetchRequest(final PartitionOutputStream outputStream) {
+  public void onPullRequest(final PartitionOutputStream outputStream) {
+    // We are getting the partition from local store!
+    final Optional<Attribute> partitionStoreOptional = outputStream.getPartitionStore();
+    final Attribute partitionStore = partitionStoreOptional.get();
+    if (partitionStore == Attribute.LocalFile || partitionStore == Attribute.RemoteFile) {
+      // TODO #492: Modularize the data communication pattern. Remove attribute value dependant code.
+      final FileStore fileStore = (FileStore) getPartitionStore(partitionStore);
+      try {
+        outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getPartitionId(),
+            outputStream.getHashRange())).close();
+      } catch (final IOException | PartitionFetchException e) {
+        LOG.error("Closing a pull request exceptionally", e);
+        outputStream.closeExceptionally(e);
+      }
+    } else {
+      final CompletableFuture<Iterable<Element>> partitionFuture =
+          retrieveDataFromPartition(outputStream.getPartitionId(), outputStream.getRuntimeEdgeId(),
+              partitionStore, outputStream.getHashRange());
+      partitionFuture.thenAcceptAsync(partition -> {
+        try {
+          outputStream.writeElements(partition).close();
+        } catch (final IOException e) {
+          LOG.error("Closing a pull request exceptionally", e);
+          outputStream.closeExceptionally(e);
+        }
+      });
+    }
   }
 
   /**
-   * Respond to a send notification by another executor.
+   * Respond to a push notification by another executor.
    *
-   * A send notification is generated when a remote executor invokes {@link edu.snu.vortex.runtime.executor.data
+   * A push notification is generated when a remote executor invokes {@link edu.snu.vortex.runtime.executor.data
    * .partitiontransfer.PartitionTransfer#initiateSend(String, boolean, String, String, HashRange)} to transfer
    * a partition to another executor.
    *
@@ -384,6 +411,6 @@ public final class PartitionManagerWorker {
    *
    * @param inputStream {@link PartitionInputStream}
    */
-  public void onSendNotification(final PartitionInputStream inputStream) {
+  public void onPushNotification(final PartitionInputStream inputStream) {
   }
 }

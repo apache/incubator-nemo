@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.net.InetSocketAddress;
+import java.util.function.Consumer;
 
 /**
  * Bootstraps the server and connects to other servers on demand.
@@ -193,16 +194,18 @@ final class PartitionTransport implements AutoCloseable {
 
   /**
    * Connect to the {@link PartitionTransport} server of the specified executor.
-   * @param remoteExecutorId the id of the executor
+   * @param remoteExecutorId  the id of the executor
+   * @param onError           the {@link Consumer} to be invoked on an error on name resolving
    * @return a {@link ChannelFuture} for connecting
    */
-  ChannelFuture connectTo(final String remoteExecutorId) {
+  ChannelFuture connectTo(final String remoteExecutorId, final Consumer<Throwable> onError) {
     final InetSocketAddress address;
     try {
       final PartitionTransportIdentifier identifier = new PartitionTransportIdentifier(remoteExecutorId);
       address = nameResolver.lookup(identifier);
     } catch (final Exception e) {
       LOG.error(String.format("Cannot lookup PartitionTransport listening address of %s", remoteExecutorId), e);
+      onError.accept(e);
       throw new RuntimeException(e);
     }
     return clientBootstrap.connect(address);
