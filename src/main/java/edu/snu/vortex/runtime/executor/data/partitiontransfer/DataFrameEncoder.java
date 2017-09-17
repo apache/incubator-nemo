@@ -55,18 +55,18 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
     // encode header
     final ByteBuf header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
     final short type;
-    final boolean isFetch = in.type == ControlMessage.PartitionTransferType.FETCH;
-    if (isFetch) {
+    final boolean isPull = in.type == ControlMessage.PartitionTransferType.PULL;
+    if (isPull) {
       if (in.isLastFrame) {
-        type = FrameDecoder.FETCH_LASTFRAME;
+        type = FrameDecoder.PULL_LASTFRAME;
       } else {
-        type = FrameDecoder.FETCH_INTERMEDIATE_FRAME;
+        type = FrameDecoder.PULL_INTERMEDIATE_FRAME;
       }
     } else {
       if (in.isLastFrame) {
-        type = FrameDecoder.SEND_LASTFRAME;
+        type = FrameDecoder.PUSH_LASTFRAME;
       } else {
-        type = FrameDecoder.SEND_INTERMEDIATE_FRAME;
+        type = FrameDecoder.PUSH_INTERMEDIATE_FRAME;
       }
     }
     header.writeShort(type);
@@ -90,10 +90,10 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
     if (in.isLastFrame) {
       final ControlMessageToPartitionStreamCodec duplexHandler
           = ctx.channel().pipeline().get(ControlMessageToPartitionStreamCodec.class);
-      (isFetch ? duplexHandler.getFetchTransferIdToOutputStream() : duplexHandler.getSendTransferIdToOutputStream())
+      (isPull ? duplexHandler.getPullTransferIdToOutputStream() : duplexHandler.getPushTransferIdToOutputStream())
           .remove(in.transferId);
       LOG.debug("Closing transport {}:{}, where the partition sender is {} and the receiver is {}", new Object[]{
-          isFetch ? "fetch" : "send", in.transferId, ctx.channel().localAddress(), ctx.channel().remoteAddress()});
+          isPull ? "pull" : "push", in.transferId, ctx.channel().localAddress(), ctx.channel().remoteAddress()});
     }
   }
 
@@ -130,7 +130,7 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
     /**
      * Creates a {@link DataFrame}.
      *
-     * @param type        the transfer type, namely fetch or send
+     * @param type        the transfer type, namely pull or push
      * @param isLastFrame whether or not this frame is the last frame of a data message
      * @param transferId  the transfer id
      * @param length      the length of the body, in bytes

@@ -135,24 +135,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Number of threads in client-side thread pool of {@link edu.snu.vortex.runtime.executor.data.PartitionTransferPeer}.
-   * These threads are responsible for de-serializing bytes into Partition.
-   */
-  @NamedParameter(doc = "Number of threads for partition transfer client", short_name = "partition_client_threads",
-      default_value = "5")
-  public final class PartitionTransferClientNumThreads implements Name<Integer> {
-  }
-
-  /**
-   * Number of threads in server-side thread pool of {@link edu.snu.vortex.runtime.executor.data.PartitionTransferPeer}.
-   * These threads are responsible for serializing Partition into bytes.
-   */
-  @NamedParameter(doc = "Number of threads for partition transfer server", short_name = "partition_server_threads",
-      default_value = "5")
-  public final class PartitionTransferServerNumThreads implements Name<Integer> {
-  }
-
-  /**
    * Scheduler timeout in ms.
    */
   @NamedParameter(doc = "Scheduler timeout in ms", short_name = "scheduler_timeout_ms", default_value = "10000")
