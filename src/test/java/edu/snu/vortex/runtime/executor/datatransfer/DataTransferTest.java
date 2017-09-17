@@ -75,6 +75,9 @@ import static org.mockito.Mockito.mock;
 
 /**
  * Tests {@link InputReader} and {@link OutputWriter}.
+ *
+ * Execute {@code mvn test -Dtest=DataTransferTest -Dio.netty.leakDetectionLevel=paranoid}
+ * to run the test with leakage reports for netty {@link io.netty.util.ReferenceCounted} objects.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class})

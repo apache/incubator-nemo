@@ -36,17 +36,14 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 
 /**
- * Encodes and flushes outbound data elements to other executors.
+ * Output stream for partition transfer. {@link #close()} must be called after finishing write.
  *
- * Three threads are involved in this class.
+ * Encodes and flushes outbound data elements to other executors. Three threads are involved.
  * <ul>
- *   <li>User thread writes {@link edu.snu.vortex.compiler.ir.Element}s or
- *   {@link edu.snu.vortex.runtime.executor.data.FileArea}s to this object</li>
- *   <li>{@link PartitionTransfer#outboundExecutorService} encodes {@link edu.snu.vortex.compiler.ir.Element}s into
- *   {@link io.netty.buffer.ByteBuf}s</li>
- *   <li>Netty {@link io.netty.channel.EventLoopGroup} responds to
- *   {@link io.netty.channel.Channel#writeAndFlush(Object)} by sending {@link io.netty.buffer.ByteBuf}s
- *   or {@link edu.snu.vortex.runtime.executor.data.FileArea}s to the remote executor.</li>
+ *   <li>User thread writes {@link Element}s or {@link FileArea}s to this object</li>
+ *   <li>{@link PartitionTransfer#outboundExecutorService} encodes {@link Element}s into {@link ByteBuf}s</li>
+ *   <li>Netty {@link io.netty.channel.EventLoopGroup} responds to {@link Channel#writeAndFlush(Object)}
+ *   by sending {@link ByteBuf}s or {@link FileRegion}s to the remote executor.</li>
  * </ul>
  *
  * @param <T> the type of element
