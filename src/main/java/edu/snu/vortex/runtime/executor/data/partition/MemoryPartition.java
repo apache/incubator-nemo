@@ -15,21 +15,54 @@
  */
 package edu.snu.vortex.runtime.executor.data.partition;
 
-import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.runtime.executor.data.Block;
+
+import javax.annotation.concurrent.ThreadSafe;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * This class represents a {@link Partition} which is stored in local memory and not serialized.
+ * This class represents a partition which is stored in local memory and not serialized.
  */
-public final class MemoryPartition implements Partition {
+@ThreadSafe
+public final class MemoryPartition {
 
-  private final Iterable<Element> data;
+  private final List<Block> blocks;
+  private volatile AtomicBoolean committed;
 
-  public MemoryPartition(final Iterable<Element> data) {
-    this.data = data;
+  public MemoryPartition() {
+    blocks = Collections.synchronizedList(new ArrayList<>());
+    committed = new AtomicBoolean(false);
   }
 
-  @Override
-  public Iterable<Element> asIterable() {
-    return data;
+  /**
+   * Appends all data in the block to this partition.
+   *
+   * @param blocksToAppend the blocks to append.
+   * @throws IOException if this partition is committed already.
+   */
+  public void appendBlocks(final Iterable<Block> blocksToAppend) throws IOException {
+    if (!committed.get()) {
+      // TODO #463: Support incremental write.
+      blocksToAppend.forEach(blocks::add);
+    }
+  }
+
+  /**
+   * @return the list of the blocks in this partition.
+   */
+  public List<Block> getBlocks() {
+    return blocks;
+  }
+
+  /**
+   * Commits this partition to prevent further write.
+   * If someone "subscribing" the data in this partition, it will be finished.
+   */
+  public void commit() {
+    committed.set(true);
   }
 }

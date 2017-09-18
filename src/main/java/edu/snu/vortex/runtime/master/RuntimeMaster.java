@@ -191,8 +191,8 @@ public final class RuntimeMaster {
         metricMsg.getMessagesList().stream().map(new JsonStringToMapFunction())
             .forEach((msg) -> metricMessageHandler.onMetricMessageReceived(executorId, msg));
         break;
-      case StoreMetadata:
-        partitionManagerMaster.getMetadataManager().onStoreMetadata(message);
+        case CommitMetadata:
+        partitionManagerMaster.getMetadataManager().onCommitBlocks(message);
         break;
       case RemoveMetadata:
         partitionManagerMaster.getMetadataManager().onRemoveMetadata(message);

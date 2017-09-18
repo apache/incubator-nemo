@@ -16,15 +16,12 @@
 package edu.snu.vortex.runtime.executor.data;
 
 import edu.snu.vortex.client.JobConf;
-import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.exception.PartitionFetchException;
 import edu.snu.vortex.runtime.exception.PartitionWriteException;
 import edu.snu.vortex.runtime.executor.data.metadata.LocalFileMetadata;
-import edu.snu.vortex.runtime.executor.data.partition.LocalFilePartition;
-import edu.snu.vortex.runtime.executor.data.partition.MemoryPartition;
-import edu.snu.vortex.runtime.executor.data.partition.Partition;
+import edu.snu.vortex.runtime.executor.data.partition.FilePartition;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -39,135 +36,93 @@ import java.util.function.Supplier;
 
 /**
  * Stores partitions in local files.
- * It writes and reads synchronously.
  */
 @ThreadSafe
 final class LocalFileStore extends FileStore {
 
-  private final Map<String, LocalFilePartition> partitionIdToData;
-
+  private final Map<String, FilePartition> partitionIdToFilePartition;
   private final ExecutorService executorService;
 
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
-                         @Parameter(JobConf.BlockSize.class) final int blockSizeInKb,
                          @Parameter(JobConf.LocalFileStoreNumThreads.class) final int numThreads,
                          final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
-    super(blockSizeInKb, fileDirectory, partitionManagerWorker);
-    this.partitionIdToData = new ConcurrentHashMap<>();
+    super(fileDirectory, partitionManagerWorker);
+    this.partitionIdToFilePartition = new ConcurrentHashMap<>();
     new File(fileDirectory).mkdirs();
     executorService = Executors.newFixedThreadPool(numThreads);
   }
 
   /**
-   * Retrieves a deserialized partition of data through disk.
-   *
-   * @param partitionId of the partition.
-   * @return the partition if exist, or an empty optional else.
+   * Retrieves data in a specific hash range from a partition.
+   * @see PartitionStore#getBlocks(String, HashRange).
    */
   @Override
-  public CompletableFuture<Optional<Partition>> retrieveDataFromPartition(final String partitionId) {
-    final LocalFilePartition partition = partitionIdToData.get(partitionId);
+  public Optional<CompletableFuture<Iterable<Element>>> getBlocks(final String partitionId,
+                                                                  final HashRange hashRange) {
+    // Deserialize the target data in the corresponding file.
+    final FilePartition partition = partitionIdToFilePartition.get(partitionId);
     if (partition == null) {
-      return CompletableFuture.completedFuture(Optional.empty());
-    }
-    // Deserialize the target data in the corresponding file and pass it as a local data.
-    final Supplier<Optional<Partition>> supplier = () -> {
-      try {
-        return Optional.of(new MemoryPartition(partition.asIterable()));
-      } catch (final IOException e) {
-        throw new PartitionFetchException(e);
-      }
-    };
-    return CompletableFuture.supplyAsync(supplier, executorService);
-  }
-
-  /**
-   * @see PartitionStore#retrieveDataFromPartition(String, HashRange).
-   */
-  @Override
-  public CompletableFuture<Optional<Partition>> retrieveDataFromPartition(final String partitionId,
-                                                                          final HashRange hashRange) {
-    // Deserialize the target data in the corresponding file and pass it as a local data.
-    final LocalFilePartition partition = partitionIdToData.get(partitionId);
-    if (partition == null) {
-      return CompletableFuture.completedFuture(Optional.empty());
-    }
-    final Supplier<Optional<Partition>> supplier = () -> {
-      try {
-        return Optional.of(
-            new MemoryPartition(partition.retrieveInHashRange(hashRange)));
-      } catch (final IOException e) {
-        throw new PartitionFetchException(e);
-      }
-    };
-    return CompletableFuture.supplyAsync(supplier, executorService);
-  }
-
-  /**
-   * Saves data in a file as a partition.
-   *
-   * @param partitionId of the partition.
-   * @param data        of to save as a partition.
-   * @return the size of the data.
-   */
-  @Override
-  public CompletableFuture<Optional<Long>> putDataAsPartition(final String partitionId,
-                                                              final Iterable<Element> data) {
-    final Supplier<Optional<Long>> supplier = () -> {
-      final Coder coder = getCoderFromWorker(partitionId);
-      final LocalFileMetadata metadata = new LocalFileMetadata(false);
-
-      try (final LocalFilePartition partition =
-               new LocalFilePartition(coder, partitionIdToFilePath(partitionId), metadata)) {
-        final Partition previousPartition = partitionIdToData.putIfAbsent(partitionId, partition);
-        if (previousPartition != null) {
-          throw new PartitionWriteException(new Throwable("Trying to overwrite an existing partition"));
+      return Optional.empty();
+    } else {
+      final Supplier<Iterable<Element>> supplier = () -> {
+        try {
+          return partition.retrieveInHashRange(hashRange);
+        } catch (final IOException retrievalException) {
+          final Throwable combinedThrowable = commitPartitionWithException(partitionId, retrievalException);
+          throw new PartitionFetchException(combinedThrowable);
         }
-
-        // Serialize and write the given data into blocks
-        final long partitionSize = divideAndPutData(coder, partition, data);
-        return Optional.of(partitionSize);
-      } catch (final IOException e) {
-        throw new PartitionWriteException(e);
-      }
-    };
-    return CompletableFuture.supplyAsync(supplier, executorService);
+      };
+      return Optional.of(CompletableFuture.supplyAsync(supplier, executorService));
+    }
   }
 
   /**
-   * Saves an iterable of data blocks as a partition.
-   * Each block has a specific hash value, and the block becomes a unit of read & write.
-   *
-   * @param partitionId of the partition.
-   * @param hashedData  to save as a partition. Each pair consists of the hash value and the block data.
-   * @return the size of data per hash value.
+   * Saves an iterable of data blocks to a partition.
+   * @see PartitionStore#putBlocks(String, Iterable, boolean).
    */
   @Override
-  public CompletableFuture<Optional<List<Long>>> putHashedDataAsPartition(
-      final String partitionId,
-      final Iterable<Pair<Integer, Iterable<Element>>> hashedData) {
+  public CompletableFuture<Optional<List<Long>>> putBlocks(final String partitionId,
+                                                           final Iterable<Block> blocks,
+                                                           final boolean commitPerBlock) {
     final Supplier<Optional<List<Long>>> supplier = () -> {
       final Coder coder = getCoderFromWorker(partitionId);
       final List<Long> blockSizeList;
-      final LocalFileMetadata metadata = new LocalFileMetadata(true);
+      final LocalFileMetadata metadata = new LocalFileMetadata(commitPerBlock);
 
-      try (final LocalFilePartition partition =
-               new LocalFilePartition(coder, partitionIdToFilePath(partitionId), metadata)) {
-        final Partition previousPartition = partitionIdToData.putIfAbsent(partitionId, partition);
-        if (previousPartition != null) {
-          throw new PartitionWriteException(new Throwable("Trying to overwrite an existing partition"));
-        }
+      try {
+        FilePartition partition =
+            new FilePartition(coder, partitionIdToFilePath(partitionId), metadata);
+        partitionIdToFilePartition.putIfAbsent(partitionId, partition);
+        partition = partitionIdToFilePartition.get(partitionId);
 
-        // Serialize and write the given data into blocks
-        blockSizeList = putHashedData(coder, partition, hashedData);
-      } catch (final IOException e) {
-        throw new PartitionWriteException(e);
+        // Serialize and write the given blocks.
+        blockSizeList = putBlocks(coder, partition, blocks);
+      } catch (final IOException writeException) {
+        final Throwable combinedThrowable = commitPartitionWithException(partitionId, writeException);
+        throw new PartitionWriteException(combinedThrowable);
       }
 
       return Optional.of(blockSizeList);
     };
     return CompletableFuture.supplyAsync(supplier, executorService);
+  }
+
+  /**
+   * @see PartitionStore#commitPartition(String).
+   */
+  @Override
+  public void commitPartition(final String partitionId) throws PartitionWriteException {
+    final FilePartition partition = partitionIdToFilePartition.get(partitionId);
+    if (partition != null) {
+      try {
+        partition.commit();
+      } catch (final IOException e) {
+        throw new PartitionWriteException(e);
+      }
+    } else {
+      throw new PartitionWriteException(new Throwable("There isn't any partition with id " + partitionId));
+    }
   }
 
   /**
@@ -178,7 +133,7 @@ final class LocalFileStore extends FileStore {
    */
   @Override
   public CompletableFuture<Boolean> removePartition(final String partitionId) {
-    final LocalFilePartition serializedPartition = partitionIdToData.remove(partitionId);
+    final FilePartition serializedPartition = partitionIdToFilePartition.remove(partitionId);
     if (serializedPartition == null) {
       return CompletableFuture.completedFuture(false);
     }
@@ -186,24 +141,52 @@ final class LocalFileStore extends FileStore {
       try {
         serializedPartition.deleteFile();
       } catch (final IOException e) {
-        throw new PartitionFetchException(e);
+        final Throwable combinedThrowable = commitPartitionWithException(partitionId, e);
+        throw new PartitionFetchException(combinedThrowable);
       }
       return true;
     };
     return CompletableFuture.supplyAsync(supplier, executorService);
   }
 
+  /**
+   * @see FileStore#getFileAreas(String, HashRange).
+   */
   @Override
-  public List<FileArea> getFileAreas(final String partitionId, final HashRange hashRange) {
+  public List<FileArea> getFileAreas(final String partitionId,
+                                     final HashRange hashRange) {
     try {
-      final LocalFilePartition partition = partitionIdToData.get(partitionId);
+      final FilePartition partition = partitionIdToFilePartition.get(partitionId);
       if (partition == null) {
-        throw new PartitionFetchException(new Exception(String.format("%s does not exists", partitionId)));
-      } else {
-        return partition.asFileAreas(hashRange);
+        throw new IOException(String.format("%s does not exists", partitionId));
       }
-    } catch (final IOException e) {
-      throw new PartitionFetchException(e);
+      return partition.asFileAreas(hashRange);
+    } catch (final IOException retrievalException) {
+      final Throwable combinedThrowable = commitPartitionWithException(partitionId, retrievalException);
+      throw new PartitionFetchException(combinedThrowable);
     }
+  }
+
+  /**
+   * Commits a partition exceptionally.
+   * If there are any subscribers who are waiting the data of the target partition,
+   * they will be notified that partition is committed (exceptionally).
+   * If failed to commit, it combines the cause and newly thrown exception.
+   *
+   * @param partitionId of the partition to commit.
+   * @param cause       of this exception.
+   * @return original cause of this exception if success to commit, combined {@link Throwable} if else.
+   */
+  private Throwable commitPartitionWithException(final String partitionId,
+                                                 final Throwable cause) {
+    try {
+      final FilePartition partitionToClose = partitionIdToFilePartition.get(partitionId);
+      if (partitionToClose != null) {
+        partitionToClose.commit();
+      }
+    } catch (final IOException closeException) {
+      return new Throwable(closeException.getMessage(), cause);
+    }
+    return cause;
   }
 }

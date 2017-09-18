@@ -19,15 +19,24 @@ import java.io.Serializable;
 
 /**
  * Descriptor for hash range.
+ * TODO #494: Refactor HashRange to be general.
  */
 public final class HashRange implements Serializable {
   private static final HashRange ALL = new HashRange(true, 0, Integer.MAX_VALUE);
+  // A hash value which represents that a block does not have single hash value.
+  // Because the hash range is always non-negative,
+  // the blocks which do not have a single hash value will be thought to be included in a hash range
+  // only when it is "ALL".
+  static final int NOT_HASHED = -1;
 
   private final boolean all;
   private final int rangeStartInclusive;
   private final int rangeEndExclusive;
 
   private HashRange(final boolean all, final int rangeStartInclusive, final int rangeEndExclusive) {
+    if (rangeStartInclusive < 0 || rangeEndExclusive < 0) {
+      throw new RuntimeException("Each boundary value of the range have to be non-negative.");
+    }
     this.all = all;
     this.rangeStartInclusive = rangeStartInclusive;
     this.rangeEndExclusive = rangeEndExclusive;

@@ -16,19 +16,17 @@
 package edu.snu.vortex.runtime.executor.data;
 
 import edu.snu.vortex.client.JobConf;
-import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.exception.PartitionFetchException;
 import edu.snu.vortex.runtime.exception.PartitionWriteException;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
 import edu.snu.vortex.runtime.executor.data.metadata.RemoteFileMetadata;
-import edu.snu.vortex.runtime.executor.data.partition.GlusterFilePartition;
-import edu.snu.vortex.runtime.executor.data.partition.MemoryPartition;
-import edu.snu.vortex.runtime.executor.data.partition.Partition;
+import edu.snu.vortex.runtime.executor.data.partition.FilePartition;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.io.File;
@@ -36,13 +34,19 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
 /**
  * Stores partitions in a mounted GlusterFS volume.
+ * Because the data is stored in remote files and globally accessed by multiple nodes,
+ * each access (write, read, or deletion) for a file needs one instance of {@link FilePartition}.
+ * Concurrent write for a single file is supported, but each writer in different executor
+ * has to have separate instance of {@link FilePartition}.
+ * These accesses are judiciously synchronized by the metadata server in master.
+ * TODO #485: Merge LocalFileStore and GlusterFileStore.
+ * TODO #410: Implement metadata caching for the RemoteFileMetadata.
  */
 @ThreadSafe
 final class GlusterFileStore extends FileStore implements RemoteFileStore {
@@ -53,13 +57,12 @@ final class GlusterFileStore extends FileStore implements RemoteFileStore {
 
   @Inject
   private GlusterFileStore(@Parameter(JobConf.GlusterVolumeDirectory.class) final String volumeDirectory,
-                           @Parameter(JobConf.BlockSize.class) final int blockSizeInKb,
                            @Parameter(JobConf.JobId.class) final String jobId,
                            @Parameter(JobConf.GlusterFileStoreNumThreads.class) final int numThreads,
                            @Parameter(JobConf.ExecutorId.class) final String executorId,
                            final InjectionFuture<PartitionManagerWorker> partitionManagerWorker,
                            final PersistentConnectionToMaster persistentConnectionToMaster) {
-    super(blockSizeInKb, volumeDirectory + "/" + jobId, partitionManagerWorker);
+    super(volumeDirectory + "/" + jobId, partitionManagerWorker);
     new File(getFileDirectory()).mkdirs();
     this.executorService = Executors.newFixedThreadPool(numThreads);
     this.executorId = executorId;
@@ -67,145 +70,77 @@ final class GlusterFileStore extends FileStore implements RemoteFileStore {
   }
 
   /**
-   * Retrieves a deserialized partition of data through disk.
-   *
-   * @param partitionId of the partition.
-   * @return the partition if exist, or an empty optional else.
+   * Retrieves a deserialized partition of data through remote disks.
+   * @see PartitionStore#getBlocks(String, HashRange).
    */
   @Override
-  public CompletableFuture<Optional<Partition>> retrieveDataFromPartition(final String partitionId) {
-    final Supplier<Optional<Partition>> supplier = () -> {
-      // Deserialize the target data in the corresponding file and pass it as a local data.
-      final Coder coder = getCoderFromWorker(partitionId);
-      final String filePath = partitionIdToFilePath(partitionId);
-      try {
-        final RemoteFileMetadata metadata =
-            RemoteFileMetadata.openToRead(partitionId, executorId, persistentConnectionToMaster);
-        final Optional<GlusterFilePartition> partition =
-            GlusterFilePartition.openToRead(coder, filePath, metadata);
-        if (partition.isPresent()) {
-          return Optional.of(new MemoryPartition(partition.get().asIterable()));
-        } else {
-          return Optional.empty();
+  public Optional<CompletableFuture<Iterable<Element>>> getBlocks(final String partitionId,
+                                                                  final HashRange hashRange) {
+    final String filePath = partitionIdToFilePath(partitionId);
+    if (!new File(filePath).isFile()) {
+      return Optional.empty();
+    } else {
+      final Supplier<Iterable<Element>> supplier = () -> {
+        // Deserialize the target data in the corresponding file.
+        final Coder coder = getCoderFromWorker(partitionId);
+        FilePartition partition = null;
+        try {
+          final RemoteFileMetadata metadata =
+              new RemoteFileMetadata(false, partitionId, executorId, persistentConnectionToMaster);
+          partition = new FilePartition(coder, filePath, metadata);
+          return partition.retrieveInHashRange(hashRange);
+        } catch (final IOException cause) {
+          final Throwable combinedThrowable = commitPartitionWithException(partition, cause);
+          throw new PartitionFetchException(combinedThrowable);
         }
-      } catch (final IOException | InterruptedException | ExecutionException e) {
-        throw new PartitionFetchException(e);
-      }
-    };
-    return CompletableFuture.supplyAsync(supplier, executorService);
+      };
+      return Optional.of(CompletableFuture.supplyAsync(supplier, executorService));
+    }
   }
 
   /**
-   * @see PartitionStore#retrieveDataFromPartition(String, HashRange).
+   * Saves an iterable of data blocks to a partition.
+   * @see PartitionStore#putBlocks(String, Iterable, boolean).
    */
   @Override
-  public CompletableFuture<Optional<Partition>> retrieveDataFromPartition(final String partitionId,
-                                                                          final HashRange hashRange) {
-    final Supplier<Optional<Partition>> supplier = () -> {
-      // Deserialize the target data in the corresponding file and pass it as a local data.
-      final Coder coder = getCoderFromWorker(partitionId);
-      final String filePath = partitionIdToFilePath(partitionId);
-      try {
-        final RemoteFileMetadata metadata =
-            RemoteFileMetadata.openToRead(partitionId, executorId, persistentConnectionToMaster);
-        final Optional<GlusterFilePartition> partition =
-            GlusterFilePartition.openToRead(coder, filePath, metadata);
-        if (partition.isPresent()) {
-          return Optional.of(new MemoryPartition(
-              partition.get().retrieveInHashRange(hashRange)));
-        } else {
-          return Optional.empty();
-        }
-      } catch (final IOException | InterruptedException | ExecutionException e) {
-        throw new PartitionFetchException(e);
-      }
-    };
-    return CompletableFuture.supplyAsync(supplier, executorService);
-  }
-
-  /**
-   * Saves data in a file as a partition.
-   *
-   * @param partitionId of the partition.
-   * @param data        of to save as a partition.
-   * @return the size of the data.
-   */
-  @Override
-  public CompletableFuture<Optional<Long>> putDataAsPartition(final String partitionId,
-                                                              final Iterable<Element> data) {
-    final Supplier<Optional<Long>> supplier = () -> {
-      final Coder coder = getCoderFromWorker(partitionId);
-      final String filePath = partitionIdToFilePath(partitionId);
-      final RemoteFileMetadata metadata =
-          RemoteFileMetadata.openToWrite(false, false, partitionId, executorId, persistentConnectionToMaster);
-
-      try (final GlusterFilePartition partition =
-               GlusterFilePartition.openToWrite(coder, filePath, metadata)) {
-        // Serialize and write the given data into blocks
-        final long partitionSize = divideAndPutData(coder, partition, data);
-        return Optional.of(partitionSize);
-      } catch (final IOException e) {
-        throw new PartitionWriteException(e);
-      }
-    };
-    return CompletableFuture.supplyAsync(supplier, executorService);
-  }
-
-  /**
-   * Saves an iterable of data blocks as a partition.
-   * Each block has a specific hash value, and the block becomes a unit of read & write.
-   *
-   * @param partitionId of the partition.
-   * @param hashedData  to save as a partition. Each pair consists of the hash value and the block data.
-   * @return the size of data per hash value.
-   */
-  @Override
-  public CompletableFuture<Optional<List<Long>>> putHashedDataAsPartition(
-      final String partitionId,
-      final Iterable<Pair<Integer, Iterable<Element>>> hashedData) {
+  public CompletableFuture<Optional<List<Long>>> putBlocks(final String partitionId,
+                                                           final Iterable<Block> blocks,
+                                                           final boolean commitPerBlock) {
     final Supplier<Optional<List<Long>>> supplier = () -> {
       final Coder coder = getCoderFromWorker(partitionId);
       final String filePath = partitionIdToFilePath(partitionId);
-      final RemoteFileMetadata metadata =
-          RemoteFileMetadata.openToWrite(true, false, partitionId, executorId, persistentConnectionToMaster);
-      final List<Long> blockSizeList;
+      FilePartition partition = null;
 
-      try (final GlusterFilePartition partition =
-               GlusterFilePartition.openToWrite(coder, filePath, metadata)) {
-        // Serialize and write the given data into blocks
-        blockSizeList = putHashedData(coder, partition, hashedData);
-      } catch (final IOException e) {
-        throw new PartitionWriteException(e);
+      try {
+        final RemoteFileMetadata metadata =
+            new RemoteFileMetadata(commitPerBlock, partitionId, executorId, persistentConnectionToMaster);
+        partition = new FilePartition(coder, filePath, metadata);
+        // Serialize and write the given blocks.
+        final List<Long> blockSizeList = putBlocks(coder, partition, blocks);
+        return Optional.of(blockSizeList);
+      } catch (final IOException cause) {
+        final Throwable combinedThrowable = commitPartitionWithException(partition, cause);
+        throw new PartitionWriteException(combinedThrowable);
       }
-      return Optional.of(blockSizeList);
     };
     return CompletableFuture.supplyAsync(supplier, executorService);
   }
 
   /**
-   * Concurrently appends an iterable of data blocks to a partition.
-   * @see RemoteFileStore#appendHashedData(String, Iterable).
+   * @see PartitionStore#commitPartition(String).
    */
   @Override
-  public CompletableFuture<List<Long>> appendHashedData(final String partitionId,
-                                                        final Iterable<Pair<Integer, Iterable<Element>>> hashedData) {
-    final Supplier<List<Long>> supplier = () -> {
-      final Coder coder = getCoderFromWorker(partitionId);
-      final String filePath = partitionIdToFilePath(partitionId);
-      final RemoteFileMetadata metadata =
-          RemoteFileMetadata.openToWrite(true, true, partitionId, executorId, persistentConnectionToMaster);
-      final List<Long> blockSizeList;
+  public void commitPartition(final String partitionId) throws PartitionWriteException {
+    final Coder coder = getCoderFromWorker(partitionId);
+    final String filePath = partitionIdToFilePath(partitionId);
 
-      try (final GlusterFilePartition partition =
-               GlusterFilePartition.openToWrite(coder, filePath, metadata)) {
-        // Serialize and write the given data into blocks
-        blockSizeList = putHashedData(coder, partition, hashedData);
-      } catch (final IOException e) {
-        throw new PartitionWriteException(e);
-      }
-      return blockSizeList;
-    };
-    return CompletableFuture.supplyAsync(supplier, executorService);
+    try {
+      final RemoteFileMetadata metadata =
+          new RemoteFileMetadata(false, partitionId, executorId, persistentConnectionToMaster);
+      new FilePartition(coder, filePath, metadata).commit();
+    } catch (final IOException e) {
+      throw new PartitionFetchException(e);
+    }
   }
 
   /**
@@ -219,41 +154,70 @@ final class GlusterFileStore extends FileStore implements RemoteFileStore {
     final Supplier<Boolean> supplier = () -> {
       final Coder coder = getCoderFromWorker(partitionId);
       final String filePath = partitionIdToFilePath(partitionId);
+      FilePartition partition = null;
 
       try {
-        final RemoteFileMetadata metadata =
-            RemoteFileMetadata.openToRead(partitionId, executorId, persistentConnectionToMaster);
-        final Optional<GlusterFilePartition> partition =
-            GlusterFilePartition.openToRead(coder, filePath, metadata);
-        if (partition.isPresent()) {
-          partition.get().deleteFile();
+        if (new File(filePath).isFile()) {
+          final RemoteFileMetadata metadata =
+              new RemoteFileMetadata(false, partitionId, executorId, persistentConnectionToMaster);
+          partition = new FilePartition(coder, filePath, metadata);
+          partition.deleteFile();
           return true;
         } else {
           return false;
         }
-      } catch (final IOException | InterruptedException | ExecutionException e) {
-        throw new PartitionFetchException(e);
+      } catch (final IOException cause) {
+        final Throwable combinedThrowable = commitPartitionWithException(partition, cause);
+        throw new PartitionFetchException(combinedThrowable);
       }
     };
     return CompletableFuture.supplyAsync(supplier, executorService);
   }
 
+  /**
+   * @see FileStore#getFileAreas(String, HashRange).
+   */
   @Override
-  public List<FileArea> getFileAreas(final String partitionId, final HashRange hashRange) {
+  public List<FileArea> getFileAreas(final String partitionId,
+                                     final HashRange hashRange) {
     final Coder coder = getCoderFromWorker(partitionId);
     final String filePath = partitionIdToFilePath(partitionId);
+    FilePartition partition = null;
+
     try {
-      final RemoteFileMetadata metadata =
-          RemoteFileMetadata.openToRead(partitionId, executorId, persistentConnectionToMaster);
-      final Optional<GlusterFilePartition> partition =
-          GlusterFilePartition.openToRead(coder, filePath, metadata);
-      if (partition.isPresent()) {
-        return partition.get().asFileAreas(hashRange);
+      if (new File(filePath).isFile()) {
+        final RemoteFileMetadata metadata =
+            new RemoteFileMetadata(false, partitionId, executorId, persistentConnectionToMaster);
+        partition = new FilePartition(coder, filePath, metadata);
+        return partition.asFileAreas(hashRange);
       } else {
-        throw new PartitionFetchException(new Exception(String.format("%s does not exists", partitionId)));
+        throw new PartitionFetchException(new Throwable(String.format("%s does not exists", partitionId)));
       }
-    } catch (final IOException | InterruptedException | ExecutionException e) {
-      throw new PartitionFetchException(e);
+    } catch (final IOException cause) {
+      final Throwable combinedThrowable = commitPartitionWithException(partition, cause);
+      throw new PartitionFetchException(combinedThrowable);
     }
+  }
+
+  /**
+   * Commits a partition exceptionally.
+   * If there are any subscribers who are waiting the data of the target partition,
+   * they will be notified that partition is committed (exceptionally).
+   * If failed to commit, it combines the cause and newly thrown exception.
+   *
+   * @param partition to commit.
+   * @param cause     of this exception.
+   * @return original cause of this exception if success to commit, combined {@link Throwable} if else.
+   */
+  private Throwable commitPartitionWithException(@Nullable final FilePartition partition,
+                                                 final Throwable cause) {
+    try {
+      if (partition != null) {
+        partition.commit();
+      }
+    } catch (final IOException closeException) {
+      return new Throwable(closeException.getMessage(), cause);
+    }
+    return cause;
   }
 }

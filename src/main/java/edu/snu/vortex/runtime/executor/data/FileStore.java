@@ -15,7 +15,6 @@
  */
 package edu.snu.vortex.runtime.executor.data;
 
-import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
@@ -32,14 +31,11 @@ import java.util.List;
  */
 abstract class FileStore implements PartitionStore {
 
-  private final int blockSizeInBytes;
   private final String fileDirectory;
   private final InjectionFuture<PartitionManagerWorker> partitionManagerWorker;
 
-  protected FileStore(final int blockSizeInKb,
-                      final String fileDirectory,
+  protected FileStore(final String fileDirectory,
                       final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
-    this.blockSizeInBytes = blockSizeInKb * 1000;
     this.fileDirectory = fileDirectory;
     this.partitionManagerWorker = partitionManagerWorker;
   }
@@ -59,26 +55,6 @@ abstract class FileStore implements PartitionStore {
    * @param elementsInBlock the number of elements in this block.
    * @param outputStream    the output stream containing data.
    * @param partition       the partition to write the block.
-   * @return the size of serialized block.
-   * @throws IOException if fail to write.
-   */
-  private long writeBlock(final long elementsInBlock,
-                          final ByteArrayOutputStream outputStream,
-                          final FilePartition partition) throws IOException {
-    outputStream.close();
-
-    final byte[] serialized = outputStream.toByteArray();
-    partition.writeBlock(serialized, elementsInBlock);
-
-    return serialized.length;
-  }
-
-  /**
-   * Makes the given stream to a block and write it to the given file partition.
-   *
-   * @param elementsInBlock the number of elements in this block.
-   * @param outputStream    the output stream containing data.
-   * @param partition       the partition to write the block.
    * @param hashVal         the hash value of the block.
    * @return the size of serialized block.
    * @throws IOException if fail to write.
@@ -87,8 +63,6 @@ abstract class FileStore implements PartitionStore {
                           final ByteArrayOutputStream outputStream,
                           final FilePartition partition,
                           final int hashVal) throws IOException {
-    outputStream.close();
-
     final byte[] serialized = outputStream.toByteArray();
     partition.writeBlock(serialized, elementsInBlock, hashVal);
 
@@ -108,74 +82,33 @@ abstract class FileStore implements PartitionStore {
   }
 
   /**
-   * Serializes and puts the data to a file partition.
-   * It divides the data into blocks according to the size of data.
+   * Serializes and puts the data blocks to a file partition.
    *
    * @param coder     the coder used to serialize the data of this partition.
    * @param partition to store this data.
-   * @param data      to be stored.
+   * @param blocks    to be stored.
    * @return the size of the data.
    * @throws IOException if fail to write the data.
    */
-  protected long divideAndPutData(final Coder coder,
-                                  final FilePartition partition,
-                                  final Iterable<Element> data) throws IOException {
-    // Serialize the given data into blocks
-    long partitionSize = 0;
-    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    long elementsInBlock = 0;
-    for (final Element element : data) {
-      coder.encode(element, outputStream);
-      elementsInBlock++;
-
-      if (outputStream.size() >= blockSizeInBytes) {
-        // If this block is large enough, synchronously append it to the file and reset the buffer
-        partitionSize += writeBlock(elementsInBlock, outputStream, partition);
-
-        outputStream.reset();
-        elementsInBlock = 0;
-      }
-    }
-
-    if (outputStream.size() > 0) {
-      // If there are any remaining data in stream, write it as another block.
-      partitionSize += writeBlock(elementsInBlock, outputStream, partition);
-    }
-    partition.finishWrite();
-
-    return partitionSize;
-  }
-
-  /**
-   * Serializes and puts the data to a file partition.
-   * The data consists of multiple blocks and each block has a single value.
-   *
-   * @param coder      the coder used to serialize the data of this partition.
-   * @param partition  to store this data.
-   * @param hashedData to be stored.
-   * @return the size of the data.
-   * @throws IOException if fail to write the data.
-   */
-  protected List<Long> putHashedData(final Coder coder,
-                                     final FilePartition partition,
-                                     final Iterable<Pair<Integer, Iterable<Element>>> hashedData)
-      throws IOException {
+  protected List<Long> putBlocks(final Coder coder,
+                                 final FilePartition partition,
+                                 final Iterable<Block> blocks) throws IOException {
     final List<Long> blockSizeList = new ArrayList<>();
     // Serialize the given blocks
-    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    for (final Pair<Integer, Iterable<Element>> blockInfo : hashedData) {
-      final int hashValue = blockInfo.left();
-      long elementsInBlock = 0;
-      for (final Element element : blockInfo.right()) {
-        coder.encode(element, outputStream);
-        elementsInBlock++;
+    final ByteArrayOutputStream bytesOutputStream = new ByteArrayOutputStream();
+    for (final Block block : blocks) {
+      long numOfElementsInBlock = 0;
+      for (final Element element : block.getData()) {
+        coder.encode(element, bytesOutputStream);
+        numOfElementsInBlock++;
       }
-      // Synchronously append the serialized block to the file and reset the buffer
-      blockSizeList.add(writeBlock(elementsInBlock, outputStream, partition, hashValue));
 
-      outputStream.reset();
+      // Write the block.
+      final long blockSize = writeBlock(numOfElementsInBlock, bytesOutputStream, partition, block.getKey());
+      blockSizeList.add(blockSize);
+      bytesOutputStream.reset();
     }
-    partition.finishWrite();
+    partition.commitRemainderMetadata();
 
     return blockSizeList;
   }

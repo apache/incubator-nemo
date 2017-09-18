@@ -20,9 +20,9 @@ import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.io.*;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -31,176 +31,124 @@ import java.util.concurrent.ExecutionException;
  * This class represents a metadata for a remote file partition.
  * Because the data is stored in a remote file and globally accessed by multiple nodes,
  * each access (create - write - close, read, or deletion) for a partition needs one instance of this metadata.
+ * Concurrent write for a single file is supported, but each writer in different executor
+ * has to have separate instance of this class.
  * It supports concurrent write for a single partition, but each writer has to have separate instance of this class.
  * These accesses are judiciously synchronized by the metadata server in master.
  */
+@ThreadSafe
 public final class RemoteFileMetadata extends FileMetadata {
 
-  private boolean written; // The whole data for this partition is written or not yet.
-  private final boolean syncPerWrite; // Whether the partition have to synchronize the metadata per every block write.
   private final String partitionId;
   private final String executorId;
   private final PersistentConnectionToMaster connectionToMaster;
+  private volatile Iterable<BlockMetadata> blockMetadataIterable;
 
   /**
-   * Opens a partition metadata to write.
+   * Opens a partition metadata.
+   * TODO #410: Implement metadata caching for the RemoteFileMetadata.
    *
-   * @param hashed             each block has a single hash value or not.
-   * @param syncPerWrite       Whether the partition have to synchronize the metadata per every block write.
-   *                           If so, the partition can be written concurrently.
+   * @param commitPerBlock     whether commit every block write or not.
    * @param partitionId        the id of the partition.
    * @param executorId         the id of the executor.
    * @param connectionToMaster the connection for sending messages to master.
    */
-  private RemoteFileMetadata(final boolean hashed,
-                             final boolean syncPerWrite,
-                             final String partitionId,
-                             final String executorId,
-                             final PersistentConnectionToMaster connectionToMaster) {
-    super(hashed);
-    this.written = false;
-    this.syncPerWrite = syncPerWrite;
+  public RemoteFileMetadata(final boolean commitPerBlock,
+                            final String partitionId,
+                            final String executorId,
+                            final PersistentConnectionToMaster connectionToMaster) {
+    super(commitPerBlock);
     this.partitionId = partitionId;
     this.executorId = executorId;
     this.connectionToMaster = connectionToMaster;
   }
 
   /**
-   * Opens an exist metadata to read.
+   * Reserves the region for a block and get the metadata for the block.
    *
-   * @param hashed             each block has a single hash value or not.
-   * @param partitionId        the id of the partition.
-   * @param executorId         the id of the executor.
-   * @param blockMetadataList  the list of block metadata.
-   * @param connectionToMaster the connection for sending messages to master.
+   * @see FileMetadata#reserveBlock(int, int, long).
    */
-  private RemoteFileMetadata(final boolean hashed,
-                             final String partitionId,
-                             final String executorId,
-                             final List<BlockMetadata> blockMetadataList,
-                             final PersistentConnectionToMaster connectionToMaster) {
-    super(hashed, blockMetadataList);
-    this.written = true;
-    this.syncPerWrite = false;
-    this.partitionId = partitionId;
-    this.executorId = executorId;
-    this.connectionToMaster = connectionToMaster;
+  @Override
+  public synchronized BlockMetadata reserveBlock(final int hashValue,
+                                                 final int blockSize,
+                                                 final long elementsTotal) throws IOException {
+    // Convert the block metadata to a block metadata message (without offset).
+    final ControlMessage.BlockMetadataMsg blockMetadataMsg =
+        ControlMessage.BlockMetadataMsg.newBuilder()
+            .setHashValue(hashValue)
+            .setBlockSize(blockSize)
+            .setNumElements(elementsTotal)
+            .build();
+
+    // Send the block metadata to the metadata server in the master and ask where to store the block.
+    final CompletableFuture<ControlMessage.Message> reserveBlockResponseFuture =
+        connectionToMaster.getMessageSender().request(
+            ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdGenerator.generateMessageId())
+                .setType(ControlMessage.MessageType.ReserveBlock)
+                .setReserveBlockMsg(
+                    ControlMessage.ReserveBlockMsg.newBuilder()
+                        .setExecutorId(executorId)
+                        .setPartitionId(partitionId)
+                        .setBlockMetadata(blockMetadataMsg))
+                .build());
+
+    // Get the response from the metadata server.
+    final ControlMessage.Message responseFromMaster;
+    try {
+      responseFromMaster = reserveBlockResponseFuture.get();
+    } catch (final InterruptedException | ExecutionException e) {
+      throw new IOException(e);
+    }
+
+    assert (responseFromMaster.getType() == ControlMessage.MessageType.ReserveBlockResponse);
+    final ControlMessage.ReserveBlockResponseMsg reserveBlockResponseMsg =
+        responseFromMaster.getReserveBlockResponseMsg();
+    if (!reserveBlockResponseMsg.hasPositionToWrite()) {
+      // TODO #463: Support incremental read. Check whether this partition is committed in the metadata server side.
+      throw new IOException("Cannot append the block metadata.");
+    }
+    final int blockIndex = reserveBlockResponseMsg.getBlockIdx();
+    final long positionToWrite = reserveBlockResponseMsg.getPositionToWrite();
+    return new BlockMetadata(blockIndex, hashValue, blockSize, positionToWrite, elementsTotal);
   }
 
   /**
-   * Appends a metadata for a block.
-   * If the reservation is enabled,
-   * it reserves a region for this block metadata and write the metadata to the server right away.
-   * If else, it does not do any synchronization and this change will valid in local only.
-   * In this case, further synchronization will be done in {@link FileMetadata#getAndSetWritten()}.
+   * Notifies that some blocks are written.
    *
-   * @param hashValue   of the block.
-   * @param blockSize   of the block.
-   * @param numElements of the block.
-   * @return the position in the file to write the block.
-   * @throws IOException if fail to append the block metadata.
+   * @see FileMetadata#commitBlocks(Iterable).
    */
   @Override
-  public long appendBlockMetadata(final int hashValue,
-                                  final int blockSize,
-                                  final long numElements) throws IOException {
-    if (syncPerWrite) {
-      // Convert the block metadata to a block metadata message (without offset).
-      final ControlMessage.BlockMetadataMsg blockMetadataMsg =
-          ControlMessage.BlockMetadataMsg.newBuilder()
-              .setHashValue(hashValue)
-              .setBlockSize(blockSize)
-              .setNumElements(numElements)
-              .build();
+  public synchronized void commitBlocks(final Iterable<BlockMetadata> blockMetadataToCommit) {
+    final List<Integer> blockIndices = new ArrayList<>();
+    blockMetadataToCommit.forEach(blockMetadata -> {
+      blockMetadata.setCommitted();
+      blockIndices.add(blockMetadata.getBlockIdx());
+    });
 
-      // Send the block metadata to the metadata server in the master and ask where to store the block.
-      final CompletableFuture<ControlMessage.Message> reserveBlockResponseFuture =
-          connectionToMaster.getMessageSender().request(
-              ControlMessage.Message.newBuilder()
-                  .setId(RuntimeIdGenerator.generateMessageId())
-                  .setType(ControlMessage.MessageType.ReserveBlock)
-                  .setReserveBlockMsg(
-                      ControlMessage.ReserveBlockMsg.newBuilder()
-                          .setExecutorId(executorId)
-                          .setPartitionId(partitionId)
-                          .setHashed(isHashed())
-                          .setBlockMetadata(blockMetadataMsg))
-                  .build());
-
-      // Get the response from the metadata server.
-      final ControlMessage.Message responseFromMaster;
-      try {
-        responseFromMaster = reserveBlockResponseFuture.get();
-      } catch (final InterruptedException | ExecutionException e) {
-        throw new IOException(e);
-      }
-
-      assert (responseFromMaster.getType() == ControlMessage.MessageType.ReserveBlockResponse);
-      final ControlMessage.ReserveBlockResponseMsg reserveBlockResponseMsg =
-          responseFromMaster.getReserveBlockResponseMsg();
-      if (!reserveBlockResponseMsg.hasPositionToWrite()) {
-        throw new IOException("Cannot append the block metadata.");
-      }
-      return reserveBlockResponseMsg.getPositionToWrite();
-    } else {
-      final long currentPosition = getPosition();
-      getBlockMetadataList().add(new BlockMetadata(hashValue, blockSize, currentPosition, numElements));
-      setPosition(currentPosition + blockSize);
-      return currentPosition;
-    }
+    // Notify that these blocks are committed to the metadata server.
+    connectionToMaster.getMessageSender().send(
+        ControlMessage.Message.newBuilder()
+            .setId(RuntimeIdGenerator.generateMessageId())
+            .setType(ControlMessage.MessageType.CommitMetadata)
+            .setCommitMetadataMsg(
+                ControlMessage.CommitMetadataMsg.newBuilder()
+                    .setPartitionId(partitionId)
+                    .addAllBlockIdx(blockIndices))
+            .build());
   }
 
   /**
-   * Marks that the whole data for this partition is written.
-   * This method synchronizes all changes if needed.
+   * Gets a iterable containing the block metadata of corresponding partition.
    *
-   * @return {@code true} if already set, or {@code false} if not.
-   * @throws IOException if fail to finish the write.
+   * @see FileMetadata#getBlockMetadataIterable().
    */
   @Override
-  public boolean getAndSetWritten() throws IOException {
-    if (written) {
-      return true;
+  public synchronized Iterable<BlockMetadata> getBlockMetadataIterable() throws IOException {
+    if (blockMetadataIterable == null) {
+      blockMetadataIterable = getBlockMetadataFromServer();
     }
-    written = true;
-
-    if (!syncPerWrite) {
-      // Send the whole metadata to the metadata server.
-      final List<ControlMessage.BlockMetadataMsg> blockMetadataMsgList = new LinkedList<>();
-      for (final BlockMetadata blockMetadata : getBlockMetadataList()) {
-        // Convert the block metadata to a block metadata message.
-        blockMetadataMsgList.add(
-            ControlMessage.BlockMetadataMsg.newBuilder()
-                .setHashValue(blockMetadata.getHashValue())
-                .setBlockSize(blockMetadata.getBlockSize())
-                .setOffset(blockMetadata.getOffset())
-                .setNumElements(blockMetadata.getNumElements())
-                .build()
-        );
-      }
-      connectionToMaster.getMessageSender().send(
-          ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdGenerator.generateMessageId())
-              .setType(ControlMessage.MessageType.StoreMetadata)
-              .setStoreMetadataMsg(
-                  ControlMessage.StoreMetadataMsg.newBuilder()
-                      .setPartitionId(partitionId)
-                      .setHashed(isHashed())
-                      .addAllBlockMetadata(blockMetadataMsgList))
-              .build());
-    }
-
-    return false;
-  }
-
-  /**
-   * Gets whether the whole data for this partition is written or not yet.
-   *
-   * @return whether the whole data for this partition is written or not yet.
-   */
-  @Override
-  public boolean isWritten() {
-    return written;
+    return blockMetadataIterable;
   }
 
   /**
@@ -219,43 +167,24 @@ public final class RemoteFileMetadata extends FileMetadata {
   }
 
   /**
-   * Opens a file metadata for a partition in the remote storage to write.
-   * The corresponding {@link FileMetadata#getAndSetWritten()}} for the returned metadata is required.
-   *
-   * @param hashed             whether each block in this partition has a single hash value or not.
-   * @param syncPerWrite       Whether the partition have to synchronize the metadata per every block write.
-   *                           If so, the partition can be written concurrently.
-   * @param partitionId        the id of the partition.
-   * @param executorId         the id of the executor.
-   * @param connectionToMaster the connection for sending messages to master.
-   * @return the created file metadata.
+   * Notifies that all writes are finished for the partition corresponding to this metadata.
+   * Subscribers waiting for the data of the target partition are notified when the partition is committed.
+   * Also, further subscription about a committed partition will not blocked but get the data in it and finished.
    */
-  public static RemoteFileMetadata openToWrite(final boolean hashed,
-                                               final boolean syncPerWrite,
-                                               final String partitionId,
-                                               final String executorId,
-                                               final PersistentConnectionToMaster connectionToMaster) {
-    return new RemoteFileMetadata(hashed, syncPerWrite, partitionId, executorId, connectionToMaster);
+  @Override
+  public synchronized void commitPartition() {
+    // TODO #463: Support incremental write. Close the "ClosableBlockingIterable".
   }
 
   /**
-   * Opens the corresponding file metadata for a partition in the remote storage to read.
-   * It will communicates with the metadata server to get the metadata.
+   * Gets the iterable of block metadata from the metadata server.
+   * If write for this partition is not ended, the metadata Fserver will publish the committed blocks to this iterable.
    *
-   * @param partitionId        the id of the partition.
-   * @param executorId         the id of the executor.
-   * @param connectionToMaster the connection for sending messages to master.
-   * @return the read file metadata.
-   * @throws IOException if fail to read the metadata.
-   * @throws InterruptedException if interrupted during waiting the response from the metadata server.
-   * @throws ExecutionException if the request to the metadata server completed exceptionally.
+   * @return the received file metadata.
+   * @throws IOException if fail to get the metadata.
    */
-  public static RemoteFileMetadata openToRead(final String partitionId,
-                                              final String executorId,
-                                              final PersistentConnectionToMaster connectionToMaster)
-      throws IOException, InterruptedException, ExecutionException {
+  private Iterable<BlockMetadata> getBlockMetadataFromServer() throws IOException {
     final List<BlockMetadata> blockMetadataList = new ArrayList<>();
-    // TODO #410: Implement metadata caching for the RemoteFileMetadata.
 
     // Ask the metadata server in the master for the metadata
     final CompletableFuture<ControlMessage.Message> metadataResponseFuture =
@@ -270,31 +199,32 @@ public final class RemoteFileMetadata extends FileMetadata {
                         .build())
                 .build());
 
-    final ControlMessage.Message responseFromMaster = metadataResponseFuture.get();
+    final ControlMessage.Message responseFromMaster;
+    try {
+      responseFromMaster = metadataResponseFuture.get();
+    } catch (final InterruptedException | ExecutionException e) {
+      throw new IOException(e);
+    }
+
     assert (responseFromMaster.getType() == ControlMessage.MessageType.MetadataResponse);
     final ControlMessage.MetadataResponseMsg metadataResponseMsg = responseFromMaster.getMetadataResponseMsg();
-    if (!metadataResponseMsg.hasHashed()) {
-      // Response does not have any metadata.
-      if (metadataResponseMsg.hasState()) {
-        throw new IOException(new Throwable(
-            "Cannot get the metadata of partition " + partitionId + " from the metadata server: "
-                + "The partition state is " + RuntimeMaster.convertPartitionState(metadataResponseMsg.getState())));
-      } else {
-        throw new IOException(new Throwable(
-            "Cannot get the metadata of partition " + partitionId + " from the metadata server: "
-                + "The partition is committed but the metadata does not exist"));
-      }
+    if (metadataResponseMsg.hasState()) {
+      // Response has an exception state.
+      throw new IOException(new Throwable(
+          "Cannot get the metadata of partition " + partitionId + " from the metadata server: "
+              + "The partition state is " + RuntimeMaster.convertPartitionState(metadataResponseMsg.getState())));
     }
 
     // Construct the metadata from the response.
-    final boolean hashed = metadataResponseMsg.getHashed();
     final List<ControlMessage.BlockMetadataMsg> blockMetadataMsgList = metadataResponseMsg.getBlockMetadataList();
-    for (final ControlMessage.BlockMetadataMsg blockMetadataMsg : blockMetadataMsgList) {
+    for (int blockIdx = 0; blockIdx < blockMetadataMsgList.size(); blockIdx++) {
+      final ControlMessage.BlockMetadataMsg blockMetadataMsg = blockMetadataMsgList.get(blockIdx);
       if (!blockMetadataMsg.hasOffset()) {
         throw new IOException(new Throwable(
             "The metadata of a block in the " + partitionId + " does not have offset value."));
       }
       blockMetadataList.add(new BlockMetadata(
+          blockIdx,
           blockMetadataMsg.getHashValue(),
           blockMetadataMsg.getBlockSize(),
           blockMetadataMsg.getOffset(),
@@ -302,15 +232,7 @@ public final class RemoteFileMetadata extends FileMetadata {
       ));
     }
 
-    return new RemoteFileMetadata(hashed, partitionId, executorId, blockMetadataList, connectionToMaster);
-  }
-
-  /**
-   * Gets whether the partition have to synchronize the metadata per every block write.
-   *
-   * @return whether the partition have to synchronize the metadata per every block write.
-   */
-  public boolean needToSyncPerWrite() {
-    return syncPerWrite;
+    // TODO #463: Support incremental read. Return a "ClosableBlockingIterable".
+    return blockMetadataList;
   }
 }
