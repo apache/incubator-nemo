@@ -183,24 +183,24 @@ public final class RuntimeMaster {
         LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
         containerManager.onExecutorRemoved(failedExecutorId);
         throw new RuntimeException(exception);
-        case ContainerFailed:
-          final Map<String, Object> jsonMetricData = new HashMap<>();
-          final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
-          jsonMetricData.put("ExecutorId", containerFailedMsg.getExecutorId());
-          jsonMetricData.put("ContainerFailure", true);
-          try {
-            final String jsonStr = objectMapper.writeValueAsString(jsonMetricData);
-            jobStateManager.getMetricMessageHandler().onMetricMessageReceived(jsonStr);
-          } catch (final Exception e) {
-            throw new JsonParseException(e);
-          }
-          break;
-        case MetricMessageReceived:
+      case ContainerFailed:
+        final Map<String, Object> jsonMetricData = new HashMap<>();
+        final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
+        jsonMetricData.put("ExecutorId", containerFailedMsg.getExecutorId());
+        jsonMetricData.put("ContainerFailure", true);
+        try {
+          final String jsonStr = objectMapper.writeValueAsString(jsonMetricData);
+          jobStateManager.getMetricMessageHandler().onMetricMessageReceived(jsonStr);
+        } catch (final Exception e) {
+          throw new JsonParseException(e);
+        }
+        break;
+      case MetricMessageReceived:
         final ControlMessage.MetricMsg metricMsg = message.getMetricMsg();
         metricMsg.getMetricMessagesList().stream()
             .forEach((msg) -> jobStateManager.getMetricMessageHandler().onMetricMessageReceived(msg));
         break;
-        case CommitMetadata:
+      case CommitMetadata:
         partitionManagerMaster.getMetadataManager().onCommitBlocks(message);
         break;
       case RemoveMetadata:
