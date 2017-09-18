@@ -156,13 +156,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Block size.
-   */
-  @NamedParameter(doc = "Block size (in KB)", short_name = "block_size", default_value = "128000")
-  public final class BlockSize implements Name<Integer> {
-  }
-
-  /**
    * Hash range multiplier.
    * If we need to split or recombine an output data from a task after it is stored,
    * we multiply the hash range with this factor in advance

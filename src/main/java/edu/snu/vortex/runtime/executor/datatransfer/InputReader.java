@@ -40,6 +40,8 @@ import java.util.stream.StreamSupport;
 
 /**
  * Represents the input data transfer to a task.
+ * TODO #492: Modularize the data communication pattern.
+ * TODO #493: Detach partitioning from writing.
  */
 public final class InputReader extends DataTransfer {
   private final int dstTaskIndex;
@@ -87,6 +89,7 @@ public final class InputReader extends DataTransfer {
           return readBroadcast();
         case ScatterGather:
           // If the dynamic optimization which detects data skew is enabled, read the data in the assigned range.
+          // TODO #492: Modularize the data communication pattern.
           if (isDataSizeMetricCollectionEdge) {
             return readDataInRange();
           } else if (isIFileWriteEdge) {

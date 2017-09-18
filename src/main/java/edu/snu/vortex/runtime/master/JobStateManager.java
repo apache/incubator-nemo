@@ -47,6 +47,7 @@ import static edu.snu.vortex.common.dag.DAG.EMPTY_DAG_DIRECTORY;
  * Manages the states related to a job.
  * This class can be used to track a job's execution status to task level in the future.
  * The methods of this class are synchronized.
+ * TODO #493: Detach partitioning from writing.
  */
 public final class JobStateManager {
   private static final Logger LOG = LoggerFactory.getLogger(JobStateManager.class.getName());

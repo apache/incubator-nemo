@@ -21,13 +21,20 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
+import edu.snu.vortex.runtime.exception.PartitionWriteException;
 import edu.snu.vortex.runtime.exception.UnsupportedCommPatternException;
+import edu.snu.vortex.runtime.exception.UnsupportedMethodException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionerException;
+import edu.snu.vortex.runtime.executor.data.Block;
 import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
 /**
@@ -39,6 +46,7 @@ public final class OutputWriter extends DataTransfer {
   private final RuntimeEdge runtimeEdge;
   private final String srcVertexId;
   private final IRVertex dstVertex;
+  private final Attribute channelDataPlacement;
 
   /**
    * The Block Manager Worker.
@@ -58,10 +66,12 @@ public final class OutputWriter extends DataTransfer {
     this.dstVertex = dstRuntimeVertex;
     this.partitionManagerWorker = partitionManagerWorker;
     this.srcTaskIdx = srcTaskIdx;
+    this.channelDataPlacement = runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement);
   }
 
   /**
    * Writes output data depending on the communication pattern of the edge.
+   *
    * @param dataToWrite An iterable for the elements to be written.
    */
   public void write(final Iterable<Element> dataToWrite) {
@@ -70,66 +80,89 @@ public final class OutputWriter extends DataTransfer {
     final Attribute writeOptAtt = runtimeEdge.getAttributes().get(Attribute.Key.WriteOptimization);
     final Boolean isIFileWriteEdge =
         writeOptAtt != null && writeOptAtt.equals(Attribute.IFileWrite);
-    switch (runtimeEdge.getAttributes().get(Attribute.Key.CommunicationPattern)) {
-      case OneToOne:
-        writeOneToOne(dataToWrite);
-        break;
-      case Broadcast:
-        writeBroadcast(dataToWrite);
-        break;
-      case ScatterGather:
-        // If the dynamic optimization which detects data skew is enabled, sort the data and write it.
-        if (isDataSizeMetricCollectionEdge) {
-          hashAndWrite(dataToWrite);
-        } else if (isIFileWriteEdge) {
-          writeIFile(dataToWrite);
-        } else {
-          writeScatterGather(dataToWrite);
-        }
-        break;
-      default:
-        throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    if (writeOptAtt != null && !writeOptAtt.equals(Attribute.IFileWrite)) {
+      throw new UnsupportedMethodException("Unsupported write optimization.");
+    }
+
+    // TODO #463: Support incremental write.
+    try {
+      switch (runtimeEdge.getAttributes().get(Attribute.Key.CommunicationPattern)) {
+        case OneToOne:
+          writeOneToOne(dataToWrite);
+          break;
+        case Broadcast:
+          writeBroadcast(dataToWrite);
+          break;
+        case ScatterGather:
+          // If the dynamic optimization which detects data skew is enabled, sort the data and write it.
+          if (isDataSizeMetricCollectionEdge) {
+            hashAndWrite(dataToWrite);
+          } else if (isIFileWriteEdge) {
+            writeIFile(dataToWrite);
+          } else {
+            writeScatterGather(dataToWrite);
+          }
+          break;
+        default:
+          throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+      }
+    } catch (final InterruptedException | ExecutionException e) {
+      throw new PartitionWriteException(e);
     }
   }
 
-  private void writeOneToOne(final Iterable<Element> dataToWrite) {
+  private void writeOneToOne(final Iterable<Element> dataToWrite) throws ExecutionException, InterruptedException {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
-    partitionManagerWorker.putPartition(partitionId, dataToWrite,
-        runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
+    final Block blockToWrite = new Block(dataToWrite);
+
+    // Write data.
+    final CompletableFuture future = partitionManagerWorker.putBlocks(
+        partitionId, Collections.singleton(blockToWrite), channelDataPlacement, false);
+    future.get(); // Synchronize.
+
+    // Commit partition.
+    partitionManagerWorker.commitPartition(
+        partitionId, channelDataPlacement, Collections.emptyList(), srcVertexId, srcTaskIdx, false);
   }
 
-  private void writeBroadcast(final Iterable<Element> dataToWrite) {
-    final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
-    partitionManagerWorker.putPartition(partitionId, dataToWrite,
-        runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
+  private void writeBroadcast(final Iterable<Element> dataToWrite) throws ExecutionException, InterruptedException {
+    writeOneToOne(dataToWrite);
   }
 
-  private void writeScatterGather(final Iterable<Element> dataToWrite) {
+  private void writeScatterGather(final Iterable<Element> dataToWrite) throws ExecutionException, InterruptedException {
     final Attribute partition = runtimeEdge.getAttributes().get(Attribute.Key.Partitioning);
     switch (partition) {
-    case Hash:
-      final int dstParallelism = dstVertex.getAttributes().get(Attribute.IntegerKey.Parallelism);
+      case Hash:
+        final int dstParallelism = dstVertex.getAttributes().get(Attribute.IntegerKey.Parallelism);
 
-      // First partition the data to write,
-      final List<List<Element>> partitionedOutputList = new ArrayList<>(dstParallelism);
-      IntStream.range(0, dstParallelism).forEach(partitionIdx -> partitionedOutputList.add(new ArrayList<>()));
-      dataToWrite.forEach(element -> {
-        // Hash the data by its key, and "modulo" the number of destination tasks.
-        final int dstIdx = Math.abs(element.getKey().hashCode() % dstParallelism);
-        partitionedOutputList.get(dstIdx).add(element);
-      });
+        // First partition the data to write,
+        final List<List<Element>> partitionedOutputList = new ArrayList<>(dstParallelism);
+        IntStream.range(0, dstParallelism).forEach(partitionIdx -> partitionedOutputList.add(new ArrayList<>()));
+        dataToWrite.forEach(element -> {
+          // Hash the data by its key, and "modulo" the number of destination tasks.
+          final int dstIdx = Math.abs(element.getKey().hashCode() % dstParallelism);
+          partitionedOutputList.get(dstIdx).add(element);
+        });
 
-      // Then write each partition appropriately to the target data placement.
-      IntStream.range(0, dstParallelism).forEach(partitionIdx -> {
-        // Give each partition its own partition id
-        final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx, partitionIdx);
-        partitionManagerWorker.putPartition(partitionId, partitionedOutputList.get(partitionIdx),
-            runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
-      });
-      break;
-    case Range:
-    default:
-      throw new UnsupportedPartitionerException(new Exception(partition + " partitioning not yet supported"));
+        // Then write each partition appropriately to the target data placement.
+        for (int partitionIdx = 0; partitionIdx < dstParallelism; partitionIdx++) {
+          // Give each partition its own partition id
+          final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx, partitionIdx);
+          final Block blockToWrite = new Block(partitionedOutputList.get(partitionIdx));
+
+          // Write data.
+          final CompletableFuture future = partitionManagerWorker.putBlocks(
+              partitionId, Collections.singleton(blockToWrite), channelDataPlacement, false);
+          future.get(); // synchronize.
+
+          // Commit partition.
+          partitionManagerWorker.commitPartition(
+              partitionId, channelDataPlacement, Collections.emptyList(), srcVertexId, srcTaskIdx, false);
+        }
+        break;
+      case Range:
+      default:
+        throw new UnsupportedPartitionerException(new Exception(partition + " partitioning not yet supported"));
     }
   }
 
@@ -143,27 +176,44 @@ public final class OutputWriter extends DataTransfer {
    * This block will be the unit of retrieval and recombination of this partition.
    * Constraint: If a partition is written by this method, it have to be read by {@link InputReader#readDataInRange()}.
    * TODO #378: Elaborate block construction during data skew pass
-   * TODO 428: DynOpt-clean up the metric collection flow
+   * TODO #428: DynOpt-clean up the metric collection flow
    *
    * @param dataToWrite an iterable for the elements to be written.
+   * @throws ExecutionException      when fail to get results from futures.
+   * @throws InterruptedException    when interrupted during getting results from futures.
+   * @throws PartitionWriteException when fail to get the block size after write.
    */
-  private void hashAndWrite(final Iterable<Element> dataToWrite) {
+  private void hashAndWrite(final Iterable<Element> dataToWrite)
+      throws ExecutionException, InterruptedException, PartitionWriteException {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
     final int dstParallelism = dstVertex.getAttributes().get(Attribute.IntegerKey.Parallelism);
     // For this hash range, please check the description of HashRangeMultiplier
     final int hashRange = hashRangeMultiplier * dstParallelism;
 
     // Separate the data into blocks according to the hash of their key.
-    final List<Pair<Integer, Iterable<Element>>> outputBlockList = new ArrayList<>(hashRange);
-    IntStream.range(0, hashRange).forEach(hashVal -> outputBlockList.add(Pair.of(hashVal, new ArrayList<>())));
+    final List<List<Element>> blockDataList = new ArrayList<>(hashRange);
+    IntStream.range(0, hashRange).forEach(hashVal -> blockDataList.add(new ArrayList<>()));
     dataToWrite.forEach(element -> {
       // Hash the data by its key, and "modulo" by the hash range.
       final int hashVal = Math.abs(element.getKey().hashCode() % hashRange);
-      ((List) outputBlockList.get(hashVal).right()).add(element);
+      blockDataList.get(hashVal).add(element);
     });
+    final List<Block> blockList = new ArrayList<>(hashRange);
+    for (int hashIdx = 0; hashIdx < hashRange; hashIdx++) {
+      blockList.add(new Block(hashIdx, blockDataList.get(hashIdx)));
+    }
 
-    partitionManagerWorker.putHashedPartition(partitionId, srcVertexId, outputBlockList,
-        runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
+    // Write data.
+    final CompletableFuture<Optional<List<Long>>> future = partitionManagerWorker.putBlocks(
+        partitionId, blockList, channelDataPlacement, false);
+    final Optional<List<Long>> optionalBlockSize = future.get(); // synchronize.
+    if (optionalBlockSize.isPresent()) {
+      // Commit partition.
+      partitionManagerWorker.commitPartition(
+          partitionId, channelDataPlacement, optionalBlockSize.get(), srcVertexId, srcTaskIdx, false);
+    } else {
+      throw new PartitionWriteException(new Throwable("Cannot know the size of blocks"));
+    }
   }
 
   /**
@@ -172,11 +222,15 @@ public final class OutputWriter extends DataTransfer {
    * To prevent the extra sort process in the source task and deserialize - merge process in the destination task,
    * we hash the data into blocks and make the blocks as the unit of write and retrieval.
    * Constraint: If a partition is written by this method, it have to be read by {@link InputReader#readIFile()}.
+   * Constraint: If the store to write is not a {@link edu.snu.vortex.runtime.executor.data.RemoteFileStore},
+   *             all destination tasks for each I-File (partition) have to be scheduled in a single executor.
    * TODO #378: Elaborate block construction during data skew pass
    *
    * @param dataToWrite an iterable for the elements to be written.
+   * @throws ExecutionException   when fail to get results from futures.
+   * @throws InterruptedException when interrupted during getting results from futures.
    */
-  private void writeIFile(final Iterable<Element> dataToWrite) {
+  private void writeIFile(final Iterable<Element> dataToWrite) throws ExecutionException, InterruptedException {
     final int dstParallelism = dstVertex.getAttributes().get(Attribute.IntegerKey.Parallelism);
     // For this hash range, please check the description of HashRangeMultiplier
     final int hashRange = hashRangeMultiplier * dstParallelism;
@@ -200,10 +254,22 @@ public final class OutputWriter extends DataTransfer {
     });
 
     // Then append each blocks to corresponding partition appropriately.
-    IntStream.range(0, dstParallelism).forEach(dstIdx -> {
+    for (int dstIdx = 0; dstIdx < dstParallelism; dstIdx++) {
       final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), dstIdx);
-      partitionManagerWorker.appendHashedDataToPartition(partitionId, srcTaskIdx, outputList.get(dstIdx),
-          runtimeEdge.getAttributes().get(Attribute.Key.ChannelDataPlacement));
-    });
+      final List<Block> blockList = new ArrayList<>(hashRange);
+      for (int hashIdx = 0; hashIdx < hashRangeMultiplier; hashIdx++) {
+        final Pair<Integer, Iterable<Element>> hashValAndData = outputList.get(dstIdx).get(hashIdx);
+        blockList.add(new Block(hashValAndData.left(), hashValAndData.right()));
+      }
+
+      // Write data.
+      final CompletableFuture future = partitionManagerWorker.putBlocks(
+          partitionId, blockList, channelDataPlacement, false);
+      future.get(); // synchronize.
+
+      // Commit partition.
+      partitionManagerWorker.commitPartition(
+          partitionId, channelDataPlacement, Collections.emptyList(), srcVertexId, srcTaskIdx, true);
+    }
   }
 }

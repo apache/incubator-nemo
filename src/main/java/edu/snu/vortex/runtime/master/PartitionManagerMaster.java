@@ -42,6 +42,7 @@ import static edu.snu.vortex.runtime.common.state.PartitionState.State.SCHEDULED
  * TODO #430: Handle Concurrency at Partition Level.
  * TODO #431: Include Partition Metadata in a Partition.
  * TODO #433: Reconsider fault tolerance for partitions in remote storage.
+ * TODO #493: Detach partitioning from writing.
  */
 @ThreadSafe
 public final class PartitionManagerMaster {

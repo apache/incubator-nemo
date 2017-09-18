@@ -175,7 +175,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case ScheduleTaskGroup:
       case PartitionStateChanged:
       case ExecutorFailed:
-      case StoreMetadata:
+      case CommitMetadata:
       case RemoveMetadata:
         return MessageType.Send;
       case RequestPartitionLocation:
@@ -223,7 +223,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case PartitionStateChanged:
       case RequestPartitionLocation:
       case ExecutorFailed:
-      case StoreMetadata:
+      case CommitMetadata:
       case RemoveMetadata:
       case RequestMetadata:
       case ReserveBlock:
