@@ -16,12 +16,16 @@
 package edu.snu.vortex.runtime.master;
 
 import javax.inject.Inject;
-import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * A default metric message handler.
  */
 public final class DefaultMetricMessageHandler implements MetricMessageHandler {
+
+  private static final Logger LOG = LoggerFactory.getLogger(DefaultMetricMessageHandler.class.getName());
 
   @Inject
   public DefaultMetricMessageHandler() {
@@ -29,7 +33,7 @@ public final class DefaultMetricMessageHandler implements MetricMessageHandler {
   }
 
   @Override
-  public void onMetricMessageReceived(final String executorId, final Map<String, Object> metricData) {
-    // TODO
+  public void onMetricMessageReceived(final String jsonStr) {
+    LOG.debug("{}", jsonStr);
   }
 }

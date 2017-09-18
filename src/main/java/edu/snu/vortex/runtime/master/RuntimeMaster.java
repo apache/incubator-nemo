@@ -32,6 +32,7 @@ import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.ContainerException;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
+import edu.snu.vortex.runtime.exception.JsonParseException;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
 import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
 import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
@@ -67,7 +68,6 @@ public final class RuntimeMaster {
   private final MessageEnvironment masterMessageEnvironment;
   private final PartitionManagerMaster partitionManagerMaster;
   private JobStateManager jobStateManager;
-  private final MetricMessageHandler metricMessageHandler;
   // For converting json data. This is a thread safe.
   // [Vortex-420] Create a Singleton ObjectMapper
   private final ObjectMapper objectMapper;
@@ -81,7 +81,6 @@ public final class RuntimeMaster {
                        final ContainerManager containerManager,
                        final MessageEnvironment masterMessageEnvironment,
                        final PartitionManagerMaster partitionManagerMaster,
-                       final MetricMessageHandler metricMessageHandler,
                        final UpdatePhysicalPlanEventHandler handler,
                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
                        @Parameter(JobConf.MaxScheduleAttempt.class) final int maxScheduleAttempt) {
@@ -93,7 +92,6 @@ public final class RuntimeMaster {
         .setupListener(MessageEnvironment.MASTER_MESSAGE_RECEIVER, new MasterControlMessageReceiver());
     this.partitionManagerMaster = partitionManagerMaster;
     this.dagDirectory = dagDirectory;
-    this.metricMessageHandler = metricMessageHandler;
     this.irVertices = new HashSet<>();
     this.objectMapper = new ObjectMapper();
   }
@@ -185,11 +183,22 @@ public final class RuntimeMaster {
         LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
         containerManager.onExecutorRemoved(failedExecutorId);
         throw new RuntimeException(exception);
-      case MetricMessageReceived:
+        case ContainerFailed:
+          final Map<String, Object> jsonMetricData = new HashMap<>();
+          final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
+          jsonMetricData.put("ExecutorId", containerFailedMsg.getExecutorId());
+          jsonMetricData.put("ContainerFailure", true);
+          try {
+            final String jsonStr = objectMapper.writeValueAsString(jsonMetricData);
+            jobStateManager.getMetricMessageHandler().onMetricMessageReceived(jsonStr);
+          } catch (final Exception e) {
+            throw new JsonParseException(e);
+          }
+          break;
+        case MetricMessageReceived:
         final ControlMessage.MetricMsg metricMsg = message.getMetricMsg();
-        final String executorId = metricMsg.getExecutorId();
-        metricMsg.getMessagesList().stream().map(new JsonStringToMapFunction())
-            .forEach((msg) -> metricMessageHandler.onMetricMessageReceived(executorId, msg));
+        metricMsg.getMetricMessagesList().stream()
+            .forEach((msg) -> jobStateManager.getMetricMessageHandler().onMetricMessageReceived(msg));
         break;
         case CommitMetadata:
         partitionManagerMaster.getMetadataManager().onCommitBlocks(message);

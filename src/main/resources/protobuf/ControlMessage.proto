@@ -12,14 +12,15 @@ enum MessageType {
     RequestPartitionLocation = 3;
     PartitionLocationInfo = 4;
     ExecutorFailed = 5;
-    MetricMessageReceived = 6;
+    ContainerFailed = 6;
+    MetricMessageReceived = 7;
     // Messages for metadata passing
-    CommitMetadata = 7;
-    RemoveMetadata = 8;
-    RequestMetadata = 9;
-    MetadataResponse = 10;
-    ReserveBlock = 11;
-    ReserveBlockResponse = 12;
+    CommitMetadata = 8;
+    RemoveMetadata = 9;
+    RequestMetadata = 10;
+    MetadataResponse = 11;
+    ReserveBlock = 12;
+    ReserveBlockResponse = 13;
 }
 
 message Message {
@@ -31,14 +32,15 @@ message Message {
     optional RequestPartitionLocationMsg requestPartitionLocationMsg = 6;
     optional PartitionLocationInfoMsg partitionLocationInfoMsg = 7;
     optional ExecutorFailedMsg executorFailedMsg = 8;
-    optional MetricMsg metricMsg = 9;
+    optional ContainerFailedMsg containerFailedMsg = 9;
+    optional MetricMsg metricMsg = 10;
     // Messages for metadata passing
-    optional MetadataResponseMsg metadataResponseMsg = 10;
-    optional CommitMetadataMsg commitMetadataMsg = 11;
-    optional RemoveMetadataMsg removeMetadataMsg = 12;
-    optional RequestMetadataMsg requestMetadataMsg = 13;
-    optional ReserveBlockMsg reserveBlockMsg = 14;
-    optional ReserveBlockResponseMsg reserveBlockResponseMsg = 15;
+    optional MetadataResponseMsg metadataResponseMsg = 11;
+    optional CommitMetadataMsg commitMetadataMsg = 12;
+    optional RemoveMetadataMsg removeMetadataMsg = 13;
+    optional RequestMetadataMsg requestMetadataMsg = 14;
+    optional ReserveBlockMsg reserveBlockMsg = 15;
+    optional ReserveBlockResponseMsg reserveBlockResponseMsg = 16;
 }
 
 // Messages from Master to Executors
@@ -88,9 +90,12 @@ message ExecutorFailedMsg {
     required bytes exception = 2;
 }
 
-message MetricMsg {
+message ContainerFailedMsg {
     required string executorId = 1;
-    repeated string messages = 2;
+}
+
+message MetricMsg {
+    repeated string metricMessages = 1;
 }
 
 // Messages between Executors
