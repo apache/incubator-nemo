@@ -17,6 +17,7 @@ package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
+import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.resource.ResourceSpecification;
 import org.apache.reef.driver.context.ActiveContext;
