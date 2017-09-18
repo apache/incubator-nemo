@@ -225,7 +225,7 @@ public final class ContainerManager {
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
             .setType(ControlMessage.MessageType.ContainerFailed)
-            .setExecutorFailedMsg(ControlMessage.ExecutorFailedMsg.newBuilder()
+            .setContainerFailedMsg(ControlMessage.ContainerFailedMsg.newBuilder()
                 .setExecutorId(failedExecutorId)
                 .build())
             .build());
