@@ -22,145 +22,97 @@ import edu.snu.vortex.runtime.executor.data.metadata.BlockMetadata;
 import edu.snu.vortex.runtime.executor.data.metadata.FileMetadata;
 import edu.snu.vortex.runtime.executor.data.FileArea;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
- * This class represents a {@link Partition} which is stored in (local or remote) file.
+ * This class represents a partition which is stored in (local or remote) file.
  */
-public abstract class FilePartition implements Partition, AutoCloseable {
+@ThreadSafe
+public final class FilePartition {
 
   private final Coder coder;
   private final String filePath;
   private final FileMetadata metadata;
-  private FileOutputStream fileOutputStream;
-  private FileChannel fileChannel;
-  private boolean writable; // Whether this partition is writable or not.
+  private final Queue<BlockMetadata> blockMetadataToCommit;
+  private final boolean commitPerBlock;
 
-  protected FilePartition(final Coder coder,
-                          final String filePath,
-                          final FileMetadata metadata) {
+  public FilePartition(final Coder coder,
+                       final String filePath,
+                       final FileMetadata metadata) {
     this.coder = coder;
     this.filePath = filePath;
     this.metadata = metadata;
-    this.writable = false;
-  }
-
-  /**
-   * Opens file stream to write the data.
-   * Corresponding {@link FilePartition#finishWrite()} is required.
-   *
-   * @throws IOException if fail to open the file stream.
-   */
-  protected final void openFileStream() throws IOException {
-    writable = true;
-    this.fileOutputStream = new FileOutputStream(filePath, true);
-    this.fileChannel = fileOutputStream.getChannel();
-  }
-
-  /**
-   * Writes the serialized data of this partition as a block to the file where this partition resides.
-   * It does not do any reservation for writing.
-   *
-   * @param serializedData the serialized data which will become a block.
-   * @param numElement     the number of elements in the serialized data.
-   * @throws IOException if fail to write.
-   */
-  public final void writeBlock(final byte[] serializedData,
-                               final long numElement) throws IOException {
-    writeBlock(serializedData, numElement, Integer.MIN_VALUE);
+    this.blockMetadataToCommit = new ConcurrentLinkedQueue<>();
+    this.commitPerBlock = metadata.isBlockCommitPerWrite();
   }
 
   /**
    * Writes the serialized data of this partition having a specific hash value as a block to the file
    * where this partition resides.
-   * It does not do any reservation for writing.
    *
    * @param serializedData the serialized data which will become a block.
    * @param numElement     the number of elements in the serialized data.
    * @param hashVal        the hash value of this block.
    * @throws IOException if fail to write.
    */
-  public abstract void writeBlock(final byte[] serializedData,
-                                  final long numElement,
-                                  final int hashVal) throws IOException;
+  public void writeBlock(final byte[] serializedData,
+                         final long numElement,
+                         final int hashVal) throws IOException {
+    // Reserve a block write and get the metadata.
+    final BlockMetadata blockMetadata = metadata.reserveBlock(hashVal, serializedData.length, numElement);
 
-  protected final void writeBytes(final byte[] serializedData) throws IOException {
-    // Wrap the given serialized data (but not copy it) and write.
-    final ByteBuffer buf = ByteBuffer.wrap(serializedData);
-    fileChannel.write(buf);
+    try (
+        final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true);
+        final FileChannel fileChannel = fileOutputStream.getChannel()
+    ) {
+      // Wrap the given serialized data (but not copy it) and write.
+      fileChannel.position(blockMetadata.getOffset());
+      final ByteBuffer buf = ByteBuffer.wrap(serializedData);
+      fileChannel.write(buf);
+    }
+
+    // Commit if needed.
+    if (commitPerBlock) {
+      metadata.commitBlocks(Collections.singleton(blockMetadata));
+    } else {
+      blockMetadataToCommit.add(blockMetadata);
+    }
   }
 
   /**
-   * Notice the end of write.
-   *
-   * @throws IOException if fail to close.
+   * Commits the un-committed block metadata.
    */
-  public final void finishWrite() throws IOException {
-    if (!writable) {
-      throw new IOException("This partition is non-writable.");
+  public void commitRemainderMetadata() {
+    final List<BlockMetadata> metadataToCommit = new ArrayList<>();
+    while (!blockMetadataToCommit.isEmpty()) {
+      final BlockMetadata blockMetadata = blockMetadataToCommit.poll();
+      if (blockMetadata != null) {
+        metadataToCommit.add(blockMetadata);
+      }
     }
-    writable = false;
-    this.close();
-    if (metadata.getAndSetWritten()) {
-      throw new IOException("The writing for this partition is already finished.");
-    }
+    metadata.commitBlocks(metadataToCommit);
   }
 
   /**
-   * Closes the file channel and stream if opened.
-   * It does not mean that this partition becomes invalid, but just cannot be written anymore.
-   *
-   * @throws IOException if fail to close.
-   */
-  @Override
-  public final void close() throws IOException {
-    if (fileChannel != null) {
-      fileChannel.close();
-    }
-    if (fileOutputStream != null) {
-      fileOutputStream.close();
-    }
-  }
-
-  /**
-   * Deletes the file that contains this partition data.
-   * This method have to be called after all read is completed (or failed).
-   *
-   * @throws IOException if failed to delete.
-   */
-  public final void deleteFile() throws IOException {
-    if (!metadata.isWritten()) {
-      throw new IOException("This partition is not written yet.");
-    }
-    metadata.deleteMetadata();
-    Files.delete(Paths.get(filePath));
-  }
-
-  /**
-   * Retrieves the data of this partition from the file in a specific hash range and deserializes it.
+   * Retrieves the elements of this partition from the file in a specific hash range and deserializes it.
    *
    * @param hashRange the hash range
-   * @return an iterable of deserialized data.
+   * @return an iterable of deserialized elements.
    * @throws IOException if failed to deserialize.
    */
-  public final Iterable<Element> retrieveInHashRange(final HashRange hashRange) throws IOException {
-    // Check whether this partition is fully written and sorted by the hash value.
-    if (!metadata.isWritten()) {
-      throw new IOException("This partition is not written yet.");
-    } else if (!metadata.isHashed()) {
-      throw new IOException("The blocks in this partition are not hashed.");
-    }
-
+  public Iterable<Element> retrieveInHashRange(final HashRange hashRange) throws IOException {
     // Deserialize the data
     final ArrayList<Element> deserializedData = new ArrayList<>();
     try (final FileInputStream fileStream = new FileInputStream(filePath)) {
-      for (final BlockMetadata blockMetadata : metadata.getBlockMetadataList()) {
+      for (final BlockMetadata blockMetadata : metadata.getBlockMetadataIterable()) {
+        // TODO #463: Support incremental read.
         final int hashVal = blockMetadata.getHashValue();
         if (hashRange.includes(hashVal)) {
           // The hash value of this block is in the range.
@@ -186,9 +138,10 @@ public abstract class FilePartition implements Partition, AutoCloseable {
    * @return list of the file areas
    * @throws IOException if failed to open a file channel
    */
-  public final List<FileArea> asFileAreas(final HashRange hashRange) throws IOException {
+  public List<FileArea> asFileAreas(final HashRange hashRange) throws IOException {
     final List<FileArea> fileAreas = new ArrayList<>();
-    for (final BlockMetadata blockMetadata : metadata.getBlockMetadataList()) {
+    for (final BlockMetadata blockMetadata : metadata.getBlockMetadataIterable()) {
+      // TODO #463: Support incremental read.
       if (hashRange.includes(blockMetadata.getHashValue())) {
         fileAreas.add(new FileArea(filePath, blockMetadata.getOffset(), blockMetadata.getBlockSize()));
       }
@@ -197,24 +150,25 @@ public abstract class FilePartition implements Partition, AutoCloseable {
   }
 
   /**
-   * @see Partition#asIterable().
+   * Deletes the file that contains this partition data.
+   * This method have to be called after all read is completed (or failed).
+   *
+   * @throws IOException if failed to delete.
    */
-  @Override
-  public final Iterable<Element> asIterable() throws IOException {
-    // Read file synchronously
-    if (!metadata.isWritten()) {
-      throw new IOException("This partition is not written yet.");
-    }
+  public void deleteFile() throws IOException {
+    metadata.deleteMetadata();
+    Files.delete(Paths.get(filePath));
+  }
 
-    // Deserialize the data
-    final ArrayList<Element> deserializedData = new ArrayList<>();
-    try (final FileInputStream fileStream = new FileInputStream(filePath)) {
-      metadata.getBlockMetadataList().forEach(blockInfo -> {
-        deserializeBlock(blockInfo, fileStream, deserializedData);
-      });
-    }
-
-    return deserializedData;
+  /**
+   * Commits this partition to prevent further write.
+   * If someone "subscribing" the data in this partition, it will be finished.
+   *
+   * @throws IOException if failed to close.
+   */
+  public void commit() throws IOException {
+    commitRemainderMetadata();
+    metadata.commitPartition();
   }
 
   /**
@@ -229,7 +183,7 @@ public abstract class FilePartition implements Partition, AutoCloseable {
                                 final FileInputStream fileInputStream,
                                 final List<Element> deserializedData) {
     final int size = blockMetadata.getBlockSize();
-    final long numElements = blockMetadata.getNumElements();
+    final long numElements = blockMetadata.getElementsTotal();
     if (size != 0) {
       // This stream will be not closed, but it is okay as long as the file stream is closed well.
       final BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream, size);
@@ -237,17 +191,5 @@ public abstract class FilePartition implements Partition, AutoCloseable {
         deserializedData.add(coder.decode(bufferedInputStream));
       }
     }
-  }
-
-  protected final FileMetadata getMetadata() {
-    return metadata;
-  }
-
-  protected final FileChannel getFileChannel() {
-    return fileChannel;
-  }
-
-  protected final boolean isWritable() {
-    return writable;
   }
 }

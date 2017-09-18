@@ -14,7 +14,7 @@ enum MessageType {
     ExecutorFailed = 5;
     MetricMessageReceived = 6;
     // Messages for metadata passing
-    StoreMetadata = 7;
+    CommitMetadata = 7;
     RemoveMetadata = 8;
     RequestMetadata = 9;
     MetadataResponse = 10;
@@ -34,7 +34,7 @@ message Message {
     optional MetricMsg metricMsg = 9;
     // Messages for metadata passing
     optional MetadataResponseMsg metadataResponseMsg = 10;
-    optional StoreMetadataMsg storeMetadataMsg = 11;
+    optional CommitMetadataMsg commitMetadataMsg = 11;
     optional RemoveMetadataMsg removeMetadataMsg = 12;
     optional RequestMetadataMsg requestMetadataMsg = 13;
     optional ReserveBlockMsg reserveBlockMsg = 14;
@@ -149,28 +149,26 @@ enum PartitionStore {
 // Messages from Master to Executors
 message MetadataResponseMsg {
     required int64 requestId = 1; // To find the matching request msg
-    optional bool hashed = 2;
-    repeated BlockMetadataMsg blockMetadata = 3;
-    optional PartitionStateFromExecutor state = 4;
+    repeated BlockMetadataMsg blockMetadata = 2;
+    optional PartitionStateFromExecutor state = 3;
 }
 
 message ReserveBlockResponseMsg {
     required int64 requestId = 1; // To find the matching request msg
     optional int64 positionToWrite = 2;
+    optional int32 blockIdx = 3;
 }
 
 // Messages from Executors to Master
-message StoreMetadataMsg {
-    required bool hashed = 1;
-    required string partitionId = 2;
-    repeated BlockMetadataMsg blockMetadata = 3;
+message CommitMetadataMsg {
+    required string partitionId = 1;
+    repeated int32 blockIdx = 2;
 }
 
 message ReserveBlockMsg {
     required string executorId = 1;
-    required bool hashed = 2;
-    required string partitionId = 3;
-    required BlockMetadataMsg blockMetadata = 4;
+    required string partitionId = 2;
+    required BlockMetadataMsg blockMetadata = 3;
 }
 
 message RemoveMetadataMsg {

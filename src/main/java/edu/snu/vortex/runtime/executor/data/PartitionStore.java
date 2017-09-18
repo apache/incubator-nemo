@@ -15,9 +15,8 @@
  */
 package edu.snu.vortex.runtime.executor.data;
 
-import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.compiler.ir.Element;
-import edu.snu.vortex.runtime.executor.data.partition.Partition;
+import edu.snu.vortex.runtime.exception.PartitionWriteException;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,57 +27,66 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface PartitionStore {
   /**
-   * Retrieves whole data from a partition.
-   * @param partitionId of the partition.
-   * @return the partition if exist, or an empty optional else.
-   *         (the future completes exceptionally with {@link edu.snu.vortex.runtime.exception.PartitionFetchException}
-   *          if the partition exists but it was unable to get the partition.)
-   */
-  CompletableFuture<Optional<Partition>> retrieveDataFromPartition(String partitionId);
-
-  /**
-   * Retrieves data in a specific hash range from a partition.
-   * The result data will be treated as another partition.
+   * Retrieves data in a specific {@link HashRange} from a partition.
+   * If the target partition is not committed yet, the requester may "subscribe" the further data until it is committed.
+   *
    * @param partitionId of the target partition.
-   * @param hashRange   the hash range
-   * @return the result data as a new partition (if the target partition exists).
+   * @param hashRange   the hash range.
+   * TODO #463: Support incremental write. Consider returning Blocks in some "subscribable" data structure.
+   * @return the result data from the target partition (if the target partition exists).
    *         (the future completes exceptionally with {@link edu.snu.vortex.runtime.exception.PartitionFetchException}
-   *          for any error occurred while trying to fetch a partition.)
+   *          for any error occurred while trying to fetch a partition.
+   *          This exception will be thrown to the {@link edu.snu.vortex.runtime.master.scheduler.Scheduler}
+   *          through {@link edu.snu.vortex.runtime.executor.Executor} and
+   *          have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  CompletableFuture<Optional<Partition>> retrieveDataFromPartition(String partitionId,
-                                                                   HashRange hashRange);
+  Optional<CompletableFuture<Iterable<Element>>> getBlocks(String partitionId,
+                                                           HashRange hashRange);
 
   /**
-   * Saves data as a partition.
-   * @param partitionId of the partition.
-   * @param data of to save as a partition.
-   * @return the size of the data (only when the data is serialized).
+   * Saves an iterable of data blocks to a partition.
+   * If the partition exists already, appends the data to it.
+   * This method supports concurrent write.
+   * If the data is needed to be "incrementally" written (and read),
+   * each block can be committed right after being written by using {@param commitPerBlock}.
+   *
+   * @param partitionId    of the partition.
+   * @param blocks         to save to a partition.
+   * @param commitPerBlock whether commit every block write or not.
+   * @return the size of the data per block (only when the data is serialized).
    *         (the future completes with {@link edu.snu.vortex.runtime.exception.PartitionWriteException}
-   *          for any error occurred while trying to write a partition.)
+   *          for any error occurred while trying to write a partition.
+   *          This exception will be thrown to the {@link edu.snu.vortex.runtime.master.scheduler.Scheduler}
+   *          through {@link edu.snu.vortex.runtime.executor.Executor} and
+   *          have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  CompletableFuture<Optional<Long>> putDataAsPartition(String partitionId,
-                                                       Iterable<Element> data);
+  CompletableFuture<Optional<List<Long>>> putBlocks(String partitionId,
+                                                    Iterable<Block> blocks,
+                                                    boolean commitPerBlock);
 
   /**
-   * Saves an iterable of data blocks as a partition.
-   * Each block has a specific hash value, and the block becomes a unit of read & write.
+   * Notifies that all writes for a partition is end.
+   * Subscribers waiting for the data of the target partition are notified when the partition is committed.
+   * Also, further subscription about a committed partition will not blocked but get the data in it and finished.
+   *
    * @param partitionId of the partition.
-   * @param hashedData to save as a partition. Each pair consists of the hash value and the block data.
-   * @return the size of data per hash value (only when the data is serialized).
-   *         (the future completes exceptionally with {@link edu.snu.vortex.runtime.exception.PartitionWriteException}
-   *          for any error occurred while trying to write a partition.)
+   * @throws PartitionWriteException if fail to commit.
+   *         (This exception will be thrown to the {@link edu.snu.vortex.runtime.master.scheduler.Scheduler}
+   *          through {@link edu.snu.vortex.runtime.executor.Executor} and
+   *          have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  CompletableFuture<Optional<List<Long>>> putHashedDataAsPartition(
-      String partitionId,
-      Iterable<Pair<Integer, Iterable<Element>>> hashedData);
+  void commitPartition(String partitionId) throws PartitionWriteException;
 
   /**
-   * Optional<Partition> removePartition(String partitionId) throws PartitionFetchException;
    * Removes a partition of data.
+   *
    * @param partitionId of the partition.
    * @return whether the partition exists or not.
    *         (the future completes exceptionally with {@link edu.snu.vortex.runtime.exception.PartitionFetchException}
-   *          for any error occurred while trying to remove a partition.)
+   *          for any error occurred while trying to remove a partition.
+   *          This exception will be thrown to the {@link edu.snu.vortex.runtime.master.scheduler.Scheduler}
+   *          through {@link edu.snu.vortex.runtime.executor.Executor} and
+   *          have to be handled by the scheduler with fault tolerance mechanism.))
    */
   CompletableFuture<Boolean> removePartition(String partitionId);
 }

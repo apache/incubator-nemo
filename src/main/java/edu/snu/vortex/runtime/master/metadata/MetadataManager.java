@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.runtime.master.metadata;
 
+import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
@@ -53,24 +54,6 @@ public final class MetadataManager {
   }
 
   /**
-   * Stores a new (whole) metadata for a remote partition.
-   *
-   * @param message the message having metadata to store.
-   */
-  public synchronized void onStoreMetadata(final ControlMessage.Message message) {
-    assert (message.getType() == ControlMessage.MessageType.StoreMetadata);
-    final ControlMessage.StoreMetadataMsg storeMsg = message.getStoreMetadataMsg();
-    final String partitionId = storeMsg.getPartitionId();
-    final boolean hashed = storeMsg.getHashed();
-    final List<ControlMessage.BlockMetadataMsg> blockMetadataList = storeMsg.getBlockMetadataList();
-    final MetadataInServer previousMetadata =
-        partitionIdToMetadata.putIfAbsent(partitionId, new MetadataInServer(hashed, blockMetadataList));
-    if (previousMetadata != null) {
-      LOG.error("Metadata for {} already exists. It will be replaced.", partitionId);
-    }
-  }
-
-  /**
    * Reserves the region for a block, appends the block metadata,
    * and replies with the starting point of the block in the file.
    *
@@ -82,7 +65,7 @@ public final class MetadataManager {
     assert (message.getType() == ControlMessage.MessageType.ReserveBlock);
     final ControlMessage.ReserveBlockMsg reserveBlockMsg = message.getReserveBlockMsg();
     final String partitionId = reserveBlockMsg.getPartitionId();
-    partitionIdToMetadata.putIfAbsent(partitionId, new MetadataInServer(reserveBlockMsg.getHashed()));
+    partitionIdToMetadata.putIfAbsent(partitionId, new MetadataInServer());
     final MetadataInServer metadata = partitionIdToMetadata.get(partitionId);
     final ControlMessage.ReserveBlockResponseMsg.Builder responseBuilder =
         ControlMessage.ReserveBlockResponseMsg.newBuilder()
@@ -90,7 +73,10 @@ public final class MetadataManager {
 
     try {
       // Reserve a region for this block and append the metadata.
-      final long positionToWrite = metadata.appendBlockMetadata(reserveBlockMsg.getBlockMetadata());
+      final Pair<Integer, Long> reserveResult = metadata.reserveBlock(reserveBlockMsg.getBlockMetadata());
+      final int blockIndex = reserveResult.left();
+      final long positionToWrite = reserveResult.right();
+      responseBuilder.setBlockIdx(blockIndex);
       responseBuilder.setPositionToWrite(positionToWrite);
     } catch (final IllegalMessageException e) {
       LOG.error("Cannot append a block metadata to {}.", partitionId);
@@ -102,6 +88,24 @@ public final class MetadataManager {
             .setType(ControlMessage.MessageType.ReserveBlockResponse)
             .setReserveBlockResponseMsg(responseBuilder.build())
             .build());
+  }
+
+  /**
+   * Commits the blocks for a remote partition.
+   *
+   * @param message the message having metadata to commit.
+   */
+  public synchronized void onCommitBlocks(final ControlMessage.Message message) {
+    assert (message.getType() == ControlMessage.MessageType.CommitMetadata);
+    final ControlMessage.CommitMetadataMsg commitMsg = message.getCommitMetadataMsg();
+    final String partitionId = commitMsg.getPartitionId();
+    final List<Integer> blockIndices = commitMsg.getBlockIdxList();
+    final MetadataInServer metadata = partitionIdToMetadata.get(partitionId);
+    if (metadata != null) {
+      metadata.commitBlocks(blockIndices);
+    } else {
+      LOG.error("Metadata for {} already exists. It will be replaced.", partitionId);
+    }
   }
 
   /**
@@ -127,8 +131,8 @@ public final class MetadataManager {
         // Well committed.
         final MetadataInServer metadata = partitionIdToMetadata.get(partitionId);
         if (metadata != null) {
-          responseBuilder.setHashed(metadata.isHashed());
-          responseBuilder.addAllBlockMetadata(metadata.getBlockMetadataList());
+          metadata.getBlockMetadataList().forEach(blockMetadataInServer ->
+              responseBuilder.addBlockMetadata(blockMetadataInServer.getBlockMetadataMsg()));
         } else {
           LOG.error("Metadata for {} dose not exist. Failed to get it.", partitionId);
         }

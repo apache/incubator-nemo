@@ -15,66 +15,46 @@
  */
 package edu.snu.vortex.runtime.master.metadata;
 
+import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
 
-import javax.annotation.concurrent.NotThreadSafe;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
+import javax.annotation.concurrent.ThreadSafe;
+import java.util.*;
 
 /**
  * This class represents a metadata stored in the metadata server.
  * TODO #430: Handle Concurrency at Partition Level.
  * TODO #431: Include Partition Metadata in a Partition.
  */
-@NotThreadSafe
+@ThreadSafe
 final class MetadataInServer {
 
-  private final boolean hashed; // Each block in the corresponding file has a single hash value or not.
-  private final List<ControlMessage.BlockMetadataMsg> blockMetadataList;
-  private final boolean appendable;
-  private long position; // How many bytes are (at least, logically) written in the file.
+  private final List<BlockMetadataInServer> blockMetadataList;
+  private volatile long position; // How many bytes are (at least, logically) written in the file.
+  private volatile int publishCursor; // Cursor dividing the published blocks and un-published blocks.
 
   /**
-   * Constructs a appendable metadata.
-   *
-   * @param hashed whether each block in the corresponding file has a single hash value or not.
+   * Constructs the metadata for a remote partition.
    */
-  MetadataInServer(final boolean hashed) {
-    this.hashed = hashed;
-    this.appendable = true;
-    this.blockMetadataList = new LinkedList<>();
+  MetadataInServer() {
+    this.blockMetadataList = new ArrayList<>();
     this.position = 0;
+    this.publishCursor = 0;
   }
 
   /**
-   * Constructs a non-appendable metadata.
-   *
-   * @param hashed whether each block in the corresponding file has a single hash value or not.
-   * @param blockMetadataList the list of block metadata.
-   */
-  MetadataInServer(final boolean hashed,
-                   final List<ControlMessage.BlockMetadataMsg> blockMetadataList) {
-    this.hashed = hashed;
-    this.appendable = false;
-    this.blockMetadataList = blockMetadataList;
-    this.position = 0;
-  }
-
-  /**
-   * Appends a block metadata.
+   * Reserves the region for a block and get the metadata for the block.
    *
    * @param blockMetadata the block metadata to append.
-   * @return the starting position of the block in the file.
+   * @return the pair of the index of reserved block and starting position of the block in the file.
    * @throws IllegalMessageException if fail to append the block metadata.
    */
-  long appendBlockMetadata(final ControlMessage.BlockMetadataMsg blockMetadata) throws IllegalMessageException {
-    if (!appendable) {
-      throw new IllegalMessageException(new Throwable("Cannot append a block metadata to this partition."));
-    }
+  synchronized Pair<Integer, Long> reserveBlock(final ControlMessage.BlockMetadataMsg blockMetadata)
+      throws IllegalMessageException {
     final int blockSize = blockMetadata.getBlockSize();
     final long currentPosition = position;
+    final int blockIdx = blockMetadataList.size();
     final ControlMessage.BlockMetadataMsg blockMetadataToStore =
         ControlMessage.BlockMetadataMsg.newBuilder()
             .setHashValue(blockMetadata.getHashValue())
@@ -84,8 +64,24 @@ final class MetadataInServer {
             .build();
 
     position += blockSize;
-    blockMetadataList.add(blockMetadataToStore);
-    return currentPosition;
+    blockMetadataList.add(new BlockMetadataInServer(blockMetadataToStore));
+    return Pair.of(blockIdx, currentPosition);
+  }
+
+  /**
+   * Notifies that some blocks are written.
+   *
+   * @param blockIndicesToCommit the indices of the blocks to commit.
+   */
+  synchronized void commitBlocks(final Iterable<Integer> blockIndicesToCommit) {
+    // Mark the blocks committed.
+    blockIndicesToCommit.forEach(idx -> blockMetadataList.get(idx).setCommitted());
+
+    while (publishCursor < blockMetadataList.size() && blockMetadataList.get(publishCursor).isCommitted()) {
+      // If the first block in the un-published section is committed, publish it.
+      // TODO #463: Support incremental read. Send the newly committed blocks to subscribers.
+      publishCursor++;
+    }
   }
 
   /**
@@ -93,16 +89,33 @@ final class MetadataInServer {
    *
    * @return the list of block metadata.
    */
-  List<ControlMessage.BlockMetadataMsg> getBlockMetadataList() {
-    return Collections.unmodifiableList(blockMetadataList);
+  synchronized List<BlockMetadataInServer> getBlockMetadataList() {
+    // TODO #463: Support incremental read. Add the requester to the subscriber list.
+    return Collections.unmodifiableList(blockMetadataList.subList(0, publishCursor));
   }
 
   /**
-   * Gets whether each block in the corresponding partition has a single hash value or not.
-   *
-   * @return whether each block in the corresponding partition has a single hash value or not.
+   * The block metadata in server side.
    */
-  boolean isHashed() {
-    return hashed;
+  final class BlockMetadataInServer {
+    private final ControlMessage.BlockMetadataMsg blockMetadataMsg;
+    private volatile boolean committed;
+
+    BlockMetadataInServer(final ControlMessage.BlockMetadataMsg blockMetadataMsg) {
+      this.blockMetadataMsg = blockMetadataMsg;
+      this.committed = false;
+    }
+
+    public boolean isCommitted() {
+      return committed;
+    }
+
+    public void setCommitted() {
+      committed = true;
+    }
+
+    public ControlMessage.BlockMetadataMsg getBlockMetadataMsg() {
+      return blockMetadataMsg;
+    }
   }
 }

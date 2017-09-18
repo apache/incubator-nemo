@@ -19,19 +19,36 @@ package edu.snu.vortex.runtime.executor.data.metadata;
  * This class represents a metadata for a block in a (local / remote) file partition.
  */
 public final class BlockMetadata {
+  private final int blockIdx;
   private final int hashValue;
   private final int blockSize;
   private final long offset;
-  private final long numElements;
+  private final long elementsTotal;
+  private volatile boolean committed;
 
-  public BlockMetadata(final int hashValue,
+  public BlockMetadata(final int blockIdx,
+                       final int hashValue,
                        final int blockSize,
                        final long offset,
-                       final long numElements) {
+                       final long elementsTotal) {
+    this.blockIdx = blockIdx;
     this.hashValue = hashValue;
     this.blockSize = blockSize;
     this.offset = offset;
-    this.numElements = numElements;
+    this.elementsTotal = elementsTotal;
+    this.committed = false;
+  }
+
+  boolean isCommitted() {
+    return committed;
+  }
+
+  void setCommitted() {
+    this.committed = true;
+  }
+
+  int getBlockIdx() {
+    return blockIdx;
   }
 
   public int getHashValue() {
@@ -46,7 +63,7 @@ public final class BlockMetadata {
     return offset;
   }
 
-  public long getNumElements() {
-    return numElements;
+  public long getElementsTotal() {
+    return elementsTotal;
   }
 }
