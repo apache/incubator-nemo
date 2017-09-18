@@ -33,6 +33,10 @@ import edu.snu.vortex.runtime.master.scheduler.*;
 import org.apache.beam.sdk.values.KV;
 
 import java.util.*;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -40,6 +44,34 @@ import java.util.stream.IntStream;
  * Utility class for runtime unit tests.
  */
 public final class RuntimeTestUtil {
+  private static ExecutorService completionEventThreadPool;
+  private static BlockingDeque<Runnable> eventRunnableQueue;
+  private static boolean testComplete;
+
+  public static void initialize() {
+    testComplete = false;
+    completionEventThreadPool = Executors.newFixedThreadPool(5);
+
+    eventRunnableQueue = new LinkedBlockingDeque<>();
+
+    for (int i = 0; i < 5; i++) {
+      completionEventThreadPool.execute(() -> {
+        while (!testComplete || !eventRunnableQueue.isEmpty()) {
+          try {
+            final Runnable event = eventRunnableQueue.takeFirst();
+            event.run();
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+      });
+    }
+    completionEventThreadPool.shutdown();
+  }
+
+  public static void cleanup() {
+    testComplete = true;
+  }
 
   /**
    * Sends a stage's completion event to scheduler, with all its task groups marked as complete as well.
@@ -54,16 +86,21 @@ public final class RuntimeTestUtil {
                                                          final ContainerManager containerManager,
                                                          final PhysicalStage physicalStage,
                                                          final int attemptIdx) {
-    while (jobStateManager.getStageState(physicalStage.getId()).getStateMachine().getCurrentState()
-        == StageState.State.EXECUTING) {
-      physicalStage.getTaskGroupList().forEach(taskGroup -> {
-        if (jobStateManager.getTaskGroupState(taskGroup.getTaskGroupId()).getStateMachine().getCurrentState()
-            == TaskGroupState.State.EXECUTING) {
-          sendTaskGroupStateEventToScheduler(scheduler, containerManager, taskGroup.getTaskGroupId(),
-              TaskGroupState.State.COMPLETE, attemptIdx, null);
+    eventRunnableQueue.add(new Runnable() {
+      @Override
+      public void run() {
+        while (jobStateManager.getStageState(physicalStage.getId()).getStateMachine().getCurrentState()
+            == StageState.State.EXECUTING) {
+          physicalStage.getTaskGroupList().forEach(taskGroup -> {
+            if (jobStateManager.getTaskGroupState(taskGroup.getTaskGroupId()).getStateMachine().getCurrentState()
+                == TaskGroupState.State.EXECUTING) {
+              sendTaskGroupStateEventToScheduler(scheduler, containerManager, taskGroup.getTaskGroupId(),
+                  TaskGroupState.State.COMPLETE, attemptIdx, null);
+            }
+          });
         }
-      });
-    }
+      }
+    });
   }
 
   /**
@@ -104,41 +141,46 @@ public final class RuntimeTestUtil {
                                                       final List<PhysicalStageEdge> stageOutgoingEdges,
                                                       final PhysicalStage physicalStage,
                                                       final PartitionState.State newState) {
-    final List<TaskGroup> taskGroupsForStage = physicalStage.getTaskGroupList();
+    eventRunnableQueue.add(new Runnable() {
+      @Override
+      public void run() {
+        final List<TaskGroup> taskGroupsForStage = physicalStage.getTaskGroupList();
 
-    // Initialize states for blocks of inter-stage edges
-    stageOutgoingEdges.forEach(physicalStageEdge -> {
-      final Attribute commPattern =
-          physicalStageEdge.getAttributes().get(Attribute.Key.CommunicationPattern);
-      final int srcParallelism = taskGroupsForStage.size();
-      IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-        if (commPattern == Attribute.ScatterGather) {
-          final int dstParallelism =
-              physicalStageEdge.getDstVertex().getAttributes().get(Attribute.IntegerKey.Parallelism);
-          IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> {
-            final String partitionId =
-                RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx);
-            sendPartitionStateEventToPartitionManager(partitionManagerMaster, containerManager, partitionId, newState);
+        // Initialize states for blocks of inter-stage edges
+        stageOutgoingEdges.forEach(physicalStageEdge -> {
+          final Attribute commPattern =
+              physicalStageEdge.getAttributes().get(Attribute.Key.CommunicationPattern);
+          final int srcParallelism = taskGroupsForStage.size();
+          IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
+            if (commPattern == Attribute.ScatterGather) {
+              final int dstParallelism =
+                  physicalStageEdge.getDstVertex().getAttributes().get(Attribute.IntegerKey.Parallelism);
+              IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> {
+                final String partitionId =
+                    RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx);
+                sendPartitionStateEventToPartitionManager(partitionManagerMaster, containerManager, partitionId, newState);
+              });
+            } else {
+              final String partitionId =
+                  RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx);
+              sendPartitionStateEventToPartitionManager(partitionManagerMaster, containerManager, partitionId, newState);
+            }
           });
-        } else {
-          final String partitionId =
-              RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx);
-          sendPartitionStateEventToPartitionManager(partitionManagerMaster, containerManager, partitionId, newState);
-        }
-      });
-    });
-
-    // Initialize states for blocks of stage internal edges
-    taskGroupsForStage.forEach(taskGroup -> {
-      final DAG<Task, RuntimeEdge<Task>> taskGroupInternalDag = taskGroup.getTaskDAG();
-      taskGroupInternalDag.getVertices().forEach(task -> {
-        final List<RuntimeEdge<Task>> internalOutgoingEdges = taskGroupInternalDag.getOutgoingEdgesOf(task);
-        internalOutgoingEdges.forEach(taskRuntimeEdge -> {
-          final String partitionId =
-              RuntimeIdGenerator.generatePartitionId(taskRuntimeEdge.getId(), taskGroup.getTaskGroupIdx());
-          sendPartitionStateEventToPartitionManager(partitionManagerMaster, containerManager, partitionId, newState);
         });
-      });
+
+        // Initialize states for blocks of stage internal edges
+        taskGroupsForStage.forEach(taskGroup -> {
+          final DAG<Task, RuntimeEdge<Task>> taskGroupInternalDag = taskGroup.getTaskDAG();
+          taskGroupInternalDag.getVertices().forEach(task -> {
+            final List<RuntimeEdge<Task>> internalOutgoingEdges = taskGroupInternalDag.getOutgoingEdgesOf(task);
+            internalOutgoingEdges.forEach(taskRuntimeEdge -> {
+              final String partitionId =
+                  RuntimeIdGenerator.generatePartitionId(taskRuntimeEdge.getId(), taskGroup.getTaskGroupIdx());
+              sendPartitionStateEventToPartitionManager(partitionManagerMaster, containerManager, partitionId, newState);
+            });
+          });
+        });
+      }
     });
   }
 
@@ -154,18 +196,23 @@ public final class RuntimeTestUtil {
                                                                final ContainerManager containerManager,
                                                                final String partitionId,
                                                                final PartitionState.State newState) {
-    final Optional<Set<String>> optionalParentTaskGroupIds = partitionManagerMaster.getProducerTaskGroupIds(partitionId);
-    if (optionalParentTaskGroupIds.isPresent()) {
-      final Set<String> parentTaskGroupIds = optionalParentTaskGroupIds.get();
-      parentTaskGroupIds.forEach(taskGroupId -> {
-        final ExecutorRepresenter scheduledExecutor = findExecutorForTaskGroup(containerManager, taskGroupId);
+    eventRunnableQueue.add(new Runnable() {
+      @Override
+      public void run() {
+        final Optional<Set<String>> optionalParentTaskGroupIds = partitionManagerMaster.getProducerTaskGroupIds(partitionId);
+        if (optionalParentTaskGroupIds.isPresent()) {
+          final Set<String> parentTaskGroupIds = optionalParentTaskGroupIds.get();
+          parentTaskGroupIds.forEach(taskGroupId -> {
+            final ExecutorRepresenter scheduledExecutor = findExecutorForTaskGroup(containerManager, taskGroupId);
 
-        if (scheduledExecutor != null) {
-          partitionManagerMaster.onPartitionStateChanged(
-              partitionId, newState, scheduledExecutor.getExecutorId(), null);
+            if (scheduledExecutor != null) {
+              partitionManagerMaster.onPartitionStateChanged(
+                  partitionId, newState, scheduledExecutor.getExecutorId(), null);
+            }
+          });
         }
-      });
-    }
+      }
+    });
   }
 
   /**
