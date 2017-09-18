@@ -45,11 +45,12 @@ import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -60,6 +61,7 @@ import static org.mockito.Mockito.when;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ContainerManager.class, PartitionManagerMaster.class, PubSubEventHandlerWrapper.class})
 public final class BatchSchedulerTest {
+  private static final Logger LOG = LoggerFactory.getLogger(BatchSchedulerTest.class.getName());
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
   private Scheduler scheduler;
   private SchedulingPolicy schedulingPolicy;
@@ -70,13 +72,14 @@ public final class BatchSchedulerTest {
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
   private PhysicalPlanGenerator physicalPlanGenerator;
 
-  private static final int TEST_TIMEOUT_MS = 1000;
+  private static final int TEST_TIMEOUT_MS = 500;
 
   // This schedule index will make sure that task group events are not ignored
   private static final int MAGIC_SCHEDULE_ATTEMPT_INDEX = Integer.MAX_VALUE;
 
   @Before
   public void setUp() throws Exception {
+    RuntimeTestUtil.initialize();
     irDAGBuilder = new DAGBuilder<>();
     containerManager = mock(ContainerManager.class);
     pendingTaskGroupPriorityQueue = new PendingTaskGroupPriorityQueue();
@@ -124,7 +127,7 @@ public final class BatchSchedulerTest {
    * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchScheduler}.
    * TaskGroup state changes are explicitly submitted to scheduler instead of executor messages.
    */
-  @Test
+  @Test(timeout=10000)
   public void testMultiInputOutputScheduling() throws Exception {
     // Build DAG
     final Transform t = new EmptyComponents.EmptyTransform("empty");
@@ -167,6 +170,7 @@ public final class BatchSchedulerTest {
 
     final DAG<IRVertex, IREdge> irDAG = Optimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
             Optimizer.PolicyType.TestingPolicy, "");
+
     final PhysicalPlanGenerator physicalPlanGenerator =
         Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
@@ -175,25 +179,39 @@ public final class BatchSchedulerTest {
         scheduler.scheduleJob(new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
             1);
 
-    // Start off with the root stages.
-    physicalDAG.getRootVertices().forEach(physicalStage ->
+    // For each ScheduleGroup, test:
+    // a) all stages in the ScheduleGroup enters the executing state
+    // b) the stages of the next ScheduleGroup are scheduled after the stages of each ScheduleGroup are made "complete".
+    for (int i = 0; i < getNumScheduleGroups(irDAG); i++) {
+      final int scheduleGroupIdx = i;
+
+      final List<PhysicalStage> scheduleGroupStages = physicalDAG.filterVertices(physicalStage ->
+          physicalStage.getScheduleGroupIndex() == scheduleGroupIdx);
+
+      LOG.debug("Checking that all stages of ScheduleGroup {} enter the executing state", scheduleGroupIdx);
+      scheduleGroupStages.forEach(physicalStage -> {
+        while (jobStateManager.getStageState(physicalStage.getId()).getStateMachine().getCurrentState()
+            != StageState.State.EXECUTING) {
+
+        }
+      });
+
+      scheduleGroupStages.forEach(physicalStage ->
         RuntimeTestUtil.sendStageCompletionEventToScheduler(
             jobStateManager, scheduler, containerManager, physicalStage, MAGIC_SCHEDULE_ATTEMPT_INDEX));
-
-    // Then, for the rest of the stages.
-    while (!jobStateManager.checkJobTermination()) {
-      final List<PhysicalStage> stageList = physicalDAG.getTopologicalSort();
-      stageList.forEach(physicalStage ->
-          RuntimeTestUtil.sendStageCompletionEventToScheduler(
-              jobStateManager, scheduler, containerManager, physicalStage, MAGIC_SCHEDULE_ATTEMPT_INDEX));
     }
 
-    // Check that the job have completed (not failed)
-    assertTrue(jobStateManager.getJobState().getStateMachine().getCurrentState() == JobState.State.COMPLETE);
+    LOG.debug("Waiting for job termination after sending stage completion events");
+    while (!jobStateManager.checkJobTermination()) {
 
-    // Check that all stages have completed.
-    physicalDAG.getVertices().forEach(physicalStage ->
-        assertTrue(jobStateManager.getStageState(physicalStage.getId()).getStateMachine().getCurrentState()
-            == StageState.State.COMPLETE));
+    }
+    assertTrue(jobStateManager.checkJobTermination());
+  }
+
+  private int getNumScheduleGroups(final DAG<IRVertex, IREdge> irDAG) {
+    final Set<Integer> scheduleGroupSet = new HashSet<>();
+    irDAG.getTopologicalSort().forEach(irVertex ->
+        scheduleGroupSet.add(irVertex.getAttr(Attribute.IntegerKey.ScheduleGroupIndex)));
+    return scheduleGroupSet.size();
   }
 }

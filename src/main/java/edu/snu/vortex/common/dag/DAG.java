@@ -27,6 +27,8 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import org.slf4j.Logger;
+
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -204,6 +206,16 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
     final List<V> sortedList = new ArrayList<>(vertices.size());
     topologicalDo(sortedList::add);
     return sortedList;
+  }
+
+  /**
+   * Filters the vertices according to the given condition.
+   * @param condition that must be satisfied to be included in the filtered list.
+   * @return the list of vertices that meet the condition.
+   */
+  public List<V> filterVertices(final Predicate<V> condition) {
+    final List<V> filteredVertices = vertices.stream().filter(condition).collect(Collectors.toList());
+    return filteredVertices;
   }
 
   /**

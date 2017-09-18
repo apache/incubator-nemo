@@ -33,10 +33,10 @@ import static edu.snu.vortex.compiler.ir.attribute.Attribute.IntegerKey.StageId;
  * to give correct order or schedule groups.
  */
 public final class ScheduleGroupPass implements StaticOptimizationPass {
+  private final int initialScheduleGroup = 0;
+
   @Override
   public DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag) {
-    final int initialScheduleGroup = 0;
-
     // We assume that the input dag is tagged with stage ids.
     if (dag.getVertices().stream().anyMatch(irVertex -> irVertex.getAttr(StageId) == null)) {
       throw new RuntimeException("There exists an IR vertex going through ScheduleGroupPass "
