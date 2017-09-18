@@ -13,20 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.metric;
+package edu.snu.vortex.runtime.common.metric;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.snu.vortex.client.JobConf;
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
-import edu.snu.vortex.runtime.exception.JsonParseException;
+import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
-import edu.snu.vortex.runtime.executor.metric.parameter.MetricFlushPeriod;
+import edu.snu.vortex.runtime.common.metric.parameter.MetricFlushPeriod;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
-import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Metric sender that periodically flushes the collected metrics to Driver.
@@ -36,49 +37,48 @@ public final class PeriodicMetricSender implements MetricSender {
   private final ScheduledExecutorService scheduledExecutorService;
   private final BlockingQueue<String> metricMessageQueue;
   private final AtomicBoolean closed;
-  private final ObjectMapper objectMapper;
+
+  private static final Logger LOG = LoggerFactory.getLogger(PeriodicMetricSender.class.getName());
 
   @Inject
   private PeriodicMetricSender(@Parameter(MetricFlushPeriod.class) final long flushingPeriod,
-                               @Parameter(JobConf.ExecutorId.class) final String executorId,
                                final PersistentConnectionToMaster persistentConnectionToMaster) {
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.metricMessageQueue = new LinkedBlockingQueue<>();
     this.closed = new AtomicBoolean(false);
-    this.objectMapper = new ObjectMapper();
-    this.scheduledExecutorService.scheduleAtFixedRate(() -> {
-      while (!closed.get() || !metricMessageQueue.isEmpty()) {
+    Runnable batchMetricMessages = () -> {
+
+      while (!closed.get() && !metricMessageQueue.isEmpty()) {
+
         // Build batched metric messages
         int size = metricMessageQueue.size();
+
         final ControlMessage.MetricMsg.Builder metricMsgBuilder = ControlMessage.MetricMsg.newBuilder();
 
-        for (int index = 0; index < size; index++) {
+        for (int i = 0; i < size; i++) {
           final String metricMsg = metricMessageQueue.poll();
-          metricMsgBuilder.setExecutorId(executorId);
-          metricMsgBuilder.setMessages(index, metricMsg);
+          metricMsgBuilder.setMetricMessages(i, metricMsg);
         }
 
-        // Send msg
-        final ControlMessage.Message.Builder msgBuilder = ControlMessage.Message.newBuilder();
-        msgBuilder.setMetricMsg(metricMsgBuilder.build());
-        persistentConnectionToMaster.getMessageSender().send(msgBuilder.build());
+        persistentConnectionToMaster.getMessageSender().send(
+            ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdGenerator.generateMessageId())
+                .setType(ControlMessage.MessageType.MetricMessageReceived)
+                .setMetricMsg(metricMsgBuilder.build())
+                .build());
       }
-    }, flushingPeriod, flushingPeriod, TimeUnit.MILLISECONDS);
+    };
+    this.scheduledExecutorService.scheduleAtFixedRate(batchMetricMessages, 0,
+                                                      flushingPeriod, TimeUnit.MILLISECONDS);
   }
 
   @Override
-  public void send(final Map<String, Object> jsonMetricData) {
-    // Serialize to Json string
-    try {
-      final String jsonStr = objectMapper.writeValueAsString(jsonMetricData);
-      metricMessageQueue.add(jsonStr);
-    } catch (final Exception e) {
-      throw new JsonParseException(e);
-    }
+  public void send(final String jsonStr) {
+    metricMessageQueue.add(jsonStr);
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() throws UnknownFailureCauseException {
     closed.set(true);
     scheduledExecutorService.shutdown();
   }

@@ -17,8 +17,6 @@ package edu.snu.vortex.runtime.master;
 
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
-import java.util.Map;
-
 /**
  * Metric message handler.
  */
@@ -27,8 +25,7 @@ public interface MetricMessageHandler {
 
   /**
    * Handle the received metric message.
-   * @param executorId executor id that sends the metric message
-   * @param metricData json formatted message object
+   * @param metricData String type metric data.
    */
-  void onMetricMessageReceived(String executorId, Map<String, Object> metricData);
+  void onMetricMessageReceived(String metricData);
 }

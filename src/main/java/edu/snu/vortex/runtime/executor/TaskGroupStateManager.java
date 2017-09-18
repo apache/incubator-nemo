@@ -25,8 +25,13 @@ import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
 import edu.snu.vortex.common.StateMachine;
 
 import java.util.*;
+
+import edu.snu.vortex.runtime.common.metric.MetricData;
+import edu.snu.vortex.runtime.common.metric.MetricDataBuilder;
+import edu.snu.vortex.runtime.common.metric.PeriodicMetricSender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 /**
  * Manages the states related to a task group.
@@ -39,6 +44,8 @@ public final class TaskGroupStateManager {
   private final String taskGroupId;
   private final int attemptIdx;
   private final String executorId;
+  private final PeriodicMetricSender periodicMetricSender;
+  private final Map<String, MetricDataBuilder> metricDataBuilderMap;
 
   /**
    * Used to track all task states of this task group, by keeping a map of task ids to their states.
@@ -59,11 +66,14 @@ public final class TaskGroupStateManager {
   public TaskGroupStateManager(final TaskGroup taskGroup,
                                final int attemptIdx,
                                final String executorId,
-                               final PersistentConnectionToMaster persistentConnectionToMaster) {
+                               final PersistentConnectionToMaster persistentConnectionToMaster,
+                               final PeriodicMetricSender periodicMetricSender) {
     this.taskGroupId = taskGroup.getTaskGroupId();
     this.attemptIdx = attemptIdx;
     this.executorId = executorId;
     this.persistentConnectionToMaster = persistentConnectionToMaster;
+    this.periodicMetricSender = periodicMetricSender;
+    metricDataBuilderMap = new HashMap<>();
     idToTaskStates = new HashMap<>();
     currentTaskGroupTaskIds = new HashSet<>();
     initializeStates(taskGroup);
@@ -80,7 +90,6 @@ public final class TaskGroupStateManager {
     });
   }
 
-
   /**
    * Updates the state of the task group.
    * @param newState of the task group.
@@ -90,21 +99,47 @@ public final class TaskGroupStateManager {
   public synchronized void onTaskGroupStateChanged(final TaskGroupState.State newState,
                                                    final Optional<List<String>> tasksPutOnHold,
                                                    final Optional<TaskGroupState.RecoverableFailureCause> cause) {
+    String taskGroupKey = MetricData.ComputationUnit.TASKGROUP.name() + taskGroupId;
+
+    Runnable beginMeasure = () -> {
+      final MetricDataBuilder metricDataBuilder =
+          new MetricDataBuilder(MetricData.ComputationUnit.TASKGROUP, taskGroupId);
+      final Map<String, Object> metrics = new HashMap<>();
+      metrics.put("ExecutorId", executorId);
+      metrics.put("ScheduleAttempt", attemptIdx);
+      metrics.put("FromState", newState);
+      metricDataBuilder.beginMeasurement(metrics);
+      metricDataBuilderMap.put(taskGroupKey, metricDataBuilder);
+    };
+
+    Runnable endMeasure = () -> {
+      final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(taskGroupKey);
+      final Map<String, Object> metrics = new HashMap<>();
+      metrics.put("ToState", newState);
+      metricDataBuilder.endMeasurement(metrics);
+      periodicMetricSender.send(metricDataBuilder.build().toJson());
+      metricDataBuilderMap.remove(taskGroupKey);
+    };
+
     switch (newState) {
     case EXECUTING:
       LOG.debug("Executing TaskGroup ID {}...", taskGroupId);
+      beginMeasure.run();
       idToTaskStates.forEach((taskId, state) -> state.getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR));
       break;
     case COMPLETE:
       LOG.debug("TaskGroup ID {} complete!", taskGroupId);
+      endMeasure.run();
       notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case FAILED_RECOVERABLE:
       LOG.debug("TaskGroup ID {} failed (recoverable).", taskGroupId);
+      endMeasure.run();
       notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case FAILED_UNRECOVERABLE:
       LOG.debug("TaskGroup ID {} failed (unrecoverable).", taskGroupId);
+      endMeasure.run();
       notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case ON_HOLD:
@@ -129,21 +164,48 @@ public final class TaskGroupStateManager {
     LOG.debug("Task State Transition: id {} from {} to {}",
         new Object[]{taskGroupId, taskStateChanged.getCurrentState(), newState});
     taskStateChanged.setState(newState);
+
+    String taskKey = MetricData.ComputationUnit.TASK + taskId;
+
+    Runnable beginMeasure = () -> {
+      final MetricDataBuilder metricDataBuilder =
+          new MetricDataBuilder(MetricData.ComputationUnit.TASK, taskId);
+      final Map<String, Object> metrics = new HashMap<>();
+      metrics.put("ExecutorId", executorId);
+      metrics.put("ScheduleAttempt", attemptIdx);
+      metrics.put("FromState", newState);
+      metricDataBuilder.beginMeasurement(metrics);
+      metricDataBuilderMap.put(taskKey, metricDataBuilder);
+    };
+
+    Runnable endMeasure = () -> {
+      final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(taskKey);
+      final Map<String, Object> metrics = new HashMap<>();
+      metrics.put("ToState", newState);
+      metricDataBuilder.endMeasurement(metrics);
+      periodicMetricSender.send(metricDataBuilder.build().toJson());
+      metricDataBuilderMap.remove(taskKey);
+    };
+
     switch (newState) {
     case READY:
     case EXECUTING:
+      beginMeasure.run();
       break;
     case COMPLETE:
       currentTaskGroupTaskIds.remove(taskId);
       if (currentTaskGroupTaskIds.isEmpty()) {
         onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), cause);
       }
+      endMeasure.run();
       break;
     case FAILED_RECOVERABLE:
       onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE, Optional.empty(), cause);
+      endMeasure.run();
       break;
     case FAILED_UNRECOVERABLE:
       onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE, Optional.empty(), cause);
+      endMeasure.run();
       break;
     case ON_HOLD:
       currentTaskGroupTaskIds.remove(taskId);
