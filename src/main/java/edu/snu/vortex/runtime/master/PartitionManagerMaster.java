@@ -185,8 +185,15 @@ public final class PartitionManagerMaster {
    */
   public synchronized void onProducerTaskGroupFailed(final String failedTaskGroupId) {
     if (producerTaskGroupIdToPartitionIds.containsKey(failedTaskGroupId)) {
-      producerTaskGroupIdToPartitionIds.get(failedTaskGroupId).forEach(partitionId ->
-          onPartitionStateChanged(partitionId, PartitionState.State.LOST_BEFORE_COMMIT, null, null));
+      producerTaskGroupIdToPartitionIds.get(failedTaskGroupId).forEach(partitionId -> {
+        final PartitionState.State state =
+            (PartitionState.State) partitionIdToState.get(partitionId).getStateMachine().getCurrentState();
+        if (state == PartitionState.State.COMMITTED) {
+          onPartitionStateChanged(partitionId, PartitionState.State.LOST, null, null);
+        } else {
+          onPartitionStateChanged(partitionId, PartitionState.State.LOST_BEFORE_COMMIT, null, null);
+        }
+      });
     } // else this task group does not produce any partition
   }
 
