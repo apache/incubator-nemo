@@ -17,6 +17,7 @@ package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.client.JobLauncher;
 import edu.snu.vortex.compiler.CompilerTestUtil;
+import edu.snu.vortex.compiler.optimizer.policy.PadoPolicy;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -30,7 +31,6 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class AlternatingLeastSquareITCase {
   private static final int TIMEOUT = 120000;
-  private static final String als = "edu.snu.vortex.examples.beam.AlternatingLeastSquare";
   private static final String input = CompilerTestUtil.rootDir + "/src/main/resources/sample_input_als";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
@@ -38,14 +38,14 @@ public final class AlternatingLeastSquareITCase {
 
   public static ArgBuilder builder = new ArgBuilder()
       .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
-      .addUserMain(als)
+      .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
       .addUserArgs(input, numFeatures, numIteration)
       .addDAGDirectory(dagDirectory);
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-        .addUserMain(als)
+        .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
         .addUserArgs(input, numFeatures, numIteration)
         .addDAGDirectory(dagDirectory);
   }
@@ -62,7 +62,7 @@ public final class AlternatingLeastSquareITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy("pado")
+        .addOptimizationPolicy(PadoPolicy.class.getCanonicalName())
         .build());
   }
 }

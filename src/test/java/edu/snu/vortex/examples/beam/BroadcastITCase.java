@@ -17,6 +17,8 @@ package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.client.JobLauncher;
 import edu.snu.vortex.compiler.CompilerTestUtil;
+import edu.snu.vortex.compiler.optimizer.policy.DefaultPolicy;
+import edu.snu.vortex.compiler.optimizer.policy.PadoPolicy;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -37,14 +39,14 @@ public final class BroadcastITCase {
 
   private static ArgBuilder builder = new ArgBuilder()
       .addJobId(BroadcastITCase.class.getSimpleName())
-      .addUserMain(broadcast)
+      .addUserMain(Broadcast.class.getCanonicalName())
       .addUserArgs(input, output)
       .addDAGDirectory(dagDirectory);
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-        .addUserMain(broadcast)
+        .addUserMain(Broadcast.class.getCanonicalName())
         .addUserArgs(input, output)
         .addDAGDirectory(dagDirectory);
   }
@@ -53,6 +55,7 @@ public final class BroadcastITCase {
   public void test() throws Exception {
     JobLauncher.main(builder
         .addJobId(BroadcastITCase.class.getSimpleName())
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
   }
 
@@ -60,7 +63,7 @@ public final class BroadcastITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(BroadcastITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy("pado")
+        .addOptimizationPolicy(PadoPolicy.class.getCanonicalName())
         .build());
   }
 }
