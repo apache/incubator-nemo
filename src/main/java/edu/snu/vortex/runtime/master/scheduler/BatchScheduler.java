@@ -395,7 +395,8 @@ public final class BatchScheduler implements Scheduler {
     stagesToSchedule.addAll(physicalPlan.getStageDAG().filterVertices(
         physicalStage -> physicalStage.getScheduleGroupIndex() == currentScheduleGroupIndex + 1));
 
-    final List<PhysicalStage> filteredStagesToSchedule = stagesToSchedule.stream().filter(physicalStage -> {
+    final List<PhysicalStage> filteredStagesToSchedule =
+        stagesToSchedule.stream().filter(physicalStage -> {
       final String stageId = physicalStage.getId();
       return jobStateManager.getStageState(stageId).getStateMachine().getCurrentState() != StageState.State.EXECUTING
           && jobStateManager.getStageState(stageId).getStateMachine().getCurrentState() != StageState.State.COMPLETE;
@@ -424,11 +425,6 @@ public final class BatchScheduler implements Scheduler {
     if (stageState == StageState.State.FAILED_RECOVERABLE) {
       // The 'failed_recoverable' stage has been selected as the next stage to execute. Change its state back to 'ready'
       jobStateManager.onStageStateChanged(stageToSchedule.getId(), StageState.State.READY);
-    } else if (stageState == StageState.State.EXECUTING) {
-      // An 'executing' stage has been selected as the next stage to execute.
-      // This is due to the "Push" data transfer policy. We can skip this round.
-      LOG.info("{} has already been scheduled! Skipping this round.", stageToSchedule.getId());
-      return;
     }
 
     // attemptIdx is only initialized/updated when we set the stage's state to executing
@@ -451,6 +447,7 @@ public final class BatchScheduler implements Scheduler {
           jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.READY);
         }
         partitionManagerMaster.onProducerTaskGroupScheduled(taskGroup.getTaskGroupId());
+        LOG.debug("Enquing {}", taskGroup.getTaskGroupId());
         pendingTaskGroupPriorityQueue.enqueue(
             new ScheduledTaskGroup(taskGroup, stageIncomingEdges, stageOutgoingEdges, attemptIdx));
       }

@@ -64,16 +64,17 @@ public final class PendingTaskGroupPriorityQueue {
    */
   public void enqueue(final ScheduledTaskGroup scheduledTaskGroup) {
     final String stageId = scheduledTaskGroup.getTaskGroup().getStageId();
+    final Attribute containerType = scheduledTaskGroup.getTaskGroup().getContainerType();
 
     stageIdToPendingTaskGroups.compute(stageId,
         new BiFunction<String, Deque<ScheduledTaskGroup>, Deque<ScheduledTaskGroup>>() {
           @Override
           public Deque<ScheduledTaskGroup> apply(final String s,
-                                                         final Deque<ScheduledTaskGroup> scheduledTaskGroups) {
+                                                 final Deque<ScheduledTaskGroup> scheduledTaskGroups) {
             if (scheduledTaskGroups == null) {
               final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = new ArrayDeque<>();
               pendingTaskGroupsForStage.add(scheduledTaskGroup);
-              updateSchedulableStages(stageId);
+              updateSchedulableStages(stageId, containerType);
               return pendingTaskGroupsForStage;
             } else {
               scheduledTaskGroups.add(scheduledTaskGroup);
@@ -100,7 +101,8 @@ public final class PendingTaskGroupPriorityQueue {
       taskGroupToSchedule = pendingTaskGroupsForStage.poll();
       if (pendingTaskGroupsForStage.isEmpty()) {
         stageIdToPendingTaskGroups.remove(stageId);
-        stageIdToPendingTaskGroups.keySet().forEach(scheduledStageId -> updateSchedulableStages(scheduledStageId));
+        stageIdToPendingTaskGroups.forEach((scheduledStageId, taskGroupList) ->
+            updateSchedulableStages(scheduledStageId, taskGroupList.getFirst().getTaskGroup().getContainerType()));
       } else {
         schedulableStages.addLast(stageId);
       }
@@ -133,14 +135,14 @@ public final class PendingTaskGroupPriorityQueue {
    * Updates the two-level PQ by examining a new candidate stage.
    * If there are no stages with higher priority, the candidate can be made schedulable.
    * @param candidateStageId for the stage that can potentially be scheduled.
+   * @param candidateStageContainerType for the stage that can potentially be scheduled.
    */
-  private void updateSchedulableStages(final String candidateStageId) {
+  private void updateSchedulableStages(final String candidateStageId, final Attribute candidateStageContainerType) {
     boolean readyToScheduleImmediately = true;
     final DAG<PhysicalStage, PhysicalStageEdge> jobDAG = physicalPlan.getStageDAG();
-    for (final PhysicalStage parentStage : jobDAG.getParents(candidateStageId)) {
-      if (schedulableStages.contains(parentStage.getId())) {
-        if ((jobDAG.getEdgeBetween(parentStage.getId(),
-            candidateStageId).getAttributes().get(Attribute.Key.ChannelTransferPolicy) == Attribute.Pull)) {
+    for (final PhysicalStage ancestorStage : jobDAG.getAncestors(candidateStageId)) {
+      if (schedulableStages.contains(ancestorStage.getId())) {
+        if (candidateStageContainerType == ancestorStage.getTaskGroupList().get(0).getContainerType()) {
           readyToScheduleImmediately = false;
           break;
         }
