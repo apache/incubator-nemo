@@ -209,6 +209,29 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
   }
 
   /**
+   * Retrieves th ancestors of a vertex.
+   * @param vertexId to find the ancestors for.
+   * @return the list of ancestors.
+   */
+  public List<V> getAncestors(final String vertexId) {
+    final List<V> ancestors = new ArrayList<>();
+    addAncestors(ancestors, vertexId);
+    return ancestors;
+  }
+
+  /**
+   * Recursively adds ancestors of a vertex to the given list.
+   * @param ancestorList to accumulate the ancestors.
+   * @param vertexId to find the ancestors for.
+   */
+  private void addAncestors(final List<V> ancestorList, final String vertexId) {
+    getParents(vertexId).forEach(parent -> {
+      ancestorList.add(parent);
+      addAncestors(ancestorList, parent.getId());
+    });
+  }
+
+  /**
    * Filters the vertices according to the given condition.
    * @param condition that must be satisfied to be included in the filtered list.
    * @return the list of vertices that meet the condition.
