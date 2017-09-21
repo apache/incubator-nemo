@@ -61,10 +61,10 @@ public final class JobConf extends ConfigurationModuleBuilder {
   //////////////////////////////// Compiler Configurations
 
   /**
-   * Name of the optimization policy.
+   * The name of the optimization policy.
    */
-  @NamedParameter(doc = "Name of the optimization policy", short_name = "optimization_policy",
-      default_value = "default")
+  @NamedParameter(doc = "The canonical name of the optimization policy", short_name = "optimization_policy",
+      default_value = "edu.snu.vortex.compiler.optimizer.policy.DefaultPolicy")
   public final class OptimizationPolicy implements Name<String> {
   }
 

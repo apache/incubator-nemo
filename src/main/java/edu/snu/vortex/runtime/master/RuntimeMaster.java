@@ -22,7 +22,7 @@ import edu.snu.vortex.common.proxy.ClientEndpoint;
 import edu.snu.vortex.common.proxy.DriverEndpoint;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
-import edu.snu.vortex.compiler.optimizer.passes.DataSkewPass;
+import edu.snu.vortex.compiler.optimizer.pass.DataSkewPass;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;

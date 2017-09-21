@@ -19,10 +19,10 @@ import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
-import edu.snu.vortex.compiler.optimizer.passes.*;
-import edu.snu.vortex.compiler.optimizer.passes.dynamic_optimization.DataSkewDynamicOptimizationPass;
-import edu.snu.vortex.compiler.optimizer.passes.optimization.LoopOptimizations;
+import edu.snu.vortex.compiler.optimizer.pass.*;
+import edu.snu.vortex.compiler.optimizer.pass.dynamic_optimization.DataSkewDynamicOptimizationPass;
 import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.compiler.optimizer.policy.Policy;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 
 import java.util.*;
@@ -38,17 +38,17 @@ public final class Optimizer {
   /**
    * Optimize function.
    * @param dag input DAG.
-   * @param policyType type of the instantiation policy that we want to use to optimize the DAG.
+   * @param optimizationPolicy the optimization policy that we want to use to optimize the DAG.
    * @param dagDirectory directory to save the DAG information.
    * @return optimized DAG, tagged with attributes.
    * @throws Exception throws an exception if there is an exception.
    */
-  public static DAG<IRVertex, IREdge> optimize(final DAG<IRVertex, IREdge> dag, final PolicyType policyType,
+  public static DAG<IRVertex, IREdge> optimize(final DAG<IRVertex, IREdge> dag, final Policy optimizationPolicy,
                                                final String dagDirectory) throws Exception {
-    if (policyType == null) {
-      throw new RuntimeException("Policy has not been provided for the policyType");
+    if (optimizationPolicy == null || optimizationPolicy.getOptimizationPasses().isEmpty()) {
+      throw new RuntimeException("A policy name should be specified.");
     }
-    return process(dag, POLICIES.get(policyType), dagDirectory);
+    return process(dag, optimizationPolicy.getOptimizationPasses(), dagDirectory);
   }
 
   /**
@@ -65,86 +65,11 @@ public final class Optimizer {
     if (passes.isEmpty()) {
       return dag;
     } else {
-      final DAG<IRVertex, IREdge> processedDAG = passes.get(0).process(dag);
+      final DAG<IRVertex, IREdge> processedDAG = passes.get(0).apply(dag);
       processedDAG.storeJSON(dagDirectory, "ir-after-" + passes.get(0).getClass().getSimpleName(),
           "DAG after optimization");
       return process(processedDAG, passes.subList(1, passes.size()), dagDirectory);
     }
-  }
-
-  /**
-   * Enum for different types of instantiation policies.
-   */
-  public enum PolicyType {
-    Default,
-    Pado,
-    Disaggregation,
-    DataSkew,
-    TestingPolicy,
-  }
-
-  /**
-   * A HashMap to match each of instantiation policies with a combination of instantiation passes.
-   * Each policies are run in the order with which they are defined.
-   */
-  private static final Map<PolicyType, List<StaticOptimizationPass>> POLICIES = new HashMap<>();
-  static {
-    POLICIES.put(PolicyType.Default,
-        Arrays.asList(
-            new ParallelismPass(), // Provides parallelism information.
-            new DefaultStagePartitioningPass(),
-            new ScheduleGroupPass()
-        ));
-    POLICIES.put(PolicyType.Pado,
-        Arrays.asList(
-            new ParallelismPass(), // Provides parallelism information.
-            new LoopGroupingPass(),
-            LoopOptimizations.getLoopFusionPass(),
-            LoopOptimizations.getLoopInvariantCodeMotionPass(),
-            new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.
-            new PadoVertexPass(), new PadoEdgePass(), // Processes vertices and edges with Pado algorithm.
-            new DefaultStagePartitioningPass(),
-            new ScheduleGroupPass()
-       ));
-    POLICIES.put(PolicyType.Disaggregation,
-        Arrays.asList(
-            new ParallelismPass(), // Provides parallelism information.
-            new LoopGroupingPass(),
-            LoopOptimizations.getLoopFusionPass(),
-            LoopOptimizations.getLoopInvariantCodeMotionPass(),
-            new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.
-            new DisaggregationPass(), // Processes vertices and edges with Disaggregation algorithm.
-            new IFilePass(), // Enables I-File style write optimization.
-            new DefaultStagePartitioningPass(),
-            new ScheduleGroupPass()
-        ));
-    POLICIES.put(PolicyType.DataSkew,
-        Arrays.asList(
-            new ParallelismPass(), // Provides parallelism information.
-            new LoopGroupingPass(),
-            LoopOptimizations.getLoopFusionPass(),
-            LoopOptimizations.getLoopInvariantCodeMotionPass(),
-            new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.
-            new DataSkewPass(),
-            new DefaultStagePartitioningPass(),
-            new ScheduleGroupPass()
-        ));
-    POLICIES.put(PolicyType.TestingPolicy, // Simply build stages for tests
-        Arrays.asList(
-            new DefaultStagePartitioningPass(),
-            new ScheduleGroupPass()
-        ));
-  }
-
-  /**
-   * A HashMap to convert string names for each policy type to receive as arguments.
-   */
-  public static final Map<String, PolicyType> POLICY_NAME = new HashMap<>();
-  static {
-    POLICY_NAME.put("default", PolicyType.Default);
-    POLICY_NAME.put("pado", PolicyType.Pado);
-    POLICY_NAME.put("disaggregation", PolicyType.Disaggregation);
-    POLICY_NAME.put("dataskew", PolicyType.DataSkew);
   }
 
   /**
@@ -163,7 +88,7 @@ public final class Optimizer {
       case DataSkew:
         // Map between a partition ID to corresponding metric data (e.g., the size of each block).
         final Map<String, List<Long>> metricData = metricCollectionBarrierVertex.getMetricData();
-        return new DataSkewDynamicOptimizationPass().process(originalPlan, metricData);
+        return new DataSkewDynamicOptimizationPass().apply(originalPlan, metricData);
       default:
         return originalPlan;
     }
