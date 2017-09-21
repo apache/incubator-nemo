@@ -206,11 +206,12 @@ public final class BatchSchedulerTest {
 
     }
     assertTrue(jobStateManager.checkJobTermination());
+    RuntimeTestUtil.cleanup();
   }
 
   private int getNumScheduleGroups(final DAG<IRVertex, IREdge> irDAG) {
     final Set<Integer> scheduleGroupSet = new HashSet<>();
-    irDAG.getTopologicalSort().forEach(irVertex ->
+    irDAG.getVertices().forEach(irVertex ->
         scheduleGroupSet.add(irVertex.getAttr(Attribute.IntegerKey.ScheduleGroupIndex)));
     return scheduleGroupSet.size();
   }
