@@ -116,15 +116,6 @@ message DataTransferControlMessage {
     optional int32 endRangeExclusive = 9;
 }
 
-message RequestPartitionMsg {
-    required int64 requestId = 1; // To handle multiple outstanding requests on one link between PartitionTransferPeers
-    required string partitionId = 2;
-    required PartitionStore partitionStore = 3;
-    required string runtimeEdgeId = 4;
-    optional int32 hashRangeStartVal = 5; // Inclusive
-    optional int32 hashRangeEndVal = 6; // Exclusive
-}
-
 enum TaskGroupStateFromExecutor {
     READY = 0;
     EXECUTING = 1;
