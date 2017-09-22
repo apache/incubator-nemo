@@ -27,13 +27,13 @@ import static org.junit.Assert.assertTrue;
 /**
  * Tests for encoding and decoding control frames.
  */
-public final class ControlMessageCodecTest {
+public final class ControlFrameCodecTest {
   private final ControlFrameEncoder encoder;
 
   /**
    * @throws InjectionException if failed to get an instance of {@link ControlFrameEncoder}
    */
-  public ControlMessageCodecTest() throws InjectionException {
+  public ControlFrameCodecTest() throws InjectionException {
     encoder = Tang.Factory.getTang().newInjector().getInstance(ControlFrameEncoder.class);
   }
 
