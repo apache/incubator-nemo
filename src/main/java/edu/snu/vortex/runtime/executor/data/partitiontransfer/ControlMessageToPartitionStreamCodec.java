@@ -266,39 +266,23 @@ final class ControlMessageToPartitionStreamCodec
   }
 
   /**
-   * Gets {@code pullTransferIdToInputStream}.
+   * Gets the map between transfer ids to input streams.
    *
-   * @return {@code pullTransferIdToInputStream}
+   * @param isPull whether the map to be returned is related to pull-based transfer
+   * @return {@code pullTransferIdToInputStream} or {@code pushTransferIdToInputStream}
    */
-  Map<Short, PartitionInputStream> getPullTransferIdToInputStream() {
-    return pullTransferIdToInputStream;
+  Map<Short, PartitionInputStream> getTransferIdToInputStream(final boolean isPull) {
+    return isPull ? pullTransferIdToInputStream : pushTransferIdToInputStream;
   }
 
   /**
-   * Gets {@code pushTransferIdToInputStream}.
+   * Gets the map between transfer ids to output streams.
    *
-   * @return {@code pushTransferIdToInputStream}
+   * @param isPull whether the map to be returned is related to pull-based transfer
+   * @return {@code pullTransferIdToOutputStream} or {@code pushTransferIdToOutputStream}
    */
-  Map<Short, PartitionInputStream> getPushTransferIdToInputStream() {
-    return pushTransferIdToInputStream;
-  }
-
-  /**
-   * Gets {@code pullTransferIdToOutputStream}.
-   *
-   * @return {@code pullTransferIdToOutputStream}
-   */
-  Map<Short, PartitionOutputStream> getPullTransferIdToOutputStream() {
-    return pullTransferIdToOutputStream;
-  }
-
-  /**
-   * Gets {@code pushTransferIdToOutputStream}.
-   *
-   * @return {@code pushTransferIdToOutputStream}
-   */
-  Map<Short, PartitionOutputStream> getPushTransferIdToOutputStream() {
-    return pushTransferIdToOutputStream;
+  Map<Short, PartitionOutputStream> getTransferIdToOutputStream(final boolean isPull) {
+    return isPull ? pullTransferIdToOutputStream : pushTransferIdToOutputStream;
   }
 
   private static ControlMessage.PartitionStore convertPartitionStore(final Attribute partitionStore) {

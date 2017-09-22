@@ -88,9 +88,7 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
 
     // a transport context is closed. remove from map.
     if (in.isLastFrame) {
-      final ControlMessageToPartitionStreamCodec duplexHandler
-          = ctx.channel().pipeline().get(ControlMessageToPartitionStreamCodec.class);
-      (isPull ? duplexHandler.getPullTransferIdToOutputStream() : duplexHandler.getPushTransferIdToOutputStream())
+      ctx.channel().pipeline().get(ControlMessageToPartitionStreamCodec.class).getTransferIdToOutputStream(isPull)
           .remove(in.transferId);
       LOG.debug("Closing transport {}:{}, where the partition sender is {} and the receiver is {}", new Object[]{
           isPull ? "pull" : "push", in.transferId, ctx.channel().localAddress(), ctx.channel().remoteAddress()});

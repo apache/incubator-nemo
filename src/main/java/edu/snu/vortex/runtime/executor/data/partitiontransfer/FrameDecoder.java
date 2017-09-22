@@ -24,7 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * Interprets inbound byte streams to compose frames.
@@ -90,9 +89,6 @@ final class FrameDecoder extends ByteToMessageDecoder {
 
   static final int HEADER_LENGTH = ControlFrameEncoder.HEADER_LENGTH;
 
-  private Map<Short, PartitionInputStream> pullTransferIdToInputStream;
-  private Map<Short, PartitionInputStream> pushTransferIdToInputStream;
-
   /**
    * The number of bytes consisting body of a control frame to be read next.
    */
@@ -128,15 +124,6 @@ final class FrameDecoder extends ByteToMessageDecoder {
    */
   FrameDecoder() {
     assert (ControlFrameEncoder.HEADER_LENGTH == DataFrameEncoder.HEADER_LENGTH);
-  }
-
-  @Override
-  public void channelActive(final ChannelHandlerContext ctx) {
-    final ControlMessageToPartitionStreamCodec duplexHandler
-        = ctx.channel().pipeline().get(ControlMessageToPartitionStreamCodec.class);
-    pullTransferIdToInputStream = duplexHandler.getPullTransferIdToInputStream();
-    pushTransferIdToInputStream = duplexHandler.getPushTransferIdToInputStream();
-    ctx.fireChannelActive();
   }
 
   @Override
@@ -192,7 +179,8 @@ final class FrameDecoder extends ByteToMessageDecoder {
         throw new IllegalStateException(String.format("Illegal frame type: %d", type));
       }
       isLastFrame = type == PULL_LASTFRAME || type == PUSH_LASTFRAME;
-      inputStream = (isPullTransfer ? pullTransferIdToInputStream : pushTransferIdToInputStream).get(transferId);
+      inputStream = ctx.channel().pipeline().get(ControlMessageToPartitionStreamCodec.class)
+          .getTransferIdToInputStream(isPullTransfer).get(transferId);
       if (inputStream == null) {
         throw new IllegalStateException(String.format("Transport context for %s:%d was not found between the local"
             + "address %s and the remote address %s", isPullTransfer ? "pull" : "push", transferId,
@@ -284,7 +272,8 @@ final class FrameDecoder extends ByteToMessageDecoder {
           new Object[]{isPullTransfer ? "pull" : "push", transferId, ctx.channel().remoteAddress(),
           ctx.channel().localAddress()});
       inputStream.markAsEnded();
-      (isPullTransfer ? pullTransferIdToInputStream : pushTransferIdToInputStream).remove(transferId);
+      ctx.channel().pipeline().get(ControlMessageToPartitionStreamCodec.class)
+          .getTransferIdToInputStream(isPullTransfer).remove(transferId);
     }
     inputStream = null;
   }
