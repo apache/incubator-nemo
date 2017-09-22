@@ -16,7 +16,6 @@
 package edu.snu.vortex.runtime.executor.data.partitiontransfer;
 
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -35,13 +34,9 @@ final class ControlFrameEncoder extends MessageToMessageEncoder<ControlMessage.D
 
   static final int TYPE_LENGTH = Short.BYTES;
   static final int UNUSED_LENGTH = Short.BYTES;
-  static final int TYPE_AND_UNUSED_LENGTH = TYPE_LENGTH + UNUSED_LENGTH;
   // the length of a frame body (not the entire frame) is stored in 4 bytes
   static final int BODYLENGTH_LENGTH = Integer.BYTES;
-  static final int HEADER_LENGTH = TYPE_AND_UNUSED_LENGTH + BODYLENGTH_LENGTH;
-
-  static final ByteBuf TYPE_AND_UNUSED = Unpooled.directBuffer(TYPE_AND_UNUSED_LENGTH, TYPE_AND_UNUSED_LENGTH)
-      .writeShort(FrameDecoder.CONTROL_TYPE).writeZero(UNUSED_LENGTH);
+  static final int HEADER_LENGTH = TYPE_LENGTH + UNUSED_LENGTH + BODYLENGTH_LENGTH;
 
   /**
    * Private constructor.
@@ -55,8 +50,8 @@ final class ControlFrameEncoder extends MessageToMessageEncoder<ControlMessage.D
                         final ControlMessage.DataTransferControlMessage in,
                         final List<Object> out) {
     final byte[] frameBody = in.toByteArray();
-    out.add(TYPE_AND_UNUSED.retain());
-    out.add(ctx.alloc().ioBuffer(BODYLENGTH_LENGTH, BODYLENGTH_LENGTH).writeInt(frameBody.length));
+    out.add(ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH).writeShort(FrameDecoder.CONTROL_TYPE)
+        .writeZero(UNUSED_LENGTH).writeInt(frameBody.length));
     out.add(Unpooled.wrappedBuffer(frameBody));
   }
 }
