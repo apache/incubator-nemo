@@ -40,7 +40,7 @@ public final class ControlFrameCodecTest {
   /**
    * @return a new {@link EmbeddedChannel} with decoder.
    */
-  private EmbeddedChannel newInboundChannel() {
+  private static EmbeddedChannel newInboundChannel() {
     return new EmbeddedChannel(new FrameDecoder());
   }
 
