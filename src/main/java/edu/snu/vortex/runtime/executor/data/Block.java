@@ -24,7 +24,6 @@ import edu.snu.vortex.compiler.ir.Element;
  * TODO #494: Refactor HashRange to be general. int -> generic Key, and so on...
  */
 public final class Block {
-
   private final int key;
   private final Iterable<Element> data;
 

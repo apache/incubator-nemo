@@ -130,9 +130,9 @@ public final class RemoteFileMetadata extends FileMetadata {
     connectionToMaster.getMessageSender().send(
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
-            .setType(ControlMessage.MessageType.CommitMetadata)
-            .setCommitMetadataMsg(
-                ControlMessage.CommitMetadataMsg.newBuilder()
+            .setType(ControlMessage.MessageType.CommitBlock)
+            .setCommitBlockMsg(
+                ControlMessage.CommitBlockMsg.newBuilder()
                     .setPartitionId(partitionId)
                     .addAllBlockIdx(blockIndices))
             .build());
@@ -159,9 +159,9 @@ public final class RemoteFileMetadata extends FileMetadata {
     connectionToMaster.getMessageSender().send(
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
-            .setType(ControlMessage.MessageType.RemoveMetadata)
-            .setRemoveMetadataMsg(
-                ControlMessage.RemoveMetadataMsg.newBuilder()
+            .setType(ControlMessage.MessageType.RemoveBlockMetadata)
+            .setRemoveBlockMetadataMsg(
+                ControlMessage.RemoveBlockMetadataMsg.newBuilder()
                     .setPartitionId(partitionId))
             .build());
   }
@@ -178,7 +178,7 @@ public final class RemoteFileMetadata extends FileMetadata {
 
   /**
    * Gets the iterable of block metadata from the metadata server.
-   * If write for this partition is not ended, the metadata Fserver will publish the committed blocks to this iterable.
+   * If write for this partition is not ended, the metadata server will publish the committed blocks to this iterable.
    *
    * @return the received file metadata.
    * @throws IOException if fail to get the metadata.
@@ -191,9 +191,9 @@ public final class RemoteFileMetadata extends FileMetadata {
         connectionToMaster.getMessageSender().request(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
-                .setType(ControlMessage.MessageType.RequestMetadata)
-                .setRequestMetadataMsg(
-                    ControlMessage.RequestMetadataMsg.newBuilder()
+                .setType(ControlMessage.MessageType.RequestBlockMetadata)
+                .setRequestBlockMetadataMsg(
+                    ControlMessage.RequestBlockMetadataMsg.newBuilder()
                         .setExecutorId(executorId)
                         .setPartitionId(partitionId)
                         .build())
