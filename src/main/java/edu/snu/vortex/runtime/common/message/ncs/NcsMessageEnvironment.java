@@ -175,11 +175,11 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case ScheduleTaskGroup:
       case PartitionStateChanged:
       case ExecutorFailed:
-      case CommitMetadata:
-      case RemoveMetadata:
+      case CommitBlock:
+      case RemoveBlockMetadata:
         return MessageType.Send;
       case RequestPartitionLocation:
-      case RequestMetadata:
+      case RequestBlockMetadata:
       case ReserveBlock:
         return MessageType.Request;
       case PartitionLocationInfo:
@@ -195,8 +195,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     switch (controlMessage.getType()) {
       case RequestPartitionLocation:
         return controlMessage.getRequestPartitionLocationMsg().getExecutorId();
-      case RequestMetadata:
-        return controlMessage.getRequestMetadataMsg().getExecutorId();
+      case RequestBlockMetadata:
+        return controlMessage.getRequestBlockMetadataMsg().getExecutorId();
       case ReserveBlock:
         return controlMessage.getReserveBlockMsg().getExecutorId();
       default:
@@ -223,9 +223,9 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case PartitionStateChanged:
       case RequestPartitionLocation:
       case ExecutorFailed:
-      case CommitMetadata:
-      case RemoveMetadata:
-      case RequestMetadata:
+      case CommitBlock:
+      case RemoveBlockMetadata:
+      case RequestBlockMetadata:
       case ReserveBlock:
         return MessageEnvironment.MASTER_MESSAGE_RECEIVER;
       case ScheduleTaskGroup:

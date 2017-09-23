@@ -18,9 +18,9 @@ package edu.snu.vortex.runtime.executor.data.metadata;
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * This class represents a metadata for a local file partition.
@@ -33,17 +33,17 @@ public final class LocalFileMetadata extends FileMetadata {
   // When a block in this queue is committed, the committed blocks are polled and go into the committed iterable.
   private final Queue<BlockMetadata> reserveBlockMetadataQue;
   // TODO #463: Support incremental read. Change this iterable to "ClosableBlockingIterable".
-  private final List<BlockMetadata> commitBlockMetadataIterable; // The queue of committed block metadata.
-  private volatile long position; // How many bytes are (at least, logically) written in the file.
+  private final List<BlockMetadata> commitBlockMetadataIterable; // The list of committed block metadata.
+  private volatile long writtenBytesCursor; // Indicates how many bytes are (at least, logically) written in the file.
   private volatile int blockCount;
   private volatile boolean committed;
 
   public LocalFileMetadata(final boolean commitPerBlock) {
     super(commitPerBlock);
     this.reserveBlockMetadataQue = new ArrayDeque<>();
-    this.commitBlockMetadataIterable = new CopyOnWriteArrayList<>();
+    this.commitBlockMetadataIterable = new ArrayList<>();
     this.blockCount = 0;
-    this.position = 0;
+    this.writtenBytesCursor = 0;
     this.committed = false;
   }
 
@@ -60,10 +60,10 @@ public final class LocalFileMetadata extends FileMetadata {
     }
 
     final BlockMetadata blockMetadata =
-        new BlockMetadata(blockCount, hashValue, blockSize, position, elementsTotal);
+        new BlockMetadata(blockCount, hashValue, blockSize, writtenBytesCursor, elementsTotal);
     reserveBlockMetadataQue.add(blockMetadata);
     blockCount++;
-    position += blockSize;
+    writtenBytesCursor += blockSize;
     return blockMetadata;
   }
 
@@ -106,5 +106,6 @@ public final class LocalFileMetadata extends FileMetadata {
   @Override
   public synchronized void commitPartition() {
     // TODO #463: Support incremental write. Close the "ClosableBlockingIterable".
+    committed = true;
   }
 }

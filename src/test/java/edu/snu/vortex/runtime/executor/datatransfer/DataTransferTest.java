@@ -26,6 +26,7 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
 import edu.snu.vortex.common.PubSubEventHandlerWrapper;
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
@@ -260,10 +261,14 @@ public final class DataTransferTest {
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       if (commPattern == Attribute.ScatterGather) {
         IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
-          master.initializeState(edgeId, srcTaskIndex, dstTaskIndex, taskGroupPrefix + srcTaskIndex);
+          final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex, dstTaskIndex);
+          master.initializeState(partitionId, Collections.singleton(srcTaskIndex),
+              Collections.singleton(taskGroupPrefix + srcTaskIndex));
         });
       } else {
-        master.initializeState(edgeId, srcTaskIndex, taskGroupPrefix + srcTaskIndex);
+        final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex);
+        master.initializeState(partitionId, Collections.singleton(srcTaskIndex),
+            Collections.singleton(taskGroupPrefix + srcTaskIndex));
       }
       master.onProducerTaskGroupScheduled(taskGroupPrefix + srcTaskIndex);
     });
@@ -331,9 +336,15 @@ public final class DataTransferTest {
 
     // Initialize the states of the I-File partitions in Master.
     final Set<String> taskGroupIds = new HashSet<>();
-    IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> taskGroupIds.add(taskGroupPrefix + srcTaskIndex));
-    IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex ->
-        master.initializeState(edgeId, dstTaskIndex, taskGroupIds));
+    final Set<Integer> producerTaskIndices = new HashSet<>();
+    IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
+      taskGroupIds.add(taskGroupPrefix + srcTaskIndex);
+      producerTaskIndices.add(srcTaskIndex);
+    });
+    IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
+      final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, dstTaskIndex);
+      master.initializeState(partitionId, producerTaskIndices, taskGroupIds);
+    });
     taskGroupIds.forEach(master::onProducerTaskGroupScheduled);
 
     // Write

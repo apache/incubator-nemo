@@ -15,9 +15,9 @@ enum MessageType {
     ContainerFailed = 6;
     MetricMessageReceived = 7;
     // Messages for metadata passing
-    CommitMetadata = 8;
-    RemoveMetadata = 9;
-    RequestMetadata = 10;
+    CommitBlock = 8;
+    RemoveBlockMetadata = 9;
+    RequestBlockMetadata = 10;
     MetadataResponse = 11;
     ReserveBlock = 12;
     ReserveBlockResponse = 13;
@@ -36,9 +36,9 @@ message Message {
     optional MetricMsg metricMsg = 10;
     // Messages for metadata passing
     optional MetadataResponseMsg metadataResponseMsg = 11;
-    optional CommitMetadataMsg commitMetadataMsg = 12;
-    optional RemoveMetadataMsg removeMetadataMsg = 13;
-    optional RequestMetadataMsg requestMetadataMsg = 14;
+    optional CommitBlockMsg commitBlockMsg = 12;
+    optional RemoveBlockMetadataMsg removeBlockMetadataMsg = 13;
+    optional RequestBlockMetadataMsg requestBlockMetadataMsg = 14;
     optional ReserveBlockMsg reserveBlockMsg = 15;
     optional ReserveBlockResponseMsg reserveBlockResponseMsg = 16;
 }
@@ -75,9 +75,10 @@ message PartitionStateChangedMsg {
     required string executorId = 1;
     required string partitionId = 2;
     required PartitionStateFromExecutor state = 3;
-    optional int32 srcTaskIdx = 4;
-    repeated int64 blockSizeInfo = 5;
-    optional string srcIRVertexId = 6;
+    required string location = 4; // The location of the partition (e.g., executor id or remote store).
+    optional int32 srcTaskIdx = 5;
+    repeated int64 blockSizeInfo = 6;
+    optional string srcIRVertexId = 7;
 }
 
 message RequestPartitionLocationMsg {
@@ -138,10 +139,9 @@ enum PartitionStateFromExecutor {
     PARTITION_READY = 0;
     SCHEDULED = 1;
     COMMITTED = 2;
-    PARTIAL_COMMITTED = 3;
-    LOST = 4;
-    LOST_BEFORE_COMMIT = 5;
-    REMOVED = 6;
+    LOST = 3;
+    LOST_BEFORE_COMMIT = 4;
+    REMOVED = 5;
 }
 
 enum PartitionStore {
@@ -165,7 +165,7 @@ message ReserveBlockResponseMsg {
 }
 
 // Messages from Executors to Master
-message CommitMetadataMsg {
+message CommitBlockMsg {
     required string partitionId = 1;
     repeated int32 blockIdx = 2;
 }
@@ -176,11 +176,11 @@ message ReserveBlockMsg {
     required BlockMetadataMsg blockMetadata = 3;
 }
 
-message RemoveMetadataMsg {
+message RemoveBlockMetadataMsg {
     required string partitionId = 1;
 }
 
-message RequestMetadataMsg {
+message RequestBlockMetadataMsg {
     required string executorId = 1;
     required string partitionId = 2;
 }
