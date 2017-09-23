@@ -199,9 +199,8 @@ public final class RuntimeTestUtil {
     eventRunnableQueue.add(new Runnable() {
       @Override
       public void run() {
-        final Optional<Set<String>> optionalParentTaskGroupIds = partitionManagerMaster.getProducerTaskGroupIds(partitionId);
-        if (optionalParentTaskGroupIds.isPresent()) {
-          final Set<String> parentTaskGroupIds = optionalParentTaskGroupIds.get();
+        final Set<String> parentTaskGroupIds = partitionManagerMaster.getProducerTaskGroupIds(partitionId);
+        if (!parentTaskGroupIds.isEmpty()) {
           parentTaskGroupIds.forEach(taskGroupId -> {
             final ExecutorRepresenter scheduledExecutor = findExecutorForTaskGroup(containerManager, taskGroupId);
 

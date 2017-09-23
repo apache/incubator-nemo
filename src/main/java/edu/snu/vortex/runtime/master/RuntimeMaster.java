@@ -173,7 +173,7 @@ public final class RuntimeMaster {
         }
         partitionManagerMaster.onPartitionStateChanged(partitionStateChangedMsg.getPartitionId(),
             convertPartitionState(partitionStateChangedMsg.getState()),
-            partitionStateChangedMsg.getExecutorId(),
+            partitionStateChangedMsg.getLocation(),
             partitionStateChangedMsg.getSrcTaskIdx());
         break;
       case ExecutorFailed:
@@ -200,11 +200,11 @@ public final class RuntimeMaster {
         metricMsg.getMetricMessagesList().stream()
             .forEach((msg) -> jobStateManager.getMetricMessageHandler().onMetricMessageReceived(msg));
         break;
-      case CommitMetadata:
-        partitionManagerMaster.getMetadataManager().onCommitBlocks(message);
+        case CommitBlock:
+        partitionManagerMaster.onCommitBlocks(message);
         break;
-      case RemoveMetadata:
-        partitionManagerMaster.getMetadataManager().onRemoveMetadata(message);
+      case RemoveBlockMetadata:
+        partitionManagerMaster.onRemoveBlockMetadata(message);
         break;
       default:
         throw new IllegalMessageException(
@@ -218,11 +218,11 @@ public final class RuntimeMaster {
       case RequestPartitionLocation:
         partitionManagerMaster.onRequestPartitionLocation(message, messageContext);
         break;
-      case RequestMetadata:
-        partitionManagerMaster.getMetadataManager().onRequestMetadata(message, messageContext);
+      case RequestBlockMetadata:
+        partitionManagerMaster.onRequestBlockMetadata(message, messageContext);
         break;
       case ReserveBlock:
-        partitionManagerMaster.getMetadataManager().onReserveBlock(message, messageContext);
+        partitionManagerMaster.onReserveBlock(message, messageContext);
         break;
       default:
         throw new IllegalMessageException(
@@ -260,8 +260,6 @@ public final class RuntimeMaster {
       return PartitionState.State.SCHEDULED;
     case COMMITTED:
       return PartitionState.State.COMMITTED;
-    case PARTIAL_COMMITTED:
-      return PartitionState.State.PARTIAL_COMMITTED;
     case LOST_BEFORE_COMMIT:
       return PartitionState.State.LOST_BEFORE_COMMIT;
     case LOST:
@@ -282,8 +280,6 @@ public final class RuntimeMaster {
         return ControlMessage.PartitionStateFromExecutor.SCHEDULED;
       case COMMITTED:
         return ControlMessage.PartitionStateFromExecutor.COMMITTED;
-      case PARTIAL_COMMITTED:
-        return ControlMessage.PartitionStateFromExecutor.PARTIAL_COMMITTED;
       case LOST_BEFORE_COMMIT:
         return ControlMessage.PartitionStateFromExecutor.LOST_BEFORE_COMMIT;
       case LOST:

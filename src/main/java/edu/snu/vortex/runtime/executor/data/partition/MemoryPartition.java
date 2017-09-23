@@ -48,6 +48,8 @@ public final class MemoryPartition {
     if (!committed.get()) {
       // TODO #463: Support incremental write.
       blocksToAppend.forEach(blocks::add);
+    } else {
+      throw new IOException("Cannot append blocks to the committed partition");
     }
   }
 
