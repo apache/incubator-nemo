@@ -17,8 +17,12 @@ package edu.snu.vortex.compiler.optimizer.pass;
 
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
+import edu.snu.vortex.runtime.executor.data.GlusterFileStore;
+import edu.snu.vortex.runtime.executor.data.MemoryStore;
 
 import java.util.List;
 
@@ -29,7 +33,7 @@ public final class DisaggregationPass implements StaticOptimizationPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(vertex -> {
-      vertex.setAttr(Attribute.Key.Placement, Attribute.Compute);
+      vertex.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     });
 
     dag.getVertices().forEach(vertex -> {
@@ -37,11 +41,11 @@ public final class DisaggregationPass implements StaticOptimizationPass {
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
           if (edge.getType().equals(IREdge.Type.OneToOne)) {
-            edge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-            edge.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
+            edge.setProperty(DataStoreProperty.of(MemoryStore.class));
+            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
           } else {
-            edge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.RemoteFile);
-            edge.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
+            edge.setProperty(DataStoreProperty.of(GlusterFileStore.class));
+            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
           }
         });
       }

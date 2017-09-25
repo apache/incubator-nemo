@@ -1,20 +1,19 @@
 package edu.snu.vortex.runtime.master.resource;
 
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 
 /**
  * Represents the specifications of a resource.
  */
-// TODO #249: Clean up Attributes
-// We should clean up and add attributes related to resource specification.
+// TODO #249: Clean up Execution Properties.
+// We should clean up and add execution properties related to resource specification.
 public final class ResourceSpecification {
   private final String resourceSpecId;
-  private final Attribute containerType;
+  private final String containerType;
   private final int capacity;
   private final int memory;
 
-  public ResourceSpecification(final Attribute containerType,
+  public ResourceSpecification(final String containerType,
                                final int capacity,
                                final int memory) {
     this.resourceSpecId = RuntimeIdGenerator.generateResourceSpecId();
@@ -26,7 +25,7 @@ public final class ResourceSpecification {
   /**
    * @return The type of the container.
    */
-  public Attribute getContainerType() {
+  public String getContainerType() {
     return containerType;
   }
 
@@ -59,31 +58,18 @@ public final class ResourceSpecification {
    * A Builder class for {@link ResourceSpecification}.
    */
   public static final class Builder {
-    private Attribute containerType;
+    private String containerType;
     private Integer capacity;
     private Integer memory;
 
     private Builder() {
     }
 
-    public Builder setContainerType(final String inputContainerType) {
-      switch (inputContainerType) {
-        case "Transient":
-          return setContainerType(Attribute.Transient);
-        case "Reserved":
-          return setContainerType(Attribute.Reserved);
-        case "Compute":
-          return setContainerType(Attribute.Compute);
-        default:
-          throw new IllegalArgumentException("Unknown containerType: " + inputContainerType);
-      }
-    }
-
     /**
      * @param inputContainerType the container type
      * @return {@link Builder} object.
      */
-    public Builder setContainerType(final Attribute inputContainerType) {
+    public Builder setContainerType(final String inputContainerType) {
       this.containerType = inputContainerType;
       return this;
     }
@@ -117,5 +103,3 @@ public final class ResourceSpecification {
     }
   }
 }
-
-

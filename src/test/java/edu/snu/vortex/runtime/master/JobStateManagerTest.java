@@ -21,7 +21,7 @@ import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.Transform;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.compiler.optimizer.TestPolicy;
 import edu.snu.vortex.runtime.common.plan.physical.*;
@@ -63,23 +63,23 @@ public final class JobStateManagerTest {
   public void testPhysicalPlanStateChanges() throws Exception {
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
-    v1.setAttr(Attribute.IntegerKey.Parallelism, 3);
+    v1.setProperty(ParallelismProperty.of(3));
     irDAGBuilder.addVertex(v1);
 
     final IRVertex v2 = new OperatorVertex(t);
-    v2.setAttr(Attribute.IntegerKey.Parallelism, 2);
+    v2.setProperty(ParallelismProperty.of(2));
     irDAGBuilder.addVertex(v2);
 
     final IRVertex v3 = new OperatorVertex(t);
-    v3.setAttr(Attribute.IntegerKey.Parallelism, 3);
+    v3.setProperty(ParallelismProperty.of(3));
     irDAGBuilder.addVertex(v3);
 
     final IRVertex v4 = new OperatorVertex(t);
-    v4.setAttr(Attribute.IntegerKey.Parallelism, 2);
+    v4.setProperty(ParallelismProperty.of(2));
     irDAGBuilder.addVertex(v4);
 
     final IRVertex v5 = new OperatorVertex(new DoTransform(null, null));
-    v5.setAttr(Attribute.IntegerKey.Parallelism, 2);
+    v5.setProperty(ParallelismProperty.of(2));
     irDAGBuilder.addVertex(v5);
 
     final IREdge e1 = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);

@@ -18,7 +18,9 @@ package edu.snu.vortex.compiler.optimizer.pass;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.vertex.StageIdProperty;
+import edu.snu.vortex.runtime.executor.data.MemoryStore;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,8 +28,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
-import static edu.snu.vortex.compiler.ir.attribute.Attribute.Memory;
 
 /**
  * Default method of partitioning an IR DAG into stages.
@@ -41,7 +41,7 @@ public final class DefaultStagePartitioningPass implements StaticOptimizationPas
     final AtomicInteger stageNum = new AtomicInteger(0);
     final List<List<IRVertex>> vertexListForEachStage = groupVerticesByStage(irDAG);
     vertexListForEachStage.forEach(stageVertices -> {
-      stageVertices.forEach(irVertex -> irVertex.setAttr(Attribute.IntegerKey.StageId, stageNum.get()));
+      stageVertices.forEach(irVertex -> irVertex.setProperty(StageIdProperty.of(stageNum.get())));
       stageNum.getAndIncrement();
     });
     return irDAG;
@@ -71,9 +71,11 @@ public final class DefaultStagePartitioningPass implements StaticOptimizationPas
         // Filter candidate incoming edges that can be included in a stage with the vertex.
         final Optional<List<IREdge>> inEdgesForStage = inEdgeList.map(e -> e.stream()
             .filter(edge -> edge.getType().equals(IREdge.Type.OneToOne)) // One to one edges
-            .filter(edge -> edge.getAttr(Attribute.Key.ChannelDataPlacement).equals(Memory))// Memory data placement
-            .filter(edge -> edge.getSrc().getAttr(Attribute.Key.Placement)
-                .equals(edge.getDst().getAttr(Attribute.Key.Placement))) //Src and Dst same placement
+            // MemoryStore placement
+            .filter(edge -> MemoryStore.class.equals(edge.get(ExecutionProperty.Key.DataStore)))
+            // if src and dst are placed on same container types
+            .filter(edge -> edge.getSrc().get(ExecutionProperty.Key.ExecutorPlacement)
+                .equals(edge.getDst().get(ExecutionProperty.Key.ExecutorPlacement)))
             // Src that is already included in a stage
             .filter(edge -> vertexStageNumHashMap.containsKey(edge.getSrc()))
             // Others don't depend on the candidate stage.

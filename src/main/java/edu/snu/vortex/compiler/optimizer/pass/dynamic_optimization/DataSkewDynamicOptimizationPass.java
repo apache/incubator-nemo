@@ -36,6 +36,8 @@ import java.util.stream.IntStream;
  * Dynamic optimization pass for handling data skew.
  */
 public final class DataSkewDynamicOptimizationPass implements DynamicOptimizationPass<Long> {
+  public static final String SIMPLE_NAME = "DataSkewDynamicOptimizationPass";
+
   @Override
   public PhysicalPlan apply(final PhysicalPlan originalPlan, final Map<String, List<Long>> metricData) {
     // Builder to create new stages.

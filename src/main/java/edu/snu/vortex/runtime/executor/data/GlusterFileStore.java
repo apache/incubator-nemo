@@ -49,7 +49,8 @@ import java.util.function.Supplier;
  * TODO #410: Implement metadata caching for the RemoteFileMetadata.
  */
 @ThreadSafe
-final class GlusterFileStore extends FileStore implements RemoteFileStore {
+public final class GlusterFileStore extends FileStore implements RemoteFileStore {
+  public static final String SIMPLE_NAME = "GlusterFileStore";
 
   private final ExecutorService executorService;
   private final PersistentConnectionToMaster persistentConnectionToMaster;

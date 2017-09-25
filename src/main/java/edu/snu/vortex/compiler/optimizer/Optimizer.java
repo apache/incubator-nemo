@@ -18,10 +18,11 @@ package edu.snu.vortex.compiler.optimizer;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.optimizer.pass.*;
 import edu.snu.vortex.compiler.optimizer.pass.dynamic_optimization.DataSkewDynamicOptimizationPass;
 import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.compiler.optimizer.pass.dynamic_optimization.DynamicOptimizationPass;
 import edu.snu.vortex.compiler.optimizer.policy.Policy;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 
@@ -40,7 +41,7 @@ public final class Optimizer {
    * @param dag input DAG.
    * @param optimizationPolicy the optimization policy that we want to use to optimize the DAG.
    * @param dagDirectory directory to save the DAG information.
-   * @return optimized DAG, tagged with attributes.
+   * @return optimized DAG, tagged with execution properties.
    * @throws Exception throws an exception if there is an exception.
    */
   public static DAG<IRVertex, IREdge> optimize(final DAG<IRVertex, IREdge> dag, final Policy optimizationPolicy,
@@ -81,11 +82,11 @@ public final class Optimizer {
   public static synchronized PhysicalPlan dynamicOptimization(
           final PhysicalPlan originalPlan,
           final MetricCollectionBarrierVertex metricCollectionBarrierVertex) {
-    final Attribute dynamicOptimizationType =
-        metricCollectionBarrierVertex.getAttr(Attribute.Key.DynamicOptimizationType);
+    final Class<? extends DynamicOptimizationPass> dynamicOptimizationType =
+        (Class) metricCollectionBarrierVertex.get(ExecutionProperty.Key.DynamicOptimizationType);
 
-    switch (dynamicOptimizationType) {
-      case DataSkew:
+    switch (dynamicOptimizationType.getSimpleName()) {
+      case DataSkewDynamicOptimizationPass.SIMPLE_NAME:
         // Map between a partition ID to corresponding metric data (e.g., the size of each block).
         final Map<String, List<Long>> metricData = metricCollectionBarrierVertex.getMetricData();
         return new DataSkewDynamicOptimizationPass().apply(originalPlan, metricData);

@@ -15,10 +15,9 @@
  */
 package edu.snu.vortex.runtime.executor.data.partitiontransfer;
 
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionStoreException;
-import edu.snu.vortex.runtime.executor.data.HashRange;
+import edu.snu.vortex.runtime.executor.data.*;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageCodec;
 import org.slf4j.Logger;
@@ -110,8 +109,8 @@ final class ControlMessageToPartitionStreamCodec
     emitControlMessage(ControlMessage.PartitionTransferType.PULL, transferId, in, out);
     LOG.debug("Sending pull request {} from {}({}) to {}({}) for {} ({}, {} in {})",
         new Object[]{transferId, localExecutorId, localAddress, in.getRemoteExecutorId(), remoteAddress,
-        in.getPartitionId(), in.getRuntimeEdgeId(), in.getHashRange().toString(),
-        in.getPartitionStore().get().toString()});
+            in.getPartitionId(), in.getRuntimeEdgeId(), in.getHashRange().toString(),
+            in.getPartitionStore().get().toString()});
   }
 
   /**
@@ -131,7 +130,7 @@ final class ControlMessageToPartitionStreamCodec
     emitControlMessage(ControlMessage.PartitionTransferType.PUSH, transferId, in, out);
     LOG.debug("Sending push notification {} from {}({}) to {}({}) for {} ({}, {})",
         new Object[]{transferId, localExecutorId, localAddress, in.getRemoteExecutorId(), remoteAddress,
-        in.getPartitionId(), in.getRuntimeEdgeId(), in.getHashRange().toString()});
+            in.getPartitionId(), in.getRuntimeEdgeId(), in.getHashRange().toString()});
   }
 
   /**
@@ -175,8 +174,8 @@ final class ControlMessageToPartitionStreamCodec
     out.add(outputStream);
     LOG.debug("Received pull request {} from {}({}) to {}({}) for {} ({}, {} in {})",
         new Object[]{transferId, in.getControlMessageSourceId(), remoteAddress, localExecutorId, localAddress,
-        in.getPartitionId(), in.getRuntimeEdgeId(), outputStream.getHashRange().toString(),
-        outputStream.getPartitionStore().get().toString()});
+            in.getPartitionId(), in.getRuntimeEdgeId(), outputStream.getHashRange().toString(),
+            outputStream.getPartitionStore().get().toString()});
   }
 
   /**
@@ -198,7 +197,7 @@ final class ControlMessageToPartitionStreamCodec
     out.add(inputStream);
     LOG.debug("Received push notification {} from {}({}) to {}({}) for {} ({}, {})",
         new Object[]{transferId, in.getControlMessageSourceId(), remoteAddress, localExecutorId, localAddress,
-        in.getPartitionId(), in.getRuntimeEdgeId(), inputStream.getHashRange().toString()});
+            in.getPartitionId(), in.getRuntimeEdgeId(), inputStream.getHashRange().toString()});
   }
 
   /**
@@ -301,27 +300,29 @@ final class ControlMessageToPartitionStreamCodec
     return pushTransferIdToOutputStream;
   }
 
-  private static ControlMessage.PartitionStore convertPartitionStore(final Attribute partitionStore) {
-    switch (partitionStore) {
-      case Memory:
+  private static ControlMessage.PartitionStore convertPartitionStore(
+      final Class<? extends PartitionStore> partitionStore) {
+    switch (partitionStore.getSimpleName()) {
+      case MemoryStore.SIMPLE_NAME:
         return ControlMessage.PartitionStore.MEMORY;
-      case LocalFile:
+      case LocalFileStore.SIMPLE_NAME:
         return ControlMessage.PartitionStore.LOCAL_FILE;
-      case RemoteFile:
+      case GlusterFileStore.SIMPLE_NAME:
         return ControlMessage.PartitionStore.REMOTE_FILE;
       default:
         throw new UnsupportedPartitionStoreException(new Exception(partitionStore + " is not supported."));
     }
   }
 
-  private static Attribute convertPartitionStore(final ControlMessage.PartitionStore partitionStoreType) {
+  private static Class<? extends PartitionStore> convertPartitionStore(
+      final ControlMessage.PartitionStore partitionStoreType) {
     switch (partitionStoreType) {
       case MEMORY:
-        return Attribute.Memory;
+        return MemoryStore.class;
       case LOCAL_FILE:
-        return Attribute.LocalFile;
+        return LocalFileStore.class;
       case REMOTE_FILE:
-        return Attribute.RemoteFile;
+        return GlusterFileStore.class;
       default:
         throw new UnsupportedPartitionStoreException(new Exception("This partition store is not yet supported"));
     }

@@ -17,8 +17,13 @@ package edu.snu.vortex.compiler.optimizer.pass;
 
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
+import edu.snu.vortex.runtime.executor.data.LocalFileStore;
+import edu.snu.vortex.runtime.executor.data.MemoryStore;
 
 import java.util.List;
 
@@ -33,18 +38,18 @@ public final class PadoEdgePass implements StaticOptimizationPass {
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
           if (fromTransientToReserved(edge)) {
-            edge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
-            edge.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Push);
+            edge.setProperty(DataStoreProperty.of(LocalFileStore.class));
+            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
           } else if (fromReservedToTransient(edge)) {
-            edge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
-            edge.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
+            edge.setProperty(DataStoreProperty.of(LocalFileStore.class));
+            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
           } else {
             if (edge.getType().equals(IREdge.Type.OneToOne)) {
-              edge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-              edge.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
+              edge.setProperty(DataStoreProperty.of(MemoryStore.class));
+              edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
             } else {
-              edge.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
-              edge.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
+              edge.setProperty(DataStoreProperty.of(LocalFileStore.class));
+              edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
             }
           }
         });
@@ -59,8 +64,10 @@ public final class PadoEdgePass implements StaticOptimizationPass {
    * @return whether or not the edge satisfies the condition.
    */
   private static boolean fromTransientToReserved(final IREdge irEdge) {
-    return irEdge.getSrc().getAttr(Attribute.Key.Placement).equals(Attribute.Transient)
-        && irEdge.getDst().getAttr(Attribute.Key.Placement).equals(Attribute.Reserved);
+    return irEdge.getSrc().get(ExecutionProperty.Key.ExecutorPlacement)
+        .equals(ExecutorPlacementProperty.TRANSIENT)
+        && irEdge.getDst().get(ExecutionProperty.Key.ExecutorPlacement)
+        .equals(ExecutorPlacementProperty.RESERVED);
   }
 
   /**
@@ -69,7 +76,9 @@ public final class PadoEdgePass implements StaticOptimizationPass {
    * @return whether or not the edge satisfies the condition.
    */
   private static boolean fromReservedToTransient(final IREdge irEdge) {
-    return irEdge.getSrc().getAttr(Attribute.Key.Placement).equals(Attribute.Reserved)
-        && irEdge.getDst().getAttr(Attribute.Key.Placement).equals(Attribute.Transient);
+    return irEdge.getSrc().get(ExecutionProperty.Key.ExecutorPlacement)
+        .equals(ExecutorPlacementProperty.RESERVED)
+        && irEdge.getDst().get(ExecutionProperty.Key.ExecutorPlacement)
+        .equals(ExecutorPlacementProperty.TRANSIENT);
   }
 }
