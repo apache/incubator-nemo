@@ -195,7 +195,7 @@ final class FrameDecoder extends ByteToMessageDecoder {
       inputStream = (isPullTransfer ? pullTransferIdToInputStream : pushTransferIdToInputStream).get(transferId);
       if (inputStream == null) {
         throw new IllegalStateException(String.format("Transport context for %s:%d was not found between the local"
-            + "address %s and the remote address %s", isPullTransfer ? "pull" : "push", transferId,
+                + "address %s and the remote address %s", isPullTransfer ? "pull" : "push", transferId,
             ctx.channel().localAddress(), ctx.channel().remoteAddress()));
       }
       if (dataBodyBytesToRead == 0) {
@@ -282,7 +282,7 @@ final class FrameDecoder extends ByteToMessageDecoder {
     if (isLastFrame) {
       LOG.debug("Transport {}:{}, where the partition sender is {} and the receiver is {}, is now closed",
           new Object[]{isPullTransfer ? "pull" : "push", transferId, ctx.channel().remoteAddress(),
-          ctx.channel().localAddress()});
+              ctx.channel().localAddress()});
       inputStream.markAsEnded();
       (isPullTransfer ? pullTransferIdToInputStream : pushTransferIdToInputStream).remove(transferId);
     }

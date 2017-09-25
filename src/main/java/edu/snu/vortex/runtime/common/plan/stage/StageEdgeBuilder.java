@@ -18,14 +18,14 @@ package edu.snu.vortex.runtime.common.plan.stage;
 
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionPropertyMap;
 
 /**
  * Stage Edge Builder.
  */
 public final class StageEdgeBuilder {
   private final String stageEdgeId;
-  private AttributeMap edgeAttributes;
+  private ExecutionPropertyMap edgeProperties;
   private Stage srcStage;
   private Stage dstStage;
   private IRVertex srcVertex;
@@ -40,8 +40,8 @@ public final class StageEdgeBuilder {
     this.stageEdgeId = irEdgeId;
   }
 
-  public StageEdgeBuilder setEdgeAttributes(final AttributeMap ea) {
-    this.edgeAttributes = ea;
+  public StageEdgeBuilder setEdgeProperties(final ExecutionPropertyMap ea) {
+    this.edgeProperties = ea;
     return this;
   }
 
@@ -72,6 +72,6 @@ public final class StageEdgeBuilder {
 
   public StageEdge build() {
     return new StageEdge(stageEdgeId,
-        edgeAttributes, srcStage, dstStage, coder, srcVertex, dstVertex);
+        edgeProperties, srcStage, dstStage, coder, srcVertex, dstVertex);
   }
 }

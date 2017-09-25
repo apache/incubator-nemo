@@ -15,7 +15,9 @@
  */
 package edu.snu.vortex.runtime.master;
 
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
+import edu.snu.vortex.compiler.optimizer.pass.dynamic_optimization.DataSkewDynamicOptimizationPass;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
@@ -40,6 +42,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import edu.snu.vortex.runtime.common.metric.MetricData;
 import edu.snu.vortex.runtime.common.metric.MetricDataBuilder;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.DataCommunicationPattern;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
@@ -150,19 +154,19 @@ public final class JobStateManager {
 
       // Initialize states for partitions of inter-stage edges
       stageOutgoingEdges.forEach(physicalStageEdge -> {
-        final Attribute commPattern =
-            physicalStageEdge.getAttributes().get(Attribute.Key.CommunicationPattern);
-        final Boolean isDataSizeMetricCollectionEdge =
-            physicalStageEdge.getAttributes().get(Attribute.Key.DataSizeMetricCollection) != null;
-        final Attribute writeOptAtt = physicalStageEdge.getAttributes().get(Attribute.Key.WriteOptimization);
+        final Class<? extends DataCommunicationPattern> commPattern =
+            physicalStageEdge.get(ExecutionProperty.Key.DataCommunicationPattern);
+        final Boolean isDataSizeMetricCollectionEdge = DataSkewDynamicOptimizationPass.class
+            .equals(physicalStageEdge.get(ExecutionProperty.Key.MetricCollection));
+        final String writeOptAtt = physicalStageEdge.get(ExecutionProperty.Key.WriteOptimization);
         final Boolean isIFileWriteEdge =
-            writeOptAtt != null && writeOptAtt.equals(Attribute.IFileWrite);
+            writeOptAtt != null && writeOptAtt.equals(WriteOptimizationProperty.IFILE_WRITE);
 
         final int srcParallelism = taskGroupsForStage.size();
 
-        if (commPattern == Attribute.ScatterGather && isIFileWriteEdge) {
+        if (commPattern.equals(ScatterGather.class) && isIFileWriteEdge) {
           final int dstParallelism =
-              physicalStageEdge.getDstVertex().getAttributes().get(Attribute.IntegerKey.Parallelism);
+              physicalStageEdge.getDstVertex().get(ExecutionProperty.Key.Parallelism);
           final Set<String> producerTaskGroupIds = new HashSet<>();
           taskGroupsForStage.forEach(taskGroup -> producerTaskGroupIds.add(taskGroup.getTaskGroupId()));
           final Set<Integer> producerTaskIndices =
@@ -171,9 +175,9 @@ public final class JobStateManager {
             final String partitionId = RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), dstTaskIdx);
             partitionManagerMaster.initializeState(partitionId, producerTaskIndices, producerTaskGroupIds);
           });
-        } else if (commPattern == Attribute.ScatterGather && !isDataSizeMetricCollectionEdge) {
+        } else if (ScatterGather.class.equals(commPattern) && !isDataSizeMetricCollectionEdge) {
           final int dstParallelism =
-              physicalStageEdge.getDstVertex().getAttributes().get(Attribute.IntegerKey.Parallelism);
+              physicalStageEdge.getDstVertex().get(ExecutionProperty.Key.Parallelism);
           IntStream.range(0, srcParallelism).forEach(srcTaskIdx ->
             IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> {
               final String partitionId =
@@ -318,7 +322,7 @@ public final class JobStateManager {
           if (stage.getId().equals(stageId)) {
             Set<String> remainingTaskGroupIds = new HashSet<>();
             remainingTaskGroupIds.addAll(
-                stage.getTaskGroupList().stream().map(taskGroup -> taskGroup.getTaskGroupId())
+                stage.getTaskGroupList().stream().map(TaskGroup::getTaskGroupId)
                     .collect(Collectors.toSet()));
             stageIdToRemainingTaskGroupSet.put(stageId, remainingTaskGroupIds);
             break;

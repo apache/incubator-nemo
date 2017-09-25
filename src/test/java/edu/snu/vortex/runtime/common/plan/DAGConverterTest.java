@@ -19,7 +19,11 @@ import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.vortex.compiler.ir.*;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataCommunicationPatternProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.compiler.optimizer.TestPolicy;
 import edu.snu.vortex.runtime.common.plan.stage.Stage;
@@ -27,6 +31,10 @@ import edu.snu.vortex.runtime.common.plan.stage.StageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
+import edu.snu.vortex.runtime.executor.data.LocalFileStore;
+import edu.snu.vortex.runtime.executor.data.MemoryStore;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
@@ -54,11 +62,11 @@ public final class DAGConverterTest {
   public void testSimplePlan() throws Exception {
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
-    v1.setAttr(Attribute.IntegerKey.Parallelism, 3);
+    v1.setProperty(ParallelismProperty.of(3));
     irDAGBuilder.addVertex(v1);
 
     final IRVertex v2 = new OperatorVertex(new DoTransform(null, null));
-    v2.setAttr(Attribute.IntegerKey.Parallelism, 2);
+    v2.setProperty(ParallelismProperty.of(2));
     irDAGBuilder.addVertex(v2);
 
     final IREdge e = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);
@@ -112,39 +120,39 @@ public final class DAGConverterTest {
     when(s.split(3L, null)).thenReturn(dummyReaderList);
 
     final IRVertex v1 = new BoundedSourceVertex<>(s);
-    v1.setAttr(Attribute.IntegerKey.Parallelism, 3);
-    v1.setAttr(Attribute.Key.Placement, Attribute.Compute);
+    v1.setProperty(ParallelismProperty.of(3));
+    v1.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
 
     final Transform t = mock(Transform.class);
     final DoTransform dt = new DoTransform(null, null);
     final IRVertex v2 = new OperatorVertex(t);
-    v2.setAttr(Attribute.IntegerKey.Parallelism, 3);
-    v2.setAttr(Attribute.Key.Placement, Attribute.Compute);
+    v2.setProperty(ParallelismProperty.of(3));
+    v2.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
 
     final IRVertex v3 = new OperatorVertex(t);
-    v3.setAttr(Attribute.IntegerKey.Parallelism, 3);
-    v3.setAttr(Attribute.Key.Placement, Attribute.Compute);
+    v3.setProperty(ParallelismProperty.of(3));
+    v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
 
     final IRVertex v4 = new OperatorVertex(t);
-    v4.setAttr(Attribute.IntegerKey.Parallelism, 2);
-    v4.setAttr(Attribute.Key.Placement, Attribute.Compute);
+    v4.setProperty(ParallelismProperty.of(2));
+    v4.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
 
     final IRVertex v5 = new OperatorVertex(dt);
-    v5.setAttr(Attribute.IntegerKey.Parallelism, 2);
-    v5.setAttr(Attribute.Key.Placement, Attribute.Compute);
+    v5.setProperty(ParallelismProperty.of(2));
+    v5.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
 
     final IRVertex v6 = new OperatorVertex(dt);
-    v6.setAttr(Attribute.IntegerKey.Parallelism, 2);
-    v6.setAttr(Attribute.Key.Placement, Attribute.Reserved);
+    v6.setProperty(ParallelismProperty.of(2));
+    v6.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.RESERVED));
 
     // TODO #13: Implement Join Node
 //    final IRVertex v7 = new OperatorVertex(t);
-//    v7.setAttr(Attribute.IntegerKey.Parallelism, 2);
-//    v7.setAttr(Attribute.Key.Placement, Attribute.Compute);
+//    v7.setProperty(ParallelismProperty.of(2));
+//    v7.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
 
     final IRVertex v8 = new OperatorVertex(dt);
-    v8.setAttr(Attribute.IntegerKey.Parallelism, 2);
-    v8.setAttr(Attribute.Key.Placement, Attribute.Compute);
+    v8.setProperty(ParallelismProperty.of(2));
+    v8.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
 
     irDAGBuilder.addVertex(v1);
     irDAGBuilder.addVertex(v2);
@@ -158,45 +166,45 @@ public final class DAGConverterTest {
 //    irDAGBuilder.addVertex(v7);
 
     final IREdge e1 = new IREdge(IREdge.Type.OneToOne, v1, v2, Coder.DUMMY_CODER);
-    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-    e1.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
-    e1.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
+    e1.setProperty(DataStoreProperty.of(MemoryStore.class));
+    e1.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    e1.setProperty(DataCommunicationPatternProperty.of(OneToOne.class));
 
     final IREdge e2 = new IREdge(IREdge.Type.OneToOne, v1, v3, Coder.DUMMY_CODER);
-    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-    e2.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
-    e2.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
+    e2.setProperty(DataStoreProperty.of(MemoryStore.class));
+    e2.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    e2.setProperty(DataCommunicationPatternProperty.of(OneToOne.class));
 
     final IREdge e3 = new IREdge(IREdge.Type.ScatterGather, v2, v4, Coder.DUMMY_CODER);
-    e3.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-    e3.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Push);
-    e3.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
+    e3.setProperty(DataStoreProperty.of(MemoryStore.class));
+    e3.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
+    e3.setProperty(DataCommunicationPatternProperty.of(ScatterGather.class));
 
     final IREdge e4 = new IREdge(IREdge.Type.ScatterGather, v3, v5, Coder.DUMMY_CODER);
-    e4.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-    e4.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Push);
-    e4.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
+    e4.setProperty(DataStoreProperty.of(MemoryStore.class));
+    e4.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
+    e4.setProperty(DataCommunicationPatternProperty.of(ScatterGather.class));
 
     final IREdge e5 = new IREdge(IREdge.Type.OneToOne, v4, v6, Coder.DUMMY_CODER);
-    e5.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
-    e5.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
-    e5.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
+    e5.setProperty(DataStoreProperty.of(LocalFileStore.class));
+    e5.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    e5.setProperty(DataCommunicationPatternProperty.of(OneToOne.class));
 
     final IREdge e6 = new IREdge(IREdge.Type.OneToOne, v4, v8, Coder.DUMMY_CODER);
-    e6.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
-    e6.setAttr(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
-    e6.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
+    e6.setProperty(DataStoreProperty.of(LocalFileStore.class));
+    e6.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    e6.setProperty(DataCommunicationPatternProperty.of(OneToOne.class));
 
     // TODO #13: Implement Join Node
-//    final IREdge e7 = new IREdge(IREdge.Type.OneToOne, v7, v5);
-//    e7.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-//    e7.setAttr(Attribute.Key.PullOrPush, Attribute.Push);
-//    e7.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
+//    final IREdge e7 = new IREdge(IREdge.Key.OneToOne, v7, v5);
+//    e7.setProperty(DataStoreProperty.of(MemoryStore.class));
+//    e7.setProperty(Attribute.Key.PullOrPush, DataFlowModelProperty.Value.Push));
+//    e7.setProperty(DataCommunicationPatternProperty.of(DataCommunicationPatternProperty.OneToOne));
 //
-//    final IREdge e8 = new IREdge(IREdge.Type.OneToOne, v5, v8);
-//    e8.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-//    e8.setAttr(Attribute.Key.PullOrPush, Attribute.Pull);
-//    e8.setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
+//    final IREdge e8 = new IREdge(IREdge.Key.OneToOne, v5, v8);
+//    e8.setProperty(DataStoreProperty.of(MemoryStore.class));
+//    e8.setProperty(Attribute.Key.PullOrPush, DataFlowModelProperty.Value.Pull));
+//    e8.setProperty(DataCommunicationPatternProperty.of(DataCommunicationPatternProperty.OneToOne));
 
     // Stage 1 = {v1, v2, v3}
     irDAGBuilder.connectVertices(e1);

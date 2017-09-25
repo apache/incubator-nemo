@@ -142,9 +142,9 @@ class NormalVertex:
     def dot(self):
         color = 'black'
         try:
-            if (self.properties['attributes']['Placement'] == 'Transient'):
+            if (self.properties['executionProperties']['ExecutorPlacement'] == 'Transient'):
                 color = 'orange'
-            if (self.properties['attributes']['Placement'] == 'Reserved'):
+            if (self.properties['executionProperties']['ExecutorPlacement'] == 'Reserved'):
                 color = 'green'
         except:
             pass
@@ -152,7 +152,7 @@ class NormalVertex:
         if self.state is not None:
             label += '\\n({})'.format(self.state)
         try:
-            label += ' (p{})'.format(self.properties['attributes']['Parallelism'])
+            label += ' (p{})'.format(self.properties['executionProperties']['ParallelismProperty'])
         except:
             pass
         try:
@@ -207,7 +207,7 @@ class LoopVertex:
         self.id = id
         self.dag = DAG(properties['DAG'], JobState.empty())
         self.remaining_iteration = properties['remainingIteration']
-        self.attributes = properties['attributes']
+        self.executionProperties = properties['executionProperties']
         self.incoming = properties['dagIncomingEdges']
         self.outgoing = properties['dagOutgoingEdges']
         self.edgeMapping = properties['edgeWithLoopToEdgeWithInternalVertex']
@@ -216,7 +216,7 @@ class LoopVertex:
     def dot(self):
         label = self.id
         try:
-            label += ' (p{})'.format(self.attributes['Parallelism'])
+            label += ' (p{})'.format(self.executionProperties['ParallelismProperty'])
         except:
             pass
         label += '\\n(Remaining iteration: {})'.format(self.remaining_iteration)
@@ -328,7 +328,7 @@ class IREdge:
         self.src = src
         self.dst = dst
         self.id = properties['id']
-        self.attributes = properties['attributes']
+        self.executionProperties = properties['executionProperties']
         self.coder = properties['coder']
     @property
     def dot(self):
@@ -342,7 +342,7 @@ class IREdge:
             dst = dst.internalDstFor(self.id)
         except:
             pass
-        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.id, '/'.join(self.attributes.values()), self.coder)
+        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.id, '/'.join(self.executionProperties.values()), self.coder)
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(src.oneVertex.idx,
                 dst.oneVertex.idx, src.logicalEnd, dst.logicalEnd, label)
 
@@ -351,9 +351,9 @@ class PhysicalStageEdge:
         self.src = src
         self.dst = dst
         self.runtimeEdgeId = properties['runtimeEdgeId']
-        self.edgeAttributes = properties['edgeAttributes']
+        self.edgeProperties = properties['edgeProperties']
         self.externalVertexAttr = properties['externalVertexAttr']
-        self.parallelism = self.externalVertexAttr['Parallelism']
+        self.parallelism = self.externalVertexAttr['ParallelismProperty']
         self.coder = properties['coder']
     @property
     def dot(self):
@@ -365,7 +365,7 @@ class PhysicalStageEdge:
                 color = 'green'
         except:
             pass
-        label = '{} (p{})<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, self.parallelism, '/'.join([x[1] for x in sorted(self.edgeAttributes.items())]), self.coder)
+        label = '{} (p{})<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, self.parallelism, '/'.join([x[1] for x in sorted(self.edgeProperties.items())]), self.coder)
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>, color = {}];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label, color)
 
@@ -374,11 +374,11 @@ class StageEdge:
         self.src = src.internalDAG.vertices[properties['srcVertex']]
         self.dst = dst.internalDAG.vertices[properties['dstVertex']]
         self.runtimeEdgeId = properties['runtimeEdgeId']
-        self.edgeAttributes = properties['edgeAttributes']
+        self.edgeProperties = properties['edgeProperties']
         self.coder = properties['coder']
     @property
     def dot(self):
-        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, '/'.join([x[1] for x in sorted(self.edgeAttributes.items())]), self.coder)
+        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, '/'.join([x[1] for x in sorted(self.edgeProperties.items())]), self.coder)
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 
@@ -387,11 +387,11 @@ class RuntimeEdge:
         self.src = src
         self.dst = dst
         self.runtimeEdgeId = properties['runtimeEdgeId']
-        self.edgeAttributes = properties['edgeAttributes']
+        self.edgeProperties = properties['edgeProperties']
         self.coder = properties['coder']
     @property
     def dot(self):
-        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, '/'.join([x[1] for x in sorted(self.edgeAttributes.items())]), self.coder)
+        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, '/'.join([x[1] for x in sorted(self.edgeProperties.items())]), self.coder)
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 

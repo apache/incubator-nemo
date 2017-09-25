@@ -13,18 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.exception;
+package edu.snu.vortex.runtime.executor.datatransfer.partitioning;
 
 /**
- * UnsupportedAttributeException.
- * Thrown when Runtime does not support the attribute or the attribute is unknown.
+ * TODO #493: Implement Runtime classes for each Partitioning methods.
  */
-public final class UnsupportedAttributeException extends RuntimeException {
+public final class Hash implements Partitioning {
+  public static final String SIMPLE_NAME = "Hash";
+
   /**
-   * UnsupportedAttributeException.
-   * @param message message
+   * TODO #493: Implement Runtime classes for each Partitioning methods.
    */
-  public UnsupportedAttributeException(final String message) {
-    super(message);
+  private Hash() {
   }
 }

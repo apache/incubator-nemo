@@ -18,7 +18,7 @@ package edu.snu.vortex.runtime.common.plan.physical;
 
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.executor.data.HashRange;
 
@@ -47,13 +47,13 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
   private final Map<String, HashRange> taskGroupIdToHashRangeMap;
 
   public PhysicalStageEdge(final String runtimeEdgeId,
-                           final AttributeMap edgeAttributes,
+                           final ExecutionPropertyMap edgeProperties,
                            final IRVertex srcVertex,
                            final IRVertex dstVertex,
                            final PhysicalStage srcStage,
                            final PhysicalStage dstStage,
                            final Coder coder) {
-    super(runtimeEdgeId, edgeAttributes, srcStage, dstStage, coder);
+    super(runtimeEdgeId, edgeProperties, srcStage, dstStage, coder);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
     this.taskGroupIdToHashRangeMap = new HashMap<>();
@@ -71,7 +71,7 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"runtimeEdgeId\": \"").append(getId());
-    sb.append("\", \"edgeAttributes\": ").append(getAttributes());
+    sb.append("\", \"edgeProperties\": ").append(getExecutionProperties());
     sb.append(", \"externalSrcVertexId\": \"").append(srcVertex.getId());
     sb.append("\", \"externalDstVertexId\": \"").append(dstVertex.getId());
     sb.append("\", \"coder\": \"").append(getCoder().toString());

@@ -18,7 +18,6 @@ package edu.snu.vortex.runtime.executor.data;
 import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.exception.PartitionFetchException;
@@ -112,10 +111,11 @@ public final class PartitionManagerWorker {
    * @param hashRange      the hash range descriptor
    * @return a {@link CompletableFuture} for the partition.
    */
-  public CompletableFuture<Iterable<Element>> retrieveDataFromPartition(final String partitionId,
-                                                                        final String runtimeEdgeId,
-                                                                        final Attribute partitionStore,
-                                                                        final HashRange hashRange) {
+  public CompletableFuture<Iterable<Element>> retrieveDataFromPartition(
+      final String partitionId,
+      final String runtimeEdgeId,
+      final Class<? extends PartitionStore> partitionStore,
+      final HashRange hashRange) {
     LOG.info("RetrieveDataFromPartition: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
 
@@ -125,7 +125,7 @@ public final class PartitionManagerWorker {
     if (optionalResultData.isPresent()) {
       // Partition resides in this evaluator!
       return optionalResultData.get();
-    } else if (partitionStore.equals(Attribute.RemoteFile)) {
+    } else if (partitionStore.equals(GlusterFileStore.class)) {
       throw new PartitionFetchException(new Throwable("Cannot find a partition in remote store."));
     } else {
       // We don't have the partition here...
@@ -143,10 +143,11 @@ public final class PartitionManagerWorker {
    * @param hashRange         the hash range descriptor
    * @return the {@link CompletableFuture} of the partition.
    */
-  private CompletableFuture<Iterable<Element>> requestPartitionInRemoteWorker(final String partitionId,
-                                                                              final String runtimeEdgeId,
-                                                                              final Attribute partitionStore,
-                                                                              final HashRange hashRange) {
+  private CompletableFuture<Iterable<Element>> requestPartitionInRemoteWorker(
+      final String partitionId,
+      final String runtimeEdgeId,
+      final Class<? extends PartitionStore> partitionStore,
+      final HashRange hashRange) {
     // Let's see if a remote worker has it
     // Ask Master for the location
     final CompletableFuture<ControlMessage.Message> responseFromMasterFuture =
@@ -172,8 +173,8 @@ public final class PartitionManagerWorker {
       }
       // This is the executor id that we wanted to know
       final String remoteWorkerId = partitionLocationInfoMsg.getOwnerExecutorId();
-      return partitionTransfer.initiatePull(remoteWorkerId, false, partitionStore, partitionId, runtimeEdgeId,
-          hashRange).getCompleteFuture();
+      return partitionTransfer.initiatePull(remoteWorkerId, false, partitionStore, partitionId,
+          runtimeEdgeId, hashRange).getCompleteFuture();
     });
   }
 
@@ -189,7 +190,7 @@ public final class PartitionManagerWorker {
    */
   public CompletableFuture<Optional<List<Long>>> putBlocks(final String partitionId,
                                                            final Iterable<Block> blocks,
-                                                           final Attribute partitionStore,
+                                                           final Class<? extends PartitionStore> partitionStore,
                                                            final boolean commitPerBlock) {
     LOG.info("PutBlocks: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
@@ -213,7 +214,7 @@ public final class PartitionManagerWorker {
    * @param srcTaskIdx     of the source task.
    */
   public void commitPartition(final String partitionId,
-                              final Attribute partitionStore,
+                              final Class<? extends PartitionStore> partitionStore,
                               final List<Long> blockSizeInfo,
                               final String srcIRVertexId,
                               final int srcTaskIdx) {
@@ -227,7 +228,7 @@ public final class PartitionManagerWorker {
             .setSrcTaskIdx(srcTaskIdx)
             .setState(ControlMessage.PartitionStateFromExecutor.COMMITTED);
 
-    if (partitionStore == Attribute.RemoteFile) {
+    if (partitionStore == GlusterFileStore.class) {
       partitionStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
     } else {
       partitionStateChangedMsgBuilder.setLocation(executorId);
@@ -254,7 +255,7 @@ public final class PartitionManagerWorker {
    * @param partitionStore tha the partition is stored.
    */
   public void removePartition(final String partitionId,
-                              final Attribute partitionStore) {
+                              final Class<? extends PartitionStore> partitionStore) {
     LOG.info("RemovePartition: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
     final boolean exist;
@@ -271,7 +272,7 @@ public final class PartitionManagerWorker {
               .setPartitionId(partitionId)
               .setState(ControlMessage.PartitionStateFromExecutor.REMOVED);
 
-      if (partitionStore == Attribute.RemoteFile) {
+      if (GlusterFileStore.class.equals(partitionStore)) {
         partitionStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
       } else {
         partitionStateChangedMsgBuilder.setLocation(executorId);
@@ -288,13 +289,13 @@ public final class PartitionManagerWorker {
     }
   }
 
-  private PartitionStore getPartitionStore(final Attribute partitionStore) {
-    switch (partitionStore) {
-      case Memory:
+  private PartitionStore getPartitionStore(final Class<? extends PartitionStore> partitionStore) {
+    switch (partitionStore.getSimpleName()) {
+      case MemoryStore.SIMPLE_NAME:
         return memoryStore;
-      case LocalFile:
+      case LocalFileStore.SIMPLE_NAME:
         return localFileStore;
-      case RemoteFile:
+      case GlusterFileStore.SIMPLE_NAME:
         return remoteFileStore;
       default:
         throw new UnsupportedPartitionStoreException(new Exception(partitionStore + " is not supported."));
@@ -309,12 +310,12 @@ public final class PartitionManagerWorker {
    *
    * @param outputStream {@link PartitionOutputStream}
    */
-  public void onPullRequest(final PartitionOutputStream outputStream) {
+  public void onPullRequest(final PartitionOutputStream<?> outputStream) {
     // We are getting the partition from local store!
-    final Optional<Attribute> partitionStoreOptional = outputStream.getPartitionStore();
-    final Attribute partitionStore = partitionStoreOptional.get();
-    if (partitionStore == Attribute.LocalFile || partitionStore == Attribute.RemoteFile) {
-      // TODO #492: Modularize the data communication pattern. Remove attribute value dependant code.
+    final Optional<Class<? extends PartitionStore>> partitionStoreOptional = outputStream.getPartitionStore();
+    final Class<? extends PartitionStore> partitionStore = partitionStoreOptional.get();
+    if (partitionStore.equals(LocalFileStore.class) || partitionStore.equals(GlusterFileStore.class)) {
+      // TODO #492: Modularize the data communication pattern. Remove execution property value dependant code.
       final FileStore fileStore = (FileStore) getPartitionStore(partitionStore);
       try {
         outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getPartitionId(),

@@ -33,7 +33,8 @@ import java.util.stream.StreamSupport;
  * Store data in local memory.
  */
 @ThreadSafe
-final class MemoryStore implements PartitionStore {
+public final class MemoryStore implements PartitionStore {
+  public static final String SIMPLE_NAME = "MemoryStore";
   // A map between partition id and data blocks.
   private final ConcurrentHashMap<String, MemoryPartition> partitionMap;
 

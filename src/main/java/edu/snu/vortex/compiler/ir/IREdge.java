@@ -16,10 +16,14 @@
 package edu.snu.vortex.compiler.ir;
 
 import edu.snu.vortex.common.coder.Coder;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
-import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
-import edu.snu.vortex.runtime.exception.UnsupportedAttributeException;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionPropertyMap;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataCommunicationPatternProperty;
+import edu.snu.vortex.runtime.exception.UnsupportedExecutionPropertyException;
 import edu.snu.vortex.common.dag.Edge;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.Broadcast;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
 
 /**
  * Physical execution plan of intermediate data movement.
@@ -34,7 +38,7 @@ public final class IREdge extends Edge<IRVertex> {
     ScatterGather,
   }
 
-  private final AttributeMap attributes;
+  private final ExecutionPropertyMap executionProperties;
   private final Type type;
   private final Coder coder;
 
@@ -52,47 +56,47 @@ public final class IREdge extends Edge<IRVertex> {
     super(IdManager.newEdgeId(), src, dst);
     this.type = type;
     this.coder = coder;
-    this.attributes = AttributeMap.of(this);
+    this.executionProperties = ExecutionPropertyMap.of(this);
     switch (this.getType()) {
       case OneToOne:
-        setAttr(Attribute.Key.CommunicationPattern, Attribute.OneToOne);
+        setProperty(DataCommunicationPatternProperty.of(OneToOne.class));
         break;
       case Broadcast:
-        setAttr(Attribute.Key.CommunicationPattern, Attribute.Broadcast);
+        setProperty(DataCommunicationPatternProperty.of(Broadcast.class));
         break;
       case ScatterGather:
-        setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
+        setProperty(DataCommunicationPatternProperty.of(ScatterGather.class));
         break;
       default:
-        throw new UnsupportedAttributeException("There is no such edge type as: " + this.getType());
+        throw new UnsupportedExecutionPropertyException("There is no such edge type as: " + this.getType());
     }
   }
 
   /**
-   * Set an attribute to the IREdge.
-   * @param key key of the attribute.
-   * @param val value of the attribute.
-   * @return the IREdge with the attribute applied.
+   * Set an executionProperty of the IREdge.
+   * @param executionProperty the execution property.
+   * @return the IREdge with the execution property set.
    */
-  public IREdge setAttr(final Attribute.Key key, final Attribute val) {
-    attributes.put(key, val);
+  public IREdge setProperty(final ExecutionProperty<?> executionProperty) {
+    executionProperties.put(executionProperty);
     return this;
   }
 
   /**
-   * Get the attribute of the IREdge.
-   * @param key key of the attribute.
-   * @return the attribute.
+   * Get the executionProperty of the IREdge.
+   * @param <T> Type of the return value.
+   * @param executionPropertyKey key of the execution property.
+   * @return the execution property.
    */
-  public Attribute getAttr(final Attribute.Key key) {
-    return attributes.get(key);
+  public <T> T get(final ExecutionProperty.Key executionPropertyKey) {
+    return executionProperties.get(executionPropertyKey);
   }
 
   /**
-   * @return the AttributeMap of the IREdge.
+   * @return the ExecutionPropertyMap of the IREdge.
    */
-  public AttributeMap getAttributes() {
-    return attributes;
+  public ExecutionPropertyMap getExecutionProperties() {
+    return executionProperties;
   }
 
   /**
@@ -118,12 +122,11 @@ public final class IREdge extends Edge<IRVertex> {
   }
 
   /**
-   * Static function to copy attributes from an edge to the other.
-   * @param fromEdge the edge to copy attributes from.
-   * @param toEdge the edge to copy attributes to.
+   * Static function to copy executionProperties from an edge to the other.
+   * @param thatEdge the edge to copy executionProperties to.
    */
-  public static void copyAttributes(final IREdge fromEdge, final IREdge toEdge) {
-    fromEdge.getAttributes().forEachAttr(toEdge::setAttr);
+  public void copyExecutionPropertiesTo(final IREdge thatEdge) {
+    this.getExecutionProperties().forEachProperties(thatEdge::setProperty);
   }
 
   @Override
@@ -152,7 +155,7 @@ public final class IREdge extends Edge<IRVertex> {
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"id\": \"").append(getId());
-    sb.append("\", \"attributes\": ").append(attributes);
+    sb.append("\", \"executionProperties\": ").append(executionProperties);
     sb.append(", \"type\": \"").append(type);
     sb.append("\", \"coder\": \"").append(coder.toString());
     sb.append("\"}");

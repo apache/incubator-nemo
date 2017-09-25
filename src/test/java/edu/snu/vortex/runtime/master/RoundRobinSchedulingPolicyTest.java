@@ -15,7 +15,7 @@
  */
 package edu.snu.vortex.runtime.master;
 
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
@@ -67,12 +67,12 @@ public final class RoundRobinSchedulingPolicyTest {
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
-    final ResourceSpecification computeSpec = new ResourceSpecification(Attribute.Compute, 1, 0);
+    final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 1, 0);
     final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
     final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
     final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
 
-    final ResourceSpecification storageSpec = new ResourceSpecification(Attribute.Transient, 1, 0);
+    final ResourceSpecification storageSpec = new ResourceSpecification(ExecutorPlacementProperty.TRANSIENT, 1, 0);
     final ExecutorRepresenter b2 = new ExecutorRepresenter("b2", storageSpec, mockMsgSender, activeContext);
     final ExecutorRepresenter b1 = new ExecutorRepresenter("b1", storageSpec, mockMsgSender, activeContext);
 
@@ -99,12 +99,12 @@ public final class RoundRobinSchedulingPolicyTest {
 
   @Test
   public void testNoneContainerType() {
-    final TaskGroup A1 = new TaskGroup("A1", "Stage A", 0, null, Attribute.None);
-    final TaskGroup A2 = new TaskGroup("A2", "Stage A", 0, null, Attribute.None);
-    final TaskGroup A3 = new TaskGroup("A3", "Stage A", 0, null, Attribute.None);
-    final TaskGroup A4 = new TaskGroup("A4", "Stage A", 0, null, Attribute.None);
-    final TaskGroup A5 = new TaskGroup("A5", "Stage A", 0, null, Attribute.None);
-    final TaskGroup A6 = new TaskGroup("A6", "Stage A", 0, null, Attribute.None);
+    final TaskGroup A1 = new TaskGroup("A1", "Stage A", 0, null, ExecutorPlacementProperty.NONE);
+    final TaskGroup A2 = new TaskGroup("A2", "Stage A", 0, null, ExecutorPlacementProperty.NONE);
+    final TaskGroup A3 = new TaskGroup("A3", "Stage A", 0, null, ExecutorPlacementProperty.NONE);
+    final TaskGroup A4 = new TaskGroup("A4", "Stage A", 0, null, ExecutorPlacementProperty.NONE);
+    final TaskGroup A5 = new TaskGroup("A5", "Stage A", 0, null, ExecutorPlacementProperty.NONE);
+    final TaskGroup A6 = new TaskGroup("A6", "Stage A", 0, null, ExecutorPlacementProperty.NONE);
 
     final ScheduledTaskGroup a1Wrapper = wrap(A1);
     final ScheduledTaskGroup a2Wrapper = wrap(A2);
@@ -140,14 +140,14 @@ public final class RoundRobinSchedulingPolicyTest {
 
   @Test
   public void testSingleCoreTwoTypesOfExecutors() {
-    final TaskGroup A1 = new TaskGroup("A1", "Stage A", 0, null, Attribute.Compute);
-    final TaskGroup A2 = new TaskGroup("A2", "Stage A", 1, null, Attribute.Compute);
-    final TaskGroup A3 = new TaskGroup("A3", "Stage A", 2, null, Attribute.Compute);
-    final TaskGroup A4 = new TaskGroup("A4", "Stage A", 3, null, Attribute.Compute);
-    final TaskGroup A5 = new TaskGroup("A4", "Stage A", 4, null, Attribute.Compute);
-    final TaskGroup B1 = new TaskGroup("B1", "Stage B", 0, null, Attribute.Transient);
-    final TaskGroup B2 = new TaskGroup("B2", "Stage B", 1, null, Attribute.Transient);
-    final TaskGroup B3 = new TaskGroup("B3", "Stage B", 2, null, Attribute.Transient);
+    final TaskGroup A1 = new TaskGroup("A1", "Stage A", 0, null, ExecutorPlacementProperty.COMPUTE);
+    final TaskGroup A2 = new TaskGroup("A2", "Stage A", 1, null, ExecutorPlacementProperty.COMPUTE);
+    final TaskGroup A3 = new TaskGroup("A3", "Stage A", 2, null, ExecutorPlacementProperty.COMPUTE);
+    final TaskGroup A4 = new TaskGroup("A4", "Stage A", 3, null, ExecutorPlacementProperty.COMPUTE);
+    final TaskGroup A5 = new TaskGroup("A4", "Stage A", 4, null, ExecutorPlacementProperty.COMPUTE);
+    final TaskGroup B1 = new TaskGroup("B1", "Stage B", 0, null, ExecutorPlacementProperty.TRANSIENT);
+    final TaskGroup B2 = new TaskGroup("B2", "Stage B", 1, null, ExecutorPlacementProperty.TRANSIENT);
+    final TaskGroup B3 = new TaskGroup("B3", "Stage B", 2, null, ExecutorPlacementProperty.TRANSIENT);
 
     final ScheduledTaskGroup a1Wrapper = wrap(A1);
     final ScheduledTaskGroup a2Wrapper = wrap(A2);

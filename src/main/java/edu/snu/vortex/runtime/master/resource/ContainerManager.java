@@ -15,7 +15,6 @@
  */
 package edu.snu.vortex.runtime.master.resource;
 
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
@@ -60,7 +59,7 @@ public final class ContainerManager {
   /**
    * A map containing a list of executor representations for each container type.
    */
-  private final Map<Attribute, List<ExecutorRepresenter>> executorsByContainerType;
+  private final Map<String, List<ExecutorRepresenter>> executorsByContainerType;
 
   /**
    * A map of executor ID to the corresponding {@link ExecutorRepresenter}.
@@ -76,7 +75,7 @@ public final class ContainerManager {
    * Keeps track of evaluator and context requests.
    */
   private final Map<String, ResourceSpecification> pendingContextIdToResourceSpec;
-  private final Map<Attribute, List<ResourceSpecification>> pendingContainerRequestsByContainerType;
+  private final Map<String, List<ResourceSpecification>> pendingContainerRequestsByContainerType;
 
   private final PersistentConnectionToMaster persistentConnectionToMaster;
 
@@ -163,7 +162,7 @@ public final class ContainerManager {
    */
   private ResourceSpecification selectResourceSpecForContainer() {
     ResourceSpecification selectedResourceSpec = null;
-    for (final Map.Entry<Attribute, List<ResourceSpecification>> entry
+    for (final Map.Entry<String, List<ResourceSpecification>> entry
         : pendingContainerRequestsByContainerType.entrySet()) {
       if (entry.getValue().size() > 0) {
         selectedResourceSpec = entry.getValue().remove(0);

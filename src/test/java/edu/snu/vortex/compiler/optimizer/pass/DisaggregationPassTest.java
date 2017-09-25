@@ -19,8 +19,12 @@ import edu.snu.vortex.client.JobLauncher;
 import edu.snu.vortex.compiler.CompilerTestUtil;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
+import edu.snu.vortex.runtime.executor.data.GlusterFileStore;
+import edu.snu.vortex.runtime.executor.data.MemoryStore;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -47,19 +51,19 @@ public class DisaggregationPassTest {
     final DAG<IRVertex, IREdge> processedDAG = new DisaggregationPass().apply(compiledDAG);
 
     processedDAG.getTopologicalSort().forEach(irVertex -> {
-      assertEquals(Attribute.Compute, irVertex.getAttr(Attribute.Key.Placement));
+      assertEquals(ExecutorPlacementProperty.COMPUTE, irVertex.get(ExecutionProperty.Key.ExecutorPlacement));
       processedDAG.getIncomingEdgesOf(irVertex).forEach(irEdge ->
-          assertEquals(Attribute.Pull, irEdge.getAttr(Attribute.Key.ChannelTransferPolicy)));
+          assertEquals(DataFlowModelProperty.Value.Pull, irEdge.get(ExecutionProperty.Key.DataFlowModel)));
     });
 
     final IRVertex vertex4 = processedDAG.getTopologicalSort().get(6);
     processedDAG.getIncomingEdgesOf(vertex4).forEach(irEdge ->
-      assertEquals(Attribute.Memory, irEdge.getAttr(Attribute.Key.ChannelDataPlacement)));
+      assertEquals(MemoryStore.class, irEdge.get(ExecutionProperty.Key.DataStore)));
     processedDAG.getOutgoingEdgesOf(vertex4).forEach(irEdge ->
-      assertEquals(Attribute.Memory, irEdge.getAttr(Attribute.Key.ChannelDataPlacement)));
+      assertEquals(MemoryStore.class, irEdge.get(ExecutionProperty.Key.DataStore)));
 
     final IRVertex vertex12 = processedDAG.getTopologicalSort().get(10);
     processedDAG.getIncomingEdgesOf(vertex12).forEach(irEdge ->
-      assertEquals(Attribute.RemoteFile, irEdge.getAttr(Attribute.Key.ChannelDataPlacement)));
+      assertEquals(GlusterFileStore.class, irEdge.get(ExecutionProperty.Key.DataStore)));
   }
 }
