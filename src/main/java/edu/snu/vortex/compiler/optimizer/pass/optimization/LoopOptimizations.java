@@ -153,7 +153,7 @@ public final class LoopOptimizations {
               if (builder.contains(irEdge.getSrc())) {
                 final IREdge newIREdge =
                     new IREdge(irEdge.getType(), irEdge.getSrc(), newLoopVertex, irEdge.getCoder());
-                IREdge.copyAttributes(irEdge, newIREdge);
+                irEdge.copyExecutionPropertiesTo(newIREdge);
                 builder.connectVertices(newIREdge);
               }
             });
@@ -162,7 +162,7 @@ public final class LoopOptimizations {
               if (builder.contains(irEdge.getDst())) {
                 final IREdge newIREdge =
                     new IREdge(irEdge.getType(), newLoopVertex, irEdge.getDst(), irEdge.getCoder());
-                IREdge.copyAttributes(irEdge, newIREdge);
+                irEdge.copyExecutionPropertiesTo(newIREdge);
                 builder.connectVertices(newIREdge);
               }
             });

@@ -60,7 +60,7 @@ public class LoopUnrollingPassTest {
       list.add(Pair.of(vertices1.next(), vertices2.next()));
     }
     list.forEach(irVertexPair -> {
-        assertEquals(irVertexPair.left().getAttributes(), irVertexPair.right().getAttributes());
+        assertEquals(irVertexPair.left().getExecutionProperties(), irVertexPair.right().getExecutionProperties());
         assertEquals(compiledDAG.getIncomingEdgesOf(irVertexPair.left()).size(),
             processedDAG.getIncomingEdgesOf(irVertexPair.right()).size());
     });

@@ -139,76 +139,76 @@ public final class RuntimeMaster {
    * Handler for control messages received by Master.
    */
   public final class MasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
-
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
-      case TaskGroupStateChanged:
-        final ControlMessage.TaskGroupStateChangedMsg taskGroupStateChangedMsg = message.getTaskStateChangedMsg();
+        case TaskGroupStateChanged:
+          final ControlMessage.TaskGroupStateChangedMsg taskGroupStateChangedMsg = message.getTaskStateChangedMsg();
 
-        scheduler.onTaskGroupStateChanged(taskGroupStateChangedMsg.getExecutorId(),
-            taskGroupStateChangedMsg.getTaskGroupId(),
-            convertTaskGroupState(taskGroupStateChangedMsg.getState()),
-            taskGroupStateChangedMsg.getAttemptIdx(),
-            taskGroupStateChangedMsg.getTasksPutOnHoldIdsList(),
-            convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
-        break;
-      case PartitionStateChanged:
-        final ControlMessage.PartitionStateChangedMsg partitionStateChangedMsg = message.getPartitionStateChangedMsg();
-        // process message with partition size.
-        final List<Long> blockSizeInfo = partitionStateChangedMsg.getBlockSizeInfoList();
-        if (!blockSizeInfo.isEmpty()) {
-          final String srcVertexId = partitionStateChangedMsg.getSrcIRVertexId();
-          final IRVertex vertexToSendMetricDataTo = irVertices.stream()
-              .filter(irVertex -> irVertex.getId().equals(srcVertexId)).findFirst()
-              .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
+          scheduler.onTaskGroupStateChanged(taskGroupStateChangedMsg.getExecutorId(),
+              taskGroupStateChangedMsg.getTaskGroupId(),
+              convertTaskGroupState(taskGroupStateChangedMsg.getState()),
+              taskGroupStateChangedMsg.getAttemptIdx(),
+              taskGroupStateChangedMsg.getTasksPutOnHoldIdsList(),
+              convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
+          break;
+        case PartitionStateChanged:
+          final ControlMessage.PartitionStateChangedMsg partitionStateChangedMsg =
+              message.getPartitionStateChangedMsg();
+          // process message with partition size.
+          final List<Long> blockSizeInfo = partitionStateChangedMsg.getBlockSizeInfoList();
+          if (!blockSizeInfo.isEmpty()) {
+            final String srcVertexId = partitionStateChangedMsg.getSrcIRVertexId();
+            final IRVertex vertexToSendMetricDataTo = irVertices.stream()
+                .filter(irVertex -> irVertex.getId().equals(srcVertexId)).findFirst()
+                .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
 
-          if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
-            final MetricCollectionBarrierVertex<Long> metricCollectionBarrierVertex =
-                (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
-            metricCollectionBarrierVertex.accumulateMetric(partitionStateChangedMsg.getPartitionId(), blockSizeInfo);
-          } else {
-            throw new RuntimeException("Something wrong happened at " + DataSkewPass.class.getSimpleName() + ". ");
+            if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
+              final MetricCollectionBarrierVertex<Long> metricCollectionBarrierVertex =
+                  (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
+              metricCollectionBarrierVertex.accumulateMetric(partitionStateChangedMsg.getPartitionId(), blockSizeInfo);
+            } else {
+              throw new RuntimeException("Something wrong happened at " + DataSkewPass.class.getSimpleName() + ". ");
+            }
           }
-        }
-        partitionManagerMaster.onPartitionStateChanged(partitionStateChangedMsg.getPartitionId(),
-            convertPartitionState(partitionStateChangedMsg.getState()),
-            partitionStateChangedMsg.getLocation(),
-            partitionStateChangedMsg.getSrcTaskIdx());
-        break;
-      case ExecutorFailed:
-        final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
-        final String failedExecutorId = executorFailedMsg.getExecutorId();
-        final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
-        LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
-        containerManager.onExecutorRemoved(failedExecutorId);
-        throw new RuntimeException(exception);
-      case ContainerFailed:
-        final Map<String, Object> jsonMetricData = new HashMap<>();
-        final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
-        jsonMetricData.put("ExecutorId", containerFailedMsg.getExecutorId());
-        jsonMetricData.put("ContainerFailure", true);
-        try {
-          final String jsonStr = objectMapper.writeValueAsString(jsonMetricData);
-          jobStateManager.getMetricMessageHandler().onMetricMessageReceived(jsonStr);
-        } catch (final Exception e) {
-          throw new JsonParseException(e);
-        }
-        break;
-      case MetricMessageReceived:
-        final ControlMessage.MetricMsg metricMsg = message.getMetricMsg();
-        metricMsg.getMetricMessagesList().stream()
-            .forEach((msg) -> jobStateManager.getMetricMessageHandler().onMetricMessageReceived(msg));
-        break;
+          partitionManagerMaster.onPartitionStateChanged(partitionStateChangedMsg.getPartitionId(),
+              convertPartitionState(partitionStateChangedMsg.getState()),
+              partitionStateChangedMsg.getLocation(),
+              partitionStateChangedMsg.getSrcTaskIdx());
+          break;
+        case ExecutorFailed:
+          final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
+          final String failedExecutorId = executorFailedMsg.getExecutorId();
+          final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
+          LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
+          containerManager.onExecutorRemoved(failedExecutorId);
+          throw new RuntimeException(exception);
+        case ContainerFailed:
+          final Map<String, Object> jsonMetricData = new HashMap<>();
+          final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
+          jsonMetricData.put("ExecutorId", containerFailedMsg.getExecutorId());
+          jsonMetricData.put("ContainerFailure", true);
+          try {
+            final String jsonStr = objectMapper.writeValueAsString(jsonMetricData);
+            jobStateManager.getMetricMessageHandler().onMetricMessageReceived(jsonStr);
+          } catch (final Exception e) {
+            throw new JsonParseException(e);
+          }
+          break;
+        case MetricMessageReceived:
+          final ControlMessage.MetricMsg metricMsg = message.getMetricMsg();
+          metricMsg.getMetricMessagesList().stream()
+              .forEach((msg) -> jobStateManager.getMetricMessageHandler().onMetricMessageReceived(msg));
+          break;
         case CommitBlock:
-        partitionManagerMaster.onCommitBlocks(message);
-        break;
-      case RemoveBlockMetadata:
-        partitionManagerMaster.onRemoveBlockMetadata(message);
-        break;
-      default:
-        throw new IllegalMessageException(
-            new Exception("This message should not be received by Master :" + message.getType()));
+          partitionManagerMaster.onCommitBlocks(message);
+          break;
+        case RemoveBlockMetadata:
+          partitionManagerMaster.onRemoveBlockMetadata(message);
+          break;
+        default:
+          throw new IllegalMessageException(
+              new Exception("This message should not be received by Master :" + message.getType()));
       }
     }
 
@@ -234,20 +234,20 @@ public final class RuntimeMaster {
   // TODO #164: Cleanup Protobuf Usage
   private static TaskGroupState.State convertTaskGroupState(final ControlMessage.TaskGroupStateFromExecutor state) {
     switch (state) {
-    case READY:
-      return TaskGroupState.State.READY;
-    case EXECUTING:
-      return TaskGroupState.State.EXECUTING;
-    case COMPLETE:
-      return COMPLETE;
-    case FAILED_RECOVERABLE:
-      return TaskGroupState.State.FAILED_RECOVERABLE;
-    case FAILED_UNRECOVERABLE:
-      return TaskGroupState.State.FAILED_UNRECOVERABLE;
-    case ON_HOLD:
-      return ON_HOLD;
-    default:
-      throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
+      case READY:
+        return TaskGroupState.State.READY;
+      case EXECUTING:
+        return TaskGroupState.State.EXECUTING;
+      case COMPLETE:
+        return COMPLETE;
+      case FAILED_RECOVERABLE:
+        return TaskGroupState.State.FAILED_RECOVERABLE;
+      case FAILED_UNRECOVERABLE:
+        return TaskGroupState.State.FAILED_UNRECOVERABLE;
+      case ON_HOLD:
+        return ON_HOLD;
+      default:
+        throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
     }
   }
 
@@ -295,12 +295,13 @@ public final class RuntimeMaster {
   private TaskGroupState.RecoverableFailureCause convertFailureCause(
       final ControlMessage.RecoverableFailureCause cause) {
     switch (cause) {
-    case InputReadFailure:
-      return TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE;
-    case OutputWriteFailure:
-      return TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE;
-    default:
-      throw new UnknownFailureCauseException(new Throwable("The failure cause for the recoverable failure is unknown"));
+      case InputReadFailure:
+        return TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE;
+      case OutputWriteFailure:
+        return TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE;
+      default:
+        throw new UnknownFailureCauseException(
+            new Throwable("The failure cause for the recoverable failure is unknown"));
     }
   }
 

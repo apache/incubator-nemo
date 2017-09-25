@@ -16,7 +16,6 @@
 package edu.snu.vortex.runtime.master.scheduler;
 
 import edu.snu.vortex.common.dag.DAG;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
@@ -64,7 +63,7 @@ public final class PendingTaskGroupPriorityQueue {
    */
   public void enqueue(final ScheduledTaskGroup scheduledTaskGroup) {
     final String stageId = scheduledTaskGroup.getTaskGroup().getStageId();
-    final Attribute containerType = scheduledTaskGroup.getTaskGroup().getContainerType();
+    final String containerType = scheduledTaskGroup.getTaskGroup().getContainerType();
 
     stageIdToPendingTaskGroups.compute(stageId,
         new BiFunction<String, Deque<ScheduledTaskGroup>, Deque<ScheduledTaskGroup>>() {
@@ -137,12 +136,12 @@ public final class PendingTaskGroupPriorityQueue {
    * @param candidateStageId for the stage that can potentially be scheduled.
    * @param candidateStageContainerType for the stage that can potentially be scheduled.
    */
-  private void updateSchedulableStages(final String candidateStageId, final Attribute candidateStageContainerType) {
+  private void updateSchedulableStages(final String candidateStageId, final String candidateStageContainerType) {
     boolean readyToScheduleImmediately = true;
     final DAG<PhysicalStage, PhysicalStageEdge> jobDAG = physicalPlan.getStageDAG();
     for (final PhysicalStage ancestorStage : jobDAG.getAncestors(candidateStageId)) {
       if (schedulableStages.contains(ancestorStage.getId())) {
-        if (candidateStageContainerType == ancestorStage.getTaskGroupList().get(0).getContainerType()) {
+        if (candidateStageContainerType.equals(ancestorStage.getTaskGroupList().get(0).getContainerType())) {
           readyToScheduleImmediately = false;
           break;
         }

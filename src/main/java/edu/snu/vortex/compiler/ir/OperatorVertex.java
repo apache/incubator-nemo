@@ -34,7 +34,7 @@ public final class OperatorVertex extends IRVertex {
   @Override
   public OperatorVertex getClone() {
     final OperatorVertex that = new OperatorVertex(this.transform);
-    IRVertex.copyAttributes(this, that);
+    this.copyExecutionPropertiesTo(that);
     return that;
   }
 

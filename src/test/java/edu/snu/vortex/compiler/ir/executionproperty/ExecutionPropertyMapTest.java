@@ -13,15 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.ir.attribute;
+package edu.snu.vortex.compiler.ir.executionproperty;
 
-import edu.snu.vortex.compiler.CompilerTestUtil;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.vortex.compiler.optimizer.examples.EmptyComponents;
+import edu.snu.vortex.runtime.executor.data.MemoryStore;
+import edu.snu.vortex.runtime.executor.datatransfer.partitioning.Hash;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -29,41 +33,41 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 /**
- * Test {@link AttributeMap}.
+ * Test {@link ExecutionPropertyMap}.
  */
-public class AttributeMapTest {
+public class ExecutionPropertyMapTest {
   private final IRVertex source = new BoundedSourceVertex<>(new EmptyComponents.EmptyBoundedSource("Source"));
   private final IRVertex destination = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
   private final IREdge edge = new IREdge(IREdge.Type.OneToOne, source, destination, Coder.DUMMY_CODER);
 
-  private AttributeMap edgeMap;
-  private AttributeMap vertexMap;
+  private ExecutionPropertyMap edgeMap;
+  private ExecutionPropertyMap vertexMap;
 
   @Before
   public void setUp() {
-    this.edgeMap = AttributeMap.of(edge);
-    this.vertexMap = AttributeMap.of(source);
+    this.edgeMap = ExecutionPropertyMap.of(edge);
+    this.vertexMap = ExecutionPropertyMap.of(source);
   }
 
   @Test
   public void testDefaultValues() {
-    assertEquals(Attribute.Hash, edgeMap.get(Attribute.Key.Partitioning));
-    assertEquals(1, (long) vertexMap.get(Attribute.IntegerKey.Parallelism));
+    assertEquals(Hash.class, edgeMap.get(ExecutionProperty.Key.Partitioning));
+    assertEquals(1, vertexMap.<Integer>get(ExecutionProperty.Key.Parallelism).longValue());
     assertEquals(edge.getId(), edgeMap.getId());
     assertEquals(source.getId(), vertexMap.getId());
   }
 
   @Test
   public void testPutGetAndRemove() {
-    edgeMap.put(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-    assertEquals(Attribute.Memory, edgeMap.get(Attribute.Key.ChannelDataPlacement));
-    edgeMap.put(Attribute.Key.ChannelTransferPolicy, Attribute.Pull);
-    assertEquals(Attribute.Pull, edgeMap.get(Attribute.Key.ChannelTransferPolicy));
+    edgeMap.put(DataStoreProperty.of(MemoryStore.class));
+    assertEquals(MemoryStore.class, edgeMap.get(ExecutionProperty.Key.DataStore));
+    edgeMap.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    assertEquals(DataFlowModelProperty.Value.Pull, edgeMap.get(ExecutionProperty.Key.DataFlowModel));
 
-    edgeMap.remove(Attribute.Key.ChannelTransferPolicy);
-    assertNull(edgeMap.get(Attribute.Key.ChannelTransferPolicy));
+    edgeMap.remove(ExecutionProperty.Key.DataFlowModel);
+    assertNull(edgeMap.get(ExecutionProperty.Key.DataFlowModel));
 
-    vertexMap.put(Attribute.IntegerKey.Parallelism, 100);
-    assertEquals(100, (long) vertexMap.get(Attribute.IntegerKey.Parallelism));
+    vertexMap.put(ParallelismProperty.of(100));
+    assertEquals(100, vertexMap.<Integer>get(ExecutionProperty.Key.Parallelism).longValue());
   }
 }

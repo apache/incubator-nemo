@@ -81,7 +81,7 @@ public final class LoopGroupingPass implements StaticOptimizationPass {
                 srcLoopVertex.addDagOutgoingEdge(irEdge);
                 final IREdge edgeFromLoop = new IREdge(irEdge.getType(), srcLoopVertex, operatorVertex,
                     irEdge.getCoder());
-                IREdge.copyAttributes(irEdge, edgeFromLoop);
+                irEdge.copyExecutionPropertiesTo(edgeFromLoop);
                 builder.connectVertices(edgeFromLoop);
                 srcLoopVertex.mapEdgeWithLoop(edgeFromLoop, irEdge);
               } else { // connecting outside the composite loop: operator -> operator.
@@ -128,14 +128,14 @@ public final class LoopGroupingPass implements StaticOptimizationPass {
         } else { // loop -> loop connection
           assignedLoopVertex.addDagIncomingEdge(irEdge);
           final IREdge edgeToLoop = new IREdge(irEdge.getType(), srcLoopVertex, assignedLoopVertex, irEdge.getCoder());
-          IREdge.copyAttributes(irEdge, edgeToLoop);
+          irEdge.copyExecutionPropertiesTo(edgeToLoop);
           builder.connectVertices(edgeToLoop);
           assignedLoopVertex.mapEdgeWithLoop(edgeToLoop, irEdge);
         }
       } else { // operator -> loop
         assignedLoopVertex.addDagIncomingEdge(irEdge);
         final IREdge edgeToLoop = new IREdge(irEdge.getType(), irEdge.getSrc(), assignedLoopVertex, irEdge.getCoder());
-        IREdge.copyAttributes(irEdge, edgeToLoop);
+        irEdge.copyExecutionPropertiesTo(edgeToLoop);
         builder.connectVertices(edgeToLoop);
         assignedLoopVertex.mapEdgeWithLoop(edgeToLoop, irEdge);
       }
@@ -206,12 +206,12 @@ public final class LoopGroupingPass implements StaticOptimizationPass {
               // add the new IREdge to the iterative incoming edges list.
               final IREdge newIrEdge = new IREdge(edge.getType(), equivalentSrcVertex, equivalentDstVertex,
                   edge.getCoder());
-              IREdge.copyAttributes(edge, newIrEdge);
+              edge.copyExecutionPropertiesTo(newIrEdge);
               finalRootLoopVertex.addIterativeIncomingEdge(newIrEdge);
             } else {
               // src is from outside the previous loop. vertex outside previous loop -> DAG.
               final IREdge newIrEdge = new IREdge(edge.getType(), srcVertex, equivalentDstVertex, edge.getCoder());
-              IREdge.copyAttributes(edge, newIrEdge);
+              edge.copyExecutionPropertiesTo(newIrEdge);
               finalRootLoopVertex.addNonIterativeIncomingEdge(newIrEdge);
             }
           }));
@@ -223,7 +223,7 @@ public final class LoopGroupingPass implements StaticOptimizationPass {
             final IRVertex equivalentSrcVertex = equivalentVertices.get(srcVertex);
 
             final IREdge newIrEdge = new IREdge(edge.getType(), equivalentSrcVertex, dstVertex, edge.getCoder());
-            IREdge.copyAttributes(edge, newIrEdge);
+            edge.copyExecutionPropertiesTo(newIrEdge);
             finalRootLoopVertex.addDagOutgoingEdge(newIrEdge);
             finalRootLoopVertex.mapEdgeWithLoop(loopVertex.getEdgeWithLoop(edge), newIrEdge);
           }));
@@ -267,7 +267,7 @@ public final class LoopGroupingPass implements StaticOptimizationPass {
         builder.connectVertices(edge);
       } else {
         final IREdge newIrEdge = new IREdge(edge.getType(), firstEquivalentVertex, irVertex, edge.getCoder());
-        IREdge.copyAttributes(edge, newIrEdge);
+        edge.copyExecutionPropertiesTo(newIrEdge);
         builder.connectVertices(newIrEdge);
       }
     });

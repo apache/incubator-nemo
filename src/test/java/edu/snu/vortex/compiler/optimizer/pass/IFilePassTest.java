@@ -20,7 +20,10 @@ import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.compiler.CompilerTestUtil;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
+import edu.snu.vortex.runtime.executor.data.GlusterFileStore;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -48,14 +51,14 @@ public class IFilePassTest {
     final DAG<IRVertex, IREdge> processedDAG = new IFilePass().apply(disaggProcessedDAG);
 
     processedDAG.getVertices().forEach(v -> processedDAG.getIncomingEdgesOf(v).stream()
-            .filter(e -> e.getAttr(Attribute.Key.CommunicationPattern).equals(Attribute.ScatterGather))
-            .filter(e -> e.getAttr(Attribute.Key.ChannelDataPlacement).equals(Attribute.RemoteFile))
-            .forEach(e -> assertTrue(e.getAttr(Attribute.Key.WriteOptimization) != null
-                && e.getAttr(Attribute.Key.WriteOptimization).equals(Attribute.IFileWrite))));
+        .filter(e -> ScatterGather.class.equals(e.get(ExecutionProperty.Key.DataCommunicationPattern)))
+        .filter(e -> GlusterFileStore.class.equals(e.get(ExecutionProperty.Key.DataStore)))
+        .forEach(e -> assertTrue(e.get(ExecutionProperty.Key.WriteOptimization) != null
+            && WriteOptimizationProperty.IFILE_WRITE.equals(e.get(ExecutionProperty.Key.WriteOptimization)))));
 
     processedDAG.getVertices().forEach(v -> processedDAG.getIncomingEdgesOf(v).stream()
-        .filter(e -> !e.getAttr(Attribute.Key.CommunicationPattern).equals(Attribute.ScatterGather))
-        .filter(e -> e.getAttr(Attribute.Key.ChannelDataPlacement).equals(Attribute.RemoteFile))
-        .forEach(e -> assertTrue(e.getAttr(Attribute.Key.WriteOptimization) == null)));
+        .filter(e -> !ScatterGather.class.equals(e.get(ExecutionProperty.Key.DataCommunicationPattern)))
+        .filter(e -> GlusterFileStore.class.equals(e.get(ExecutionProperty.Key.DataStore)))
+        .forEach(e -> assertTrue(e.get(ExecutionProperty.Key.WriteOptimization) == null)));
   }
 }

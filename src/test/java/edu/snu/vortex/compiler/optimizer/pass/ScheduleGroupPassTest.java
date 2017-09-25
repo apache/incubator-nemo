@@ -20,7 +20,7 @@ import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.compiler.CompilerTestUtil;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.compiler.optimizer.TestPolicy;
 import org.junit.Before;
@@ -53,8 +53,8 @@ public final class ScheduleGroupPassTest {
 
     Integer previousScheduleGroupIndex = 0;
     for (final IRVertex irVertex : processedDAG.getTopologicalSort()) {
-      assertTrue(irVertex.getAttr(Attribute.IntegerKey.ScheduleGroupIndex) != null);
-      final Integer currentScheduleGroupIndex = irVertex.getAttr(Attribute.IntegerKey.ScheduleGroupIndex);
+      assertTrue(irVertex.get(ExecutionProperty.Key.ScheduleGroupIndex) != null);
+      final Integer currentScheduleGroupIndex = irVertex.get(ExecutionProperty.Key.ScheduleGroupIndex);
       assertTrue(currentScheduleGroupIndex >= previousScheduleGroupIndex);
       if (currentScheduleGroupIndex > previousScheduleGroupIndex) {
         previousScheduleGroupIndex = currentScheduleGroupIndex;

@@ -15,7 +15,6 @@
  */
 package edu.snu.vortex.compiler.ir;
 
-import edu.snu.vortex.compiler.CompilerTestUtil;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
@@ -78,7 +77,7 @@ public class LoopVertexTest {
       list.add(Pair.of(vertices1.next(), vertices2.next()));
     }
     list.forEach(irVertexPair -> {
-        assertEquals(irVertexPair.left().getAttributes(), irVertexPair.right().getAttributes());
+        assertEquals(irVertexPair.left().getExecutionProperties(), irVertexPair.right().getExecutionProperties());
         assertEquals(originalDAG.getOutgoingEdgesOf(irVertexPair.left()).size(),
             loopVertex.getDAG().getOutgoingEdgesOf(irVertexPair.right()).size());
     });

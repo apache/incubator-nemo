@@ -38,7 +38,8 @@ import java.util.function.Supplier;
  * Stores partitions in local files.
  */
 @ThreadSafe
-final class LocalFileStore extends FileStore {
+public final class LocalFileStore extends FileStore {
+  public static final String SIMPLE_NAME = "LocalFileStore";
 
   private final Map<String, FilePartition> partitionIdToFilePartition;
   private final ExecutorService executorService;
