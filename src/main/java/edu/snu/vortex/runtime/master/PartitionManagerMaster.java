@@ -20,6 +20,8 @@ import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
+import edu.snu.vortex.runtime.common.message.MessageListener;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.exception.AbsentPartitionException;
 
@@ -32,10 +34,12 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static edu.snu.vortex.runtime.common.state.PartitionState.State.SCHEDULED;
+import static edu.snu.vortex.runtime.master.RuntimeMaster.convertPartitionState;
 
 /**
  * Master-side partition manager.
@@ -55,7 +59,9 @@ public final class PartitionManagerMaster {
   private final ReadWriteLock lock;
 
   @Inject
-  private PartitionManagerMaster() {
+  private PartitionManagerMaster(final MessageEnvironment masterMessageEnvironment) {
+    masterMessageEnvironment.setupListener(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID,
+        new PartitionManagerMasterControlMessageReceiver());
     this.partitionIdToMetadata = new HashMap<>();
     this.producerTaskGroupIdToPartitionIds = new HashMap<>();
     this.lock = new ReentrantReadWriteLock();
@@ -307,11 +313,12 @@ public final class PartitionManagerMaster {
           infoMsgBuilder.setOwnerExecutorId(location);
         } else {
           infoMsgBuilder.setState(
-              RuntimeMaster.convertPartitionState(((AbsentPartitionException) throwable).getState()));
+              convertPartitionState(((AbsentPartitionException) throwable).getState()));
         }
         messageContext.reply(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
+                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
                 .setType(ControlMessage.MessageType.PartitionLocationInfo)
                 .setPartitionLocationInfoMsg(infoMsgBuilder.build())
                 .build());
@@ -354,6 +361,7 @@ public final class PartitionManagerMaster {
       messageContext.reply(
           ControlMessage.Message.newBuilder()
               .setId(RuntimeIdGenerator.generateMessageId())
+              .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
               .setType(ControlMessage.MessageType.ReserveBlockResponse)
               .setReserveBlockResponseMsg(responseBuilder.build())
               .build());
@@ -422,11 +430,12 @@ public final class PartitionManagerMaster {
           }
         } else {
           responseBuilder.setState(
-              RuntimeMaster.convertPartitionState(((AbsentPartitionException) throwable).getState()));
+              convertPartitionState(((AbsentPartitionException) throwable).getState()));
         }
         messageContext.reply(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
+                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
                 .setType(ControlMessage.MessageType.MetadataResponse)
                 .setMetadataResponseMsg(responseBuilder.build())
                 .build());
@@ -454,6 +463,54 @@ public final class PartitionManagerMaster {
       metadata.removeBlockMetadata();
     } finally {
       readLock.unlock();
+    }
+  }
+
+  /**
+   * Handler for control messages received.
+   */
+  public final class PartitionManagerMasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
+
+    @Override
+    public void onMessage(final ControlMessage.Message message) {
+      switch (message.getType()) {
+        case PartitionStateChanged:
+          final ControlMessage.PartitionStateChangedMsg partitionStateChangedMsg =
+              message.getPartitionStateChangedMsg();
+          final String partitionId = partitionStateChangedMsg.getPartitionId();
+          onPartitionStateChanged(partitionId, convertPartitionState(partitionStateChangedMsg.getState()),
+              partitionStateChangedMsg.getLocation(), partitionStateChangedMsg.getSrcTaskIdx());
+          break;
+        case CommitBlock:
+          onCommitBlocks(message);
+          break;
+        case RemoveBlockMetadata:
+          onRemoveBlockMetadata(message);
+          break;
+        default:
+          throw new IllegalMessageException(
+              new Exception("This message should not be received by "
+                  + PartitionManagerMaster.class.getName() + ":" + message.getType()));
+      }
+    }
+
+    @Override
+    public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
+      switch (message.getType()) {
+        case RequestPartitionLocation:
+          onRequestPartitionLocation(message, messageContext);
+          break;
+        case RequestBlockMetadata:
+          onRequestBlockMetadata(message, messageContext);
+          break;
+        case ReserveBlock:
+          onReserveBlock(message, messageContext);
+          break;
+        default:
+          throw new IllegalMessageException(
+              new Exception("This message should not be received by "
+                  + PartitionManagerMaster.class.getName() + ":" + message.getType()));
+      }
     }
   }
 }

@@ -20,7 +20,7 @@ import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.exception.ContainerException;
-import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
+import edu.snu.vortex.runtime.executor.PersistentConnectionToMasterMap;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -77,14 +77,14 @@ public final class ContainerManager {
   private final Map<String, ResourceSpecification> pendingContextIdToResourceSpec;
   private final Map<String, List<ResourceSpecification>> pendingContainerRequestsByContainerType;
 
-  private final PersistentConnectionToMaster persistentConnectionToMaster;
+  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
   @Inject
   public ContainerManager(final EvaluatorRequestor evaluatorRequestor,
                           final MessageEnvironment messageEnvironment) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.messageEnvironment = messageEnvironment;
-    this.persistentConnectionToMaster = new PersistentConnectionToMaster(messageEnvironment);
+    this.persistentConnectionToMasterMap = new PersistentConnectionToMasterMap(messageEnvironment);
     this.executorsByContainerType = new HashMap<>();
     this.executorRepresenterMap = new HashMap<>();
     this.failedExecutorRepresenterMap = new HashMap<>();
@@ -193,7 +193,7 @@ public final class ContainerManager {
     final MessageSender messageSender;
     try {
       messageSender =
-          messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER).get();
+          messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
@@ -220,9 +220,10 @@ public final class ContainerManager {
     failedExecutorRepresenterMap.put(failedExecutorId, failedExecutor);
 
     // Signal RuntimeMaster on CONTAINER_FAILURE type FAILED_RECOVERABLE state
-    persistentConnectionToMaster.getMessageSender().send(
+    persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
+            .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.ContainerFailed)
             .setContainerFailedMsg(ControlMessage.ContainerFailedMsg.newBuilder()
                 .setExecutorId(failedExecutorId)

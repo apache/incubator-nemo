@@ -16,6 +16,9 @@
 package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.exception.AbsentPartitionException;
 import org.apache.reef.tang.Injector;
@@ -36,11 +39,15 @@ import static org.junit.Assert.assertTrue;
  */
 public final class PartitionManagerMasterTest {
   private PartitionManagerMaster partitionManagerMaster;
-  private static final Injector INJECTOR = Tang.Factory.getTang().newInjector();
 
   @Before
   public void setUp() throws Exception {
-    partitionManagerMaster = INJECTOR.getInstance(PartitionManagerMaster.class);
+    final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
+    final LocalMessageEnvironment messageEnvironment =
+        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
+    partitionManagerMaster = injector.getInstance(PartitionManagerMaster.class);
   }
 
   private static void checkPartitionAbsentException(final CompletableFuture<String> future,
