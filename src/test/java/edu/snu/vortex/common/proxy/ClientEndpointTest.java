@@ -19,6 +19,9 @@ import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlanGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
@@ -26,6 +29,7 @@ import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.vortex.runtime.common.state.JobState;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.JobStateManager;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Test;
 
@@ -42,7 +46,7 @@ import static org.mockito.Mockito.when;
 public class ClientEndpointTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
 
-  @Test(timeout = 1000)
+  @Test(timeout = 3000)
   public void testState() throws Exception {
     // Create a simple client endpoint that returns given job state.
     final StateTranslator stateTranslator = mock(StateTranslator.class);
@@ -59,7 +63,13 @@ public class ClientEndpointTest {
     final PhysicalPlanGenerator physicalPlanGenerator =
         Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
-    final PartitionManagerMaster pmm = Tang.Factory.getTang().newInjector().getInstance(PartitionManagerMaster.class);
+
+    final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
+    final LocalMessageEnvironment messageEnvironment =
+        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
+    final PartitionManagerMaster pmm = injector.getInstance(PartitionManagerMaster.class);
     final JobStateManager jobStateManager = new JobStateManager(
         new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
         pmm, MAX_SCHEDULE_ATTEMPT);

@@ -12,29 +12,32 @@ import java.util.concurrent.Future;
 @DefaultImplementation(NcsMessageEnvironment.class)
 public interface MessageEnvironment {
 
+  // The ID of the master used for distinguish the sender or receiver.
   String MASTER_COMMUNICATION_ID = "MASTER";
-  String MASTER_MESSAGE_RECEIVER = "MASTER_MESSAGE_RECEIVER";
-  String EXECUTOR_MESSAGE_RECEIVER = "EXECUTOR_MESSAGE_RECEIVER";
+  // The globally known message listener IDs.
+  String RUNTIME_MASTER_MESSAGE_LISTENER_ID = "RUNTIME_MASTER_MESSAGE_LISTENER_ID";
+  String PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID = "PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID";
+  String EXECUTOR_MESSAGE_LISTENER_ID = "EXECUTOR_MESSAGE_LISTENER_ID";
 
   /**
    * Set up a {@link MessageListener} with a message type id.
    *
-   * @param messageTypeId an identifier of the message type which would be handled by message listener
+   * @param listenerId an identifier of the message listener
    * @param listener a message listener
    * @param <T> The type of the message to be sent in the environment
    */
-  <T> void setupListener(String messageTypeId, MessageListener<T> listener);
+  <T> void setupListener(String listenerId, MessageListener<T> listener);
 
   /**
    * Asynchronously connect to the node called 'receiverId' and return a future of {@link MessageSender} that sends
    * messages with 'messageTypeId'.
    *
    * @param receiverId a receiver id
-   * @param messageTypeId a message type id
+   * @param listenerId an identifier of the message listener
    * @param <T> The type of the message to be sent in the environment
    * @return a message sender
    */
-  <T> Future<MessageSender<T>> asyncConnect(String receiverId, String messageTypeId);
+  <T> Future<MessageSender<T>> asyncConnect(String receiverId, String listenerId);
 
   /**
    * Return an id of current node.

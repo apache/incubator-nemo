@@ -37,7 +37,7 @@ import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.vortex.runtime.common.message.ncs.NcsParameters;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.executor.Executor;
-import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
+import edu.snu.vortex.runtime.executor.PersistentConnectionToMasterMap;
 import edu.snu.vortex.runtime.executor.data.*;
 import edu.snu.vortex.runtime.common.metric.PeriodicMetricSender;
 import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.Broadcast;
@@ -128,12 +128,16 @@ public final class DataTransferTest {
             new PendingTaskGroupPriorityQueue(), pubSubEventHandler);
     final AtomicInteger executorCount = new AtomicInteger(0);
 
-    final Injector injector1 = Tang.Factory.getTang().newInjector();
-    final PartitionManagerMaster master = injector1.getInstance(PartitionManagerMaster.class);
-    // Unused, but necessary for wiring up the message environments
+    // Necessary for wiring up the message environments
     final RuntimeMaster runtimeMaster =
-        new RuntimeMaster(scheduler, containerManager, messageEnvironment, master,
+        new RuntimeMaster(scheduler, containerManager, messageEnvironment,
             updatePhysicalPlanEventHandler, EMPTY_DAG_DIRECTORY, MAX_SCHEDULE_ATTEMPT);
+
+    final Injector injector1 = Tang.Factory.getTang().newInjector();
+    injector1.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
+    injector1.bindVolatileInstance(RuntimeMaster.class, runtimeMaster);
+    final PartitionManagerMaster master = injector1.getInstance(PartitionManagerMaster.class);
+
     final Injector injector2 = createNameClientInjector();
     injector2.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
 
@@ -153,14 +157,14 @@ public final class DataTransferTest {
   private PartitionManagerWorker createWorker(final String executorId, final LocalMessageDispatcher messageDispatcher,
                                               final Injector nameClientInjector) {
     final LocalMessageEnvironment messageEnvironment = new LocalMessageEnvironment(executorId, messageDispatcher);
-    final PersistentConnectionToMaster conToMaster = new PersistentConnectionToMaster(messageEnvironment);
+    final PersistentConnectionToMasterMap conToMaster = new PersistentConnectionToMasterMap(messageEnvironment);
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
         .bindNamedParameter(JobConf.ExecutorId.class, executorId)
         .bindNamedParameter(NcsParameters.SenderId.class, executorId)
         .build();
     final Injector injector = nameClientInjector.forkInjector(executorConfiguration);
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
-    injector.bindVolatileInstance(PersistentConnectionToMaster.class, conToMaster);
+    injector.bindVolatileInstance(PersistentConnectionToMasterMap.class, conToMaster);
     injector.bindVolatileParameter(JobConf.FileDirectory.class, TMP_LOCAL_FILE_DIRECTORY);
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_REMOTE_FILE_DIRECTORY);
     final PartitionManagerWorker partitionManagerWorker;

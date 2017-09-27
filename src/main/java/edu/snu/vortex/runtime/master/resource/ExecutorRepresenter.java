@@ -18,6 +18,7 @@ package edu.snu.vortex.runtime.master.resource;
 import com.google.protobuf.ByteString;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import org.apache.commons.lang3.SerializationUtils;
@@ -69,6 +70,7 @@ public final class ExecutorRepresenter {
     sendControlMessage(
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
+            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.ScheduleTaskGroup)
             .setScheduleTaskGroupMsg(
                 ControlMessage.ScheduleTaskGroupMsg.newBuilder()

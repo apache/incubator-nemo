@@ -17,7 +17,8 @@ package edu.snu.vortex.runtime.executor.data.metadata;
 
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
-import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
+import edu.snu.vortex.runtime.executor.PersistentConnectionToMasterMap;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -41,7 +42,7 @@ public final class RemoteFileMetadata extends FileMetadata {
 
   private final String partitionId;
   private final String executorId;
-  private final PersistentConnectionToMaster connectionToMaster;
+  private final PersistentConnectionToMasterMap connectionToMaster;
   private volatile Iterable<BlockMetadata> blockMetadataIterable;
 
   /**
@@ -56,7 +57,7 @@ public final class RemoteFileMetadata extends FileMetadata {
   public RemoteFileMetadata(final boolean commitPerBlock,
                             final String partitionId,
                             final String executorId,
-                            final PersistentConnectionToMaster connectionToMaster) {
+                            final PersistentConnectionToMasterMap connectionToMaster) {
     super(commitPerBlock);
     this.partitionId = partitionId;
     this.executorId = executorId;
@@ -82,9 +83,10 @@ public final class RemoteFileMetadata extends FileMetadata {
 
     // Send the block metadata to the metadata server in the master and ask where to store the block.
     final CompletableFuture<ControlMessage.Message> reserveBlockResponseFuture =
-        connectionToMaster.getMessageSender().request(
+        connectionToMaster.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
+                .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
                 .setType(ControlMessage.MessageType.ReserveBlock)
                 .setReserveBlockMsg(
                     ControlMessage.ReserveBlockMsg.newBuilder()
@@ -127,9 +129,10 @@ public final class RemoteFileMetadata extends FileMetadata {
     });
 
     // Notify that these blocks are committed to the metadata server.
-    connectionToMaster.getMessageSender().send(
+    connectionToMaster.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).send(
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
+            .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.CommitBlock)
             .setCommitBlockMsg(
                 ControlMessage.CommitBlockMsg.newBuilder()
@@ -156,9 +159,10 @@ public final class RemoteFileMetadata extends FileMetadata {
    */
   @Override
   public void deleteMetadata() throws IOException {
-    connectionToMaster.getMessageSender().send(
+    connectionToMaster.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).send(
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
+            .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.RemoveBlockMetadata)
             .setRemoveBlockMetadataMsg(
                 ControlMessage.RemoveBlockMetadataMsg.newBuilder()
@@ -188,9 +192,10 @@ public final class RemoteFileMetadata extends FileMetadata {
 
     // Ask the metadata server in the master for the metadata
     final CompletableFuture<ControlMessage.Message> metadataResponseFuture =
-        connectionToMaster.getMessageSender().request(
+        connectionToMaster.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
+                .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
                 .setType(ControlMessage.MessageType.RequestBlockMetadata)
                 .setRequestBlockMetadataMsg(
                     ControlMessage.RequestBlockMetadataMsg.newBuilder()

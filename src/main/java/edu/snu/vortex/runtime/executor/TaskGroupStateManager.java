@@ -17,6 +17,7 @@ package edu.snu.vortex.runtime.executor;
 
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
@@ -60,18 +61,18 @@ public final class TaskGroupStateManager {
    */
   private Set<String> currentTaskGroupTaskIds;
 
-  private final PersistentConnectionToMaster persistentConnectionToMaster;
+  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
 
   public TaskGroupStateManager(final TaskGroup taskGroup,
                                final int attemptIdx,
                                final String executorId,
-                               final PersistentConnectionToMaster persistentConnectionToMaster,
+                               final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                                final PeriodicMetricSender periodicMetricSender) {
     this.taskGroupId = taskGroup.getTaskGroupId();
     this.attemptIdx = attemptIdx;
     this.executorId = executorId;
-    this.persistentConnectionToMaster = persistentConnectionToMaster;
+    this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.periodicMetricSender = periodicMetricSender;
     metricDataBuilderMap = new HashMap<>();
     idToTaskStates = new HashMap<>();
@@ -246,11 +247,12 @@ public final class TaskGroupStateManager {
     }
 
     // Send taskGroupStateChangedMsg to master!
-    persistentConnectionToMaster.getMessageSender().send(
+    persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
+            .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.TaskGroupStateChanged)
-            .setTaskStateChangedMsg(msgBuilder.build())
+            .setTaskGroupStateChangedMsg(msgBuilder.build())
             .build());
   }
 

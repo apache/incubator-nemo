@@ -17,8 +17,9 @@ package edu.snu.vortex.runtime.common.metric;
 
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
-import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
+import edu.snu.vortex.runtime.executor.PersistentConnectionToMasterMap;
 import edu.snu.vortex.runtime.common.metric.parameter.MetricFlushPeriod;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -42,7 +43,7 @@ public final class PeriodicMetricSender implements MetricSender {
 
   @Inject
   private PeriodicMetricSender(@Parameter(MetricFlushPeriod.class) final long flushingPeriod,
-                               final PersistentConnectionToMaster persistentConnectionToMaster) {
+                               final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.metricMessageQueue = new LinkedBlockingQueue<>();
     this.closed = new AtomicBoolean(false);
@@ -60,9 +61,10 @@ public final class PeriodicMetricSender implements MetricSender {
           metricMsgBuilder.setMetricMessages(i, metricMsg);
         }
 
-        persistentConnectionToMaster.getMessageSender().send(
+        persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
+                .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
                 .setType(ControlMessage.MessageType.MetricMessageReceived)
                 .setMetricMsg(metricMsgBuilder.build())
                 .build());

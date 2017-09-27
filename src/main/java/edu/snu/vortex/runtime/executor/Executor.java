@@ -62,25 +62,25 @@ public final class Executor {
 
   private TaskGroupStateManager taskGroupStateManager;
 
-  private final PersistentConnectionToMaster persistentConnectionToMaster;
+  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
   private final PeriodicMetricSender periodicMetricSender;
 
   @Inject
   public Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                   @Parameter(JobConf.ExecutorCapacity.class) final int executorCapacity,
-                  final PersistentConnectionToMaster persistentConnectionToMaster,
+                  final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                   final MessageEnvironment messageEnvironment,
                   final PartitionManagerWorker partitionManagerWorker,
                   final DataTransferFactory dataTransferFactory,
                   final PeriodicMetricSender periodicMetricSender) {
     this.executorId = executorId;
     this.executorService = Executors.newFixedThreadPool(executorCapacity);
-    this.persistentConnectionToMaster = persistentConnectionToMaster;
+    this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.partitionManagerWorker = partitionManagerWorker;
     this.dataTransferFactory = dataTransferFactory;
     this.periodicMetricSender = periodicMetricSender;
-    messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER, new ExecutorMessageReceiver());
+    messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
 
   public String getExecutorId() {
@@ -101,7 +101,7 @@ public final class Executor {
     try {
       taskGroupStateManager =
           new TaskGroupStateManager(scheduledTaskGroup.getTaskGroup(), scheduledTaskGroup.getAttemptIdx(), executorId,
-              persistentConnectionToMaster,
+              persistentConnectionToMasterMap,
               periodicMetricSender);
 
       scheduledTaskGroup.getTaskGroupIncomingEdges()
@@ -116,9 +116,10 @@ public final class Executor {
           dataTransferFactory,
           partitionManagerWorker).execute();
     } catch (final Exception e) {
-      persistentConnectionToMaster.getMessageSender().send(
+      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()
               .setId(RuntimeIdGenerator.generateMessageId())
+              .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
               .setType(ControlMessage.MessageType.ExecutorFailed)
               .setExecutorFailedMsg(ControlMessage.ExecutorFailedMsg.newBuilder()
                   .setExecutorId(executorId)
