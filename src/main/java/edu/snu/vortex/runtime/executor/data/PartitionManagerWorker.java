@@ -20,10 +20,11 @@ import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.exception.PartitionFetchException;
 import edu.snu.vortex.runtime.exception.PartitionWriteException;
 import edu.snu.vortex.runtime.exception.UnsupportedPartitionStoreException;
-import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
+import edu.snu.vortex.runtime.executor.PersistentConnectionToMasterMap;
 import edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionInputStream;
 import edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionOutputStream;
 import edu.snu.vortex.runtime.executor.data.partitiontransfer.PartitionTransfer;
@@ -54,7 +55,7 @@ public final class PartitionManagerWorker {
 
   private final RemoteFileStore remoteFileStore;
 
-  private final PersistentConnectionToMaster persistentConnectionToMaster;
+  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder;
 
@@ -65,13 +66,13 @@ public final class PartitionManagerWorker {
                                  final MemoryStore memoryStore,
                                  final LocalFileStore localFileStore,
                                  final RemoteFileStore remoteFileStore,
-                                 final PersistentConnectionToMaster persistentConnectionToMaster,
+                                 final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                                  final PartitionTransfer partitionTransfer) {
     this.executorId = executorId;
     this.memoryStore = memoryStore;
     this.localFileStore = localFileStore;
     this.remoteFileStore = remoteFileStore;
-    this.persistentConnectionToMaster = persistentConnectionToMaster;
+    this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
     this.partitionTransfer = partitionTransfer;
   }
@@ -150,10 +151,11 @@ public final class PartitionManagerWorker {
       final HashRange hashRange) {
     // Let's see if a remote worker has it
     // Ask Master for the location
-    final CompletableFuture<ControlMessage.Message> responseFromMasterFuture =
-        persistentConnectionToMaster.getMessageSender().request(
+    final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = persistentConnectionToMasterMap
+        .getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
+                .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
                 .setType(ControlMessage.MessageType.RequestPartitionLocation)
                 .setRequestPartitionLocationMsg(
                     ControlMessage.RequestPartitionLocationMsg.newBuilder()
@@ -234,18 +236,28 @@ public final class PartitionManagerWorker {
       partitionStateChangedMsgBuilder.setLocation(executorId);
     }
 
-    if (!blockSizeInfo.isEmpty()) {
-      // TODO 428: DynOpt-clean up the metric collection flow
-      partitionStateChangedMsgBuilder.addAllBlockSizeInfo(blockSizeInfo);
-      partitionStateChangedMsgBuilder.setSrcIRVertexId(srcIRVertexId);
-    }
-
-    persistentConnectionToMaster.getMessageSender().send(
-        ControlMessage.Message.newBuilder()
+    persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+        .send(ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
+            .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.PartitionStateChanged)
             .setPartitionStateChangedMsg(partitionStateChangedMsgBuilder.build())
             .build());
+
+    if (!blockSizeInfo.isEmpty()) {
+      // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
+      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+          .send(ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdGenerator.generateMessageId())
+              .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+              .setType(ControlMessage.MessageType.DataSizeMetric)
+              .setDataSizeMetricMsg(ControlMessage.DataSizeMetricMsg.newBuilder()
+                  .setPartitionId(partitionId)
+                  .setSrcIRVertexId(srcIRVertexId)
+                  .addAllBlockSizeInfo(blockSizeInfo)
+              )
+              .build());
+    }
   }
 
   /**
@@ -278,9 +290,10 @@ public final class PartitionManagerWorker {
         partitionStateChangedMsgBuilder.setLocation(executorId);
       }
 
-      persistentConnectionToMaster.getMessageSender().send(
-          ControlMessage.Message.newBuilder()
+      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+          .send(ControlMessage.Message.newBuilder()
               .setId(RuntimeIdGenerator.generateMessageId())
+              .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
               .setType(ControlMessage.MessageType.PartitionStateChanged)
               .setPartitionStateChangedMsg(partitionStateChangedMsgBuilder)
               .build());

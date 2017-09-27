@@ -30,6 +30,7 @@ import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
+import edu.snu.vortex.runtime.master.RuntimeMaster;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.values.KV;
@@ -66,11 +67,12 @@ import static org.mockito.Mockito.when;
  * Tests write and read for {@link PartitionStore}s.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({PartitionManagerWorker.class, PartitionManagerMaster.class})
+@PrepareForTest({PartitionManagerWorker.class, PartitionManagerMaster.class, RuntimeMaster.class})
 public final class PartitionStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
   private PartitionManagerMaster partitionManagerMaster;
+  private LocalMessageDispatcher messageDispatcher;
   // Variables for scatter and gather test
   private static final int NUM_WRITE_TASKS = 3;
   private static final int NUM_READ_TASKS = 3;
@@ -103,7 +105,12 @@ public final class PartitionStoreTest {
    */
   @Before
   public void setUp() throws Exception {
-    partitionManagerMaster = Tang.Factory.getTang().newInjector().getInstance(PartitionManagerMaster.class);
+    messageDispatcher = new LocalMessageDispatcher();
+    final LocalMessageEnvironment messageEnvironment =
+        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
+    partitionManagerMaster = injector.getInstance(PartitionManagerMaster.class);
     // Following part is for for the scatter and gather test.
     final int numPartitions = NUM_WRITE_TASKS * NUM_READ_TASKS;
     final List<String> writeTaskIdList = new ArrayList<>(NUM_WRITE_TASKS);
@@ -257,18 +264,18 @@ public final class PartitionStoreTest {
     when(pmw.getCoder(any())).thenReturn(CODER);
 
     // Mimic the metadata server with local message handler.
-    final Injector injector = Tang.Factory.getTang().newInjector();
+    /*final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileInstance(PartitionManagerMaster.class, partitionManagerMaster);
-    final LocalMessageDispatcher localMessageDispatcher = new LocalMessageDispatcher();
     final LocalMessageEnvironment metaserverMessageEnvironment =
-        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, localMessageDispatcher);
+        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
     metaserverMessageEnvironment.setupListener(
-        MessageEnvironment.MASTER_MESSAGE_RECEIVER, new LocalMetadataServerMessageReceiver(partitionManagerMaster));
+        MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID,
+        new LocalMetadataServerMessageReceiver(partitionManagerMaster));*/
 
     final RemoteFileStore writerSideRemoteFileStore =
-        createGlusterFileStore("writer", pmw, localMessageDispatcher);
+        createGlusterFileStore("writer", pmw);
     final RemoteFileStore readerSideRemoteFileStore =
-        createGlusterFileStore("reader", pmw, localMessageDispatcher);
+        createGlusterFileStore("reader", pmw);
 
     scatterGather(writerSideRemoteFileStore, readerSideRemoteFileStore);
     concurrentRead(writerSideRemoteFileStore, readerSideRemoteFileStore);
@@ -278,11 +285,10 @@ public final class PartitionStoreTest {
   }
 
   private GlusterFileStore createGlusterFileStore(final String executorId,
-                                                  final PartitionManagerWorker worker,
-                                                  final LocalMessageDispatcher localMessageDispatcher)
+                                                  final PartitionManagerWorker worker)
       throws InjectionException {
     final LocalMessageEnvironment localMessageEnvironment =
-        new LocalMessageEnvironment(executorId, localMessageDispatcher);
+        new LocalMessageEnvironment(executorId, messageDispatcher);
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_FILE_DIRECTORY);
     injector.bindVolatileParameter(JobConf.JobId.class, "GFS test");
@@ -710,47 +716,5 @@ public final class PartitionStoreTest {
     final List<Element> numList = new ArrayList<>(end - start);
     IntStream.range(start, end).forEach(number -> numList.add(new BeamElement<>(KV.of(key, number))));
     return numList;
-  }
-
-  /**
-   * Handler for metadata request & response in the metadata server side for this test.
-   */
-  private final class LocalMetadataServerMessageReceiver implements MessageListener<ControlMessage.Message> {
-
-    private final PartitionManagerMaster partitionManagerMaster;
-
-    private LocalMetadataServerMessageReceiver(final PartitionManagerMaster partitionManagerMaster) {
-      this.partitionManagerMaster = partitionManagerMaster;
-    }
-
-    @Override
-    public void onMessage(final ControlMessage.Message message) {
-      switch (message.getType()) {
-        case CommitBlock:
-          partitionManagerMaster.onCommitBlocks(message);
-          break;
-        case RemoveBlockMetadata:
-          partitionManagerMaster.onRemoveBlockMetadata(message);
-          break;
-        default:
-          throw new IllegalMessageException(
-              new Exception("This message should not be received by metadata server :" + message.getType()));
-      }
-    }
-
-    @Override
-    public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
-      switch (message.getType()) {
-        case RequestBlockMetadata:
-          partitionManagerMaster.onRequestBlockMetadata(message, messageContext);
-          break;
-        case ReserveBlock:
-          partitionManagerMaster.onReserveBlock(message, messageContext);
-          break;
-        default:
-          throw new IllegalMessageException(
-              new Exception("This message should not be received by metadata server:" + message.getType()));
-      }
-    }
   }
 }

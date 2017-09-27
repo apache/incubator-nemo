@@ -24,8 +24,8 @@ public final class LocalMessageEnvironment implements MessageEnvironment {
 
   @Override
   public <T> void setupListener(
-      final String messageTypeId, final MessageListener<T> listener) {
-    dispatcher.setupListener(currentNodeId, messageTypeId, listener);
+      final String listenerId, final MessageListener<T> listener) {
+    dispatcher.setupListener(currentNodeId, listenerId, listener);
   }
 
   @Override
