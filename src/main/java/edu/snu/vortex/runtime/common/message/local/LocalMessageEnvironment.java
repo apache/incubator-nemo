@@ -29,6 +29,11 @@ public final class LocalMessageEnvironment implements MessageEnvironment {
   }
 
   @Override
+  public void removeListener(final String listenerId) {
+    dispatcher.removeListener(currentNodeId, listenerId);
+  }
+
+  @Override
   public <T> Future<MessageSender<T>> asyncConnect(
       final String targetId, final String messageTypeId) {
     return CompletableFuture.completedFuture(new LocalMessageSender<T>(

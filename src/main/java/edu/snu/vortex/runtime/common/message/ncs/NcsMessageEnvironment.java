@@ -6,6 +6,7 @@ import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageListener;
 import edu.snu.vortex.runtime.common.message.MessageSender;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.io.network.Message;
@@ -72,13 +73,23 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
   }
 
   @Override
-  public synchronized <T> Future<MessageSender<T>> asyncConnect(final String receiverId, final String listenerId) {
+  public void removeListener(final String listenerId) {
+    listenerConcurrentMap.remove(listenerId);
+  }
+
+  @Override
+  public <T> Future<MessageSender<T>> asyncConnect(final String receiverId, final String listenerId) {
     try {
-      Connection connection = receiverToConnectionMap.get(receiverId);
-      if (connection == null) {
-        connection = connectionFactory.newConnection(idFactory.getNewInstance(receiverId));
-        connection.open();
-      } // The connection toward the receiver exist already. Reuse it.
+      // If the connection toward the receiver exists already, reuses it.
+      final Connection connection = receiverToConnectionMap.computeIfAbsent(receiverId, absentReceiverId -> {
+        try {
+          final Connection newConnection = connectionFactory.newConnection(idFactory.getNewInstance(absentReceiverId));
+          newConnection.open();
+          return newConnection;
+        } catch (final NetworkException e) {
+          throw new RuntimeException(e);
+        }
+      });
       return CompletableFuture.completedFuture((MessageSender) new NcsMessageSender(connection, replyFutureMap));
     } catch (final Exception e) {
       final CompletableFuture<MessageSender<T>> failedFuture = new CompletableFuture<>();
