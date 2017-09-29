@@ -20,13 +20,17 @@ public class LocalMessageTest {
     final String executorOneNodeId = "EXECUTOR_ONE_NODE";
     final String executorTwoNodeId = "EXECUTOR_TWO_NODE";
 
+    final String listenerIdToDriver = "ToDriver";
+    final String secondListenerIdToDriver = "SecondToDriver";
+    final String listenerIdBetweenExecutors = "BetweenExecutors";
+
     final MessageEnvironment driverEnv = new LocalMessageEnvironment(driverNodeId, localMessageDispatcher);
     final MessageEnvironment executorOneEnv = new LocalMessageEnvironment(executorOneNodeId, localMessageDispatcher);
     final MessageEnvironment executorTwoEnv = new LocalMessageEnvironment(executorTwoNodeId, localMessageDispatcher);
 
     final AtomicInteger toDriverMessageUsingSend = new AtomicInteger();
 
-    driverEnv.setupListener("ToDriver", new MessageListener<ToDriver>() {
+    driverEnv.setupListener(listenerIdToDriver, new MessageListener<ToDriver>() {
       @Override
       public void onMessage(final ToDriver message) {
         toDriverMessageUsingSend.incrementAndGet();
@@ -39,7 +43,7 @@ public class LocalMessageTest {
     });
 
     // Setup multiple listeners.
-    driverEnv.setupListener("SecondToDriver", new MessageListener<SecondToDriver>() {
+    driverEnv.setupListener(secondListenerIdToDriver, new MessageListener<SecondToDriver>() {
       @Override
       public void onMessage(SecondToDriver message) {
       }
@@ -52,12 +56,12 @@ public class LocalMessageTest {
     // Test sending message from executors to the driver.
 
     final Future<MessageSender<ToDriver>> messageSenderFuture1 = executorOneEnv.asyncConnect(
-        driverNodeId, "ToDriver");
+        driverNodeId, listenerIdToDriver);
     Assert.assertTrue(messageSenderFuture1.isDone());
     final MessageSender<ToDriver> messageSender1 = messageSenderFuture1.get();
 
     final Future<MessageSender<ToDriver>> messageSenderFuture2 = executorTwoEnv.asyncConnect(
-        driverNodeId, "ToDriver");
+        driverNodeId, listenerIdToDriver);
     Assert.assertTrue(messageSenderFuture2.isDone());
     final MessageSender<ToDriver> messageSender2 = messageSenderFuture2.get();
 
@@ -70,19 +74,52 @@ public class LocalMessageTest {
 
     // Test exchanging messages between executors.
 
-    executorOneEnv.setupListener("BetweenExecutors", new SimpleMessageListener());
-    executorTwoEnv.setupListener("BetweenExecutors", new SimpleMessageListener());
+    final AtomicInteger executorOneMessageCount = new AtomicInteger();
+    final AtomicInteger executorTwoMessageCount = new AtomicInteger();
+
+    executorOneEnv.setupListener(listenerIdBetweenExecutors, new SimpleMessageListener(executorOneMessageCount));
+    executorTwoEnv.setupListener(listenerIdBetweenExecutors, new SimpleMessageListener(executorTwoMessageCount));
 
     final MessageSender<BetweenExecutors> oneToTwo = executorOneEnv.<BetweenExecutors>asyncConnect(
-        executorTwoNodeId, "BetweenExecutors").get();
-    final MessageSender<BetweenExecutors> twoToOne = executorOneEnv.<BetweenExecutors>asyncConnect(
-        executorOneNodeId, "BetweenExecutors").get();
+        executorTwoNodeId, listenerIdBetweenExecutors).get();
+    final MessageSender<BetweenExecutors> twoToOne = executorTwoEnv.<BetweenExecutors>asyncConnect(
+        executorOneNodeId, listenerIdBetweenExecutors).get();
 
     Assert.assertEquals("oneToTwo", oneToTwo.<String>request(new SimpleMessage("oneToTwo")).get());
     Assert.assertEquals("twoToOne", twoToOne.<String>request(new SimpleMessage("twoToOne")).get());
+    Assert.assertEquals(1, executorOneMessageCount.get());
+    Assert.assertEquals(1, executorTwoMessageCount.get());
+
+    // Test deletion and re-setting of listener.
+
+    final AtomicInteger newExecutorOneMessageCount = new AtomicInteger();
+    final AtomicInteger newExecutorTwoMessageCount = new AtomicInteger();
+
+    executorOneEnv.removeListener(listenerIdBetweenExecutors);
+    executorTwoEnv.removeListener(listenerIdBetweenExecutors);
+
+    executorOneEnv.setupListener(listenerIdBetweenExecutors, new SimpleMessageListener(newExecutorOneMessageCount));
+    executorTwoEnv.setupListener(listenerIdBetweenExecutors, new SimpleMessageListener(newExecutorTwoMessageCount));
+
+    final MessageSender<BetweenExecutors> newOneToTwo = executorOneEnv.<BetweenExecutors>asyncConnect(
+        executorTwoNodeId, listenerIdBetweenExecutors).get();
+    final MessageSender<BetweenExecutors> newTwoToOne = executorTwoEnv.<BetweenExecutors>asyncConnect(
+        executorOneNodeId, listenerIdBetweenExecutors).get();
+
+    Assert.assertEquals("newOneToTwo", newOneToTwo.<String>request(new SimpleMessage("newOneToTwo")).get());
+    Assert.assertEquals("newTwoToOne", newTwoToOne.<String>request(new SimpleMessage("newTwoToOne")).get());
+    Assert.assertEquals(1, executorOneMessageCount.get());
+    Assert.assertEquals(1, executorTwoMessageCount.get());
+    Assert.assertEquals(1, newExecutorOneMessageCount.get());
+    Assert.assertEquals(1, newExecutorTwoMessageCount.get());
   }
 
   final class SimpleMessageListener implements MessageListener<SimpleMessage> {
+    private final AtomicInteger messageCount;
+
+    private SimpleMessageListener(final AtomicInteger messageCount) {
+      this.messageCount = messageCount;
+    }
 
     @Override
     public void onMessage(final SimpleMessage message) {
@@ -92,6 +129,7 @@ public class LocalMessageTest {
 
     @Override
     public void onMessageWithContext(final SimpleMessage message, final MessageContext messageContext) {
+      messageCount.getAndIncrement();
       messageContext.reply(message.getData());
     }
   }
