@@ -20,7 +20,7 @@ public interface MessageEnvironment {
   String EXECUTOR_MESSAGE_LISTENER_ID = "EXECUTOR_MESSAGE_LISTENER_ID";
 
   /**
-   * Set up a {@link MessageListener} with a message type id.
+   * Set up a {@link MessageListener} with a listener id.
    *
    * @param listenerId an identifier of the message listener
    * @param listener a message listener
@@ -29,8 +29,15 @@ public interface MessageEnvironment {
   <T> void setupListener(String listenerId, MessageListener<T> listener);
 
   /**
-   * Asynchronously connect to the node called 'receiverId' and return a future of {@link MessageSender} that sends
-   * messages with 'messageTypeId'.
+   * Remove the {@link MessageListener} bound to a specific listener ID.
+   *
+   * @param listenerId the ID of the listener to remove.
+   */
+  void removeListener(String listenerId);
+
+  /**
+   * Asynchronously connect to the node called {@code receiverId} and return a future of {@link MessageSender}
+   * that sends messages to the listener with {@code listenerId}.
    *
    * @param receiverId a receiver id
    * @param listenerId an identifier of the message listener

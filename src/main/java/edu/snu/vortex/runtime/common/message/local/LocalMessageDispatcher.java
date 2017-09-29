@@ -41,6 +41,11 @@ public final class LocalMessageDispatcher {
     return new LocalMessageSender<>(currentNodeId, currentNodeId, messageTypeId, this);
   }
 
+  void removeListener(final String currentNodeId,
+                      final String listenerId) {
+    nodeIdToMessageListenersMap.get(currentNodeId).remove(listenerId);
+  }
+
   <T> void dispatchSendMessage(
       final String targetId, final String messageTypeId, final T message) {
     final MessageListener listener = nodeIdToMessageListenersMap.get(targetId).get(messageTypeId);
