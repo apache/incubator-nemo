@@ -15,8 +15,10 @@
  */
 package edu.snu.vortex.compiler.optimizer.policy;
 
-import edu.snu.vortex.compiler.optimizer.pass.*;
-import edu.snu.vortex.compiler.optimizer.pass.optimization.LoopOptimizations;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.*;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.*;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.LoopOptimizationPass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.PadoPass;
 
 import java.util.Arrays;
 import java.util.List;
@@ -27,15 +29,12 @@ import java.util.List;
  */
 public final class PadoPolicy implements Policy {
   @Override
-  public List<StaticOptimizationPass> getOptimizationPasses() {
+  public List<CompileTimePass> getCompileTimePasses() {
     return  Arrays.asList(
         new ParallelismPass(), // Provides parallelism information.
-        new LoopGroupingPass(),
-        LoopOptimizations.getLoopFusionPass(),
-        LoopOptimizations.getLoopInvariantCodeMotionPass(),
-        new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.
+        new LoopOptimizationPass(),
         // Processes vertices and edges with Pado algorithm.
-        new PadoVertexPass(), new PadoEdgePass(),
+        new PadoPass(),
         new DefaultStagePartitioningPass(),
         new ScheduleGroupPass()
     );

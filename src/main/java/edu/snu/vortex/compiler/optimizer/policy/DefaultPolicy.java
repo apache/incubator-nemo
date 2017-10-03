@@ -15,7 +15,10 @@
  */
 package edu.snu.vortex.compiler.optimizer.policy;
 
-import edu.snu.vortex.compiler.optimizer.pass.*;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.DefaultStagePartitioningPass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.ParallelismPass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.ScheduleGroupPass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.CompileTimePass;
 
 import java.util.Arrays;
 import java.util.List;
@@ -25,7 +28,7 @@ import java.util.List;
  */
 public final class DefaultPolicy implements Policy {
   @Override
-  public List<StaticOptimizationPass> getOptimizationPasses() {
+  public List<CompileTimePass> getCompileTimePasses() {
     return Arrays.asList(
         new ParallelismPass(), // Provides parallelism information.
         new DefaultStagePartitioningPass(),

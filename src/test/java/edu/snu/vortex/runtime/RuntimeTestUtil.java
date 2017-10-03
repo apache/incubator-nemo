@@ -151,12 +151,12 @@ public final class RuntimeTestUtil {
         // Initialize states for blocks of inter-stage edges
         stageOutgoingEdges.forEach(physicalStageEdge -> {
           final Class<? extends DataCommunicationPattern> commPattern =
-              physicalStageEdge.get(ExecutionProperty.Key.DataCommunicationPattern);
+              physicalStageEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern);
           final int srcParallelism = taskGroupsForStage.size();
           IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
             if (commPattern.equals(ScatterGather.class)) {
               final Integer dstParallelism =
-                  physicalStageEdge.getDstVertex().get(ExecutionProperty.Key.Parallelism);
+                  physicalStageEdge.getDstVertex().getProperty(ExecutionProperty.Key.Parallelism);
               IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> {
                 final String partitionId =
                     RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx);

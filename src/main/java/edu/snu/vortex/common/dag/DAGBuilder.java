@@ -20,7 +20,7 @@ import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
-import edu.snu.vortex.compiler.optimizer.pass.dynamic_optimization.DataSkewDynamicOptimizationPass;
+import edu.snu.vortex.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
 import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
 
@@ -244,48 +244,48 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
   private void executionPropertyCheck() {
     // SideInput edge must be one-to-one
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> Boolean.TRUE.equals(e.get(ExecutionProperty.Key.IsSideInput)))
-        .filter(e -> !OneToOne.class.equals(e.get(ExecutionProperty.Key.DataCommunicationPattern)))
+        .filter(e -> Boolean.TRUE.equals(e.isSideInput()))
+        .filter(e -> !OneToOne.class.equals(e.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
         .forEach(e -> {
           throw new RuntimeException("DAG execution property check: "
               + "SideInput edge must be one-to-one: " + e.getId());
         }));
     // SideInput is not compatible with Push
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> Boolean.TRUE.equals(e.get(ExecutionProperty.Key.IsSideInput)))
-        .filter(e -> DataFlowModelProperty.Value.Push.equals(e.get(ExecutionProperty.Key.DataFlowModel)))
+        .filter(e -> Boolean.TRUE.equals(e.isSideInput()))
+        .filter(e -> DataFlowModelProperty.Value.Push.equals(e.getProperty(ExecutionProperty.Key.DataFlowModel)))
         .forEach(e -> {
           throw new RuntimeException("DAG execution property check: "
               + "SideInput edge is not compatible with push" + e.getId());
         }));
     // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection)
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> DataSkewDynamicOptimizationPass.class
-            .equals(e.get(ExecutionProperty.Key.MetricCollection)))
-        .filter(e -> DataFlowModelProperty.Value.Push.equals(e.get(ExecutionProperty.Key.DataFlowModel)))
+        .filter(e -> DataSkewRuntimePass.class
+            .equals(e.getProperty(ExecutionProperty.Key.MetricCollection)))
+        .filter(e -> DataFlowModelProperty.Value.Push.equals(e.getProperty(ExecutionProperty.Key.DataFlowModel)))
         .forEach(e -> {
           throw new RuntimeException("DAG execution property check: "
               + "DataSizeMetricCollection edge is not compatible with push" + e.getId());
         }));
     // IFileWrite is not compatible with Push (All I-Files have to be constructed before the data collection)
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> e.get(ExecutionProperty.Key.WriteOptimization) != null
-            && WriteOptimizationProperty.IFILE_WRITE.equals(e.get(ExecutionProperty.Key.WriteOptimization)))
-        .filter(e -> DataFlowModelProperty.Value.Push.equals(e.get(ExecutionProperty.Key.DataFlowModel)))
+        .filter(e -> e.getProperty(ExecutionProperty.Key.WriteOptimization) != null
+            && WriteOptimizationProperty.IFILE_WRITE.equals(e.getProperty(ExecutionProperty.Key.WriteOptimization)))
+        .filter(e -> DataFlowModelProperty.Value.Push.equals(e.getProperty(ExecutionProperty.Key.DataFlowModel)))
         .forEach(e -> {
           throw new RuntimeException("DAG execution property check: "
               + "DataSizeMetricCollection edge is not compatible with push" + e.getId());
         }));
     // All vertices connected with OneToOne edge should have identical ParallelismProperty execution property.
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> OneToOne.class.equals(e.get(ExecutionProperty.Key.DataCommunicationPattern)))
-        .filter(e -> !Boolean.TRUE.equals(e.get(ExecutionProperty.Key.IsSideInput))).forEach(e -> {
-          if (e.getSrc() instanceof IRVertex && e.getDst() instanceof IRVertex
+        .filter(e -> OneToOne.class.equals(e.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
+        .filter(e -> !Boolean.TRUE.equals(e.isSideInput())).forEach(e -> {
+          if (e.getSrc() != null && e.getDst() != null
               && !(e.getSrc() instanceof LoopVertex) && !(e.getDst() instanceof LoopVertex)
-              && (e.getSrc()).get(ExecutionProperty.Key.Parallelism) != null
-              && (e.getDst()).get(ExecutionProperty.Key.Parallelism) != null
-              && !(e.getSrc()).get(ExecutionProperty.Key.Parallelism)
-              .equals((e.getDst()).get(ExecutionProperty.Key.Parallelism))) {
+              && (e.getSrc()).getProperty(ExecutionProperty.Key.Parallelism) != null
+              && (e.getDst()).getProperty(ExecutionProperty.Key.Parallelism) != null
+              && !(e.getSrc()).getProperty(ExecutionProperty.Key.Parallelism)
+              .equals((e.getDst()).getProperty(ExecutionProperty.Key.Parallelism))) {
             throw new RuntimeException("DAG execution property check: vertices are connected by OneToOne edge, "
                 + "but has different parallelism execution properties: " + e.getId());
           }

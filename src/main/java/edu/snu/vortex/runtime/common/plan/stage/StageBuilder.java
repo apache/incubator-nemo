@@ -79,12 +79,12 @@ public final class StageBuilder {
   private void integrityCheck(final Stage stage) {
     final List<IRVertex> vertices = stage.getStageInternalDAG().getVertices();
 
-    final String firstPlacement = vertices.iterator().next().get(ExecutionProperty.Key.ExecutorPlacement);
+    final String firstPlacement = vertices.iterator().next().getProperty(ExecutionProperty.Key.ExecutorPlacement);
     final int scheduleGroupIdx =
-        vertices.iterator().next().<Integer>get(ExecutionProperty.Key.ScheduleGroupIndex);
+        vertices.iterator().next().<Integer>getProperty(ExecutionProperty.Key.ScheduleGroupIndex);
     vertices.forEach(irVertex -> {
-      if (!firstPlacement.equals(irVertex.<String>get(ExecutionProperty.Key.ExecutorPlacement))
-          || scheduleGroupIdx != irVertex.<Integer>get(ExecutionProperty.Key.ScheduleGroupIndex)) {
+      if (!firstPlacement.equals(irVertex.<String>getProperty(ExecutionProperty.Key.ExecutorPlacement))
+          || scheduleGroupIdx != irVertex.<Integer>getProperty(ExecutionProperty.Key.ScheduleGroupIndex)) {
         throw new RuntimeException("Vertices of the same stage have different execution properties: "
             + irVertex.getId());
       }

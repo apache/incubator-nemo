@@ -28,6 +28,7 @@ import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 public class RuntimeEdge<V extends Vertex> extends Edge<V> {
   private final ExecutionPropertyMap edgeProperties;
   private final Coder coder;
+  private final Boolean isSideInput;
 
   /**
    * Constructs the edge given the below parameters.
@@ -42,9 +43,28 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
                      final V src,
                      final V dst,
                      final Coder coder) {
+    this(runtimeEdgeId, edgeProperties, src, dst, coder, false);
+  }
+
+  /**
+   * Constructs the edge given the below parameters.
+   * @param runtimeEdgeId the id of this edge.
+   * @param edgeProperties to control the data flow on this edge.
+   * @param src the source vertex.
+   * @param dst the destination vertex.
+   * @param coder coder.
+   * @param isSideInput Whether or not the RuntimeEdge is a side input edge.
+   */
+  public RuntimeEdge(final String runtimeEdgeId,
+                     final ExecutionPropertyMap edgeProperties,
+                     final V src,
+                     final V dst,
+                     final Coder coder,
+                     final Boolean isSideInput) {
     super(runtimeEdgeId, src, dst);
     this.edgeProperties = edgeProperties;
     this.coder = coder;
+    this.isSideInput = isSideInput;
   }
 
   /**
@@ -53,7 +73,7 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
    * @param executionPropertyKey key of the execution property.
    * @return the execution property.
    */
-  public final <T> T get(final ExecutionProperty.Key executionPropertyKey) {
+  public final <T> T getProperty(final ExecutionProperty.Key executionPropertyKey) {
     return edgeProperties.get(executionPropertyKey);
   }
 
@@ -66,6 +86,13 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
 
   public final Coder getCoder() {
     return coder;
+  }
+
+  /**
+   * @return whether or not the RuntimeEdge is a side input edge.
+   */
+  public final Boolean isSideInput() {
+    return isSideInput;
   }
 
   /**

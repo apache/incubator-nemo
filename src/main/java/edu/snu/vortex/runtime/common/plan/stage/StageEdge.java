@@ -36,6 +36,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    * @param srcStage source runtime stage.
    * @param dstStage destination runtime stage.
    * @param coder coder.
+   * @param isSideInput flag for whether or not the edge is a sideInput.
    * @param srcVertex source vertex (in srcStage).
    * @param dstVertex destination vertex (in dstStage).
    */
@@ -44,9 +45,10 @@ public final class StageEdge extends RuntimeEdge<Stage> {
                    final Stage srcStage,
                    final Stage dstStage,
                    final Coder coder,
+                   final Boolean isSideInput,
                    final IRVertex srcVertex,
                    final IRVertex dstVertex) {
-    super(RuntimeIdGenerator.generateStageEdgeId(irEdgeId), edgeProperties, srcStage, dstStage, coder);
+    super(RuntimeIdGenerator.generateStageEdgeId(irEdgeId), edgeProperties, srcStage, dstStage, coder, isSideInput);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
   }
