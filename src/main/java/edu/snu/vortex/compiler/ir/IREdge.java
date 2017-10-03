@@ -28,6 +28,7 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 public final class IREdge extends Edge<IRVertex> {
   private final ExecutionPropertyMap executionProperties;
   private final Coder coder;
+  private final Boolean isSideInput;
 
   /**
    * Constructor of IREdge.
@@ -40,8 +41,25 @@ public final class IREdge extends Edge<IRVertex> {
                 final IRVertex src,
                 final IRVertex dst,
                 final Coder coder) {
+    this(commPattern, src, dst, coder, false);
+  }
+
+  /**
+   * Constructor of IREdge.
+   * @param commPattern data communication pattern type of the edge.
+   * @param src source vertex.
+   * @param dst destination vertex.
+   * @param coder coder.
+   * @param isSideInput flag for whether or not the edge is a sideInput.
+   */
+  public IREdge(final Class<? extends DataCommunicationPattern> commPattern,
+                final IRVertex src,
+                final IRVertex dst,
+                final Coder coder,
+                final Boolean isSideInput) {
     super(IdManager.newEdgeId(), src, dst);
     this.coder = coder;
+    this.isSideInput = isSideInput;
     this.executionProperties = ExecutionPropertyMap.of(this, commPattern);
   }
 
@@ -61,7 +79,7 @@ public final class IREdge extends Edge<IRVertex> {
    * @param executionPropertyKey key of the execution property.
    * @return the execution property.
    */
-  public <T> T get(final ExecutionProperty.Key executionPropertyKey) {
+  public <T> T getProperty(final ExecutionProperty.Key executionPropertyKey) {
     return executionProperties.get(executionPropertyKey);
   }
 
@@ -77,6 +95,13 @@ public final class IREdge extends Edge<IRVertex> {
    */
   public Coder getCoder() {
     return coder;
+  }
+
+  /**
+   * @return whether or not the edge is a side input edge.
+   */
+  public Boolean isSideInput() {
+    return isSideInput;
   }
 
   /**
