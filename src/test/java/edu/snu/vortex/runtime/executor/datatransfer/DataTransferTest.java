@@ -262,9 +262,8 @@ public final class DataTransferTest {
     final IRVertex dstVertex = verticesPair.right();
 
     // Edge setup
-    final IREdge dummyIREdge = new IREdge(IREdge.Type.OneToOne, srcVertex, dstVertex, CODER);
+    final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex, CODER);
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
-    edgeProperties.put(DataCommunicationPatternProperty.of(commPattern));
     edgeProperties.put(PartitioningProperty.of(Hash.class));
     edgeProperties.put(DataStoreProperty.of(store));
     final RuntimeEdge<IRVertex> dummyEdge
@@ -339,7 +338,7 @@ public final class DataTransferTest {
     final IRVertex dstVertex = verticesPair.right();
 
     // Edge setup
-    final IREdge dummyIREdge = new IREdge(IREdge.Type.ScatterGather, srcVertex, dstVertex, CODER);
+    final IREdge dummyIREdge = new IREdge(ScatterGather.class, srcVertex, dstVertex, CODER);
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
     edgeProperties.put(PartitioningProperty.of(Hash.class));
     edgeProperties.put(DataStoreProperty.of(store));

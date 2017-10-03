@@ -24,6 +24,8 @@ import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
 
 import edu.snu.vortex.compiler.optimizer.policy.DisaggregationPolicy;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,10 +59,10 @@ public final class MapReduceDisaggregationOptimization {
     builder.addVertex(map);
     builder.addVertex(reduce);
 
-    final IREdge edge1 = new IREdge(IREdge.Type.OneToOne, source, map, Coder.DUMMY_CODER);
+    final IREdge edge1 = new IREdge(OneToOne.class, source, map, Coder.DUMMY_CODER);
     builder.connectVertices(edge1);
 
-    final IREdge edge2 = new IREdge(IREdge.Type.ScatterGather, map, reduce, Coder.DUMMY_CODER);
+    final IREdge edge2 = new IREdge(ScatterGather.class, map, reduce, Coder.DUMMY_CODER);
     builder.connectVertices(edge2);
 
     final DAG<IRVertex, IREdge> dag = builder.build();
