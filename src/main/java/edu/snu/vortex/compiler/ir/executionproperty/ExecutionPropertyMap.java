@@ -17,6 +17,7 @@ package edu.snu.vortex.compiler.ir.executionproperty;
 
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataCommunicationPatternProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.PartitioningProperty;
@@ -24,6 +25,8 @@ import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProp
 import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.vortex.runtime.executor.data.LocalFileStore;
 import edu.snu.vortex.runtime.executor.data.MemoryStore;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.DataCommunicationPattern;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
 import edu.snu.vortex.runtime.executor.datatransfer.partitioning.Hash;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -52,11 +55,13 @@ public final class ExecutionPropertyMap implements Serializable {
   /**
    * Static initializer for irEdges.
    * @param irEdge irEdge to keep the execution property of.
+   * @param commPattern Data communication pattern type of the edge.
    * @return The corresponding ExecutionPropertyMap.
    */
-  public static ExecutionPropertyMap of(final IREdge irEdge) {
+  public static ExecutionPropertyMap of(final IREdge irEdge,
+                                        final Class<? extends DataCommunicationPattern> commPattern) {
     final ExecutionPropertyMap map = new ExecutionPropertyMap(irEdge.getId());
-    map.setDefaultEdgeExecutionProperties(irEdge.getType());
+    map.setDefaultEdgeExecutionProperties(commPattern);
     return map;
   }
   /**
@@ -72,18 +77,17 @@ public final class ExecutionPropertyMap implements Serializable {
 
   /**
    * Putting default execution property for edges.
-   * @param type type of the edge.
+   * @param commPattern Data communication pattern type of the edge.
    */
-  private void setDefaultEdgeExecutionProperties(final IREdge.Type type) {
+  private void setDefaultEdgeExecutionProperties(final Class<? extends DataCommunicationPattern> commPattern) {
+    this.put(DataCommunicationPatternProperty.of(commPattern));
     this.put(PartitioningProperty.of(Hash.class));
     this.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
-    switch (type) {
-      case OneToOne:
-        this.put(DataStoreProperty.of(MemoryStore.class));
-        break;
-      default:
-        this.put(DataStoreProperty.of(LocalFileStore.class));
-        break;
+
+    if (OneToOne.class.equals(commPattern)) {
+      this.put(DataStoreProperty.of(MemoryStore.class));
+    } else {
+      this.put(DataStoreProperty.of(LocalFileStore.class));
     }
   }
   /**

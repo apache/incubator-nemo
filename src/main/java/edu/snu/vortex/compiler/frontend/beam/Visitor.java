@@ -24,6 +24,10 @@ import edu.snu.vortex.compiler.ir.LoopVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.common.dag.DAGBuilder;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.IsSideInputProperty;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.Broadcast;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.DataCommunicationPattern;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.*;
 import org.apache.beam.sdk.io.Read;
@@ -103,7 +107,7 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
         .forEach(pValue -> {
           final IRVertex src = pValueToVertex.get(pValue);
           final BeamCoder coder = pValueToCoder.get(pValue);
-          final IREdge edge = new IREdge(getEdgeType(src, vortexIRVertex), src, vortexIRVertex, coder);
+          final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, vortexIRVertex), src, vortexIRVertex, coder);
           this.builder.connectVertices(edge);
         });
   }
@@ -190,9 +194,8 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
         .forEach(pValue -> {
           final IRVertex src = pValueToVertex.get(pValue);
           final BeamCoder coder = pValueToCoder.get(pValue);
-          final IREdge edge =
-              new IREdge(getEdgeType(src, vortexIRVertex), src, vortexIRVertex, coder)
-                  .setProperty(IsSideInputProperty.of(true));
+          final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, vortexIRVertex), src, vortexIRVertex, coder)
+              .setProperty(IsSideInputProperty.of(true));
           builder.connectVertices(edge);
         });
   }
@@ -229,13 +232,14 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
    * @param dst destination vertex.
    * @return the appropriate edge type.
    */
-  private static IREdge.Type getEdgeType(final IRVertex src, final IRVertex dst) {
+  private static Class<? extends DataCommunicationPattern> getEdgeCommunicationPattern(final IRVertex src,
+                                                                                       final IRVertex dst) {
     if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof GroupByKeyTransform) {
-      return IREdge.Type.ScatterGather;
+      return ScatterGather.class;
     } else if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof BroadcastTransform) {
-      return IREdge.Type.Broadcast;
+      return Broadcast.class;
     } else {
-      return IREdge.Type.OneToOne;
+      return OneToOne.class;
     }
   }
 }
