@@ -17,7 +17,7 @@ package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
-import edu.snu.vortex.compiler.optimizer.pass.dynamic_optimization.DataSkewDynamicOptimizationPass;
+import edu.snu.vortex.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
@@ -155,10 +155,10 @@ public final class JobStateManager {
       // Initialize states for partitions of inter-stage edges
       stageOutgoingEdges.forEach(physicalStageEdge -> {
         final Class<? extends DataCommunicationPattern> commPattern =
-            physicalStageEdge.get(ExecutionProperty.Key.DataCommunicationPattern);
-        final Boolean isDataSizeMetricCollectionEdge = DataSkewDynamicOptimizationPass.class
-            .equals(physicalStageEdge.get(ExecutionProperty.Key.MetricCollection));
-        final String writeOptAtt = physicalStageEdge.get(ExecutionProperty.Key.WriteOptimization);
+            physicalStageEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern);
+        final Boolean isDataSizeMetricCollectionEdge = DataSkewRuntimePass.class
+            .equals(physicalStageEdge.getProperty(ExecutionProperty.Key.MetricCollection));
+        final String writeOptAtt = physicalStageEdge.getProperty(ExecutionProperty.Key.WriteOptimization);
         final Boolean isIFileWriteEdge =
             writeOptAtt != null && writeOptAtt.equals(WriteOptimizationProperty.IFILE_WRITE);
 
@@ -166,7 +166,7 @@ public final class JobStateManager {
 
         if (commPattern.equals(ScatterGather.class) && isIFileWriteEdge) {
           final int dstParallelism =
-              physicalStageEdge.getDstVertex().get(ExecutionProperty.Key.Parallelism);
+              physicalStageEdge.getDstVertex().getProperty(ExecutionProperty.Key.Parallelism);
           final Set<String> producerTaskGroupIds = new HashSet<>();
           taskGroupsForStage.forEach(taskGroup -> producerTaskGroupIds.add(taskGroup.getTaskGroupId()));
           final Set<Integer> producerTaskIndices =
@@ -177,7 +177,7 @@ public final class JobStateManager {
           });
         } else if (ScatterGather.class.equals(commPattern) && !isDataSizeMetricCollectionEdge) {
           final int dstParallelism =
-              physicalStageEdge.getDstVertex().get(ExecutionProperty.Key.Parallelism);
+              physicalStageEdge.getDstVertex().getProperty(ExecutionProperty.Key.Parallelism);
           IntStream.range(0, srcParallelism).forEach(srcTaskIdx ->
             IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> {
               final String partitionId =

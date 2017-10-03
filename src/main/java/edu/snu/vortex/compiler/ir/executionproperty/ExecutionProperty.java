@@ -63,7 +63,6 @@ public abstract class ExecutionProperty<T> implements Serializable {
     DataFlowModel,
     DataStore,
     MetricCollection,
-    IsSideInput, // TODO #508: re-investigate sideInputs.
     Partitioning, // TODO #493: modularizing runtime components for partitioning.
     WriteOptimization, // TODO #492: to be removed.
 

@@ -52,8 +52,9 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
                            final IRVertex dstVertex,
                            final PhysicalStage srcStage,
                            final PhysicalStage dstStage,
-                           final Coder coder) {
-    super(runtimeEdgeId, edgeProperties, srcStage, dstStage, coder);
+                           final Coder coder,
+                           final Boolean isSideInput) {
+    super(runtimeEdgeId, edgeProperties, srcStage, dstStage, coder, isSideInput);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
     this.taskGroupIdToHashRangeMap = new HashMap<>();

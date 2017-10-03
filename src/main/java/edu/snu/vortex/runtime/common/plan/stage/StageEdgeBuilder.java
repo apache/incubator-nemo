@@ -31,6 +31,7 @@ public final class StageEdgeBuilder {
   private IRVertex srcVertex;
   private IRVertex dstVertex;
   private Coder coder;
+  private Boolean isSideInput;
 
   /**
    * Represents the edge between vertices in a logical plan.
@@ -70,8 +71,13 @@ public final class StageEdgeBuilder {
     return this;
   }
 
+  public StageEdgeBuilder setSideInputFlag(final Boolean sideInputFlag) {
+    this.isSideInput = sideInputFlag;
+    return this;
+  }
+
   public StageEdge build() {
     return new StageEdge(stageEdgeId,
-        edgeProperties, srcStage, dstStage, coder, srcVertex, dstVertex);
+        edgeProperties, srcStage, dstStage, coder, isSideInput, srcVertex, dstVertex);
   }
 }

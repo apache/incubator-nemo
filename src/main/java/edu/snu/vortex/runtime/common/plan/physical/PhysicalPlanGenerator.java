@@ -72,7 +72,7 @@ public final class PhysicalPlanGenerator
 
     final SortedMap<Integer, List<IRVertex>> vertexListForEachStage = new TreeMap<>();
     irDAG.topologicalDo(irVertex -> {
-      final Integer stageNum = irVertex.get(ExecutionProperty.Key.StageId);
+      final Integer stageNum = irVertex.getProperty(ExecutionProperty.Key.StageId);
       if (!vertexListForEachStage.containsKey(stageNum)) {
         vertexListForEachStage.put(stageNum, new ArrayList<>());
       }
@@ -89,8 +89,8 @@ public final class PhysicalPlanGenerator
       final IRVertex irVertexOfNewStage = stageVertices.stream().findAny()
           .orElseThrow(() -> new RuntimeException("Error: List " + stageVertices.getClass() + " is Empty"));
       final StageBuilder stageBuilder =
-          new StageBuilder(irVertexOfNewStage.get(ExecutionProperty.Key.StageId),
-              irVertexOfNewStage.get(ExecutionProperty.Key.ScheduleGroupIndex));
+          new StageBuilder(irVertexOfNewStage.getProperty(ExecutionProperty.Key.StageId),
+              irVertexOfNewStage.getProperty(ExecutionProperty.Key.ScheduleGroupIndex));
 
       // For each vertex in the stage,
       for (final IRVertex irVertex : stageVertices) {
@@ -126,7 +126,8 @@ public final class PhysicalPlanGenerator
                 .setEdgeProperties(irEdge.getExecutionProperties())
                 .setSrcVertex(srcVertex).setDstVertex(dstVertex)
                 .setSrcStage(srcStage)
-                .setCoder(irEdge.getCoder());
+                .setCoder(irEdge.getCoder())
+                .setSideInputFlag(irEdge.isSideInput());
             currentStageIncomingEdges.add(newEdgeBuilder);
           }
         }));
@@ -234,7 +235,8 @@ public final class PhysicalPlanGenerator
           final List<IREdge> inEdges = stageInternalDAG.getIncomingEdgesOf(irVertex);
           inEdges.forEach(edge ->
               stageInternalDAGBuilder.connectVertices(new RuntimeEdge<>(edge.getId(), edge.getExecutionProperties(),
-                  irVertexTaskMap.get(edge.getSrc()), irVertexTaskMap.get(edge.getDst()), edge.getCoder())));
+                  irVertexTaskMap.get(edge.getSrc()), irVertexTaskMap.get(edge.getDst()),
+                  edge.getCoder(), edge.isSideInput())));
         });
 
         // Create the task group to add for this stage.
@@ -259,7 +261,8 @@ public final class PhysicalPlanGenerator
             stageEdge.getExecutionProperties(),
             stageEdge.getSrcVertex(), stageEdge.getDstVertex(),
             srcStage, dstStage,
-            stageEdge.getCoder()));
+            stageEdge.getCoder(),
+            stageEdge.isSideInput()));
       }));
 
     return physicalDAGBuilder.build();

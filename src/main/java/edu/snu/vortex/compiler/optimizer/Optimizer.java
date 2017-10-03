@@ -19,10 +19,10 @@ import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.vortex.compiler.optimizer.pass.*;
-import edu.snu.vortex.compiler.optimizer.pass.dynamic_optimization.DataSkewDynamicOptimizationPass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.vortex.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.vortex.common.dag.DAG;
-import edu.snu.vortex.compiler.optimizer.pass.dynamic_optimization.DynamicOptimizationPass;
+import edu.snu.vortex.compiler.optimizer.pass.runtime.RuntimePass;
 import edu.snu.vortex.compiler.optimizer.policy.Policy;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 
@@ -46,10 +46,10 @@ public final class Optimizer {
    */
   public static DAG<IRVertex, IREdge> optimize(final DAG<IRVertex, IREdge> dag, final Policy optimizationPolicy,
                                                final String dagDirectory) throws Exception {
-    if (optimizationPolicy == null || optimizationPolicy.getOptimizationPasses().isEmpty()) {
+    if (optimizationPolicy == null || optimizationPolicy.getCompileTimePasses().isEmpty()) {
       throw new RuntimeException("A policy name should be specified.");
     }
-    return process(dag, optimizationPolicy.getOptimizationPasses(), dagDirectory);
+    return process(dag, optimizationPolicy.getCompileTimePasses().iterator(), dagDirectory);
   }
 
   /**
@@ -58,18 +58,19 @@ public final class Optimizer {
    * @param passes passes to apply.
    * @param dagDirectory directory to save the DAG information.
    * @return the processed DAG.
-   * @throws Exception Exceptionso n the way.
+   * @throws Exception Exceptions on the way.
    */
   private static DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag,
-                                               final List<StaticOptimizationPass> passes,
+                                               final Iterator<CompileTimePass> passes,
                                                final String dagDirectory) throws Exception {
-    if (passes.isEmpty()) {
-      return dag;
-    } else {
-      final DAG<IRVertex, IREdge> processedDAG = passes.get(0).apply(dag);
-      processedDAG.storeJSON(dagDirectory, "ir-after-" + passes.get(0).getClass().getSimpleName(),
+    if (passes.hasNext()) {
+      final CompileTimePass passToApply = passes.next();
+      final DAG<IRVertex, IREdge> processedDAG = passToApply.apply(dag);
+      processedDAG.storeJSON(dagDirectory, "ir-after-" + passToApply.getClass().getSimpleName(),
           "DAG after optimization");
-      return process(processedDAG, passes.subList(1, passes.size()), dagDirectory);
+      return process(processedDAG, passes, dagDirectory);
+    } else {
+      return dag;
     }
   }
 
@@ -82,14 +83,14 @@ public final class Optimizer {
   public static synchronized PhysicalPlan dynamicOptimization(
           final PhysicalPlan originalPlan,
           final MetricCollectionBarrierVertex metricCollectionBarrierVertex) {
-    final Class<? extends DynamicOptimizationPass> dynamicOptimizationType =
-        (Class) metricCollectionBarrierVertex.get(ExecutionProperty.Key.DynamicOptimizationType);
+    final Class<? extends RuntimePass> dynamicOptimizationType =
+        (Class) metricCollectionBarrierVertex.getProperty(ExecutionProperty.Key.DynamicOptimizationType);
 
     switch (dynamicOptimizationType.getSimpleName()) {
-      case DataSkewDynamicOptimizationPass.SIMPLE_NAME:
+      case DataSkewRuntimePass.SIMPLE_NAME:
         // Map between a partition ID to corresponding metric data (e.g., the size of each block).
         final Map<String, List<Long>> metricData = metricCollectionBarrierVertex.getMetricData();
-        return new DataSkewDynamicOptimizationPass().apply(originalPlan, metricData);
+        return new DataSkewRuntimePass().apply(originalPlan, metricData);
       default:
         return originalPlan;
     }

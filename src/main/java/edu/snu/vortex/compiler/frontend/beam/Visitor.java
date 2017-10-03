@@ -23,7 +23,6 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.LoopVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.common.dag.DAGBuilder;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.IsSideInputProperty;
 import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.Broadcast;
 import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.DataCommunicationPattern;
 import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
@@ -194,8 +193,8 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
         .forEach(pValue -> {
           final IRVertex src = pValueToVertex.get(pValue);
           final BeamCoder coder = pValueToCoder.get(pValue);
-          final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, vortexIRVertex), src, vortexIRVertex, coder)
-              .setProperty(IsSideInputProperty.of(true));
+          final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, vortexIRVertex),
+              src, vortexIRVertex, coder, true);
           builder.connectVertices(edge);
         });
   }
