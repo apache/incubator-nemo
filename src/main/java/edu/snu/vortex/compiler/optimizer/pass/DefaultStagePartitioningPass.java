@@ -21,6 +21,7 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.vertex.StageIdProperty;
 import edu.snu.vortex.runtime.executor.data.MemoryStore;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -70,7 +71,8 @@ public final class DefaultStagePartitioningPass implements StaticOptimizationPas
       } else {
         // Filter candidate incoming edges that can be included in a stage with the vertex.
         final Optional<List<IREdge>> inEdgesForStage = inEdgeList.map(e -> e.stream()
-            .filter(edge -> edge.getType().equals(IREdge.Type.OneToOne)) // One to one edges
+            // One to one edges
+            .filter(edge -> OneToOne.class.equals(edge.get(ExecutionProperty.Key.DataCommunicationPattern)))
             // MemoryStore placement
             .filter(edge -> MemoryStore.class.equals(edge.get(ExecutionProperty.Key.DataStore)))
             // if src and dst are placed on same container types

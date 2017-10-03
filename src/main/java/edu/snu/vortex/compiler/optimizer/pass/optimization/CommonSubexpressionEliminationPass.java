@@ -21,6 +21,7 @@ import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.Transform;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.optimizer.pass.StaticOptimizationPass;
 
 import java.util.*;
@@ -139,7 +140,8 @@ public final class CommonSubexpressionEliminationPass implements StaticOptimizat
             final Set<IREdge> outListToModify = outEdges.get(ov);
             outEdges.getOrDefault(ov, new HashSet<>()).forEach(e -> {
               outListToModify.remove(e);
-              final IREdge newIrEdge = new IREdge(e.getType(), operatorVertexToUse, e.getDst(), e.getCoder());
+              final IREdge newIrEdge = new IREdge(e.get(ExecutionProperty.Key.DataCommunicationPattern),
+                  operatorVertexToUse, e.getDst(), e.getCoder());
               outListToModify.add(newIrEdge);
             });
             outEdges.remove(ov);

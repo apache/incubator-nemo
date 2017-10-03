@@ -151,14 +151,12 @@ public final class FaultToleranceTest {
     v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     irDAGBuilder.addVertex(v3);
 
-    final IREdge e1 = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);
+    final IREdge e1 = new IREdge(ScatterGather.class, v1, v2, Coder.DUMMY_CODER);
     e1.setProperty(DataStoreProperty.of(MemoryStore.class));
-    e1.setProperty(DataCommunicationPatternProperty.of(ScatterGather.class));
     irDAGBuilder.connectVertices(e1);
 
-    final IREdge e2 = new IREdge(IREdge.Type.ScatterGather, v2, v3, Coder.DUMMY_CODER);
+    final IREdge e2 = new IREdge(ScatterGather.class, v2, v3, Coder.DUMMY_CODER);
     e2.setProperty(DataStoreProperty.of(LocalFileStore.class));
-    e2.setProperty(DataCommunicationPatternProperty.of(ScatterGather.class));
     irDAGBuilder.connectVertices(e2);
 
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();

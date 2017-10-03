@@ -25,6 +25,8 @@ import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
 import edu.snu.vortex.compiler.optimizer.examples.EmptyComponents;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -58,16 +60,16 @@ public class CommonSubexpressionEliminationPassTest {
     final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
     dagNotToOptimize = dagBuilder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine)
         .addVertex(map2)
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, source, map1, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(IREdge.Type.ScatterGather, map1, groupByKey, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, groupByKey, combine, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, combine, map2, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(OneToOne.class, source, map1, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(ScatterGather.class, map1, groupByKey, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(OneToOne.class, groupByKey, combine, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(OneToOne.class, combine, map2, Coder.DUMMY_CODER))
         .build();
     dagToOptimize = dagBuilder.addVertex(map1clone).addVertex(groupByKey2).addVertex(combine2).addVertex(map22)
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, source, map1clone, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(IREdge.Type.ScatterGather, map1clone, groupByKey2, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, groupByKey2, combine2, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, combine2, map22, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(OneToOne.class, source, map1clone, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(ScatterGather.class, map1clone, groupByKey2, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(OneToOne.class, groupByKey2, combine2, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(OneToOne.class, combine2, map22, Coder.DUMMY_CODER))
         .build();
   }
 

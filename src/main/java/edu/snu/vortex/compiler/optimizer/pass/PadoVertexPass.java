@@ -20,6 +20,7 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
 
 import java.util.List;
 
@@ -50,7 +51,8 @@ public final class PadoVertexPass implements StaticOptimizationPass {
    * @return whether of not any of them has M2M relationship.
    */
   private boolean hasM2M(final List<IREdge> irEdges) {
-    return irEdges.stream().anyMatch(edge -> edge.getType() == IREdge.Type.ScatterGather);
+    return irEdges.stream().anyMatch(edge ->
+        ScatterGather.class.equals(edge.get(ExecutionProperty.Key.DataCommunicationPattern)));
   }
 
   /**

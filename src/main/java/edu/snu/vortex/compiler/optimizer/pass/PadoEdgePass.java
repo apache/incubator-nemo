@@ -24,6 +24,7 @@ import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
 import edu.snu.vortex.runtime.executor.data.LocalFileStore;
 import edu.snu.vortex.runtime.executor.data.MemoryStore;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
 
 import java.util.List;
 
@@ -44,7 +45,7 @@ public final class PadoEdgePass implements StaticOptimizationPass {
             edge.setProperty(DataStoreProperty.of(LocalFileStore.class));
             edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
           } else {
-            if (edge.getType().equals(IREdge.Type.OneToOne)) {
+            if (OneToOne.class.equals(edge.get(ExecutionProperty.Key.DataCommunicationPattern))) {
               edge.setProperty(DataStoreProperty.of(MemoryStore.class));
               edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
             } else {
