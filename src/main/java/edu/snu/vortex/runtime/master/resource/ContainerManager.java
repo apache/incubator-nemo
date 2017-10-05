@@ -100,27 +100,31 @@ public final class ContainerManager {
    */
   public synchronized void requestContainer(final int numToRequest,
                                             final ResourceSpecification resourceSpecification) {
-    // Create a list of executor specifications to be used when containers are allocated.
-    final List<ResourceSpecification> resourceSpecificationList = new ArrayList<>(numToRequest);
-    for (int i = 0; i < numToRequest; i++) {
-      resourceSpecificationList.add(resourceSpecification);
+    if (numToRequest > 0) {
+      // Create a list of executor specifications to be used when containers are allocated.
+      final List<ResourceSpecification> resourceSpecificationList = new ArrayList<>(numToRequest);
+      for (int i = 0; i < numToRequest; i++) {
+        resourceSpecificationList.add(resourceSpecification);
+      }
+      executorsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>(numToRequest));
+
+      // Mark the request as pending with the given specifications.
+      pendingContainerRequestsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>());
+      pendingContainerRequestsByContainerType.get(resourceSpecification.getContainerType())
+          .addAll(resourceSpecificationList);
+
+      requestLatchByResourceSpecId.put(resourceSpecification.getResourceSpecId(),
+          new CountDownLatch(numToRequest));
+
+      // Request the evaluators
+      evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
+          .setNumber(numToRequest)
+          .setMemory(resourceSpecification.getMemory())
+          .setNumberOfCores(resourceSpecification.getCapacity())
+          .build());
+    } else {
+      LOG.info("Request {} containers", numToRequest);
     }
-    executorsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>(numToRequest));
-
-    // Mark the request as pending with the given specifications.
-    pendingContainerRequestsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>());
-    pendingContainerRequestsByContainerType.get(resourceSpecification.getContainerType())
-        .addAll(resourceSpecificationList);
-
-    requestLatchByResourceSpecId.put(resourceSpecification.getResourceSpecId(),
-        new CountDownLatch(numToRequest));
-
-    // Request the evaluators
-    evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
-        .setNumber(numToRequest)
-        .setMemory(resourceSpecification.getMemory())
-        .setNumberOfCores(resourceSpecification.getCapacity())
-        .build());
   }
 
   /**
