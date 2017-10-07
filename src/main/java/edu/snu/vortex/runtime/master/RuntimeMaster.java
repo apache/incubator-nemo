@@ -27,12 +27,12 @@ import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageListener;
+import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.ContainerException;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
-import edu.snu.vortex.runtime.exception.JsonParseException;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
 import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
 import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
@@ -65,8 +65,10 @@ public final class RuntimeMaster {
 
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
+  private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
   private JobStateManager jobStateManager;
+
   // For converting json data. This is a thread safe.
   // [Vortex-420] Create a Singleton ObjectMapper
   private final ObjectMapper objectMapper;
@@ -78,6 +80,7 @@ public final class RuntimeMaster {
   @Inject
   public RuntimeMaster(final Scheduler scheduler,
                        final ContainerManager containerManager,
+                       final MetricMessageHandler metricMessageHandler,
                        final MessageEnvironment masterMessageEnvironment,
                        final UpdatePhysicalPlanEventHandler handler,
                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
@@ -85,6 +88,7 @@ public final class RuntimeMaster {
     this.scheduler = scheduler;
     this.maxScheduleAttempt = maxScheduleAttempt;
     this.containerManager = containerManager;
+    this.metricMessageHandler = metricMessageHandler;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
         .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
@@ -102,7 +106,7 @@ public final class RuntimeMaster {
                       final ClientEndpoint clientEndpoint) {
     this.irVertices.addAll(plan.getTaskIRVertexMap().values());
     try {
-      jobStateManager = scheduler.scheduleJob(plan, maxScheduleAttempt);
+      jobStateManager = scheduler.scheduleJob(plan, metricMessageHandler, maxScheduleAttempt);
       final DriverEndpoint driverEndpoint = new DriverEndpoint(jobStateManager, clientEndpoint);
 
       // Schedule dag logging thread
@@ -183,16 +187,8 @@ public final class RuntimeMaster {
           containerManager.onExecutorRemoved(failedExecutorId);
           throw new RuntimeException(exception);
         case ContainerFailed:
-          final Map<String, Object> jsonMetricData = new HashMap<>();
           final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
-          jsonMetricData.put("ExecutorId", containerFailedMsg.getExecutorId());
-          jsonMetricData.put("ContainerFailure", true);
-          try {
-            final String jsonStr = objectMapper.writeValueAsString(jsonMetricData);
-            jobStateManager.getMetricMessageHandler().onMetricMessageReceived(jsonStr);
-          } catch (final Exception e) {
-            throw new JsonParseException(e);
-          }
+          LOG.error(containerFailedMsg.getExecutorId() + " failed");
           break;
         case DataSizeMetric:
           final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
@@ -201,9 +197,9 @@ public final class RuntimeMaster {
               dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getPartitionId());
           break;
         case MetricMessageReceived:
-          final ControlMessage.MetricMsg metricMsg = message.getMetricMsg();
-          metricMsg.getMetricMessagesList().stream()
-              .forEach((msg) -> jobStateManager.getMetricMessageHandler().onMetricMessageReceived(msg));
+          final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
+          metricList.forEach(metric ->
+              metricMessageHandler.onMetricMessageReceived(metric.getMetricKey(), metric.getMetricValue()));
           break;
         default:
           throw new IllegalMessageException(

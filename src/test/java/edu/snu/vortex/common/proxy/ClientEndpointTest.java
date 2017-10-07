@@ -22,6 +22,7 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
+import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlanGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
@@ -32,6 +33,9 @@ import edu.snu.vortex.runtime.master.JobStateManager;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.concurrent.TimeUnit;
 
@@ -43,8 +47,11 @@ import static org.mockito.Mockito.when;
 /**
  * Test {@link ClientEndpoint}.
  */
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(MetricMessageHandler.class)
 public class ClientEndpointTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
+  private final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
 
   @Test(timeout = 3000)
   public void testState() throws Exception {
@@ -72,7 +79,7 @@ public class ClientEndpointTest {
     final PartitionManagerMaster pmm = injector.getInstance(PartitionManagerMaster.class);
     final JobStateManager jobStateManager = new JobStateManager(
         new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
-        pmm, MAX_SCHEDULE_ATTEMPT);
+        pmm, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 
     final DriverEndpoint driverEndpoint = new DriverEndpoint(jobStateManager, clientEndpoint);
 

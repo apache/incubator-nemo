@@ -27,6 +27,7 @@ import edu.snu.vortex.compiler.optimizer.TestPolicy;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
+import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.JobState;
 import edu.snu.vortex.runtime.common.state.StageState;
@@ -39,6 +40,9 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.List;
 import java.util.Map;
@@ -52,10 +56,13 @@ import static org.mockito.Mockito.mock;
 /**
  * Tests {@link JobStateManager}.
  */
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(MetricMessageHandler.class)
 public final class JobStateManagerTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
   private PartitionManagerMaster partitionManagerMaster;
+  private MetricMessageHandler metricMessageHandler;
 
   @Before
   public void setUp() throws InjectionException {
@@ -66,6 +73,7 @@ public final class JobStateManagerTest {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
     partitionManagerMaster = injector.getInstance(PartitionManagerMaster.class);
+    metricMessageHandler = mock(MetricMessageHandler.class);
   }
 
   /**
@@ -114,7 +122,7 @@ public final class JobStateManagerTest {
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
     final JobStateManager jobStateManager = new JobStateManager(
         new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
-        partitionManagerMaster, MAX_SCHEDULE_ATTEMPT);
+        partitionManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 
     assertEquals(jobStateManager.getJobId(), "TestPlan");
 
@@ -155,7 +163,7 @@ public final class JobStateManagerTest {
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
     final JobStateManager jobStateManager = new JobStateManager(
         new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
-        partitionManagerMaster, MAX_SCHEDULE_ATTEMPT);
+        partitionManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 
     assertFalse(jobStateManager.checkJobTermination());
 

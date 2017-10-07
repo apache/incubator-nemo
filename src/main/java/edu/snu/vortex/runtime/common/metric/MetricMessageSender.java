@@ -13,19 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.master;
+package edu.snu.vortex.runtime.common.metric;
 
+import edu.snu.vortex.runtime.executor.MetricManagerWorker;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Metric message handler.
+ * Interface for metric sender.
  */
-@DefaultImplementation(DefaultMetricMessageHandler.class)
-public interface MetricMessageHandler {
+@DefaultImplementation(MetricManagerWorker.class)
+public interface MetricMessageSender extends AutoCloseable {
 
-  /**
-   * Handle the received metric message.
-   * @param metricData String type metric data.
-   */
-  void onMetricMessageReceived(String metricData);
+  void send(final String metricKey, final String metricValue);
+
+  void close();
 }
