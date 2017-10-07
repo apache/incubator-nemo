@@ -18,7 +18,7 @@ package edu.snu.vortex.client;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.ncs.NcsMessageEnvironment;
 import edu.snu.vortex.runtime.common.message.ncs.NcsParameters;
-import edu.snu.vortex.runtime.master.MasterHttpHandler;
+import edu.snu.vortex.runtime.master.http.MasterHttpHandler;
 import edu.snu.vortex.runtime.master.VortexDriver;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;

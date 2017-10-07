@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.master;
+package edu.snu.vortex.runtime.master.http;
 
+import edu.snu.vortex.runtime.master.RuntimeMaster;
+import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.webserver.HttpHandler;
 import org.apache.reef.webserver.ParsedHttpRequest;
 
@@ -26,14 +28,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Responds to the HTTP requests asked to 
+ * Handles HTTP requests sent to the Vortex Master.
  */
 public final class MasterHttpHandler implements HttpHandler {
   private String uriSpecification = "vortex";
-  private final RuntimeMaster runtimeMaster;
+  private final InjectionFuture<RuntimeMaster> runtimeMaster;
 
   @Inject
-  private MasterHttpHandler(final RuntimeMaster runtimeMaster) {
+  private MasterHttpHandler(final InjectionFuture<RuntimeMaster> runtimeMaster) {
     this.runtimeMaster = runtimeMaster;
   }
 
@@ -53,7 +55,34 @@ public final class MasterHttpHandler implements HttpHandler {
     final String target = request.getTargetEntity().toLowerCase();
     final Map<String, List<String>> queryMap = request.getQueryMap();
 
-    response.getOutputStream().println("OK");
-    response.sendError(400);
+    final Response result;
+    switch (target) {
+    case "job-state":
+      result = onJobState();
+      break;
+    case "executors":
+      result = onExecutors();
+      break;
+    default:
+      result = Response.badRequest("Not implemented yet");
+    }
+
+    // Send response to the http client
+    final int status = result.getStatus();
+    final String message = result.getMessage();
+
+    if (result.isOK()) {
+      response.getOutputStream().println(message);
+    } else {
+      response.sendError(status, message);
+    }
+  }
+
+  private Response onExecutors() {
+    return Response.ok(runtimeMaster.get().getExecutorsState());
+  }
+
+  private Response onJobState() {
+    return Response.ok(runtimeMaster.get().getJobState());
   }
 }

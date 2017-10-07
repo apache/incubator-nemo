@@ -325,4 +325,14 @@ public final class RuntimeMaster {
       }
     }
   }
+
+  public String getJobState() {
+    return jobStateManager.toStringWithPhysicalPlan();
+  }
+
+  public String getExecutorsState() {
+    return String.format("{\"running\": %s, \"failed\": %s}",
+        containerManager.getExecutorRepresenterMap().keySet(),
+        containerManager.getFailedExecutorRepresenterMap().keySet());
+  }
 }
