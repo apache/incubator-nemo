@@ -31,6 +31,7 @@ import edu.snu.vortex.compiler.optimizer.TestPolicy;
 import edu.snu.vortex.runtime.RuntimeTestUtil;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageSender;
+import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
@@ -61,13 +62,15 @@ import static org.mockito.Mockito.when;
  * Tests {@link BatchScheduler}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ContainerManager.class, PartitionManagerMaster.class, PubSubEventHandlerWrapper.class})
+@PrepareForTest({ContainerManager.class, PartitionManagerMaster.class,
+    PubSubEventHandlerWrapper.class, MetricMessageHandler.class})
 public final class BatchSchedulerTest {
   private static final Logger LOG = LoggerFactory.getLogger(BatchSchedulerTest.class.getName());
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
   private Scheduler scheduler;
   private SchedulingPolicy schedulingPolicy;
   private ContainerManager containerManager;
+  private MetricMessageHandler metricMessageHandler;
   private PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue;
   private PubSubEventHandlerWrapper pubSubEventHandler;
   private PartitionManagerMaster partitionManagerMaster = mock(PartitionManagerMaster.class);
@@ -84,6 +87,7 @@ public final class BatchSchedulerTest {
     RuntimeTestUtil.initialize();
     irDAGBuilder = new DAGBuilder<>();
     containerManager = mock(ContainerManager.class);
+    metricMessageHandler = mock(MetricMessageHandler.class);
     pendingTaskGroupPriorityQueue = new PendingTaskGroupPriorityQueue();
     schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TEST_TIMEOUT_MS);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
@@ -178,7 +182,7 @@ public final class BatchSchedulerTest {
 
     final JobStateManager jobStateManager =
         scheduler.scheduleJob(new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
-            1);
+            metricMessageHandler, 1);
 
     // For each ScheduleGroup, test:
     // a) all stages in the ScheduleGroup enters the executing state

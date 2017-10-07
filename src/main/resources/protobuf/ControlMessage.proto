@@ -104,7 +104,7 @@ message ContainerFailedMsg {
 }
 
 message MetricMsg {
-    repeated string metricMessages = 1;
+    repeated Metric metric = 1;
 }
 
 // Messages between Executors
@@ -199,4 +199,9 @@ message BlockMetadataMsg {
     required int32 blockSize = 2;
     optional int64 offset = 3;
     required int64 numElements = 4;
+}
+
+message Metric {
+    required string metricKey = 1;
+    required string metricValue = 2;
 }

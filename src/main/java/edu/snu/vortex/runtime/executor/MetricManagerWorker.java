@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.metric;
+package edu.snu.vortex.runtime.executor;
 
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
+import edu.snu.vortex.runtime.common.metric.MetricMessageSender;
 import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
-import edu.snu.vortex.runtime.executor.PersistentConnectionToMasterMap;
 import edu.snu.vortex.runtime.common.metric.parameter.MetricFlushPeriod;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -33,17 +34,18 @@ import org.slf4j.LoggerFactory;
 /**
  * Metric sender that periodically flushes the collected metrics to Driver.
  */
-public final class PeriodicMetricSender implements MetricSender {
+@EvaluatorSide
+public final class MetricManagerWorker implements MetricMessageSender {
 
   private final ScheduledExecutorService scheduledExecutorService;
-  private final BlockingQueue<String> metricMessageQueue;
+  private final BlockingQueue<ControlMessage.Metric> metricMessageQueue;
   private final AtomicBoolean closed;
 
-  private static final Logger LOG = LoggerFactory.getLogger(PeriodicMetricSender.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(MetricManagerWorker.class.getName());
 
   @Inject
-  private PeriodicMetricSender(@Parameter(MetricFlushPeriod.class) final long flushingPeriod,
-                               final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
+  private MetricManagerWorker(@Parameter(MetricFlushPeriod.class) final long flushingPeriod,
+                              final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.metricMessageQueue = new LinkedBlockingQueue<>();
     this.closed = new AtomicBoolean(false);
@@ -57,8 +59,8 @@ public final class PeriodicMetricSender implements MetricSender {
         final ControlMessage.MetricMsg.Builder metricMsgBuilder = ControlMessage.MetricMsg.newBuilder();
 
         for (int i = 0; i < size; i++) {
-          final String metricMsg = metricMessageQueue.poll();
-          metricMsgBuilder.setMetricMessages(i, metricMsg);
+          final ControlMessage.Metric metric = metricMessageQueue.poll();
+          metricMsgBuilder.addMetric(i, metric);
         }
 
         persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
@@ -75,8 +77,9 @@ public final class PeriodicMetricSender implements MetricSender {
   }
 
   @Override
-  public void send(final String jsonStr) {
-    metricMessageQueue.add(jsonStr);
+  public void send(final String metricKey, final String metricValue) {
+    metricMessageQueue.add(
+        ControlMessage.Metric.newBuilder().setMetricKey(metricKey).setMetricValue(metricValue).build());
   }
 
   @Override

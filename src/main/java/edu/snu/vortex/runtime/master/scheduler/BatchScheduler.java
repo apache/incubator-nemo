@@ -20,6 +20,7 @@ import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.common.PubSubEventHandlerWrapper;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
+import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.master.eventhandler.DynamicOptimizationEvent;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.StageState;
@@ -84,9 +85,11 @@ public final class BatchScheduler implements Scheduler {
    */
   @Override
   public synchronized JobStateManager scheduleJob(final PhysicalPlan jobToSchedule,
+                                                  final MetricMessageHandler metricMessageHandler,
                                                   final int maxScheduleAttempt) {
     this.physicalPlan = jobToSchedule;
-    this.jobStateManager = new JobStateManager(jobToSchedule, partitionManagerMaster, maxScheduleAttempt);
+    this.jobStateManager =
+        new JobStateManager(jobToSchedule, partitionManagerMaster, metricMessageHandler, maxScheduleAttempt);
     pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
 
     LOG.info("Job to schedule: {}", jobToSchedule.getId());

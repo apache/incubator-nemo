@@ -25,7 +25,6 @@ import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.vortex.common.PubSubEventHandlerWrapper;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.DataCommunicationPatternProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.PartitioningProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
@@ -35,16 +34,18 @@ import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.vortex.runtime.common.message.ncs.NcsParameters;
+import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.executor.Executor;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMasterMap;
 import edu.snu.vortex.runtime.executor.data.*;
-import edu.snu.vortex.runtime.common.metric.PeriodicMetricSender;
+import edu.snu.vortex.runtime.executor.MetricManagerWorker;
 import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.Broadcast;
 import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.DataCommunicationPattern;
 import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
 import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
 import edu.snu.vortex.runtime.executor.datatransfer.partitioning.Hash;
+import edu.snu.vortex.runtime.master.MetricManagerMaster;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
@@ -90,7 +91,7 @@ import static org.mockito.Mockito.mock;
  * to run the test with leakage reports for netty {@link io.netty.util.ReferenceCounted} objects.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class})
+@PrepareForTest({PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final int EXECUTOR_CAPACITY = 1;
@@ -119,8 +120,8 @@ public final class DataTransferTest {
     final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
     final LocalMessageEnvironment messageEnvironment =
         new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
-    final ContainerManager containerManager = new ContainerManager(null,
-                                                                    messageEnvironment);
+    final ContainerManager containerManager = new ContainerManager(null, messageEnvironment);
+    final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     final Scheduler scheduler =
@@ -130,7 +131,7 @@ public final class DataTransferTest {
 
     // Necessary for wiring up the message environments
     final RuntimeMaster runtimeMaster =
-        new RuntimeMaster(scheduler, containerManager, messageEnvironment,
+        new RuntimeMaster(scheduler, containerManager, metricMessageHandler, messageEnvironment,
             updatePhysicalPlanEventHandler, EMPTY_DAG_DIRECTORY, MAX_SCHEDULE_ATTEMPT);
 
     final Injector injector1 = Tang.Factory.getTang().newInjector();
@@ -168,10 +169,10 @@ public final class DataTransferTest {
     injector.bindVolatileParameter(JobConf.FileDirectory.class, TMP_LOCAL_FILE_DIRECTORY);
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_REMOTE_FILE_DIRECTORY);
     final PartitionManagerWorker partitionManagerWorker;
-    final PeriodicMetricSender periodicMetricSender;
+    final MetricManagerWorker metricManagerWorker;
     try {
       partitionManagerWorker = injector.getInstance(PartitionManagerWorker.class);
-      periodicMetricSender =  injector.getInstance(PeriodicMetricSender.class);
+      metricManagerWorker =  injector.getInstance(MetricManagerWorker.class);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
@@ -184,7 +185,7 @@ public final class DataTransferTest {
         messageEnvironment,
         partitionManagerWorker,
         new DataTransferFactory(HASH_RANGE_MULTIPLIER, partitionManagerWorker),
-        periodicMetricSender);
+        metricManagerWorker);
     injector.bindVolatileInstance(Executor.class, executor);
 
     return partitionManagerWorker;
