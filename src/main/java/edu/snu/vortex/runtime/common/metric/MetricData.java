@@ -24,33 +24,20 @@ import java.util.Map;
  * MetricData that holds executor side metrics.
  */
 public class MetricData {
-  private final Enum computationUnitEnum;
+  /**
+   * Computation units are: Job, State, TaskGroup and Task.
+   */
   private final String computationUnitId;
   private final ObjectMapper objectMapper;
   private final Map<String, Object> metrics;
 
-  /**
-   * Computation units to measure.
-   */
-  public enum ComputationUnit {
-    JOB,
-    STAGE,
-    TASKGROUP,
-    TASK
-  }
-
-  public MetricData(final Enum computationUnitEnum,
-             final String computationUnitId,
-             final Map<String, Object> metrics) {
-    this.computationUnitEnum = computationUnitEnum;
+  public MetricData(final String computationUnitId,
+                    final Map<String, Object> metrics) {
     this.computationUnitId = computationUnitId;
     this.objectMapper = new ObjectMapper();
     this.metrics = metrics;
   }
 
-  public final Enum getComputationUnitEnum() {
-    return computationUnitEnum;
-  }
   public final String getComputationUnitId() {
     return computationUnitId;
   }

@@ -22,12 +22,12 @@ import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageListener;
+import edu.snu.vortex.runtime.common.metric.MetricMessageSender;
 import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
 import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.vortex.runtime.executor.datatransfer.DataTransferFactory;
-import edu.snu.vortex.runtime.common.metric.PeriodicMetricSender;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -64,7 +64,7 @@ public final class Executor {
 
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
-  private final PeriodicMetricSender periodicMetricSender;
+  private final MetricMessageSender metricMessageSender;
 
   @Inject
   public Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -73,13 +73,13 @@ public final class Executor {
                   final MessageEnvironment messageEnvironment,
                   final PartitionManagerWorker partitionManagerWorker,
                   final DataTransferFactory dataTransferFactory,
-                  final PeriodicMetricSender periodicMetricSender) {
+                  final MetricManagerWorker metricMessageSender) {
     this.executorId = executorId;
     this.executorService = Executors.newFixedThreadPool(executorCapacity);
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.partitionManagerWorker = partitionManagerWorker;
     this.dataTransferFactory = dataTransferFactory;
-    this.periodicMetricSender = periodicMetricSender;
+    this.metricMessageSender = metricMessageSender;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
 
@@ -102,7 +102,7 @@ public final class Executor {
       taskGroupStateManager =
           new TaskGroupStateManager(scheduledTaskGroup.getTaskGroup(), scheduledTaskGroup.getAttemptIdx(), executorId,
               persistentConnectionToMasterMap,
-              periodicMetricSender);
+              metricMessageSender);
 
       scheduledTaskGroup.getTaskGroupIncomingEdges()
           .forEach(e -> partitionManagerWorker.registerCoder(e.getId(), e.getCoder()));
@@ -134,10 +134,10 @@ public final class Executor {
 
   public void terminate() {
     try {
-      periodicMetricSender.close();
+      metricMessageSender.close();
     } catch (final UnknownFailureCauseException e) {
       throw new UnknownFailureCauseException(
-          new Exception("Closing PeriodicMetricSender failed in executor " + executorId));
+          new Exception("Closing MetricManagerWorker failed in executor " + executorId));
     }
   }
 

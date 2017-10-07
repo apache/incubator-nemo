@@ -15,14 +15,28 @@
  */
 package edu.snu.vortex.runtime.common.metric;
 
+import edu.snu.vortex.runtime.master.MetricManagerMaster;
 import org.apache.reef.tang.annotations.DefaultImplementation;
-import java.util.*;
+
+import java.util.List;
 
 /**
- * Interface for metric sender.
+ * Metric message handler.
  */
-@DefaultImplementation(PeriodicMetricSender.class)
-public interface MetricSender extends AutoCloseable {
+@DefaultImplementation(MetricManagerMaster.class)
+public interface MetricMessageHandler {
 
-  void send(final String jsonStr);
+  /**
+   * Handle the received metric message.
+   * @param metricKey a given key for the metric (ex. TaskGroup ID)
+   * @param metricValue the metric formatted as a string (ex. JSON).
+   */
+  void onMetricMessageReceived(final String metricKey, final String metricValue);
+
+  /**
+   * Retrieves the string form of metric given the metric key.
+   * @param metricKey to retrieve the metric for
+   * @return the list of accumulated metric in string (ex. JSON)
+   */
+  List<String> getMetricByKey(final String metricKey);
 }
