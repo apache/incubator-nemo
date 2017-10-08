@@ -16,6 +16,7 @@
 package edu.snu.vortex.runtime.master.http;
 
 import edu.snu.vortex.runtime.exception.ExecutorNotFoundException;
+import edu.snu.vortex.runtime.exception.StageNotFoundException;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.webserver.HttpHandler;
@@ -33,6 +34,7 @@ import java.util.Map;
  */
 public final class MasterHttpHandler implements HttpHandler {
   private static final String KEY_EXECUTOR_ID = "executor-id";
+  private static final String KEY_STAGE_ID = "stage-id";
 
   private String uriSpecification = "vortex";
   private final InjectionFuture<RuntimeMaster> runtimeMaster;
@@ -74,6 +76,13 @@ public final class MasterHttpHandler implements HttpHandler {
         result = onTaskGroups(queryMap);
       }
       break;
+    case "task-group-list":
+      if (queryMap.isEmpty()) {
+        result = Response.badRequest(String.format("The POST request should specify %s.", KEY_STAGE_ID));
+      } else {
+        result = taskGroupList(queryMap);
+      }
+      break;
     default:
       result = Response.badRequest("Not implemented yet");
     }
@@ -101,9 +110,24 @@ public final class MasterHttpHandler implements HttpHandler {
 
     final String executorId = args.get(0);
     try {
-      return Response.ok(runtimeMaster.get().getRunningTaskGroups(executorId));
+      return Response.ok(runtimeMaster.get().getTaskGroups(executorId));
     } catch (final ExecutorNotFoundException e) {
       return Response.notFound(executorId);
+    }
+  }
+
+  private Response taskGroupList(final Map<String, List<String>> queryMap) {
+    final List<String> args = queryMap.get(KEY_STAGE_ID);
+    if (args.size() != 1) {
+      return Response.badRequest(String.format("Usage : only one %s at a time", KEY_STAGE_ID));
+    }
+
+    final String stageId = args.get(0);
+    try {
+      runtimeMaster.get().getTaskGroupList(stageId);
+      return Response.badRequest("Not implemented yet");
+    } catch (final StageNotFoundException e) {
+      return Response.notFound(stageId);
     }
   }
 
