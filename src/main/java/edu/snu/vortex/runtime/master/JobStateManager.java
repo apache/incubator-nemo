@@ -441,6 +441,16 @@ public final class JobStateManager {
     return jobId;
   }
 
+  public synchronized String getJobDAG() {
+    return physicalPlan.getStageDAG().toString();
+  }
+
+  public synchronized String getJobInfo() {
+    // Exceptional conditions?
+    return String.format("{\"id\": %s, \"state\": %s, \"elapsedTimeNanos\": %d}",
+        jobId, jobState, System.nanoTime() - metricDataBuilderMap.get(jobId).getStartTime());
+  }
+
   public synchronized JobState getJobState() {
     return jobState;
   }

@@ -325,8 +325,12 @@ public final class RuntimeMaster {
     }
   }
 
-  public String getJobState() {
-    return jobStateManager.toStringWithPhysicalPlan();
+  public String getJobDag() {
+    return String.format("{\"dag\": %s}", jobStateManager.getJobDAG());
+  }
+
+  public String getJobInfo() {
+    return jobStateManager.getJobInfo();
   }
 
   public String getExecutorsState() {
@@ -355,7 +359,7 @@ public final class RuntimeMaster {
     }
   }
 
-  public String getTaskGroupState(final String taskGroupId) throws TaskGroupNotFoundException {
+  public String getTaskGroupInfo(final String taskGroupId) throws TaskGroupNotFoundException {
     final TaskGroupState taskGroupState = jobStateManager.getTaskGroupState(taskGroupId);
     final List<String> metrics = metricMessageHandler.getMetricByKey(taskGroupId);
     if (taskGroupState != null) {
@@ -365,5 +369,4 @@ public final class RuntimeMaster {
       throw new TaskGroupNotFoundException(taskGroupId);
     }
   }
-
 }

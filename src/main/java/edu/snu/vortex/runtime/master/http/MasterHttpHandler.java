@@ -65,8 +65,8 @@ public final class MasterHttpHandler implements HttpHandler {
 
     final Response result;
     switch (target) {
-    case "job-state":
-      result = onJobState();
+    case "job-dag":
+      result = onJobDAG();
       break;
     case "executors":
       result = onExecutors();
@@ -78,11 +78,11 @@ public final class MasterHttpHandler implements HttpHandler {
         result = onTaskGroups(queryMap);
       }
       break;
-    case "task-group-state":
+    case "task-group-info":
       if (queryMap.isEmpty()) {
         result = Response.badRequest(String.format("The POST request should specify %s.", KEY_TASK_GROUP_ID));
       } else {
-        result = taskGroupState(queryMap);
+        result = taskGroupInfo(queryMap);
       }
       break;
     case "task-group-list":
@@ -91,6 +91,9 @@ public final class MasterHttpHandler implements HttpHandler {
       } else {
         result = taskGroupList(queryMap);
       }
+      break;
+    case "job-info":
+      result = onJobInfo();
       break;
     default:
       result = Response.badRequest("Not implemented yet");
@@ -105,6 +108,10 @@ public final class MasterHttpHandler implements HttpHandler {
     } else {
       response.sendError(status, message);
     }
+  }
+
+  private Response onJobDAG() {
+    return Response.ok(runtimeMaster.get().getJobDag());
   }
 
   private Response onExecutors() {
@@ -125,7 +132,7 @@ public final class MasterHttpHandler implements HttpHandler {
     }
   }
 
-  private Response taskGroupState(final Map<String, List<String>> queryMap) {
+  private Response taskGroupInfo(final Map<String, List<String>> queryMap) {
     final List<String> args = queryMap.get(KEY_TASK_GROUP_ID);
     if (args.size() != 1) {
       return Response.badRequest(String.format("Usage : only one %s at a time", KEY_TASK_GROUP_ID));
@@ -133,7 +140,7 @@ public final class MasterHttpHandler implements HttpHandler {
 
     final String taskGroupId = args.get(0);
     try {
-      return Response.ok(runtimeMaster.get().getTaskGroupState(taskGroupId));
+      return Response.ok(runtimeMaster.get().getTaskGroupInfo(taskGroupId));
     } catch (final TaskGroupNotFoundException e) {
       return Response.notFound(taskGroupId);
     }
@@ -154,7 +161,7 @@ public final class MasterHttpHandler implements HttpHandler {
     }
   }
 
-  private Response onJobState() {
-    return Response.ok(runtimeMaster.get().getJobState());
+  private Response onJobInfo() {
+    return Response.ok(runtimeMaster.get().getJobInfo());
   }
 }
