@@ -355,4 +355,15 @@ public final class RuntimeMaster {
     }
   }
 
+  public String getTaskGroupState(final String taskGroupId) throws TaskGroupNotFoundException {
+    final TaskGroupState taskGroupState = jobStateManager.getTaskGroupState(taskGroupId);
+    final List<String> metrics = metricMessageHandler.getMetricByKey(taskGroupId);
+    if (taskGroupState != null) {
+      return String.format("{\"state\": %s, \"metrics\": %s}",
+          taskGroupState.toString(), Arrays.toString(metrics.toArray()));
+    } else {
+      throw new TaskGroupNotFoundException(taskGroupId);
+    }
+  }
+
 }

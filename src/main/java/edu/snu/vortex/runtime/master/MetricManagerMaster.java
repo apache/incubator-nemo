@@ -22,10 +22,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * A default metric message handler.
@@ -50,6 +47,6 @@ public final class MetricManagerMaster implements MetricMessageHandler {
 
   @Override
   public synchronized List<String> getMetricByKey(final String metricKey) {
-    return compUnitIdToMetricInJson.get(metricKey);
+    return compUnitIdToMetricInJson.getOrDefault(metricKey, Collections.emptyList());
   }
 }

@@ -17,6 +17,7 @@ package edu.snu.vortex.runtime.master.http;
 
 import edu.snu.vortex.runtime.exception.ExecutorNotFoundException;
 import edu.snu.vortex.runtime.exception.StageNotFoundException;
+import edu.snu.vortex.runtime.exception.TaskGroupNotFoundException;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.webserver.HttpHandler;
@@ -35,6 +36,7 @@ import java.util.Map;
 public final class MasterHttpHandler implements HttpHandler {
   private static final String KEY_EXECUTOR_ID = "executor-id";
   private static final String KEY_STAGE_ID = "stage-id";
+  private static final String KEY_TASK_GROUP_ID = "task-group-id";
 
   private String uriSpecification = "vortex";
   private final InjectionFuture<RuntimeMaster> runtimeMaster;
@@ -76,6 +78,13 @@ public final class MasterHttpHandler implements HttpHandler {
         result = onTaskGroups(queryMap);
       }
       break;
+    case "task-group-state":
+      if (queryMap.isEmpty()) {
+        result = Response.badRequest(String.format("The POST request should specify %s.", KEY_TASK_GROUP_ID));
+      } else {
+        result = taskGroupState(queryMap);
+      }
+      break;
     case "task-group-list":
       if (queryMap.isEmpty()) {
         result = Response.badRequest(String.format("The POST request should specify %s.", KEY_STAGE_ID));
@@ -113,6 +122,20 @@ public final class MasterHttpHandler implements HttpHandler {
       return Response.ok(runtimeMaster.get().getTaskGroups(executorId));
     } catch (final ExecutorNotFoundException e) {
       return Response.notFound(executorId);
+    }
+  }
+
+  private Response taskGroupState(final Map<String, List<String>> queryMap) {
+    final List<String> args = queryMap.get(KEY_TASK_GROUP_ID);
+    if (args.size() != 1) {
+      return Response.badRequest(String.format("Usage : only one %s at a time", KEY_TASK_GROUP_ID));
+    }
+
+    final String taskGroupId = args.get(0);
+    try {
+      return Response.ok(runtimeMaster.get().getTaskGroupState(taskGroupId));
+    } catch (final TaskGroupNotFoundException e) {
+      return Response.notFound(taskGroupId);
     }
   }
 
