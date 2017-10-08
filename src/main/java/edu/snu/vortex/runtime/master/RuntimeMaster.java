@@ -31,12 +31,10 @@ import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
-import edu.snu.vortex.runtime.exception.ContainerException;
-import edu.snu.vortex.runtime.exception.IllegalMessageException;
-import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
-import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
+import edu.snu.vortex.runtime.exception.*;
 import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
+import edu.snu.vortex.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
@@ -334,5 +332,16 @@ public final class RuntimeMaster {
     return String.format("{\"running\": %s, \"failed\": %s}",
         containerManager.getExecutorRepresenterMap().keySet(),
         containerManager.getFailedExecutorRepresenterMap().keySet());
+  }
+
+  public String getRunningTaskGroups(final String executorId) throws ExecutorNotFoundException {
+    final Map<String, ExecutorRepresenter> executors = containerManager.getExecutorRepresenterMap();
+    if (executors.containsKey(executorId)) {
+      final ExecutorRepresenter executorRepresenter = executors.get(executorId);
+      return String.format("{\"running\": %s, \"complete\": %s}",
+          executorRepresenter.getRunningTaskGroups(), executorRepresenter.getCompleteTaskGroups());
+    } else {
+      throw new ExecutorNotFoundException(executorId);
+    }
   }
 }

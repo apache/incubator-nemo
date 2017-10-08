@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.runtime.master.http;
 
+import edu.snu.vortex.runtime.exception.ExecutorNotFoundException;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.webserver.HttpHandler;
@@ -31,6 +32,8 @@ import java.util.Map;
  * Handles HTTP requests sent to the Vortex Master.
  */
 public final class MasterHttpHandler implements HttpHandler {
+  private static final String KEY_EXECUTOR_ID = "executor-id";
+
   private String uriSpecification = "vortex";
   private final InjectionFuture<RuntimeMaster> runtimeMaster;
 
@@ -54,6 +57,7 @@ public final class MasterHttpHandler implements HttpHandler {
       throws IOException, ServletException {
     final String target = request.getTargetEntity().toLowerCase();
     final Map<String, List<String>> queryMap = request.getQueryMap();
+    System.out.println("QueryMap" + queryMap.keySet().toString() + queryMap.values().toString());
 
     final Response result;
     switch (target) {
@@ -62,6 +66,13 @@ public final class MasterHttpHandler implements HttpHandler {
       break;
     case "executors":
       result = onExecutors();
+      break;
+    case "task-groups":
+      if (queryMap.isEmpty()) {
+        result = Response.badRequest(String.format("The POST request should specify %s.", KEY_EXECUTOR_ID));
+      } else {
+        result = onTaskGroups(queryMap);
+      }
       break;
     default:
       result = Response.badRequest("Not implemented yet");
@@ -80,6 +91,20 @@ public final class MasterHttpHandler implements HttpHandler {
 
   private Response onExecutors() {
     return Response.ok(runtimeMaster.get().getExecutorsState());
+  }
+
+  private Response onTaskGroups(final Map<String, List<String>> queryMap) {
+    final List<String> args = queryMap.get(KEY_EXECUTOR_ID);
+    if (args.size() != 1) {
+      return Response.badRequest(String.format("Usage : only one %s at a time", KEY_EXECUTOR_ID));
+    }
+
+    final String executorId = args.get(0);
+    try {
+      return Response.ok(runtimeMaster.get().getRunningTaskGroups(executorId));
+    } catch (final ExecutorNotFoundException e) {
+      return Response.notFound(executorId);
+    }
   }
 
   private Response onJobState() {
