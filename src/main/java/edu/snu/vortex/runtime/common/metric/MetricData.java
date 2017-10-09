@@ -18,6 +18,7 @@ package edu.snu.vortex.runtime.common.metric;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.vortex.runtime.exception.JsonParseException;
 
+import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -30,6 +31,12 @@ public class MetricData {
   private final String computationUnitId;
   private final ObjectMapper objectMapper;
   private final Map<String, Object> metrics;
+
+  public MetricData() {
+    this.computationUnitId = null;
+    this.objectMapper = new ObjectMapper();
+    this.metrics = Collections.emptyMap();
+  }
 
   public MetricData(final String computationUnitId,
                     final Map<String, Object> metrics) {

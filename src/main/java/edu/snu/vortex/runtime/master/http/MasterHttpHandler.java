@@ -129,6 +129,8 @@ public final class MasterHttpHandler implements HttpHandler {
       return Response.ok(runtimeMaster.get().getStageInfo(stageId));
     } catch (final StageNotFoundException e) {
       return Response.notFound(stageId);
+    } catch (IOException e) {
+      return Response.badRequest(e.getMessage());
     }
   }
 
@@ -165,6 +167,8 @@ public final class MasterHttpHandler implements HttpHandler {
       return Response.ok(runtimeMaster.get().getTaskGroupInfo(taskGroupId));
     } catch (final TaskGroupNotFoundException e) {
       return Response.notFound(taskGroupId);
+    } catch (final IOException e) {
+      return Response.badRequest(e.getMessage());
     }
   }
 
@@ -183,6 +187,10 @@ public final class MasterHttpHandler implements HttpHandler {
   }
 
   private Response onJobInfo() {
-    return Response.ok(runtimeMaster.get().getJobInfo());
+    try {
+      return Response.ok(runtimeMaster.get().getJobInfo());
+    } catch (IOException e) {
+      return Response.badRequest(e.getMessage());
+    }
   }
 }

@@ -328,7 +328,7 @@ public final class RuntimeMaster {
     return String.format("{\"dag\": %s}", jobStateManager.getJobDAG());
   }
 
-  public String getJobInfo() {
+  public String getJobInfo() throws IOException {
     return jobStateManager.getJobInfo();
   }
 
@@ -353,11 +353,11 @@ public final class RuntimeMaster {
     return jobStateManager.getTaskGroupList(stageId);
   }
 
-  public String getTaskGroupInfo(final String taskGroupId) throws TaskGroupNotFoundException {
+  public String getTaskGroupInfo(final String taskGroupId) throws TaskGroupNotFoundException, IOException {
     return jobStateManager.getTaskGroupInfo(taskGroupId);
   }
 
-  public String getStageInfo(final String stageId) throws StageNotFoundException {
+  public String getStageInfo(final String stageId) throws StageNotFoundException, IOException {
     return jobStateManager.getStageInfo(stageId);
   }
 }
