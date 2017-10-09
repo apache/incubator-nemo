@@ -42,7 +42,7 @@ public final class MetricManagerMaster implements MetricMessageHandler {
   public synchronized void onMetricMessageReceived(final String metricKey, final String metricValue) {
     compUnitIdToMetricInJson.putIfAbsent(metricKey, new LinkedList<>());
     compUnitIdToMetricInJson.get(metricKey).add(metricValue);
-    LOG.debug("{}", metricValue);
+    LOG.debug("{} / {}", metricKey, metricValue);
   }
 
   @Override

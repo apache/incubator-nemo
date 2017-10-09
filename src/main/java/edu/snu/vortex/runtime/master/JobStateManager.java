@@ -26,11 +26,9 @@ import edu.snu.vortex.runtime.common.state.JobState;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
-import edu.snu.vortex.runtime.exception.IllegalStateTransitionException;
-import edu.snu.vortex.runtime.exception.SchedulingException;
+import edu.snu.vortex.runtime.exception.*;
 import edu.snu.vortex.common.StateMachine;
 import edu.snu.vortex.common.dag.DAG;
-import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
 
 import java.io.File;
 import java.io.IOException;
@@ -447,12 +445,54 @@ public final class JobStateManager {
 
   public synchronized String getJobInfo() {
     // Exceptional conditions?
-    return String.format("{\"id\": %s, \"state\": %s, \"elapsedTimeNanos\": %d}",
-        jobId, jobState, System.nanoTime() - metricDataBuilderMap.get(jobId).getStartTime());
+    return String.format("{\"id\": %s, \"state\": %s, \"metrics\": %s}",
+        jobId, jobState, metricDataBuilderMap.get(jobId).build().toJson());
   }
 
   public synchronized JobState getJobState() {
     return jobState;
+  }
+
+  public synchronized String getStageInfo(final String stageId) throws StageNotFoundException {
+    if (idToStageStates.containsKey(stageId)) {
+      final StageState stageState = idToStageStates.get(stageId);
+      final Enum state = stageState.getStateMachine().getCurrentState();
+      final Long elapsedTimeNanos;
+      final List<String> metrics = metricMessageHandler.getMetricByKey(stageId);
+
+      if (state == StageState.State.EXECUTING) {
+        elapsedTimeNanos = System.nanoTime() - metricDataBuilderMap.get(stageId).getStartTime();
+      } else {
+        elapsedTimeNanos = null;
+      }
+
+      return String.format("{\"id\": %s, \"state\": %s, \"elapsedTimeNanos\": %d, \"metrics\": %s}",
+          stageId, stageState, elapsedTimeNanos, metrics);
+
+    } else {
+      throw new StageNotFoundException(stageId);
+    }
+  }
+
+   public synchronized String getTaskGroupInfo(final String taskGroupId) throws TaskGroupNotFoundException {
+    if (idToTaskGroupStates.containsKey(taskGroupId)) {
+      final TaskGroupState taskGroupState = idToTaskGroupStates.get(taskGroupId);
+      final Enum state = taskGroupState.getStateMachine().getCurrentState();
+      final Long elapsedTimeNanos;
+      final List<String> metrics = metricMessageHandler.getMetricByKey(taskGroupId);
+
+      if (state == TaskGroupState.State.EXECUTING) {
+        elapsedTimeNanos = System.nanoTime() - metricDataBuilderMap.get(taskGroupId).getStartTime();
+      } else {
+        elapsedTimeNanos = null;
+      }
+
+      return String.format("{\"id\": %s, \"state\": %s, \"elapsedTimeNanos\": %d, \"metrics\": %s}",
+          taskGroupId, taskGroupState, elapsedTimeNanos, metrics);
+
+    } else {
+      throw new TaskGroupNotFoundException(taskGroupId);
+    }
   }
 
   public synchronized StageState getStageState(final String stageId) {

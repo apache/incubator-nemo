@@ -82,7 +82,7 @@ public final class MasterHttpHandler implements HttpHandler {
       if (queryMap.isEmpty()) {
         result = Response.badRequest(String.format("The POST request should specify %s.", KEY_TASK_GROUP_ID));
       } else {
-        result = taskGroupInfo(queryMap);
+        result = onTaskGroupInfo(queryMap);
       }
       break;
     case "task-group-list":
@@ -92,6 +92,14 @@ public final class MasterHttpHandler implements HttpHandler {
         result = taskGroupList(queryMap);
       }
       break;
+    case "stage-info":
+      if (queryMap.isEmpty()) {
+        result = Response.badRequest(String.format("The POST request should specify %s.", KEY_STAGE_ID));
+      } else {
+        result = onStageInfo(queryMap);
+      }
+      break;
+
     case "job-info":
       result = onJobInfo();
       break;
@@ -107,6 +115,20 @@ public final class MasterHttpHandler implements HttpHandler {
       response.getOutputStream().println(message);
     } else {
       response.sendError(status, message);
+    }
+  }
+
+  private Response onStageInfo(final Map<String, List<String>> queryMap) {
+    final List<String> args = queryMap.get(KEY_STAGE_ID);
+    if (args.size() != 1) {
+      return Response.badRequest(String.format("Usage : only one %s at a time", KEY_STAGE_ID));
+    }
+
+    final String stageId = args.get(0);
+    try {
+      return Response.ok(runtimeMaster.get().getStageInfo(stageId));
+    } catch (final StageNotFoundException e) {
+      return Response.notFound(stageId);
     }
   }
 
@@ -132,7 +154,7 @@ public final class MasterHttpHandler implements HttpHandler {
     }
   }
 
-  private Response taskGroupInfo(final Map<String, List<String>> queryMap) {
+  private Response onTaskGroupInfo(final Map<String, List<String>> queryMap) {
     final List<String> args = queryMap.get(KEY_TASK_GROUP_ID);
     if (args.size() != 1) {
       return Response.badRequest(String.format("Usage : only one %s at a time", KEY_TASK_GROUP_ID));
