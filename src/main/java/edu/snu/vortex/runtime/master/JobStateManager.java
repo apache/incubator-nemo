@@ -487,11 +487,37 @@ public final class JobStateManager {
         elapsedTimeNanos = null;
       }
 
-      return String.format("{\"id\": %s, \"state\": %s, \"elapsedTimeNanos\": %d, \"metrics\": %s}",
-          taskGroupId, taskGroupState, elapsedTimeNanos, metrics);
+      return metrics.get(0);
+//      return String.format("{\"id\": %s, \"state\": %s, \"elapsedTimeNanos\": %d, \"metrics\": %s}",
+//          taskGroupId, taskGroupState, elapsedTimeNanos, metrics);
 
     } else {
       throw new TaskGroupNotFoundException(taskGroupId);
+    }
+  }
+
+  public synchronized String getTaskGroupList(final String stageId) throws StageNotFoundException {
+    try {
+      final List<TaskGroup> taskGroups = physicalPlan.getStageDAG().getVertexById(stageId).getTaskGroupList();
+      final StringBuilder sb = new StringBuilder();
+      sb.append("{\"taskGroups\": [");
+      taskGroups.forEach(taskGroup -> {
+        final String taskGroupId = taskGroup.getTaskGroupId();
+        final int taskGroupIdx = taskGroup.getTaskGroupIdx();
+        final DAG<Task, RuntimeEdge<Task>> taskDAG = taskGroup.getTaskDAG();
+        final String containerType = taskGroup.getContainerType();
+        final TaskGroupState taskGroupState = idToTaskGroupStates.get(taskGroupId);
+        sb.append("{\"taskGroupId\": \"").append(taskGroupId).append("\", ");
+        sb.append("\"taskGroupIdx\": ").append(taskGroupIdx).append(", ");
+        sb.append("\"taskDAG\": \"").append(taskDAG).append("\", ");
+        sb.append("\"containerType\": \"").append(containerType).append("\", ");
+        sb.append("\"taskGroupState\": \"").append(taskGroupState.toString()).append("\"},");
+      });
+      sb.deleteCharAt(sb.lastIndexOf(","));
+      sb.append("]}");
+      return sb.toString();
+    } catch (IllegalVertexOperationException e) {
+      throw new StageNotFoundException(stageId);
     }
   }
 

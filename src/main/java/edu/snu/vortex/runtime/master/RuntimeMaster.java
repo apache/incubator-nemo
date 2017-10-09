@@ -30,7 +30,6 @@ import edu.snu.vortex.runtime.common.message.MessageListener;
 import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.state.PartitionState;
-import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.*;
 import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
@@ -351,12 +350,7 @@ public final class RuntimeMaster {
   }
 
   public String getTaskGroupList(final String stageId) throws StageNotFoundException {
-    final StageState stageState = jobStateManager.getStageState(stageId);
-    if (stageState != null) {
-      return "not implemented yet";
-    } else {
-      throw new StageNotFoundException(stageId);
-    }
+    return jobStateManager.getTaskGroupList(stageId);
   }
 
   public String getTaskGroupInfo(final String taskGroupId) throws TaskGroupNotFoundException {

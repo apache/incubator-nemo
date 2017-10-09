@@ -176,8 +176,7 @@ public final class MasterHttpHandler implements HttpHandler {
 
     final String stageId = args.get(0);
     try {
-      runtimeMaster.get().getTaskGroupList(stageId);
-      return Response.badRequest("Not implemented yet");
+      return Response.ok(runtimeMaster.get().getTaskGroupList(stageId));
     } catch (final StageNotFoundException e) {
       return Response.notFound(stageId);
     }
