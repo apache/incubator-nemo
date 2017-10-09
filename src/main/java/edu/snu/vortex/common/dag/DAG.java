@@ -17,6 +17,7 @@ package edu.snu.vortex.common.dag;
 
 import edu.snu.vortex.compiler.ir.LoopVertex;
 import edu.snu.vortex.runtime.exception.IllegalEdgeOperationException;
+import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
@@ -95,6 +96,20 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
   // TODO #153: DAG conversion using Vertex/Edge Converters
   public <V2 extends Vertex, E2 extends Edge<V2>> DAG<V2, E2> convert(final Function<DAG<V, E>, DAG<V2, E2>> function) {
     return function.apply(this);
+  }
+
+  /**
+   * Retrieves the vertex given its ID.
+   * @param id of the vertex to retrieve
+   * @return the vertex
+   */
+  public V getVertexById(final String id) {
+    for (final V vertex : vertices) {
+      if (vertex.getId().equals(id)) {
+        return vertex;
+      }
+    }
+    throw new IllegalVertexOperationException("There is no vertex of id: " + id);
   }
 
   /**
