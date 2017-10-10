@@ -23,7 +23,6 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -44,15 +43,14 @@ public final class MemoryStore implements PartitionStore {
   }
 
   /**
-   * @see PartitionStore#getBlocks(String, HashRange).
+   * @see PartitionStore#getFromPartition(String, HashRange).
    */
   @Override
-  public Optional<CompletableFuture<Iterable<Element>>> getBlocks(final String partitionId,
-                                                                  final HashRange hashRange) {
+  public Optional<Iterable<Element>> getFromPartition(final String partitionId,
+                                                      final HashRange hashRange) {
     final MemoryPartition partition = partitionMap.get(partitionId);
 
     if (partition != null) {
-      final CompletableFuture<Iterable<Element>> future = new CompletableFuture<>();
       final Iterable<Block> blocks = partition.getBlocks();
       // Retrieves data in the hash range from the target partition
       final List<Iterable<Element>> retrievedData = new ArrayList<>();
@@ -62,32 +60,28 @@ public final class MemoryStore implements PartitionStore {
         }
       });
 
-      future.complete(concatBlocks(retrievedData));
-      return Optional.of(future);
+      return Optional.of(concatBlocks(retrievedData));
     } else {
       return Optional.empty();
     }
   }
 
   /**
-   * @see PartitionStore#putBlocks(String, Iterable, boolean).
+   * @see PartitionStore#putToPartition(String, Iterable, boolean).
    */
   @Override
-  public CompletableFuture<Optional<List<Long>>> putBlocks(final String partitionId,
-                                                           final Iterable<Block> blocks,
-                                                           final boolean commitPerBlock) {
+  public Optional<List<Long>> putToPartition(final String partitionId,
+                                             final Iterable<Block> blocks,
+                                             final boolean commitPerBlock) throws PartitionWriteException {
     partitionMap.putIfAbsent(partitionId, new MemoryPartition());
-    final CompletableFuture<Optional<List<Long>>> future = new CompletableFuture<>();
     try {
       partitionMap.get(partitionId).appendBlocks(blocks);
       // The partition is not serialized.
-      future.complete(Optional.empty());
+      return Optional.empty();
     } catch (final IOException e) {
       // The partition is committed already.
-      future.completeExceptionally(new PartitionWriteException(new Throwable("This partition is already committed.")));
+      throw new PartitionWriteException(new Throwable("This partition is already committed."));
     }
-
-    return future;
   }
 
   /**
@@ -107,8 +101,8 @@ public final class MemoryStore implements PartitionStore {
    * @see PartitionStore#removePartition(String).
    */
   @Override
-  public CompletableFuture<Boolean> removePartition(final String partitionId) {
-    return CompletableFuture.completedFuture(partitionMap.remove(partitionId) != null);
+  public Boolean removePartition(final String partitionId) {
+    return partitionMap.remove(partitionId) != null;
   }
 
   /**
