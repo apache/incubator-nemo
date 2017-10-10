@@ -105,7 +105,7 @@ This example configuration specifies
 ## Monitoring your job using web UI
 Vortex Compiler and Engine can store JSON representation of intermediate DAGs.
 * `-dag_dir` command line option is used to specify the directory where the JSON files are stored. The default directory is `./dag`.
-Using our [online visualizer](https://service.jangho.kr/vortex-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
+Using our [online visualizer](https://service.jangho.io/onyx-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
 
 ### Examples
 ```bash

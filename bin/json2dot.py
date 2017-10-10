@@ -17,7 +17,7 @@
 
 '''
 json2dot.py: Generates Graphviz representation of Vortex DAG::toString
-This file is used as backend for https://service.jangho.kr/vortex-dag
+This file is used as backend for https://service.jangho.io/onyx-dag/
 '''
 
 import sys
@@ -25,6 +25,9 @@ import json
 import re
 
 nextIdx = 0
+
+def edgePropertiesString(properties):
+    return '/'.join(['SideInput' if x[0] == 'IsSideInput' else x[1].split('.')[-1] for x in sorted(properties.items())])
 
 def getIdx():
     global nextIdx
@@ -152,7 +155,11 @@ class NormalVertex:
         if self.state is not None:
             label += '\\n({})'.format(self.state)
         try:
-            label += ' (p{})'.format(self.properties['executionProperties']['ParallelismProperty'])
+            label += ' (p{})'.format(self.properties['executionProperties']['Parallelism'])
+        except:
+            pass
+        try:
+            label += ' (s{})'.format(self.properties['executionProperties']['ScheduleGroupIndex'])
         except:
             pass
         try:
@@ -216,7 +223,7 @@ class LoopVertex:
     def dot(self):
         label = self.id
         try:
-            label += ' (p{})'.format(self.executionProperties['ParallelismProperty'])
+            label += ' (p{})'.format(self.executionProperties['Parallelism'])
         except:
             pass
         label += '\\n(Remaining iteration: {})'.format(self.remaining_iteration)
@@ -342,7 +349,7 @@ class IREdge:
             dst = dst.internalDstFor(self.id)
         except:
             pass
-        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.id, '/'.join(self.executionProperties.values()), self.coder)
+        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.id, edgePropertiesString(self.executionProperties), self.coder)
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(src.oneVertex.idx,
                 dst.oneVertex.idx, src.logicalEnd, dst.logicalEnd, label)
 
@@ -353,7 +360,7 @@ class PhysicalStageEdge:
         self.runtimeEdgeId = properties['runtimeEdgeId']
         self.edgeProperties = properties['edgeProperties']
         self.externalVertexAttr = properties['externalVertexAttr']
-        self.parallelism = self.externalVertexAttr['ParallelismProperty']
+        self.parallelism = self.externalVertexAttr['Parallelism']
         self.coder = properties['coder']
     @property
     def dot(self):
@@ -365,7 +372,7 @@ class PhysicalStageEdge:
                 color = 'green'
         except:
             pass
-        label = '{} (p{})<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, self.parallelism, '/'.join([x[1] for x in sorted(self.edgeProperties.items())]), self.coder)
+        label = '{} (p{})<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, self.parallelism, edgePropertiesString(self.edgeProperties), self.coder)
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>, color = {}];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label, color)
 
@@ -378,7 +385,7 @@ class StageEdge:
         self.coder = properties['coder']
     @property
     def dot(self):
-        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, '/'.join([x[1] for x in sorted(self.edgeProperties.items())]), self.coder)
+        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, edgePropertiesString(self.edgeProperties), self.coder)
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 
@@ -391,7 +398,7 @@ class RuntimeEdge:
         self.coder = properties['coder']
     @property
     def dot(self):
-        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, '/'.join([x[1] for x in sorted(self.edgeProperties.items())]), self.coder)
+        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, edgePropertiesString(self.edgeProperties), self.coder)
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 
