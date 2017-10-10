@@ -21,6 +21,6 @@ import org.apache.reef.tang.annotations.NamedParameter;
 /**
  * Metric flushing period.
  */
-@NamedParameter(doc = "Metric flushing period (ms)", short_name = "mf_period", default_value = "5000")
+@NamedParameter(doc = "Metric flushing period (ms)", short_name = "mf_period", default_value = "50")
 public final class MetricFlushPeriod implements Name<Long> {
 }
