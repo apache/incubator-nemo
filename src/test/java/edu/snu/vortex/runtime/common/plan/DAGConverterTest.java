@@ -147,7 +147,7 @@ public final class DAGConverterTest {
 
     // TODO #13: Implement Join Node
 //    final IRVertex v7 = new OperatorVertex(t);
-//    v7.setProperty(ParallelismProperty.of(2));
+//    v7.setProperty(Parallelism.of(2));
 //    v7.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
 
     final IRVertex v8 = new OperatorVertex(dt);

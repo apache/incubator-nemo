@@ -276,7 +276,7 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
           throw new RuntimeException("DAG execution property check: "
               + "DataSizeMetricCollection edge is not compatible with push" + e.getId());
         }));
-    // All vertices connected with OneToOne edge should have identical ParallelismProperty execution property.
+    // All vertices connected with OneToOne edge should have identical Parallelism execution property.
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
         .filter(e -> OneToOne.class.equals(e.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
         .filter(e -> !Boolean.TRUE.equals(e.isSideInput())).forEach(e -> {
