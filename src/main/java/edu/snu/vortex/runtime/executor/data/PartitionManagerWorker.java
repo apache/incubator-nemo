@@ -110,7 +110,7 @@ public final class PartitionManagerWorker {
    * @param runtimeEdgeId  id of the runtime edge that corresponds to the partition.
    * @param partitionStore for the data storage.
    * @param hashRange      the hash range descriptor
-   * @return a {@link CompletableFuture} for the partition.
+   * @return the result data in the partition.
    */
   public CompletableFuture<Iterable<Element>> retrieveDataFromPartition(
       final String partitionId,
@@ -121,11 +121,11 @@ public final class PartitionManagerWorker {
     final PartitionStore store = getPartitionStore(partitionStore);
 
     // First, try to fetch the partition from local PartitionStore.
-    final Optional<CompletableFuture<Iterable<Element>>> optionalResultData = store.getBlocks(partitionId, hashRange);
+    final Optional<Iterable<Element>> optionalResultData = store.getFromPartition(partitionId, hashRange);
 
     if (optionalResultData.isPresent()) {
       // Partition resides in this evaluator!
-      return optionalResultData.get();
+      return CompletableFuture.completedFuture(optionalResultData.get());
     } else if (partitionStore.equals(GlusterFileStore.class)) {
       throw new PartitionFetchException(new Throwable("Cannot find a partition in remote store."));
     } else {
@@ -188,17 +188,17 @@ public final class PartitionManagerWorker {
    * @param blocks         to save to a partition.
    * @param partitionStore to store the partition.
    * @param commitPerBlock whether commit every block write or not.
-   * @return a {@link CompletableFuture} of the size of each written block.
+   * @return a {@link Optional} of the size of each written block.
    */
-  public CompletableFuture<Optional<List<Long>>> putBlocks(final String partitionId,
-                                                           final Iterable<Block> blocks,
-                                                           final Class<? extends PartitionStore> partitionStore,
-                                                           final boolean commitPerBlock) {
+  public Optional<List<Long>> putBlocks(final String partitionId,
+                                        final Iterable<Block> blocks,
+                                        final Class<? extends PartitionStore> partitionStore,
+                                        final boolean commitPerBlock) {
     LOG.info("PutBlocks: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
 
     try {
-      return store.putBlocks(partitionId, blocks, commitPerBlock);
+      return store.putToPartition(partitionId, blocks, commitPerBlock);
     } catch (final Exception e) {
       throw new PartitionWriteException(e);
     }
@@ -271,11 +271,7 @@ public final class PartitionManagerWorker {
     LOG.info("RemovePartition: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
     final boolean exist;
-    try {
-      exist = store.removePartition(partitionId).get();
-    } catch (final InterruptedException | ExecutionException e) {
-      throw new PartitionFetchException(e);
-    }
+    exist = store.removePartition(partitionId);
 
     if (exist) {
       final ControlMessage.PartitionStateChangedMsg.Builder partitionStateChangedMsgBuilder =

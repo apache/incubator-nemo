@@ -21,14 +21,10 @@ import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BeamElement;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
-import edu.snu.vortex.runtime.common.comm.ControlMessage;
-import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
-import edu.snu.vortex.runtime.common.message.MessageListener;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.vortex.runtime.common.state.PartitionState;
-import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
 import org.apache.beam.sdk.coders.KvCoder;
@@ -323,16 +319,12 @@ public final class PartitionStoreTest {
             try {
               IntStream.range(writeTaskCount * NUM_READ_TASKS, (writeTaskCount + 1) * NUM_READ_TASKS).forEach(
                   partitionNumber -> {
-                    try {
-                      final String partitionId = partitionIdList.get(partitionNumber);
-                      writerSideStore.putBlocks(partitionId,
-                          Collections.singleton(partitionBlockList.get(partitionNumber)), false).get();
-                      writerSideStore.commitPartition(partitionId);
-                      partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED,
-                          "Writer side of the scatter gather edge", writeTaskCount);
-                    } catch (final InterruptedException | ExecutionException e) {
-                      throw new RuntimeException(e);
-                    }
+                    final String partitionId = partitionIdList.get(partitionNumber);
+                    writerSideStore.putToPartition(partitionId,
+                        Collections.singleton(partitionBlockList.get(partitionNumber)), false);
+                    writerSideStore.commitPartition(partitionId);
+                    partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED,
+                        "Writer side of the scatter gather edge", writeTaskCount);
                   });
               return true;
             } catch (final Exception e) {
@@ -360,23 +352,19 @@ public final class PartitionStoreTest {
             try {
               IntStream.range(0, NUM_WRITE_TASKS).forEach(
                   writeTaskNumber -> {
-                    try {
-                      final int partitionNumber = writeTaskNumber * NUM_READ_TASKS + readTaskCount;
-                      final Optional<CompletableFuture<Iterable<Element>>> optionalData =
-                          readerSideStore.getBlocks(partitionIdList.get(partitionNumber), HashRange.all());
-                      if (!optionalData.isPresent()) {
-                        throw new RuntimeException("The result of retrieveData(" +
-                            partitionIdList.get(partitionNumber) + ") is empty");
-                      }
-                      assertEquals(partitionBlockList.get(partitionNumber).getData(), optionalData.get().get());
+                    final int partitionNumber = writeTaskNumber * NUM_READ_TASKS + readTaskCount;
+                    final Optional<Iterable<Element>> optionalData =
+                        readerSideStore.getFromPartition(partitionIdList.get(partitionNumber), HashRange.all());
+                    if (!optionalData.isPresent()) {
+                      throw new RuntimeException("The result of retrieveData(" +
+                          partitionIdList.get(partitionNumber) + ") is empty");
+                    }
+                    assertEquals(partitionBlockList.get(partitionNumber).getData(), optionalData.get());
 
-                      final boolean exist = readerSideStore.removePartition(partitionIdList.get(partitionNumber)).get();
-                      if (!exist) {
-                        throw new RuntimeException("The result of removePartition(" +
-                            partitionIdList.get(partitionNumber) + ") is false");
-                      }
-                    } catch (final InterruptedException | ExecutionException e) {
-                      throw new RuntimeException(e);
+                    final boolean exist = readerSideStore.removePartition(partitionIdList.get(partitionNumber));
+                    if (!exist) {
+                      throw new RuntimeException("The result of removePartition(" +
+                          partitionIdList.get(partitionNumber) + ") is false");
                     }
                   });
               return true;
@@ -417,7 +405,7 @@ public final class PartitionStoreTest {
    */
   private void concurrentRead(final PartitionStore writerSideStore,
                               final PartitionStore readerSideStore) {
-    final ExecutorService writeExecutor = Executors.newSingleThreadExecutor() ;
+    final ExecutorService writeExecutor = Executors.newSingleThreadExecutor();
     final ExecutorService readExecutor = Executors.newFixedThreadPool(NUM_CONC_READ_TASKS);
     final Future<Boolean> writeFuture;
     final List<Future<Boolean>> readFutureList = new ArrayList<>(NUM_CONC_READ_TASKS);
@@ -428,7 +416,7 @@ public final class PartitionStoreTest {
       @Override
       public Boolean call() {
         try {
-          writerSideStore.putBlocks(concPartitionId, Collections.singleton(concPartitionBlock), false).get();
+          writerSideStore.putToPartition(concPartitionId, Collections.singleton(concPartitionBlock), false);
           writerSideStore.commitPartition(concPartitionId);
           partitionManagerMaster.onPartitionStateChanged(
               concPartitionId, PartitionState.State.COMMITTED, "Writer side of the concurrent read edge", 0);
@@ -454,13 +442,13 @@ public final class PartitionStoreTest {
           @Override
           public Boolean call() {
             try {
-              final Optional<CompletableFuture<Iterable<Element>>> optionalData =
-                  readerSideStore.getBlocks(concPartitionId, HashRange.all());
+              final Optional<Iterable<Element>> optionalData =
+                  readerSideStore.getFromPartition(concPartitionId, HashRange.all());
               if (!optionalData.isPresent()) {
                 throw new RuntimeException("The result of retrieveData(" +
                     concPartitionId + ") is empty");
               }
-              assertEquals(concPartitionBlock.getData(), optionalData.get().get());
+              assertEquals(concPartitionBlock.getData(), optionalData.get());
               return true;
             } catch (final Exception e) {
               e.printStackTrace();
@@ -479,13 +467,9 @@ public final class PartitionStoreTest {
     });
 
     // Remove the partition
-    try {
-      final boolean exist = writerSideStore.removePartition(concPartitionId).get();
-      if (!exist) {
-        throw new RuntimeException("The result of removePartition(" + concPartitionId + ") is false");
-      }
-    } catch (final InterruptedException | ExecutionException e) {
-      throw new RuntimeException(e);
+    final boolean exist = writerSideStore.removePartition(concPartitionId);
+    if (!exist) {
+      throw new RuntimeException("The result of removePartition(" + concPartitionId + ") is false");
     }
     final long readEndNano = System.nanoTime();
 
@@ -522,8 +506,8 @@ public final class PartitionStoreTest {
           public Boolean call() {
             try {
               final String partitionId = hashedPartitionIdList.get(writeTaskCount);
-              writerSideStore.putBlocks(partitionId,
-                  hashedPartitionBlockList.get(writeTaskCount), false).get();
+              writerSideStore.putToPartition(partitionId,
+                  hashedPartitionBlockList.get(writeTaskCount), false);
               writerSideStore.commitPartition(partitionId);
               partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED,
                   "Writer side of the scatter gather in hash range edge", writeTaskCount);
@@ -553,21 +537,16 @@ public final class PartitionStoreTest {
             try {
               IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(
                   writeTaskNumber -> {
-                    try {
-                      final HashRange hashRangeToRetrieve = readHashRangeList.get(readTaskCount);
-                      final Optional<CompletableFuture<Iterable<Element>>> optionalData =
-                          readerSideStore.getBlocks(
-                              hashedPartitionIdList.get(writeTaskNumber), hashRangeToRetrieve);
-                      if (!optionalData.isPresent()) {
-                        throw new RuntimeException("The result of get partition" +
-                            hashedPartitionIdList.get(writeTaskNumber) + " in range " + hashRangeToRetrieve.toString() +
-                            " is empty");
-                      }
-                      assertEquals(
-                          expectedDataInRange.get(readTaskCount).get(writeTaskNumber), optionalData.get().get());
-                    } catch (final InterruptedException | ExecutionException e) {
-                      throw new RuntimeException(e);
+                    final HashRange hashRangeToRetrieve = readHashRangeList.get(readTaskCount);
+                    final Optional<Iterable<Element>> optionalData = readerSideStore.getFromPartition(
+                        hashedPartitionIdList.get(writeTaskNumber), hashRangeToRetrieve);
+                    if (!optionalData.isPresent()) {
+                      throw new RuntimeException("The result of get partition" +
+                          hashedPartitionIdList.get(writeTaskNumber) + " in range " + hashRangeToRetrieve.toString() +
+                          " is empty");
                     }
+                    assertEquals(
+                        expectedDataInRange.get(readTaskCount).get(writeTaskNumber), optionalData.get());
                   });
               return true;
             } catch (final Exception e) {
@@ -590,14 +569,10 @@ public final class PartitionStoreTest {
 
     // Remove stored partitions
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writer -> {
-      try {
-        final boolean exist = writerSideStore.removePartition(hashedPartitionIdList.get(writer)).get();
-        if (!exist) {
-          throw new RuntimeException("The result of removePartition(" +
-              hashedPartitionIdList.get(writer) + ") is false");
-        }
-      } catch (final InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
+      final boolean exist = writerSideStore.removePartition(hashedPartitionIdList.get(writer));
+      if (!exist) {
+        throw new RuntimeException("The result of removePartition(" +
+            hashedPartitionIdList.get(writer) + ") is false");
       }
     });
 
@@ -634,13 +609,9 @@ public final class PartitionStoreTest {
               final List<Block> blockToAppend = new ArrayList<>(CONC_WRITE_BLOCK_NUM);
               IntStream.range(0, CONC_WRITE_BLOCK_NUM).forEach(blockIdx ->
                   blockToAppend.add(new Block(blockIdx, concWriteBlocks)));
-              try {
-                writerSideStore.putBlocks(concWritePartitionId, blockToAppend, false).get();
-                partitionManagerMaster.onPartitionStateChanged(concWritePartitionId, PartitionState.State.COMMITTED,
-                    "Writer side of the concurrent write edge", writeTaskCount);
-              } catch (final InterruptedException | ExecutionException e) {
-                throw new RuntimeException(e);
-              }
+              writerSideStore.putToPartition(concWritePartitionId, blockToAppend, false);
+              partitionManagerMaster.onPartitionStateChanged(concWritePartitionId, PartitionState.State.COMMITTED,
+                  "Writer side of the concurrent write edge", writeTaskCount);
               return true;
             } catch (final Exception e) {
               e.printStackTrace();
@@ -665,24 +636,20 @@ public final class PartitionStoreTest {
       @Override
       public Boolean call() {
         try {
-          try {
-            final Optional<CompletableFuture<Iterable<Element>>> optionalData =
-                readerSideStore.getBlocks(concWritePartitionId, HashRange.all());
-            if (!optionalData.isPresent()) {
-              throw new RuntimeException("The result of retrieveData(" + concWritePartitionId + ") is empty");
-            }
-            final List<List<Element>> expectedResults =
-                new ArrayList<>(CONC_WRITE_BLOCK_NUM * NUM_CONC_WRITE_TASKS);
-            IntStream.range(0, CONC_WRITE_BLOCK_NUM * NUM_CONC_WRITE_TASKS).
-                forEach(blockIdx -> expectedResults.add(concWriteBlocks));
-            assertEquals(flatten(expectedResults), optionalData.get().get());
+          final Optional<Iterable<Element>> optionalData =
+              readerSideStore.getFromPartition(concWritePartitionId, HashRange.all());
+          if (!optionalData.isPresent()) {
+            throw new RuntimeException("The result of retrieveData(" + concWritePartitionId + ") is empty");
+          }
+          final List<List<Element>> expectedResults =
+              new ArrayList<>(CONC_WRITE_BLOCK_NUM * NUM_CONC_WRITE_TASKS);
+          IntStream.range(0, CONC_WRITE_BLOCK_NUM * NUM_CONC_WRITE_TASKS).
+              forEach(blockIdx -> expectedResults.add(concWriteBlocks));
+          assertEquals(flatten(expectedResults), optionalData.get());
 
-            final boolean exist = readerSideStore.removePartition(concWritePartitionId).get();
-            if (!exist) {
-              throw new RuntimeException("The result of removePartition(" + concWritePartitionId + ") is false");
-            }
-          } catch (final InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
+          final boolean exist = readerSideStore.removePartition(concWritePartitionId);
+          if (!exist) {
+            throw new RuntimeException("The result of removePartition(" + concWritePartitionId + ") is false");
           }
 
           return true;
