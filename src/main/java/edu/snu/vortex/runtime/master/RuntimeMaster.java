@@ -46,6 +46,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static edu.snu.vortex.runtime.common.state.TaskGroupState.State.COMPLETE;
 import static edu.snu.vortex.runtime.common.state.TaskGroupState.State.ON_HOLD;
@@ -334,8 +335,11 @@ public final class RuntimeMaster {
 
   public String getExecutorsState() {
     return String.format("{\"running\": %s, \"failed\": %s}",
-        containerManager.getExecutorRepresenterMap().keySet(),
-        containerManager.getFailedExecutorRepresenterMap().keySet());
+        containerManager.getExecutorRepresenterMap().keySet()
+            .stream().map(v -> "\"" + v + "\"").collect(Collectors.toSet()),
+        containerManager.getFailedExecutorRepresenterMap().keySet()
+            .stream().map(v -> "\"" + v + "\"").collect(Collectors.toSet())
+    );
   }
 
   public String getTaskGroups(final String executorId) throws ExecutorNotFoundException {
@@ -343,7 +347,9 @@ public final class RuntimeMaster {
     if (executors.containsKey(executorId)) {
       final ExecutorRepresenter executorRepresenter = executors.get(executorId);
       return String.format("{\"running\": %s, \"complete\": %s}",
-          executorRepresenter.getRunningTaskGroups(), executorRepresenter.getCompleteTaskGroups());
+          executorRepresenter.getRunningTaskGroups().stream().map(v -> "\"" + v + "\"").collect(Collectors.toSet()),
+          executorRepresenter.getCompleteTaskGroups().stream().map(v -> "\"" + v + "\"").collect(Collectors.toSet())
+      );
     } else {
       throw new ExecutorNotFoundException(executorId);
     }
