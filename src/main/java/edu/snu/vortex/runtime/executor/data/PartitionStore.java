@@ -16,11 +16,11 @@
 package edu.snu.vortex.runtime.executor.data;
 
 import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.runtime.exception.PartitionFetchException;
 import edu.snu.vortex.runtime.exception.PartitionWriteException;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Interface for partition placement.
@@ -34,14 +34,13 @@ public interface PartitionStore {
    * @param hashRange   the hash range.
    * TODO #463: Support incremental write. Consider returning Blocks in some "subscribable" data structure.
    * @return the result data from the target partition (if the target partition exists).
-   *         (the future completes exceptionally with {@link edu.snu.vortex.runtime.exception.PartitionFetchException}
-   *          for any error occurred while trying to fetch a partition.
-   *          This exception will be thrown to the {@link edu.snu.vortex.runtime.master.scheduler.Scheduler}
+   * @throws PartitionFetchException for any error occurred while trying to fetch a partition.
+   *         (This exception will be thrown to the {@link edu.snu.vortex.runtime.master.scheduler.Scheduler}
    *          through {@link edu.snu.vortex.runtime.executor.Executor} and
    *          have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  Optional<CompletableFuture<Iterable<Element>>> getBlocks(String partitionId,
-                                                           HashRange hashRange);
+  Optional<Iterable<Element>> getFromPartition(String partitionId,
+                                               HashRange hashRange) throws PartitionFetchException;
 
   /**
    * Saves an iterable of data blocks to a partition.
@@ -54,15 +53,14 @@ public interface PartitionStore {
    * @param blocks         to save to a partition.
    * @param commitPerBlock whether commit every block write or not.
    * @return the size of the data per block (only when the data is serialized).
-   *         (the future completes with {@link edu.snu.vortex.runtime.exception.PartitionWriteException}
-   *          for any error occurred while trying to write a partition.
-   *          This exception will be thrown to the {@link edu.snu.vortex.runtime.master.scheduler.Scheduler}
+   * @throws PartitionWriteException for any error occurred while trying to write a partition.
+   *         (This exception will be thrown to the {@link edu.snu.vortex.runtime.master.scheduler.Scheduler}
    *          through {@link edu.snu.vortex.runtime.executor.Executor} and
    *          have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  CompletableFuture<Optional<List<Long>>> putBlocks(String partitionId,
-                                                    Iterable<Block> blocks,
-                                                    boolean commitPerBlock);
+  Optional<List<Long>> putToPartition(String partitionId,
+                                      Iterable<Block> blocks,
+                                      boolean commitPerBlock) throws PartitionWriteException;
 
   /**
    * Notifies that all writes for a partition is end.
@@ -82,11 +80,10 @@ public interface PartitionStore {
    *
    * @param partitionId of the partition.
    * @return whether the partition exists or not.
-   *         (the future completes exceptionally with {@link edu.snu.vortex.runtime.exception.PartitionFetchException}
-   *          for any error occurred while trying to remove a partition.
-   *          This exception will be thrown to the {@link edu.snu.vortex.runtime.master.scheduler.Scheduler}
+   * @throws PartitionFetchException for any error occurred while trying to remove a partition.
+   *         (This exception will be thrown to the {@link edu.snu.vortex.runtime.master.scheduler.Scheduler}
    *          through {@link edu.snu.vortex.runtime.executor.Executor} and
-   *          have to be handled by the scheduler with fault tolerance mechanism.))
+   *          have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  CompletableFuture<Boolean> removePartition(String partitionId);
+  Boolean removePartition(String partitionId);
 }

@@ -42,7 +42,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
@@ -125,9 +124,8 @@ public final class OutputWriter extends DataTransfer {
     final Block blockToWrite = new Block(dataToWrite);
 
     // Write data.
-    final CompletableFuture future = partitionManagerWorker.putBlocks(
+    partitionManagerWorker.putBlocks(
         partitionId, Collections.singleton(blockToWrite), channelDataPlacement, false);
-    future.get(); // Synchronize.
 
     // Commit partition.
     partitionManagerWorker.commitPartition(
@@ -161,9 +159,8 @@ public final class OutputWriter extends DataTransfer {
           final Block blockToWrite = new Block(partitionedOutputList.get(partitionIdx));
 
           // Write data.
-          final CompletableFuture future = partitionManagerWorker.putBlocks(
+          partitionManagerWorker.putBlocks(
               partitionId, Collections.singleton(blockToWrite), channelDataPlacement, false);
-          future.get(); // synchronize.
 
           // Commit partition.
           partitionManagerWorker.commitPartition(
@@ -214,9 +211,8 @@ public final class OutputWriter extends DataTransfer {
     }
 
     // Write data.
-    final CompletableFuture<Optional<List<Long>>> future = partitionManagerWorker.putBlocks(
+    final Optional<List<Long>> optionalBlockSize = partitionManagerWorker.putBlocks(
         partitionId, blockList, channelDataPlacement, false);
-    final Optional<List<Long>> optionalBlockSize = future.get(); // synchronize.
     if (optionalBlockSize.isPresent()) {
       // Commit partition.
       partitionManagerWorker.commitPartition(
@@ -273,9 +269,8 @@ public final class OutputWriter extends DataTransfer {
       }
 
       // Write data.
-      final CompletableFuture future = partitionManagerWorker.putBlocks(
+      partitionManagerWorker.putBlocks(
           partitionId, blockList, channelDataPlacement, false);
-      future.get(); // synchronize.
 
       // Commit partition.
       partitionManagerWorker.commitPartition(
