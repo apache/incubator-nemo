@@ -130,8 +130,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.DriverMemMb.class);
     cl.registerShortNameOfClass(JobConf.ExecutorJsonPath.class);
     cl.registerShortNameOfClass(JobConf.JVMHeapSlack.class);
-    cl.registerShortNameOfClass(JobConf.LocalFileStoreNumThreads.class);
-    cl.registerShortNameOfClass(JobConf.GlusterFileStoreNumThreads.class);
+    cl.registerShortNameOfClass(JobConf.IORequestHandleThreadsTotal.class);
     cl.registerShortNameOfClass(JobConf.SchedulerTimeoutMs.class);
     cl.registerShortNameOfClass(JobConf.MaxScheduleAttempt.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransferInboundNumThreads.class);

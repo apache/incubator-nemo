@@ -33,8 +33,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Stores partitions in a mounted GlusterFS volume.
@@ -50,20 +48,17 @@ import java.util.concurrent.Executors;
 public final class GlusterFileStore extends FileStore implements RemoteFileStore {
   public static final String SIMPLE_NAME = "GlusterFileStore";
 
-  private final ExecutorService executorService;
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
   private final String executorId;
 
   @Inject
   private GlusterFileStore(@Parameter(JobConf.GlusterVolumeDirectory.class) final String volumeDirectory,
                            @Parameter(JobConf.JobId.class) final String jobId,
-                           @Parameter(JobConf.GlusterFileStoreNumThreads.class) final int numThreads,
                            @Parameter(JobConf.ExecutorId.class) final String executorId,
                            final InjectionFuture<PartitionManagerWorker> partitionManagerWorker,
                            final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
     super(volumeDirectory + "/" + jobId, partitionManagerWorker);
     new File(getFileDirectory()).mkdirs();
-    this.executorService = Executors.newFixedThreadPool(numThreads);
     this.executorId = executorId;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
   }
