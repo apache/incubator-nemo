@@ -119,19 +119,11 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Number of I/O threads for {@link edu.snu.vortex.runtime.executor.data.LocalFileStore}.
+   * Number of I/O threads for partition fetch requests from other executor.
    */
-  @NamedParameter(doc = "Number of I/O threads for LocalFileStore", short_name = "local_file_threads",
+  @NamedParameter(doc = "Number of I/O threads for partition fetch request.", short_name = "io_request_threads",
       default_value = "5")
-  public final class LocalFileStoreNumThreads implements Name<Integer> {
-  }
-
-  /**
-   * Number of I/O threads for {@link edu.snu.vortex.runtime.executor.data.GlusterFileStore}.
-   */
-  @NamedParameter(doc = "Number of I/O threads for GlusterFileStore", short_name = "gluster_file_threads",
-      default_value = "5")
-  public final class GlusterFileStoreNumThreads implements Name<Integer> {
+  public final class IORequestHandleThreadsTotal implements Name<Integer> {
   }
 
   /**
