@@ -48,21 +48,17 @@ public final class PartitionManagerWorker {
   private static final String REMOTE_FILE_STORE = "REMOTE_FILE_STORE";
 
   private final String executorId;
-
   private final MemoryStore memoryStore;
-
   private final LocalFileStore localFileStore;
-
   private final RemoteFileStore remoteFileStore;
-
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
-
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder;
-
   private final PartitionTransfer partitionTransfer;
+  private final ExecutorService ioThreadExecutorService;
 
   @Inject
   private PartitionManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
+                                 @Parameter(JobConf.IORequestHandleThreadsTotal.class) final int numThreads,
                                  final MemoryStore memoryStore,
                                  final LocalFileStore localFileStore,
                                  final RemoteFileStore remoteFileStore,
@@ -75,6 +71,7 @@ public final class PartitionManagerWorker {
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
     this.partitionTransfer = partitionTransfer;
+    this.ioThreadExecutorService = Executors.newFixedThreadPool(numThreads);
   }
 
   /**
@@ -323,29 +320,33 @@ public final class PartitionManagerWorker {
     // We are getting the partition from local store!
     final Optional<Class<? extends PartitionStore>> partitionStoreOptional = outputStream.getPartitionStore();
     final Class<? extends PartitionStore> partitionStore = partitionStoreOptional.get();
-    if (partitionStore.equals(LocalFileStore.class) || partitionStore.equals(GlusterFileStore.class)) {
-      // TODO #492: Modularize the data communication pattern. Remove execution property value dependant code.
-      final FileStore fileStore = (FileStore) getPartitionStore(partitionStore);
-      try {
-        outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getPartitionId(),
-            outputStream.getHashRange())).close();
-      } catch (final IOException | PartitionFetchException e) {
-        LOG.error("Closing a pull request exceptionally", e);
-        outputStream.closeExceptionally(e);
-      }
-    } else {
-      final CompletableFuture<Iterable<Element>> partitionFuture =
-          retrieveDataFromPartition(outputStream.getPartitionId(), outputStream.getRuntimeEdgeId(),
-              partitionStore, outputStream.getHashRange());
-      partitionFuture.thenAcceptAsync(partition -> {
-        try {
-          outputStream.writeElements(partition).close();
-        } catch (final IOException e) {
-          LOG.error("Closing a pull request exceptionally", e);
-          outputStream.closeExceptionally(e);
+
+    ioThreadExecutorService.submit(new Runnable() {
+      @Override
+      public void run() {
+        if (partitionStore.equals(LocalFileStore.class) || partitionStore.equals(GlusterFileStore.class)) {
+          // TODO #492: Modularize the data communication pattern. Remove execution property value dependant code.
+          final FileStore fileStore = (FileStore) getPartitionStore(partitionStore);
+          try {
+            outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getPartitionId(),
+                outputStream.getHashRange())).close();
+          } catch (final IOException | PartitionFetchException e) {
+            LOG.error("Closing a pull request exceptionally", e);
+            outputStream.closeExceptionally(e);
+          }
+        } else {
+          try {
+            final Iterable<Element> partition =
+                retrieveDataFromPartition(outputStream.getPartitionId(), outputStream.getRuntimeEdgeId(),
+                    partitionStore, outputStream.getHashRange()).get();
+            outputStream.writeElements(partition).close();
+          } catch (final IOException | InterruptedException | ExecutionException e) {
+            LOG.error("Closing a pull request exceptionally", e);
+            outputStream.closeExceptionally(e);
+          }
         }
-      });
-    }
+      }
+    });
   }
 
   /**

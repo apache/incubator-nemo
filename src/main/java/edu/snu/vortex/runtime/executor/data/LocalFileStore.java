@@ -41,16 +41,13 @@ public final class LocalFileStore extends FileStore {
   public static final String SIMPLE_NAME = "LocalFileStore";
 
   private final Map<String, FilePartition> partitionIdToFilePartition;
-  private final ExecutorService executorService;
 
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
-                         @Parameter(JobConf.LocalFileStoreNumThreads.class) final int numThreads,
                          final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
     super(fileDirectory, partitionManagerWorker);
     this.partitionIdToFilePartition = new ConcurrentHashMap<>();
     new File(fileDirectory).mkdirs();
-    executorService = Executors.newFixedThreadPool(numThreads);
   }
 
   /**
