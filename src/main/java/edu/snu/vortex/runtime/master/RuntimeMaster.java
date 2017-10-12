@@ -22,7 +22,7 @@ import edu.snu.vortex.common.proxy.ClientEndpoint;
 import edu.snu.vortex.common.proxy.DriverEndpoint;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.DataSkewPass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.DataSkewCompositePass;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
@@ -35,7 +35,6 @@ import edu.snu.vortex.runtime.exception.ContainerException;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
 import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
-import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
@@ -82,7 +81,6 @@ public final class RuntimeMaster {
                        final ContainerManager containerManager,
                        final MetricMessageHandler metricMessageHandler,
                        final MessageEnvironment masterMessageEnvironment,
-                       final UpdatePhysicalPlanEventHandler handler,
                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
                        @Parameter(JobConf.MaxScheduleAttempt.class) final int maxScheduleAttempt) {
     this.scheduler = scheduler;
@@ -157,7 +155,7 @@ public final class RuntimeMaster {
           (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
       metricCollectionBarrierVertex.accumulateMetric(partitionId, blockSizeInfo);
     } else {
-      throw new RuntimeException("Something wrong happened at " + DataSkewPass.class.getSimpleName() + ". ");
+      throw new RuntimeException("Something wrong happened at " + DataSkewCompositePass.class.getSimpleName() + ". ");
     }
   }
 

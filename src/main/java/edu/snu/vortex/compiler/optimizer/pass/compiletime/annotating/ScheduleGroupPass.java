@@ -44,11 +44,6 @@ public final class ScheduleGroupPass extends AnnotatingPass {
     ).collect(Collectors.toSet()));
   }
 
-  @Override
-  public String getName() {
-    return SIMPLE_NAME;
-  }
-
   private static final int INITIAL_SCHEDULE_GROUP = 0;
 
   @Override

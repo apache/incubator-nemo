@@ -20,7 +20,6 @@ import edu.snu.vortex.compiler.CompilerTestUtil;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.common.dag.DAG;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.reshaping.LoopGroupingPass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -30,11 +29,11 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Test {@link LoopGroupingPass}.
+ * Test {@link LoopExtractionPass}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public class LoopGroupingPassTest {
+public class LoopExtractionPassTest {
   private DAG<IRVertex, IREdge> compiledDAG;
 
   @Before
@@ -44,7 +43,7 @@ public class LoopGroupingPassTest {
 
   @Test
   public void testLoopGrouping() throws Exception {
-    final DAG<IRVertex, IREdge> processedDAG = new LoopGroupingPass().apply(compiledDAG);
+    final DAG<IRVertex, IREdge> processedDAG = new LoopExtractionPass().apply(compiledDAG);
 
     assertEquals(9, processedDAG.getTopologicalSort().size());
   }

@@ -15,42 +15,43 @@
  */
 package edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating;
 
+import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
-import edu.snu.vortex.runtime.executor.data.GlusterFileStore;
+import edu.snu.vortex.runtime.executor.data.LocalFileStore;
 import edu.snu.vortex.runtime.executor.data.MemoryStore;
 import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
 
-import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
- * A pass to support Disaggregated Resources by tagging edges.
- * This pass handles the DataStore ExecutionProperty.
+ * Pass for initiating IREdge DataStore ExecutionProperty with default values.
+ * MemoryStore is default for OneToOne edges and LocalFileStore is default for the others.
  */
-public final class DisaggregationEdgeDataStorePass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "DisaggregationEdgeDataStorePass";
+public final class DefaultEdgeDataStorePass extends AnnotatingPass {
+  public static final String SIMPLE_NAME = "DefaultEdgeDataStorePass";
 
-  public DisaggregationEdgeDataStorePass() {
-    super(ExecutionProperty.Key.DataStore);
+  public DefaultEdgeDataStorePass() {
+    super(ExecutionProperty.Key.DataStore, Stream.of(
+        ExecutionProperty.Key.DataCommunicationPattern
+    ).collect(Collectors.toSet()));
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.getVertices().forEach(vertex -> {
-      final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
-      if (!inEdges.isEmpty()) {
-        inEdges.forEach(edge -> {
-          if (OneToOne.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
-            edge.setProperty(DataStoreProperty.of(MemoryStore.class));
-          } else {
-            edge.setProperty(DataStoreProperty.of(GlusterFileStore.class));
+    dag.topologicalDo(irVertex ->
+        dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
+          if (irEdge.getProperty(ExecutionProperty.Key.DataStore) == null) {
+            if (OneToOne.class.equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
+              irEdge.setProperty(DataStoreProperty.of(MemoryStore.class));
+            } else {
+              irEdge.setProperty(DataStoreProperty.of(LocalFileStore.class));
+            }
           }
-        });
-      }
-    });
+        }));
     return dag;
   }
 }

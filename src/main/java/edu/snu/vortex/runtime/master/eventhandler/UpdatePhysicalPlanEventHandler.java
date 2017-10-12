@@ -18,7 +18,6 @@
  */
 package edu.snu.vortex.runtime.master.eventhandler;
 
-import edu.snu.vortex.common.PubSubEventHandlerWrapper;
 import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.compiler.eventhandler.UpdatePhysicalPlanEvent;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
@@ -31,13 +30,19 @@ import javax.inject.Inject;
  * Class for handling event to update physical plan to the scheduler.
  */
 public final class UpdatePhysicalPlanEventHandler implements CompilerEventHandler<UpdatePhysicalPlanEvent> {
-  private final Scheduler scheduler;
+  private Scheduler scheduler;
 
   @Inject
-  private UpdatePhysicalPlanEventHandler(final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
-                                         final Scheduler scheduler) {
+  private UpdatePhysicalPlanEventHandler() {
+  }
+
+  public void setScheduler(final Scheduler scheduler) {
     this.scheduler = scheduler;
-    pubSubEventHandlerWrapper.getPubSubEventHandler().subscribe(UpdatePhysicalPlanEvent.class, this);
+  }
+
+  @Override
+  public Class<UpdatePhysicalPlanEvent> getEventClass() {
+    return UpdatePhysicalPlanEvent.class;
   }
 
   @Override

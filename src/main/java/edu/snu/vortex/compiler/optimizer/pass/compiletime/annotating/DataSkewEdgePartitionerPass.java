@@ -38,11 +38,6 @@ public final class DataSkewEdgePartitionerPass extends AnnotatingPass {
   }
 
   @Override
-  public String getName() {
-    return SIMPLE_NAME;
-  }
-
-  @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().forEach(vertex -> {
       if (vertex instanceof MetricCollectionBarrierVertex) {

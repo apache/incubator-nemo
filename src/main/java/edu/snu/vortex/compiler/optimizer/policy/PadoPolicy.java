@@ -17,10 +17,11 @@ package edu.snu.vortex.compiler.optimizer.policy;
 
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.*;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.*;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.LoopOptimizationPass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.PadoPass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.PadoCompositePass;
+import edu.snu.vortex.compiler.optimizer.pass.runtime.RuntimePass;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -28,16 +29,25 @@ import java.util.List;
  * link to paper: http://dl.acm.org/citation.cfm?id=3064181
  */
 public final class PadoPolicy implements Policy {
+  private final Policy policy;
+
+  public PadoPolicy() {
+    this.policy = new PolicyBuilder()
+        .registerCompileTimePass(new InitiationCompositePass())
+        .registerCompileTimePass(new LoopOptimizationCompositePass())
+        .registerCompileTimePass(new PadoCompositePass())
+        .registerCompileTimePass(new DefaultStagePartitioningPass())
+        .registerCompileTimePass(new ScheduleGroupPass())
+        .build();
+  }
+
   @Override
   public List<CompileTimePass> getCompileTimePasses() {
-    return  Arrays.asList(
-        new ParallelismPass(), // Provides parallelism information.
-        new DefaultPartitionerPass(), // TODO #515: Move to InitializePass
-        new LoopOptimizationPass(),
-        // Processes vertices and edges with Pado algorithm.
-        new PadoPass(),
-        new DefaultStagePartitioningPass(),
-        new ScheduleGroupPass()
-    );
+    return this.policy.getCompileTimePasses();
+  }
+
+  @Override
+  public List<RuntimePass<?>> getRuntimePasses() {
+    return this.policy.getRuntimePasses();
   }
 }

@@ -15,12 +15,12 @@
  */
 package edu.snu.vortex.compiler.optimizer.policy;
 
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.DefaultPartitionerPass;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.DefaultStagePartitioningPass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.ParallelismPass;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.ScheduleGroupPass;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.CompositePass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
+import edu.snu.vortex.compiler.optimizer.pass.runtime.RuntimePass;
 
 import java.util.Arrays;
 import java.util.List;
@@ -31,13 +31,23 @@ import java.util.List;
  * This example simply shows that users can define their own pass in their policy.
  */
 public final class DefaultPolicyWithSeparatePass implements Policy {
+  private final Policy policy;
+
+  public DefaultPolicyWithSeparatePass() {
+    this.policy = new PolicyBuilder()
+        .registerCompileTimePass(new InitiationCompositePass())
+        .registerCompileTimePass(new RefactoredPass())
+        .build();
+  }
+
   @Override
   public List<CompileTimePass> getCompileTimePasses() {
-    return Arrays.asList(
-        new ParallelismPass(),
-        new DefaultPartitionerPass(), // TODO #515: Move to InitializePass.
-        new RefactoredPass()
-    );
+    return this.policy.getCompileTimePasses();
+  }
+
+  @Override
+  public List<RuntimePass<?>> getRuntimePasses() {
+    return this.policy.getRuntimePasses();
   }
 
   /**
@@ -51,11 +61,6 @@ public final class DefaultPolicyWithSeparatePass implements Policy {
           new DefaultStagePartitioningPass(),
           new ScheduleGroupPass()
       ));
-    }
-
-    @Override
-    public String getName() {
-      return SIMPLE_NAME;
     }
   }
 }

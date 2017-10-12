@@ -15,24 +15,23 @@
  */
 package edu.snu.vortex.compiler.optimizer.pass.compiletime.composite;
 
-
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.*;
 
 import java.util.Arrays;
 
 /**
- * A series of passes to support Disaggregated Resources.
+ * Pass for initiating DAG ExecutionProperties with default values.
  */
-public final class DisaggregationPass extends CompositePass {
-  public static final String SIMPLE_NAME = "DisaggregationPass";
+public final class InitiationCompositePass extends CompositePass {
+  public static final String SIMPLE_NAME = "InitiationCompositePass";
 
-  public DisaggregationPass() {
+  public InitiationCompositePass() {
     super(Arrays.asList(
-        new DisaggregationVertexExecutorPlacementPass(),
-        new DisaggregationEdgeDataStorePass(),
-        new DisaggregationEdgeDataFlowModelPass(),
-        new DisaggregationEdgePartitionerPass(),
-        new IFilePass()
+        new ParallelismPass(),
+        new DefaultVertexExecutorPlacementPass(),
+        new DefaultPartitionerPass(),
+        new DefaultEdgeDataFlowModelPass(),
+        new DefaultEdgeDataStorePass()
     ));
   }
 }

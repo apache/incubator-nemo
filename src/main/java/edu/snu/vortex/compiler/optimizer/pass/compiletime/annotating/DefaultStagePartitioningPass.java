@@ -48,11 +48,6 @@ public final class DefaultStagePartitioningPass extends AnnotatingPass {
   }
 
   @Override
-  public String getName() {
-    return SIMPLE_NAME;
-  }
-
-  @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> irDAG) {
     final AtomicInteger stageNum = new AtomicInteger(0);
     final List<List<IRVertex>> vertexListForEachStage = groupVerticesByStage(irDAG);
@@ -72,7 +67,7 @@ public final class DefaultStagePartitioningPass extends AnnotatingPass {
     // Data structures used for stage partitioning.
     final HashMap<IRVertex, Integer> vertexStageNumHashMap = new HashMap<>();
     final List<List<IRVertex>> vertexListForEachStage = new ArrayList<>();
-    final AtomicInteger stageNumber = new AtomicInteger(0);
+    final AtomicInteger stageNumber = new AtomicInteger(1);
     final List<Integer> dependentStagesList = new ArrayList<>();
 
     // First, traverse the DAG topologically to add each vertices to a list associated with each of the stage number.
