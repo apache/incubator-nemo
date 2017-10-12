@@ -82,7 +82,7 @@ public final class JobLauncher {
     if (possibleError.isPresent()) {
       throw new RuntimeException(possibleError.get());
     } else {
-      LOG.info("Job successfully completed (at least it seems...)");
+      LOG.info("Job successfully completed");
     }
   }
 
@@ -130,8 +130,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.DriverMemMb.class);
     cl.registerShortNameOfClass(JobConf.ExecutorJsonPath.class);
     cl.registerShortNameOfClass(JobConf.JVMHeapSlack.class);
-    cl.registerShortNameOfClass(JobConf.LocalFileStoreNumThreads.class);
-    cl.registerShortNameOfClass(JobConf.GlusterFileStoreNumThreads.class);
+    cl.registerShortNameOfClass(JobConf.IORequestHandleThreadsTotal.class);
     cl.registerShortNameOfClass(JobConf.SchedulerTimeoutMs.class);
     cl.registerShortNameOfClass(JobConf.MaxScheduleAttempt.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransferInboundNumThreads.class);

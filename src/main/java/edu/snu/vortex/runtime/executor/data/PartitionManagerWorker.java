@@ -48,21 +48,17 @@ public final class PartitionManagerWorker {
   private static final String REMOTE_FILE_STORE = "REMOTE_FILE_STORE";
 
   private final String executorId;
-
   private final MemoryStore memoryStore;
-
   private final LocalFileStore localFileStore;
-
   private final RemoteFileStore remoteFileStore;
-
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
-
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder;
-
   private final PartitionTransfer partitionTransfer;
+  private final ExecutorService ioThreadExecutorService;
 
   @Inject
   private PartitionManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
+                                 @Parameter(JobConf.IORequestHandleThreadsTotal.class) final int numThreads,
                                  final MemoryStore memoryStore,
                                  final LocalFileStore localFileStore,
                                  final RemoteFileStore remoteFileStore,
@@ -75,6 +71,7 @@ public final class PartitionManagerWorker {
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
     this.partitionTransfer = partitionTransfer;
+    this.ioThreadExecutorService = Executors.newFixedThreadPool(numThreads);
   }
 
   /**
@@ -110,7 +107,7 @@ public final class PartitionManagerWorker {
    * @param runtimeEdgeId  id of the runtime edge that corresponds to the partition.
    * @param partitionStore for the data storage.
    * @param hashRange      the hash range descriptor
-   * @return a {@link CompletableFuture} for the partition.
+   * @return the result data in the partition.
    */
   public CompletableFuture<Iterable<Element>> retrieveDataFromPartition(
       final String partitionId,
@@ -121,11 +118,11 @@ public final class PartitionManagerWorker {
     final PartitionStore store = getPartitionStore(partitionStore);
 
     // First, try to fetch the partition from local PartitionStore.
-    final Optional<CompletableFuture<Iterable<Element>>> optionalResultData = store.getBlocks(partitionId, hashRange);
+    final Optional<Iterable<Element>> optionalResultData = store.getFromPartition(partitionId, hashRange);
 
     if (optionalResultData.isPresent()) {
       // Partition resides in this evaluator!
-      return optionalResultData.get();
+      return CompletableFuture.completedFuture(optionalResultData.get());
     } else if (partitionStore.equals(GlusterFileStore.class)) {
       throw new PartitionFetchException(new Throwable("Cannot find a partition in remote store."));
     } else {
@@ -188,17 +185,17 @@ public final class PartitionManagerWorker {
    * @param blocks         to save to a partition.
    * @param partitionStore to store the partition.
    * @param commitPerBlock whether commit every block write or not.
-   * @return a {@link CompletableFuture} of the size of each written block.
+   * @return a {@link Optional} of the size of each written block.
    */
-  public CompletableFuture<Optional<List<Long>>> putBlocks(final String partitionId,
-                                                           final Iterable<Block> blocks,
-                                                           final Class<? extends PartitionStore> partitionStore,
-                                                           final boolean commitPerBlock) {
+  public Optional<List<Long>> putBlocks(final String partitionId,
+                                        final Iterable<Block> blocks,
+                                        final Class<? extends PartitionStore> partitionStore,
+                                        final boolean commitPerBlock) {
     LOG.info("PutBlocks: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
 
     try {
-      return store.putBlocks(partitionId, blocks, commitPerBlock);
+      return store.putToPartition(partitionId, blocks, commitPerBlock);
     } catch (final Exception e) {
       throw new PartitionWriteException(e);
     }
@@ -271,11 +268,7 @@ public final class PartitionManagerWorker {
     LOG.info("RemovePartition: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
     final boolean exist;
-    try {
-      exist = store.removePartition(partitionId).get();
-    } catch (final InterruptedException | ExecutionException e) {
-      throw new PartitionFetchException(e);
-    }
+    exist = store.removePartition(partitionId);
 
     if (exist) {
       final ControlMessage.PartitionStateChangedMsg.Builder partitionStateChangedMsgBuilder =
@@ -327,29 +320,33 @@ public final class PartitionManagerWorker {
     // We are getting the partition from local store!
     final Optional<Class<? extends PartitionStore>> partitionStoreOptional = outputStream.getPartitionStore();
     final Class<? extends PartitionStore> partitionStore = partitionStoreOptional.get();
-    if (partitionStore.equals(LocalFileStore.class) || partitionStore.equals(GlusterFileStore.class)) {
-      // TODO #492: Modularize the data communication pattern. Remove execution property value dependant code.
-      final FileStore fileStore = (FileStore) getPartitionStore(partitionStore);
-      try {
-        outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getPartitionId(),
-            outputStream.getHashRange())).close();
-      } catch (final IOException | PartitionFetchException e) {
-        LOG.error("Closing a pull request exceptionally", e);
-        outputStream.closeExceptionally(e);
-      }
-    } else {
-      final CompletableFuture<Iterable<Element>> partitionFuture =
-          retrieveDataFromPartition(outputStream.getPartitionId(), outputStream.getRuntimeEdgeId(),
-              partitionStore, outputStream.getHashRange());
-      partitionFuture.thenAcceptAsync(partition -> {
-        try {
-          outputStream.writeElements(partition).close();
-        } catch (final IOException e) {
-          LOG.error("Closing a pull request exceptionally", e);
-          outputStream.closeExceptionally(e);
+
+    ioThreadExecutorService.submit(new Runnable() {
+      @Override
+      public void run() {
+        if (partitionStore.equals(LocalFileStore.class) || partitionStore.equals(GlusterFileStore.class)) {
+          // TODO #492: Modularize the data communication pattern. Remove execution property value dependant code.
+          final FileStore fileStore = (FileStore) getPartitionStore(partitionStore);
+          try {
+            outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getPartitionId(),
+                outputStream.getHashRange())).close();
+          } catch (final IOException | PartitionFetchException e) {
+            LOG.error("Closing a pull request exceptionally", e);
+            outputStream.closeExceptionally(e);
+          }
+        } else {
+          try {
+            final Iterable<Element> partition =
+                retrieveDataFromPartition(outputStream.getPartitionId(), outputStream.getRuntimeEdgeId(),
+                    partitionStore, outputStream.getHashRange()).get();
+            outputStream.writeElements(partition).close();
+          } catch (final IOException | InterruptedException | ExecutionException e) {
+            LOG.error("Closing a pull request exceptionally", e);
+            outputStream.closeExceptionally(e);
+          }
         }
-      });
-    }
+      }
+    });
   }
 
   /**
