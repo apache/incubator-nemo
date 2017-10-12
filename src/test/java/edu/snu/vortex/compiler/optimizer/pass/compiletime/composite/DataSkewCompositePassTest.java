@@ -40,11 +40,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Test {@link DataSkewPass} with MR workload.
+ * Test {@link DataSkewCompositePass} with MR workload.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public class DataSkewPassTest {
+public class DataSkewCompositePassTest {
   private DAG<IRVertex, IREdge> mrDAG;
   private static final long NUM_OF_PASSES_IN_DATA_SKEW_PASS = 6;
 
@@ -57,7 +57,7 @@ public class DataSkewPassTest {
    */
   @Test
   public void testCompositePass() {
-    final CompositePass dataSkewPass = new DataSkewPass();
+    final CompositePass dataSkewPass = new DataSkewCompositePass();
     assertEquals(NUM_OF_PASSES_IN_DATA_SKEW_PASS, dataSkewPass.getPassList().size());
 
     final Set<ExecutionProperty.Key> prerequisites = new HashSet<>();
@@ -67,7 +67,7 @@ public class DataSkewPassTest {
   }
 
   /**
-   * Test for {@link DataSkewPass} with MR workload. It must insert a {@link MetricCollectionBarrierVertex} before each
+   * Test for {@link DataSkewCompositePass} with MR workload. It must insert a {@link MetricCollectionBarrierVertex} before each
    * {@link OperatorVertex} with {@link GroupByKeyTransform}.
    * @throws Exception exception on the way.
    */
@@ -79,7 +79,7 @@ public class DataSkewPassTest {
         mrDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
             ScatterGather.class.equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))))
         .count();
-    final DAG<IRVertex, IREdge> processedDAG = new DataSkewPass().apply(mrDAG);
+    final DAG<IRVertex, IREdge> processedDAG = new DataSkewCompositePass().apply(mrDAG);
 
     assertEquals(originalVerticesNum + numOfScatterGatherEdges, processedDAG.getVertices().size());
     processedDAG.getVertices().stream().filter(irVertex -> irVertex instanceof OperatorVertex

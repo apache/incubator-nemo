@@ -40,7 +40,7 @@ public abstract class AnnotatingPass implements CompileTimePass {
     this.prerequisiteExecutionProperties = new HashSet<>();
   }
 
-  final ExecutionProperty.Key getExecutionPropertyToModify() {
+  public final ExecutionProperty.Key getExecutionPropertyToModify() {
     return keyOfExecutionPropertyToModify;
   }
 

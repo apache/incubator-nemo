@@ -16,14 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package edu.snu.vortex.runtime.master.eventhandler;
+package edu.snu.vortex.common;
 
-import edu.snu.vortex.common.CommonEventHandler;
-import edu.snu.vortex.compiler.eventhandler.CompilerEvent;
+
+import org.apache.reef.wake.EventHandler;
 
 /**
- * Class for handling events sent from Compiler.
- * @param <T> type of the compiler event to handle.
+ * Class for handling common events.
+ * @param <T> type of the event to handle.
  */
-public interface CompilerEventHandler<T extends CompilerEvent> extends CommonEventHandler<T> {
+public interface CommonEventHandler<T> extends EventHandler<T> {
+  Class<T> getEventClass();
 }

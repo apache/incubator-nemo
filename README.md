@@ -111,7 +111,7 @@ Using our [online visualizer](https://service.jangho.io/onyx-dag/), you can easi
 ```bash
 ./bin/run.sh \
   -user_main edu.snu.vortex.examples.beam.AlternatingLeastSquare \
-  -optimization_policy pado \
+  -optimization_policy edu.snu.vortex.compiler.optimizer.policy.PadoPolicy \
   -dag_dir "./dag/als" \
   -user_args "`pwd`/src/main/resources/sample_input_als 10 3"
 ```

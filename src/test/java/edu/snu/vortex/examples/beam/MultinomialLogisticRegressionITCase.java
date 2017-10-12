@@ -17,7 +17,6 @@ package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.client.JobLauncher;
 import edu.snu.vortex.compiler.CompilerTestUtil;
-import edu.snu.vortex.compiler.optimizer.policy.PadoPolicy;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -63,7 +62,7 @@ public final class MultinomialLogisticRegressionITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(CompilerTestUtil.padoPolicy)
         .build());
   }
 }

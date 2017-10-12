@@ -35,6 +35,7 @@ import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
+import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.resource.ResourceSpecification;
@@ -63,7 +64,7 @@ import static org.mockito.Mockito.when;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ContainerManager.class, PartitionManagerMaster.class,
-    PubSubEventHandlerWrapper.class, MetricMessageHandler.class})
+    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
 public final class BatchSchedulerTest {
   private static final Logger LOG = LoggerFactory.getLogger(BatchSchedulerTest.class.getName());
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
@@ -73,6 +74,7 @@ public final class BatchSchedulerTest {
   private MetricMessageHandler metricMessageHandler;
   private PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue;
   private PubSubEventHandlerWrapper pubSubEventHandler;
+  private UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler;
   private PartitionManagerMaster partitionManagerMaster = mock(PartitionManagerMaster.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
   private PhysicalPlanGenerator physicalPlanGenerator;
@@ -91,8 +93,10 @@ public final class BatchSchedulerTest {
     pendingTaskGroupPriorityQueue = new PendingTaskGroupPriorityQueue();
     schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TEST_TIMEOUT_MS);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
+    updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     scheduler =
-        new BatchScheduler(partitionManagerMaster, schedulingPolicy, pendingTaskGroupPriorityQueue, pubSubEventHandler);
+        new BatchScheduler(partitionManagerMaster, schedulingPolicy, pendingTaskGroupPriorityQueue,
+            pubSubEventHandler, updatePhysicalPlanEventHandler);
 
     final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();
     when(containerManager.getExecutorRepresenterMap()).thenReturn(executorRepresenterMap);

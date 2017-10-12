@@ -18,28 +18,25 @@ package edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.vertex.DynamicOptimizationProperty;
-import edu.snu.vortex.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
+import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
 
 /**
- * Pass to annotate the DAG for a job to perform data skew.
- * It specifies which optimization to perform on the MetricCollectionBarrierVertex.
+ * Pass for initiating IRVertex ExecutorPlacement ExecutionProperty with default values.
+ * NONE is the default value.
  */
-public final class DataSkewVertexPass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "DataSkewVertexPass";
+public final class DefaultVertexExecutorPlacementPass extends AnnotatingPass {
+  public static final String SIMPLE_NAME = "DefaultVertexExecutorPlacementPass";
 
-  public DataSkewVertexPass() {
-    super(ExecutionProperty.Key.DynamicOptimizationType);
+  public DefaultVertexExecutorPlacementPass() {
+    super(ExecutionProperty.Key.ExecutorPlacement);
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.topologicalDo(v -> {
-      // we only care about metric collection barrier vertices.
-      if (v instanceof MetricCollectionBarrierVertex) {
-        v.setProperty(DynamicOptimizationProperty.of(DataSkewRuntimePass.class));
+    dag.topologicalDo(irVertex -> {
+      if (irVertex.getProperty(ExecutionProperty.Key.ExecutorPlacement) == null) {
+        irVertex.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.NONE));
       }
     });
     return dag;

@@ -18,14 +18,8 @@ package edu.snu.vortex.compiler.ir.executionproperty;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataCommunicationPatternProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
-import edu.snu.vortex.runtime.executor.data.LocalFileStore;
-import edu.snu.vortex.runtime.executor.data.MemoryStore;
 import edu.snu.vortex.runtime.executor.datatransfer.communication.DataCommunicationPattern;
-import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
@@ -59,7 +53,7 @@ public final class ExecutionPropertyMap implements Serializable {
   public static ExecutionPropertyMap of(final IREdge irEdge,
                                         final Class<? extends DataCommunicationPattern> commPattern) {
     final ExecutionPropertyMap map = new ExecutionPropertyMap(irEdge.getId());
-    map.setDefaultEdgeExecutionProperties(commPattern);
+    map.put(DataCommunicationPatternProperty.of(commPattern));
     return map;
   }
   /**
@@ -69,30 +63,8 @@ public final class ExecutionPropertyMap implements Serializable {
    */
   public static ExecutionPropertyMap of(final IRVertex irVertex) {
     final ExecutionPropertyMap map = new ExecutionPropertyMap(irVertex.getId());
-    map.setDefaultVertexExecutionProperties();
+    map.put(ParallelismProperty.of(1));
     return map;
-  }
-
-  /**
-   * Putting default execution property for edges.
-   * @param commPattern Data communication pattern type of the edge.
-   */
-  private void setDefaultEdgeExecutionProperties(final Class<? extends DataCommunicationPattern> commPattern) {
-    this.put(DataCommunicationPatternProperty.of(commPattern));
-    this.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
-
-    if (OneToOne.class.equals(commPattern)) {
-      this.put(DataStoreProperty.of(MemoryStore.class));
-    } else {
-      this.put(DataStoreProperty.of(LocalFileStore.class));
-    }
-  }
-  /**
-   * Putting default execution property for vertices.
-   */
-  private void setDefaultVertexExecutionProperties() {
-    this.put(ExecutorPlacementProperty.of(ExecutorPlacementProperty.NONE));
-    this.put(ParallelismProperty.of(1));
   }
 
   /**

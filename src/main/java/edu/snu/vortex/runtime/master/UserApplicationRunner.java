@@ -17,14 +17,15 @@ package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.common.Pair;
+import edu.snu.vortex.common.PubSubEventHandlerWrapper;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.compiler.backend.Backend;
 import edu.snu.vortex.compiler.backend.vortex.VortexBackend;
+import edu.snu.vortex.compiler.eventhandler.DynamicOptimizationEventHandler;
 import edu.snu.vortex.compiler.frontend.Frontend;
 import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.eventhandler.DynamicOptimizationEventHandler;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.compiler.optimizer.policy.Policy;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
@@ -48,13 +49,15 @@ public final class UserApplicationRunner implements Runnable {
   private final RuntimeMaster runtimeMaster;
   private final Frontend frontend;
   private final Backend<PhysicalPlan> backend;
+  private final PubSubEventHandlerWrapper pubSubEventHandlerWrapper;
 
   @Inject
   private UserApplicationRunner(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
                                 @Parameter(JobConf.UserMainClass.class) final String className,
                                 @Parameter(JobConf.UserMainArguments.class) final String arguments,
                                 @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy,
-                                final DynamicOptimizationEventHandler handler,
+                                final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
+                                final DynamicOptimizationEventHandler dynamicOptimizationEventHandler,
                                 final RuntimeMaster runtimeMaster) {
     this.dagDirectory = dagDirectory;
     this.className = className;
@@ -63,6 +66,9 @@ public final class UserApplicationRunner implements Runnable {
     this.runtimeMaster = runtimeMaster;
     this.frontend = new BeamFrontend();
     this.backend = new VortexBackend();
+    this.pubSubEventHandlerWrapper = pubSubEventHandlerWrapper;
+    pubSubEventHandlerWrapper.getPubSubEventHandler()
+        .subscribe(dynamicOptimizationEventHandler.getEventClass(), dynamicOptimizationEventHandler);
   }
 
   @Override
@@ -91,12 +97,12 @@ public final class UserApplicationRunner implements Runnable {
 
   private static Pair<DAG<IRVertex, IREdge>, Policy> clientSideCompilation(final String className,
                                                                            final String[] arguments,
-                                                                           final String optimizationPolicyCanonicalName,
+                                                                           final String optimizationPolicy,
                                                                            final String dagDirectory) throws Exception {
     final DAG<IRVertex, IREdge> dag = new BeamFrontend().compile(className, arguments);
     dag.storeJSON(dagDirectory, "ir", "IR before optimization");
 
-    final Policy optimizationPolicy = (Policy) Class.forName(optimizationPolicyCanonicalName).newInstance();
-    return Pair.of(dag, optimizationPolicy);
+    final Policy derivedPolicy = (Policy) Class.forName(optimizationPolicy).newInstance();
+    return Pair.of(dag, derivedPolicy);
   }
 }

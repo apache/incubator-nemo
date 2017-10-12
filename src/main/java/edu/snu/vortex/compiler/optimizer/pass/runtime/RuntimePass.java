@@ -15,12 +15,11 @@
  */
 package edu.snu.vortex.compiler.optimizer.pass.runtime;
 
-import edu.snu.vortex.common.Pair;
-import edu.snu.vortex.compiler.eventhandler.RuntimeEventHandler;
+import edu.snu.vortex.common.CommonEventHandler;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.vortex.runtime.master.eventhandler.CompilerEventHandler;
 
 import java.io.Serializable;
+import java.util.Set;
 import java.util.function.BiFunction;
 
 /**
@@ -31,5 +30,5 @@ import java.util.function.BiFunction;
  */
 public interface RuntimePass<T> extends BiFunction<PhysicalPlan, T, PhysicalPlan>, Serializable {
   String getName();
-  Pair<Class<? extends CompilerEventHandler>, Class<? extends RuntimeEventHandler>> getEventHandlers();
+  Set<Class<? extends CommonEventHandler<?>>> getEventHandlers();
 }
