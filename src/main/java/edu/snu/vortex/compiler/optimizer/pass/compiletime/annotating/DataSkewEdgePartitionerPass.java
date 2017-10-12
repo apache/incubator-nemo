@@ -18,21 +18,23 @@ package edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
+import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
-import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.PartitionerProperty;
+import edu.snu.vortex.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
+import edu.snu.vortex.runtime.executor.datatransfer.partitioning.DataSkewHashPartitioner;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
- * A pass to support Disaggregated Resources by tagging edges.
- * This pass handles the DataFlowModel ExecutionProperty.
+ * Pado pass for tagging edges with {@link PartitionerProperty}.
  */
-public final class DisaggregationEdgeDataFlowModelPass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "DisaggregationEdgeDataFlowModelPass";
+public final class DataSkewEdgePartitionerPass extends AnnotatingPass {
+  public static final String SIMPLE_NAME = "DataSkewEdgePartitionerPass";
 
-  public DisaggregationEdgeDataFlowModelPass() {
-    super(ExecutionProperty.Key.DataFlowModel);
+  public DataSkewEdgePartitionerPass() {
+    super(ExecutionProperty.Key.Partitioner, Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }
 
   @Override
@@ -43,13 +45,12 @@ public final class DisaggregationEdgeDataFlowModelPass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().forEach(vertex -> {
-      final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
-      if (!inEdges.isEmpty()) {
-        inEdges.forEach(edge -> {
-          if (OneToOne.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
-            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
-          } else {
-            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+      if (vertex instanceof MetricCollectionBarrierVertex) {
+        final List<IREdge> outEdges = dag.getOutgoingEdgesOf(vertex);
+        outEdges.forEach(edge -> {
+          // double checking.
+          if (DataSkewRuntimePass.class.equals(edge.getProperty(ExecutionProperty.Key.MetricCollection))) {
+            edge.setProperty(PartitionerProperty.of(DataSkewHashPartitioner.class));
           }
         });
       }

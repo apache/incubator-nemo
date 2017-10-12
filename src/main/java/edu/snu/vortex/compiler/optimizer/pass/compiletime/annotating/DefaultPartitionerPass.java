@@ -19,20 +19,23 @@ import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
-import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.PartitionerProperty;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
+import edu.snu.vortex.runtime.executor.datatransfer.partitioning.HashPartitioner;
+import edu.snu.vortex.runtime.executor.datatransfer.partitioning.IntactPartitioner;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
- * A pass to support Disaggregated Resources by tagging edges.
- * This pass handles the DataFlowModel ExecutionProperty.
+ * Optimization pass for tagging {@link PartitionerProperty}
+ * execution property.
  */
-public final class DisaggregationEdgeDataFlowModelPass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "DisaggregationEdgeDataFlowModelPass";
+public final class DefaultPartitionerPass extends AnnotatingPass {
+  public static final String SIMPLE_NAME = "DefaultPartitionerPass";
 
-  public DisaggregationEdgeDataFlowModelPass() {
-    super(ExecutionProperty.Key.DataFlowModel);
+  public DefaultPartitionerPass() {
+    super(ExecutionProperty.Key.Partitioner, Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }
 
   @Override
@@ -42,17 +45,17 @@ public final class DisaggregationEdgeDataFlowModelPass extends AnnotatingPass {
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.getVertices().forEach(vertex -> {
+    dag.topologicalDo(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
-      if (!inEdges.isEmpty()) {
-        inEdges.forEach(edge -> {
-          if (OneToOne.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
-            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+      inEdges.forEach(edge -> {
+        if (edge.getProperty(ExecutionProperty.Key.Partitioner) == null) {
+          if (ScatterGather.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
+            edge.setProperty(PartitionerProperty.of(HashPartitioner.class));
           } else {
-            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+            edge.setProperty(PartitionerProperty.of(IntactPartitioner.class));
           }
-        });
-      }
+        }
+      });
     });
     return dag;
   }
