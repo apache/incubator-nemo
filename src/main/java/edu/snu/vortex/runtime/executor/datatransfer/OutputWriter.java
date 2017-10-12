@@ -153,19 +153,20 @@ public final class OutputWriter extends DataTransfer {
         });
 
         // Then write each partition appropriately to the target data placement.
-        for (int partitionIdx = 0; partitionIdx < dstParallelism; partitionIdx++) {
+        final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
+        final List<Block> blocksToWrite = new ArrayList<>(dstParallelism);
+        for (int dstIdx = 0; dstIdx < dstParallelism; dstIdx++) {
           // Give each partition its own partition id
-          final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx, partitionIdx);
-          final Block blockToWrite = new Block(partitionedOutputList.get(partitionIdx));
-
-          // Write data.
-          partitionManagerWorker.putBlocks(
-              partitionId, Collections.singleton(blockToWrite), channelDataPlacement, false);
-
-          // Commit partition.
-          partitionManagerWorker.commitPartition(
-              partitionId, channelDataPlacement, Collections.emptyList(), srcVertexId, srcTaskIdx);
+          blocksToWrite.add(new Block(dstIdx, partitionedOutputList.get(dstIdx)));
         }
+
+        // Write data.
+        partitionManagerWorker.putBlocks(
+            partitionId, blocksToWrite, channelDataPlacement, false);
+
+        // Commit partition.
+        partitionManagerWorker.commitPartition(
+            partitionId, channelDataPlacement, Collections.emptyList(), srcVertexId, srcTaskIdx);
         break;
       case Range.SIMPLE_NAME:
       default:

@@ -23,6 +23,7 @@ import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.executor.data.HashRange;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -57,7 +58,12 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     super(runtimeEdgeId, edgeProperties, srcStage, dstStage, coder, isSideInput);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
+    // Initialize the key range of each dst task.
     this.taskGroupIdToHashRangeMap = new HashMap<>();
+    final List<TaskGroup> taskGroups = dstStage.getTaskGroupList();
+    for (int taskIdx = 0; taskIdx < taskGroups.size(); taskIdx++) {
+      taskGroupIdToHashRangeMap.put(taskGroups.get(taskIdx).getTaskGroupId(), HashRange.of(taskIdx, taskIdx + 1));
+    }
   }
 
   public IRVertex getSrcVertex() {
