@@ -23,6 +23,6 @@ public final class MetricCollectionBarrierTask extends Task {
                               final String runtimeVertexId,
                               final int index,
                               final String taskGroupId) {
-    super(taskId, runtimeVertexId, index, taskGroupId);
+    super("MCTask-" + taskId, runtimeVertexId, index, taskGroupId);
   }
 }

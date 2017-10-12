@@ -28,7 +28,7 @@ public final class OperatorTask extends Task {
                       final int index,
                       final Transform transform,
                       final String taskGroupId) {
-    super(taskId, runtimeVertexId, index, taskGroupId);
+    super("OpTask-" + taskId + ": {" + transform + "}" , runtimeVertexId, index, taskGroupId);
     this.transform = transform;
   }
 
