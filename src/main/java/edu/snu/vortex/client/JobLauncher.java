@@ -82,7 +82,7 @@ public final class JobLauncher {
     if (possibleError.isPresent()) {
       throw new RuntimeException(possibleError.get());
     } else {
-      LOG.info("Job successfully completed (at least it seems...)");
+      LOG.info("Job successfully completed");
     }
   }
 
