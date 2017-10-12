@@ -19,7 +19,6 @@ import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.vortex.compiler.ir.*;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.DataCommunicationPatternProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
@@ -33,8 +32,8 @@ import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
 import edu.snu.vortex.runtime.executor.data.LocalFileStore;
 import edu.snu.vortex.runtime.executor.data.MemoryStore;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
@@ -237,7 +236,7 @@ public final class DAGConverterTest {
     final Stage stage4 = sortedLogicalDAG.get(3);
     final Stage stage5 = sortedLogicalDAG.get(3);
 
-    // TODO #148: Optimize Stage Partitioning Algorithm in VortexBackend
+    // TODO #148: Optimize Stage Partitioner Algorithm in VortexBackend
     // The following asserts depend on how stage partitioning is defined; test must be rewritten accordingly.
 //    assertEquals(logicalDAG.getVertices().size(), 5);
 //    assertEquals(logicalDAG.getIncomingEdgesOf(stage1).size(), 0);

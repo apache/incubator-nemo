@@ -63,7 +63,7 @@ public abstract class ExecutionProperty<T> implements Serializable {
     DataFlowModel,
     DataStore,
     MetricCollection,
-    Partitioning, // TODO #493: modularizing runtime components for partitioning.
+    Partitioner,
     WriteOptimization, // TODO #492: to be removed.
 
     // Applies to IRVertex

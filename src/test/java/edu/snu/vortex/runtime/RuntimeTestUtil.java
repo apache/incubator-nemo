@@ -25,8 +25,8 @@ import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.DataCommunicationPattern;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.DataCommunicationPattern;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 import edu.snu.vortex.runtime.master.JobStateManager;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
@@ -150,23 +150,11 @@ public final class RuntimeTestUtil {
 
         // Initialize states for blocks of inter-stage edges
         stageOutgoingEdges.forEach(physicalStageEdge -> {
-          final Class<? extends DataCommunicationPattern> commPattern =
-              physicalStageEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern);
           final int srcParallelism = taskGroupsForStage.size();
           IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-            if (commPattern.equals(ScatterGather.class)) {
-              final Integer dstParallelism =
-                  physicalStageEdge.getDstVertex().getProperty(ExecutionProperty.Key.Parallelism);
-              IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> {
-                final String partitionId =
-                    RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx);
-                sendPartitionStateEventToPartitionManager(partitionManagerMaster, containerManager, partitionId, newState);
-              });
-            } else {
-              final String partitionId =
-                  RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx);
+            final String partitionId =
+                RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx);
               sendPartitionStateEventToPartitionManager(partitionManagerMaster, containerManager, partitionId, newState);
-            }
           });
         });
 

@@ -19,7 +19,6 @@ import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
-import edu.snu.vortex.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
@@ -29,9 +28,9 @@ import edu.snu.vortex.runtime.exception.UnsupportedCommPatternException;
 import edu.snu.vortex.runtime.executor.data.HashRange;
 import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.vortex.runtime.executor.data.PartitionStore;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.Broadcast;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.Broadcast;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -80,45 +79,36 @@ public final class InputReader extends DataTransfer {
    * @return the read data.
    */
   public List<CompletableFuture<Iterable<Element>>> read() {
-    final Boolean isDataSizeMetricCollectionEdge = DataSkewRuntimePass.class
-        .equals(runtimeEdge.getProperty(ExecutionProperty.Key.MetricCollection));
     final String writeOptAtt = (String) runtimeEdge.<String>getProperty(ExecutionProperty.Key.WriteOptimization);
     final Boolean isIFileWriteEdge =
         writeOptAtt != null && writeOptAtt.equals(WriteOptimizationProperty.IFILE_WRITE);
-    try {
-      switch (((Class) runtimeEdge.<Class>getProperty(ExecutionProperty.Key.DataCommunicationPattern))
-          .getSimpleName()) {
-        case OneToOne.SIMPLE_NAME:
-          return Collections.singletonList(readOneToOne());
-        case Broadcast.SIMPLE_NAME:
-          return readBroadcast();
-        case ScatterGather.SIMPLE_NAME:
-          // If the dynamic optimization which detects data skew is enabled, read the data in the assigned range.
-          // TODO #492: Modularize the data communication pattern.
-          if (isDataSizeMetricCollectionEdge) {
-            return readDataInRange();
-          } else if (isIFileWriteEdge) {
-            return Collections.singletonList(readIFile());
-          } else {
-            return readScatterGather();
-          }
-        default:
-          throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
-      }
-    } catch (InterruptedException | ExecutionException e) {
-      throw new PartitionFetchException(e);
+    switch (((Class) runtimeEdge.<Class>getProperty(ExecutionProperty.Key.DataCommunicationPattern))
+        .getSimpleName()) {
+      case OneToOne.SIMPLE_NAME:
+        return Collections.singletonList(readOneToOne());
+      case Broadcast.SIMPLE_NAME:
+        return readBroadcast();
+      case ScatterGather.SIMPLE_NAME:
+        // If the dynamic optimization which detects data skew is enabled, read the data in the assigned range.
+        // TODO #492: Modularize the data communication pattern.
+        if (isIFileWriteEdge) {
+          return Collections.singletonList(readIFile());
+        } else {
+          return readDataInRange();
+        }
+      default:
+        throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
   }
 
-  private CompletableFuture<Iterable<Element>> readOneToOne() throws ExecutionException, InterruptedException {
+  private CompletableFuture<Iterable<Element>> readOneToOne() {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), dstTaskIndex);
     return partitionManagerWorker.retrieveDataFromPartition(partitionId, getId(),
         (Class<? extends PartitionStore>) runtimeEdge.<Class>getProperty(ExecutionProperty.Key.DataStore),
         HashRange.all());
   }
 
-  private List<CompletableFuture<Iterable<Element>>> readBroadcast()
-      throws ExecutionException, InterruptedException {
+  private List<CompletableFuture<Iterable<Element>>> readBroadcast() {
     final int numSrcTasks = this.getSourceParallelism();
 
     final List<CompletableFuture<Iterable<Element>>> futures = new ArrayList<>();
@@ -132,25 +122,10 @@ public final class InputReader extends DataTransfer {
     return futures;
   }
 
-  private List<CompletableFuture<Iterable<Element>>> readScatterGather()
-      throws ExecutionException, InterruptedException {
-    final int numSrcTasks = this.getSourceParallelism();
-
-    final List<CompletableFuture<Iterable<Element>>> futures = new ArrayList<>();
-    for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx, dstTaskIndex);
-      futures.add(partitionManagerWorker.retrieveDataFromPartition(partitionId, getId(),
-          (Class<? extends PartitionStore>) runtimeEdge.<Class>getProperty(ExecutionProperty.Key.DataStore),
-          HashRange.all()));
-    }
-
-    return futures;
-  }
-
   /**
    * Read data in the assigned range of hash value.
-   * Constraint: If a partition is written by {@link OutputWriter#hashAndWrite(Iterable)},
-   * it must be read using this method.
+   * Constraint: If a partition is written by {@link OutputWriter#dataSkewWrite(List)}
+   * or {@link OutputWriter#writeScatterGather(List)}, it must be read using this method.
    *
    * @return the list of the completable future of the data.
    */
@@ -176,7 +151,7 @@ public final class InputReader extends DataTransfer {
   }
 
   /**
-   * Read the I-File prepared for this task by using {@link OutputWriter#writeIFile(Iterable)}.
+   * Read the I-File prepared for this task by using {@link OutputWriter#iFileWrite(List)}.
    *
    * @return the completable future of the data.
    */

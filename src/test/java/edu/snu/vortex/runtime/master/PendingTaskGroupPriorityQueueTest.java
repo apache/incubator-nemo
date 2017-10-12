@@ -28,7 +28,7 @@ import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.compiler.optimizer.TestPolicy;
 import edu.snu.vortex.runtime.common.plan.physical.*;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 import edu.snu.vortex.runtime.master.scheduler.*;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
@@ -107,13 +107,13 @@ public final class PendingTaskGroupPriorityQueueTest {
     assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(0).getId());
 
-    // The 3rd dequeued TaskGroup should also belong to the 1st stage.
+    // The 3rd dequeued TaskGroup should now belong to the 2nd stage.
     ScheduledTaskGroup dequeued = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get();
-    assertEquals(dequeued.getTaskGroup().getStageId(), dagOf3Stages.get(0).getId());
+    assertEquals(dequeued.getTaskGroup().getStageId(), dagOf3Stages.get(1).getId());
 
-    // The dequeued TaskGroup should belong to the 2nd stage.
+    // The dequeued TaskGroup should belong to the 1st stage.
     assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
-        dagOf3Stages.get(1).getId());
+        dagOf3Stages.get(0).getId());
 
     // Add TaskGroups of the third stage to the queue. (this is the earliest point 3rd stage can be scheduled)
     dagOf3Stages.get(2).getTaskGroupList().forEach(taskGroup ->
@@ -179,10 +179,6 @@ public final class PendingTaskGroupPriorityQueueTest {
     assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(0).getId());
 
-    // Add TaskGroups of the third stage to the queue. (this is the earliest point 3rd stage can be scheduled)
-    dagOf3Stages.get(2).getTaskGroupList().forEach(taskGroup ->
-        pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
-
     // The 2nd dequeued TaskGroup should belong to the 2nd stage.
     assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(1).getId());
@@ -204,6 +200,10 @@ public final class PendingTaskGroupPriorityQueueTest {
     // The 6th dequeued TaskGroup should again belong to the 2nd stage.
     assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(1).getId());
+
+    // Add TaskGroups of the third stage to the queue. (this is the earliest point 3rd stage can be scheduled)
+    dagOf3Stages.get(2).getTaskGroupList().forEach(taskGroup ->
+        pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
 
     // The dequeued TaskGroup should belong to the 3rd stage.
     assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
@@ -257,10 +257,6 @@ public final class PendingTaskGroupPriorityQueueTest {
     assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(0).getId());
 
-    // Add TaskGroups of the second stage to the queue (this is the earliest point 2nd stage can be scheduled)
-    dagOf3Stages.get(1).getTaskGroupList().forEach(taskGroup ->
-        pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
-
     // The 2nd dequeued TaskGroup should also belong to the 1st stage.
     assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(0).getId());
@@ -268,6 +264,10 @@ public final class PendingTaskGroupPriorityQueueTest {
     // The 3rd dequeued TaskGroup should also belong to the 1st stage.
     ScheduledTaskGroup dequeued = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get();
     assertEquals(dequeued.getTaskGroup().getStageId(), dagOf3Stages.get(0).getId());
+
+    // Add TaskGroups of the second stage to the queue (this is the earliest point 2nd stage can be scheduled)
+    dagOf3Stages.get(1).getTaskGroupList().forEach(taskGroup ->
+        pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
 
     // Remove the 2nd stage from dependencies.
     pendingTaskGroupPriorityQueue.removeStageAndDescendantsFromQueue(dagOf3Stages.get(1).getId());
@@ -287,13 +287,13 @@ public final class PendingTaskGroupPriorityQueueTest {
     assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(1).getId());
 
-    // Add TaskGroups of the third stage to the queue. (this is the earliest point 3rd stage can be scheduled)
-    dagOf3Stages.get(2).getTaskGroupList().forEach(taskGroup ->
-        pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
-
     // The 2nd dequeued TaskGroup should also belong to the 2nd stage.
     assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(1).getId());
+
+    // Add TaskGroups of the third stage to the queue. (this is the earliest point 3rd stage can be scheduled)
+    dagOf3Stages.get(2).getTaskGroupList().forEach(taskGroup ->
+        pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
 
     // The dequeued TaskGroup should belong to the 3rd stage.
     assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
@@ -320,7 +320,7 @@ public final class PendingTaskGroupPriorityQueueTest {
 
     final IRVertex v3 = new OperatorVertex(new DoTransform(null, null));
     v3.setProperty(ParallelismProperty.of(4));
-    v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.RESERVED));
     irDAGBuilder.addVertex(v3);
 
     final IREdge e1 = new IREdge(ScatterGather.class, v1, v2, Coder.DUMMY_CODER);
@@ -349,6 +349,6 @@ public final class PendingTaskGroupPriorityQueueTest {
     assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
         dagOf3Stages.get(1).getId());
     assertEquals(pendingTaskGroupPriorityQueue.dequeueNextTaskGroup().get().getTaskGroup().getStageId(),
-        dagOf3Stages.get(0).getId());
+        dagOf3Stages.get(2).getId());
   }
 }
