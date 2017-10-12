@@ -17,7 +17,6 @@ package edu.snu.vortex.examples.beam;
 
 import edu.snu.vortex.client.JobLauncher;
 import edu.snu.vortex.compiler.CompilerTestUtil;
-import edu.snu.vortex.compiler.optimizer.policy.*;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -53,7 +52,7 @@ public final class MapReduceITCase {
   public void test() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName())
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(CompilerTestUtil.defaultPolicy)
         .build());
   }
 
@@ -61,7 +60,7 @@ public final class MapReduceITCase {
   public void testDisaggregation() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_disaggregation")
-        .addOptimizationPolicy(DisaggregationPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(CompilerTestUtil.disaggregationPolicy)
         .build());
   }
 
@@ -69,7 +68,7 @@ public final class MapReduceITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(CompilerTestUtil.padoPolicy)
         .build());
   }
 
@@ -81,7 +80,7 @@ public final class MapReduceITCase {
   public void testDataSkew() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_dataskew")
-        .addOptimizationPolicy(DataSkewPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(CompilerTestUtil.dataSkewPolicy)
         .build());
   }
 }

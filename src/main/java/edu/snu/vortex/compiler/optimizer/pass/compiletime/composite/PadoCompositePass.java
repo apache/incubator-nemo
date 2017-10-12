@@ -17,26 +17,21 @@ package edu.snu.vortex.compiler.optimizer.pass.compiletime.composite;
 
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.PadoEdgeDataFlowModelPass;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.PadoEdgeDataStorePass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.PadoVertexPass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.PadoVertexExecutorPlacementPass;
 
 import java.util.Arrays;
 
 /**
  * A series of passes to support Pado optimization.
  */
-public final class PadoPass extends CompositePass {
-  public static final String SIMPLE_NAME = "PadoPass";
+public final class PadoCompositePass extends CompositePass {
+  public static final String SIMPLE_NAME = "PadoCompositePass";
 
-  public PadoPass() {
+  public PadoCompositePass() {
     super(Arrays.asList(
-        new PadoVertexPass(),
+        new PadoVertexExecutorPlacementPass(),
         new PadoEdgeDataStorePass(),
         new PadoEdgeDataFlowModelPass()
     ));
-  }
-
-  @Override
-  public String getName() {
-    return SIMPLE_NAME;
   }
 }

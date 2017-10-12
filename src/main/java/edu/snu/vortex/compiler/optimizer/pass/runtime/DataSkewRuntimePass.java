@@ -16,11 +16,10 @@
 package edu.snu.vortex.compiler.optimizer.pass.runtime;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.vortex.common.Pair;
+import edu.snu.vortex.common.CommonEventHandler;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
 import edu.snu.vortex.compiler.eventhandler.DynamicOptimizationEventHandler;
-import edu.snu.vortex.compiler.eventhandler.RuntimeEventHandler;
 import edu.snu.vortex.compiler.exception.DynamicOptimizationException;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
@@ -28,24 +27,26 @@ import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.executor.data.HashRange;
-import edu.snu.vortex.runtime.master.eventhandler.CompilerEventHandler;
-import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Dynamic optimization pass for handling data skew.
  */
 public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<Long>>> {
   public static final String SIMPLE_NAME = "DataSkewRuntimePass";
-  private final Pair<Class<? extends CompilerEventHandler>, Class<? extends RuntimeEventHandler>> eventHandlers;
+  private final Set<Class<? extends CommonEventHandler<?>>> eventHandlers;
 
   public DataSkewRuntimePass() {
-    this.eventHandlers = Pair.of(UpdatePhysicalPlanEventHandler.class, DynamicOptimizationEventHandler.class);
+    this.eventHandlers = Stream.of(
+        DynamicOptimizationEventHandler.class
+    ).collect(Collectors.toSet());
   }
 
   @Override
@@ -54,7 +55,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
   }
 
   @Override
-  public Pair<Class<? extends CompilerEventHandler>, Class<? extends RuntimeEventHandler>> getEventHandlers() {
+  public Set<Class<? extends CommonEventHandler<?>>> getEventHandlers() {
     return eventHandlers;
   }
 

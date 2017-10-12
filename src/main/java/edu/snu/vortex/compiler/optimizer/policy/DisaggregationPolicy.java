@@ -18,24 +18,35 @@ package edu.snu.vortex.compiler.optimizer.policy;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.*;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.*;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.DisaggregationPass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.LoopOptimizationPass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
+import edu.snu.vortex.compiler.optimizer.pass.runtime.RuntimePass;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
  * A policy to demonstrate the disaggregation optimization, that performs the job in a Sailfish style.
  */
 public final class DisaggregationPolicy implements Policy {
+  private final Policy policy;
+
+  public DisaggregationPolicy() {
+    this.policy = new PolicyBuilder()
+        .registerCompileTimePass(new InitiationCompositePass())
+        .registerCompileTimePass(new LoopOptimizationCompositePass())
+        .registerCompileTimePass(new DisaggregationPass())
+        .registerCompileTimePass(new DefaultStagePartitioningPass())
+        .registerCompileTimePass(new ScheduleGroupPass())
+        .build();
+  }
+
   @Override
   public List<CompileTimePass> getCompileTimePasses() {
-    return  Arrays.asList(
-        new ParallelismPass(), // Provides parallelism information.
-        new DefaultPartitionerPass(), // TODO #515: Move to InitializePass
-        new LoopOptimizationPass(),
-        new DisaggregationPass(),
-        new DefaultStagePartitioningPass(),
-        new ScheduleGroupPass()
-    );
+    return this.policy.getCompileTimePasses();
+  }
+
+  @Override
+  public List<RuntimePass<?>> getRuntimePasses() {
+    return this.policy.getRuntimePasses();
   }
 }

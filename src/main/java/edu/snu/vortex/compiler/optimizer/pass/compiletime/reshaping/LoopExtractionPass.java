@@ -23,18 +23,13 @@ import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import java.util.*;
 
 /**
- * Pass for grouping each loops together using the LoopVertex.
+ * Pass for extracting and  grouping each loops together using the LoopVertex.
  * It first groups loops together, making each iteration into a LoopOperator.
  * Then, it rolls repetitive operators into one root LoopOperator, which contains enough information to produce all
  * other iterative computations.
  */
-public final class LoopGroupingPass extends ReshapingPass {
-  public static final String SIMPLE_NAME = "LoopGroupingPass";
-
-  @Override
-  public String getName() {
-    return SIMPLE_NAME;
-  }
+public final class LoopExtractionPass extends ReshapingPass {
+  public static final String SIMPLE_NAME = "LoopExtractionPass";
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {

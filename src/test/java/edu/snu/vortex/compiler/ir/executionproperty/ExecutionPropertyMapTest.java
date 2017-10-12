@@ -25,6 +25,7 @@ import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.vortex.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.vortex.runtime.executor.data.MemoryStore;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.DataCommunicationPattern;
 import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,19 +39,21 @@ import static org.junit.Assert.assertNull;
 public class ExecutionPropertyMapTest {
   private final IRVertex source = new BoundedSourceVertex<>(new EmptyComponents.EmptyBoundedSource("Source"));
   private final IRVertex destination = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
-  private final IREdge edge = new IREdge(OneToOne.class, source, destination, Coder.DUMMY_CODER);
+  private final Class<? extends DataCommunicationPattern> communicationPatternClass = OneToOne.class;
+  private final IREdge edge = new IREdge(communicationPatternClass, source, destination, Coder.DUMMY_CODER);
 
   private ExecutionPropertyMap edgeMap;
   private ExecutionPropertyMap vertexMap;
 
   @Before
   public void setUp() {
-    this.edgeMap = ExecutionPropertyMap.of(edge, OneToOne.class);
+    this.edgeMap = ExecutionPropertyMap.of(edge, communicationPatternClass);
     this.vertexMap = ExecutionPropertyMap.of(source);
   }
 
   @Test
   public void testDefaultValues() {
+    assertEquals(communicationPatternClass, edgeMap.get(ExecutionProperty.Key.DataCommunicationPattern));
     assertEquals(1, vertexMap.<Integer>get(ExecutionProperty.Key.Parallelism).longValue());
     assertEquals(edge.getId(), edgeMap.getId());
     assertEquals(source.getId(), vertexMap.getId());

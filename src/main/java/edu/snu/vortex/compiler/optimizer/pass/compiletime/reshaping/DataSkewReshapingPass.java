@@ -32,17 +32,12 @@ import java.util.List;
  * Pass to modify the DAG for a job to perform data skew.
  * It adds a {@link MetricCollectionBarrierVertex} before ScatterGather edges, to make a barrier before it,
  * and to use the metrics to repartition the skewed data.
- * NOTE: we currently put the DataSkewPass at the end of the list for each policies, as it needs to take a snapshot at
- * the end of the pass. This could be prevented by modifying other passes to take the snapshot of the DAG at the end of
- * each passes for metricCollectionVertices.
+ * NOTE: we currently put the DataSkewCompositePass at the end of the list for each policies, as it needs to take
+ * a snapshot at the end of the pass. This could be prevented by modifying other passes to take the snapshot of the
+ * DAG at the end of each passes for metricCollectionVertices.
  */
 public final class DataSkewReshapingPass extends ReshapingPass {
   public static final String SIMPLE_NAME = "DataSkewReshapingPass";
-
-  @Override
-  public String getName() {
-    return SIMPLE_NAME;
-  }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {

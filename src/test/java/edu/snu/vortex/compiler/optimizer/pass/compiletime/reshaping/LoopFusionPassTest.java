@@ -54,7 +54,7 @@ public class LoopFusionPassTest {
     final DAGBuilder<IRVertex, IREdge> dagNotToBeFusedBuilder = new DAGBuilder<>();
 
     originalALSDAG = CompilerTestUtil.compileALSDAG();
-    groupedDAG = new LoopGroupingPass().apply(originalALSDAG);
+    groupedDAG = new LoopExtractionPass().apply(originalALSDAG);
 
     groupedDAG.topologicalDo(v -> {
       dagToBeFusedBuilder.addVertex(v, groupedDAG);

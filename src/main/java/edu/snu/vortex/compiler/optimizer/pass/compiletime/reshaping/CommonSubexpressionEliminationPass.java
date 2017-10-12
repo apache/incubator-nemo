@@ -36,11 +36,6 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
   public static final String SIMPLE_NAME = "CommonSubexpressionEliminationPass";
 
   @Override
-  public String getName() {
-    return SIMPLE_NAME;
-  }
-
-  @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     // find and collect vertices with equivalent transforms
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
