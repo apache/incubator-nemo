@@ -80,13 +80,16 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     // Calculate hashRanges.
     final List<HashRange> hashRanges = calculateHashRanges(metricData, taskGroupListSize);
 
-    // Assign the hash value range to each receiving task group.
+    // Overwrite the previously assigned hash value range in the physical DAG with the new range.
     optimizationEdges.forEach(optimizationEdge -> {
       final List<TaskGroup> taskGroups = optimizationEdge.getDst().getTaskGroupList();
       final Map<String, HashRange> taskGroupIdToHashRangeMap = optimizationEdge.getTaskGroupIdToHashRangeMap();
-      IntStream.range(0, taskGroupListSize).forEach(i ->
-          // Update the information.
-          taskGroupIdToHashRangeMap.put(taskGroups.get(i).getTaskGroupId(), hashRanges.get(i)));
+      taskGroupIdToHashRangeMap.clear();
+      IntStream.range(0, taskGroupListSize).forEach(i -> {
+        // Update the information.
+        final String taskGroupId = taskGroups.get(i).getTaskGroupId();
+        taskGroupIdToHashRangeMap.put(taskGroupId, hashRanges.get(i));
+      });
     });
 
     return new PhysicalPlan(originalPlan.getId(), physicalDAGBuilder.build(), originalPlan.getTaskIRVertexMap());

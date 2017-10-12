@@ -17,7 +17,6 @@ package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
-import edu.snu.vortex.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
@@ -159,8 +158,6 @@ public final class JobStateManager {
       stageOutgoingEdges.forEach(physicalStageEdge -> {
         final Class<? extends DataCommunicationPattern> commPattern =
             physicalStageEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern);
-        final Boolean isDataSizeMetricCollectionEdge = DataSkewRuntimePass.class
-            .equals(physicalStageEdge.getProperty(ExecutionProperty.Key.MetricCollection));
         final String writeOptAtt = physicalStageEdge.getProperty(ExecutionProperty.Key.WriteOptimization);
         final Boolean isIFileWriteEdge =
             writeOptAtt != null && writeOptAtt.equals(WriteOptimizationProperty.IFILE_WRITE);
@@ -178,16 +175,6 @@ public final class JobStateManager {
             final String partitionId = RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), dstTaskIdx);
             partitionManagerMaster.initializeState(partitionId, producerTaskIndices, producerTaskGroupIds);
           });
-        } else if (ScatterGather.class.equals(commPattern) && !isDataSizeMetricCollectionEdge) {
-          final int dstParallelism =
-              physicalStageEdge.getDstVertex().getProperty(ExecutionProperty.Key.Parallelism);
-          IntStream.range(0, srcParallelism).forEach(srcTaskIdx ->
-            IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> {
-              final String partitionId =
-                  RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx);
-              partitionManagerMaster.initializeState(partitionId, Collections.singleton(srcTaskIdx),
-                  Collections.singleton(taskGroupsForStage.get(srcTaskIdx).getTaskGroupId()));
-            }));
         } else {
           IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
             final String partitionId = RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx);
