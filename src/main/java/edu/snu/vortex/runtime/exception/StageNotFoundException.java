@@ -13,14 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.metric.parameter;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
+package edu.snu.vortex.runtime.exception;
 
 /**
- * Metric flushing period.
+ * Thrown when a specified stage does not exist.
  */
-@NamedParameter(doc = "Metric flushing period (ms)", short_name = "mf_period", default_value = "50")
-public final class MetricFlushPeriod implements Name<Long> {
+public final class StageNotFoundException extends Exception {
+  /**
+   * Constructor of ExecutorNotFoundException.
+   * @param stageId the id of stage
+   */
+  public StageNotFoundException(final String stageId) {
+    super(stageId + " does not exist.");
+  }
 }

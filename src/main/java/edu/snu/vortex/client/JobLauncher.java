@@ -18,6 +18,7 @@ package edu.snu.vortex.client;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.ncs.NcsMessageEnvironment;
 import edu.snu.vortex.runtime.common.message.ncs.NcsParameters;
+import edu.snu.vortex.runtime.master.http.MasterHttpHandler;
 import edu.snu.vortex.runtime.master.VortexDriver;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
@@ -39,6 +40,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import org.apache.reef.webserver.HttpHandlerConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,11 +69,12 @@ public final class JobLauncher {
     final Configuration driverConf = getDriverConf(jobConf);
     final Configuration driverNcsConf = getDriverNcsConf();
     final Configuration driverMessageConfg = getDriverMessageConf();
+    final Configuration driverHttpHandlerConf = getDriverHttpConf();
     final Configuration executorResourceConfig = getExecutorResourceConf(jobConf);
 
     // Merge Job and Driver Confs
     final Configuration jobAndDriverConf = Configurations.merge(jobConf, driverConf, driverNcsConf, driverMessageConfg,
-        executorResourceConfig);
+        driverHttpHandlerConf, executorResourceConfig);
 
     // Get DeployMode Conf
     final Configuration deployModeConf = getDeployModeConf(jobConf);
@@ -98,6 +101,12 @@ public final class JobLauncher {
     return TANG.newConfigurationBuilder()
         .bindImplementation(MessageEnvironment.class, NcsMessageEnvironment.class)
         .bindNamedParameter(NcsParameters.SenderId.class, MessageEnvironment.MASTER_COMMUNICATION_ID)
+        .build();
+  }
+
+  private static Configuration getDriverHttpConf() throws InjectionException {
+    return HttpHandlerConfiguration.CONF
+        .set(HttpHandlerConfiguration.HTTP_HANDLERS, MasterHttpHandler.class)
         .build();
   }
 

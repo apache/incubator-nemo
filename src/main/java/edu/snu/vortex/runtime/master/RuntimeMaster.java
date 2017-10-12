@@ -31,12 +31,10 @@ import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
-import edu.snu.vortex.runtime.exception.ContainerException;
-import edu.snu.vortex.runtime.exception.IllegalMessageException;
-import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
-import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
+import edu.snu.vortex.runtime.exception.*;
 import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
+import edu.snu.vortex.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
@@ -48,6 +46,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static edu.snu.vortex.runtime.common.state.TaskGroupState.State.COMPLETE;
 import static edu.snu.vortex.runtime.common.state.TaskGroupState.State.ON_HOLD;
@@ -324,5 +323,47 @@ public final class RuntimeMaster {
             new Exception("The metric message format is incorrect. It should be in Json format: " + s));
       }
     }
+  }
+
+  public String getJobDag() {
+    return String.format("{\"dag\": %s}", jobStateManager.getJobDAG());
+  }
+
+  public String getJobInfo() throws IOException {
+    return jobStateManager.getJobInfo();
+  }
+
+  public String getExecutorsState() {
+    return String.format("{\"running\": %s, \"failed\": %s}",
+        containerManager.getExecutorRepresenterMap().keySet()
+            .stream().map(v -> "\"" + v + "\"").collect(Collectors.toSet()),
+        containerManager.getFailedExecutorRepresenterMap().keySet()
+            .stream().map(v -> "\"" + v + "\"").collect(Collectors.toSet())
+    );
+  }
+
+  public String getTaskGroups(final String executorId) throws ExecutorNotFoundException {
+    final Map<String, ExecutorRepresenter> executors = containerManager.getExecutorRepresenterMap();
+    if (executors.containsKey(executorId)) {
+      final ExecutorRepresenter executorRepresenter = executors.get(executorId);
+      return String.format("{\"running\": %s, \"complete\": %s}",
+          executorRepresenter.getRunningTaskGroups().stream().map(v -> "\"" + v + "\"").collect(Collectors.toSet()),
+          executorRepresenter.getCompleteTaskGroups().stream().map(v -> "\"" + v + "\"").collect(Collectors.toSet())
+      );
+    } else {
+      throw new ExecutorNotFoundException(executorId);
+    }
+  }
+
+  public String getTaskGroupList(final String stageId) throws StageNotFoundException {
+    return jobStateManager.getTaskGroupList(stageId);
+  }
+
+  public String getTaskGroupInfo(final String taskGroupId) throws TaskGroupNotFoundException, IOException {
+    return jobStateManager.getTaskGroupInfo(taskGroupId);
+  }
+
+  public String getStageInfo(final String stageId) throws StageNotFoundException, IOException {
+    return jobStateManager.getStageInfo(stageId);
   }
 }

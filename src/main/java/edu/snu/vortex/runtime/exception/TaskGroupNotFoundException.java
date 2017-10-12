@@ -13,14 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.metric.parameter;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
+package edu.snu.vortex.runtime.exception;
 
 /**
- * Metric flushing period.
+ * Thrown when a specified task group does not exist.
  */
-@NamedParameter(doc = "Metric flushing period (ms)", short_name = "mf_period", default_value = "50")
-public final class MetricFlushPeriod implements Name<Long> {
+public final class TaskGroupNotFoundException extends Exception {
+  /**
+   * Constructor of ExecutorNotFoundException.
+   * @param taskGroupId the id of task group
+   */
+  public TaskGroupNotFoundException(final String taskGroupId) {
+    super(taskGroupId + " does not exist.");
+  }
 }

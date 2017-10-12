@@ -152,33 +152,21 @@ public final class TaskGroupStateManager {
         new Object[]{taskGroupId, taskStateChanged.getCurrentState(), newState});
     taskStateChanged.setState(newState);
 
-    final Map<String, Object> metric = new HashMap<>();
-
     switch (newState) {
     case READY:
     case EXECUTING:
-      metric.put("ExecutorId", executorId);
-      metric.put("ScheduleAttempt", attemptIdx);
-      metric.put("FromState", newState);
-      beginMeasurement(taskId, metric);
       break;
     case COMPLETE:
       currentTaskGroupTaskIds.remove(taskId);
       if (currentTaskGroupTaskIds.isEmpty()) {
         onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), cause);
       }
-      metric.put("ToState", newState);
-      endMeasurement(taskId, metric);
       break;
     case FAILED_RECOVERABLE:
       onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE, Optional.empty(), cause);
-      metric.put("ToState", newState);
-      endMeasurement(taskId, metric);
       break;
     case FAILED_UNRECOVERABLE:
       onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE, Optional.empty(), cause);
-      metric.put("ToState", newState);
-      endMeasurement(taskId, metric);
       break;
     case ON_HOLD:
       currentTaskGroupTaskIds.remove(taskId);

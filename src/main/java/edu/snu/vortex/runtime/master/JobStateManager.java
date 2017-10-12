@@ -15,9 +15,11 @@
  */
 package edu.snu.vortex.runtime.master;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
+import edu.snu.vortex.runtime.common.metric.MetricData;
 import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
@@ -25,11 +27,9 @@ import edu.snu.vortex.runtime.common.state.JobState;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.common.state.TaskState;
-import edu.snu.vortex.runtime.exception.IllegalStateTransitionException;
-import edu.snu.vortex.runtime.exception.SchedulingException;
+import edu.snu.vortex.runtime.exception.*;
 import edu.snu.vortex.common.StateMachine;
 import edu.snu.vortex.common.dag.DAG;
-import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
 
 import java.io.File;
 import java.io.IOException;
@@ -428,8 +428,105 @@ public final class JobStateManager {
     return jobId;
   }
 
+  public synchronized String getJobDAG() {
+    return physicalPlan.getStageDAG().toString();
+  }
+
+  public synchronized String getJobInfo() throws IOException {
+    final Map<String, Object> metrics = metricDataBuilderMap.get(jobId).getMetrics();
+    metrics.put("id", jobId);
+    metrics.put("state", jobState.getStateMachine().getCurrentState());
+    metrics.put("currentTime", System.nanoTime());
+    return new ObjectMapper().writeValueAsString(metrics);
+  }
+
   public synchronized JobState getJobState() {
     return jobState;
+  }
+
+  public synchronized String getStageInfo(final String stageId) throws StageNotFoundException, IOException {
+    if (idToStageStates.containsKey(stageId)) {
+      final StageState stageState = idToStageStates.get(stageId);
+      final Enum state = stageState.getStateMachine().getCurrentState();
+      final Map<String, Object> metrics = new HashMap<>();
+      metrics.put("currentTime", System.nanoTime());
+      metrics.put("id", stageId);
+
+      final ObjectMapper objectMapper = new ObjectMapper();
+      if (state == StageState.State.COMPLETE
+          || state == StageState.State.FAILED_RECOVERABLE
+          || state == StageState.State.FAILED_UNRECOVERABLE) {
+        final List<String> metricStrs = metricMessageHandler.getMetricByKey(stageId);
+        for (final String metricStr : metricStrs) {
+          final MetricData metric = objectMapper.readValue(metricStr, MetricData.class);
+          metrics.putAll(metric.getMetrics());
+        }
+      } else {
+        metrics.putAll(metricDataBuilderMap.get(stageId).getMetrics());
+      }
+
+      return objectMapper.writeValueAsString(metrics);
+    } else {
+      throw new StageNotFoundException(stageId);
+    }
+  }
+
+   public synchronized String getTaskGroupInfo(final String taskGroupId)
+       throws TaskGroupNotFoundException, IOException {
+    if (idToTaskGroupStates.containsKey(taskGroupId)) {
+      final TaskGroupState taskGroupState = idToTaskGroupStates.get(taskGroupId);
+
+      final ObjectMapper objectMapper = new ObjectMapper();
+      final Map<String, Object> metricMap = new HashMap<>();
+
+      final Enum state = taskGroupState.getStateMachine().getCurrentState();
+      if (state == TaskGroupState.State.COMPLETE
+          || state == TaskGroupState.State.FAILED_RECOVERABLE
+          || state == TaskGroupState.State.FAILED_UNRECOVERABLE) {
+        final List<String> metrics = metricMessageHandler.getMetricByKey(taskGroupId);
+        for (final String metricStr : metrics) {
+          final MetricData metricData = objectMapper.readValue(metricStr, MetricData.class);
+          metricMap.putAll(metricData.getMetrics());
+        }
+      } else {
+        final MetricDataBuilder metricDataBuilder =
+            metricDataBuilderMap.getOrDefault(taskGroupId, new MetricDataBuilder(taskGroupId));
+        metricMap.putAll(metricDataBuilder.getMetrics());
+      }
+
+      metricMap.put("id", taskGroupId);
+      metricMap.put("currentTime", System.nanoTime());
+      metricMap.put("state", taskGroupState.toString());
+
+      return objectMapper.writeValueAsString(metricMap);
+    } else {
+      throw new TaskGroupNotFoundException(taskGroupId);
+    }
+  }
+
+  public synchronized String getTaskGroupList(final String stageId) throws StageNotFoundException {
+    try {
+      final List<TaskGroup> taskGroups = physicalPlan.getStageDAG().getVertexById(stageId).getTaskGroupList();
+      final StringBuilder sb = new StringBuilder();
+      sb.append("{\"taskGroups\": [");
+      taskGroups.forEach(taskGroup -> {
+        final String taskGroupId = taskGroup.getTaskGroupId();
+        final int taskGroupIdx = taskGroup.getTaskGroupIdx();
+        final DAG<Task, RuntimeEdge<Task>> taskDAG = taskGroup.getTaskDAG();
+        final String containerType = taskGroup.getContainerType();
+        final TaskGroupState taskGroupState = idToTaskGroupStates.get(taskGroupId);
+        sb.append("{\"taskGroupId\": \"").append(taskGroupId).append("\", ");
+        sb.append("\"taskGroupIdx\": ").append(taskGroupIdx).append(", ");
+        sb.append("\"taskDAG\": ").append(taskDAG).append(", ");
+        sb.append("\"containerType\": \"").append(containerType).append("\", ");
+        sb.append("\"taskGroupState\": \"").append(taskGroupState.toString()).append("\"},");
+      });
+      sb.deleteCharAt(sb.lastIndexOf(","));
+      sb.append("]}");
+      return sb.toString();
+    } catch (IllegalVertexOperationException e) {
+      throw new StageNotFoundException(stageId);
+    }
   }
 
   public synchronized StageState getStageState(final String stageId) {

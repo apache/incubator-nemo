@@ -22,7 +22,7 @@ import edu.snu.vortex.compiler.ir.SourceVertex;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
-import edu.snu.vortex.runtime.executor.datatransfer.communication.Broadcast;
+import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.Broadcast;
 
 import java.util.List;
 import java.util.OptionalInt;
@@ -31,10 +31,10 @@ import java.util.stream.Collectors;
 /**
  * Optimization pass for tagging parallelism execution property.
  */
-public final class ParallelismPass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "ParallelismPass";
+public final class DualSourceParallelismPass extends AnnotatingPass {
+  public static final String SIMPLE_NAME = "DualSourceParallelismPass";
 
-  public ParallelismPass() {
+  public DualSourceParallelismPass() {
     super(ExecutionProperty.Key.Parallelism);
   }
 
@@ -53,7 +53,7 @@ public final class ParallelismPass extends AnnotatingPass {
             .collect(Collectors.toList());
         if (inEdges.isEmpty() && vertex instanceof SourceVertex) {
           final SourceVertex sourceVertex = (SourceVertex) vertex;
-          vertex.setProperty(ParallelismProperty.of(sourceVertex.getReaders(1).size()));
+          vertex.setProperty(ParallelismProperty.of(sourceVertex.getReaders(2).size()));
         } else if (!inEdges.isEmpty()) {
           final OptionalInt parallelism = inEdges.stream()
               // No reason to propagate via Broadcast edges, as the data streams that will use the broadcasted data

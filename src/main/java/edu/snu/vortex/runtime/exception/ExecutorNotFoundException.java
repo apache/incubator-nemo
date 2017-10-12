@@ -13,14 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.common.metric.parameter;
-
-import org.apache.reef.tang.annotations.Name;
-import org.apache.reef.tang.annotations.NamedParameter;
+package edu.snu.vortex.runtime.exception;
 
 /**
- * Metric flushing period.
+ * Thrown when a specified executor does not exist.
  */
-@NamedParameter(doc = "Metric flushing period (ms)", short_name = "mf_period", default_value = "50")
-public final class MetricFlushPeriod implements Name<Long> {
+public final class ExecutorNotFoundException extends Exception {
+  /**
+   * Constructor of ExecutorNotFoundException.
+   * @param executorId the id of executor
+   */
+  public ExecutorNotFoundException(final String executorId) {
+    super(executorId + " does not exist.");
+  }
 }
