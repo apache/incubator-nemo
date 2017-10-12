@@ -18,6 +18,8 @@ package edu.snu.vortex.runtime.executor.datatransfer;
 import edu.snu.vortex.client.JobConf;
 import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.common.coder.Coder;
+import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.common.dag.DAGBuilder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.common.coder.BeamCoder;
 import edu.snu.vortex.compiler.ir.Element;
@@ -36,6 +38,10 @@ import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.vortex.runtime.common.message.ncs.NcsParameters;
 import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
+import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
+import edu.snu.vortex.runtime.common.plan.physical.Task;
+import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.executor.Executor;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMasterMap;
 import edu.snu.vortex.runtime.executor.data.*;
@@ -45,7 +51,6 @@ import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.D
 import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
 import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
 import edu.snu.vortex.runtime.executor.datatransfer.partitioning.Hash;
-import edu.snu.vortex.runtime.master.MetricManagerMaster;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
@@ -267,17 +272,25 @@ public final class DataTransferTest {
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
     edgeProperties.put(PartitioningProperty.of(Hash.class));
     edgeProperties.put(DataStoreProperty.of(store));
-    final RuntimeEdge<IRVertex> dummyEdge
-        = new RuntimeEdge<>(edgeId, edgeProperties, srcVertex, dstVertex, CODER);
+    final RuntimeEdge dummyEdge;
+
+    if (commPattern.equals(ScatterGather.class)) {
+      final IRVertex srcMockVertex = mock(IRVertex.class);
+      final IRVertex dstMockVertex = mock(IRVertex.class);
+      final PhysicalStage srcStage = setupStages("srcStage", taskGroupPrefix);
+      final PhysicalStage dstStage = setupStages("dstStage", taskGroupPrefix);
+      dummyEdge =
+          new PhysicalStageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex, srcStage, dstStage, CODER, false);
+    } else {
+      dummyEdge = new RuntimeEdge<>(edgeId, edgeProperties, srcVertex, dstVertex, CODER);
+    }
 
     // Initialize states in Master
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       if (commPattern.equals(ScatterGather.class)) {
-        IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
-          final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex, dstTaskIndex);
-          master.initializeState(partitionId, Collections.singleton(srcTaskIndex),
-              Collections.singleton(taskGroupPrefix + srcTaskIndex));
-        });
+        final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex);
+        master.initializeState(partitionId, Collections.singleton(srcTaskIndex),
+            Collections.singleton(taskGroupPrefix + srcTaskIndex));
       } else {
         final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex);
         master.initializeState(partitionId, Collections.singleton(srcTaskIndex),
@@ -344,8 +357,8 @@ public final class DataTransferTest {
     edgeProperties.put(PartitioningProperty.of(Hash.class));
     edgeProperties.put(DataStoreProperty.of(store));
     edgeProperties.put(WriteOptimizationProperty.of(WriteOptimizationProperty.IFILE_WRITE));
-    final RuntimeEdge<IRVertex> dummyEdge
-        = new RuntimeEdge<>(edgeId, edgeProperties, srcVertex, dstVertex, CODER);
+    final RuntimeEdge<IRVertex> dummyEdge =
+        new RuntimeEdge<>(edgeId, edgeProperties, srcVertex, dstVertex, CODER);
 
     // Initialize the states of the I-File partitions in Master.
     final Set<String> taskGroupIds = new HashSet<>();
@@ -410,5 +423,16 @@ public final class DataTransferTest {
     dstVertexProperties.put(ParallelismProperty.of(PARALLELISM_TEN));
 
     return Pair.of(srcVertex, dstVertex);
+  }
+
+  private PhysicalStage setupStages(final String stageId,
+                                    final String taskGroupPrefix) {
+    final List<TaskGroup> taskGroupList = new ArrayList<>(PARALLELISM_TEN);
+    final DAG<Task, RuntimeEdge<Task>> emptyDag = new DAGBuilder<Task, RuntimeEdge<Task>>().build();
+    IntStream.range(0, PARALLELISM_TEN).forEach(taskGroupIdx -> {
+      taskGroupList.add(new TaskGroup(taskGroupPrefix + taskGroupIdx, stageId, taskGroupIdx, emptyDag, "Not_used"));
+    });
+
+    return new PhysicalStage(stageId, taskGroupList, 0);
   }
 }
