@@ -25,8 +25,7 @@ import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.vortex.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.vortex.runtime.executor.data.MemoryStore;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
-import edu.snu.vortex.runtime.executor.datatransfer.partitioning.Hash;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -52,7 +51,6 @@ public class ExecutionPropertyMapTest {
 
   @Test
   public void testDefaultValues() {
-    assertEquals(Hash.class, edgeMap.get(ExecutionProperty.Key.Partitioning));
     assertEquals(1, vertexMap.<Integer>get(ExecutionProperty.Key.Parallelism).longValue());
     assertEquals(edge.getId(), edgeMap.getId());
     assertEquals(source.getId(), vertexMap.getId());

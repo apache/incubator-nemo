@@ -39,7 +39,7 @@ import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.executor.data.LocalFileStore;
 import edu.snu.vortex.runtime.executor.data.MemoryStore;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.resource.ResourceSpecification;

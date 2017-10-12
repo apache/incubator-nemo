@@ -27,8 +27,9 @@ import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.vortex.common.PubSubEventHandlerWrapper;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataCommunicationPatternProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.PartitioningProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.PartitionerProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
@@ -46,11 +47,12 @@ import edu.snu.vortex.runtime.executor.Executor;
 import edu.snu.vortex.runtime.executor.PersistentConnectionToMasterMap;
 import edu.snu.vortex.runtime.executor.data.*;
 import edu.snu.vortex.runtime.executor.MetricManagerWorker;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.Broadcast;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.DataCommunicationPattern;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
-import edu.snu.vortex.runtime.executor.datatransfer.partitioning.Hash;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.Broadcast;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.DataCommunicationPattern;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
+import edu.snu.vortex.runtime.executor.datatransfer.partitioning.HashPartitioner;
+import edu.snu.vortex.runtime.executor.datatransfer.partitioning.IFileHashPartitioner;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
@@ -270,7 +272,9 @@ public final class DataTransferTest {
     // Edge setup
     final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex, CODER);
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
-    edgeProperties.put(PartitioningProperty.of(Hash.class));
+    edgeProperties.put(DataCommunicationPatternProperty.of(commPattern));
+    edgeProperties.put(PartitionerProperty.of(HashPartitioner.class));
+
     edgeProperties.put(DataStoreProperty.of(store));
     final RuntimeEdge dummyEdge;
 
@@ -354,7 +358,7 @@ public final class DataTransferTest {
     // Edge setup
     final IREdge dummyIREdge = new IREdge(ScatterGather.class, srcVertex, dstVertex, CODER);
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
-    edgeProperties.put(PartitioningProperty.of(Hash.class));
+    edgeProperties.put(PartitionerProperty.of(IFileHashPartitioner.class));
     edgeProperties.put(DataStoreProperty.of(store));
     edgeProperties.put(WriteOptimizationProperty.of(WriteOptimizationProperty.IFILE_WRITE));
     final RuntimeEdge<IRVertex> dummyEdge =

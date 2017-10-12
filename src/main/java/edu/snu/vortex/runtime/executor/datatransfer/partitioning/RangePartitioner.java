@@ -15,15 +15,23 @@
  */
 package edu.snu.vortex.runtime.executor.datatransfer.partitioning;
 
+import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.runtime.exception.UnsupportedPartitionerException;
+import edu.snu.vortex.runtime.executor.data.Block;
+
+import java.util.List;
+
 /**
- * TODO #493: Implement Runtime classes for each Partitioning methods.
+ * An implementation of {@link Partitioner} which divides output data from a source task into multiple {@link Block}s
+ * according to the range of their key.
  */
-public final class Range implements Partitioning {
+public final class RangePartitioner implements Partitioner {
   public static final String SIMPLE_NAME = "Range";
 
-  /**
-   * TODO #493: Implement Runtime classes for each Partitioning methods.
-   */
-  private Range() {
+  @Override
+  public List<Block> partition(final Iterable<Element> elements,
+                               final int dstParallelism) {
+    throw new UnsupportedPartitionerException(
+        new Throwable(RangePartitioner.class.getName() + "partitioning not yet supported"));
   }
 }

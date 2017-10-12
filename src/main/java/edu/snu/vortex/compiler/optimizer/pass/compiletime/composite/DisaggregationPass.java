@@ -15,10 +15,7 @@
  */
 package edu.snu.vortex.compiler.optimizer.pass.compiletime.composite;
 
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.DisaggregationEdgeDataFlowModelPass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.DisaggregationEdgeDataStorePass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.DisaggregationVertexPass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.IFilePass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.*;
 
 import java.util.Arrays;
 
@@ -33,6 +30,7 @@ public final class DisaggregationPass extends CompositePass {
         new DisaggregationVertexPass(),
         new DisaggregationEdgeDataStorePass(),
         new DisaggregationEdgeDataFlowModelPass(),
+        new DisaggregationEdgePartitionerPass(),
         new IFilePass()
     ));
   }

@@ -34,7 +34,7 @@ import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;

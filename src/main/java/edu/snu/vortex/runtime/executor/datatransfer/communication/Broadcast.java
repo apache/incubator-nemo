@@ -13,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.executor.datatransfer.partitioning;
+package edu.snu.vortex.runtime.executor.datatransfer.communication;
 
 /**
- * TODO #493: Implement Runtime classes for each Partitioning methods.
+ * TODO #492: Implement Runtime classes for each DataCommunicationPatternProperty.
  */
-public final class Hash implements Partitioning {
-  public static final String SIMPLE_NAME = "Hash";
+public final class Broadcast implements DataCommunicationPattern {
+  public static final String SIMPLE_NAME = "Broadcast";
 
   /**
-   * TODO #493: Implement Runtime classes for each Partitioning methods.
+   * TODO #492: Implement Runtime classes for each DataCommunicationPatternProperty.
    */
-  private Hash() {
+  private Broadcast() {
   }
 }

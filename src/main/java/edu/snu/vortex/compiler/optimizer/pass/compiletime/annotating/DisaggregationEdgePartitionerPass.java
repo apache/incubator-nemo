@@ -19,9 +19,10 @@ import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.PartitionerProperty;
 import edu.snu.vortex.runtime.executor.data.GlusterFileStore;
 import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
+import edu.snu.vortex.runtime.executor.datatransfer.partitioning.IFileHashPartitioner;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,12 +32,13 @@ import java.util.stream.Stream;
  * Pass which enables I-File style write optimization.
  * It sets IFileWrite execution property on ScatterGather edges with RemoteFile partition store.
  */
-public final class IFilePass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "IFilePass";
+public final class DisaggregationEdgePartitionerPass extends AnnotatingPass {
+  public static final String SIMPLE_NAME = "DisaggregationEdgePartitionerPass";
 
-  public IFilePass() {
+  public DisaggregationEdgePartitionerPass() {
     super(ExecutionProperty.Key.WriteOptimization, Stream.of(
-        ExecutionProperty.Key.DataStore
+        ExecutionProperty.Key.DataStore,
+        ExecutionProperty.Key.DataCommunicationPattern
     ).collect(Collectors.toSet()));
   }
 
@@ -52,7 +54,7 @@ public final class IFilePass extends AnnotatingPass {
       inEdges.forEach(edge -> {
         if (ScatterGather.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))
             && GlusterFileStore.class.equals(edge.getProperty(ExecutionProperty.Key.DataStore))) {
-          edge.setProperty(WriteOptimizationProperty.of(WriteOptimizationProperty.IFILE_WRITE));
+          edge.setProperty(PartitionerProperty.of(IFileHashPartitioner.class));
         }
       });
     });

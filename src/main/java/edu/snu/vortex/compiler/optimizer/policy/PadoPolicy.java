@@ -32,6 +32,7 @@ public final class PadoPolicy implements Policy {
   public List<CompileTimePass> getCompileTimePasses() {
     return  Arrays.asList(
         new ParallelismPass(), // Provides parallelism information.
+        new DefaultPartitionerPass(), // TODO #515: Move to InitializePass
         new LoopOptimizationPass(),
         // Processes vertices and edges with Pado algorithm.
         new PadoPass(),
