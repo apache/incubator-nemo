@@ -41,9 +41,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import edu.snu.vortex.runtime.common.metric.MetricDataBuilder;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.DataCommunicationPattern;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
 import org.apache.reef.annotations.audience.DriverSide;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.DataCommunicationPattern;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;

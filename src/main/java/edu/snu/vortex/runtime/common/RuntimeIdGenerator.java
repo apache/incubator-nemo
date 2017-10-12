@@ -112,20 +112,6 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for a partition, whose data is a part of a task's output.
-   *
-   * @param runtimeEdgeId    of the partition
-   * @param taskIndex        of the partition
-   * @param destinationIndex of the partition
-   * @return the generated ID
-   */
-  public static String generatePartitionId(final String runtimeEdgeId,
-                                           final int taskIndex,
-                                           final int destinationIndex) {
-    return generatePartitionId(runtimeEdgeId, taskIndex) + partitionIdSplitter + destinationIndex;
-  }
-
-  /**
    * Generates the ID for a control message.
    *
    * @return the generated ID

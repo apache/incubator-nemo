@@ -28,9 +28,9 @@ import edu.snu.vortex.runtime.exception.UnsupportedCommPatternException;
 import edu.snu.vortex.runtime.executor.data.HashRange;
 import edu.snu.vortex.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.vortex.runtime.executor.data.PartitionStore;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.Broadcast;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.Broadcast;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -124,8 +124,8 @@ public final class InputReader extends DataTransfer {
 
   /**
    * Read data in the assigned range of hash value.
-   * Constraint: If a partition is written by {@link OutputWriter#hashAndWrite(Iterable)}
-   * or {@link OutputWriter#writeScatterGather(Iterable)}, it must be read using this method.
+   * Constraint: If a partition is written by {@link OutputWriter#dataSkewWrite(List)}
+   * or {@link OutputWriter#writeScatterGather(List)}, it must be read using this method.
    *
    * @return the list of the completable future of the data.
    */
@@ -151,7 +151,7 @@ public final class InputReader extends DataTransfer {
   }
 
   /**
-   * Read the I-File prepared for this task by using {@link OutputWriter#writeIFile(Iterable)}.
+   * Read the I-File prepared for this task by using {@link OutputWriter#iFileWrite(List)}.
    *
    * @return the completable future of the data.
    */

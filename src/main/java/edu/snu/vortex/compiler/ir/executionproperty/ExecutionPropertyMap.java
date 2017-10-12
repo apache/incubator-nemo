@@ -20,14 +20,12 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataCommunicationPatternProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.PartitioningProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.vortex.runtime.executor.data.LocalFileStore;
 import edu.snu.vortex.runtime.executor.data.MemoryStore;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.DataCommunicationPattern;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
-import edu.snu.vortex.runtime.executor.datatransfer.partitioning.Hash;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.DataCommunicationPattern;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
@@ -81,7 +79,6 @@ public final class ExecutionPropertyMap implements Serializable {
    */
   private void setDefaultEdgeExecutionProperties(final Class<? extends DataCommunicationPattern> commPattern) {
     this.put(DataCommunicationPatternProperty.of(commPattern));
-    this.put(PartitioningProperty.of(Hash.class));
     this.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
 
     if (OneToOne.class.equals(commPattern)) {

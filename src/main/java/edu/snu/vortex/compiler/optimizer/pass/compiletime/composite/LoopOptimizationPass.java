@@ -15,6 +15,7 @@
  */
 package edu.snu.vortex.compiler.optimizer.pass.compiletime.composite;
 
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.DefaultPartitionerPass;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.reshaping.LoopGroupingPass;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.reshaping.LoopOptimizations;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.reshaping.LoopUnrollingPass;
@@ -32,7 +33,8 @@ public final class LoopOptimizationPass extends CompositePass {
         new LoopGroupingPass(),
         LoopOptimizations.getLoopFusionPass(),
         LoopOptimizations.getLoopInvariantCodeMotionPass(),
-        new LoopUnrollingPass() // Groups then unrolls loops. TODO #162: remove unrolling pt.
+        new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.,
+        new DefaultPartitionerPass() // TODO #?:: Move to InitializePass after #530 is merged.
     ));
   }
 

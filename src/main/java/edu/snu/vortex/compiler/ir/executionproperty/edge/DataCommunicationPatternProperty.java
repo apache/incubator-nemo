@@ -16,7 +16,7 @@
 package edu.snu.vortex.compiler.ir.executionproperty.edge;
 
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.DataCommunicationPattern;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.DataCommunicationPattern;
 
 /**
  * DataCommunicationPattern ExecutionProperty.

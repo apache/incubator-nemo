@@ -22,8 +22,8 @@ import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 
 import java.util.ArrayList;
 import java.util.List;

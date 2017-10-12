@@ -22,7 +22,7 @@ import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
 import edu.snu.vortex.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.OneToOne;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
 
 import java.util.*;
 import java.util.function.Predicate;

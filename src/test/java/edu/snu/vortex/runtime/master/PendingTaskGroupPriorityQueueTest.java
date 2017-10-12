@@ -28,7 +28,7 @@ import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.compiler.optimizer.TestPolicy;
 import edu.snu.vortex.runtime.common.plan.physical.*;
-import edu.snu.vortex.runtime.executor.datatransfer.data_communication_pattern.ScatterGather;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 import edu.snu.vortex.runtime.master.scheduler.*;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;

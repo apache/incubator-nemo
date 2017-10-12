@@ -15,8 +15,21 @@
  */
 package edu.snu.vortex.runtime.executor.datatransfer.partitioning;
 
+import edu.snu.vortex.compiler.ir.Element;
+import edu.snu.vortex.runtime.executor.data.Block;
+
+import java.util.Collections;
+import java.util.List;
+
 /**
- * TODO #493: Implement Runtime classes for each Partitioning methods.
+ * An implementation of {@link Partitioner} which makes an output data from a source task to a single {@link Block}.
  */
-public interface Partitioning {
+public final class IntactPartitioner implements Partitioner {
+  public static final String SIMPLE_NAME = "Intact";
+
+  @Override
+  public List<Block> partition(final Iterable<Element> elements,
+                               final int dstParallelism) {
+    return Collections.singletonList(new Block(elements));
+  }
 }

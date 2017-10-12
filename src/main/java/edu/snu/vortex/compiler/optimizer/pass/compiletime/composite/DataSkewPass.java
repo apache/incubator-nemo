@@ -15,9 +15,7 @@
  */
 package edu.snu.vortex.compiler.optimizer.pass.compiletime.composite;
 
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.DataSkewEdgeDataStorePass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.DataSkewEdgeMetricCollectionPass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.DataSkewVertexPass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.*;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.reshaping.DataSkewReshapingPass;
 
 import java.util.Arrays;
@@ -36,9 +34,11 @@ public final class DataSkewPass extends CompositePass {
   public DataSkewPass() {
     super(Arrays.asList(
         new DataSkewReshapingPass(),
+        new DefaultPartitionerPass(), // TODO #515: Move to InitializePass.
         new DataSkewVertexPass(),
         new DataSkewEdgeDataStorePass(),
-        new DataSkewEdgeMetricCollectionPass()
+        new DataSkewEdgeMetricCollectionPass(),
+        new DataSkewEdgePartitionerPass()
     ));
   }
 
