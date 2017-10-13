@@ -37,6 +37,7 @@ import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Compiles and runs User application.
@@ -99,7 +100,7 @@ public final class UserApplicationRunner implements Runnable {
   }
 
   public Set<String> getIRDagKeys() {
-    return this.dagJSONs.keySet();
+    return this.dagJSONs.keySet().stream().map(key -> "\"" + key + "\"").collect(Collectors.toSet());
   }
 
   public String getIRDagJsonByKey(final String irDagKey) throws IrDagJsonNotFoundException {
