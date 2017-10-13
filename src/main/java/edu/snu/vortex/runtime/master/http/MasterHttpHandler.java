@@ -16,9 +16,11 @@
 package edu.snu.vortex.runtime.master.http;
 
 import edu.snu.vortex.runtime.exception.ExecutorNotFoundException;
+import edu.snu.vortex.runtime.exception.IrDagJsonNotFoundException;
 import edu.snu.vortex.runtime.exception.StageNotFoundException;
 import edu.snu.vortex.runtime.exception.TaskGroupNotFoundException;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
+import edu.snu.vortex.runtime.master.UserApplicationRunner;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.webserver.HttpHandler;
 import org.apache.reef.webserver.ParsedHttpRequest;
@@ -34,16 +36,20 @@ import java.util.Map;
  * Handles HTTP requests sent to the Vortex Master.
  */
 public final class MasterHttpHandler implements HttpHandler {
+  private static final String KEY_IR_DAG = "ir-dag-key";
   private static final String KEY_EXECUTOR_ID = "executor-id";
   private static final String KEY_STAGE_ID = "stage-id";
   private static final String KEY_TASK_GROUP_ID = "task-group-id";
 
   private String uriSpecification = "vortex";
   private final InjectionFuture<RuntimeMaster> runtimeMaster;
+  private final InjectionFuture<UserApplicationRunner> userApplicationRunner;
 
   @Inject
-  private MasterHttpHandler(final InjectionFuture<RuntimeMaster> runtimeMaster) {
+  private MasterHttpHandler(final InjectionFuture<RuntimeMaster> runtimeMaster,
+                            final InjectionFuture<UserApplicationRunner> userApplicationRunner) {
     this.runtimeMaster = runtimeMaster;
+    this.userApplicationRunner = userApplicationRunner;
   }
 
   @Override
@@ -65,6 +71,16 @@ public final class MasterHttpHandler implements HttpHandler {
 
     final Response result;
     switch (target) {
+    case "ir-dag-keys":
+      result = onIRDAGKeys();
+      break;
+    case "ir-dag-json":
+      if (queryMap.isEmpty()) {
+        result = Response.badRequest(String.format("The POST request should specify %s.", KEY_IR_DAG));
+      } else {
+        result = onIRDAGJson(queryMap);
+      }
+      break;
     case "job-dag":
       result = onJobDAG();
       break;
@@ -131,6 +147,24 @@ public final class MasterHttpHandler implements HttpHandler {
       return Response.notFound(stageId);
     } catch (IOException e) {
       return Response.badRequest(e.getMessage());
+    }
+  }
+
+  private Response onIRDAGKeys() {
+    return Response.ok(userApplicationRunner.get().getIRDagKeys().toString());
+  }
+
+  private Response onIRDAGJson(final Map<String, List<String>> queryMap) {
+    final List<String> args = queryMap.get(KEY_IR_DAG);
+    if (args.size() != 1) {
+      return Response.badRequest(String.format("Usage : only one %s at a time", KEY_IR_DAG));
+    }
+
+    final String irDagKey = args.get(0);
+    try {
+      return Response.ok(userApplicationRunner.get().getIRDagJsonByKey(irDagKey));
+    } catch (final IrDagJsonNotFoundException e) {
+      return Response.notFound(irDagKey);
     }
   }
 

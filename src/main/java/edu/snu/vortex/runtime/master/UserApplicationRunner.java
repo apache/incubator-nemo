@@ -28,6 +28,7 @@ import edu.snu.vortex.compiler.eventhandler.DynamicOptimizationEventHandler;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
 import edu.snu.vortex.compiler.optimizer.policy.Policy;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.vortex.runtime.exception.IrDagJsonNotFoundException;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,8 +103,12 @@ public final class UserApplicationRunner implements Runnable {
     return this.dagJSONs.keySet();
   }
 
-  public String getIRDagJsonByKey(final String irDagKey) {
-    return this.dagJSONs.get(irDagKey);
+  public String getIRDagJsonByKey(final String irDagKey) throws IrDagJsonNotFoundException {
+    if (this.dagJSONs.containsKey(irDagKey)) {
+      return this.dagJSONs.get(irDagKey);
+    } else {
+      throw new IrDagJsonNotFoundException(irDagKey);
+    }
   }
 
   private static Pair<DAG<IRVertex, IREdge>, Policy> clientSideCompilation(final String className,
