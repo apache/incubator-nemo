@@ -55,7 +55,7 @@ public final class Optimizer {
     if (optimizationPolicy == null || optimizationPolicy.getCompileTimePasses().isEmpty()) {
       throw new CompileTimeOptimizationException("A policy name should be specified.");
     }
-    return process(dag, optimizationPolicy.getCompileTimePasses().iterator(), dagDirectory, dagJSONs);
+    return process(dag, optimizationPolicy.getCompileTimePasses().iterator(), dagDirectory, dagJSONs, 1);
   }
 
   /**
@@ -78,13 +78,15 @@ public final class Optimizer {
    * @param passes passes to apply.
    * @param dagDirectory directory to save the DAG information.
    * @param dagJSONs map to keep JSON files
+   * @param idx index of the pass.
    * @return the processed DAG.
    * @throws Exception Exceptions on the way.
    */
   private static DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag,
                                                final Iterator<CompileTimePass> passes,
                                                final String dagDirectory,
-                                               final Map<String, String> dagJSONs) throws Exception {
+                                               final Map<String, String> dagJSONs,
+                                               final Integer idx) throws Exception {
     if (passes.hasNext()) {
       final CompileTimePass passToApply = passes.next();
       // Apply the pass to the DAG.
@@ -98,11 +100,11 @@ public final class Optimizer {
       }
       // Save the processed JSON DAG.
       if (dagJSONs != null) {
-        dagJSONs.put("ir-after-" + passToApply.getClass().getSimpleName(), processedDAG.toString());
+        dagJSONs.put("ir-after-" + idx + passToApply.getClass().getSimpleName(), processedDAG.toString());
       }
-      processedDAG.storeJSON(dagDirectory, "ir-after-" + passToApply.getClass().getSimpleName(),
+      processedDAG.storeJSON(dagDirectory, "ir-after-" + idx + passToApply.getClass().getSimpleName(),
           "DAG after optimization");
-      return process(processedDAG, passes, dagDirectory, dagJSONs);
+      return process(processedDAG, passes, dagDirectory, dagJSONs, idx + 1);
     } else {
       return dag;
     }
