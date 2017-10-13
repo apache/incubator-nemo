@@ -35,7 +35,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -54,7 +53,7 @@ public final class UserApplicationRunner implements Runnable {
   private final Frontend frontend;
   private final Backend<PhysicalPlan> backend;
 
-  final Map<String, String> dagJSONs;
+  private final Map<String, String> dagJSONs;
 
   @Inject
   private UserApplicationRunner(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,

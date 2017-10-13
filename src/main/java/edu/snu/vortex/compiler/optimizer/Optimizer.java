@@ -60,6 +60,7 @@ public final class Optimizer {
    * @param dag DAG to process.
    * @param passes passes to apply.
    * @param dagDirectory directory to save the DAG information.
+   * @param dagJSONs map to keep JSON files
    * @return the processed DAG.
    * @throws Exception Exceptions on the way.
    */
