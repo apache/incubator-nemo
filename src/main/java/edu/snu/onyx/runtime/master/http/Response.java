@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.master.http;
+package edu.snu.onyx.runtime.master.http;
 
 /**
- * Encapsulates the response that the Vortex Master sends back to the HTTP client.
+ * Encapsulates the response that the Onyx Master sends back to the HTTP client.
  * It includes the status code and message.
  */
 public final class Response {

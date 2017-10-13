@@ -42,8 +42,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import edu.snu.onyx.runtime.common.metric.MetricDataBuilder;
-import edu.snu.vortex.runtime.exception.StageNotFoundException;
-import edu.snu.vortex.runtime.exception.TaskGroupNotFoundException;
+import edu.snu.onyx.runtime.exception.StageNotFoundException;
+import edu.snu.onyx.runtime.exception.TaskGroupNotFoundException;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

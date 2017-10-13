@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.exception;
+package edu.snu.onyx.runtime.exception;
 
 /**
  * Thrown when a specified task group does not exist.

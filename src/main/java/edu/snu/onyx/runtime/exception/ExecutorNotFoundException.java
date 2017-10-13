@@ -13,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.exception;
+package edu.snu.onyx.runtime.exception;
 
 /**
- * Thrown when a specified IR DAG JSON does not exist.
+ * Thrown when a specified executor does not exist.
  */
-public final class IrDagJsonNotFoundException extends Exception {
+public final class ExecutorNotFoundException extends Exception {
   /**
-   * Constructor of IrDagJsonNotFoundException.
-   * @param irDagKey the id of the IR DAG JSON string.
+   * Constructor of ExecutorNotFoundException.
+   * @param executorId the id of executor
    */
-  public IrDagJsonNotFoundException(final String irDagKey) {
-    super(irDagKey + " does not exist.");
+  public ExecutorNotFoundException(final String executorId) {
+    super(executorId + " does not exist.");
   }
 }

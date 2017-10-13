@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating;
+package edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating;
 
-import edu.snu.vortex.common.dag.DAG;
-import edu.snu.vortex.compiler.ir.IREdge;
-import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
-import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
+import edu.snu.onyx.common.dag.DAG;
+import edu.snu.onyx.compiler.ir.IREdge;
+import edu.snu.onyx.compiler.ir.IRVertex;
+import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
+import edu.snu.onyx.compiler.ir.executionproperty.edge.DataFlowModelProperty;
+import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
 
 import java.util.List;
 import java.util.stream.Collectors;

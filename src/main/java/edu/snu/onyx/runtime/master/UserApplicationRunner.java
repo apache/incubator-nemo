@@ -29,7 +29,7 @@ import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.optimizer.Optimizer;
 import edu.snu.onyx.compiler.optimizer.policy.Policy;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.vortex.runtime.exception.IrDagJsonNotFoundException;
+import edu.snu.onyx.runtime.exception.IrDagJsonNotFoundException;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

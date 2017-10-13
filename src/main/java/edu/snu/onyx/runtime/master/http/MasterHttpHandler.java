@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.runtime.master.http;
+package edu.snu.onyx.runtime.master.http;
 
-import edu.snu.vortex.runtime.exception.ExecutorNotFoundException;
-import edu.snu.vortex.runtime.exception.IrDagJsonNotFoundException;
-import edu.snu.vortex.runtime.exception.StageNotFoundException;
-import edu.snu.vortex.runtime.exception.TaskGroupNotFoundException;
-import edu.snu.vortex.runtime.master.RuntimeMaster;
-import edu.snu.vortex.runtime.master.UserApplicationRunner;
+import edu.snu.onyx.runtime.exception.ExecutorNotFoundException;
+import edu.snu.onyx.runtime.exception.IrDagJsonNotFoundException;
+import edu.snu.onyx.runtime.exception.StageNotFoundException;
+import edu.snu.onyx.runtime.exception.TaskGroupNotFoundException;
+import edu.snu.onyx.runtime.master.RuntimeMaster;
+import edu.snu.onyx.runtime.master.UserApplicationRunner;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.webserver.HttpHandler;
 import org.apache.reef.webserver.ParsedHttpRequest;
@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Handles HTTP requests sent to the Vortex Master.
+ * Handles HTTP requests sent to the Onyx Master.
  */
 public final class MasterHttpHandler implements HttpHandler {
   private static final String KEY_IR_DAG = "ir-dag-key";
@@ -41,7 +41,7 @@ public final class MasterHttpHandler implements HttpHandler {
   private static final String KEY_STAGE_ID = "stage-id";
   private static final String KEY_TASK_GROUP_ID = "task-group-id";
 
-  private String uriSpecification = "vortex";
+  private String uriSpecification = "onyx";
   private final InjectionFuture<RuntimeMaster> runtimeMaster;
   private final InjectionFuture<UserApplicationRunner> userApplicationRunner;
 

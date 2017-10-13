@@ -13,28 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.optimizer.policy;
+package edu.snu.onyx.compiler.optimizer.policy;
 
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.*;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.*;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
-import edu.snu.vortex.compiler.optimizer.pass.runtime.RuntimePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.DefaultStagePartitioningPass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.LocalDiskDataStorePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.PullDataFlowModelPass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.ScheduleGroupPass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
+import edu.snu.onyx.compiler.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
 
 /**
- * A policy to perform Pado optimization that uses transient resources on data centers.
- * link to paper: http://dl.acm.org/citation.cfm?id=3064181
+ * A policy to pull intermediate data from disk.
  */
-public final class TransientResourcePolicy implements Policy {
+public final class PullDiskMRPolicy implements Policy {
   private final Policy policy;
 
-  public TransientResourcePolicy() {
+  public PullDiskMRPolicy() {
     this.policy = new PolicyBuilder()
         .registerCompileTimePass(new InitiationCompositePass())
-        .registerCompileTimePass(new PadoVertexExecutorPlacementPass())
-        .registerCompileTimePass(new PadoEdgeDataFlowModelPass())
-        .registerCompileTimePass(new PadoEdgeDataStorePass())
+        .registerCompileTimePass(new LocalDiskDataStorePass())
+        .registerCompileTimePass(new PullDataFlowModelPass())
         .registerCompileTimePass(new DefaultStagePartitioningPass())
         .registerCompileTimePass(new ScheduleGroupPass())
         .build();

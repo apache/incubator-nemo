@@ -13,26 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.optimizer.policy;
+package edu.snu.onyx.compiler.optimizer.policy;
 
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.*;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
-import edu.snu.vortex.compiler.optimizer.pass.runtime.RuntimePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.DefaultStagePartitioningPass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.MemoryDataStorePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.PushDataFlowModelPass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.ScheduleGroupPass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
+import edu.snu.onyx.compiler.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
 
 /**
- * A policy to pull intermediate data from disk.
+ * A policy to push intermediate data to memory.
  */
-public final class PullDiskMRPolicy implements Policy {
+public final class PushMemoryMRPolicy implements Policy {
   private final Policy policy;
 
-  public PullDiskMRPolicy() {
+  public PushMemoryMRPolicy() {
     this.policy = new PolicyBuilder()
         .registerCompileTimePass(new InitiationCompositePass())
-        .registerCompileTimePass(new LocalDiskDataStorePass())
-        .registerCompileTimePass(new PullDataFlowModelPass())
+        .registerCompileTimePass(new MemoryDataStorePass())
+        .registerCompileTimePass(new PushDataFlowModelPass())
         .registerCompileTimePass(new DefaultStagePartitioningPass())
         .registerCompileTimePass(new ScheduleGroupPass())
         .build();

@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.optimizer.policy;
+package edu.snu.onyx.compiler.optimizer.policy;
 
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.DefaultStagePartitioningPass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.DualSourceParallelismPass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.ScheduleGroupPass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
-import edu.snu.vortex.compiler.optimizer.pass.runtime.RuntimePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.DefaultStagePartitioningPass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.DualSourceParallelismPass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.ScheduleGroupPass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
+import edu.snu.onyx.compiler.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
 

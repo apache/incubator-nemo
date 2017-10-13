@@ -13,28 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating;
+package edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating;
 
-import edu.snu.vortex.common.dag.DAG;
-import edu.snu.vortex.compiler.ir.IREdge;
-import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
-import edu.snu.vortex.runtime.executor.data.LocalFileStore;
-import edu.snu.vortex.runtime.executor.data.MemoryStore;
-import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
+import edu.snu.onyx.common.dag.DAG;
+import edu.snu.onyx.compiler.ir.IREdge;
+import edu.snu.onyx.compiler.ir.IRVertex;
+import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
+import edu.snu.onyx.compiler.ir.executionproperty.edge.DataFlowModelProperty;
+import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
 
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Pass for tagging shuffle edges with "Local Disk" DataStore ExecutionProperty.
+ * Pass for tagging shuffle edges with "Push" DataFlowModel ExecutionProperty.
  */
-public final class LocalDiskDataStorePass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "LocalDiskDataStorePass";
+public final class PushDataFlowModelPass extends AnnotatingPass {
+  public static final String SIMPLE_NAME = "PadoEdgeDataFlowModelPass";
 
-  public LocalDiskDataStorePass() {
+  public PushDataFlowModelPass() {
     super(ExecutionProperty.Key.DataFlowModel, Stream.of(
         ExecutionProperty.Key.ExecutorPlacement
     ).collect(Collectors.toSet()));
@@ -47,9 +45,9 @@ public final class LocalDiskDataStorePass extends AnnotatingPass {
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
           if (ScatterGather.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
-            edge.setProperty(DataStoreProperty.of(LocalFileStore.class));
+            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
           } else {
-            edge.setProperty(DataStoreProperty.of(MemoryStore.class));
+            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
           }
         });
       }

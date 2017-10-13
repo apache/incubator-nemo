@@ -19,7 +19,7 @@ import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.ncs.NcsMessageEnvironment;
 import edu.snu.onyx.runtime.common.message.ncs.NcsParameters;
 import edu.snu.onyx.runtime.master.OnyxDriver;
-import edu.snu.vortex.runtime.master.http.MasterHttpHandler;
+import edu.snu.onyx.runtime.master.http.MasterHttpHandler;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
