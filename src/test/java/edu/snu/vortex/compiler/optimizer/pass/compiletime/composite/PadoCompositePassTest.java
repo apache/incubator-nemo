@@ -24,7 +24,7 @@ import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.PadoEdgeDataStorePass;
-import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.PadoVertexPass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.PadoVertexExecutorPlacementPass;
 import edu.snu.vortex.runtime.executor.data.LocalFileStore;
 import edu.snu.vortex.runtime.executor.data.MemoryStore;
 import org.junit.Before;
@@ -36,11 +36,11 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Test {@link PadoVertexPass} and {@link PadoEdgeDataStorePass}.
+ * Test {@link PadoVertexExecutorPlacementPass} and {@link PadoEdgeDataStorePass}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public class PadoPassTest {
+public class PadoCompositePassTest {
   private DAG<IRVertex, IREdge> compiledDAG;
 
   @Before
@@ -50,7 +50,7 @@ public class PadoPassTest {
 
   @Test
   public void testPadoPass() throws Exception {
-    final DAG<IRVertex, IREdge> processedDAG = new PadoPass().apply(compiledDAG);
+    final DAG<IRVertex, IREdge> processedDAG = new PadoCompositePass().apply(compiledDAG);
 
     final IRVertex vertex1 = processedDAG.getTopologicalSort().get(0);
     assertEquals(ExecutorPlacementProperty.TRANSIENT, vertex1.getProperty(ExecutionProperty.Key.ExecutorPlacement));

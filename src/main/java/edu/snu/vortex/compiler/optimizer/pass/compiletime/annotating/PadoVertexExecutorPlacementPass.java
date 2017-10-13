@@ -27,16 +27,11 @@ import java.util.List;
 /**
  * Pado pass for tagging vertices.
  */
-public final class PadoVertexPass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "PadoVertexPass";
+public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
+  public static final String SIMPLE_NAME = "PadoVertexExecutorPlacementPass";
 
-  public PadoVertexPass() {
+  public PadoVertexExecutorPlacementPass() {
     super(ExecutionProperty.Key.ExecutorPlacement);
-  }
-
-  @Override
-  public String getName() {
-    return SIMPLE_NAME;
   }
 
   @Override

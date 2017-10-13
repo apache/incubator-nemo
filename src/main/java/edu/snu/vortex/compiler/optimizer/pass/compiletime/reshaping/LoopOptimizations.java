@@ -100,11 +100,6 @@ public final class LoopOptimizations {
     public static final String SIMPLE_NAME = "LoopFusionPass";
 
     @Override
-    public String getName() {
-      return SIMPLE_NAME;
-    }
-
-    @Override
     public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
       final List<LoopVertex> loopVertices = new ArrayList<>();
       final Map<LoopVertex, List<IREdge>> inEdges = new HashMap<>();
@@ -246,11 +241,6 @@ public final class LoopOptimizations {
    */
   public static final class LoopInvariantCodeMotionPass extends ReshapingPass {
     public static final String SIMPLE_NAME = "LoopInvariantCodeMotionPass";
-
-    @Override
-    public String getName() {
-      return SIMPLE_NAME;
-    }
 
     @Override
     public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {

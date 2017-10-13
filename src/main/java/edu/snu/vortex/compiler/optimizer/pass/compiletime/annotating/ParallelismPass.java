@@ -39,11 +39,6 @@ public final class ParallelismPass extends AnnotatingPass {
   }
 
   @Override
-  public String getName() {
-    return SIMPLE_NAME;
-  }
-
-  @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     // Propagate forward source parallelism
     dag.topologicalDo(vertex -> {

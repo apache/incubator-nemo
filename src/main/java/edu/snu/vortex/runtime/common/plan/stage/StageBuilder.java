@@ -83,7 +83,8 @@ public final class StageBuilder {
     final int scheduleGroupIdx =
         vertices.iterator().next().<Integer>getProperty(ExecutionProperty.Key.ScheduleGroupIndex);
     vertices.forEach(irVertex -> {
-      if (!firstPlacement.equals(irVertex.<String>getProperty(ExecutionProperty.Key.ExecutorPlacement))
+      if ((firstPlacement != null
+          && !firstPlacement.equals(irVertex.<String>getProperty(ExecutionProperty.Key.ExecutorPlacement)))
           || scheduleGroupIdx != irVertex.<Integer>getProperty(ExecutionProperty.Key.ScheduleGroupIndex)) {
         throw new RuntimeException("Vertices of the same stage have different execution properties: "
             + irVertex.getId());

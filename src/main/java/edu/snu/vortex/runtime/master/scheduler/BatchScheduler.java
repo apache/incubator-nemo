@@ -28,6 +28,7 @@ import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.*;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.JobStateManager;
+import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
@@ -71,11 +72,17 @@ public final class BatchScheduler implements Scheduler {
   public BatchScheduler(final PartitionManagerMaster partitionManagerMaster,
                         final SchedulingPolicy schedulingPolicy,
                         final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue,
-                        final PubSubEventHandlerWrapper pubSubEventHandlerWrapper) {
+                        final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
+                        final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler) {
     this.partitionManagerMaster = partitionManagerMaster;
     this.pendingTaskGroupPriorityQueue = pendingTaskGroupPriorityQueue;
     this.schedulingPolicy = schedulingPolicy;
     this.pubSubEventHandlerWrapper = pubSubEventHandlerWrapper;
+    updatePhysicalPlanEventHandler.setScheduler(this);
+    if (pubSubEventHandlerWrapper.getPubSubEventHandler() != null) {
+      pubSubEventHandlerWrapper.getPubSubEventHandler()
+          .subscribe(updatePhysicalPlanEventHandler.getEventClass(), updatePhysicalPlanEventHandler);
+    }
   }
 
   /**

@@ -20,6 +20,7 @@ import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 
 import java.util.*;
 
@@ -34,6 +35,11 @@ public abstract class CompositePass implements CompileTimePass {
     this.passList = passList;
     this.prerequisiteExecutionProperties = new HashSet<>();
     passList.forEach(pass -> prerequisiteExecutionProperties.addAll(pass.getPrerequisiteExecutionProperties()));
+    passList.forEach(pass -> {
+      if (pass instanceof AnnotatingPass) {
+        prerequisiteExecutionProperties.remove(((AnnotatingPass) pass).getExecutionPropertyToModify());
+      }
+    });
   }
 
   public final List<CompileTimePass> getPassList() {

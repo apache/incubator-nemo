@@ -20,6 +20,10 @@ import edu.snu.vortex.client.JobLauncher;
 import edu.snu.vortex.compiler.frontend.Frontend;
 import edu.snu.vortex.compiler.frontend.beam.BeamFrontend;
 import edu.snu.vortex.compiler.ir.*;
+import edu.snu.vortex.compiler.optimizer.policy.DataSkewPolicy;
+import edu.snu.vortex.compiler.optimizer.policy.DefaultPolicy;
+import edu.snu.vortex.compiler.optimizer.policy.DisaggregationPolicy;
+import edu.snu.vortex.compiler.optimizer.policy.PadoPolicy;
 import edu.snu.vortex.examples.beam.*;
 import edu.snu.vortex.common.dag.DAG;
 import org.apache.reef.tang.Configuration;
@@ -30,7 +34,11 @@ import org.apache.reef.tang.Tang;
  * Utility methods for tests.
  */
 public final class CompilerTestUtil {
-  public static String rootDir = System.getProperty("user.dir");
+  public static final String rootDir = System.getProperty("user.dir");
+  public static final String padoPolicy = PadoPolicy.class.getCanonicalName();
+  public static final String disaggregationPolicy = DisaggregationPolicy.class.getCanonicalName();
+  public static final String defaultPolicy = DefaultPolicy.class.getCanonicalName();
+  public static final String dataSkewPolicy = DataSkewPolicy.class.getCanonicalName();
 
   public static DAG<IRVertex, IREdge> compileMRDAG() throws Exception {
     final Frontend beamFrontend = new BeamFrontend();
