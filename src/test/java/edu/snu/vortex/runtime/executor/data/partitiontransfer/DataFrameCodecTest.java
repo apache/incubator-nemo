@@ -17,7 +17,6 @@ package edu.snu.vortex.runtime.executor.data.partitiontransfer;
 
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.embedded.EmbeddedChannel;
 import org.apache.commons.lang3.RandomUtils;
@@ -46,16 +45,12 @@ public final class DataFrameCodecTest {
   private static final int LENGTH_START_INCLUSIVE = 30;
   private static final int LENGTH_END_EXCLUSIVE = 300;
   private final DataFrameEncoder encoder;
-  private final ControlMessageToPartitionStreamCodec dummyOutboundStreamCodec;
 
   /**
    * @throws InjectionException if failed to get an instance of {@link DataFrameEncoder}
    */
   public DataFrameCodecTest() throws InjectionException {
     encoder = Tang.Factory.getTang().newInjector().getInstance(DataFrameEncoder.class);
-
-    // dummy mock does nothing
-    dummyOutboundStreamCodec = mock(ControlMessageToPartitionStreamCodec.class);
   }
 
   /**
@@ -80,7 +75,6 @@ public final class DataFrameCodecTest {
    * @param mockInputStreamWrapper  wrapper for mock {@link MockInputStreamWrapper}
    * @param isPull      whether the transfer is pull-based or not
    * @param transferId  the transfer id
-   * @param isLastFrame whether this frame is the last one in the transport context or not
    * @param data        the data to transfer
    */
   private static void testDataFrameTransfer(
@@ -89,11 +83,10 @@ public final class DataFrameCodecTest {
       final MockInputStreamWrapper mockInputStreamWrapper,
       final boolean isPull,
       final short transferId,
-      final boolean isLastFrame,
       final byte[] data) {
     final ControlMessage.PartitionTransferType type = isPull ? ControlMessage.PartitionTransferType.PULL
         : ControlMessage.PartitionTransferType.PUSH;
-    final DataFrameEncoder.DataFrame dataFrame = DataFrameEncoder.DataFrame.newInstance(type, isLastFrame, transferId,
+    final DataFrameEncoder.DataFrame dataFrame = DataFrameEncoder.DataFrame.newInstance(type, false, transferId,
         data.length, Unpooled.wrappedBuffer(data));
     outboundChannel.writeOutbound(dataFrame);
     for (Object toTransferred = outboundChannel.readOutbound();
@@ -103,9 +96,6 @@ public final class DataFrameCodecTest {
     }
     final byte[] received = mockInputStreamWrapper.pollCollectedOutput();
     assertTrue(Arrays.equals(data, received));
-
-    // sending the last frame should close the input stream
-    assertTrue(isLastFrame == mockInputStreamWrapper.isEnded());
   }
 
   private static byte[] generateRandomData() {
@@ -123,10 +113,8 @@ public final class DataFrameCodecTest {
       final MockInputStreamWrapper mockInputStreamWrapper = mockStreamCodecWrapper.newInputStream(isPull);
       final short transferId = mockInputStreamWrapper.getTransferId();
       // for each context, send five data frames
-      for (final boolean isLast : new boolean[]{false, false, false, false, true}) {
-        testDataFrameTransfer(inboundChannel, outboundChannel, mockInputStreamWrapper, isPull, transferId, isLast,
-            generateRandomData());
-      }
+      testDataFrameTransfer(inboundChannel, outboundChannel, mockInputStreamWrapper, isPull, transferId,
+          generateRandomData());
     }
   }
 
