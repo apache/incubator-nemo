@@ -64,8 +64,7 @@ public final class GroupByKeyTransform implements Transform {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("GroupByKeyTransform:");
-    sb.append(super.toString());
+    sb.append("GroupByKeyTransform");
     return sb.toString();
   }
 }

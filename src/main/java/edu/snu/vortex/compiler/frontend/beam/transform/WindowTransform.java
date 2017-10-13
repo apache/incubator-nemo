@@ -55,7 +55,7 @@ public final class WindowTransform implements Transform {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("WindowTransform:" + windowFn);
+    sb.append("WindowTransform");
     return sb.toString();
   }
 }

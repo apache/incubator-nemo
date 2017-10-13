@@ -73,7 +73,7 @@ public final class BroadcastTransform implements Transform {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("BroadcastTransform:" + pCollectionView);
+    sb.append("BroadcastTransform");
     return sb.toString();
   }
 }

@@ -54,8 +54,7 @@ public final class FlattenTransform implements Transform {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("FlattenTransform:");
-    sb.append(super.toString());
+    sb.append("FlattenTransform");
     return sb.toString();
   }
 }
