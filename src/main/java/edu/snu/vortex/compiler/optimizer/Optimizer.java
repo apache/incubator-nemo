@@ -56,6 +56,20 @@ public final class Optimizer {
   }
 
   /**
+   * Optimize function.
+   * @param dag input DAG.
+   * @param optimizationPolicy the optimization policy that we want to use to optimize the DAG.
+   * @param dagDirectory directory to save the DAG information.
+   * @return optimized DAG, tagged with execution properties.
+   * @throws Exception throws an exception if there is an exception.
+   */
+  public static DAG<IRVertex, IREdge> optimize(final DAG<IRVertex, IREdge> dag,
+                                               final Policy optimizationPolicy,
+                                               final String dagDirectory) throws Exception {
+    return optimize(dag, optimizationPolicy, dagDirectory, null);
+  }
+
+  /**
    * A recursive method to process each pass one-by-one to the given DAG.
    * @param dag DAG to process.
    * @param passes passes to apply.
@@ -71,7 +85,9 @@ public final class Optimizer {
     if (passes.hasNext()) {
       final CompileTimePass passToApply = passes.next();
       final DAG<IRVertex, IREdge> processedDAG = passToApply.apply(dag);
-      dagJSONs.put("ir-after-" + passToApply.getClass().getSimpleName(), processedDAG.toString());
+      if (dagJSONs != null) {
+        dagJSONs.put("ir-after-" + passToApply.getClass().getSimpleName(), processedDAG.toString());
+      }
       processedDAG.storeJSON(dagDirectory, "ir-after-" + passToApply.getClass().getSimpleName(),
           "DAG after optimization");
       return process(processedDAG, passes, dagDirectory, dagJSONs);
