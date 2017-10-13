@@ -26,7 +26,6 @@ import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProp
 import edu.snu.vortex.runtime.executor.data.GlusterFileStore;
 import edu.snu.vortex.runtime.executor.data.MemoryStore;
 import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
-import edu.snu.vortex.runtime.executor.datatransfer.partitioning.IFileHashPartitioner;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -67,10 +66,5 @@ public class DisaggregationPassTest {
     final IRVertex vertex12 = processedDAG.getTopologicalSort().get(10);
     processedDAG.getIncomingEdgesOf(vertex12).forEach(irEdge ->
       assertEquals(GlusterFileStore.class, irEdge.getProperty(ExecutionProperty.Key.DataStore)));
-
-    processedDAG.getVertices().forEach(v -> processedDAG.getOutgoingEdgesOf(v).stream()
-        .filter(e -> ScatterGather.class.equals(e.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
-        .filter(e -> GlusterFileStore.class.equals(e.getProperty(ExecutionProperty.Key.DataStore)))
-        .forEach(e -> assertEquals(e.getProperty(ExecutionProperty.Key.Partitioner), IFileHashPartitioner.class)));
   }
 }

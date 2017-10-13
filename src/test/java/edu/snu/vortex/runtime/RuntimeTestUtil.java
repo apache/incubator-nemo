@@ -196,7 +196,7 @@ public final class RuntimeTestUtil {
 
             if (scheduledExecutor != null) {
               partitionManagerMaster.onPartitionStateChanged(
-                  partitionId, newState, scheduledExecutor.getExecutorId(), null);
+                  partitionId, newState, scheduledExecutor.getExecutorId());
             }
           });
         }

@@ -30,7 +30,6 @@ import edu.snu.vortex.common.PubSubEventHandlerWrapper;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataCommunicationPatternProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.PartitionerProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
@@ -52,7 +51,6 @@ import edu.snu.vortex.runtime.executor.datatransfer.communication.DataCommunicat
 import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
 import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 import edu.snu.vortex.runtime.executor.datatransfer.partitioning.HashPartitioner;
-import edu.snu.vortex.runtime.executor.datatransfer.partitioning.IFileHashPartitioner;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.vortex.runtime.master.RuntimeMaster;
@@ -249,15 +247,6 @@ public final class DataTransferTest {
     writeAndRead(worker1, worker2, ScatterGather.class, REMOTE_FILE_STORE);
   }
 
-  @Test
-  public void testIFileWriteAndRead() throws Exception {
-    // test ManyToMany same worker (remote file)
-    iFileWriteAndRead(worker1, worker1, REMOTE_FILE_STORE);
-
-    // test ManyToMany different worker (remote file)
-    iFileWriteAndRead(worker1, worker2, REMOTE_FILE_STORE);
-  }
-
   private void writeAndRead(final PartitionManagerWorker sender,
                             final PartitionManagerWorker receiver,
                             final Class<? extends DataCommunicationPattern> commPattern,
@@ -293,12 +282,10 @@ public final class DataTransferTest {
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       if (commPattern.equals(ScatterGather.class)) {
         final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex);
-        master.initializeState(partitionId, Collections.singleton(srcTaskIndex),
-            Collections.singleton(taskGroupPrefix + srcTaskIndex));
+        master.initializeState(partitionId, taskGroupPrefix + srcTaskIndex);
       } else {
         final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex);
-        master.initializeState(partitionId, Collections.singleton(srcTaskIndex),
-            Collections.singleton(taskGroupPrefix + srcTaskIndex));
+        master.initializeState(partitionId, taskGroupPrefix + srcTaskIndex);
       }
       master.onProducerTaskGroupScheduled(taskGroupPrefix + srcTaskIndex);
     });
@@ -339,74 +326,6 @@ public final class DataTransferTest {
       assertEquals(flattenedWrittenData.size(), flattenedReadData.size());
       flattenedReadData.forEach(rData -> assertTrue(flattenedWrittenData.remove(rData)));
     }
-  }
-
-  /**
-   * Tests I-File write and read between 10 writers - 10 readers.
-   * 10 I-Files will be constructed by 10 writers concurrently.
-   */
-  private void iFileWriteAndRead(final PartitionManagerWorker sender,
-                                 final PartitionManagerWorker receiver,
-                                 final Class<? extends PartitionStore> store) throws RuntimeException {
-    final int testIndex = TEST_INDEX.getAndIncrement();
-    final String edgeId = String.format(EDGE_PREFIX_TEMPLATE, testIndex);
-    final String taskGroupPrefix = String.format(TASKGROUP_PREFIX_TEMPLATE, testIndex);
-    final Pair<IRVertex, IRVertex> verticesPair = setupVertices(edgeId, sender, receiver);
-    final IRVertex srcVertex = verticesPair.left();
-    final IRVertex dstVertex = verticesPair.right();
-
-    // Edge setup
-    final IREdge dummyIREdge = new IREdge(ScatterGather.class, srcVertex, dstVertex, CODER);
-    final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
-    edgeProperties.put(PartitionerProperty.of(IFileHashPartitioner.class));
-    edgeProperties.put(DataStoreProperty.of(store));
-    edgeProperties.put(WriteOptimizationProperty.of(WriteOptimizationProperty.IFILE_WRITE));
-    final RuntimeEdge<IRVertex> dummyEdge =
-        new RuntimeEdge<>(edgeId, edgeProperties, srcVertex, dstVertex, CODER);
-
-    // Initialize the states of the I-File partitions in Master.
-    final Set<String> taskGroupIds = new HashSet<>();
-    final Set<Integer> producerTaskIndices = new HashSet<>();
-    IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
-      taskGroupIds.add(taskGroupPrefix + srcTaskIndex);
-      producerTaskIndices.add(srcTaskIndex);
-    });
-    IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
-      final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, dstTaskIndex);
-      master.initializeState(partitionId, producerTaskIndices, taskGroupIds);
-    });
-    taskGroupIds.forEach(master::onProducerTaskGroupScheduled);
-
-    // Write
-    final List<List<Element>> dataWrittenList = new ArrayList<>();
-    IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
-      final List<Element> dataWritten = getRangedNumList(0, I_FILE_DATA_SIZE);
-      final OutputWriter writer = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, srcVertex.getId(), dstVertex,
-          dummyEdge, sender);
-      writer.write(dataWritten);
-      dataWrittenList.add(dataWritten);
-    });
-
-    // Read
-    final List<List<Element>> dataReadList = new ArrayList<>();
-    IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
-      final InputReader reader =
-          new InputReader(dstTaskIndex, taskGroupPrefix + dstTaskIndex, srcVertex, dummyEdge, receiver);
-      final List<Element> dataRead = new ArrayList<>();
-      try {
-        InputReader.combineFutures(reader.read()).forEach(dataRead::add);
-      } catch (final Exception e) {
-        throw new RuntimeException(e);
-      }
-      dataReadList.add(dataRead);
-    });
-
-    // Compare (should be the same)
-    final List<Element> flattenedWrittenData = flatten(dataWrittenList);
-    final List<Element> flattenedReadData = flatten(dataReadList);
-    System.out.println(flattenedWrittenData + "\n" + flattenedReadData);
-    assertEquals(flattenedWrittenData.size(), flattenedReadData.size());
-    flattenedReadData.forEach(rData -> assertTrue(flattenedWrittenData.remove(rData)));
   }
 
   private Pair<IRVertex, IRVertex> setupVertices(final String edgeId,

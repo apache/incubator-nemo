@@ -15,10 +15,10 @@
  */
 package edu.snu.vortex.runtime.executor.datatransfer;
 
+import com.google.common.annotations.VisibleForTesting;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
@@ -45,7 +45,6 @@ import java.util.stream.StreamSupport;
 /**
  * Represents the input data transfer to a task.
  * TODO #492: Modularize the data communication pattern.
- * TODO #493: Detach partitioning from writing.
  */
 public final class InputReader extends DataTransfer {
   private final int dstTaskIndex;
@@ -79,9 +78,7 @@ public final class InputReader extends DataTransfer {
    * @return the read data.
    */
   public List<CompletableFuture<Iterable<Element>>> read() {
-    final String writeOptAtt = (String) runtimeEdge.<String>getProperty(ExecutionProperty.Key.WriteOptimization);
-    final Boolean isIFileWriteEdge =
-        writeOptAtt != null && writeOptAtt.equals(WriteOptimizationProperty.IFILE_WRITE);
+
     switch (((Class) runtimeEdge.<Class>getProperty(ExecutionProperty.Key.DataCommunicationPattern))
         .getSimpleName()) {
       case OneToOne.SIMPLE_NAME:
@@ -91,11 +88,7 @@ public final class InputReader extends DataTransfer {
       case ScatterGather.SIMPLE_NAME:
         // If the dynamic optimization which detects data skew is enabled, read the data in the assigned range.
         // TODO #492: Modularize the data communication pattern.
-        if (isIFileWriteEdge) {
-          return Collections.singletonList(readIFile());
-        } else {
-          return readDataInRange();
-        }
+        return readDataInRange();
       default:
         throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
@@ -150,18 +143,6 @@ public final class InputReader extends DataTransfer {
     return futures;
   }
 
-  /**
-   * Read the I-File prepared for this task by using {@link OutputWriter#iFileWrite(List)}.
-   *
-   * @return the completable future of the data.
-   */
-  private CompletableFuture<Iterable<Element>> readIFile() {
-    final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), dstTaskIndex);
-    return partitionManagerWorker.retrieveDataFromPartition(partitionId, getId(),
-        (Class<? extends PartitionStore>) runtimeEdge.<Class>getProperty(ExecutionProperty.Key.DataStore),
-        HashRange.all());
-  }
-
   public RuntimeEdge getRuntimeEdge() {
     return runtimeEdge;
   }
@@ -210,6 +191,7 @@ public final class InputReader extends DataTransfer {
    * @throws ExecutionException   when fail to get results from futures.
    * @throws InterruptedException when interrupted during getting results from futures.
    */
+  @VisibleForTesting
   public static Iterable<Element> combineFutures(final List<CompletableFuture<Iterable<Element>>> futures)
       throws ExecutionException, InterruptedException {
     final List<Element> concatStreamBase = new ArrayList<>();

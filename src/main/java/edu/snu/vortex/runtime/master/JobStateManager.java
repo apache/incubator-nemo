@@ -15,8 +15,6 @@
  */
 package edu.snu.vortex.runtime.master;
 
-import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
@@ -42,8 +40,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import edu.snu.vortex.runtime.common.metric.MetricDataBuilder;
 import org.apache.reef.annotations.audience.DriverSide;
-import edu.snu.vortex.runtime.executor.datatransfer.communication.DataCommunicationPattern;
-import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
@@ -156,32 +152,11 @@ public final class JobStateManager {
 
       // Initialize states for partitions of inter-stage edges
       stageOutgoingEdges.forEach(physicalStageEdge -> {
-        final Class<? extends DataCommunicationPattern> commPattern =
-            physicalStageEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern);
-        final String writeOptAtt = physicalStageEdge.getProperty(ExecutionProperty.Key.WriteOptimization);
-        final Boolean isIFileWriteEdge =
-            writeOptAtt != null && writeOptAtt.equals(WriteOptimizationProperty.IFILE_WRITE);
-
         final int srcParallelism = taskGroupsForStage.size();
-
-        if (commPattern.equals(ScatterGather.class) && isIFileWriteEdge) {
-          final int dstParallelism =
-              physicalStageEdge.getDstVertex().getProperty(ExecutionProperty.Key.Parallelism);
-          final Set<String> producerTaskGroupIds = new HashSet<>();
-          taskGroupsForStage.forEach(taskGroup -> producerTaskGroupIds.add(taskGroup.getTaskGroupId()));
-          final Set<Integer> producerTaskIndices =
-              IntStream.range(0, producerTaskGroupIds.size()).boxed().collect(Collectors.toSet());
-          IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> {
-            final String partitionId = RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), dstTaskIdx);
-            partitionManagerMaster.initializeState(partitionId, producerTaskIndices, producerTaskGroupIds);
-          });
-        } else {
-          IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-            final String partitionId = RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx);
-            partitionManagerMaster.initializeState(partitionId, Collections.singleton(srcTaskIdx),
-                Collections.singleton(taskGroupsForStage.get(srcTaskIdx).getTaskGroupId()));
-          });
-        }
+        IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
+          final String partitionId = RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx);
+          partitionManagerMaster.initializeState(partitionId, taskGroupsForStage.get(srcTaskIdx).getTaskGroupId());
+        });
       });
 
       // Initialize states for partitions of stage internal edges
@@ -192,8 +167,7 @@ public final class JobStateManager {
           internalOutgoingEdges.forEach(taskRuntimeEdge -> {
             final int srcTaskIdx = taskGroup.getTaskGroupIdx();
             final String partitionId = RuntimeIdGenerator.generatePartitionId(taskRuntimeEdge.getId(), srcTaskIdx);
-            partitionManagerMaster.initializeState(partitionId, Collections.singleton(srcTaskIdx),
-                Collections.singleton(taskGroup.getTaskGroupId()));
+            partitionManagerMaster.initializeState(partitionId, taskGroup.getTaskGroupId());
           });
         });
       });
