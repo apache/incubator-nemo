@@ -70,7 +70,7 @@ public final class DataFrameCodecTest {
    * @return a new {@link EmbeddedChannel} with encoder.
    */
   private EmbeddedChannel newOutboundChannel() {
-    return new EmbeddedChannel(encoder, dummyOutboundStreamCodec);
+    return new EmbeddedChannel(encoder);
   }
 
   /**
