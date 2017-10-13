@@ -1,7 +1,7 @@
-# Vortex 
-[![Build Status](https://cmsbuild.snu.ac.kr/buildStatus/icon?job=Vortex-master)](https://cmsbuild.snu.ac.kr/job/Vortex-master/)
+# Onyx
+[![Build Status](https://cmsbuild.snu.ac.kr/buildStatus/icon?job=Onyx-master)](https://cmsbuild.snu.ac.kr/job/Onyx-master/)
 
-## Vortex prerequisites and setup
+## Onyx prerequisites and setup
 
 ### Prerequisites
 * Java 8
@@ -26,7 +26,7 @@
         * `sudo make install`
     3. To check for a successful installation of version 2.5.0, run `protoc --version`
 
-### Installing Vortex
+### Installing Onyx 
 * Run all tests and install: `mvn clean install -T 2C`
 * Run only unit tests and install: `mvn clean install -DskipITs -T 2C`
 
@@ -37,18 +37,18 @@
 
 ```bash
 ./bin/run_external_app.sh \
-`pwd`/vortex_app/target/bd17f-1.0-SNAPSHOT.jar \
+`pwd`/onyx_app/target/bd17f-1.0-SNAPSHOT.jar \
 -job_id mapreduce \
--executor_json `pwd`/vortex_runtime/config/default.json \
+-executor_json `pwd`/onyx_runtime/config/default.json \
 -user_main MapReduce \
--user_args "`pwd`/mr_input_data `pwd`/vortex_output/output_data"
+-user_args "`pwd`/mr_input_data `pwd`/onyx_output/output_data"
 ```
 
 ### Configurable options
 * `-job_id`: ID of the Beam job
 * `-user_main`: Canonical name of the Beam application
 * `-user_args`: Arguments that the Beam application accepts
-* `-optimization_policy`: Canonical name of the optimization policy to apply to a job DAG in Vortex Compiler
+* `-optimization_policy`: Canonical name of the optimization policy to apply to a job DAG in Onyx Compiler
 * `-deploy_mode`: `yarn` is supported(default value is `local`)
 
 ### Examples
@@ -56,16 +56,16 @@
 ## MapReduce example
 ./bin/run.sh \
   -job_id mr_default \
-  -user_main edu.snu.vortex.examples.beam.MapReduce \
-  -optimization_policy edu.snu.vortex.compiler.optimizer.policy.DefaultPolicy \
+  -user_main edu.snu.onyx.examples.beam.MapReduce \
+  -optimization_policy edu.snu.onyx.compiler.optimizer.policy.DefaultPolicy \
   -user_args "`pwd`/src/main/resources/sample_input_mr `pwd`/src/main/resources/sample_output"
 
 ## YARN cluster example
 ./bin/run.sh \
   -deploy_mode yarn \
   -job_id mr_pado \
-  -user_main edu.snu.vortex.examples.beam.MapReduce \
-  -optimization_policy edu.snu.vortex.compiler.optimizer.policy.PadoPolicy \
+  -user_main edu.snu.onyx.examples.beam.MapReduce \
+  -optimization_policy edu.snu.onyx.compiler.optimizer.policy.PadoPolicy \
   -user_args "hdfs://v-m:9000/sample_input_mr hdfs://v-m:9000/sample_output_mr"
 ```
 
@@ -103,15 +103,16 @@ This example configuration specifies
 * 1 reserved container with 2 cores and 1024MB memory
 
 ## Monitoring your job using web UI
-Vortex Compiler and Engine can store JSON representation of intermediate DAGs.
+Onyx Compiler and Engine can store JSON representation of intermediate DAGs.
 * `-dag_dir` command line option is used to specify the directory where the JSON files are stored. The default directory is `./dag`.
 Using our [online visualizer](https://service.jangho.io/onyx-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
 
 ### Examples
 ```bash
 ./bin/run.sh \
-  -user_main edu.snu.vortex.examples.beam.AlternatingLeastSquare \
-  -optimization_policy edu.snu.vortex.compiler.optimizer.policy.PadoPolicy \
+  -job_id als \
+  -user_main edu.snu.onyx.examples.beam.AlternatingLeastSquare \
+  -optimization_policy edu.snu.onyx.compiler.optimizer.policy.PadoPolicy \
   -dag_dir "./dag/als" \
   -user_args "`pwd`/src/main/resources/sample_input_als 10 3"
 ```
