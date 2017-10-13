@@ -37,9 +37,6 @@ final class PartitionMetadata {
   private static final Logger LOG = LoggerFactory.getLogger(PartitionManagerMaster.class.getName());
   private final String partitionId;
   private final PartitionState partitionState;
-  private final Set<Integer> producerTaskIndices;
-  // the indices of the task groups who didn't commit data yet.
-  private volatile Set<Integer> remainingProducerTaskIndices;
   // TODO #446: Control the Point of Partition Fetch in Executor.
   private volatile CompletableFuture<String> locationFuture; // the future of the location of this block.
 
@@ -52,16 +49,12 @@ final class PartitionMetadata {
    * Constructs the metadata for a partition.
    *
    * @param partitionId         the id of the partition.
-   * @param producerTaskIndices the indices of the producer tasks.
    */
-  PartitionMetadata(final String partitionId,
-                    final Set<Integer> producerTaskIndices) {
+  PartitionMetadata(final String partitionId) {
     // Initialize partition level metadata.
     this.partitionId = partitionId;
     this.partitionState = new PartitionState();
     this.locationFuture = new CompletableFuture<>();
-    this.producerTaskIndices = producerTaskIndices;
-    this.remainingProducerTaskIndices = new HashSet<>(producerTaskIndices);
     // Initialize block level metadata.
     this.blockMetadataList = new ArrayList<>();
     this.writtenBytesCursor = 0;
@@ -74,11 +67,9 @@ final class PartitionMetadata {
    * @param newState         the new state of the partition.
    * @param location         the location of the partition (e.g., worker id, remote store).
    *                         {@code null} if not committed or lost.
-   * @param producerTaskIdx  the index of the task produced the commit. {@code null} if not committed.
    */
   synchronized void onStateChanged(final PartitionState.State newState,
-                                   @Nullable final String location,
-                                   @Nullable final Integer producerTaskIdx) {
+                                   @Nullable final String location) {
     final StateMachine stateMachine = partitionState.getStateMachine();
     final Enum oldState = stateMachine.getCurrentState();
     LOG.debug("Partition State Transition: id {} from {} to {}", new Object[]{partitionId, oldState, newState});
@@ -92,7 +83,6 @@ final class PartitionMetadata {
       case LOST_BEFORE_COMMIT:
       case REMOVED:
         // Reset the partition location and committer information.
-        remainingProducerTaskIndices = new HashSet<>(producerTaskIndices);
         locationFuture.completeExceptionally(new AbsentPartitionException(partitionId, newState));
         locationFuture = new CompletableFuture<>();
         stateMachine.setState(newState);
@@ -100,11 +90,7 @@ final class PartitionMetadata {
       case COMMITTED:
         assert (location != null);
         completeLocationFuture(location);
-        remainingProducerTaskIndices.remove(producerTaskIdx);
-        if (remainingProducerTaskIndices.isEmpty()) {
-          // All committers have committed their data.
-          stateMachine.setState(newState);
-        }
+        stateMachine.setState(newState);
         break;
       default:
         throw new UnsupportedOperationException(newState.toString());

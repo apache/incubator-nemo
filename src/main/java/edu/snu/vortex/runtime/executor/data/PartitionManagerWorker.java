@@ -210,13 +210,11 @@ public final class PartitionManagerWorker {
    * @param partitionStore to store the partition.
    * @param blockSizeInfo  the size metric of blocks.
    * @param srcIRVertexId  of the source task.
-   * @param srcTaskIdx     of the source task.
    */
   public void commitPartition(final String partitionId,
                               final Class<? extends PartitionStore> partitionStore,
                               final List<Long> blockSizeInfo,
-                              final String srcIRVertexId,
-                              final int srcTaskIdx) {
+                              final String srcIRVertexId) {
     LOG.info("CommitPartition: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
     store.commitPartition(partitionId);
@@ -224,7 +222,6 @@ public final class PartitionManagerWorker {
         ControlMessage.PartitionStateChangedMsg.newBuilder()
             .setExecutorId(executorId)
             .setPartitionId(partitionId)
-            .setSrcTaskIdx(srcTaskIdx)
             .setState(ControlMessage.PartitionStateFromExecutor.COMMITTED);
 
     if (partitionStore == GlusterFileStore.class) {

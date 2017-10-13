@@ -30,9 +30,7 @@ public final class DisaggregationPass extends CompositePass {
     super(Arrays.asList(
         new DisaggregationVertexExecutorPlacementPass(),
         new DisaggregationEdgeDataStorePass(),
-        new DisaggregationEdgeDataFlowModelPass(),
-        new DisaggregationEdgePartitionerPass(),
-        new IFilePass()
+        new DisaggregationEdgeDataFlowModelPass()
     ));
   }
 }
