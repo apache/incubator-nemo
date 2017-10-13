@@ -18,7 +18,6 @@ package edu.snu.vortex.runtime.executor.datatransfer;
 import edu.snu.vortex.compiler.ir.Element;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
 import edu.snu.vortex.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
@@ -39,7 +38,6 @@ import java.util.concurrent.ExecutionException;
  * Represents the output data transfer from a task.
  */
 public final class OutputWriter extends DataTransfer {
-  private final int hashRangeMultiplier;
   private final int srcTaskIdx;
   private final RuntimeEdge<?> runtimeEdge;
   private final String srcVertexId;
@@ -59,7 +57,6 @@ public final class OutputWriter extends DataTransfer {
                       final RuntimeEdge<?> runtimeEdge,
                       final PartitionManagerWorker partitionManagerWorker) {
     super(runtimeEdge.getId());
-    this.hashRangeMultiplier = hashRangeMultiplier;
     this.runtimeEdge = runtimeEdge;
     this.srcVertexId = srcRuntimeVertexId;
     this.dstVertex = dstRuntimeVertex;
@@ -71,7 +68,6 @@ public final class OutputWriter extends DataTransfer {
     partitionerMap.put(IntactPartitioner.class, new IntactPartitioner());
     partitionerMap.put(HashPartitioner.class, new HashPartitioner());
     partitionerMap.put(DataSkewHashPartitioner.class, new DataSkewHashPartitioner(hashRangeMultiplier));
-    partitionerMap.put(IFileHashPartitioner.class, new IFileHashPartitioner(hashRangeMultiplier));
   }
 
   /**
@@ -82,12 +78,6 @@ public final class OutputWriter extends DataTransfer {
   public void write(final Iterable<Element> dataToWrite) {
     final Boolean isDataSizeMetricCollectionEdge = DataSkewRuntimePass.class
         .equals(runtimeEdge.getProperty(ExecutionProperty.Key.MetricCollection));
-    final String writeOptAtt = runtimeEdge.getProperty(ExecutionProperty.Key.WriteOptimization);
-    final Boolean isIFileWriteEdge =
-        writeOptAtt != null && writeOptAtt.equals(WriteOptimizationProperty.IFILE_WRITE);
-    if (writeOptAtt != null && !writeOptAtt.equals(WriteOptimizationProperty.IFILE_WRITE)) {
-      throw new UnsupportedMethodException("Unsupported write optimization.");
-    }
 
     try {
       // Group the data into blocks.
@@ -123,8 +113,6 @@ public final class OutputWriter extends DataTransfer {
           // If the dynamic optimization which detects data skew is enabled, sort the data and write it.
           if (isDataSizeMetricCollectionEdge) {
             dataSkewWrite(blocksToWrite);
-          } else if (isIFileWriteEdge) {
-            iFileWrite(blocksToWrite);
           } else {
             writeScatterGather(blocksToWrite);
           }
@@ -146,7 +134,7 @@ public final class OutputWriter extends DataTransfer {
 
     // Commit partition.
     partitionManagerWorker.commitPartition(
-        partitionId, channelDataPlacement, Collections.emptyList(), srcVertexId, srcTaskIdx);
+        partitionId, channelDataPlacement, Collections.emptyList(), srcVertexId);
   }
 
   private void writeBroadcast(final List<Block> blocksToWrite) throws ExecutionException, InterruptedException {
@@ -167,7 +155,7 @@ public final class OutputWriter extends DataTransfer {
         partitionId, blocksToWrite, channelDataPlacement, false);
     // Commit partition.
     partitionManagerWorker.commitPartition(
-        partitionId, channelDataPlacement, Collections.emptyList(), srcVertexId, srcTaskIdx);
+        partitionId, channelDataPlacement, Collections.emptyList(), srcVertexId);
   }
 
   /**
@@ -197,45 +185,9 @@ public final class OutputWriter extends DataTransfer {
     if (optionalBlockSize.isPresent()) {
       // Commit partition.
       partitionManagerWorker.commitPartition(
-          partitionId, channelDataPlacement, optionalBlockSize.get(), srcVertexId, srcTaskIdx);
+          partitionId, channelDataPlacement, optionalBlockSize.get(), srcVertexId);
     } else {
       throw new PartitionWriteException(new Throwable("Cannot know the size of blocks"));
-    }
-  }
-
-  /**
-   * Writes the blocks hashed through {@link DataSkewHashPartitioner} in I-Files.
-   * Each destination task will have a single I-File to read regardless of the input parallelism.
-   * To prevent the extra sort process in the source task and deserialize - merge process in the destination task,
-   * we hash the data into blocks and make the blocks as the unit of write and retrieval.
-   * Constraint: If a partition is written by this method, it have to be read by {@link InputReader#readIFile()}.
-   * Constraint: If the store to write is not a {@link edu.snu.vortex.runtime.executor.data.RemoteFileStore},
-   *             all destination tasks for each I-File (partition) have to be scheduled in a single executor.
-   * TODO #378: Elaborate block construction during data skew pass
-   *
-   * @param blocksToWrite a list of blocks to be written.
-   * @throws ExecutionException   when fail to get results from futures.
-   * @throws InterruptedException when interrupted during getting results from futures.
-   */
-  private void iFileWrite(final List<Block> blocksToWrite) throws ExecutionException, InterruptedException {
-    final int dstParallelism = dstVertex.getProperty(ExecutionProperty.Key.Parallelism);
-    if (blocksToWrite.size() != hashRangeMultiplier * dstParallelism) {
-      throw new PartitionWriteException(
-          new Throwable("The number of given blocks are not matched with the expected value."));
-    }
-
-    // Then append each blocks to corresponding partition appropriately.
-    for (int dstIdx = 0; dstIdx < dstParallelism; dstIdx++) {
-      final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), dstIdx);
-      final Iterable<Block> blocksForDst =
-          blocksToWrite.subList(hashRangeMultiplier * dstIdx, hashRangeMultiplier * (dstIdx + 1));
-
-      // Write data.
-      partitionManagerWorker.putBlocks(partitionId, blocksForDst, channelDataPlacement, false);
-
-      // Commit partition.
-      partitionManagerWorker.commitPartition(
-          partitionId, channelDataPlacement, Collections.emptyList(), srcVertexId, srcTaskIdx);
     }
   }
 }

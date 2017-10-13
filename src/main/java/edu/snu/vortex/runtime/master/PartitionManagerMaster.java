@@ -70,22 +70,18 @@ public final class PartitionManagerMaster {
   /**
    * Initializes the states of a partition which will be produced by producer task(s).
    *
-   * @param partitionId          the id of the partition to initialize.
-   * @param producerTaskIndices  the indices of the producer tasks.
-   * @param producerTaskGroupIds the ids of the producer task groups.
+   * @param partitionId         the id of the partition to initialize.
+   * @param producerTaskGroupId the id of the producer task group.
    */
   @VisibleForTesting
   public void initializeState(final String partitionId,
-                              final Set<Integer> producerTaskIndices,
-                              final Set<String> producerTaskGroupIds) {
+                              final String producerTaskGroupId) {
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
     try {
-      partitionIdToMetadata.put(partitionId, new PartitionMetadata(partitionId, producerTaskIndices));
-      producerTaskGroupIds.forEach(producerTaskGroupId -> {
-        producerTaskGroupIdToPartitionIds.putIfAbsent(producerTaskGroupId, new HashSet<>());
-        producerTaskGroupIdToPartitionIds.get(producerTaskGroupId).add(partitionId);
-      });
+      partitionIdToMetadata.put(partitionId, new PartitionMetadata(partitionId));
+      producerTaskGroupIdToPartitionIds.putIfAbsent(producerTaskGroupId, new HashSet<>());
+      producerTaskGroupIdToPartitionIds.get(producerTaskGroupId).add(partitionId);
     } finally {
       writeLock.unlock();
     }
@@ -106,7 +102,7 @@ public final class PartitionManagerMaster {
     try {
       // Set committed partition states to lost
       getCommittedPartitionsByWorker(executorId).forEach(partitionId -> {
-        onPartitionStateChanged(partitionId, PartitionState.State.LOST, executorId, null);
+        onPartitionStateChanged(partitionId, PartitionState.State.LOST, executorId);
         // producerTaskGroupForPartition should always be non-empty.
         final Set<String> producerTaskGroupForPartition = getProducerTaskGroupIds(partitionId);
         producerTaskGroupForPartition.forEach(taskGroupsToRecompute::add);
@@ -190,7 +186,7 @@ public final class PartitionManagerMaster {
         producerTaskGroupIdToPartitionIds.get(scheduledTaskGroupId).forEach(partitionId -> {
           if (!partitionIdToMetadata.get(partitionId).getPartitionState()
               .getStateMachine().getCurrentState().equals(SCHEDULED)) {
-            onPartitionStateChanged(partitionId, SCHEDULED, null, null);
+            onPartitionStateChanged(partitionId, SCHEDULED, null);
           }
         });
       } // else this task group does not produce any partition
@@ -214,9 +210,9 @@ public final class PartitionManagerMaster {
           final PartitionState.State state = (PartitionState.State)
               partitionIdToMetadata.get(partitionId).getPartitionState().getStateMachine().getCurrentState();
           if (state == PartitionState.State.COMMITTED) {
-            onPartitionStateChanged(partitionId, PartitionState.State.LOST, null, null);
+            onPartitionStateChanged(partitionId, PartitionState.State.LOST, null);
           } else {
-            onPartitionStateChanged(partitionId, PartitionState.State.LOST_BEFORE_COMMIT, null, null);
+            onPartitionStateChanged(partitionId, PartitionState.State.LOST_BEFORE_COMMIT, null);
           }
         });
       } // else this task group does not produce any partition
@@ -272,17 +268,15 @@ public final class PartitionManagerMaster {
    * @param newState        the new state of the partition.
    * @param location        the location of the partition (e.g., worker id, remote store).
    *                        {@code null} if not committed or lost.
-   * @param producerTaskIdx the index of the task produced the commit. {@code null} if not committed.
    */
   @VisibleForTesting
   public void onPartitionStateChanged(final String partitionId,
                                       final PartitionState.State newState,
-                                      @Nullable final String location,
-                                      @Nullable final Integer producerTaskIdx) {
+                                      @Nullable final String location) {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      partitionIdToMetadata.get(partitionId).onStateChanged(newState, location, producerTaskIdx);
+      partitionIdToMetadata.get(partitionId).onStateChanged(newState, location);
     } finally {
       readLock.unlock();
     }
@@ -479,7 +473,7 @@ public final class PartitionManagerMaster {
               message.getPartitionStateChangedMsg();
           final String partitionId = partitionStateChangedMsg.getPartitionId();
           onPartitionStateChanged(partitionId, convertPartitionState(partitionStateChangedMsg.getState()),
-              partitionStateChangedMsg.getLocation(), partitionStateChangedMsg.getSrcTaskIdx());
+              partitionStateChangedMsg.getLocation());
           break;
         case CommitBlock:
           onCommitBlocks(message);

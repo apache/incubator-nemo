@@ -19,7 +19,6 @@ import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.vortex.compiler.ir.*;
 import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
-import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
 import edu.snu.vortex.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.vortex.runtime.exception.IllegalVertexOperationException;
 import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
@@ -262,15 +261,6 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
         .filter(e -> DataSkewRuntimePass.class
             .equals(e.getProperty(ExecutionProperty.Key.MetricCollection)))
-        .filter(e -> DataFlowModelProperty.Value.Push.equals(e.getProperty(ExecutionProperty.Key.DataFlowModel)))
-        .forEach(e -> {
-          throw new RuntimeException("DAG execution property check: "
-              + "DataSizeMetricCollection edge is not compatible with push" + e.getId());
-        }));
-    // IFileWrite is not compatible with Push (All I-Files have to be constructed before the data collection)
-    vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> e.getProperty(ExecutionProperty.Key.WriteOptimization) != null
-            && WriteOptimizationProperty.IFILE_WRITE.equals(e.getProperty(ExecutionProperty.Key.WriteOptimization)))
         .filter(e -> DataFlowModelProperty.Value.Push.equals(e.getProperty(ExecutionProperty.Key.DataFlowModel)))
         .forEach(e -> {
           throw new RuntimeException("DAG execution property check: "

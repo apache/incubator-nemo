@@ -89,12 +89,6 @@ public final class PartitionStoreTest {
   private List<List<Block>> hashedPartitionBlockList;
   private List<HashRange> readHashRangeList;
   private List<List<Iterable<Element>>> expectedDataInRange;
-  // Variables for concurrent write test
-  private static final int NUM_CONC_WRITE_TASKS = 2;
-  private static final int CONC_WRITE_DATA_IN_BLOCK = 100;
-  private static final int CONC_WRITE_BLOCK_NUM = 10;
-  private static List<Element> concWriteBlocks;
-  private static String concWritePartitionId;
 
   /**
    * Generates the ids and the data which will be used for the partition store tests.
@@ -126,10 +120,9 @@ public final class PartitionStoreTest {
       final String partitionId = RuntimeIdGenerator.generatePartitionId(
           RuntimeIdGenerator.generateRuntimeEdgeId(String.valueOf(partitionIdList.size())), writeTaskIdx);
       partitionIdList.add(partitionId);
-      partitionManagerMaster.initializeState(partitionId, Collections.singleton(writeTaskIdx),
-          Collections.singleton("Unused"));
+      partitionManagerMaster.initializeState(partitionId, "Unused");
       partitionManagerMaster.onPartitionStateChanged(
-          partitionId, PartitionState.State.SCHEDULED, null, null);
+          partitionId, PartitionState.State.SCHEDULED, null);
 
       // Create blocks for this partition.
       final List<Block> blocksForPartition = new ArrayList<>(NUM_READ_TASKS);
@@ -148,10 +141,9 @@ public final class PartitionStoreTest {
     // Generates the ids and the data to be used.
     concPartitionId = RuntimeIdGenerator.generatePartitionId(
         RuntimeIdGenerator.generateRuntimeEdgeId("concurrent read"), NUM_WRITE_TASKS + NUM_READ_TASKS + 1);
-    partitionManagerMaster.initializeState(concPartitionId, Collections.singleton(0),
-        Collections.singleton("Unused"));
+    partitionManagerMaster.initializeState(concPartitionId, "Unused");
     partitionManagerMaster.onPartitionStateChanged(
-        concPartitionId, PartitionState.State.SCHEDULED, null, null);
+        concPartitionId, PartitionState.State.SCHEDULED, null);
     IntStream.range(0, NUM_CONC_READ_TASKS).forEach(
         number -> concReadTaskIdList.add(RuntimeIdGenerator.generateTaskId()));
     concPartitionBlock = new Block(getRangedNumList(0, CONC_READ_DATA_SIZE));
@@ -177,10 +169,9 @@ public final class PartitionStoreTest {
           RuntimeIdGenerator.generateRuntimeEdgeId("scatter gather in range"),
           NUM_WRITE_TASKS + NUM_READ_TASKS + 1 + writeTaskIdx);
       hashedPartitionIdList.add(partitionId);
-      partitionManagerMaster.initializeState(partitionId, Collections.singleton(writeTaskIdx),
-          Collections.singleton("Unused"));
+      partitionManagerMaster.initializeState(partitionId, "Unused");
       partitionManagerMaster.onPartitionStateChanged(
-          partitionId, PartitionState.State.SCHEDULED, null, null);
+          partitionId, PartitionState.State.SCHEDULED, null);
       final List<Block> hashedPartition = new ArrayList<>(HASH_RANGE);
       // Generates the data having each hash value.
       IntStream.range(0, HASH_RANGE).forEach(hashValue ->
@@ -215,14 +206,6 @@ public final class PartitionStoreTest {
       });
       expectedDataInRange.add(expectedRangeBlocks);
     });
-
-    // Following part is for the concurrent write test
-    concWriteBlocks = getRangedNumList(0, CONC_WRITE_DATA_IN_BLOCK);
-    concWritePartitionId = RuntimeIdGenerator.generatePartitionId("Concurrent write test edge", 0);
-    partitionManagerMaster.initializeState(concWritePartitionId, Collections.singleton(NUM_CONC_WRITE_TASKS),
-        Collections.singleton("Unused"));
-    partitionManagerMaster.onPartitionStateChanged(
-        concWritePartitionId, PartitionState.State.SCHEDULED, null, null);
   }
 
   /**
@@ -234,7 +217,6 @@ public final class PartitionStoreTest {
     scatterGather(memoryStore, memoryStore);
     concurrentRead(memoryStore, memoryStore);
     scatterGatherInHashRange(memoryStore, memoryStore);
-    concurrentWrite(memoryStore, memoryStore);
   }
 
   /**
@@ -252,7 +234,6 @@ public final class PartitionStoreTest {
     scatterGather(localFileStore, localFileStore);
     concurrentRead(localFileStore, localFileStore);
     scatterGatherInHashRange(localFileStore, localFileStore);
-    concurrentWrite(localFileStore, localFileStore);
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
   }
 
@@ -274,7 +255,6 @@ public final class PartitionStoreTest {
     scatterGather(writerSideRemoteFileStore, readerSideRemoteFileStore);
     concurrentRead(writerSideRemoteFileStore, readerSideRemoteFileStore);
     scatterGatherInHashRange(writerSideRemoteFileStore, readerSideRemoteFileStore);
-    concurrentWrite(writerSideRemoteFileStore, readerSideRemoteFileStore);
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
   }
 
@@ -320,7 +300,7 @@ public final class PartitionStoreTest {
                   writerSideStore.putToPartition(partitionId, blocksPerPartition.get(partitionIdx), false);
                   writerSideStore.commitPartition(partitionId);
                   partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED,
-                      "Writer side of the scatter gather edge", writeTaskIdx);
+                      "Writer side of the scatter gather edge");
               });
               return true;
             } catch (final Exception e) {
@@ -416,7 +396,7 @@ public final class PartitionStoreTest {
           writerSideStore.putToPartition(concPartitionId, Collections.singleton(concPartitionBlock), false);
           writerSideStore.commitPartition(concPartitionId);
           partitionManagerMaster.onPartitionStateChanged(
-              concPartitionId, PartitionState.State.COMMITTED, "Writer side of the concurrent read edge", 0);
+              concPartitionId, PartitionState.State.COMMITTED, "Writer side of the concurrent read edge");
           return true;
         } catch (final Exception e) {
           e.printStackTrace();
@@ -507,7 +487,7 @@ public final class PartitionStoreTest {
                   hashedPartitionBlockList.get(writeTaskIdx), false);
               writerSideStore.commitPartition(partitionId);
               partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED,
-                  "Writer side of the scatter gather in hash range edge", writeTaskIdx);
+                  "Writer side of the scatter gather in hash range edge");
               return true;
             } catch (final Exception e) {
               e.printStackTrace();
@@ -577,98 +557,6 @@ public final class PartitionStoreTest {
 
     System.out.println(
         "Scatter and gather in hash range - write time in millis: " + (writeEndNano - startNano) / 1000000 +
-            ", Read time in millis: " + (readEndNano - writeEndNano) / 1000000 + " in store " +
-            writerSideStore.getClass().toString());
-  }
-
-  /**
-   * Tests concurrent write for a store.
-   * Assumes following circumstances:
-   * Task 1 (write)-> partition (read)-> Task 3
-   * Task 2 (write)->
-   * It checks that each writer and reader does not throw any exception,
-   * the read data is identical with written data, and the written data blocks are consistent.
-   */
-  private void concurrentWrite(final PartitionStore writerSideStore,
-                               final PartitionStore readerSideStore) {
-    final ExecutorService writeExecutor = Executors.newFixedThreadPool(NUM_CONC_WRITE_TASKS);
-    final ExecutorService readExecutor = Executors.newFixedThreadPool(1);
-    final List<Future<Boolean>> writeFutureList = new ArrayList<>(NUM_CONC_WRITE_TASKS);
-    final long startNano = System.nanoTime();
-
-    // Write concurrently.
-    IntStream.range(0, NUM_CONC_WRITE_TASKS).forEach(writeTaskIdx ->
-        writeFutureList.add(writeExecutor.submit(new Callable<Boolean>() {
-          @Override
-          public Boolean call() {
-            try {
-              final List<Block> blockToAppend = new ArrayList<>(CONC_WRITE_BLOCK_NUM);
-              IntStream.range(0, CONC_WRITE_BLOCK_NUM).forEach(blockIdx ->
-                  blockToAppend.add(new Block(blockIdx, concWriteBlocks)));
-              writerSideStore.putToPartition(concWritePartitionId, blockToAppend, false);
-              partitionManagerMaster.onPartitionStateChanged(concWritePartitionId, PartitionState.State.COMMITTED,
-                  "Writer side of the concurrent write edge", writeTaskIdx);
-              return true;
-            } catch (final Exception e) {
-              e.printStackTrace();
-              return false;
-            }
-          }
-        })));
-
-    // Wait each writer to success.
-    IntStream.range(0, NUM_CONC_WRITE_TASKS).forEach(writer -> {
-      try {
-        assertTrue(writeFutureList.get(writer).get());
-      } catch (final Exception e) {
-        throw new RuntimeException(e);
-      }
-    });
-    final long writeEndNano = System.nanoTime();
-    writerSideStore.commitPartition(concWritePartitionId);
-
-    // Read and check whether the result is proper.
-    final Future<Boolean> readFuture = readExecutor.submit(new Callable<Boolean>() {
-      @Override
-      public Boolean call() {
-        try {
-          final Optional<Iterable<Element>> optionalData =
-              readerSideStore.getFromPartition(concWritePartitionId, HashRange.all());
-          if (!optionalData.isPresent()) {
-            throw new RuntimeException("The result of retrieveData(" + concWritePartitionId + ") is empty");
-          }
-          final List<List<Element>> expectedResults =
-              new ArrayList<>(CONC_WRITE_BLOCK_NUM * NUM_CONC_WRITE_TASKS);
-          IntStream.range(0, CONC_WRITE_BLOCK_NUM * NUM_CONC_WRITE_TASKS).
-              forEach(blockIdx -> expectedResults.add(concWriteBlocks));
-          assertEquals(flatten(expectedResults), optionalData.get());
-
-          final boolean exist = readerSideStore.removePartition(concWritePartitionId);
-          if (!exist) {
-            throw new RuntimeException("The result of removePartition(" + concWritePartitionId + ") is false");
-          }
-
-          return true;
-        } catch (final Exception e) {
-          e.printStackTrace();
-          return false;
-        }
-      }
-    });
-
-    // Wait each reader to success
-    try {
-      assertTrue(readFuture.get());
-    } catch (final Exception e) {
-      throw new RuntimeException(e);
-    }
-    final long readEndNano = System.nanoTime();
-
-    writeExecutor.shutdown();
-    readExecutor.shutdown();
-
-    System.out.println(
-        "Concurrent write - write time in millis: " + (writeEndNano - startNano) / 1000000 +
             ", Read time in millis: " + (readEndNano - writeEndNano) / 1000000 + " in store " +
             writerSideStore.getClass().toString());
   }
