@@ -17,6 +17,8 @@ package edu.snu.vortex.compiler.optimizer.policy;
 
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.*;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
+import edu.snu.vortex.compiler.optimizer.pass.runtime.RuntimePass;
 
 import java.util.Arrays;
 import java.util.List;
@@ -25,14 +27,25 @@ import java.util.List;
  * A policy to push intermediate data to memory.
  */
 public final class PushMemoryMRPolicy implements Policy {
+  private final Policy policy;
+
+  public PushMemoryMRPolicy() {
+    this.policy = new PolicyBuilder()
+        .registerCompileTimePass(new InitiationCompositePass())
+        .registerCompileTimePass(new MemoryDataStorePass())
+        .registerCompileTimePass(new PushDataFlowModelPass())
+        .registerCompileTimePass(new DefaultStagePartitioningPass())
+        .registerCompileTimePass(new ScheduleGroupPass())
+        .build();
+  }
+
   @Override
   public List<CompileTimePass> getCompileTimePasses() {
-    return Arrays.asList(
-        new ParallelismPass(), // Provides parallelism information.
-        new MemoryDataStorePass(),
-        new PushDataFlowModelPass(),
-        new DefaultStagePartitioningPass(),
-        new ScheduleGroupPass()
-    );
+    return this.policy.getCompileTimePasses();
+  }
+
+  @Override
+  public List<RuntimePass<?>> getRuntimePasses() {
+    return this.policy.getRuntimePasses();
   }
 }

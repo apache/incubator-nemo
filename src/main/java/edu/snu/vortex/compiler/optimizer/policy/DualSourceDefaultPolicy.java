@@ -19,22 +19,33 @@ import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.DefaultStag
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.DualSourceParallelismPass;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.ScheduleGroupPass;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
+import edu.snu.vortex.compiler.optimizer.pass.runtime.RuntimePass;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
  * A basic default policy, that performs the minimum amount of optimization to be done to a specific DAG.
- * WITH TWO SOURCES as parallelism.
- * ONLY FOR DEMO/TESTING.
  */
 public final class DualSourceDefaultPolicy implements Policy {
+  private final Policy policy;
+
+  public DualSourceDefaultPolicy() {
+    this.policy = new PolicyBuilder()
+        .registerCompileTimePass(new InitiationCompositePass())
+        .registerCompileTimePass(new DualSourceParallelismPass())
+        .registerCompileTimePass(new DefaultStagePartitioningPass())
+        .registerCompileTimePass(new ScheduleGroupPass())
+        .build();
+  }
+
   @Override
   public List<CompileTimePass> getCompileTimePasses() {
-    return Arrays.asList(
-        new DualSourceParallelismPass(), // Provides parallelism information.
-        new DefaultStagePartitioningPass(),
-        new ScheduleGroupPass()
-    );
+    return this.policy.getCompileTimePasses();
+  }
+
+  @Override
+  public List<RuntimePass<?>> getRuntimePasses() {
+    return this.policy.getRuntimePasses();
   }
 }
