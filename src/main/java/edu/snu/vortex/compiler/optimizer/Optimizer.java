@@ -41,15 +41,18 @@ public final class Optimizer {
    * @param dag input DAG.
    * @param optimizationPolicy the optimization policy that we want to use to optimize the DAG.
    * @param dagDirectory directory to save the DAG information.
+   * @param dagJSONs map to keep JSON files
    * @return optimized DAG, tagged with execution properties.
    * @throws Exception throws an exception if there is an exception.
    */
-  public static DAG<IRVertex, IREdge> optimize(final DAG<IRVertex, IREdge> dag, final Policy optimizationPolicy,
-                                               final String dagDirectory) throws Exception {
+  public static DAG<IRVertex, IREdge> optimize(final DAG<IRVertex, IREdge> dag,
+                                               final Policy optimizationPolicy,
+                                               final String dagDirectory,
+                                               final Map<String, String> dagJSONs) throws Exception {
     if (optimizationPolicy == null || optimizationPolicy.getCompileTimePasses().isEmpty()) {
       throw new RuntimeException("A policy name should be specified.");
     }
-    return process(dag, optimizationPolicy.getCompileTimePasses().iterator(), dagDirectory);
+    return process(dag, optimizationPolicy.getCompileTimePasses().iterator(), dagDirectory, dagJSONs);
   }
 
   /**
@@ -62,13 +65,15 @@ public final class Optimizer {
    */
   private static DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag,
                                                final Iterator<CompileTimePass> passes,
-                                               final String dagDirectory) throws Exception {
+                                               final String dagDirectory,
+                                               final Map<String, String> dagJSONs) throws Exception {
     if (passes.hasNext()) {
       final CompileTimePass passToApply = passes.next();
       final DAG<IRVertex, IREdge> processedDAG = passToApply.apply(dag);
+      dagJSONs.put("ir-after-" + passToApply.getClass().getSimpleName(), processedDAG.toString());
       processedDAG.storeJSON(dagDirectory, "ir-after-" + passToApply.getClass().getSimpleName(),
           "DAG after optimization");
-      return process(processedDAG, passes, dagDirectory);
+      return process(processedDAG, passes, dagDirectory, dagJSONs);
     } else {
       return dag;
     }

@@ -33,6 +33,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Compiles and runs User application.
@@ -49,6 +53,8 @@ public final class UserApplicationRunner implements Runnable {
   private final Frontend frontend;
   private final Backend<PhysicalPlan> backend;
 
+  final Map<String, String> dagJSONs;
+
   @Inject
   private UserApplicationRunner(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
                                 @Parameter(JobConf.UserMainClass.class) final String className,
@@ -63,6 +69,7 @@ public final class UserApplicationRunner implements Runnable {
     this.runtimeMaster = runtimeMaster;
     this.frontend = new BeamFrontend();
     this.backend = new VortexBackend();
+    this.dagJSONs = new HashMap<>();
   }
 
   @Override
@@ -75,18 +82,28 @@ public final class UserApplicationRunner implements Runnable {
       final DAG<IRVertex, IREdge> dag = dagPolicyPair.left();
       final Policy optimizationPolicy = dagPolicyPair.right();
 
-      final DAG<IRVertex, IREdge> optimizedDAG = Optimizer.optimize(dag, optimizationPolicy, dagDirectory);
+      final DAG<IRVertex, IREdge> optimizedDAG = Optimizer.optimize(dag, optimizationPolicy, dagDirectory, dagJSONs);
+      dagJSONs.put("ir-" + optimizationPolicy.getClass().getSimpleName(), optimizedDAG.toString());
       optimizedDAG.storeJSON(dagDirectory, "ir-" + optimizationPolicy.getClass().getSimpleName(),
           "IR optimized for " + optimizationPolicy.getClass().getSimpleName());
 
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
 
+      dagJSONs.put("plan", physicalPlan.getStageDAG().toString());
       physicalPlan.getStageDAG().storeJSON(dagDirectory, "plan", "physical execution plan by compiler");
       runtimeMaster.execute(physicalPlan, frontend.getClientEndpoint());
       runtimeMaster.terminate();
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
+  }
+
+  public Set<String> getIRDagKeys() {
+    return this.dagJSONs.keySet();
+  }
+
+  public String getIRDagJsonByKey(final String irDagKey) {
+    return this.dagJSONs.get(irDagKey);
   }
 
   private static Pair<DAG<IRVertex, IREdge>, Policy> clientSideCompilation(final String className,
