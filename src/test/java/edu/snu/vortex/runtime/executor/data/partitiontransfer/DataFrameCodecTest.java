@@ -56,8 +56,6 @@ public final class DataFrameCodecTest {
 
     // dummy mock does nothing
     dummyOutboundStreamCodec = mock(ControlMessageToPartitionStreamCodec.class);
-    when(dummyOutboundStreamCodec.getTransferIdToOutputStream(any()))
-        .thenReturn(new HashMap<>());
   }
 
   /**
@@ -103,7 +101,9 @@ public final class DataFrameCodecTest {
          toTransferred = outboundChannel.readOutbound()) {
       inboundChannel.writeInbound(toTransferred);
     }
-    final byte[] received = mockInputStreamWrapper.pollCollectedOutput().array();
+    final ByteBuf receivedByteBuf = mockInputStreamWrapper.pollCollectedOutput();
+    final byte[] received = new byte[receivedByteBuf.readableBytes()];
+    receivedByteBuf.readBytes(received);
     assertTrue(Arrays.equals(data, received));
 
     // sending the last frame should close the input stream
