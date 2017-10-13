@@ -20,7 +20,6 @@ import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.*;
 import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
 import edu.snu.vortex.compiler.optimizer.pass.runtime.RuntimePass;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
