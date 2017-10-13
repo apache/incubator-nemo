@@ -40,7 +40,12 @@ public abstract class Vertex implements Serializable {
    * @return the numeric id of the vertex.
    */
   public final Integer getNumericId() {
-    return Integer.parseInt(id.replaceAll("[^\\d.]", ""));
+    int index = id.indexOf(':');
+    String formattedId = id;
+    if (index != -1) {
+      formattedId = id.substring(0, index);
+    }
+    return Integer.parseInt(formattedId.replaceAll("[^\\d.]", ""));
   }
 
   /**

@@ -95,7 +95,7 @@ public final class DoTransform implements Transform {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("DoTransform:" + doFn);
+    sb.append("DoTransform: " + doFn);
     return sb.toString();
   }
 

@@ -31,6 +31,7 @@ import java.util.stream.StreamSupport;
  * Broadcast transform implementation.
  */
 public final class BroadcastTransform implements Transform {
+  private final String type;
   private final PCollectionView pCollectionView;
   private OutputCollector outputCollector;
 
@@ -39,6 +40,7 @@ public final class BroadcastTransform implements Transform {
    * @param pCollectionView the pCollectionView to broadcast.
    */
   public BroadcastTransform(final PCollectionView pCollectionView) {
+    this.type = "Broadcast";
     this.pCollectionView = pCollectionView;
   }
 
