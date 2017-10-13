@@ -1,4 +1,4 @@
-# Vortex-Hadoop(YARN/HDFS) Cluster Deployment Guide
+# Onyx-Hadoop(YARN/HDFS) Cluster Deployment Guide
 
 TODO #252: AWS Setup Guide and Scripts
 
@@ -27,11 +27,11 @@ TODO #252: AWS Setup Guide and Scripts
 * Set your mac's `/etc/hosts`
 * Go to `v-m:8088` and `v-m:50070`
 
-## Run Vortex in the cluster
-* git clone Vortex on v-m and install
+## Run Onyx in the cluster
+* git clone Onyx on v-m and install
 * Upload a local input file to HDFS with `hdfs -put`
-* Launch a Vortex job with `-deploy_mode yarn`, and hdfs paths as the input/output
-* Example: `./bin/run.sh -deploy_mode yarn -job_id mr -user_main edu.snu.vortex.examples.beam.MapReduce -user_args "hdfs://v-m:9000/sample_input_mr hdfs://v-m:9000/sample_output_mr"`
+* Launch a Onyx job with `-deploy_mode yarn`, and hdfs paths as the input/output
+* Example: `./bin/run.sh -deploy_mode yarn -job_id mr -user_main edu.snu.onyx.examples.beam.MapReduce -user_args "hdfs://v-m:9000/sample_input_mr hdfs://v-m:9000/sample_output_mr"`
 
 ## And you're all set.....?
 * I hope so
