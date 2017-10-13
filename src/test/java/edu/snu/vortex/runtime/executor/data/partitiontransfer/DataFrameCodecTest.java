@@ -101,9 +101,7 @@ public final class DataFrameCodecTest {
          toTransferred = outboundChannel.readOutbound()) {
       inboundChannel.writeInbound(toTransferred);
     }
-    final ByteBuf receivedByteBuf = mockInputStreamWrapper.pollCollectedOutput();
-    final byte[] received = new byte[receivedByteBuf.readableBytes()];
-    receivedByteBuf.readBytes(received);
+    final byte[] received = mockInputStreamWrapper.pollCollectedOutput();
     assertTrue(Arrays.equals(data, received));
 
     // sending the last frame should close the input stream
@@ -190,13 +188,20 @@ public final class DataFrameCodecTest {
       return mockStream;
     }
 
-    ByteBuf pollCollectedOutput() {
-      final CompositeByteBuf compositeOutput = Unpooled.compositeBuffer();
+    byte[] pollCollectedOutput() {
+      int size = 0;
       for (final ByteBuf byteBuf : byteBufs) {
-        compositeOutput.addComponent(byteBuf);
+        size += byteBuf.readableBytes();
+      }
+      final byte[] output = new byte[size];
+      int offset = 0;
+      for (final ByteBuf byteBuf : byteBufs) {
+        final int numBytes = byteBuf.readableBytes();
+        byteBuf.readBytes(output, offset, numBytes);
+        offset += numBytes;
       }
       byteBufs.clear();
-      return compositeOutput;
+      return output;
     }
 
     boolean isPull() {
