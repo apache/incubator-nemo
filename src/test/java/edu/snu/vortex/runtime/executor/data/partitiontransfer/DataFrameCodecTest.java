@@ -46,7 +46,7 @@ public final class DataFrameCodecTest {
   private static final int LENGTH_START_INCLUSIVE = 30;
   private static final int LENGTH_END_EXCLUSIVE = 300;
   private final DataFrameEncoder encoder;
-  private final ControlMessageToPartitionStreamCodec dummyStreamCodec;
+  private final ControlMessageToPartitionStreamCodec dummyOutboundStreamCodec;
 
   /**
    * @throws InjectionException if failed to get an instance of {@link DataFrameEncoder}
@@ -55,9 +55,9 @@ public final class DataFrameCodecTest {
     encoder = Tang.Factory.getTang().newInjector().getInstance(DataFrameEncoder.class);
 
     // dummy mock does nothing
-    dummyStreamCodec = mock(ControlMessageToPartitionStreamCodec.class);
-    when(dummyStreamCodec.getTransferIdToOutputStream(any()));
-    //    .thenReturn(new HashMap<>());
+    dummyOutboundStreamCodec = mock(ControlMessageToPartitionStreamCodec.class);
+    when(dummyOutboundStreamCodec.getTransferIdToOutputStream(any()))
+        .thenReturn(new HashMap<>());
   }
 
   /**
@@ -72,7 +72,7 @@ public final class DataFrameCodecTest {
    * @return a new {@link EmbeddedChannel} with encoder.
    */
   private EmbeddedChannel newOutboundChannel() {
-    return new EmbeddedChannel(encoder, dummyStreamCodec);
+    return new EmbeddedChannel(encoder, dummyOutboundStreamCodec);
   }
 
   /**
@@ -83,7 +83,7 @@ public final class DataFrameCodecTest {
    * @param isPull      whether the transfer is pull-based or not
    * @param transferId  the transfer id
    * @param isLastFrame whether this frame is the last one in the transport context or not
-   * @param data        the list of data to transfer
+   * @param data        the data to transfer
    */
   private static void testDataFrameTransfer(
       final EmbeddedChannel inboundChannel,
