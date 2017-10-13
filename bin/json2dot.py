@@ -16,7 +16,7 @@
 #
 
 '''
-json2dot.py: Generates Graphviz representation of Vortex DAG::toString
+json2dot.py: Generates Graphviz representation of Onyx DAG::toString
 This file is used as backend for https://service.jangho.io/onyx-dag/
 '''
 

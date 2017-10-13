@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package protobuf;
 
-option java_package = "edu.snu.vortex.runtime.common.comm";
+option java_package = "edu.snu.onyx.runtime.common.comm";
 option java_outer_classname = "ControlMessage";
 
 enum MessageType {
@@ -79,7 +79,6 @@ message PartitionStateChangedMsg {
     required string partitionId = 2;
     required PartitionStateFromExecutor state = 3;
     required string location = 4; // The location of the partition (e.g., executor id or remote store).
-    optional int32 srcTaskIdx = 5;
 }
 
 message DataSizeMetricMsg {
