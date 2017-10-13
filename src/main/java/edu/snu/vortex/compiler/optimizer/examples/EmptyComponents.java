@@ -48,8 +48,7 @@ public class EmptyComponents {
     @Override
     public final String toString() {
       final StringBuilder sb = new StringBuilder();
-      sb.append(super.toString());
-      sb.append(", name: ");
+      sb.append("EmptyTransform, name: ");
       sb.append(name);
       return sb.toString();
     }
@@ -80,8 +79,7 @@ public class EmptyComponents {
     @Override
     public String toString() {
       final StringBuilder sb = new StringBuilder();
-      sb.append(super.toString());
-      sb.append(", name: ");
+      sb.append("EmptyBoundedSourceTransform: ");
       sb.append(name);
       return sb.toString();
     }

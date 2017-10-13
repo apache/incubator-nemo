@@ -25,6 +25,7 @@ import java.util.Map;
  * 'How' and 'When' to do with its input/output data are up to the runtime.
  */
 public interface Transform extends Serializable {
+
   /**
    * Prepare the transform.
    * @param context of the transform.
