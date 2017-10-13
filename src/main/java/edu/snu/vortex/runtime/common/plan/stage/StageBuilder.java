@@ -17,7 +17,7 @@ package edu.snu.vortex.runtime.common.plan.stage;
 
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.common.dag.DAGBuilder;
 
@@ -79,12 +79,15 @@ public final class StageBuilder {
   private void integrityCheck(final Stage stage) {
     final List<IRVertex> vertices = stage.getStageInternalDAG().getVertices();
 
-    final Attribute firstPlacement = vertices.iterator().next().getAttr(Attribute.Key.Placement);
-    final int scheduleGroupIdx = vertices.iterator().next().getAttr(Attribute.IntegerKey.ScheduleGroupIndex);
+    final String firstPlacement = vertices.iterator().next().getProperty(ExecutionProperty.Key.ExecutorPlacement);
+    final int scheduleGroupIdx =
+        vertices.iterator().next().<Integer>getProperty(ExecutionProperty.Key.ScheduleGroupIndex);
     vertices.forEach(irVertex -> {
-      if (!irVertex.getAttr(Attribute.Key.Placement).equals(firstPlacement)
-          || irVertex.getAttr(Attribute.IntegerKey.ScheduleGroupIndex) != scheduleGroupIdx) {
-        throw new RuntimeException("Vertices of the same stage have different attributes: " + irVertex.getId());
+      if ((firstPlacement != null
+          && !firstPlacement.equals(irVertex.<String>getProperty(ExecutionProperty.Key.ExecutorPlacement)))
+          || scheduleGroupIdx != irVertex.<Integer>getProperty(ExecutionProperty.Key.ScheduleGroupIndex)) {
+        throw new RuntimeException("Vertices of the same stage have different execution properties: "
+            + irVertex.getId());
       }
     });
   }

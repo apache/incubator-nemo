@@ -15,7 +15,10 @@
  */
 package edu.snu.vortex.runtime.master;
 
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.WriteOptimizationProperty;
+import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
+import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.JobState;
@@ -37,8 +40,10 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import edu.snu.vortex.runtime.common.metric.MetricData;
 import edu.snu.vortex.runtime.common.metric.MetricDataBuilder;
+import org.apache.reef.annotations.audience.DriverSide;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.DataCommunicationPattern;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
@@ -52,6 +57,7 @@ import static edu.snu.vortex.common.dag.DAG.EMPTY_DAG_DIRECTORY;
  * The methods of this class are synchronized.
  * TODO #493: Detach partitioning from writing.
  */
+@DriverSide
 public final class JobStateManager {
   private static final Logger LOG = LoggerFactory.getLogger(JobStateManager.class.getName());
 
@@ -99,13 +105,15 @@ public final class JobStateManager {
   private final Lock finishLock;
   private final Condition jobFinishedCondition;
 
-  private final DefaultMetricMessageHandler metricMessageHandler;
+  private final MetricMessageHandler metricMessageHandler;
   private final Map<String, MetricDataBuilder> metricDataBuilderMap;
 
   public JobStateManager(final PhysicalPlan physicalPlan,
                          final PartitionManagerMaster partitionManagerMaster,
+                         final MetricMessageHandler metricMessageHandler,
                          final int maxScheduleAttempt) {
     this.physicalPlan = physicalPlan;
+    this.metricMessageHandler = metricMessageHandler;
     this.maxScheduleAttempt = maxScheduleAttempt;
     this.jobId = physicalPlan.getId();
     this.jobState = new JobState();
@@ -117,7 +125,6 @@ public final class JobStateManager {
     this.currentJobStageIds = new HashSet<>();
     this.finishLock = new ReentrantLock();
     this.jobFinishedCondition = finishLock.newCondition();
-    metricMessageHandler = new DefaultMetricMessageHandler();
     this.metricDataBuilderMap = new HashMap<>();
     initializeComputationStates();
     initializePartitionStates(partitionManagerMaster);
@@ -149,34 +156,30 @@ public final class JobStateManager {
 
       // Initialize states for partitions of inter-stage edges
       stageOutgoingEdges.forEach(physicalStageEdge -> {
-        final Attribute commPattern =
-            physicalStageEdge.getAttributes().get(Attribute.Key.CommunicationPattern);
-        final Boolean isDataSizeMetricCollectionEdge =
-            physicalStageEdge.getAttributes().get(Attribute.Key.DataSizeMetricCollection) != null;
-        final Attribute writeOptAtt = physicalStageEdge.getAttributes().get(Attribute.Key.WriteOptimization);
+        final Class<? extends DataCommunicationPattern> commPattern =
+            physicalStageEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern);
+        final String writeOptAtt = physicalStageEdge.getProperty(ExecutionProperty.Key.WriteOptimization);
         final Boolean isIFileWriteEdge =
-            writeOptAtt != null && writeOptAtt.equals(Attribute.IFileWrite);
+            writeOptAtt != null && writeOptAtt.equals(WriteOptimizationProperty.IFILE_WRITE);
 
         final int srcParallelism = taskGroupsForStage.size();
 
-        if (commPattern == Attribute.ScatterGather && isIFileWriteEdge) {
+        if (commPattern.equals(ScatterGather.class) && isIFileWriteEdge) {
           final int dstParallelism =
-              physicalStageEdge.getDstVertex().getAttributes().get(Attribute.IntegerKey.Parallelism);
-          final Set<String> taskGroupIds = new HashSet<>();
-          taskGroupsForStage.forEach(taskGroup -> taskGroupIds.add(taskGroup.getTaskGroupId()));
-          IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> partitionManagerMaster.initializeState(
-              physicalStageEdge.getId(), dstTaskIdx, taskGroupIds));
-        } else if (commPattern == Attribute.ScatterGather && !isDataSizeMetricCollectionEdge) {
-          final int dstParallelism =
-              physicalStageEdge.getDstVertex().getAttributes().get(Attribute.IntegerKey.Parallelism);
-          IntStream.range(0, srcParallelism).forEach(srcTaskIdx ->
-            IntStream.range(0, dstParallelism).forEach(dstTaskIdx ->
-                partitionManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx,
-                    taskGroupsForStage.get(srcTaskIdx).getTaskGroupId())));
+              physicalStageEdge.getDstVertex().getProperty(ExecutionProperty.Key.Parallelism);
+          final Set<String> producerTaskGroupIds = new HashSet<>();
+          taskGroupsForStage.forEach(taskGroup -> producerTaskGroupIds.add(taskGroup.getTaskGroupId()));
+          final Set<Integer> producerTaskIndices =
+              IntStream.range(0, producerTaskGroupIds.size()).boxed().collect(Collectors.toSet());
+          IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> {
+            final String partitionId = RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), dstTaskIdx);
+            partitionManagerMaster.initializeState(partitionId, producerTaskIndices, producerTaskGroupIds);
+          });
         } else {
           IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-            partitionManagerMaster.initializeState(physicalStageEdge.getId(), srcTaskIdx,
-                taskGroupsForStage.get(srcTaskIdx).getTaskGroupId());
+            final String partitionId = RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx);
+            partitionManagerMaster.initializeState(partitionId, Collections.singleton(srcTaskIdx),
+                Collections.singleton(taskGroupsForStage.get(srcTaskIdx).getTaskGroupId()));
           });
         }
       });
@@ -186,9 +189,12 @@ public final class JobStateManager {
         final DAG<Task, RuntimeEdge<Task>> taskGroupInternalDag = taskGroup.getTaskDAG();
         taskGroupInternalDag.getVertices().forEach(task -> {
           final List<RuntimeEdge<Task>> internalOutgoingEdges = taskGroupInternalDag.getOutgoingEdgesOf(task);
-          internalOutgoingEdges.forEach(taskRuntimeEdge ->
-              partitionManagerMaster.initializeState(taskRuntimeEdge.getId(), taskGroup.getTaskGroupIdx(),
-                  taskGroup.getTaskGroupId()));
+          internalOutgoingEdges.forEach(taskRuntimeEdge -> {
+            final int srcTaskIdx = taskGroup.getTaskGroupIdx();
+            final String partitionId = RuntimeIdGenerator.generatePartitionId(taskRuntimeEdge.getId(), srcTaskIdx);
+            partitionManagerMaster.initializeState(partitionId, Collections.singleton(srcTaskIdx),
+                Collections.singleton(taskGroup.getTaskGroupId()));
+          });
         });
       });
     });
@@ -199,48 +205,24 @@ public final class JobStateManager {
    * @param newState of the job.
    */
   public synchronized void onJobStateChanged(final JobState.State newState) {
-    String jobKey = MetricData.ComputationUnit.JOB.name() + jobId;
-
-    Runnable beginMeasure = () -> {
-      final MetricDataBuilder metricDataBuilder =
-          new MetricDataBuilder(MetricData.ComputationUnit.JOB, jobId);
-      final Map<String, Object> metrics = new HashMap<>();
-      metrics.put("FromState", newState);
-      metricDataBuilder.beginMeasurement(metrics);
-      metricDataBuilderMap.put(jobKey, metricDataBuilder);
-    };
-
-    Runnable endMeasure = () -> {
-      final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(jobKey);
-      final Map<String, Object> metrics = new HashMap<>();
-      metrics.put("ToState", newState);
-      metricDataBuilder.endMeasurement(metrics);
-      metricMessageHandler.onMetricMessageReceived(metricDataBuilder.build().toJson());
-      metricDataBuilderMap.remove(jobKey);
-    };
-
     if (newState == JobState.State.EXECUTING) {
-      LOG.debug("Executing Job ID {}...", jobId);
+      LOG.debug("Executing Job ID {}...", this.jobId);
       jobState.getStateMachine().setState(newState);
-      beginMeasure.run();
-    } else if (newState == JobState.State.COMPLETE) {
-      LOG.debug("Job ID {} complete!", jobId);
+
+      final Map<String, Object> initialMetric = new HashMap<>();
+      initialMetric.put("FromState", newState);
+      beginMeasurement(jobId, initialMetric);
+    } else if (newState == JobState.State.COMPLETE || newState == JobState.State.FAILED) {
+      LOG.debug("Job ID {} {}!", new Object[]{jobId, newState});
       // Awake all threads waiting the finish of this job.
       finishLock.lock();
       try {
         jobState.getStateMachine().setState(newState);
-        endMeasure.run();
-        jobFinishedCondition.signalAll();
-      } finally {
-        finishLock.unlock();
-      }
-    } else if (newState == JobState.State.FAILED) {
-      LOG.debug("Job ID {} failed.", jobId);
-      // Awake all threads waiting the finish of this job.
-      finishLock.lock();
-      try {
-        jobState.getStateMachine().setState(newState);
-        endMeasure.run();
+
+        final Map<String, Object> finalMetric = new HashMap<>();
+        finalMetric.put("ToState", newState);
+        endMeasurement(jobId, finalMetric);
+
         jobFinishedCondition.signalAll();
       } finally {
         finishLock.unlock();
@@ -262,27 +244,6 @@ public final class JobStateManager {
         new Object[]{stageId, stageStateMachine.getCurrentState(), newState});
     stageStateMachine.setState(newState);
 
-    String stageKey = MetricData.ComputationUnit.STAGE.name() + stageId;
-
-    Runnable beginMeasure = () -> {
-      final MetricDataBuilder metricDataBuilder =
-          new MetricDataBuilder(MetricData.ComputationUnit.STAGE, stageId);
-      final Map<String, Object> metrics = new HashMap<>();
-      metrics.put("ScheduleAttempt", scheduleAttemptIdxByStage.get(stageId));
-      metrics.put("FromState", newState);
-      metricDataBuilder.beginMeasurement(metrics);
-      metricDataBuilderMap.put(stageKey, metricDataBuilder);
-    };
-
-    Runnable endMeasure = () -> {
-      final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(stageKey);
-      final Map<String, Object> metrics = new HashMap<>();
-      metrics.put("ToState", newState);
-      metricDataBuilder.endMeasurement(metrics);
-      metricMessageHandler.onMetricMessageReceived(metricDataBuilder.build().toJson());
-      metricDataBuilderMap.remove(stageKey);
-    };
-
     if (newState == StageState.State.EXECUTING) {
       if (scheduleAttemptIdxByStage.containsKey(stageId)) {
         final int numAttempts = scheduleAttemptIdxByStage.get(stageId);
@@ -297,7 +258,10 @@ public final class JobStateManager {
         scheduleAttemptIdxByStage.put(stageId, 1);
       }
 
-      beginMeasure.run();
+      final Map<String, Object> initialMetric = new HashMap<>();
+      initialMetric.put("ScheduleAttempt", scheduleAttemptIdxByStage.get(stageId));
+      initialMetric.put("FromState", newState);
+      beginMeasurement(stageId, initialMetric);
 
       // if there exists a mapping, this state change is from a failed_recoverable stage,
       // and there may be task groups that do not need to be re-executed.
@@ -306,7 +270,7 @@ public final class JobStateManager {
           if (stage.getId().equals(stageId)) {
             Set<String> remainingTaskGroupIds = new HashSet<>();
             remainingTaskGroupIds.addAll(
-                stage.getTaskGroupList().stream().map(taskGroup -> taskGroup.getTaskGroupId())
+                stage.getTaskGroupList().stream().map(TaskGroup::getTaskGroupId)
                     .collect(Collectors.toSet()));
             stageIdToRemainingTaskGroupSet.put(stageId, remainingTaskGroupIds);
             break;
@@ -314,13 +278,19 @@ public final class JobStateManager {
         }
       }
     } else if (newState == StageState.State.COMPLETE) {
-      endMeasure.run();
+      final Map<String, Object> finalMetric = new HashMap<>();
+      finalMetric.put("ToState", newState);
+      endMeasurement(stageId, finalMetric);
+
       currentJobStageIds.remove(stageId);
       if (currentJobStageIds.isEmpty()) {
         onJobStateChanged(JobState.State.COMPLETE);
       }
     } else if (newState == StageState.State.FAILED_RECOVERABLE) {
-      endMeasure.run();
+      final Map<String, Object> finalMetric = new HashMap<>();
+      finalMetric.put("ToState", newState);
+      endMeasurement(stageId, finalMetric);
+
       currentJobStageIds.add(stageId);
     }
   }
@@ -482,8 +452,29 @@ public final class JobStateManager {
     return idToTaskStates;
   }
 
-  public MetricMessageHandler getMetricMessageHandler() {
-    return metricMessageHandler;
+  /**
+   * Begins recording the start time of this metric measurement, in addition to the metric given.
+   * This method ensures thread-safety by synchronizing its callers.
+   * @param compUnitId to be used as metricKey
+   * @param initialMetric metric to add
+   */
+  private void beginMeasurement(final String compUnitId, final Map<String, Object> initialMetric) {
+    final MetricDataBuilder metricDataBuilder = new MetricDataBuilder(compUnitId);
+    metricDataBuilder.beginMeasurement(initialMetric);
+    metricDataBuilderMap.put(compUnitId, metricDataBuilder);
+  }
+
+  /**
+   * Ends this metric measurement, recording the end time in addition to the metric given.
+   * This method ensures thread-safety by synchronizing its callers.
+   * @param compUnitId to be used as metricKey
+   * @param finalMetric metric to add
+   */
+  private void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {
+    final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(compUnitId);
+    metricDataBuilder.endMeasurement(finalMetric);
+    metricMessageHandler.onMetricMessageReceived(compUnitId, metricDataBuilder.build().toJson());
+    metricDataBuilderMap.remove(compUnitId);
   }
 
   /**

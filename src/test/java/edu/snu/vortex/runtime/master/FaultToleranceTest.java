@@ -22,11 +22,14 @@ import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.Transform;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.common.PubSubEventHandlerWrapper;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataStoreProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.vortex.runtime.RuntimeTestUtil;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageSender;
+import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlanGenerator;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
@@ -34,6 +37,10 @@ import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
+import edu.snu.vortex.runtime.executor.data.LocalFileStore;
+import edu.snu.vortex.runtime.executor.data.MemoryStore;
+import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.vortex.runtime.master.resource.ResourceSpecification;
@@ -57,7 +64,8 @@ import static org.mockito.Mockito.*;
  * Tests the fault tolerance mechanism implemented in {@link BatchScheduler}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ContainerManager.class, PubSubEventHandlerWrapper.class})
+@PrepareForTest({ContainerManager.class, PubSubEventHandlerWrapper.class,
+    UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
 public final class FaultToleranceTest {
   private static final int TEST_TIMEOUT_MS = 500;
   private static final int MAX_SCHEDULE_ATTEMPT = 5;
@@ -71,9 +79,11 @@ public final class FaultToleranceTest {
   private PartitionManagerMaster partitionManagerMaster;
   private PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue;
   private PubSubEventHandlerWrapper pubSubEventHandler;
+  private UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler;
   private final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();
   private final Map<String, ExecutorRepresenter> failedExecutorRepresenterMap = new HashMap<>();
   private ContainerManager containerManager = mock(ContainerManager.class);
+  private MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
 
   @Before
@@ -88,14 +98,16 @@ public final class FaultToleranceTest {
     pendingTaskGroupPriorityQueue = new PendingTaskGroupPriorityQueue();
     schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TEST_TIMEOUT_MS);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
+    updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
 
     scheduler =
-        new BatchScheduler(partitionManagerMaster, schedulingPolicy, pendingTaskGroupPriorityQueue, pubSubEventHandler);
+        new BatchScheduler(partitionManagerMaster, schedulingPolicy, pendingTaskGroupPriorityQueue,
+            pubSubEventHandler, updatePhysicalPlanEventHandler);
 
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
-    final ResourceSpecification computeSpec = new ResourceSpecification(Attribute.Compute, 1, 0);
+    final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 1, 0);
     final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
     final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
     final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
@@ -131,28 +143,26 @@ public final class FaultToleranceTest {
     final JobStateManager jobStateManager;
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
-    v1.setAttr(Attribute.IntegerKey.Parallelism, 3);
-    v1.setAttr(Attribute.Key.Placement, Attribute.Compute);
+    v1.setProperty(ParallelismProperty.of(3));
+    v1.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     irDAGBuilder.addVertex(v1);
 
     final IRVertex v2 = new OperatorVertex(t);
-    v2.setAttr(Attribute.IntegerKey.Parallelism, 2);
-    v2.setAttr(Attribute.Key.Placement, Attribute.Compute);
+    v2.setProperty(ParallelismProperty.of(2));
+    v2.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     irDAGBuilder.addVertex(v2);
 
     final IRVertex v3 = new OperatorVertex(t);
-    v3.setAttr(Attribute.IntegerKey.Parallelism, 4);
-    v3.setAttr(Attribute.Key.Placement, Attribute.Compute);
+    v3.setProperty(ParallelismProperty.of(4));
+    v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     irDAGBuilder.addVertex(v3);
 
-    final IREdge e1 = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);
-    e1.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.Memory);
-    e1.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
+    final IREdge e1 = new IREdge(ScatterGather.class, v1, v2, Coder.DUMMY_CODER);
+    e1.setProperty(DataStoreProperty.of(MemoryStore.class));
     irDAGBuilder.connectVertices(e1);
 
-    final IREdge e2 = new IREdge(IREdge.Type.ScatterGather, v2, v3, Coder.DUMMY_CODER);
-    e2.setAttr(Attribute.Key.ChannelDataPlacement, Attribute.LocalFile);
-    e2.setAttr(Attribute.Key.CommunicationPattern, Attribute.ScatterGather);
+    final IREdge e2 = new IREdge(ScatterGather.class, v2, v3, Coder.DUMMY_CODER);
+    e2.setProperty(DataStoreProperty.of(LocalFileStore.class));
     irDAGBuilder.connectVertices(e2);
 
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.buildWithoutSourceSinkCheck();
@@ -162,7 +172,7 @@ public final class FaultToleranceTest {
 
     jobStateManager = scheduler.scheduleJob(
         new PhysicalPlan("SimpleJob", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
-        MAX_SCHEDULE_ATTEMPT);
+        metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 
     // The physical DAG made from the above IR consists of 3 stages.
     final List<PhysicalStage> dagTopoSorted3Stages = physicalDAG.getTopologicalSort();
@@ -194,7 +204,7 @@ public final class FaultToleranceTest {
     scheduler.onExecutorRemoved("a1");
 
     partitionIdsToRecompute.forEach(partitionId -> {
-      final Set<String> producerTaskGroupIds = partitionManagerMaster.getProducerTaskGroupIds(partitionId).get();
+      final Set<String> producerTaskGroupIds = partitionManagerMaster.getProducerTaskGroupIds(partitionId);
       producerTaskGroupIds.forEach(taskGroupId -> assertTrue(taskGroupIdsForFailingExecutor.contains(taskGroupId)));
       final Enum lostPartitionState =
           partitionManagerMaster.getPartitionState(partitionId).getStateMachine().getCurrentState();

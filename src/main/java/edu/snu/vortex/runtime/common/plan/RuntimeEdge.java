@@ -18,40 +18,81 @@ package edu.snu.vortex.runtime.common.plan;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.common.dag.Edge;
 import edu.snu.vortex.common.dag.Vertex;
-import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionPropertyMap;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 
 /**
  * Represents the edge between vertices in a logical/physical plan in runtime.
  * @param <V> the vertex type.
  */
 public class RuntimeEdge<V extends Vertex> extends Edge<V> {
-  private final AttributeMap edgeAttributes;
+  private final ExecutionPropertyMap edgeProperties;
   private final Coder coder;
+  private final Boolean isSideInput;
 
   /**
    * Constructs the edge given the below parameters.
    * @param runtimeEdgeId the id of this edge.
-   * @param edgeAttributes to control the data flow on this edge.
+   * @param edgeProperties to control the data flow on this edge.
    * @param src the source vertex.
    * @param dst the destination vertex.
    * @param coder coder.
    */
   public RuntimeEdge(final String runtimeEdgeId,
-                     final AttributeMap edgeAttributes,
+                     final ExecutionPropertyMap edgeProperties,
                      final V src,
                      final V dst,
                      final Coder coder) {
-    super(runtimeEdgeId, src, dst);
-    this.edgeAttributes = edgeAttributes;
-    this.coder = coder;
+    this(runtimeEdgeId, edgeProperties, src, dst, coder, false);
   }
 
-  public final AttributeMap getAttributes() {
-    return edgeAttributes;
+  /**
+   * Constructs the edge given the below parameters.
+   * @param runtimeEdgeId the id of this edge.
+   * @param edgeProperties to control the data flow on this edge.
+   * @param src the source vertex.
+   * @param dst the destination vertex.
+   * @param coder coder.
+   * @param isSideInput Whether or not the RuntimeEdge is a side input edge.
+   */
+  public RuntimeEdge(final String runtimeEdgeId,
+                     final ExecutionPropertyMap edgeProperties,
+                     final V src,
+                     final V dst,
+                     final Coder coder,
+                     final Boolean isSideInput) {
+    super(runtimeEdgeId, src, dst);
+    this.edgeProperties = edgeProperties;
+    this.coder = coder;
+    this.isSideInput = isSideInput;
+  }
+
+  /**
+   * Get the execution property of the Runtime Edge.
+   * @param <T> Type of the return value.
+   * @param executionPropertyKey key of the execution property.
+   * @return the execution property.
+   */
+  public final <T> T getProperty(final ExecutionProperty.Key executionPropertyKey) {
+    return edgeProperties.get(executionPropertyKey);
+  }
+
+  /**
+   * @return the ExecutionPropertyMap of the Runtime Edge.
+   */
+  public final ExecutionPropertyMap getExecutionProperties() {
+    return edgeProperties;
   }
 
   public final Coder getCoder() {
     return coder;
+  }
+
+  /**
+   * @return whether or not the RuntimeEdge is a side input edge.
+   */
+  public final Boolean isSideInput() {
+    return isSideInput;
   }
 
   /**
@@ -62,7 +103,7 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"runtimeEdgeId\": \"").append(getId());
-    sb.append("\", \"edgeAttributes\": ").append(edgeAttributes);
+    sb.append("\", \"edgeProperties\": ").append(edgeProperties);
     sb.append(", \"coder\": \"").append(coder.toString());
     sb.append("\"}");
     return sb.toString();

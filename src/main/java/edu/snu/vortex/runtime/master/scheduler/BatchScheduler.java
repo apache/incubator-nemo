@@ -17,8 +17,10 @@ package edu.snu.vortex.runtime.master.scheduler;
 
 import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.common.PubSubEventHandlerWrapper;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
+import edu.snu.vortex.compiler.ir.executionproperty.edge.DataFlowModelProperty;
+import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.master.eventhandler.DynamicOptimizationEvent;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.StageState;
@@ -26,6 +28,7 @@ import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.*;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.JobStateManager;
+import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
@@ -69,11 +72,17 @@ public final class BatchScheduler implements Scheduler {
   public BatchScheduler(final PartitionManagerMaster partitionManagerMaster,
                         final SchedulingPolicy schedulingPolicy,
                         final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue,
-                        final PubSubEventHandlerWrapper pubSubEventHandlerWrapper) {
+                        final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
+                        final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler) {
     this.partitionManagerMaster = partitionManagerMaster;
     this.pendingTaskGroupPriorityQueue = pendingTaskGroupPriorityQueue;
     this.schedulingPolicy = schedulingPolicy;
     this.pubSubEventHandlerWrapper = pubSubEventHandlerWrapper;
+    updatePhysicalPlanEventHandler.setScheduler(this);
+    if (pubSubEventHandlerWrapper.getPubSubEventHandler() != null) {
+      pubSubEventHandlerWrapper.getPubSubEventHandler()
+          .subscribe(updatePhysicalPlanEventHandler.getEventClass(), updatePhysicalPlanEventHandler);
+    }
   }
 
   /**
@@ -83,9 +92,11 @@ public final class BatchScheduler implements Scheduler {
    */
   @Override
   public synchronized JobStateManager scheduleJob(final PhysicalPlan jobToSchedule,
+                                                  final MetricMessageHandler metricMessageHandler,
                                                   final int maxScheduleAttempt) {
     this.physicalPlan = jobToSchedule;
-    this.jobStateManager = new JobStateManager(jobToSchedule, partitionManagerMaster, maxScheduleAttempt);
+    this.jobStateManager =
+        new JobStateManager(jobToSchedule, partitionManagerMaster, metricMessageHandler, maxScheduleAttempt);
     pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
 
     LOG.info("Job to schedule: {}", jobToSchedule.getId());
@@ -201,7 +212,7 @@ public final class BatchScheduler implements Scheduler {
           physicalPlan.getStageDAG().getOutgoingEdgesOf(stageIdForTaskGroupUponCompletion);
       boolean pushOutput = false;
       for (PhysicalStageEdge outputEdge : outputsOfThisStage) {
-        if (outputEdge.getAttributes().get(Attribute.Key.ChannelTransferPolicy) == Attribute.Push) {
+        if (outputEdge.getProperty(ExecutionProperty.Key.DataFlowModel).equals(DataFlowModelProperty.Value.Push)) {
           pushOutput = true;
           break;
         }
@@ -395,7 +406,8 @@ public final class BatchScheduler implements Scheduler {
     stagesToSchedule.addAll(physicalPlan.getStageDAG().filterVertices(
         physicalStage -> physicalStage.getScheduleGroupIndex() == currentScheduleGroupIndex + 1));
 
-    final List<PhysicalStage> filteredStagesToSchedule = stagesToSchedule.stream().filter(physicalStage -> {
+    final List<PhysicalStage> filteredStagesToSchedule =
+        stagesToSchedule.stream().filter(physicalStage -> {
       final String stageId = physicalStage.getId();
       return jobStateManager.getStageState(stageId).getStateMachine().getCurrentState() != StageState.State.EXECUTING
           && jobStateManager.getStageState(stageId).getStateMachine().getCurrentState() != StageState.State.COMPLETE;
@@ -424,11 +436,6 @@ public final class BatchScheduler implements Scheduler {
     if (stageState == StageState.State.FAILED_RECOVERABLE) {
       // The 'failed_recoverable' stage has been selected as the next stage to execute. Change its state back to 'ready'
       jobStateManager.onStageStateChanged(stageToSchedule.getId(), StageState.State.READY);
-    } else if (stageState == StageState.State.EXECUTING) {
-      // An 'executing' stage has been selected as the next stage to execute.
-      // This is due to the "Push" data transfer policy. We can skip this round.
-      LOG.info("{} has already been scheduled! Skipping this round.", stageToSchedule.getId());
-      return;
     }
 
     // attemptIdx is only initialized/updated when we set the stage's state to executing
@@ -451,6 +458,7 @@ public final class BatchScheduler implements Scheduler {
           jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.READY);
         }
         partitionManagerMaster.onProducerTaskGroupScheduled(taskGroup.getTaskGroupId());
+        LOG.debug("Enquing {}", taskGroup.getTaskGroupId());
         pendingTaskGroupPriorityQueue.enqueue(
             new ScheduledTaskGroup(taskGroup, stageIncomingEdges, stageOutgoingEdges, attemptIdx));
       }

@@ -18,11 +18,12 @@ package edu.snu.vortex.runtime.common.plan.physical;
 
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.executor.data.HashRange;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -47,16 +48,22 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
   private final Map<String, HashRange> taskGroupIdToHashRangeMap;
 
   public PhysicalStageEdge(final String runtimeEdgeId,
-                           final AttributeMap edgeAttributes,
+                           final ExecutionPropertyMap edgeProperties,
                            final IRVertex srcVertex,
                            final IRVertex dstVertex,
                            final PhysicalStage srcStage,
                            final PhysicalStage dstStage,
-                           final Coder coder) {
-    super(runtimeEdgeId, edgeAttributes, srcStage, dstStage, coder);
+                           final Coder coder,
+                           final Boolean isSideInput) {
+    super(runtimeEdgeId, edgeProperties, srcStage, dstStage, coder, isSideInput);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
+    // Initialize the key range of each dst task.
     this.taskGroupIdToHashRangeMap = new HashMap<>();
+    final List<TaskGroup> taskGroups = dstStage.getTaskGroupList();
+    for (int taskIdx = 0; taskIdx < taskGroups.size(); taskIdx++) {
+      taskGroupIdToHashRangeMap.put(taskGroups.get(taskIdx).getTaskGroupId(), HashRange.of(taskIdx, taskIdx + 1));
+    }
   }
 
   public IRVertex getSrcVertex() {
@@ -71,7 +78,7 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"runtimeEdgeId\": \"").append(getId());
-    sb.append("\", \"edgeAttributes\": ").append(getAttributes());
+    sb.append("\", \"edgeProperties\": ").append(getExecutionProperties());
     sb.append(", \"externalSrcVertexId\": \"").append(srcVertex.getId());
     sb.append("\", \"externalDstVertexId\": \"").append(dstVertex.getId());
     sb.append("\", \"coder\": \"").append(getCoder().toString());

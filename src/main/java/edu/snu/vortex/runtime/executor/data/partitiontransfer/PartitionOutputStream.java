@@ -17,10 +17,10 @@ package edu.snu.vortex.runtime.executor.data.partitiontransfer;
 
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.Element;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.executor.data.FileArea;
 import edu.snu.vortex.runtime.executor.data.HashRange;
+import edu.snu.vortex.runtime.executor.data.PartitionStore;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import org.slf4j.Logger;
@@ -54,7 +54,7 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
 
   private final String receiverExecutorId;
   private final boolean encodePartialPartition;
-  private final Optional<Attribute> partitionStore;
+  private final Optional<Class<? extends PartitionStore>> partitionStore;
   private final String partitionId;
   private final String runtimeEdgeId;
   private final HashRange hashRange;
@@ -90,7 +90,7 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
    */
   PartitionOutputStream(final String receiverExecutorId,
                         final boolean encodePartialPartition,
-                        final Optional<Attribute> partitionStore,
+                        final Optional<Class<? extends PartitionStore>> partitionStore,
                         final String partitionId,
                         final String runtimeEdgeId,
                         final HashRange hashRange) {
@@ -141,7 +141,7 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
   }
 
   @Override
-  public Optional<Attribute> getPartitionStore() {
+  public Optional<Class<? extends PartitionStore>> getPartitionStore() {
     return partitionStore;
   }
 
@@ -239,7 +239,7 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
    * @throws IOException if an exception was set
    * @throws IllegalStateException if this stream is closed already
    */
-  public PartitionOutputStream writeElements(final Iterable<Element<T, ?, ?>> iterable) throws IOException {
+  public PartitionOutputStream writeElements(final Iterable iterable) throws IOException {
     checkWritableCondition();
     elementQueue.put(iterable);
     if (encodePartialPartition) {

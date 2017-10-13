@@ -16,6 +16,7 @@
 package edu.snu.vortex.runtime.master.scheduler;
 
 import edu.snu.vortex.common.Pair;
+import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.plan.physical.TaskGroup;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
@@ -33,10 +34,12 @@ public interface Scheduler {
   /**
    * Schedules the given job.
    * @param physicalPlan of the job being submitted.
+   * @param metricMessageHandler to manage the metric of the submitted job
    * @param maxScheduleAttempt the max. number of times a stage can be attempted for execution.
    * @return the {@link JobStateManager} for the submitted job to keep track of the execution states.
    */
   JobStateManager scheduleJob(PhysicalPlan physicalPlan,
+                              MetricMessageHandler metricMessageHandler,
                               int maxScheduleAttempt);
 
   /**

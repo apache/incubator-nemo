@@ -27,7 +27,7 @@ public final class UpdatePhysicalPlanEvent implements CompilerEvent {
   private final Pair<String, TaskGroup> taskInfo;
 
   UpdatePhysicalPlanEvent(final PhysicalPlan newPhysicalPlan,
-                                 final Pair<String, TaskGroup> taskInfo) {
+                          final Pair<String, TaskGroup> taskInfo) {
     this.newPhysicalPlan = newPhysicalPlan;
     this.taskInfo = taskInfo;
   }

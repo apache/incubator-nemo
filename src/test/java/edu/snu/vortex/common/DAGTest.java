@@ -25,6 +25,7 @@ import org.junit.Test;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Tests {@link DAG} and {@link DAGBuilder}.
@@ -112,6 +113,16 @@ public final class DAGTest {
     assertEquals(dag.getChildren("3").size(), 0);
     assertEquals(dag.getParents("5").size(), 1);
     assertEquals(dag.getChildren("5").size(), 0);
+
+    List<IntegerVertex> ancestors = dag.getAncestors("5");
+    assertEquals(ancestors.size(), 1);
+    assertTrue(ancestors.contains(new IntegerVertex(4)));
+
+    ancestors = dag.getAncestors("3");
+    assertEquals(ancestors.size(), 3);
+    assertTrue(ancestors.contains(new IntegerVertex(1)));
+    assertTrue(ancestors.contains(new IntegerVertex(2)));
+    assertTrue(ancestors.contains(new IntegerVertex(4)));
   }
 
   final class IntegerVertex extends Vertex {

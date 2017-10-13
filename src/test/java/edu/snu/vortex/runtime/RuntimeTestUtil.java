@@ -18,13 +18,15 @@ package edu.snu.vortex.runtime;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.compiler.frontend.beam.BeamElement;
 import edu.snu.vortex.compiler.ir.Element;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.DataCommunicationPattern;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 import edu.snu.vortex.runtime.master.JobStateManager;
 import edu.snu.vortex.runtime.master.PartitionManagerMaster;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
@@ -148,23 +150,11 @@ public final class RuntimeTestUtil {
 
         // Initialize states for blocks of inter-stage edges
         stageOutgoingEdges.forEach(physicalStageEdge -> {
-          final Attribute commPattern =
-              physicalStageEdge.getAttributes().get(Attribute.Key.CommunicationPattern);
           final int srcParallelism = taskGroupsForStage.size();
           IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-            if (commPattern == Attribute.ScatterGather) {
-              final int dstParallelism =
-                  physicalStageEdge.getDstVertex().getAttributes().get(Attribute.IntegerKey.Parallelism);
-              IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> {
-                final String partitionId =
-                    RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx, dstTaskIdx);
-                sendPartitionStateEventToPartitionManager(partitionManagerMaster, containerManager, partitionId, newState);
-              });
-            } else {
-              final String partitionId =
-                  RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx);
+            final String partitionId =
+                RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx);
               sendPartitionStateEventToPartitionManager(partitionManagerMaster, containerManager, partitionId, newState);
-            }
           });
         });
 
@@ -199,9 +189,8 @@ public final class RuntimeTestUtil {
     eventRunnableQueue.add(new Runnable() {
       @Override
       public void run() {
-        final Optional<Set<String>> optionalParentTaskGroupIds = partitionManagerMaster.getProducerTaskGroupIds(partitionId);
-        if (optionalParentTaskGroupIds.isPresent()) {
-          final Set<String> parentTaskGroupIds = optionalParentTaskGroupIds.get();
+        final Set<String> parentTaskGroupIds = partitionManagerMaster.getProducerTaskGroupIds(partitionId);
+        if (!parentTaskGroupIds.isEmpty()) {
           parentTaskGroupIds.forEach(taskGroupId -> {
             final ExecutorRepresenter scheduledExecutor = findExecutorForTaskGroup(containerManager, taskGroupId);
 

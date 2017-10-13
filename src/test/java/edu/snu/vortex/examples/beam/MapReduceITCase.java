@@ -30,21 +30,20 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class MapReduceITCase {
   private static final int TIMEOUT = 60000;
-  private static final String mapReduce = "edu.snu.vortex.examples.beam.MapReduce";
   private static final String input = CompilerTestUtil.rootDir + "/src/main/resources/sample_input_mr";
   private static final String output = CompilerTestUtil.rootDir + "/src/main/resources/sample_output";
   private static final String dagDirectory = "./dag";
 
   public static ArgBuilder builder = new ArgBuilder()
       .addJobId(MapReduceITCase.class.getSimpleName())
-      .addUserMain(mapReduce)
+      .addUserMain(MapReduce.class.getCanonicalName())
       .addUserArgs(input, output)
       .addDAGDirectory(dagDirectory);
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-        .addUserMain(mapReduce)
+        .addUserMain(MapReduce.class.getCanonicalName())
         .addUserArgs(input, output)
         .addDAGDirectory(dagDirectory);
   }
@@ -53,6 +52,7 @@ public final class MapReduceITCase {
   public void test() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName())
+        .addOptimizationPolicy(CompilerTestUtil.defaultPolicy)
         .build());
   }
 
@@ -60,7 +60,7 @@ public final class MapReduceITCase {
   public void testDisaggregation() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_disaggregation")
-        .addOptimizationPolicy("disaggregation")
+        .addOptimizationPolicy(CompilerTestUtil.disaggregationPolicy)
         .build());
   }
 
@@ -68,7 +68,7 @@ public final class MapReduceITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy("pado")
+        .addOptimizationPolicy(CompilerTestUtil.padoPolicy)
         .build());
   }
 
@@ -80,7 +80,7 @@ public final class MapReduceITCase {
   public void testDataSkew() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_dataskew")
-        .addOptimizationPolicy("dataskew")
+        .addOptimizationPolicy(CompilerTestUtil.dataSkewPolicy)
         .build());
   }
 }

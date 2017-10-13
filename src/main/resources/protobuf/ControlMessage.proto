@@ -9,38 +9,41 @@ enum MessageType {
     TaskGroupStateChanged = 0;
     ScheduleTaskGroup = 1;
     PartitionStateChanged = 2;
-    RequestPartitionLocation = 3;
-    PartitionLocationInfo = 4;
-    ExecutorFailed = 5;
-    ContainerFailed = 6;
-    MetricMessageReceived = 7;
+    DataSizeMetric = 3;
+    RequestPartitionLocation = 4;
+    PartitionLocationInfo = 5;
+    ExecutorFailed = 6;
+    ContainerFailed = 7;
+    MetricMessageReceived = 8;
     // Messages for metadata passing
-    CommitMetadata = 8;
-    RemoveMetadata = 9;
-    RequestMetadata = 10;
-    MetadataResponse = 11;
-    ReserveBlock = 12;
-    ReserveBlockResponse = 13;
+    CommitBlock = 9;
+    RemoveBlockMetadata = 10;
+    RequestBlockMetadata = 11;
+    MetadataResponse = 12;
+    ReserveBlock = 13;
+    ReserveBlockResponse = 14;
 }
 
 message Message {
     required MessageType type = 1;
     required int64 id = 2;
-    optional TaskGroupStateChangedMsg taskStateChangedMsg = 3;
-    optional ScheduleTaskGroupMsg scheduleTaskGroupMsg = 4;
-    optional PartitionStateChangedMsg partitionStateChangedMsg = 5;
-    optional RequestPartitionLocationMsg requestPartitionLocationMsg = 6;
-    optional PartitionLocationInfoMsg partitionLocationInfoMsg = 7;
-    optional ExecutorFailedMsg executorFailedMsg = 8;
-    optional ContainerFailedMsg containerFailedMsg = 9;
-    optional MetricMsg metricMsg = 10;
+    required string listenerId = 3; // The id of the message listner (handler).
+    optional TaskGroupStateChangedMsg taskGroupStateChangedMsg = 4;
+    optional ScheduleTaskGroupMsg scheduleTaskGroupMsg = 5;
+    optional PartitionStateChangedMsg partitionStateChangedMsg = 6;
+    optional DataSizeMetricMsg dataSizeMetricMsg = 7;
+    optional RequestPartitionLocationMsg requestPartitionLocationMsg = 8;
+    optional PartitionLocationInfoMsg partitionLocationInfoMsg = 9;
+    optional ExecutorFailedMsg executorFailedMsg = 10;
+    optional ContainerFailedMsg containerFailedMsg = 11;
+    optional MetricMsg metricMsg = 12;
     // Messages for metadata passing
-    optional MetadataResponseMsg metadataResponseMsg = 11;
-    optional CommitMetadataMsg commitMetadataMsg = 12;
-    optional RemoveMetadataMsg removeMetadataMsg = 13;
-    optional RequestMetadataMsg requestMetadataMsg = 14;
-    optional ReserveBlockMsg reserveBlockMsg = 15;
-    optional ReserveBlockResponseMsg reserveBlockResponseMsg = 16;
+    optional MetadataResponseMsg metadataResponseMsg = 13;
+    optional CommitBlockMsg commitBlockMsg = 14;
+    optional RemoveBlockMetadataMsg removeBlockMetadataMsg = 15;
+    optional RequestBlockMetadataMsg requestBlockMetadataMsg = 16;
+    optional ReserveBlockMsg reserveBlockMsg = 17;
+    optional ReserveBlockResponseMsg reserveBlockResponseMsg = 18;
 }
 
 // Messages from Master to Executors
@@ -75,9 +78,15 @@ message PartitionStateChangedMsg {
     required string executorId = 1;
     required string partitionId = 2;
     required PartitionStateFromExecutor state = 3;
-    optional int32 srcTaskIdx = 4;
-    repeated int64 blockSizeInfo = 5;
-    optional string srcIRVertexId = 6;
+    required string location = 4; // The location of the partition (e.g., executor id or remote store).
+    optional int32 srcTaskIdx = 5;
+}
+
+message DataSizeMetricMsg {
+    // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
+    repeated int64 blockSizeInfo = 1;
+    required string partitionId = 2;
+    required string srcIRVertexId = 3;
 }
 
 message RequestPartitionLocationMsg {
@@ -95,7 +104,7 @@ message ContainerFailedMsg {
 }
 
 message MetricMsg {
-    repeated string metricMessages = 1;
+    repeated Metric metric = 1;
 }
 
 // Messages between Executors
@@ -129,10 +138,9 @@ enum PartitionStateFromExecutor {
     PARTITION_READY = 0;
     SCHEDULED = 1;
     COMMITTED = 2;
-    PARTIAL_COMMITTED = 3;
-    LOST = 4;
-    LOST_BEFORE_COMMIT = 5;
-    REMOVED = 6;
+    LOST = 3;
+    LOST_BEFORE_COMMIT = 4;
+    REMOVED = 5;
 }
 
 enum PartitionStore {
@@ -156,7 +164,7 @@ message ReserveBlockResponseMsg {
 }
 
 // Messages from Executors to Master
-message CommitMetadataMsg {
+message CommitBlockMsg {
     required string partitionId = 1;
     repeated int32 blockIdx = 2;
 }
@@ -167,11 +175,11 @@ message ReserveBlockMsg {
     required BlockMetadataMsg blockMetadata = 3;
 }
 
-message RemoveMetadataMsg {
+message RemoveBlockMetadataMsg {
     required string partitionId = 1;
 }
 
-message RequestMetadataMsg {
+message RequestBlockMetadataMsg {
     required string executorId = 1;
     required string partitionId = 2;
 }
@@ -182,4 +190,9 @@ message BlockMetadataMsg {
     required int32 blockSize = 2;
     optional int64 offset = 3;
     required int64 numElements = 4;
+}
+
+message Metric {
+    required string metricKey = 1;
+    required string metricValue = 2;
 }

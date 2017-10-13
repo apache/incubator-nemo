@@ -22,14 +22,15 @@ import java.util.*;
 
 /**
  * IRVertex that collects statistics to send them to the optimizer for dynamic optimization.
- * This class is generated in the DAG through {@link edu.snu.vortex.compiler.optimizer.passes.DataSkewPass}.
+ * This class is generated in the DAG through
+ * {@link edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.DataSkewCompositePass}.
  * @param <T> type of the metric data.
  */
 public final class MetricCollectionBarrierVertex<T> extends IRVertex {
   // Partition ID to Size data
   private final Map<String, List<T>> metricData;
-  // This DAG snapshot is taken at the end of the DataSkewPass, for the vertex to know the state of the DAG at its
-  // optimization, and to be able to figure out exactly where in the DAG the vertex exists.
+  // This DAG snapshot is taken at the end of the DataSkewCompositePass, for the vertex to know the state of the DAG at
+  // its optimization, and to be able to figure out exactly where in the DAG the vertex exists.
   private DAG<IRVertex, IREdge> dagSnapshot;
 
   /**
@@ -44,12 +45,12 @@ public final class MetricCollectionBarrierVertex<T> extends IRVertex {
   public MetricCollectionBarrierVertex getClone() {
     final MetricCollectionBarrierVertex that = new MetricCollectionBarrierVertex();
     that.setDAGSnapshot(dagSnapshot);
-    IRVertex.copyAttributes(this, that);
+    this.copyExecutionPropertiesTo(that);
     return that;
   }
 
   /**
-   * This is to set the DAG snapshot at the end of the DataSkewPass.
+   * This is to set the DAG snapshot at the end of the DataSkewCompositePass.
    * @param dag DAG to set on the vertex.
    */
   public void setDAGSnapshot(final DAG<IRVertex, IREdge> dag) {

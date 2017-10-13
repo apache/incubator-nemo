@@ -18,7 +18,7 @@ package edu.snu.vortex.runtime.common.plan.stage;
 
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.ir.IRVertex;
-import edu.snu.vortex.compiler.ir.attribute.AttributeMap;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.plan.RuntimeEdge;
 
@@ -32,21 +32,23 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   /**
    * Represents the edge between stages.
    * @param irEdgeId id of this edge.
-   * @param edgeAttributes to control the data flow on this edge.
+   * @param edgeProperties to control the data flow on this edge.
    * @param srcStage source runtime stage.
    * @param dstStage destination runtime stage.
    * @param coder coder.
+   * @param isSideInput flag for whether or not the edge is a sideInput.
    * @param srcVertex source vertex (in srcStage).
    * @param dstVertex destination vertex (in dstStage).
    */
   public StageEdge(final String irEdgeId,
-                   final AttributeMap edgeAttributes,
+                   final ExecutionPropertyMap edgeProperties,
                    final Stage srcStage,
                    final Stage dstStage,
                    final Coder coder,
+                   final Boolean isSideInput,
                    final IRVertex srcVertex,
                    final IRVertex dstVertex) {
-    super(RuntimeIdGenerator.generateStageEdgeId(irEdgeId), edgeAttributes, srcStage, dstStage, coder);
+    super(RuntimeIdGenerator.generateStageEdgeId(irEdgeId), edgeProperties, srcStage, dstStage, coder, isSideInput);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
   }
@@ -63,7 +65,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"runtimeEdgeId\": \"").append(getId());
-    sb.append("\", \"edgeAttributes\": ").append(getAttributes());
+    sb.append("\", \"edgeProperties\": ").append(getExecutionProperties());
     sb.append(", \"srcVertex\": \"").append(srcVertex.getId());
     sb.append("\", \"dstVertex\": \"").append(dstVertex.getId());
     sb.append("\", \"coder\": \"").append(getCoder().toString());

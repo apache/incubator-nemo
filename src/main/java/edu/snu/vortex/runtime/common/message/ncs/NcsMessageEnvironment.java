@@ -6,6 +6,7 @@ import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageListener;
 import edu.snu.vortex.runtime.common.message.MessageSender;
+import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.network.ConnectionFactory;
 import org.apache.reef.io.network.Message;
@@ -17,6 +18,8 @@ import org.apache.reef.wake.remote.transport.LinkListener;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -39,6 +42,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
   private final ReplyFutureMap<ControlMessage.Message> replyFutureMap;
   private final ConcurrentMap<String, MessageListener> listenerConcurrentMap;
+  private final Map<String, Connection> receiverToConnectionMap;
   private final ConnectionFactory<ControlMessage.Message> connectionFactory;
 
 
@@ -52,6 +56,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     this.senderId = senderId;
     this.replyFutureMap = new ReplyFutureMap<>();
     this.listenerConcurrentMap = new ConcurrentHashMap<>();
+    this.receiverToConnectionMap = new HashMap<>();
     this.connectionFactory = networkConnectionService.registerConnectionFactory(
         idFactory.getNewInstance(NCS_CONN_FACTORY_ID),
         new ControlMessageCodec(),
@@ -68,11 +73,23 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
   }
 
   @Override
-  public <T> Future<MessageSender<T>> asyncConnect(final String receiverId, final String messageTypeId) {
+  public void removeListener(final String listenerId) {
+    listenerConcurrentMap.remove(listenerId);
+  }
+
+  @Override
+  public <T> Future<MessageSender<T>> asyncConnect(final String receiverId, final String listenerId) {
     try {
-      final Connection<ControlMessage.Message> connection = connectionFactory.newConnection(
-          idFactory.getNewInstance(receiverId));
-      connection.open();
+      // If the connection toward the receiver exists already, reuses it.
+      final Connection connection = receiverToConnectionMap.computeIfAbsent(receiverId, absentReceiverId -> {
+        try {
+          final Connection newConnection = connectionFactory.newConnection(idFactory.getNewInstance(absentReceiverId));
+          newConnection.open();
+          return newConnection;
+        } catch (final NetworkException e) {
+          throw new RuntimeException(e);
+        }
+      });
       return CompletableFuture.completedFuture((MessageSender) new NcsMessageSender(connection, replyFutureMap));
     } catch (final Exception e) {
       final CompletableFuture<MessageSender<T>> failedFuture = new CompletableFuture<>();
@@ -116,15 +133,15 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     }
 
     private void processSendMessage(final ControlMessage.Message controlMessage) {
-      final String messageType = getListenerId(controlMessage);
-      listenerConcurrentMap.get(messageType).onMessage(controlMessage);
+      final String listenerId = controlMessage.getListenerId();
+      listenerConcurrentMap.get(listenerId).onMessage(controlMessage);
     }
 
     private void processRequestMessage(final ControlMessage.Message controlMessage) {
-      final String messageType = getListenerId(controlMessage);
+      final String listenerId = controlMessage.getListenerId();
       final String executorId = getExecutorId(controlMessage);
       final MessageContext messageContext = new NcsMessageContext(executorId, connectionFactory, idFactory);
-      listenerConcurrentMap.get(messageType).onMessageWithContext(controlMessage, messageContext);
+      listenerConcurrentMap.get(listenerId).onMessageWithContext(controlMessage, messageContext);
     }
 
     private void processReplyMessage(final ControlMessage.Message controlMessage) {
@@ -175,11 +192,12 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case ScheduleTaskGroup:
       case PartitionStateChanged:
       case ExecutorFailed:
-      case CommitMetadata:
-      case RemoveMetadata:
+      case CommitBlock:
+      case RemoveBlockMetadata:
+      case DataSizeMetric:
         return MessageType.Send;
       case RequestPartitionLocation:
-      case RequestMetadata:
+      case RequestBlockMetadata:
       case ReserveBlock:
         return MessageType.Request;
       case PartitionLocationInfo:
@@ -195,8 +213,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     switch (controlMessage.getType()) {
       case RequestPartitionLocation:
         return controlMessage.getRequestPartitionLocationMsg().getExecutorId();
-      case RequestMetadata:
-        return controlMessage.getRequestMetadataMsg().getExecutorId();
+      case RequestBlockMetadata:
+        return controlMessage.getRequestBlockMetadataMsg().getExecutorId();
       case ReserveBlock:
         return controlMessage.getReserveBlockMsg().getExecutorId();
       default:
@@ -212,24 +230,6 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
         return controlMessage.getMetadataResponseMsg().getRequestId();
       case ReserveBlockResponse:
         return controlMessage.getReserveBlockResponseMsg().getRequestId();
-      default:
-        throw new IllegalArgumentException(controlMessage.toString());
-    }
-  }
-
-  private String getListenerId(final ControlMessage.Message controlMessage) {
-    switch (controlMessage.getType()) {
-      case TaskGroupStateChanged:
-      case PartitionStateChanged:
-      case RequestPartitionLocation:
-      case ExecutorFailed:
-      case CommitMetadata:
-      case RemoveMetadata:
-      case RequestMetadata:
-      case ReserveBlock:
-        return MessageEnvironment.MASTER_MESSAGE_RECEIVER;
-      case ScheduleTaskGroup:
-        return MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER;
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }

@@ -15,11 +15,7 @@
  */
 package edu.snu.vortex.runtime.master.scheduler;
 
-import edu.snu.vortex.common.dag.DAG;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.vortex.runtime.common.plan.physical.PhysicalStage;
-import edu.snu.vortex.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.vortex.runtime.common.plan.physical.ScheduledTaskGroup;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -31,9 +27,8 @@ import java.util.function.BiFunction;
 
 /**
  * Keep tracks of all pending task groups.
- * This class provides two-level queue scheduling by prioritizing TaskGroups of parent stages to be scheduled first.
+ * This class provides two-level queue scheduling by prioritizing TaskGroups of certain stages to be scheduled first.
  * Stages that are mutually independent alternate turns in scheduling each of their TaskGroups.
- * When two stages are connected by a push edge, the child stage's priority is bumped up to match the parent's.
  * This PQ assumes that stages/task groups of higher priorities are never enqueued without first removing
  * those of lower priorities (which is how Scheduler behaves) for simplicity.
  */
@@ -69,7 +64,7 @@ public final class PendingTaskGroupPriorityQueue {
         new BiFunction<String, Deque<ScheduledTaskGroup>, Deque<ScheduledTaskGroup>>() {
           @Override
           public Deque<ScheduledTaskGroup> apply(final String s,
-                                                         final Deque<ScheduledTaskGroup> scheduledTaskGroups) {
+                                                 final Deque<ScheduledTaskGroup> scheduledTaskGroups) {
             if (scheduledTaskGroups == null) {
               final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = new ArrayDeque<>();
               pendingTaskGroupsForStage.add(scheduledTaskGroup);
@@ -100,7 +95,8 @@ public final class PendingTaskGroupPriorityQueue {
       taskGroupToSchedule = pendingTaskGroupsForStage.poll();
       if (pendingTaskGroupsForStage.isEmpty()) {
         stageIdToPendingTaskGroups.remove(stageId);
-        stageIdToPendingTaskGroups.keySet().forEach(scheduledStageId -> updateSchedulableStages(scheduledStageId));
+        stageIdToPendingTaskGroups.forEach((scheduledStageId, taskGroupList) ->
+            updateSchedulableStages(scheduledStageId));
       } else {
         schedulableStages.addLast(stageId);
       }
@@ -132,25 +128,16 @@ public final class PendingTaskGroupPriorityQueue {
   /**
    * Updates the two-level PQ by examining a new candidate stage.
    * If there are no stages with higher priority, the candidate can be made schedulable.
+   *
+   * NOTE: This method provides the "line up" between stages, by assigning priorities,
+   * serving as the key to the "priority" implementation of this class.
    * @param candidateStageId for the stage that can potentially be scheduled.
    */
   private void updateSchedulableStages(final String candidateStageId) {
-    boolean readyToScheduleImmediately = true;
-    final DAG<PhysicalStage, PhysicalStageEdge> jobDAG = physicalPlan.getStageDAG();
-    for (final PhysicalStage parentStage : jobDAG.getParents(candidateStageId)) {
-      if (schedulableStages.contains(parentStage.getId())) {
-        if ((jobDAG.getEdgeBetween(parentStage.getId(),
-            candidateStageId).getAttributes().get(Attribute.Key.ChannelTransferPolicy) == Attribute.Pull)) {
-          readyToScheduleImmediately = false;
-          break;
-        }
-      }
-    }
-
-    if (readyToScheduleImmediately) {
-      if (!schedulableStages.contains(candidateStageId)) {
-        schedulableStages.addLast(candidateStageId);
-      }
+    // Currently schedules all candidate stages,
+    // with the assumption that schedule groups will be assigned appropriately. (changes made in #480)
+    if (!schedulableStages.contains(candidateStageId)) {
+      schedulableStages.addLast(candidateStageId);
     }
   }
 

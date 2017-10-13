@@ -15,13 +15,12 @@
  */
 package edu.snu.vortex.runtime.master.resource;
 
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageSender;
 import edu.snu.vortex.runtime.exception.ContainerException;
-import edu.snu.vortex.runtime.executor.PersistentConnectionToMaster;
+import edu.snu.vortex.runtime.executor.PersistentConnectionToMasterMap;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -60,7 +59,7 @@ public final class ContainerManager {
   /**
    * A map containing a list of executor representations for each container type.
    */
-  private final Map<Attribute, List<ExecutorRepresenter>> executorsByContainerType;
+  private final Map<String, List<ExecutorRepresenter>> executorsByContainerType;
 
   /**
    * A map of executor ID to the corresponding {@link ExecutorRepresenter}.
@@ -76,16 +75,16 @@ public final class ContainerManager {
    * Keeps track of evaluator and context requests.
    */
   private final Map<String, ResourceSpecification> pendingContextIdToResourceSpec;
-  private final Map<Attribute, List<ResourceSpecification>> pendingContainerRequestsByContainerType;
+  private final Map<String, List<ResourceSpecification>> pendingContainerRequestsByContainerType;
 
-  private final PersistentConnectionToMaster persistentConnectionToMaster;
+  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
   @Inject
   public ContainerManager(final EvaluatorRequestor evaluatorRequestor,
                           final MessageEnvironment messageEnvironment) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.messageEnvironment = messageEnvironment;
-    this.persistentConnectionToMaster = new PersistentConnectionToMaster(messageEnvironment);
+    this.persistentConnectionToMasterMap = new PersistentConnectionToMasterMap(messageEnvironment);
     this.executorsByContainerType = new HashMap<>();
     this.executorRepresenterMap = new HashMap<>();
     this.failedExecutorRepresenterMap = new HashMap<>();
@@ -101,27 +100,31 @@ public final class ContainerManager {
    */
   public synchronized void requestContainer(final int numToRequest,
                                             final ResourceSpecification resourceSpecification) {
-    // Create a list of executor specifications to be used when containers are allocated.
-    final List<ResourceSpecification> resourceSpecificationList = new ArrayList<>(numToRequest);
-    for (int i = 0; i < numToRequest; i++) {
-      resourceSpecificationList.add(resourceSpecification);
+    if (numToRequest > 0) {
+      // Create a list of executor specifications to be used when containers are allocated.
+      final List<ResourceSpecification> resourceSpecificationList = new ArrayList<>(numToRequest);
+      for (int i = 0; i < numToRequest; i++) {
+        resourceSpecificationList.add(resourceSpecification);
+      }
+      executorsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>(numToRequest));
+
+      // Mark the request as pending with the given specifications.
+      pendingContainerRequestsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>());
+      pendingContainerRequestsByContainerType.get(resourceSpecification.getContainerType())
+          .addAll(resourceSpecificationList);
+
+      requestLatchByResourceSpecId.put(resourceSpecification.getResourceSpecId(),
+          new CountDownLatch(numToRequest));
+
+      // Request the evaluators
+      evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
+          .setNumber(numToRequest)
+          .setMemory(resourceSpecification.getMemory())
+          .setNumberOfCores(resourceSpecification.getCapacity())
+          .build());
+    } else {
+      LOG.info("Request {} containers", numToRequest);
     }
-    executorsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>(numToRequest));
-
-    // Mark the request as pending with the given specifications.
-    pendingContainerRequestsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>());
-    pendingContainerRequestsByContainerType.get(resourceSpecification.getContainerType())
-        .addAll(resourceSpecificationList);
-
-    requestLatchByResourceSpecId.put(resourceSpecification.getResourceSpecId(),
-        new CountDownLatch(numToRequest));
-
-    // Request the evaluators
-    evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
-        .setNumber(numToRequest)
-        .setMemory(resourceSpecification.getMemory())
-        .setNumberOfCores(resourceSpecification.getCapacity())
-        .build());
   }
 
   /**
@@ -163,7 +166,7 @@ public final class ContainerManager {
    */
   private ResourceSpecification selectResourceSpecForContainer() {
     ResourceSpecification selectedResourceSpec = null;
-    for (final Map.Entry<Attribute, List<ResourceSpecification>> entry
+    for (final Map.Entry<String, List<ResourceSpecification>> entry
         : pendingContainerRequestsByContainerType.entrySet()) {
       if (entry.getValue().size() > 0) {
         selectedResourceSpec = entry.getValue().remove(0);
@@ -194,7 +197,7 @@ public final class ContainerManager {
     final MessageSender messageSender;
     try {
       messageSender =
-          messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_RECEIVER).get();
+          messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
@@ -221,9 +224,10 @@ public final class ContainerManager {
     failedExecutorRepresenterMap.put(failedExecutorId, failedExecutor);
 
     // Signal RuntimeMaster on CONTAINER_FAILURE type FAILED_RECOVERABLE state
-    persistentConnectionToMaster.getMessageSender().send(
+    persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
+            .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
             .setType(ControlMessage.MessageType.ContainerFailed)
             .setContainerFailedMsg(ControlMessage.ContainerFailedMsg.newBuilder()
                 .setExecutorId(failedExecutorId)

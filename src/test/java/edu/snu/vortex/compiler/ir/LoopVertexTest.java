@@ -15,7 +15,6 @@
  */
 package edu.snu.vortex.compiler.ir;
 
-import edu.snu.vortex.compiler.CompilerTestUtil;
 import edu.snu.vortex.common.coder.Coder;
 import edu.snu.vortex.compiler.frontend.beam.BoundedSourceVertex;
 import edu.snu.vortex.compiler.frontend.beam.transform.DoTransform;
@@ -23,6 +22,8 @@ import edu.snu.vortex.common.Pair;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
 import edu.snu.vortex.compiler.optimizer.examples.EmptyComponents;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.OneToOne;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -52,17 +53,17 @@ public class LoopVertexTest {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     loopDAGBuilder.addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
-        .connectVertices(new IREdge(IREdge.Type.ScatterGather, map1, groupByKey, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, groupByKey, combine, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, combine, map2, Coder.DUMMY_CODER));
-    loopVertex.addDagIncomingEdge(new IREdge(IREdge.Type.OneToOne, source, map1, Coder.DUMMY_CODER));
-    loopVertex.addIterativeIncomingEdge(new IREdge(IREdge.Type.OneToOne, map2, map1, Coder.DUMMY_CODER));
+        .connectVertices(new IREdge(ScatterGather.class, map1, groupByKey, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(OneToOne.class, groupByKey, combine, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(OneToOne.class, combine, map2, Coder.DUMMY_CODER));
+    loopVertex.addDagIncomingEdge(new IREdge(OneToOne.class, source, map1, Coder.DUMMY_CODER));
+    loopVertex.addIterativeIncomingEdge(new IREdge(OneToOne.class, map2, map1, Coder.DUMMY_CODER));
 
     originalDAG = builder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, source, map1, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(IREdge.Type.ScatterGather, map1, groupByKey, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, groupByKey, combine, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(IREdge.Type.OneToOne, combine, map2, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(OneToOne.class, source, map1, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(ScatterGather.class, map1, groupByKey, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(OneToOne.class, groupByKey, combine, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(OneToOne.class, combine, map2, Coder.DUMMY_CODER))
         .build();
   }
 
@@ -78,7 +79,7 @@ public class LoopVertexTest {
       list.add(Pair.of(vertices1.next(), vertices2.next()));
     }
     list.forEach(irVertexPair -> {
-        assertEquals(irVertexPair.left().getAttributes(), irVertexPair.right().getAttributes());
+        assertEquals(irVertexPair.left().getExecutionProperties(), irVertexPair.right().getExecutionProperties());
         assertEquals(originalDAG.getOutgoingEdgesOf(irVertexPair.left()).size(),
             loopVertex.getDAG().getOutgoingEdgesOf(irVertexPair.right()).size());
     });

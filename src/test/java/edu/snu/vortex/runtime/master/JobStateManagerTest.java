@@ -21,17 +21,28 @@ import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.OperatorVertex;
 import edu.snu.vortex.compiler.ir.Transform;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
+import edu.snu.vortex.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.vortex.compiler.optimizer.Optimizer;
+import edu.snu.vortex.compiler.optimizer.TestPolicy;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
+import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.physical.*;
 import edu.snu.vortex.runtime.common.state.JobState;
 import edu.snu.vortex.runtime.common.state.StageState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.common.dag.DAG;
 import edu.snu.vortex.common.dag.DAGBuilder;
+import edu.snu.vortex.runtime.executor.datatransfer.communication.ScatterGather;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.List;
 import java.util.Map;
@@ -45,13 +56,24 @@ import static org.mockito.Mockito.mock;
 /**
  * Tests {@link JobStateManager}.
  */
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(MetricMessageHandler.class)
 public final class JobStateManagerTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
+  private PartitionManagerMaster partitionManagerMaster;
+  private MetricMessageHandler metricMessageHandler;
 
   @Before
-  public void setUp() {
+  public void setUp() throws InjectionException {
     irDAGBuilder = new DAGBuilder<>();
+    final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
+    final LocalMessageEnvironment messageEnvironment =
+        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
+    partitionManagerMaster = injector.getInstance(PartitionManagerMaster.class);
+    metricMessageHandler = mock(MetricMessageHandler.class);
   }
 
   /**
@@ -62,46 +84,45 @@ public final class JobStateManagerTest {
   public void testPhysicalPlanStateChanges() throws Exception {
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
-    v1.setAttr(Attribute.IntegerKey.Parallelism, 3);
+    v1.setProperty(ParallelismProperty.of(3));
     irDAGBuilder.addVertex(v1);
 
     final IRVertex v2 = new OperatorVertex(t);
-    v2.setAttr(Attribute.IntegerKey.Parallelism, 2);
+    v2.setProperty(ParallelismProperty.of(2));
     irDAGBuilder.addVertex(v2);
 
     final IRVertex v3 = new OperatorVertex(t);
-    v3.setAttr(Attribute.IntegerKey.Parallelism, 3);
+    v3.setProperty(ParallelismProperty.of(3));
     irDAGBuilder.addVertex(v3);
 
     final IRVertex v4 = new OperatorVertex(t);
-    v4.setAttr(Attribute.IntegerKey.Parallelism, 2);
+    v4.setProperty(ParallelismProperty.of(2));
     irDAGBuilder.addVertex(v4);
 
     final IRVertex v5 = new OperatorVertex(new DoTransform(null, null));
-    v5.setAttr(Attribute.IntegerKey.Parallelism, 2);
+    v5.setProperty(ParallelismProperty.of(2));
     irDAGBuilder.addVertex(v5);
 
-    final IREdge e1 = new IREdge(IREdge.Type.ScatterGather, v1, v2, Coder.DUMMY_CODER);
+    final IREdge e1 = new IREdge(ScatterGather.class, v1, v2, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e1);
 
-    final IREdge e2 = new IREdge(IREdge.Type.ScatterGather, v3, v2, Coder.DUMMY_CODER);
+    final IREdge e2 = new IREdge(ScatterGather.class, v3, v2, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e2);
 
-    final IREdge e4 = new IREdge(IREdge.Type.ScatterGather, v2, v4, Coder.DUMMY_CODER);
+    final IREdge e4 = new IREdge(ScatterGather.class, v2, v4, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e4);
 
-    final IREdge e5 = new IREdge(IREdge.Type.ScatterGather, v2, v5, Coder.DUMMY_CODER);
+    final IREdge e5 = new IREdge(ScatterGather.class, v2, v5, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e5);
 
     final DAG<IRVertex, IREdge> irDAG = Optimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
-            Optimizer.PolicyType.TestingPolicy, "");
+        new TestPolicy(), "");
     final PhysicalPlanGenerator physicalPlanGenerator =
         Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
-    final PartitionManagerMaster pmm = Tang.Factory.getTang().newInjector().getInstance(PartitionManagerMaster.class);
     final JobStateManager jobStateManager = new JobStateManager(
         new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
-        pmm, MAX_SCHEDULE_ATTEMPT);
+        partitionManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 
     assertEquals(jobStateManager.getJobId(), "TestPlan");
 
@@ -140,10 +161,9 @@ public final class JobStateManagerTest {
     final PhysicalPlanGenerator physicalPlanGenerator =
         Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
-    final PartitionManagerMaster pmm = Tang.Factory.getTang().newInjector().getInstance(PartitionManagerMaster.class);
     final JobStateManager jobStateManager = new JobStateManager(
         new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
-        pmm, MAX_SCHEDULE_ATTEMPT);
+        partitionManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 
     assertFalse(jobStateManager.checkJobTermination());
 

@@ -30,21 +30,20 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class BroadcastITCase {
   private static final int TIMEOUT = 120000;
-  private static final String broadcast = "edu.snu.vortex.examples.beam.Broadcast";
   private static final String input = CompilerTestUtil.rootDir + "/src/main/resources/sample_input_mr";
   private static final String output = CompilerTestUtil.rootDir + "/src/main/resources/sample_output";
   private static final String dagDirectory = "./dag";
 
   private static ArgBuilder builder = new ArgBuilder()
       .addJobId(BroadcastITCase.class.getSimpleName())
-      .addUserMain(broadcast)
+      .addUserMain(Broadcast.class.getCanonicalName())
       .addUserArgs(input, output)
       .addDAGDirectory(dagDirectory);
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-        .addUserMain(broadcast)
+        .addUserMain(Broadcast.class.getCanonicalName())
         .addUserArgs(input, output)
         .addDAGDirectory(dagDirectory);
   }
@@ -53,6 +52,7 @@ public final class BroadcastITCase {
   public void test() throws Exception {
     JobLauncher.main(builder
         .addJobId(BroadcastITCase.class.getSimpleName())
+        .addOptimizationPolicy(CompilerTestUtil.defaultPolicy)
         .build());
   }
 
@@ -60,7 +60,7 @@ public final class BroadcastITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(BroadcastITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy("pado")
+        .addOptimizationPolicy(CompilerTestUtil.padoPolicy)
         .build());
   }
 }

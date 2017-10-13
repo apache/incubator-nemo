@@ -16,6 +16,9 @@
 package edu.snu.vortex.runtime.master;
 
 import edu.snu.vortex.runtime.common.RuntimeIdGenerator;
+import edu.snu.vortex.runtime.common.message.MessageEnvironment;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageDispatcher;
+import edu.snu.vortex.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.exception.AbsentPartitionException;
 import org.apache.reef.tang.Injector;
@@ -23,6 +26,7 @@ import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -35,11 +39,15 @@ import static org.junit.Assert.assertTrue;
  */
 public final class PartitionManagerMasterTest {
   private PartitionManagerMaster partitionManagerMaster;
-  private static final Injector INJECTOR = Tang.Factory.getTang().newInjector();
 
   @Before
   public void setUp() throws Exception {
-    partitionManagerMaster = INJECTOR.getInstance(PartitionManagerMaster.class);
+    final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
+    final LocalMessageEnvironment messageEnvironment =
+        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
+    partitionManagerMaster = injector.getInstance(PartitionManagerMaster.class);
   }
 
   private static void checkPartitionAbsentException(final CompletableFuture<String> future,
@@ -83,7 +91,8 @@ public final class PartitionManagerMasterTest {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex);
 
     // Initially the partition state is READY.
-    partitionManagerMaster.initializeState(edgeId, srcTaskIndex, taskGroupId);
+    partitionManagerMaster.initializeState(partitionId, Collections.singleton(srcTaskIndex),
+        Collections.singleton(taskGroupId));
     checkPartitionAbsentException(partitionManagerMaster.getPartitionLocationFuture(partitionId), partitionId,
         PartitionState.State.READY);
 
@@ -93,7 +102,7 @@ public final class PartitionManagerMasterTest {
     checkPendingFuture(future);
 
     // The partition is COMMITTED
-    partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED, executorId, null);
+    partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED, executorId, srcTaskIndex);
     checkPartitionLocation(future, executorId); // A future, previously pending on SCHEDULED state, is now resolved.
     checkPartitionLocation(partitionManagerMaster.getPartitionLocationFuture(partitionId), executorId);
 
@@ -116,7 +125,8 @@ public final class PartitionManagerMasterTest {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex);
 
     // The partition is being scheduled.
-    partitionManagerMaster.initializeState(edgeId, srcTaskIndex, taskGroupId);
+    partitionManagerMaster.initializeState(partitionId, Collections.singleton(srcTaskIndex),
+        Collections.singleton(taskGroupId));
     partitionManagerMaster.onProducerTaskGroupScheduled(taskGroupId);
     final CompletableFuture<String> future0 = partitionManagerMaster.getPartitionLocationFuture(partitionId);
     checkPendingFuture(future0);
@@ -135,7 +145,7 @@ public final class PartitionManagerMasterTest {
     checkPendingFuture(future1);
 
     // Committed.
-    partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED, executorId, null);
+    partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED, executorId, srcTaskIndex);
     checkPartitionLocation(future1, executorId); // A future, previously pending on SCHEDULED state, is now resolved.
     checkPartitionLocation(partitionManagerMaster.getPartitionLocationFuture(partitionId), executorId);
 

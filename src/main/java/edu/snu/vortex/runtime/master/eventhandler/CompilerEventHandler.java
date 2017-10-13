@@ -18,12 +18,12 @@
  */
 package edu.snu.vortex.runtime.master.eventhandler;
 
+import edu.snu.vortex.common.CommonEventHandler;
 import edu.snu.vortex.compiler.eventhandler.CompilerEvent;
-import org.apache.reef.wake.EventHandler;
 
 /**
  * Class for handling events sent from Compiler.
  * @param <T> type of the compiler event to handle.
  */
-interface CompilerEventHandler<T extends CompilerEvent> extends EventHandler<T> {
+public interface CompilerEventHandler<T extends CompilerEvent> extends CommonEventHandler<T> {
 }

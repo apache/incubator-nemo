@@ -15,14 +15,18 @@
  */
 package edu.snu.vortex.compiler.optimizer;
 
+import edu.snu.vortex.compiler.exception.CompileTimeOptimizationException;
 import edu.snu.vortex.compiler.ir.IREdge;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
-import edu.snu.vortex.compiler.ir.attribute.Attribute;
-import edu.snu.vortex.compiler.optimizer.passes.*;
-import edu.snu.vortex.compiler.optimizer.passes.dynamic_optimization.DataSkewDynamicOptimizationPass;
-import edu.snu.vortex.compiler.optimizer.passes.optimization.LoopOptimizations;
+import edu.snu.vortex.compiler.ir.executionproperty.ExecutionProperty;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.reshaping.ReshapingPass;
+import edu.snu.vortex.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.vortex.common.dag.DAG;
+import edu.snu.vortex.compiler.optimizer.pass.runtime.RuntimePass;
+import edu.snu.vortex.compiler.optimizer.policy.Policy;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 
 import java.util.*;
@@ -38,17 +42,17 @@ public final class Optimizer {
   /**
    * Optimize function.
    * @param dag input DAG.
-   * @param policyType type of the instantiation policy that we want to use to optimize the DAG.
+   * @param optimizationPolicy the optimization policy that we want to use to optimize the DAG.
    * @param dagDirectory directory to save the DAG information.
-   * @return optimized DAG, tagged with attributes.
+   * @return optimized DAG, tagged with execution properties.
    * @throws Exception throws an exception if there is an exception.
    */
-  public static DAG<IRVertex, IREdge> optimize(final DAG<IRVertex, IREdge> dag, final PolicyType policyType,
+  public static DAG<IRVertex, IREdge> optimize(final DAG<IRVertex, IREdge> dag, final Policy optimizationPolicy,
                                                final String dagDirectory) throws Exception {
-    if (policyType == null) {
-      throw new RuntimeException("Policy has not been provided for the policyType");
+    if (optimizationPolicy == null || optimizationPolicy.getCompileTimePasses().isEmpty()) {
+      throw new CompileTimeOptimizationException("A policy name should be specified.");
     }
-    return process(dag, POLICIES.get(policyType), dagDirectory);
+    return process(dag, optimizationPolicy.getCompileTimePasses().iterator(), dagDirectory);
   }
 
   /**
@@ -57,94 +61,103 @@ public final class Optimizer {
    * @param passes passes to apply.
    * @param dagDirectory directory to save the DAG information.
    * @return the processed DAG.
-   * @throws Exception Exceptionso n the way.
+   * @throws Exception Exceptions on the way.
    */
   private static DAG<IRVertex, IREdge> process(final DAG<IRVertex, IREdge> dag,
-                                               final List<StaticOptimizationPass> passes,
+                                               final Iterator<CompileTimePass> passes,
                                                final String dagDirectory) throws Exception {
-    if (passes.isEmpty()) {
-      return dag;
-    } else {
-      final DAG<IRVertex, IREdge> processedDAG = passes.get(0).process(dag);
-      processedDAG.storeJSON(dagDirectory, "ir-after-" + passes.get(0).getClass().getSimpleName(),
+    if (passes.hasNext()) {
+      final CompileTimePass passToApply = passes.next();
+      // Apply the pass to the DAG.
+      final DAG<IRVertex, IREdge> processedDAG = passToApply.apply(dag);
+      // Ensure AnnotatingPass and ReshapingPass functions as intended.
+      if ((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(dag, processedDAG))
+          || (passToApply instanceof ReshapingPass && !checkReshapingPass(dag, processedDAG))) {
+        throw new CompileTimeOptimizationException(passToApply.getClass().getSimpleName()
+            + "is implemented in a way that doesn't follow its original intention of annotating or reshaping. "
+            + "Modify it or use a general CompileTimePass");
+      }
+      // Save the processed JSON DAG.
+      processedDAG.storeJSON(dagDirectory, "ir-after-" + passToApply.getClass().getSimpleName(),
           "DAG after optimization");
-      return process(processedDAG, passes.subList(1, passes.size()), dagDirectory);
+      // recursively apply the following passes.
+      return process(processedDAG, passes, dagDirectory);
+    } else {
+      return dag;
     }
   }
 
   /**
-   * Enum for different types of instantiation policies.
+   * Checks if the annotating pass hasn't modified the DAG structure.
+   * It checks if the number of Vertices and Edges are the same.
+   * @param before DAG before modification.
+   * @param after DAG after modification.
+   * @return true if there is no problem, false if there is a problem.
    */
-  public enum PolicyType {
-    Default,
-    Pado,
-    Disaggregation,
-    DataSkew,
-    TestingPolicy,
+  private static Boolean checkAnnotatingPass(final DAG<IRVertex, IREdge> before, final DAG<IRVertex, IREdge> after) {
+    final Iterator<IRVertex> beforeVertices = before.getTopologicalSort().iterator();
+    final Iterator<IRVertex> afterVertices = after.getTopologicalSort().iterator();
+    while (beforeVertices.hasNext() && afterVertices.hasNext()) {
+      final IRVertex beforeVertex = beforeVertices.next();
+      final IRVertex afterVertex = afterVertices.next();
+      // each of vertices should have same ids.
+      if (!beforeVertex.getId().equals(afterVertex.getId())) {
+        return false;
+      }
+      final Iterator<IREdge> beforeVertexIncomingEdges = before.getIncomingEdgesOf(beforeVertex).iterator();
+      final Iterator<IREdge> afterVertexIncomingEdges = after.getIncomingEdgesOf(afterVertex).iterator();
+      final Iterator<IREdge> beforeVertexOutgoingEdges = before.getOutgoingEdgesOf(beforeVertex).iterator();
+      final Iterator<IREdge> afterVertexOutgoingEdges = after.getOutgoingEdgesOf(afterVertex).iterator();
+      while (beforeVertexIncomingEdges.hasNext() && afterVertexIncomingEdges.hasNext()) {
+        // each of them should have same ids.
+        if (!beforeVertexIncomingEdges.next().getId().equals(afterVertexIncomingEdges.next().getId())) {
+          return false;
+        }
+      }
+      while (beforeVertexOutgoingEdges.hasNext() && afterVertexOutgoingEdges.hasNext()) {
+        // each of them should have same ids.
+        if (!beforeVertexOutgoingEdges.next().getId().equals(afterVertexOutgoingEdges.next().getId())) {
+          return false;
+        }
+      }
+      // number of edges should match.
+      if (beforeVertexIncomingEdges.hasNext() || afterVertexIncomingEdges.hasNext()
+          || beforeVertexOutgoingEdges.hasNext() || afterVertexOutgoingEdges.hasNext()) {
+        return false;
+      }
+    }
+    // number of vertices should match.
+    return !beforeVertices.hasNext() && !afterVertices.hasNext();
   }
 
   /**
-   * A HashMap to match each of instantiation policies with a combination of instantiation passes.
-   * Each policies are run in the order with which they are defined.
+   * Checks if the reshaping pass hasn't modified execution properties.
+   * It checks if all of its vertices and edges have the same execution properties as before (if it existed then).
+   * @param before DAG before modification.
+   * @param after DAG after modification.
+   * @return true if there is no problem, false if there is a problem.
    */
-  private static final Map<PolicyType, List<StaticOptimizationPass>> POLICIES = new HashMap<>();
-  static {
-    POLICIES.put(PolicyType.Default,
-        Arrays.asList(
-            new ParallelismPass(), // Provides parallelism information.
-            new DefaultStagePartitioningPass(),
-            new ScheduleGroupPass()
-        ));
-    POLICIES.put(PolicyType.Pado,
-        Arrays.asList(
-            new ParallelismPass(), // Provides parallelism information.
-            new LoopGroupingPass(),
-            LoopOptimizations.getLoopFusionPass(),
-            LoopOptimizations.getLoopInvariantCodeMotionPass(),
-            new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.
-            new PadoVertexPass(), new PadoEdgePass(), // Processes vertices and edges with Pado algorithm.
-            new DefaultStagePartitioningPass(),
-            new ScheduleGroupPass()
-       ));
-    POLICIES.put(PolicyType.Disaggregation,
-        Arrays.asList(
-            new ParallelismPass(), // Provides parallelism information.
-            new LoopGroupingPass(),
-            LoopOptimizations.getLoopFusionPass(),
-            LoopOptimizations.getLoopInvariantCodeMotionPass(),
-            new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.
-            new DisaggregationPass(), // Processes vertices and edges with Disaggregation algorithm.
-            new IFilePass(), // Enables I-File style write optimization.
-            new DefaultStagePartitioningPass(),
-            new ScheduleGroupPass()
-        ));
-    POLICIES.put(PolicyType.DataSkew,
-        Arrays.asList(
-            new ParallelismPass(), // Provides parallelism information.
-            new LoopGroupingPass(),
-            LoopOptimizations.getLoopFusionPass(),
-            LoopOptimizations.getLoopInvariantCodeMotionPass(),
-            new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.
-            new DataSkewPass(),
-            new DefaultStagePartitioningPass(),
-            new ScheduleGroupPass()
-        ));
-    POLICIES.put(PolicyType.TestingPolicy, // Simply build stages for tests
-        Arrays.asList(
-            new DefaultStagePartitioningPass(),
-            new ScheduleGroupPass()
-        ));
-  }
-
-  /**
-   * A HashMap to convert string names for each policy type to receive as arguments.
-   */
-  public static final Map<String, PolicyType> POLICY_NAME = new HashMap<>();
-  static {
-    POLICY_NAME.put("default", PolicyType.Default);
-    POLICY_NAME.put("pado", PolicyType.Pado);
-    POLICY_NAME.put("disaggregation", PolicyType.Disaggregation);
-    POLICY_NAME.put("dataskew", PolicyType.DataSkew);
+  private static Boolean checkReshapingPass(final DAG<IRVertex, IREdge> before, final DAG<IRVertex, IREdge> after) {
+    final List<IRVertex> previousVertices = before.getVertices();
+    for (final IRVertex irVertex : after.getVertices()) {
+      final Integer indexOfVertex = previousVertices.indexOf(irVertex);
+      if (indexOfVertex >= 0) {
+        final IRVertex previousVertexToCompare = previousVertices.get(indexOfVertex);
+        if (!previousVertexToCompare.getExecutionProperties().equals(irVertex.getExecutionProperties())) {
+          return false;
+        }
+        for (final IREdge irEdge : after.getIncomingEdgesOf(irVertex)) {
+          final Integer indexOfEdge = before.getIncomingEdgesOf(previousVertexToCompare).indexOf(irEdge);
+          if (indexOfEdge >= 0) {
+            final IREdge previousIREdgeToCompare = before.getIncomingEdgesOf(previousVertexToCompare).get(indexOfEdge);
+            if (!previousIREdgeToCompare.getExecutionProperties().equals(irEdge.getExecutionProperties())) {
+              return false;
+            }
+          }
+        }
+      }
+    }
+    return true;
   }
 
   /**
@@ -156,14 +169,14 @@ public final class Optimizer {
   public static synchronized PhysicalPlan dynamicOptimization(
           final PhysicalPlan originalPlan,
           final MetricCollectionBarrierVertex metricCollectionBarrierVertex) {
-    final Attribute dynamicOptimizationType =
-        metricCollectionBarrierVertex.getAttr(Attribute.Key.DynamicOptimizationType);
+    final Class<? extends RuntimePass> dynamicOptimizationType =
+        (Class) metricCollectionBarrierVertex.getProperty(ExecutionProperty.Key.DynamicOptimizationType);
 
-    switch (dynamicOptimizationType) {
-      case DataSkew:
+    switch (dynamicOptimizationType.getSimpleName()) {
+      case DataSkewRuntimePass.SIMPLE_NAME:
         // Map between a partition ID to corresponding metric data (e.g., the size of each block).
         final Map<String, List<Long>> metricData = metricCollectionBarrierVertex.getMetricData();
-        return new DataSkewDynamicOptimizationPass().process(originalPlan, metricData);
+        return new DataSkewRuntimePass().apply(originalPlan, metricData);
       default:
         return originalPlan;
     }

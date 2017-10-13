@@ -32,80 +32,73 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.*;
-import java.util.function.Supplier;
 
 /**
  * Stores partitions in local files.
  */
 @ThreadSafe
-final class LocalFileStore extends FileStore {
+public final class LocalFileStore extends FileStore {
+  public static final String SIMPLE_NAME = "LocalFileStore";
 
   private final Map<String, FilePartition> partitionIdToFilePartition;
-  private final ExecutorService executorService;
 
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
-                         @Parameter(JobConf.LocalFileStoreNumThreads.class) final int numThreads,
                          final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
     super(fileDirectory, partitionManagerWorker);
     this.partitionIdToFilePartition = new ConcurrentHashMap<>();
     new File(fileDirectory).mkdirs();
-    executorService = Executors.newFixedThreadPool(numThreads);
   }
 
   /**
    * Retrieves data in a specific hash range from a partition.
-   * @see PartitionStore#getBlocks(String, HashRange).
+   *
+   * @see PartitionStore#getFromPartition(String, HashRange).
    */
   @Override
-  public Optional<CompletableFuture<Iterable<Element>>> getBlocks(final String partitionId,
-                                                                  final HashRange hashRange) {
+  public Optional<Iterable<Element>> getFromPartition(final String partitionId,
+                                                      final HashRange hashRange) throws PartitionFetchException {
     // Deserialize the target data in the corresponding file.
     final FilePartition partition = partitionIdToFilePartition.get(partitionId);
     if (partition == null) {
       return Optional.empty();
     } else {
-      final Supplier<Iterable<Element>> supplier = () -> {
-        try {
-          return partition.retrieveInHashRange(hashRange);
-        } catch (final IOException retrievalException) {
-          final Throwable combinedThrowable = commitPartitionWithException(partitionId, retrievalException);
-          throw new PartitionFetchException(combinedThrowable);
-        }
-      };
-      return Optional.of(CompletableFuture.supplyAsync(supplier, executorService));
+      try {
+        return Optional.of(partition.retrieveInHashRange(hashRange));
+      } catch (final IOException retrievalException) {
+        final Throwable combinedThrowable = commitPartitionWithException(partitionId, retrievalException);
+        throw new PartitionFetchException(combinedThrowable);
+      }
     }
   }
 
   /**
    * Saves an iterable of data blocks to a partition.
-   * @see PartitionStore#putBlocks(String, Iterable, boolean).
+   *
+   * @see PartitionStore#putToPartition(String, Iterable, boolean).
    */
   @Override
-  public CompletableFuture<Optional<List<Long>>> putBlocks(final String partitionId,
-                                                           final Iterable<Block> blocks,
-                                                           final boolean commitPerBlock) {
-    final Supplier<Optional<List<Long>>> supplier = () -> {
-      final Coder coder = getCoderFromWorker(partitionId);
-      final List<Long> blockSizeList;
-      final LocalFileMetadata metadata = new LocalFileMetadata(commitPerBlock);
+  public Optional<List<Long>> putToPartition(final String partitionId,
+                                             final Iterable<Block> blocks,
+                                             final boolean commitPerBlock) throws PartitionWriteException {
+    final Coder coder = getCoderFromWorker(partitionId);
+    final List<Long> blockSizeList;
+    final LocalFileMetadata metadata = new LocalFileMetadata(commitPerBlock);
 
-      try {
-        FilePartition partition =
-            new FilePartition(coder, partitionIdToFilePath(partitionId), metadata);
-        partitionIdToFilePartition.putIfAbsent(partitionId, partition);
-        partition = partitionIdToFilePartition.get(partitionId);
+    try {
+      FilePartition partition =
+          new FilePartition(coder, partitionIdToFilePath(partitionId), metadata);
+      partitionIdToFilePartition.putIfAbsent(partitionId, partition);
+      partition = partitionIdToFilePartition.get(partitionId);
 
-        // Serialize and write the given blocks.
-        blockSizeList = putBlocks(coder, partition, blocks);
-      } catch (final IOException writeException) {
-        final Throwable combinedThrowable = commitPartitionWithException(partitionId, writeException);
-        throw new PartitionWriteException(combinedThrowable);
-      }
+      // Serialize and write the given blocks.
+      blockSizeList = putBlocks(coder, partition, blocks);
+    } catch (final IOException writeException) {
+      final Throwable combinedThrowable = commitPartitionWithException(partitionId, writeException);
+      throw new PartitionWriteException(combinedThrowable);
+    }
 
-      return Optional.of(blockSizeList);
-    };
-    return CompletableFuture.supplyAsync(supplier, executorService);
+    return Optional.of(blockSizeList);
   }
 
   /**
@@ -132,21 +125,18 @@ final class LocalFileStore extends FileStore {
    * @return whether the partition exists or not.
    */
   @Override
-  public CompletableFuture<Boolean> removePartition(final String partitionId) {
+  public Boolean removePartition(final String partitionId) throws PartitionFetchException {
     final FilePartition serializedPartition = partitionIdToFilePartition.remove(partitionId);
     if (serializedPartition == null) {
-      return CompletableFuture.completedFuture(false);
+      return false;
     }
-    final Supplier<Boolean> supplier = () -> {
-      try {
-        serializedPartition.deleteFile();
-      } catch (final IOException e) {
-        final Throwable combinedThrowable = commitPartitionWithException(partitionId, e);
-        throw new PartitionFetchException(combinedThrowable);
-      }
-      return true;
-    };
-    return CompletableFuture.supplyAsync(supplier, executorService);
+    try {
+      serializedPartition.deleteFile();
+    } catch (final IOException e) {
+      final Throwable combinedThrowable = commitPartitionWithException(partitionId, e);
+      throw new PartitionFetchException(combinedThrowable);
+    }
+    return true;
   }
 
   /**

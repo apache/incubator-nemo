@@ -22,20 +22,19 @@ import edu.snu.vortex.common.proxy.ClientEndpoint;
 import edu.snu.vortex.common.proxy.DriverEndpoint;
 import edu.snu.vortex.compiler.ir.IRVertex;
 import edu.snu.vortex.compiler.ir.MetricCollectionBarrierVertex;
-import edu.snu.vortex.compiler.optimizer.passes.DataSkewPass;
+import edu.snu.vortex.compiler.optimizer.pass.compiletime.composite.DataSkewCompositePass;
 import edu.snu.vortex.runtime.common.comm.ControlMessage;
 import edu.snu.vortex.runtime.common.message.MessageContext;
 import edu.snu.vortex.runtime.common.message.MessageEnvironment;
 import edu.snu.vortex.runtime.common.message.MessageListener;
+import edu.snu.vortex.runtime.common.metric.MetricMessageHandler;
 import edu.snu.vortex.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.vortex.runtime.common.state.PartitionState;
 import edu.snu.vortex.runtime.common.state.TaskGroupState;
 import edu.snu.vortex.runtime.exception.ContainerException;
 import edu.snu.vortex.runtime.exception.IllegalMessageException;
-import edu.snu.vortex.runtime.exception.JsonParseException;
 import edu.snu.vortex.runtime.exception.UnknownExecutionStateException;
 import edu.snu.vortex.runtime.exception.UnknownFailureCauseException;
-import edu.snu.vortex.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.vortex.runtime.master.resource.ContainerManager;
 import edu.snu.vortex.runtime.master.scheduler.Scheduler;
 import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
@@ -65,9 +64,10 @@ public final class RuntimeMaster {
 
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
+  private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
-  private final PartitionManagerMaster partitionManagerMaster;
   private JobStateManager jobStateManager;
+
   // For converting json data. This is a thread safe.
   // [Vortex-420] Create a Singleton ObjectMapper
   private final ObjectMapper objectMapper;
@@ -79,18 +79,17 @@ public final class RuntimeMaster {
   @Inject
   public RuntimeMaster(final Scheduler scheduler,
                        final ContainerManager containerManager,
+                       final MetricMessageHandler metricMessageHandler,
                        final MessageEnvironment masterMessageEnvironment,
-                       final PartitionManagerMaster partitionManagerMaster,
-                       final UpdatePhysicalPlanEventHandler handler,
                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
                        @Parameter(JobConf.MaxScheduleAttempt.class) final int maxScheduleAttempt) {
     this.scheduler = scheduler;
     this.maxScheduleAttempt = maxScheduleAttempt;
     this.containerManager = containerManager;
+    this.metricMessageHandler = metricMessageHandler;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
-        .setupListener(MessageEnvironment.MASTER_MESSAGE_RECEIVER, new MasterControlMessageReceiver());
-    this.partitionManagerMaster = partitionManagerMaster;
+        .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.dagDirectory = dagDirectory;
     this.irVertices = new HashSet<>();
     this.objectMapper = new ObjectMapper();
@@ -105,7 +104,7 @@ public final class RuntimeMaster {
                       final ClientEndpoint clientEndpoint) {
     this.irVertices.addAll(plan.getTaskIRVertexMap().values());
     try {
-      jobStateManager = scheduler.scheduleJob(plan, maxScheduleAttempt);
+      jobStateManager = scheduler.scheduleJob(plan, metricMessageHandler, maxScheduleAttempt);
       final DriverEndpoint driverEndpoint = new DriverEndpoint(jobStateManager, clientEndpoint);
 
       // Schedule dag logging thread
@@ -136,94 +135,79 @@ public final class RuntimeMaster {
   }
 
   /**
+   * Accumulates the metric data for a barrier vertex.
+   * TODO #511: Refactor metric aggregation for (general) run-rime optimization.
+   * TODO #513: Replace MetricCollectionBarrierVertex with a Customizable IRVertex.
+   *
+   * @param blockSizeInfo the block size info to accumulate.
+   * @param srcVertexId   the ID of the source vertex.
+   * @param partitionId   the ID of the partition.
+   */
+  public void accumulateBarrierMetric(final List<Long> blockSizeInfo,
+                                      final String srcVertexId,
+                                      final String partitionId) {
+    final IRVertex vertexToSendMetricDataTo = irVertices.stream()
+        .filter(irVertex -> irVertex.getId().equals(srcVertexId)).findFirst()
+        .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
+
+    if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
+      final MetricCollectionBarrierVertex<Long> metricCollectionBarrierVertex =
+          (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
+      metricCollectionBarrierVertex.accumulateMetric(partitionId, blockSizeInfo);
+    } else {
+      throw new RuntimeException("Something wrong happened at " + DataSkewCompositePass.class.getSimpleName() + ". ");
+    }
+  }
+
+  /**
    * Handler for control messages received by Master.
    */
   public final class MasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
-
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
-      case TaskGroupStateChanged:
-        final ControlMessage.TaskGroupStateChangedMsg taskGroupStateChangedMsg = message.getTaskStateChangedMsg();
+        case TaskGroupStateChanged:
+          final ControlMessage.TaskGroupStateChangedMsg taskGroupStateChangedMsg
+              = message.getTaskGroupStateChangedMsg();
 
-        scheduler.onTaskGroupStateChanged(taskGroupStateChangedMsg.getExecutorId(),
-            taskGroupStateChangedMsg.getTaskGroupId(),
-            convertTaskGroupState(taskGroupStateChangedMsg.getState()),
-            taskGroupStateChangedMsg.getAttemptIdx(),
-            taskGroupStateChangedMsg.getTasksPutOnHoldIdsList(),
-            convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
-        break;
-      case PartitionStateChanged:
-        final ControlMessage.PartitionStateChangedMsg partitionStateChangedMsg = message.getPartitionStateChangedMsg();
-        // process message with partition size.
-        final List<Long> blockSizeInfo = partitionStateChangedMsg.getBlockSizeInfoList();
-        if (!blockSizeInfo.isEmpty()) {
-          final String srcVertexId = partitionStateChangedMsg.getSrcIRVertexId();
-          final IRVertex vertexToSendMetricDataTo = irVertices.stream()
-              .filter(irVertex -> irVertex.getId().equals(srcVertexId)).findFirst()
-              .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
-
-          if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
-            final MetricCollectionBarrierVertex<Long> metricCollectionBarrierVertex =
-                (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
-            metricCollectionBarrierVertex.accumulateMetric(partitionStateChangedMsg.getPartitionId(), blockSizeInfo);
-          } else {
-            throw new RuntimeException("Something wrong happened at " + DataSkewPass.class.getSimpleName() + ". ");
-          }
-        }
-        partitionManagerMaster.onPartitionStateChanged(partitionStateChangedMsg.getPartitionId(),
-            convertPartitionState(partitionStateChangedMsg.getState()),
-            partitionStateChangedMsg.getExecutorId(),
-            partitionStateChangedMsg.getSrcTaskIdx());
-        break;
-      case ExecutorFailed:
-        final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
-        final String failedExecutorId = executorFailedMsg.getExecutorId();
-        final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
-        LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
-        containerManager.onExecutorRemoved(failedExecutorId);
-        throw new RuntimeException(exception);
-      case ContainerFailed:
-        final Map<String, Object> jsonMetricData = new HashMap<>();
-        final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
-        jsonMetricData.put("ExecutorId", containerFailedMsg.getExecutorId());
-        jsonMetricData.put("ContainerFailure", true);
-        try {
-          final String jsonStr = objectMapper.writeValueAsString(jsonMetricData);
-          jobStateManager.getMetricMessageHandler().onMetricMessageReceived(jsonStr);
-        } catch (final Exception e) {
-          throw new JsonParseException(e);
-        }
-        break;
-      case MetricMessageReceived:
-        final ControlMessage.MetricMsg metricMsg = message.getMetricMsg();
-        metricMsg.getMetricMessagesList().stream()
-            .forEach((msg) -> jobStateManager.getMetricMessageHandler().onMetricMessageReceived(msg));
-        break;
-      case CommitMetadata:
-        partitionManagerMaster.getMetadataManager().onCommitBlocks(message);
-        break;
-      case RemoveMetadata:
-        partitionManagerMaster.getMetadataManager().onRemoveMetadata(message);
-        break;
-      default:
-        throw new IllegalMessageException(
-            new Exception("This message should not be received by Master :" + message.getType()));
+          scheduler.onTaskGroupStateChanged(taskGroupStateChangedMsg.getExecutorId(),
+              taskGroupStateChangedMsg.getTaskGroupId(),
+              convertTaskGroupState(taskGroupStateChangedMsg.getState()),
+              taskGroupStateChangedMsg.getAttemptIdx(),
+              taskGroupStateChangedMsg.getTasksPutOnHoldIdsList(),
+              convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
+          break;
+        case ExecutorFailed:
+          final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
+          final String failedExecutorId = executorFailedMsg.getExecutorId();
+          final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
+          LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
+          containerManager.onExecutorRemoved(failedExecutorId);
+          throw new RuntimeException(exception);
+        case ContainerFailed:
+          final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
+          LOG.error(containerFailedMsg.getExecutorId() + " failed");
+          break;
+        case DataSizeMetric:
+          final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
+          // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
+          accumulateBarrierMetric(dataSizeMetricMsg.getBlockSizeInfoList(),
+              dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getPartitionId());
+          break;
+        case MetricMessageReceived:
+          final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
+          metricList.forEach(metric ->
+              metricMessageHandler.onMetricMessageReceived(metric.getMetricKey(), metric.getMetricValue()));
+          break;
+        default:
+          throw new IllegalMessageException(
+              new Exception("This message should not be received by Master :" + message.getType()));
       }
     }
 
     @Override
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
-      case RequestPartitionLocation:
-        partitionManagerMaster.onRequestPartitionLocation(message, messageContext);
-        break;
-      case RequestMetadata:
-        partitionManagerMaster.getMetadataManager().onRequestMetadata(message, messageContext);
-        break;
-      case ReserveBlock:
-        partitionManagerMaster.getMetadataManager().onReserveBlock(message, messageContext);
-        break;
       default:
         throw new IllegalMessageException(
             new Exception("This message should not be requested to Master :" + message.getType()));
@@ -234,20 +218,20 @@ public final class RuntimeMaster {
   // TODO #164: Cleanup Protobuf Usage
   private static TaskGroupState.State convertTaskGroupState(final ControlMessage.TaskGroupStateFromExecutor state) {
     switch (state) {
-    case READY:
-      return TaskGroupState.State.READY;
-    case EXECUTING:
-      return TaskGroupState.State.EXECUTING;
-    case COMPLETE:
-      return COMPLETE;
-    case FAILED_RECOVERABLE:
-      return TaskGroupState.State.FAILED_RECOVERABLE;
-    case FAILED_UNRECOVERABLE:
-      return TaskGroupState.State.FAILED_UNRECOVERABLE;
-    case ON_HOLD:
-      return ON_HOLD;
-    default:
-      throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
+      case READY:
+        return TaskGroupState.State.READY;
+      case EXECUTING:
+        return TaskGroupState.State.EXECUTING;
+      case COMPLETE:
+        return COMPLETE;
+      case FAILED_RECOVERABLE:
+        return TaskGroupState.State.FAILED_RECOVERABLE;
+      case FAILED_UNRECOVERABLE:
+        return TaskGroupState.State.FAILED_UNRECOVERABLE;
+      case ON_HOLD:
+        return ON_HOLD;
+      default:
+        throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
     }
   }
 
@@ -260,8 +244,6 @@ public final class RuntimeMaster {
       return PartitionState.State.SCHEDULED;
     case COMMITTED:
       return PartitionState.State.COMMITTED;
-    case PARTIAL_COMMITTED:
-      return PartitionState.State.PARTIAL_COMMITTED;
     case LOST_BEFORE_COMMIT:
       return PartitionState.State.LOST_BEFORE_COMMIT;
     case LOST:
@@ -282,8 +264,6 @@ public final class RuntimeMaster {
         return ControlMessage.PartitionStateFromExecutor.SCHEDULED;
       case COMMITTED:
         return ControlMessage.PartitionStateFromExecutor.COMMITTED;
-      case PARTIAL_COMMITTED:
-        return ControlMessage.PartitionStateFromExecutor.PARTIAL_COMMITTED;
       case LOST_BEFORE_COMMIT:
         return ControlMessage.PartitionStateFromExecutor.LOST_BEFORE_COMMIT;
       case LOST:
@@ -299,12 +279,13 @@ public final class RuntimeMaster {
   private TaskGroupState.RecoverableFailureCause convertFailureCause(
       final ControlMessage.RecoverableFailureCause cause) {
     switch (cause) {
-    case InputReadFailure:
-      return TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE;
-    case OutputWriteFailure:
-      return TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE;
-    default:
-      throw new UnknownFailureCauseException(new Throwable("The failure cause for the recoverable failure is unknown"));
+      case InputReadFailure:
+        return TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE;
+      case OutputWriteFailure:
+        return TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE;
+      default:
+        throw new UnknownFailureCauseException(
+            new Throwable("The failure cause for the recoverable failure is unknown"));
     }
   }
 
