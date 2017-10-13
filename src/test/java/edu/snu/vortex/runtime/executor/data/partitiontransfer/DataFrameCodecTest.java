@@ -42,6 +42,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ControlMessageToPartitionStreamCodec.class, PartitionInputStream.class})
 public final class DataFrameCodecTest {
+  private static final int NUM_FRAMES = 5;
   private static final int LENGTH_START_INCLUSIVE = 30;
   private static final int LENGTH_END_EXCLUSIVE = 300;
   private final DataFrameEncoder encoder;
@@ -113,8 +114,10 @@ public final class DataFrameCodecTest {
       final MockInputStreamWrapper mockInputStreamWrapper = mockStreamCodecWrapper.newInputStream(isPull);
       final short transferId = mockInputStreamWrapper.getTransferId();
       // for each context, send five data frames
-      testDataFrameTransfer(inboundChannel, outboundChannel, mockInputStreamWrapper, isPull, transferId,
-          generateRandomData());
+      for (int i = 0; i < NUM_FRAMES; i++) {
+        testDataFrameTransfer(inboundChannel, outboundChannel, mockInputStreamWrapper, isPull, transferId,
+            generateRandomData());
+      }
     }
   }
 
