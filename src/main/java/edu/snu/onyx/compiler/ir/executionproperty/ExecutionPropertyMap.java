@@ -15,6 +15,7 @@
  */
 package edu.snu.onyx.compiler.ir.executionproperty;
 
+import com.google.common.annotations.VisibleForTesting;
 import edu.snu.onyx.compiler.ir.IREdge;
 import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.edge.DataCommunicationPatternProperty;
@@ -39,7 +40,8 @@ public final class ExecutionPropertyMap implements Serializable {
    * Constructor for ExecutionPropertyMap class.
    * @param id ID of the vertex / edge to keep the execution property of.
    */
-  private ExecutionPropertyMap(final String id) {
+  @VisibleForTesting
+  public ExecutionPropertyMap(final String id) {
     this.id = id;
     properties = new EnumMap<>(ExecutionProperty.Key.class);
   }

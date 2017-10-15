@@ -228,7 +228,10 @@ public final class TaskGroupExecutor {
     final Reader reader = boundedSourceTask.getReader();
     final Iterable<Element> readData = reader.read();
 
-    taskIdToOutputWriterMap.get(boundedSourceTask.getId()).forEach(outputWriter -> outputWriter.write(readData));
+    taskIdToOutputWriterMap.get(boundedSourceTask.getId()).forEach(outputWriter -> {
+      outputWriter.write(readData);
+      outputWriter.close();
+    });
   }
 
   /**
@@ -290,14 +293,24 @@ public final class TaskGroupExecutor {
       } catch (final InterruptedException e) {
         throw new PartitionFetchException(e);
       }
+
+      // Check whether there is any output data from the transform and write the output of this task to the writer.
+      final List<Element> output = outputCollector.collectOutputList();
+      if (!output.isEmpty() && taskIdToOutputWriterMap.containsKey(operatorTask.getId())) {
+        taskIdToOutputWriterMap.get(operatorTask.getId()).forEach(outputWriter -> outputWriter.write(output));
+      } // If else, this is a sink task.
     });
     transform.close();
 
-    final Iterable<Element> output = outputCollector.getOutputList();
-
-    // Write the output of this task to the writer
+    // Check whether there is any output data from the transform and write the output of this task to the writer.
+    final List<Element> output = outputCollector.collectOutputList();
     if (taskIdToOutputWriterMap.containsKey(operatorTask.getId())) {
-      taskIdToOutputWriterMap.get(operatorTask.getId()).forEach(outputWriter -> outputWriter.write(output));
+      taskIdToOutputWriterMap.get(operatorTask.getId()).forEach(outputWriter -> {
+        if (!output.isEmpty()) {
+          outputWriter.write(output);
+        }
+        outputWriter.close();
+      });
     } else {
       LOG.info("This is a sink task: {}", operatorTask.getId());
     }
@@ -325,6 +338,9 @@ public final class TaskGroupExecutor {
         throw new PartitionFetchException(e);
       }
     });
-    taskIdToOutputWriterMap.get(task.getId()).forEach(outputWriter -> outputWriter.write(data));
+    taskIdToOutputWriterMap.get(task.getId()).forEach(outputWriter -> {
+      outputWriter.write(data);
+      outputWriter.close();
+    });
   }
 }
