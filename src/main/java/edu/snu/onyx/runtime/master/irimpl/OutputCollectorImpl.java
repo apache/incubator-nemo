@@ -20,23 +20,24 @@ import edu.snu.onyx.compiler.ir.OutputCollector;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Output Collector Implementation.
  */
 public final class OutputCollectorImpl implements OutputCollector {
-  private final List<Element> outputList;
+  private AtomicReference<List<Element>> outputList;
 
   /**
    * Constructor of a new OutputCollector.
    */
   public OutputCollectorImpl() {
-    outputList = new ArrayList<>();
+    outputList = new AtomicReference<>(new ArrayList<>());
   }
 
   @Override
   public void emit(final Element output) {
-    outputList.add(output);
+    outputList.get().add(output);
   }
 
   @Override
@@ -45,9 +46,11 @@ public final class OutputCollectorImpl implements OutputCollector {
   }
 
   /**
-   * @return Iterable of output elements.
+   * Collects the accumulated output and replace the output list.
+   *
+   * @return the list of output elements.
    */
-  public Iterable<Element> getOutputList() {
-    return outputList;
+  public List<Element> collectOutputList() {
+    return outputList.getAndSet(new ArrayList<>());
   }
 }

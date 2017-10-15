@@ -114,7 +114,6 @@ public final class DataTransferTest {
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
   private static final Tang TANG = Tang.Factory.getTang();
   private static final int HASH_RANGE_MULTIPLIER = 10;
-  private static final int I_FILE_DATA_SIZE = 1000;
 
   private PartitionManagerMaster master;
   private PartitionManagerWorker worker1;
@@ -280,13 +279,8 @@ public final class DataTransferTest {
 
     // Initialize states in Master
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
-      if (commPattern.equals(ScatterGather.class)) {
-        final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex);
-        master.initializeState(partitionId, taskGroupPrefix + srcTaskIndex);
-      } else {
-        final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex);
-        master.initializeState(partitionId, taskGroupPrefix + srcTaskIndex);
-      }
+      final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex);
+      master.initializeState(partitionId, taskGroupPrefix + srcTaskIndex);
       master.onProducerTaskGroupScheduled(taskGroupPrefix + srcTaskIndex);
     });
 
@@ -297,6 +291,7 @@ public final class DataTransferTest {
       final OutputWriter writer = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, srcVertex.getId(), dstVertex,
           dummyEdge, sender);
       writer.write(dataWritten);
+      writer.close();
       dataWrittenList.add(dataWritten);
     });
 
