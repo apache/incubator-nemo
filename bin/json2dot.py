@@ -175,11 +175,17 @@ class NormalVertex:
         except:
             pass
         try:
-            m = re.search('^([a-zA-Z_]*):([a-zA-Z_\.]*)', self.properties['transform'])
-            label += '\\n{}:{}'.format(m.group(1), m.group(2).split('.')[-1])
+            clazz = self.properties['transform'].split('.')[-1]
+            clazz_name = clazz.split('$')[0]
+            label += '\\n{}'.format(clazz_name)
         except:
             pass
-        dot = '{} [label="{}", color={}, style=filled, fillcolor="{}"];'.format(self.idx, label, color, stateToColor(self.state))
+        if (self.properties['class'] == 'MetricCollectionBarrierVertex'):
+            shape = ', shape=box'
+            label += '\\nMetricCollectionBarrier'
+        else:
+            shape = ''
+        dot = '{} [label="{}", color={}, style=filled, fillcolor="{}"{}];'.format(self.idx, label, color, stateToColor(self.state), shape)
         return dot
     @property
     def oneVertex(self):
