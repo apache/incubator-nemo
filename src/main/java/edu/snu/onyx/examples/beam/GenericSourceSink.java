@@ -16,23 +16,26 @@
 package edu.snu.onyx.examples.beam;
 
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.io.*;
+import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.io.hadoop.inputformat.HadoopInputFormatIO;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.SimpleFunction;
-import org.apache.beam.sdk.values.KV;
-import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PDone;
-import org.apache.beam.sdk.values.TypeDescriptor;
+import org.apache.beam.sdk.values.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.fs.FileSystem;
+
+import java.io.*;
+import java.util.*;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapred.JobConf;
 
 /**
  * Helper class for handling source/sink in a generic way.
- * Assumes String-type Pcollections.
+ * Assumes String-type PCollections.
  */
 final class GenericSourceSink {
   private GenericSourceSink() {
@@ -68,13 +71,60 @@ final class GenericSourceSink {
     }
   }
 
+
   public static PDone write(final PCollection<String> dataToWrite,
                             final String path) {
-    if (path.startsWith("hdfs://")) {
-      // TODO #268 Import beam-sdks-java-io-hadoop-file-system
-      throw new UnsupportedOperationException("Writing to HDFS is not yet supported");
+    if (path.startsWith("hdfs://") || path.startsWith("s3a://") || path.startsWith("file://")) {
+      dataToWrite.apply(ParDo.of(new HDFSWrite(path)));
+      return PDone.in(dataToWrite.getPipeline());
     } else {
       return dataToWrite.apply(TextIO.write().to(path));
     }
+  }
+}
+
+/**
+ * Write output to HDFS according to the parallelism.
+ */
+final class HDFSWrite extends DoFn<String, Void> {
+  private final String path;
+  private Path fileName;
+  private FileSystem fileSystem;
+  private FSDataOutputStream outputStream;
+
+  HDFSWrite(final String path) {
+    this.path = path;
+  }
+
+  // The number of output files are determined according to the parallelism.
+  // i.e. if parallelism is 2, then there are total 2 output files.
+  // Each output file is written as a bundle.
+  @StartBundle
+  public void startBundle(final StartBundleContext c) {
+    fileName = new Path(path + UUID.randomUUID().toString());
+    try {
+      fileSystem = fileName.getFileSystem(new JobConf());
+      outputStream = fileSystem.create(fileName, false);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @ProcessElement
+  public void processElement(final ProcessContext c) throws Exception {
+    try {
+      outputStream.writeBytes(c.element() + "\n");
+    } catch (Exception e) {
+        outputStream.close();
+        fileSystem.delete(fileName, true);
+        fileSystem.close();
+        throw new RuntimeException(e);
+    }
+  }
+
+  @FinishBundle
+  public void finishBundle(final FinishBundleContext c) throws Exception {
+    outputStream.close();
+    fileSystem.close();
   }
 }
