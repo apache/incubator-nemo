@@ -37,7 +37,7 @@ public final class HashPartitioner implements Partitioner {
     IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> elementsByKey.add(new ArrayList<>()));
     elements.forEach(element -> {
       // Hash the data by its key, and "modulo" by the number of destination tasks.
-      final int dstIdx = Math.abs(element.getKey().hashCode() % dstParallelism);
+      final int dstIdx = Math.abs(PartitionerUtil.getHashCodeFromElementKey(element) % dstParallelism);
       elementsByKey.get(dstIdx).add(element);
     });
 

@@ -51,7 +51,7 @@ public final class DataSkewHashPartitioner implements Partitioner {
     IntStream.range(0, hashRange).forEach(hashVal -> elementsByKey.add(new ArrayList<>()));
     elements.forEach(element -> {
       // Hash the data by its key, and "modulo" by the hash range.
-      final int hashVal = Math.abs(element.getKey().hashCode() % hashRange);
+      final int hashVal = Math.abs(PartitionerUtil.getHashCodeFromElementKey(element) % hashRange);
       elementsByKey.get(hashVal).add(element);
     });
 
