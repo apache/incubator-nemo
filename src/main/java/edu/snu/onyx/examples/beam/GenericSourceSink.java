@@ -40,7 +40,7 @@ final class GenericSourceSink {
 
   public static PCollection<String> read(final Pipeline pipeline,
                                          final String path) {
-    if (path.startsWith("hdfs://")) {
+    if (path.startsWith("hdfs://") || path.startsWith("s3a://")) {
       final Configuration hadoopConf = new Configuration(false);
       hadoopConf.set("mapreduce.input.fileinputformat.inputdir", path);
       hadoopConf.setClass("mapreduce.job.inputformat.class", TextInputFormat.class, InputFormat.class);
