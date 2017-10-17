@@ -43,8 +43,8 @@ final class GenericSourceSink {
 
   public static PCollection<String> read(final Pipeline pipeline,
                                          final String path) {
-    if (path.startsWith("hdfs://") || path.startsWith("s3a://")) {
-      final Configuration hadoopConf = new Configuration(false);
+    if (isHDFSPath(path)) {
+      final Configuration hadoopConf = new Configuration(true);
       hadoopConf.set("mapreduce.input.fileinputformat.inputdir", path);
       hadoopConf.setClass("mapreduce.job.inputformat.class", TextInputFormat.class, InputFormat.class);
       hadoopConf.setClass("key.class", LongWritable.class, Object.class);
@@ -74,12 +74,16 @@ final class GenericSourceSink {
 
   public static PDone write(final PCollection<String> dataToWrite,
                             final String path) {
-    if (path.startsWith("hdfs://") || path.startsWith("s3a://") || path.startsWith("file://")) {
+    if (isHDFSPath(path)) {
       dataToWrite.apply(ParDo.of(new HDFSWrite(path)));
       return PDone.in(dataToWrite.getPipeline());
     } else {
       return dataToWrite.apply(TextIO.write().to(path));
     }
+  }
+
+  private static boolean isHDFSPath(final String path) {
+    return path.startsWith("hdfs://") || path.startsWith("s3a://") || path.startsWith("file://");
   }
 }
 
