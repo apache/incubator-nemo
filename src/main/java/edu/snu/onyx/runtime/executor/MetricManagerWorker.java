@@ -50,33 +50,33 @@ public final class MetricManagerWorker implements MetricMessageSender {
     this.metricMessageQueue = new LinkedBlockingQueue<>();
     this.closed = new AtomicBoolean(false);
     Runnable batchMetricMessages = () -> {
+      while (!closed.get()) {
+        if (!metricMessageQueue.isEmpty()) {
+          // Build batched metric messages
+          int size = metricMessageQueue.size();
 
-      while (!closed.get() && !metricMessageQueue.isEmpty()) {
+          final ControlMessage.MetricMsg.Builder metricMsgBuilder = ControlMessage.MetricMsg.newBuilder();
 
-        // Build batched metric messages
-        int size = metricMessageQueue.size();
+          for (int i = 0; i < size; i++) {
+            final ControlMessage.Metric metric = metricMessageQueue.poll();
+            metricMsgBuilder.addMetric(i, metric);
+          }
 
-        final ControlMessage.MetricMsg.Builder metricMsgBuilder = ControlMessage.MetricMsg.newBuilder();
-
-        for (int i = 0; i < size; i++) {
-          final ControlMessage.Metric metric = metricMessageQueue.poll();
-          metricMsgBuilder.addMetric(i, metric);
+          persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+              ControlMessage.Message.newBuilder()
+                  .setId(RuntimeIdGenerator.generateMessageId())
+                  .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+                  .setType(ControlMessage.MessageType.MetricMessageReceived)
+                  .setMetricMsg(metricMsgBuilder.build())
+                  .build());
         }
-
-        persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.MetricMessageReceived)
-                .setMetricMsg(metricMsgBuilder.build())
-                .build());
       }
     };
     this.scheduledExecutorService.scheduleAtFixedRate(batchMetricMessages, 0,
-                                                      flushingPeriod, TimeUnit.MILLISECONDS);
+        flushingPeriod, TimeUnit.MILLISECONDS);
   }
 
-  @Override
+    @Override
   public void send(final String metricKey, final String metricValue) {
     metricMessageQueue.add(
         ControlMessage.Metric.newBuilder().setMetricKey(metricKey).setMetricValue(metricValue).build());
