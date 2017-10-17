@@ -72,7 +72,8 @@ public final class OnyxDriver {
   private final ContainerManager containerManager;
   private final Scheduler scheduler;
   private final String jobId;
-
+  private final String localDirectory;
+  private final String glusterDirectory;
 
   @Inject
   private OnyxDriver(final ContainerManager containerManager,
@@ -81,7 +82,9 @@ public final class OnyxDriver {
                      final NameServer nameServer,
                      final LocalAddressProvider localAddressProvider,
                      @Parameter(JobConf.ExecutorJsonContents.class) final String resourceSpecificationString,
-                     @Parameter(JobConf.JobId.class) final String jobId) {
+                     @Parameter(JobConf.JobId.class) final String jobId,
+                     @Parameter(JobConf.FileDirectory.class) final String localDirectory,
+                     @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory) {
     this.userApplicationRunner = userApplicationRunner;
     this.containerManager = containerManager;
     this.scheduler = scheduler;
@@ -89,6 +92,8 @@ public final class OnyxDriver {
     this.localAddressProvider = localAddressProvider;
     this.resourceSpecificationString = resourceSpecificationString;
     this.jobId = jobId;
+    this.localDirectory = localDirectory;
+    this.glusterDirectory = glusterDirectory;
   }
 
   /**
@@ -186,6 +191,8 @@ public final class OnyxDriver {
     final Configuration executorConfiguration = JobConf.EXECUTOR_CONF
         .set(JobConf.EXECUTOR_ID, executorId)
         .set(JobConf.EXECUTOR_CAPACITY, executorCapacity)
+        .set(JobConf.GLUSTER_DISK_DIRECTORY, glusterDirectory)
+        .set(JobConf.LOCAL_DISK_DIRECTORY, localDirectory)
         .set(JobConf.JOB_ID, jobId)
         .build();
 
