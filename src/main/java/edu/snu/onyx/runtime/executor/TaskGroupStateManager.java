@@ -283,7 +283,7 @@ public final class TaskGroupStateManager {
   private void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {
     final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(compUnitId);
     metricDataBuilder.endMeasurement(finalMetric);
-    metricMessageSender.send(compUnitId, metricDataBuilder.build().toJson());
+    //metricMessageSender.send(compUnitId, metricDataBuilder.build().toJson());
     metricDataBuilderMap.remove(compUnitId);
   }
 
