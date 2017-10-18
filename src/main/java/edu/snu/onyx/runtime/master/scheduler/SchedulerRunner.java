@@ -24,7 +24,6 @@ import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.Optional;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
