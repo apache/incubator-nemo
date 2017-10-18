@@ -165,43 +165,47 @@ public final class RuntimeMaster {
   public final class MasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
     @Override
     public void onMessage(final ControlMessage.Message message) {
-      switch (message.getType()) {
-        case TaskGroupStateChanged:
-          final ControlMessage.TaskGroupStateChangedMsg taskGroupStateChangedMsg
-              = message.getTaskGroupStateChangedMsg();
+      try {
+        switch (message.getType()) {
+          case TaskGroupStateChanged:
+            final ControlMessage.TaskGroupStateChangedMsg taskGroupStateChangedMsg
+                = message.getTaskGroupStateChangedMsg();
 
-          scheduler.onTaskGroupStateChanged(taskGroupStateChangedMsg.getExecutorId(),
-              taskGroupStateChangedMsg.getTaskGroupId(),
-              convertTaskGroupState(taskGroupStateChangedMsg.getState()),
-              taskGroupStateChangedMsg.getAttemptIdx(),
-              taskGroupStateChangedMsg.getTasksPutOnHoldIdsList(),
-              convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
-          break;
-        case ExecutorFailed:
-          final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
-          final String failedExecutorId = executorFailedMsg.getExecutorId();
-          final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
-          LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
-          containerManager.onExecutorRemoved(failedExecutorId);
-          throw new RuntimeException(exception);
-        case ContainerFailed:
-          final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
-          LOG.error(containerFailedMsg.getExecutorId() + " failed");
-          break;
-        case DataSizeMetric:
-          final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
-          // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-          accumulateBarrierMetric(dataSizeMetricMsg.getBlockSizeInfoList(),
-              dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getPartitionId());
-          break;
-        case MetricMessageReceived:
-          final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
-          metricList.forEach(metric ->
-              metricMessageHandler.onMetricMessageReceived(metric.getMetricKey(), metric.getMetricValue()));
-          break;
-        default:
-          throw new IllegalMessageException(
-              new Exception("This message should not be received by Master :" + message.getType()));
+            scheduler.onTaskGroupStateChanged(taskGroupStateChangedMsg.getExecutorId(),
+                taskGroupStateChangedMsg.getTaskGroupId(),
+                convertTaskGroupState(taskGroupStateChangedMsg.getState()),
+                taskGroupStateChangedMsg.getAttemptIdx(),
+                taskGroupStateChangedMsg.getTasksPutOnHoldIdsList(),
+                convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
+            break;
+          case ExecutorFailed:
+            final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
+            final String failedExecutorId = executorFailedMsg.getExecutorId();
+            final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
+            LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
+            containerManager.onExecutorRemoved(failedExecutorId);
+            throw new RuntimeException(exception);
+          case ContainerFailed:
+            final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
+            LOG.error(containerFailedMsg.getExecutorId() + " failed");
+            break;
+          case DataSizeMetric:
+            final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
+            // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
+            accumulateBarrierMetric(dataSizeMetricMsg.getBlockSizeInfoList(),
+                dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getPartitionId());
+            break;
+          case MetricMessageReceived:
+            final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
+            metricList.forEach(metric ->
+                metricMessageHandler.onMetricMessageReceived(metric.getMetricKey(), metric.getMetricValue()));
+            break;
+          default:
+            throw new IllegalMessageException(
+                new Exception("This message should not be received by Master :" + message.getType()));
+        }
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
       }
     }
 
