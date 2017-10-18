@@ -111,7 +111,7 @@ public final class OnyxDriver {
           final ResourceSpecification.Builder builder = ResourceSpecification.newBuilder();
           builder.setContainerType(resourceNode.get("type").traverse().nextTextValue());
           builder.setMemory(resourceNode.get("memory_mb").traverse().getIntValue());
-          builder.setCapacity(resourceNode.get("capacity").traverse().getIntValue());
+          builder.setCapacity(4);
           final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
           containerManager.requestContainer(executorNum, builder.build());
         }
@@ -133,9 +133,8 @@ public final class OnyxDriver {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       final String executorId = RuntimeIdGenerator.generateExecutorId();
-      final int numOfCores = allocatedEvaluator.getEvaluatorDescriptor().getNumberOfCores();
       containerManager.onContainerAllocated(executorId, allocatedEvaluator,
-          getExecutorConfiguration(executorId, numOfCores));
+          getExecutorConfiguration(executorId, 4));
     }
   }
 
