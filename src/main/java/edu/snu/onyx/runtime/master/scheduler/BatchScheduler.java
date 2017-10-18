@@ -29,6 +29,7 @@ import edu.snu.onyx.runtime.exception.*;
 import edu.snu.onyx.runtime.master.PartitionManagerMaster;
 import edu.snu.onyx.runtime.master.JobStateManager;
 import edu.snu.onyx.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
+import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
@@ -63,6 +64,8 @@ public final class BatchScheduler implements Scheduler {
 
   private final PubSubEventHandlerWrapper pubSubEventHandlerWrapper;
 
+  private final ContainerManager containerManager;
+
   /**
    * The current job being executed.
    */
@@ -73,11 +76,13 @@ public final class BatchScheduler implements Scheduler {
                         final SchedulingPolicy schedulingPolicy,
                         final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue,
                         final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
-                        final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler) {
+                        final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
+                        final ContainerManager containerManager) {
     this.partitionManagerMaster = partitionManagerMaster;
     this.pendingTaskGroupPriorityQueue = pendingTaskGroupPriorityQueue;
     this.schedulingPolicy = schedulingPolicy;
     this.pubSubEventHandlerWrapper = pubSubEventHandlerWrapper;
+    this.containerManager = containerManager;
     updatePhysicalPlanEventHandler.setScheduler(this);
     if (pubSubEventHandlerWrapper.getPubSubEventHandler() != null) {
       pubSubEventHandlerWrapper.getPubSubEventHandler()
@@ -108,7 +113,7 @@ public final class BatchScheduler implements Scheduler {
     // Launch scheduler
     final ExecutorService pendingTaskSchedulerThread = Executors.newSingleThreadExecutor();
     pendingTaskSchedulerThread.execute(
-        new SchedulerRunner(jobStateManager, schedulingPolicy, pendingTaskGroupPriorityQueue));
+        new SchedulerRunner(jobStateManager, schedulingPolicy, pendingTaskGroupPriorityQueue, containerManager));
     pendingTaskSchedulerThread.shutdown();
 
     scheduleRootStages();

@@ -19,9 +19,12 @@ import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.onyx.runtime.common.state.JobState;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.runtime.master.JobStateManager;
+import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.Optional;
+import java.util.Set;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,13 +37,16 @@ public final class SchedulerRunner implements Runnable {
   private final JobStateManager jobStateManager;
   private final SchedulingPolicy schedulingPolicy;
   private final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue;
+  private final ContainerManager containerManager;
 
   SchedulerRunner(final JobStateManager jobStateManager,
                   final SchedulingPolicy schedulingPolicy,
-                  final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue) {
+                  final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue,
+                  final ContainerManager containerManager) {
     this.jobStateManager = jobStateManager;
     this.schedulingPolicy = schedulingPolicy;
     this.pendingTaskGroupPriorityQueue = pendingTaskGroupPriorityQueue;
+    this.containerManager = containerManager;
   }
 
   /**
@@ -60,6 +66,16 @@ public final class SchedulerRunner implements Runnable {
           LOG.info("Failed to assign an executor for {} before the timeout: {}",
               new Object[] {nextTaskGroupToSchedule.get().getTaskGroup().getTaskGroupId(),
                   schedulingPolicy.getScheduleTimeoutMs()});
+
+          containerManager.getExecutorRepresenterMap().forEach((id, executor) -> {
+            Set<String> runningTGIds = executor.getRunningTaskGroups();
+            String runningTaskGroups = "";
+            for (String tgId : runningTGIds) {
+              runningTaskGroups += tgId;
+              runningTaskGroups += ", ";
+            }
+            LOG.info("{}: Running Task Groups: {}", new Object[]{id, runningTaskGroups});
+          });
 
           // Put this TaskGroup back to the queue since we failed to schedule it.
           pendingTaskGroupPriorityQueue.enqueue(nextTaskGroupToSchedule.get());
