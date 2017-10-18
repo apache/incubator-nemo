@@ -195,6 +195,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case CommitBlock:
       case RemoveBlockMetadata:
       case DataSizeMetric:
+      case ContainerFailed:
         return MessageType.Send;
       case RequestPartitionLocation:
       case RequestBlockMetadata:
