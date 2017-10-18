@@ -206,12 +206,15 @@ public final class PartitionManagerMaster {
     writeLock.lock();
     try {
       if (producerTaskGroupIdToPartitionIds.containsKey(failedTaskGroupId)) {
+        LOG.info("ProducerTaskGroup {} failed for a list of partitions:", failedTaskGroupId);
         producerTaskGroupIdToPartitionIds.get(failedTaskGroupId).forEach(partitionId -> {
           final PartitionState.State state = (PartitionState.State)
               partitionIdToMetadata.get(partitionId).getPartitionState().getStateMachine().getCurrentState();
           if (state == PartitionState.State.COMMITTED) {
+            LOG.info("Partition lost: {}", partitionId);
             onPartitionStateChanged(partitionId, PartitionState.State.LOST, null);
           } else if (state != PartitionState.State.REMOVED) {
+            LOG.info("Partition lost_before_commit: {}", partitionId);
             onPartitionStateChanged(partitionId, PartitionState.State.LOST_BEFORE_COMMIT, null);
           }
         });
