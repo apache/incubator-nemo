@@ -467,24 +467,28 @@ public final class PartitionManagerMaster {
 
     @Override
     public void onMessage(final ControlMessage.Message message) {
-      switch (message.getType()) {
-        case PartitionStateChanged:
-          final ControlMessage.PartitionStateChangedMsg partitionStateChangedMsg =
-              message.getPartitionStateChangedMsg();
-          final String partitionId = partitionStateChangedMsg.getPartitionId();
-          onPartitionStateChanged(partitionId, convertPartitionState(partitionStateChangedMsg.getState()),
-              partitionStateChangedMsg.getLocation());
-          break;
-        case CommitBlock:
-          onCommitBlocks(message);
-          break;
-        case RemoveBlockMetadata:
-          onRemoveBlockMetadata(message);
-          break;
-        default:
-          throw new IllegalMessageException(
-              new Exception("This message should not be received by "
-                  + PartitionManagerMaster.class.getName() + ":" + message.getType()));
+      try {
+        switch (message.getType()) {
+          case PartitionStateChanged:
+            final ControlMessage.PartitionStateChangedMsg partitionStateChangedMsg =
+                message.getPartitionStateChangedMsg();
+            final String partitionId = partitionStateChangedMsg.getPartitionId();
+            onPartitionStateChanged(partitionId, convertPartitionState(partitionStateChangedMsg.getState()),
+                partitionStateChangedMsg.getLocation());
+            break;
+          case CommitBlock:
+            onCommitBlocks(message);
+            break;
+          case RemoveBlockMetadata:
+            onRemoveBlockMetadata(message);
+            break;
+          default:
+            throw new IllegalMessageException(
+                new Exception("This message should not be received by "
+                    + PartitionManagerMaster.class.getName() + ":" + message.getType()));
+        }
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
       }
     }
 
