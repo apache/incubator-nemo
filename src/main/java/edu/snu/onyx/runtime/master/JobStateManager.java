@@ -179,23 +179,21 @@ public final class JobStateManager {
    * @param newState of the job.
    */
   public synchronized void onJobStateChanged(final JobState.State newState) {
+    final Map<String, Object> metric = new HashMap<>();
+
     if (newState == JobState.State.EXECUTING) {
       LOG.debug("Executing Job ID {}...", this.jobId);
       jobState.getStateMachine().setState(newState);
-
-      final Map<String, Object> initialMetric = new HashMap<>();
-      initialMetric.put("FromState", newState);
-      beginMeasurement(jobId, initialMetric);
+      metric.put("FromState", newState);
+      beginMeasurement(jobId, metric);
     } else if (newState == JobState.State.COMPLETE || newState == JobState.State.FAILED) {
       LOG.debug("Job ID {} {}!", new Object[]{jobId, newState});
       // Awake all threads waiting the finish of this job.
       finishLock.lock();
       try {
         jobState.getStateMachine().setState(newState);
-
-        final Map<String, Object> finalMetric = new HashMap<>();
-        finalMetric.put("ToState", newState);
-        endMeasurement(jobId, finalMetric);
+        metric.put("ToState", newState);
+        endMeasurement(jobId, metric);
 
         jobFinishedCondition.signalAll();
       } finally {
@@ -217,6 +215,7 @@ public final class JobStateManager {
     LOG.debug("Stage State Transition: id {} from {} to {}",
         new Object[]{stageId, stageStateMachine.getCurrentState(), newState});
     stageStateMachine.setState(newState);
+    final Map<String, Object> metric = new HashMap<>();
 
     if (newState == StageState.State.EXECUTING) {
       if (scheduleAttemptIdxByStage.containsKey(stageId)) {
@@ -232,10 +231,9 @@ public final class JobStateManager {
         scheduleAttemptIdxByStage.put(stageId, 1);
       }
 
-      final Map<String, Object> initialMetric = new HashMap<>();
-      initialMetric.put("ScheduleAttempt", scheduleAttemptIdxByStage.get(stageId));
-      initialMetric.put("FromState", newState);
-      beginMeasurement(stageId, initialMetric);
+      metric.put("ScheduleAttempt", scheduleAttemptIdxByStage.get(stageId));
+      metric.put("FromState", newState);
+      beginMeasurement(stageId, metric);
 
       // if there exists a mapping, this state change is from a failed_recoverable stage,
       // and there may be task groups that do not need to be re-executed.
@@ -252,20 +250,20 @@ public final class JobStateManager {
         }
       }
     } else if (newState == StageState.State.COMPLETE) {
-      final Map<String, Object> finalMetric = new HashMap<>();
-      finalMetric.put("ToState", newState);
-      endMeasurement(stageId, finalMetric);
+      metric.put("ToState", newState);
+      endMeasurement(stageId, metric);
 
       currentJobStageIds.remove(stageId);
       if (currentJobStageIds.isEmpty()) {
         onJobStateChanged(JobState.State.COMPLETE);
       }
     } else if (newState == StageState.State.FAILED_RECOVERABLE) {
-      final Map<String, Object> finalMetric = new HashMap<>();
-      finalMetric.put("ToState", newState);
-      endMeasurement(stageId, finalMetric);
-
+      metric.put("ToState", newState);
+      endMeasurement(stageId, metric);
       currentJobStageIds.add(stageId);
+    } else if (newState == StageState.State.FAILED_UNRECOVERABLE) {
+      metric.put("ToState", newState);
+      endMeasurement(stageId, metric);
     }
   }
 
@@ -285,11 +283,14 @@ public final class JobStateManager {
     LOG.debug("Task Group State Transition: id {} from {} to {}",
         new Object[]{taskGroup.getTaskGroupId(), taskGroupState.getCurrentState(), newState});
     final String stageId = taskGroup.getStageId();
+    final Map<String, Object> metric = new HashMap<>();
 
     switch (newState) {
     case ON_HOLD:
     case COMPLETE:
       taskGroupState.setState(newState);
+      metric.put("ToState", newState);
+      endMeasurement(taskGroup.getTaskGroupId(), metric);
 
       if (stageIdToRemainingTaskGroupSet.containsKey(stageId)) {
         final Set<String> remainingTaskGroups = stageIdToRemainingTaskGroupSet.get(stageId);
@@ -306,6 +307,8 @@ public final class JobStateManager {
       break;
     case EXECUTING:
       taskGroupState.setState(newState);
+      metric.put("FromState", newState);
+      beginMeasurement(taskGroup.getTaskGroupId(), metric);
       break;
     case FAILED_RECOVERABLE:
       // Multiple calls to set a task group's state to failed_recoverable can occur when
@@ -313,6 +316,8 @@ public final class JobStateManager {
       // and the task group finds itself failed_recoverable later, propagating the state change event only then.
       if (taskGroupState.getCurrentState() != TaskGroupState.State.FAILED_RECOVERABLE) {
         taskGroupState.setState(newState);
+        metric.put("ToState", newState);
+        endMeasurement(taskGroup.getTaskGroupId(), metric);
 
         // Mark this stage as failed_recoverable as long as it contains at least one failed_recoverable task group
         if (idToStageStates.get(stageId).getStateMachine().getCurrentState() != StageState.State.FAILED_RECOVERABLE) {
@@ -335,6 +340,8 @@ public final class JobStateManager {
       break;
     case FAILED_UNRECOVERABLE:
       taskGroupState.setState(newState);
+      metric.put("ToState", newState);
+      endMeasurement(taskGroup.getTaskGroupId(), metric);
       break;
     default:
       throw new UnknownExecutionStateException(new Throwable("This task group state is unknown"));
@@ -447,7 +454,7 @@ public final class JobStateManager {
   private void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {
     final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(compUnitId);
     metricDataBuilder.endMeasurement(finalMetric);
-    //metricMessageHandler.onMetricMessageReceived(compUnitId, metricDataBuilder.build().toJson());
+    metricMessageHandler.onMetricMessageReceived(compUnitId, metricDataBuilder.build().toJson());
     metricDataBuilderMap.remove(compUnitId);
   }
 
