@@ -197,8 +197,8 @@ public final class TaskGroupExecutor {
         LOG.warn("{} Execution Failed (Recoverable)! Exception: {}",
             new Object[] {taskGroup.getTaskGroupId(), ex2.toString()});
       } catch (final Exception e) {
-        taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.FAILED_UNRECOVERABLE, Optional.empty());
-        throw new RuntimeException(e);
+        taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.FAILED_RECOVERABLE,
+            Optional.of(TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
       }
     });
   }
