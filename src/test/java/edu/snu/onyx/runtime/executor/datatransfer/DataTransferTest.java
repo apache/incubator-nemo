@@ -130,7 +130,8 @@ public final class DataTransferTest {
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     final Scheduler scheduler =
         new BatchScheduler(master, new RoundRobinSchedulingPolicy(containerManager, SCHEDULE_TIMEOUT),
-            new PendingTaskGroupPriorityQueue(), pubSubEventHandler, updatePhysicalPlanEventHandler);
+            new PendingTaskGroupPriorityQueue(), pubSubEventHandler, updatePhysicalPlanEventHandler,
+            containerManager);
     final AtomicInteger executorCount = new AtomicInteger(0);
 
     // Necessary for wiring up the message environments

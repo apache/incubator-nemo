@@ -102,7 +102,7 @@ public final class FaultToleranceTest {
 
     scheduler =
         new BatchScheduler(partitionManagerMaster, schedulingPolicy, pendingTaskGroupPriorityQueue,
-            pubSubEventHandler, updatePhysicalPlanEventHandler);
+            pubSubEventHandler, updatePhysicalPlanEventHandler, containerManager);
 
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();

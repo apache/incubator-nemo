@@ -96,7 +96,7 @@ public final class BatchSchedulerTest {
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     scheduler =
         new BatchScheduler(partitionManagerMaster, schedulingPolicy, pendingTaskGroupPriorityQueue,
-            pubSubEventHandler, updatePhysicalPlanEventHandler);
+            pubSubEventHandler, updatePhysicalPlanEventHandler, containerManager);
 
     final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();
     when(containerManager.getExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
