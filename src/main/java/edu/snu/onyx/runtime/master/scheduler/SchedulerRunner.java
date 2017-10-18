@@ -68,16 +68,6 @@ public final class SchedulerRunner implements Runnable {
               new Object[] {nextTaskGroupToSchedule.get().getTaskGroup().getTaskGroupId(),
                   schedulingPolicy.getScheduleTimeoutMs()});
 
-          containerManager.getExecutorRepresenterMap().forEach((id, executor) -> {
-            Set<String> runningTGIds = executor.getRunningTaskGroups();
-            String runningTaskGroups = "";
-            for (String tgId : runningTGIds) {
-              runningTaskGroups += tgId;
-              runningTaskGroups += ", ";
-            }
-            LOG.info("{}: Running Task Groups: {}", new Object[]{id, runningTaskGroups});
-          });
-
           // Put this TaskGroup back to the queue since we failed to schedule it.
           pendingTaskGroupPriorityQueue.enqueue(nextTaskGroupToSchedule.get());
         } else {
