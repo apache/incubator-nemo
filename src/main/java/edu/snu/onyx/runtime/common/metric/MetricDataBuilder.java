@@ -59,7 +59,7 @@ public final class MetricDataBuilder {
   public void endMeasurement(final Map<String, Object> metricMap) {
     endTime = System.nanoTime();
     metricMap.put("EndTime", endTime);
-    metricMap.put("ElapsedTime", endTime - startTime);
+    metricMap.put("ElapsedTime(s)", (endTime - startTime) / 1000000000);
     this.metrics.putAll(metricMap);
   }
 
