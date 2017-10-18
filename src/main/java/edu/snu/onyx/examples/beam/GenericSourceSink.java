@@ -107,7 +107,7 @@ final class HDFSWrite extends DoFn<String, Void> {
   public void startBundle(final StartBundleContext c) {
     fileName = new Path(path + UUID.randomUUID().toString());
     try {
-      fileSystem = FileSystem.newInstance(new JobConf());
+      fileSystem = fileName.getFileSystem(new JobConf());
       outputStream = fileSystem.create(fileName, false);
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -121,7 +121,6 @@ final class HDFSWrite extends DoFn<String, Void> {
     } catch (Exception e) {
         outputStream.close();
         fileSystem.delete(fileName, true);
-        fileSystem.close();
         throw new RuntimeException(e);
     }
   }
@@ -129,6 +128,5 @@ final class HDFSWrite extends DoFn<String, Void> {
   @FinishBundle
   public void finishBundle(final FinishBundleContext c) throws Exception {
     outputStream.close();
-    fileSystem.close();
   }
 }
