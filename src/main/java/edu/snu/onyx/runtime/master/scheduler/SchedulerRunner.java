@@ -18,6 +18,7 @@ package edu.snu.onyx.runtime.master.scheduler;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.onyx.runtime.common.state.JobState;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
+import edu.snu.onyx.runtime.exception.IllegalStateTransitionException;
 import edu.snu.onyx.runtime.master.JobStateManager;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -85,6 +86,8 @@ public final class SchedulerRunner implements Runnable {
               TaskGroupState.State.EXECUTING);
           schedulingPolicy.onTaskGroupScheduled(executorId.get(), nextTaskGroupToSchedule.get());
         }
+      } catch (final IllegalStateTransitionException ex) {
+        throw ex;
       } catch (final Exception e) {
         e.printStackTrace(System.err);
         // TODO #285 make SchedulerRunner failure reportable
