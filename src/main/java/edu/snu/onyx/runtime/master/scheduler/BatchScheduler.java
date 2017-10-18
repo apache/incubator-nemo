@@ -292,6 +292,7 @@ public final class BatchScheduler implements Scheduler {
     case OUTPUT_WRITE_FAILURE:
       // the stage this task group belongs to has become failed recoverable.
       // it is a good point to start searching for another stage to schedule.
+      partitionManagerMaster.onProducerTaskGroupFailed(taskGroup.getTaskGroupId());
       scheduleNextStage(taskGroup.getStageId());
       break;
     case CONTAINER_FAILURE:
