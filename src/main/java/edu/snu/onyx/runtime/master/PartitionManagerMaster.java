@@ -211,7 +211,7 @@ public final class PartitionManagerMaster {
               partitionIdToMetadata.get(partitionId).getPartitionState().getStateMachine().getCurrentState();
           if (state == PartitionState.State.COMMITTED) {
             onPartitionStateChanged(partitionId, PartitionState.State.LOST, null);
-          } else {
+          } else if (state != PartitionState.State.REMOVED) {
             onPartitionStateChanged(partitionId, PartitionState.State.LOST_BEFORE_COMMIT, null);
           }
         });
