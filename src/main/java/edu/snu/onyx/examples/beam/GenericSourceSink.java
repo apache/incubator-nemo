@@ -121,7 +121,6 @@ final class HDFSWrite extends DoFn<String, Void> {
     } catch (Exception e) {
         outputStream.close();
         fileSystem.delete(fileName, true);
-        fileSystem.close();
         throw new RuntimeException(e);
     }
   }
@@ -129,6 +128,5 @@ final class HDFSWrite extends DoFn<String, Void> {
   @FinishBundle
   public void finishBundle(final FinishBundleContext c) throws Exception {
     outputStream.close();
-    fileSystem.close();
   }
 }
