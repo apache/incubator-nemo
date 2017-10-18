@@ -33,6 +33,7 @@ public final class DefaultPolicyWithReducerParallelism implements Policy {
         .registerCompileTimePass(new DefaultVertexExecutorPlacementPass())
         .registerCompileTimePass(new DefaultPartitionerPass())
         .registerCompileTimePass(new DefaultEdgeDataFlowModelPass())
+        .registerCompileTimePass(new DisaggregationEdgeDataStorePass())
         .registerCompileTimePass(new DefaultEdgeDataStorePass())
         .registerCompileTimePass(new DefaultStagePartitioningPass())
         .registerCompileTimePass(new ScheduleGroupPass())
