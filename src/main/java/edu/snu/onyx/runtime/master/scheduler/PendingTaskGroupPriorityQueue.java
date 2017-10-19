@@ -15,6 +15,7 @@
  */
 package edu.snu.onyx.runtime.master.scheduler;
 
+
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import net.jcip.annotations.ThreadSafe;
@@ -43,7 +44,7 @@ public final class PendingTaskGroupPriorityQueue {
   /**
    * Pending TaskGroups awaiting to be scheduled for each stage.
    */
-  private final ConcurrentMap<String, Deque<ScheduledTaskGroup>> stageIdToPendingTaskGroups;
+  private final Map<String, Deque<ScheduledTaskGroup>> stageIdToPendingTaskGroups;
 
   /**
    * Stages with TaskGroups that have not yet been scheduled.
@@ -63,23 +64,25 @@ public final class PendingTaskGroupPriorityQueue {
   public void enqueue(final ScheduledTaskGroup scheduledTaskGroup) {
     final String stageId = scheduledTaskGroup.getTaskGroup().getStageId();
 
-    LOG.info("Enqueue {}", scheduledTaskGroup.getTaskGroup().getTaskGroupId());
-    stageIdToPendingTaskGroups.compute(stageId,
-        new BiFunction<String, Deque<ScheduledTaskGroup>, Deque<ScheduledTaskGroup>>() {
-          @Override
-          public Deque<ScheduledTaskGroup> apply(final String s,
-                                                 final Deque<ScheduledTaskGroup> scheduledTaskGroups) {
-            if (scheduledTaskGroups == null) {
-              final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = new ArrayDeque<>();
-              pendingTaskGroupsForStage.add(scheduledTaskGroup);
-              updateSchedulableStages(stageId);
-              return pendingTaskGroupsForStage;
-            } else {
-              scheduledTaskGroups.add(scheduledTaskGroup);
-              return scheduledTaskGroups;
+    synchronized (stageIdToPendingTaskGroups) {
+      LOG.info("Enqueue -{}-", scheduledTaskGroup.getTaskGroup().getTaskGroupId());
+      stageIdToPendingTaskGroups.compute(stageId,
+          new BiFunction<String, Deque<ScheduledTaskGroup>, Deque<ScheduledTaskGroup>>() {
+            @Override
+            public Deque<ScheduledTaskGroup> apply(final String s,
+                                                   final Deque<ScheduledTaskGroup> scheduledTaskGroups) {
+              if (scheduledTaskGroups == null) {
+                final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = new ArrayDeque<>();
+                pendingTaskGroupsForStage.add(scheduledTaskGroup);
+                updateSchedulableStages(stageId);
+                return pendingTaskGroupsForStage;
+              } else {
+                scheduledTaskGroups.add(scheduledTaskGroup);
+                return scheduledTaskGroups;
+              }
             }
-          }
-        });
+          });
+    }
   }
 
   /**
@@ -93,20 +96,23 @@ public final class PendingTaskGroupPriorityQueue {
     final String stageId = schedulableStages.takeFirst();
     LOG.info("Next schedulable stage: {}", stageId);
 
-    final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = stageIdToPendingTaskGroups.get(stageId);
+    synchronized (stageIdToPendingTaskGroups) {
+      final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = stageIdToPendingTaskGroups.get(stageId);
 
-    if (pendingTaskGroupsForStage == null) {
-      schedulableStages.addLast(stageId);
-    } else {
-      taskGroupToSchedule = pendingTaskGroupsForStage.poll();
-      if (pendingTaskGroupsForStage.isEmpty()) {
-        stageIdToPendingTaskGroups.remove(stageId);
-        stageIdToPendingTaskGroups.forEach((scheduledStageId, taskGroupList) ->
-            updateSchedulableStages(scheduledStageId));
-      } else {
+      if (pendingTaskGroupsForStage == null) {
         schedulableStages.addLast(stageId);
+      } else {
+        taskGroupToSchedule = pendingTaskGroupsForStage.poll();
+        if (pendingTaskGroupsForStage.isEmpty()) {
+          stageIdToPendingTaskGroups.remove(stageId);
+          stageIdToPendingTaskGroups.forEach((scheduledStageId, taskGroupList) ->
+              updateSchedulableStages(scheduledStageId));
+        } else {
+          schedulableStages.addLast(stageId);
+        }
       }
     }
+
 
     return (taskGroupToSchedule == null) ? Optional.empty() : Optional.of(taskGroupToSchedule);
   }
