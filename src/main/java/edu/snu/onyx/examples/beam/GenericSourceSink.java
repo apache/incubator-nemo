@@ -32,6 +32,8 @@ import java.util.*;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Helper class for handling source/sink in a generic way.
@@ -91,6 +93,8 @@ final class GenericSourceSink {
  * Write output to HDFS according to the parallelism.
  */
 final class HDFSWrite extends DoFn<String, Void> {
+  private static final Logger LOG = LoggerFactory.getLogger(HDFSWrite.class.getName());
+
   private final String path;
   private Path fileName;
   private FileSystem fileSystem;
@@ -105,10 +109,12 @@ final class HDFSWrite extends DoFn<String, Void> {
   // Each output file is written as a bundle.
   @StartBundle
   public void startBundle(final StartBundleContext c) {
+    LOG.info("Entering HDFSWrite startBundle");
     fileName = new Path(path + UUID.randomUUID().toString());
     try {
       fileSystem = fileName.getFileSystem(new JobConf());
       outputStream = fileSystem.create(fileName, false);
+      LOG.info("Exiting HDFSWrite startBundle");
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -127,6 +133,8 @@ final class HDFSWrite extends DoFn<String, Void> {
 
   @FinishBundle
   public void finishBundle(final FinishBundleContext c) throws Exception {
+    LOG.info("Entering HDFSWrite finishBundle");
     outputStream.close();
+    LOG.info("Exiting HDFSWrite finishBundle");
   }
 }
