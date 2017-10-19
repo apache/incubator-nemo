@@ -297,7 +297,8 @@ public final class JobStateManager {
 
         if (remainingTaskGroups.size() < 5) {
           final StringBuilder remaining = new StringBuilder();
-          remainingTaskGroups.forEach(tgId -> remaining.append(tgId).append(", "));
+          remainingTaskGroups.forEach(tgId -> remaining.append(tgId).append("{")
+              .append(getTaskGroupState(tgId).getStateMachine().getCurrentState()).append("}, "));
           LOG.info("{}: Remaining: {}", stageId, remaining.toString());
         }
         LOG.info("{}: {} TaskGroup(s) to go", stageId, remainingTaskGroups.size());

@@ -19,6 +19,8 @@ import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -35,6 +37,7 @@ import java.util.function.BiFunction;
 @ThreadSafe
 @DriverSide
 public final class PendingTaskGroupPriorityQueue {
+  private static final Logger LOG = LoggerFactory.getLogger(PendingTaskGroupPriorityQueue.class.getName());
   private PhysicalPlan physicalPlan;
 
   /**
@@ -60,6 +63,7 @@ public final class PendingTaskGroupPriorityQueue {
   public void enqueue(final ScheduledTaskGroup scheduledTaskGroup) {
     final String stageId = scheduledTaskGroup.getTaskGroup().getStageId();
 
+    LOG.info("Enqueue {}", scheduledTaskGroup.getTaskGroup().getTaskGroupId());
     stageIdToPendingTaskGroups.compute(stageId,
         new BiFunction<String, Deque<ScheduledTaskGroup>, Deque<ScheduledTaskGroup>>() {
           @Override
@@ -85,7 +89,9 @@ public final class PendingTaskGroupPriorityQueue {
    */
   public Optional<ScheduledTaskGroup> dequeueNextTaskGroup() throws InterruptedException {
     ScheduledTaskGroup taskGroupToSchedule = null;
+    LOG.info("Begin waiting for schedulable stages!");
     final String stageId = schedulableStages.takeFirst();
+    LOG.info("Next schedulable stage: {}", stageId);
 
     final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = stageIdToPendingTaskGroups.get(stageId);
 
