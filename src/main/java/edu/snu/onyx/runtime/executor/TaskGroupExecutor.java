@@ -167,22 +167,23 @@ public final class TaskGroupExecutor {
     taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.EXECUTING, Optional.empty(), Optional.empty());
 
     taskGroup.getTaskDAG().topologicalDo(task -> {
+      LOG.info("{}: Executing {}", taskGroup.getTaskGroupId(), task.getId());
       taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.EXECUTING, Optional.empty());
       try {
         if (task instanceof BoundedSourceTask) {
           launchBoundedSourceTask((BoundedSourceTask) task);
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.COMPLETE, Optional.empty());
-          LOG.info("{} Execution Complete!", taskGroup.getTaskGroupId());
+          LOG.info("{} BoundedSourceTask Complete!", task.getId());
         } else if (task instanceof OperatorTask) {
           launchOperatorTask((OperatorTask) task);
           garbageCollectLocalIntermediateData(task);
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.COMPLETE, Optional.empty());
-          LOG.info("{} Execution Complete!", taskGroup.getTaskGroupId());
+          LOG.info("{} OperatorTask Complete!", task.getId());
         } else if (task instanceof MetricCollectionBarrierTask) {
           launchMetricCollectionBarrierTask((MetricCollectionBarrierTask) task);
           garbageCollectLocalIntermediateData(task);
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.ON_HOLD, Optional.empty());
-          LOG.info("{} Execution Complete!", taskGroup.getTaskGroupId());
+          LOG.info("{} MetricCollectionBarrierTask Complete!", task.getId());
         } else {
           throw new UnsupportedOperationException(task.toString());
         }
@@ -202,6 +203,7 @@ public final class TaskGroupExecutor {
             Optional.of(TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
       }
     });
+    LOG.info("{} Execution Complete!", taskGroup.getTaskGroupId());
   }
 
   /**

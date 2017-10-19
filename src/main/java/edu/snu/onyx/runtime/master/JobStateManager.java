@@ -301,8 +301,8 @@ public final class JobStateManager {
               .append(getTaskGroupState(tgId).getStateMachine().getCurrentState()).append("}, "));
           LOG.info("{}: Remaining: {}", stageId, remaining.toString());
         }
-        LOG.info("{}: {} TaskGroup(s) to go", stageId, remainingTaskGroups.size());
         remainingTaskGroups.remove(taskGroup.getTaskGroupId());
+        LOG.info("{}: {} TaskGroup(s) to go", stageId, remainingTaskGroups.size());
 
         if (remainingTaskGroups.isEmpty()) {
           onStageStateChanged(stageId, StageState.State.COMPLETE);
