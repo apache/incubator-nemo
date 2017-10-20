@@ -17,10 +17,7 @@ package edu.snu.onyx.runtime.executor.data.metadata;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 
 /**
  * This class represents a metadata for a local file partition.
@@ -41,7 +38,7 @@ public final class LocalFileMetadata extends FileMetadata {
   public LocalFileMetadata(final boolean commitPerBlock) {
     super(commitPerBlock);
     this.reserveBlockMetadataQue = new ArrayDeque<>();
-    this.commitBlockMetadataIterable = new ArrayList<>();
+    this.commitBlockMetadataIterable = Collections.synchronizedList(new ArrayList<>());
     this.blockCount = 0;
     this.writtenBytesCursor = 0;
     this.committed = false;

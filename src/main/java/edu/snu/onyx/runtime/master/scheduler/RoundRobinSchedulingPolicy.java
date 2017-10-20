@@ -243,6 +243,16 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
       executor.onTaskGroupExecutionComplete(taskGroupId);
       LOG.info("{" + taskGroupId + "} completed in [" + executorId + "]");
 
+      executorRepresenterMap.forEach((id, executorRepresenter) -> {
+        Set<String> runningTGIds = executorRepresenter.getRunningTaskGroups();
+        String runningTaskGroups = "";
+        for (String tgId : runningTGIds) {
+          runningTaskGroups += tgId;
+          runningTaskGroups += ", ";
+        }
+        LOG.info("{}: Running Task Groups: {}", new Object[]{id, runningTaskGroups});
+      });
+
       // the scheduler thread may be waiting for a free slot...
       final String containerType = executor.getContainerType();
       signalPossiblyWaitingScheduler(containerType);

@@ -321,26 +321,14 @@ public final class PartitionManagerWorker {
     ioThreadExecutorService.submit(new Runnable() {
       @Override
       public void run() {
-        if (partitionStore.equals(LocalFileStore.class) || partitionStore.equals(GlusterFileStore.class)) {
-          // TODO #492: Modularize the data communication pattern. Remove execution property value dependant code.
-          final FileStore fileStore = (FileStore) getPartitionStore(partitionStore);
-          try {
-            outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getPartitionId(),
-                outputStream.getHashRange())).close();
-          } catch (final IOException | PartitionFetchException e) {
-            LOG.error("Closing a pull request exceptionally", e);
-            outputStream.closeExceptionally(e);
-          }
-        } else {
-          try {
-            final Iterable<Element> partition =
-                retrieveDataFromPartition(outputStream.getPartitionId(), outputStream.getRuntimeEdgeId(),
-                    partitionStore, outputStream.getHashRange()).get();
-            outputStream.writeElements(partition).close();
-          } catch (final IOException | InterruptedException | ExecutionException e) {
-            LOG.error("Closing a pull request exceptionally", e);
-            outputStream.closeExceptionally(e);
-          }
+        try {
+          final Iterable<Element> partition =
+              retrieveDataFromPartition(outputStream.getPartitionId(), outputStream.getRuntimeEdgeId(),
+                  partitionStore, outputStream.getHashRange()).get();
+          outputStream.writeElements(partition).close();
+        } catch (final IOException | InterruptedException | ExecutionException e) {
+          LOG.error("Closing a pull request exceptionally", e);
+          outputStream.closeExceptionally(e);
         }
       }
     });

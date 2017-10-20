@@ -294,8 +294,15 @@ public final class JobStateManager {
 
       if (stageIdToRemainingTaskGroupSet.containsKey(stageId)) {
         final Set<String> remainingTaskGroups = stageIdToRemainingTaskGroupSet.get(stageId);
-        LOG.info("{}: {} TaskGroup(s) to go", stageId, remainingTaskGroups.size());
+
+        if (remainingTaskGroups.size() < 5) {
+          final StringBuilder remaining = new StringBuilder();
+          remainingTaskGroups.forEach(tgId -> remaining.append(tgId).append("{")
+              .append(getTaskGroupState(tgId).getStateMachine().getCurrentState()).append("}, "));
+          LOG.info("{}: Remaining: {}", stageId, remaining.toString());
+        }
         remainingTaskGroups.remove(taskGroup.getTaskGroupId());
+        LOG.info("{}: {} TaskGroup(s) to go", stageId, remainingTaskGroups.size());
 
         if (remainingTaskGroups.isEmpty()) {
           onStageStateChanged(stageId, StageState.State.COMPLETE);
