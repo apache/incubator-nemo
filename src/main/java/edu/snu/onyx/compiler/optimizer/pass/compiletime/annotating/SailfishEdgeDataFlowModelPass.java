@@ -20,18 +20,18 @@ import edu.snu.onyx.compiler.ir.IREdge;
 import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.edge.DataFlowModelProperty;
-import edu.snu.onyx.runtime.executor.datatransfer.communication.OneToOne;
+import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
 
 import java.util.List;
 
 /**
- * A pass to support Disaggregated Resources by tagging edges.
+ * A pass to support Sailfish-like shuffle by tagging edges.
  * This pass handles the DataFlowModel ExecutionProperty.
  */
-public final class DisaggregationEdgeDataFlowModelPass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "DisaggregationEdgeDataFlowModelPass";
+public final class SailfishEdgeDataFlowModelPass extends AnnotatingPass {
+  public static final String SIMPLE_NAME = "SailfishEdgeDataFlowModelPass";
 
-  public DisaggregationEdgeDataFlowModelPass() {
+  public SailfishEdgeDataFlowModelPass() {
     super(ExecutionProperty.Key.DataFlowModel);
   }
 
@@ -39,15 +39,13 @@ public final class DisaggregationEdgeDataFlowModelPass extends AnnotatingPass {
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().forEach(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
-      if (!inEdges.isEmpty()) {
-        inEdges.forEach(edge -> {
-          if (OneToOne.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
-            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
-          } else {
-            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
-          }
-        });
-      }
+      inEdges.forEach(edge -> {
+        if (ScatterGather.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
+          edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push)); // Push to the merger vertex.
+        } else {
+          edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+        }
+      });
     });
     return dag;
   }

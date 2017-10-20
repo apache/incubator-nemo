@@ -34,7 +34,6 @@ public final class DataSkewCompositePass extends CompositePass {
   public DataSkewCompositePass() {
     super(Arrays.asList(
         new DataSkewReshapingPass(),
-        new DefaultPartitionerPass(), // TODO #515: Move to InitializePass.
         new DataSkewVertexPass(),
         new DataSkewEdgeDataStorePass(),
         new DataSkewEdgeMetricCollectionPass(),

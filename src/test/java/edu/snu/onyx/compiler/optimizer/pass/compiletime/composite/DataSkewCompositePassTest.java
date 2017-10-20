@@ -46,7 +46,7 @@ import static org.junit.Assert.assertTrue;
 @PrepareForTest(JobLauncher.class)
 public class DataSkewCompositePassTest {
   private DAG<IRVertex, IREdge> mrDAG;
-  private static final long NUM_OF_PASSES_IN_DATA_SKEW_PASS = 6;
+  private static final long NUM_OF_PASSES_IN_DATA_SKEW_PASS = 5;
 
   @Before
   public void setUp() throws Exception {

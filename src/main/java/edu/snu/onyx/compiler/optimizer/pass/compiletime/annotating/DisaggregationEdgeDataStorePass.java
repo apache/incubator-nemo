@@ -21,9 +21,9 @@ import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.edge.DataStoreProperty;
 import edu.snu.onyx.runtime.executor.data.GlusterFileStore;
-import edu.snu.onyx.runtime.executor.data.MemoryStore;
-import edu.snu.onyx.runtime.executor.datatransfer.communication.OneToOne;
+import edu.snu.onyx.runtime.executor.data.LocalFileStore;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -34,22 +34,18 @@ public final class DisaggregationEdgeDataStorePass extends AnnotatingPass {
   public static final String SIMPLE_NAME = "DisaggregationEdgeDataStorePass";
 
   public DisaggregationEdgeDataStorePass() {
-    super(ExecutionProperty.Key.DataStore);
+    super(ExecutionProperty.Key.DataStore, Collections.singleton(ExecutionProperty.Key.DataStore));
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.getVertices().forEach(vertex -> {
+    dag.getVertices().forEach(vertex -> { // Initialize the DataStore of the DAG with GlusterFileStore.
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
-      if (!inEdges.isEmpty()) {
-        inEdges.forEach(edge -> {
-          if (OneToOne.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
-            edge.setProperty(DataStoreProperty.of(MemoryStore.class));
-          } else {
-            edge.setProperty(DataStoreProperty.of(GlusterFileStore.class));
-          }
-        });
-      }
+      inEdges.forEach(edge -> {
+        if (LocalFileStore.class.equals(edge.getProperty(ExecutionProperty.Key.DataStore))) {
+          edge.setProperty(DataStoreProperty.of(GlusterFileStore.class));
+        }
+      });
     });
     return dag;
   }

@@ -15,23 +15,23 @@
  */
 package edu.snu.onyx.compiler.optimizer.pass.compiletime.composite;
 
-
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.*;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.SailfishEdgeDataFlowModelPass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.SailfishEdgeDataStorePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.reshaping.SailfishReshapingPass;
 
 import java.util.Arrays;
 
 /**
- * A series of passes to support Disaggregated Resources.
- * After this pass, all {@link edu.snu.onyx.runtime.executor.data.LocalFileStore} property
- * will be replaces with {@link edu.snu.onyx.runtime.executor.data.GlusterFileStore}.
+ * A series of passes to support Sailfish-like disk seek batching during shuffle.
  */
-public final class DisaggregationPass extends CompositePass {
-  public static final String SIMPLE_NAME = "DisaggregationPass";
+public final class SailfishPass extends CompositePass {
+  public static final String SIMPLE_NAME = "SailfishPass";
 
-  public DisaggregationPass() {
+  public SailfishPass() {
     super(Arrays.asList(
-        new DisaggregationVertexExecutorPlacementPass(),
-        new DisaggregationEdgeDataStorePass()
+        new SailfishReshapingPass(),
+        new SailfishEdgeDataStorePass(),
+        new SailfishEdgeDataFlowModelPass()
     ));
   }
 }
