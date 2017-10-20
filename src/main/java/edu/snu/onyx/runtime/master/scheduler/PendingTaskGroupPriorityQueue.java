@@ -113,7 +113,6 @@ public final class PendingTaskGroupPriorityQueue {
       }
     }
 
-
     return (taskGroupToSchedule == null) ? Optional.empty() : Optional.of(taskGroupToSchedule);
   }
 

@@ -33,10 +33,10 @@ import java.util.stream.Collectors;
 /**
  * Optimization pass for tagging parallelism execution property.
  */
-public final class ReducerParallelismPass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "ReducerParallelismPass";
+public final class ReducerParallelism12for10gbPass extends AnnotatingPass {
+  public static final String SIMPLE_NAME = "ReducerParallelism12for10gbPass";
 
-  public ReducerParallelismPass() {
+  public ReducerParallelism12for10gbPass() {
     super(ExecutionProperty.Key.Parallelism);
   }
 
@@ -57,7 +57,7 @@ public final class ReducerParallelismPass extends AnnotatingPass {
                   ScatterGather.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
               .findAny();
           if (shuffle.isPresent()) {
-            vertex.setProperty(ParallelismProperty.of(320));
+            vertex.setProperty(ParallelismProperty.of(12));
           } else {
             final OptionalInt parallelism = inEdges.stream()
                 // No reason to propagate via Broadcast edges, as the data streams that will use the broadcasted data
