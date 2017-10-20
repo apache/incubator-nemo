@@ -67,16 +67,25 @@ public final class ExecutorRepresenter {
     runningTaskGroups.add(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
     failedTaskGroups.remove(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
 
-    sendControlMessage(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.ScheduleTaskGroup)
-            .setScheduleTaskGroupMsg(
-                ControlMessage.ScheduleTaskGroupMsg.newBuilder()
-                    .setTaskGroup(ByteString.copyFrom(SerializationUtils.serialize(scheduledTaskGroup)))
-                    .build())
-            .build());
+    try {
+      final ByteString byteString = ByteString.copyFrom(SerializationUtils.serialize(scheduledTaskGroup))
+      final ScheduledTaskGroup maybeBad = SerializationUtils.deserialize(byteString.toByteArray());
+      sendControlMessage(
+          ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdGenerator.generateMessageId())
+              .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+              .setType(ControlMessage.MessageType.ScheduleTaskGroup)
+              .setScheduleTaskGroupMsg(
+                  ControlMessage.ScheduleTaskGroupMsg.newBuilder()
+                      .setTaskGroup(byteString)
+                      .build())
+              .build());
+    } catch (Exception e) {
+      System.out.println("$$$$" + scheduledTaskGroup.getTaskGroup().toString());
+      e.printStackTrace();
+      throw new RuntimeException(e);
+    }
+
   }
 
   public void sendControlMessage(final ControlMessage.Message message) {
