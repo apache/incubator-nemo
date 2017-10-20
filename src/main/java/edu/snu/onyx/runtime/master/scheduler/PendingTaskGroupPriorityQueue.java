@@ -60,22 +60,24 @@ public final class PendingTaskGroupPriorityQueue {
   public void enqueue(final ScheduledTaskGroup scheduledTaskGroup) {
     final String stageId = scheduledTaskGroup.getTaskGroup().getStageId();
 
-    stageIdToPendingTaskGroups.compute(stageId,
-        new BiFunction<String, Deque<ScheduledTaskGroup>, Deque<ScheduledTaskGroup>>() {
-          @Override
-          public Deque<ScheduledTaskGroup> apply(final String s,
-                                                 final Deque<ScheduledTaskGroup> scheduledTaskGroups) {
-            if (scheduledTaskGroups == null) {
-              final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = new ArrayDeque<>();
-              pendingTaskGroupsForStage.add(scheduledTaskGroup);
-              updateSchedulableStages(stageId);
-              return pendingTaskGroupsForStage;
-            } else {
-              scheduledTaskGroups.add(scheduledTaskGroup);
-              return scheduledTaskGroups;
+    synchronized (stageIdToPendingTaskGroups) {
+      stageIdToPendingTaskGroups.compute(stageId,
+          new BiFunction<String, Deque<ScheduledTaskGroup>, Deque<ScheduledTaskGroup>>() {
+            @Override
+            public Deque<ScheduledTaskGroup> apply(final String s,
+                                                   final Deque<ScheduledTaskGroup> scheduledTaskGroups) {
+              if (scheduledTaskGroups == null) {
+                final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = new ArrayDeque<>();
+                pendingTaskGroupsForStage.add(scheduledTaskGroup);
+                updateSchedulableStages(stageId);
+                return pendingTaskGroupsForStage;
+              } else {
+                scheduledTaskGroups.add(scheduledTaskGroup);
+                return scheduledTaskGroups;
+              }
             }
-          }
-        });
+          });
+    }
   }
 
   /**
@@ -87,18 +89,20 @@ public final class PendingTaskGroupPriorityQueue {
     ScheduledTaskGroup taskGroupToSchedule = null;
     final String stageId = schedulableStages.takeFirst();
 
-    final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = stageIdToPendingTaskGroups.get(stageId);
+    synchronized (stageIdToPendingTaskGroups) {
+      final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = stageIdToPendingTaskGroups.get(stageId);
 
-    if (pendingTaskGroupsForStage == null) {
-      schedulableStages.addLast(stageId);
-    } else {
-      taskGroupToSchedule = pendingTaskGroupsForStage.poll();
-      if (pendingTaskGroupsForStage.isEmpty()) {
-        stageIdToPendingTaskGroups.remove(stageId);
-        stageIdToPendingTaskGroups.forEach((scheduledStageId, taskGroupList) ->
-            updateSchedulableStages(scheduledStageId));
-      } else {
+      if (pendingTaskGroupsForStage == null) {
         schedulableStages.addLast(stageId);
+      } else {
+        taskGroupToSchedule = pendingTaskGroupsForStage.poll();
+        if (pendingTaskGroupsForStage.isEmpty()) {
+          stageIdToPendingTaskGroups.remove(stageId);
+          stageIdToPendingTaskGroups.forEach((scheduledStageId, taskGroupList) ->
+              updateSchedulableStages(scheduledStageId));
+        } else {
+          schedulableStages.addLast(stageId);
+        }
       }
     }
 
