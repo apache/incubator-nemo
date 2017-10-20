@@ -15,7 +15,6 @@
  */
 package edu.snu.onyx.compiler.optimizer.pass.compiletime.composite;
 
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.DefaultPartitionerPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.reshaping.LoopExtractionPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.reshaping.LoopOptimizations;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.reshaping.LoopUnrollingPass;
@@ -33,8 +32,7 @@ public final class LoopOptimizationCompositePass extends CompositePass {
         new LoopExtractionPass(),
         LoopOptimizations.getLoopFusionPass(),
         LoopOptimizations.getLoopInvariantCodeMotionPass(),
-        new LoopUnrollingPass(), // Groups then unrolls loops. TODO #162: remove unrolling pt.,
-        new DefaultPartitionerPass() // TODO #?:: Move to InitializePass after #530 is merged.
+        new LoopUnrollingPass() // Groups then unrolls loops. TODO #162: remove unrolling pt.,
     ));
   }
 }
