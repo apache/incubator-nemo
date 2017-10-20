@@ -23,10 +23,8 @@ import edu.snu.onyx.compiler.ir.SourceVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.Broadcast;
-import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.stream.Collectors;
 
