@@ -305,14 +305,11 @@ public final class AlternatingLeastSquare {
     final Long start = System.currentTimeMillis();
     LOG.info(Arrays.toString(args));
     final String inputFilePath = args[0];
-    final Integer numFeatures = Integer.parseInt(args[1]);
-    final Integer numItr = Integer.parseInt(args[2]);
-    final Double lambda;
-    if (args.length > 4) {
-      lambda = Double.parseDouble(args[3]);
-    } else {
-      lambda = 0.05;
-    }
+    // final Integer numOfTasks = Integer.parseInt(args[1]);
+    final Integer rank = Integer.parseInt(args[2]);
+    final Integer numIterations = Integer.parseInt(args[3]);
+    final Double lambda = Double.parseDouble(args[4]);
+    // final Boolean verifyCorrectness = Boolean.parseBoolean(args[5]);
 
     final PipelineOptions options = PipelineOptionsFactory.create();
     options.setRunner(Runner.class);
@@ -340,7 +337,7 @@ public final class AlternatingLeastSquare {
         .apply(ParDo.of(new DoFn<KV<Integer, Pair<List<Integer>, List<Double>>>, KV<Integer, List<Double>>>() {
           @ProcessElement
           public void processElement(final ProcessContext c) throws Exception {
-            final List<Double> result = new ArrayList<>(numFeatures);
+            final List<Double> result = new ArrayList<>(rank);
             result.add(0, 0.0);
 
             final KV<Integer, Pair<List<Integer>, List<Double>>> element = c.element();
@@ -359,9 +356,9 @@ public final class AlternatingLeastSquare {
 
 
     // Iterations to update Item Matrix.
-    for (Integer i = 0; i < numItr; i++) {
+    for (Integer i = 0; i < numIterations; i++) {
       // NOTE: a single composite transform for the iteration.
-      itemMatrix = itemMatrix.apply(new UpdateUserAndItemMatrix(numFeatures, lambda, parsedUserData, parsedItemData));
+      itemMatrix = itemMatrix.apply(new UpdateUserAndItemMatrix(rank, lambda, parsedUserData, parsedItemData));
     }
 
     p.run();
