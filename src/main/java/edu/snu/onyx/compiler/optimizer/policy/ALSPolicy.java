@@ -29,7 +29,7 @@ public final class ALSPolicy implements Policy {
 
   public ALSPolicy() {
     this.policy = new PolicyBuilder()
-        .registerCompileTimePass(new ALSParallelismPass())
+        .registerCompileTimePass(new ParallelismPass())
         .registerCompileTimePass(new DefaultVertexExecutorPlacementPass())
         .registerCompileTimePass(new DefaultPartitionerPass())
         .registerCompileTimePass(new DefaultEdgeDataFlowModelPass())
