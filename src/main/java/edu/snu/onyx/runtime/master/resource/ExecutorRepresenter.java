@@ -68,7 +68,7 @@ public final class ExecutorRepresenter {
     failedTaskGroups.remove(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
 
     try {
-      final ByteString byteString = ByteString.copyFrom(SerializationUtils.serialize(scheduledTaskGroup))
+      final ByteString byteString = ByteString.copyFrom(SerializationUtils.serialize(scheduledTaskGroup));
       final ScheduledTaskGroup maybeBad = SerializationUtils.deserialize(byteString.toByteArray());
       sendControlMessage(
           ControlMessage.Message.newBuilder()
