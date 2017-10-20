@@ -461,7 +461,7 @@ public final class JobStateManager {
   private void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {
     final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(compUnitId);
     metricDataBuilder.endMeasurement(finalMetric);
-    metricMessageHandler.onMetricMessageReceived(compUnitId, metricDataBuilder.build().toJson());
+    //metricMessageHandler.onMetricMessageReceived(compUnitId, metricDataBuilder.build().toJson());
     metricDataBuilderMap.remove(compUnitId);
   }
 
