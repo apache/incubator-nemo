@@ -300,19 +300,36 @@ public final class TaskGroupExecutor {
       // Check whether there is any output data from the transform and write the output of this task to the writer.
       final List<Element> output = outputCollector.collectOutputList();
       if (!output.isEmpty() && taskIdToOutputWriterMap.containsKey(operatorTask.getId())) {
-        taskIdToOutputWriterMap.get(operatorTask.getId()).forEach(outputWriter -> outputWriter.write(output));
+        taskIdToOutputWriterMap.get(operatorTask.getId()).forEach(outputWriter -> {
+          outputWriter.write(output);
+          final String partitionId =
+              RuntimeIdGenerator.generatePartitionId(outputWriter.getId(), operatorTask.getIndex());
+          LOG.info("launchOperatorTask: OutputWriter#write is ended for {}. Task is not end yet.", partitionId);
+        });
       } // If else, this is a sink task.
     });
     transform.close();
+    LOG.info("launchOperatorTask: transform of task {} (idx {}) is closed.",
+        operatorTask.getId(), operatorTask.getIndex());
 
     // Check whether there is any output data from the transform and write the output of this task to the writer.
     final List<Element> output = outputCollector.collectOutputList();
+    LOG.info("launchOperatorTask: get output collector for task {} (idx {}), size {}.",
+        operatorTask.getId(), operatorTask.getIndex(), output.size());
     if (taskIdToOutputWriterMap.containsKey(operatorTask.getId())) {
+      LOG.info("launchOperatorTask: get taskIdToOutputWriterMap contains key for task {} (idx {}), map size {}.",
+          operatorTask.getId(), operatorTask.getIndex(), taskIdToOutputWriterMap.size());
       taskIdToOutputWriterMap.get(operatorTask.getId()).forEach(outputWriter -> {
+        final String partitionId =
+            RuntimeIdGenerator.generatePartitionId(outputWriter.getId(), operatorTask.getIndex());
         if (!output.isEmpty()) {
           outputWriter.write(output);
+          LOG.info("launchOperatorTask: OutputWriter#write is ended for {}. Task is end.", partitionId);
+        } else {
+          LOG.info("launchOperatorTask: output {} is empty. Task is end.", partitionId);
         }
         outputWriter.close();
+        LOG.info("launchOperatorTask: OutputWriter#close is ended for {}.", partitionId);
       });
     } else {
       LOG.info("This is a sink task: {}", operatorTask.getId());
