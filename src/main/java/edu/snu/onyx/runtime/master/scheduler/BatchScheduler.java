@@ -18,8 +18,6 @@ package edu.snu.onyx.runtime.master.scheduler;
 import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.onyx.common.PubSubEventHandlerWrapper;
-import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.onyx.compiler.ir.executionproperty.edge.DataFlowModelProperty;
 import edu.snu.onyx.runtime.common.metric.MetricMessageHandler;
 import edu.snu.onyx.runtime.master.eventhandler.DynamicOptimizationEvent;
 import edu.snu.onyx.runtime.common.plan.physical.*;
@@ -196,29 +194,11 @@ public final class BatchScheduler implements Scheduler {
     if (!isOnHoldToComplete) {
       schedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroup.getTaskGroupId());
     }
+
     final String stageIdForTaskGroupUponCompletion = taskGroup.getStageId();
-
-    final boolean stageComplete =
-        jobStateManager.checkStageCompletion(stageIdForTaskGroupUponCompletion);
-
-    if (stageComplete) {
+    if (jobStateManager.checkStageCompletion(stageIdForTaskGroupUponCompletion)) {
       // if the stage this task group belongs to is complete,
       if (!jobStateManager.checkJobTermination()) { // and if the job is not yet complete or failed,
-        scheduleNextStage(stageIdForTaskGroupUponCompletion);
-      }
-    } else {
-      // determine if at least one of the children stages must receive this task group's output as "push"
-      final List<PhysicalStageEdge> outputsOfThisStage =
-          physicalPlan.getStageDAG().getOutgoingEdgesOf(stageIdForTaskGroupUponCompletion);
-      boolean pushOutput = false;
-      for (PhysicalStageEdge outputEdge : outputsOfThisStage) {
-        if (outputEdge.getProperty(ExecutionProperty.Key.DataFlowModel).equals(DataFlowModelProperty.Value.Push)) {
-          pushOutput = true;
-          break;
-        }
-      }
-
-      if (pushOutput) {
         scheduleNextStage(stageIdForTaskGroupUponCompletion);
       }
     }
@@ -355,7 +335,8 @@ public final class BatchScheduler implements Scheduler {
   }
 
   /**
-   * Selects the next list of stages to schedule.
+   * Selects the list of stages to schedule, in the order they must be added to {@link PendingTaskGroupPriorityQueue}.
+   *
    * This is a recursive function that decides which schedule group to schedule upon a stage completion, or a failure.
    * It takes the currentScheduleGroupIndex as a reference point to begin looking for the stages to execute:
    * a) returns the failed_recoverable stage(s) of the earliest schedule group, if it(they) exists.
@@ -363,21 +344,29 @@ public final class BatchScheduler implements Scheduler {
    *    - if the current schedule group is still executing
    *    - if an ancestor schedule group is still executing
    * c) returns the next set of schedulable stages (if the current schedule group has completed execution)
+   *
+   * The current implementation assumes that the stages that belong to the same schedule group are
+   * either mutually independent, or connected by a "push" edge.
+   *
    * @param currentScheduleGroupIndex
    *      the index of the schedule group that is executing/has executed when this method is called.
-   * @return an optional of the (possibly empty) list of next schedulable stages.
+   * @return an optional of the (possibly empty) list of next schedulable stages, in the order they should be
+   * enqueued to {@link PendingTaskGroupPriorityQueue}.
    */
-  private Optional<List<PhysicalStage>> selectNextStagesToSchedule(final int currentScheduleGroupIndex) {
+  private synchronized Optional<List<PhysicalStage>> selectNextStagesToSchedule(final int currentScheduleGroupIndex) {
     if (currentScheduleGroupIndex > initialScheduleGroup) {
-      final Optional<List<PhysicalStage>> ancestorStages = selectNextStagesToSchedule(currentScheduleGroupIndex - 1);
-      if (ancestorStages.isPresent()) {
-        return ancestorStages;
+      final Optional<List<PhysicalStage>> ancestorStagesFromAScheduleGroup =
+          selectNextStagesToSchedule(currentScheduleGroupIndex - 1);
+      if (ancestorStagesFromAScheduleGroup.isPresent()) {
+        return ancestorStagesFromAScheduleGroup;
       }
     }
 
     // All previous schedule groups are complete, we need to check for the current schedule group.
-    final List<PhysicalStage> currentScheduleGroup = physicalPlan.getStageDAG().filterVertices(
-        physicalStage -> physicalStage.getScheduleGroupIndex() == currentScheduleGroupIndex);
+    final List<PhysicalStage> currentScheduleGroup =
+        physicalPlan.getStageDAG().getTopologicalSort().stream().filter(physicalStage ->
+            physicalStage.getScheduleGroupIndex() == currentScheduleGroupIndex)
+            .collect(Collectors.toList());
     List<PhysicalStage> stagesToSchedule = new LinkedList<>();
     boolean allStagesComplete = true;
 
@@ -434,7 +423,7 @@ public final class BatchScheduler implements Scheduler {
    * It adds the list of task groups for the stage where the scheduler thread continuously polls from.
    * @param stageToSchedule the stage to schedule.
    */
-  private void scheduleStage(final PhysicalStage stageToSchedule) {
+  private synchronized void scheduleStage(final PhysicalStage stageToSchedule) {
     final List<PhysicalStageEdge> stageIncomingEdges =
         physicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
     final List<PhysicalStageEdge> stageOutgoingEdges =

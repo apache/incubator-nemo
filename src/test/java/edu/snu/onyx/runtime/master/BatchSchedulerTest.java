@@ -44,6 +44,7 @@ import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -138,7 +139,7 @@ public final class BatchSchedulerTest {
    * TaskGroup state changes are explicitly submitted to scheduler instead of executor messages.
    */
   @Test(timeout=10000)
-  public void testMultiInputOutputScheduling() throws Exception {
+  public void testPull() throws Exception {
     // Build DAG
     final Transform t = new EmptyComponents.EmptyTransform("empty");
     final IRVertex v1 = new OperatorVertex(t);
@@ -158,7 +159,7 @@ public final class BatchSchedulerTest {
 
     final IRVertex v4 = new OperatorVertex(t);
     v4.setProperty(ParallelismProperty.of(2));
-    v4.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.TRANSIENT));
+    v4.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     irDAGBuilder.addVertex(v4);
 
     final IRVertex v5 = new OperatorVertex(new DoTransform(null, null));
@@ -178,10 +179,64 @@ public final class BatchSchedulerTest {
     final IREdge e5 = new IREdge(ScatterGather.class, v2, v5, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e5);
 
-    final DAG<IRVertex, IREdge> irDAG = Optimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
+    final DAG<IRVertex, IREdge> pullIRDAG = Optimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
         new TestPolicy(), "");
-    final PhysicalPlanGenerator physicalPlanGenerator =
-        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
+
+    scheduleAndCheckJobTermination(pullIRDAG);
+  }
+
+  /**
+   * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchScheduler}.
+   * TaskGroup state changes are explicitly submitted to scheduler instead of executor messages.
+   */
+  @Test(timeout=10000)
+  public void testPush() throws Exception {
+    // Build DAG
+    final Transform t = new EmptyComponents.EmptyTransform("empty");
+    final IRVertex v1 = new OperatorVertex(t);
+    v1.setProperty(ParallelismProperty.of(3));
+    v1.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    irDAGBuilder.addVertex(v1);
+
+    final IRVertex v2 = new OperatorVertex(t);
+    v2.setProperty(ParallelismProperty.of(2));
+    v2.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    irDAGBuilder.addVertex(v2);
+
+    final IRVertex v3 = new OperatorVertex(t);
+    v3.setProperty(ParallelismProperty.of(3));
+    v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    irDAGBuilder.addVertex(v3);
+
+    final IRVertex v4 = new OperatorVertex(t);
+    v4.setProperty(ParallelismProperty.of(2));
+    v4.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    irDAGBuilder.addVertex(v4);
+
+    final IRVertex v5 = new OperatorVertex(new DoTransform(null, null));
+    v5.setProperty(ParallelismProperty.of(2));
+    v5.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.TRANSIENT));
+    irDAGBuilder.addVertex(v5);
+
+    final IREdge e1 = new IREdge(ScatterGather.class, v1, v2, Coder.DUMMY_CODER);
+    irDAGBuilder.connectVertices(e1);
+
+    final IREdge e2 = new IREdge(ScatterGather.class, v3, v2, Coder.DUMMY_CODER);
+    irDAGBuilder.connectVertices(e2);
+
+    final IREdge e4 = new IREdge(ScatterGather.class, v2, v4, Coder.DUMMY_CODER);
+    irDAGBuilder.connectVertices(e4);
+
+    final IREdge e5 = new IREdge(ScatterGather.class, v2, v5, Coder.DUMMY_CODER);
+    irDAGBuilder.connectVertices(e5);
+
+    final DAG<IRVertex, IREdge> pushIRDAG = Optimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
+        new TestPolicy(true), "");
+
+    scheduleAndCheckJobTermination(pushIRDAG);
+  }
+
+  private void scheduleAndCheckJobTermination(final DAG<IRVertex, IREdge> irDAG) throws InjectionException {
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     final JobStateManager jobStateManager =
@@ -206,8 +261,8 @@ public final class BatchSchedulerTest {
       });
 
       scheduleGroupStages.forEach(physicalStage ->
-        RuntimeTestUtil.sendStageCompletionEventToScheduler(
-            jobStateManager, scheduler, containerManager, physicalStage, MAGIC_SCHEDULE_ATTEMPT_INDEX));
+          RuntimeTestUtil.sendStageCompletionEventToScheduler(
+              jobStateManager, scheduler, containerManager, physicalStage, MAGIC_SCHEDULE_ATTEMPT_INDEX));
     }
 
     LOG.debug("Waiting for job termination after sending stage completion events");
