@@ -20,19 +20,24 @@ import edu.snu.onyx.compiler.ir.IREdge;
 import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.edge.DataFlowModelProperty;
-import edu.snu.onyx.runtime.executor.datatransfer.communication.OneToOne;
+import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
 
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 
 /**
- * A pass to support Disaggregated Resources by tagging edges.
- * This pass handles the DataFlowModel ExecutionProperty.
+ * A pass for tagging scatter-gather edges different from the default ones.
+ * It sets DataFlowModel ExecutionProperty as "push".
  */
-public final class DisaggregationEdgeDataFlowModelPass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "DisaggregationEdgeDataFlowModelPass";
+public final class ScatterGatherEdgePushPass extends AnnotatingPass {
+  public static final String SIMPLE_NAME = "ScatterGatherEdgePushPass";
 
-  public DisaggregationEdgeDataFlowModelPass() {
-    super(ExecutionProperty.Key.DataFlowModel);
+  public ScatterGatherEdgePushPass() {
+    super(ExecutionProperty.Key.DataFlowModel, Stream.of(
+        ExecutionProperty.Key.DataCommunicationPattern
+    ).collect(Collectors.toSet()));
   }
 
   @Override
@@ -41,10 +46,8 @@ public final class DisaggregationEdgeDataFlowModelPass extends AnnotatingPass {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
-          if (OneToOne.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
-            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
-          } else {
-            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+          if (ScatterGather.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
+            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
           }
         });
       }

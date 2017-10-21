@@ -28,8 +28,29 @@ import java.util.List;
  * A policy for tests.
  */
 public final class TestPolicy implements Policy {
+  private final boolean testPushPolicy;
+
+  public TestPolicy() {
+    this(false);
+  }
+
+  public TestPolicy(final boolean testPushPolicy) {
+    this.testPushPolicy = testPushPolicy;
+  }
+
   @Override
   public List<CompileTimePass> getCompileTimePasses() {
+    if (testPushPolicy) {
+      return  Arrays.asList(
+          new DefaultVertexExecutorPlacementPass(),
+          new DefaultPartitionerPass(),
+          new DefaultEdgeDataFlowModelPass(),
+          new ScatterGatherEdgePushPass(),
+          new DefaultEdgeDataStorePass(),
+          new DefaultStagePartitioningPass(),
+          new ScheduleGroupPass()
+      );
+    }
     return  Arrays.asList(
         new DefaultVertexExecutorPlacementPass(),
         new DefaultPartitionerPass(),

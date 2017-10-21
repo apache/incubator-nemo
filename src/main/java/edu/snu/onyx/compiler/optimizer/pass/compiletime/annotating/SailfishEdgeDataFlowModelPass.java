@@ -15,35 +15,35 @@
  */
 package edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating;
 
+import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.compiler.ir.IREdge;
 import edu.snu.onyx.compiler.ir.IRVertex;
-import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.onyx.compiler.ir.executionproperty.edge.DataStoreProperty;
-import edu.snu.onyx.runtime.executor.data.GlusterFileStore;
-import edu.snu.onyx.runtime.executor.data.LocalFileStore;
+import edu.snu.onyx.compiler.ir.executionproperty.edge.DataFlowModelProperty;
+import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
- * A pass to support Disaggregated Resources by tagging edges.
- * This pass handles the DataStore ExecutionProperty.
+ * A pass to support Sailfish-like shuffle by tagging edges.
+ * This pass handles the DataFlowModel ExecutionProperty.
  */
-public final class DisaggregationEdgeDataStorePass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "DisaggregationEdgeDataStorePass";
+public final class SailfishEdgeDataFlowModelPass extends AnnotatingPass {
+  public static final String SIMPLE_NAME = "SailfishEdgeDataFlowModelPass";
 
-  public DisaggregationEdgeDataStorePass() {
-    super(ExecutionProperty.Key.DataStore, Collections.singleton(ExecutionProperty.Key.DataStore));
+  public SailfishEdgeDataFlowModelPass() {
+    super(ExecutionProperty.Key.DataFlowModel);
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.getVertices().forEach(vertex -> { // Initialize the DataStore of the DAG with GlusterFileStore.
+    dag.getVertices().forEach(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       inEdges.forEach(edge -> {
-        if (LocalFileStore.class.equals(edge.getProperty(ExecutionProperty.Key.DataStore))) {
-          edge.setProperty(DataStoreProperty.of(GlusterFileStore.class));
+        if (ScatterGather.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
+          edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push)); // Push to the merger vertex.
+        } else {
+          edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
         }
       });
     });

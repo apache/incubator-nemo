@@ -57,10 +57,10 @@ public final class MapReduceITCase {
   }
 
   @Test (timeout = TIMEOUT)
-  public void testDisaggregation() throws Exception {
+  public void testSailfishDisagg() throws Exception {
     JobLauncher.main(builder
-        .addJobId(MapReduceITCase.class.getSimpleName() + "_disaggregation")
-        .addOptimizationPolicy(CompilerTestUtil.disaggregationPolicy)
+        .addJobId(MapReduceITCase.class.getSimpleName() + "_sailfish_disagg")
+        .addOptimizationPolicy(CompilerTestUtil.sailfishDisaggPolicy)
         .build());
   }
 

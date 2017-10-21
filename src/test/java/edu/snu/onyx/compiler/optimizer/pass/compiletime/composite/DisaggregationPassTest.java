@@ -21,10 +21,10 @@ import edu.snu.onyx.compiler.ir.IREdge;
 import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.onyx.compiler.ir.executionproperty.edge.DataFlowModelProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
 import edu.snu.onyx.runtime.executor.data.GlusterFileStore;
 import edu.snu.onyx.runtime.executor.data.MemoryStore;
+import edu.snu.onyx.runtime.executor.datatransfer.communication.OneToOne;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -48,22 +48,18 @@ public class DisaggregationPassTest {
 
   @Test
   public void testDisaggregation() throws Exception {
-    final DAG<IRVertex, IREdge> processedDAG = new DisaggregationPass().apply(compiledDAG);
+    final DAG<IRVertex, IREdge> processedDAG =
+        new DisaggregationPass().apply(new InitiationCompositePass().apply(compiledDAG));
 
     processedDAG.getTopologicalSort().forEach(irVertex -> {
       assertEquals(ExecutorPlacementProperty.COMPUTE, irVertex.getProperty(ExecutionProperty.Key.ExecutorPlacement));
-      processedDAG.getIncomingEdgesOf(irVertex).forEach(irEdge ->
-          assertEquals(DataFlowModelProperty.Value.Pull, irEdge.getProperty(ExecutionProperty.Key.DataFlowModel)));
+      processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger -> {
+        if (OneToOne.class.equals(edgeToMerger.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
+          assertEquals(MemoryStore.class, edgeToMerger.getProperty(ExecutionProperty.Key.DataStore));
+        } else {
+          assertEquals(GlusterFileStore.class, edgeToMerger.getProperty(ExecutionProperty.Key.DataStore));
+        }
+      });
     });
-
-    final IRVertex vertex4 = processedDAG.getTopologicalSort().get(6);
-    processedDAG.getIncomingEdgesOf(vertex4).forEach(irEdge ->
-      assertEquals(MemoryStore.class, irEdge.getProperty(ExecutionProperty.Key.DataStore)));
-    processedDAG.getOutgoingEdgesOf(vertex4).forEach(irEdge ->
-      assertEquals(MemoryStore.class, irEdge.getProperty(ExecutionProperty.Key.DataStore)));
-
-    final IRVertex vertex12 = processedDAG.getTopologicalSort().get(10);
-    processedDAG.getIncomingEdgesOf(vertex12).forEach(irEdge ->
-      assertEquals(GlusterFileStore.class, irEdge.getProperty(ExecutionProperty.Key.DataStore)));
   }
 }
