@@ -155,6 +155,15 @@ public final class PendingTaskGroupPriorityQueue {
     }
 
     if (readyToScheduleImmediately) {
+      // Check for ancestor stages that became schedulable due to candidateStage's absence from the queue.
+      jobDAG.getAncestors(candidateStageId).forEach(ancestorStage -> {
+        if (schedulableStages.contains(ancestorStage.getId())) {
+          // Remove the ancestor stage if it is of the same container type.
+          if (candidateStageContainerType.equals(ancestorStage.getTaskGroupList().get(0).getContainerType())) {
+            schedulableStages.remove(ancestorStage.getId());
+          }
+        }
+      });
       if (!schedulableStages.contains(candidateStageId)) {
         schedulableStages.addLast(candidateStageId);
       }
