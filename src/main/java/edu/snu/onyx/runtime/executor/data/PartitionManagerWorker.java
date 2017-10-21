@@ -114,7 +114,7 @@ public final class PartitionManagerWorker {
       final String runtimeEdgeId,
       final Class<? extends PartitionStore> partitionStore,
       final HashRange hashRange) {
-    LOG.info("RetrieveDataFromPartition: {}", partitionId);
+    LOG.info("RetrieveDataFromPartition: {} from {}", new Object[]{partitionId, partitionStore});
     final PartitionStore store = getPartitionStore(partitionStore);
 
     // First, try to fetch the partition from local PartitionStore.
@@ -188,14 +188,16 @@ public final class PartitionManagerWorker {
    * @return a {@link Optional} of the size of each written block.
    */
   public Optional<List<Long>> putBlocks(final String partitionId,
-                                        final Iterable<Block> blocks,
+                                        final List<Block> blocks,
                                         final Class<? extends PartitionStore> partitionStore,
                                         final boolean commitPerBlock) {
-    LOG.info("PutBlocks: {}", partitionId);
+    LOG.info("PutBlocks: {} to {}, {} blocks to put", new Object[]{partitionId, partitionStore, blocks.size()});
     final PartitionStore store = getPartitionStore(partitionStore);
 
     try {
-      return store.putToPartition(partitionId, blocks, commitPerBlock);
+      final Optional<List<Long>> optionalResult = store.putToPartition(partitionId, blocks, commitPerBlock);
+      LOG.info("PutBlocks: for {} is completed.", partitionId);
+      return optionalResult;
     } catch (final Exception e) {
       throw new PartitionWriteException(e);
     }
@@ -215,7 +217,7 @@ public final class PartitionManagerWorker {
                               final Class<? extends PartitionStore> partitionStore,
                               final List<Long> blockSizeInfo,
                               final String srcIRVertexId) {
-    LOG.info("CommitPartition: {}", partitionId);
+    LOG.info("CommitPartition: {} in {}", new Object[]{partitionId, partitionStore});
     final PartitionStore store = getPartitionStore(partitionStore);
     store.commitPartition(partitionId);
     final ControlMessage.PartitionStateChangedMsg.Builder partitionStateChangedMsgBuilder =
