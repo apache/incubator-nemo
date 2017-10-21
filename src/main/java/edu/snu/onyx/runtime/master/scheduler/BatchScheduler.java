@@ -347,6 +347,7 @@ public final class BatchScheduler implements Scheduler {
 
     if (nextStagesToSchedule.isPresent()) {
       LOG.info("Scheduling: ScheduleGroup {}", nextStagesToSchedule.get().get(0).getScheduleGroupIndex());
+
       nextStagesToSchedule.get().forEach(this::scheduleStage);
     } else {
       LOG.info("Skipping this round as the next schedulable stages have already been scheduled.");
@@ -377,7 +378,7 @@ public final class BatchScheduler implements Scheduler {
     // All previous schedule groups are complete, we need to check for the current schedule group.
     final List<PhysicalStage> currentScheduleGroup = physicalPlan.getStageDAG().filterVertices(
         physicalStage -> physicalStage.getScheduleGroupIndex() == currentScheduleGroupIndex);
-    final List<PhysicalStage> stagesToSchedule = new LinkedList<>();
+    List<PhysicalStage> stagesToSchedule = new LinkedList<>();
     boolean allStagesComplete = true;
 
     // We need to reschedule failed_recoverable stages.
@@ -404,21 +405,28 @@ public final class BatchScheduler implements Scheduler {
 
     // By the time the control flow has reached here,
     // we are ready to move onto the next ScheduleGroup
-    stagesToSchedule.addAll(physicalPlan.getStageDAG().filterVertices(
-        physicalStage -> physicalStage.getScheduleGroupIndex() == currentScheduleGroupIndex + 1));
+    stagesToSchedule =
+        physicalPlan.getStageDAG().getTopologicalSort().stream().filter(physicalStage -> {
+          if (physicalStage.getScheduleGroupIndex() == currentScheduleGroupIndex + 1) {
+            final String stageId = physicalStage.getId();
+            return jobStateManager.getStageState(stageId).getStateMachine().getCurrentState()
+                != StageState.State.EXECUTING
+                && jobStateManager.getStageState(stageId).getStateMachine().getCurrentState()
+                != StageState.State.COMPLETE;
+          }
+          return false;
+        }).collect(Collectors.toList());
 
-    final List<PhysicalStage> filteredStagesToSchedule =
-        stagesToSchedule.stream().filter(physicalStage -> {
-      final String stageId = physicalStage.getId();
-      return jobStateManager.getStageState(stageId).getStateMachine().getCurrentState() != StageState.State.EXECUTING
-          && jobStateManager.getStageState(stageId).getStateMachine().getCurrentState() != StageState.State.COMPLETE;
-    }).collect(Collectors.toList());
-
-    if (filteredStagesToSchedule.isEmpty()) {
+    if (stagesToSchedule.isEmpty()) {
       LOG.debug("ScheduleGroup {}: already executing/complete!, so we skip this", currentScheduleGroupIndex + 1);
       return Optional.empty();
     }
-    return Optional.of(filteredStagesToSchedule);
+
+    // Return the schedulable stage list in reverse-topological order
+    // since the stages that belong to the same schedule group are mutually independent,
+    // or connected by a "push" edge, requiring the children stages to be scheduled first.
+    Collections.reverse(stagesToSchedule);
+    return Optional.of(stagesToSchedule);
   }
 
   /**
