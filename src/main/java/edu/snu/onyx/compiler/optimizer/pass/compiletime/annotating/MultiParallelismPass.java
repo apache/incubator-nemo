@@ -15,13 +15,14 @@
  */
 package edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating;
 
+import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.compiler.ir.IREdge;
 import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.SourceVertex;
-import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.vertex.ParallelismProperty;
+import edu.snu.onyx.runtime.executor.datatransfer.communication.Broadcast;
 
 import java.util.List;
 import java.util.OptionalInt;
@@ -30,10 +31,10 @@ import java.util.stream.Collectors;
 /**
  * Optimization pass for tagging parallelism execution property.
  */
-public final class ParallelismPass extends AnnotatingPass {
+public final class MultiParallelismPass extends AnnotatingPass {
   public static final String SIMPLE_NAME = "ParallelismPass";
 
-  public ParallelismPass() {
+  public MultiParallelismPass() {
     super(ExecutionProperty.Key.Parallelism);
   }
 
@@ -46,12 +47,12 @@ public final class ParallelismPass extends AnnotatingPass {
             .filter(edge -> !Boolean.TRUE.equals(edge.isSideInput()))
             .collect(Collectors.toList());
         if (inEdges.isEmpty() && vertex instanceof SourceVertex) {
-          final SourceVertex sourceVertex = (SourceVertex) vertex;
-          vertex.setProperty(ParallelismProperty.of(sourceVertex.getReaders(1).size()));
+          vertex.setProperty(ParallelismProperty.of(10));
         } else if (!inEdges.isEmpty()) {
           final OptionalInt parallelism = inEdges.stream()
               // No reason to propagate via Broadcast edges, as the data streams that will use the broadcasted data
               // as a sideInput will have their own number of parallelism
+              .filter(edge -> !Broadcast.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
               .mapToInt(edge -> edge.getSrc().getProperty(ExecutionProperty.Key.Parallelism))
               .max();
           if (parallelism.isPresent()) {

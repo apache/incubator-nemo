@@ -69,6 +69,7 @@ public final class ExecutorRepresenter {
 
     try {
       final ByteString byteString = ByteString.copyFrom(SerializationUtils.serialize(scheduledTaskGroup));
+
       sendControlMessage(
           ControlMessage.Message.newBuilder()
               .setId(RuntimeIdGenerator.generateMessageId())

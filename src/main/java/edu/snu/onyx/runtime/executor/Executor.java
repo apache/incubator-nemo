@@ -148,16 +148,21 @@ public final class Executor {
 
     @Override
     public void onMessage(final ControlMessage.Message message) {
-      switch (message.getType()) {
-      case ScheduleTaskGroup:
-        final ControlMessage.ScheduleTaskGroupMsg scheduleTaskGroupMsg = message.getScheduleTaskGroupMsg();
-        final ScheduledTaskGroup scheduledTaskGroup =
-            SerializationUtils.deserialize(scheduleTaskGroupMsg.getTaskGroup().toByteArray());
-        onTaskGroupReceived(scheduledTaskGroup);
-        break;
-      default:
-        throw new IllegalMessageException(
-            new Exception("This message should not be received by an executor :" + message.getType()));
+      try {
+        switch (message.getType()) {
+          case ScheduleTaskGroup:
+            final ControlMessage.ScheduleTaskGroupMsg scheduleTaskGroupMsg = message.getScheduleTaskGroupMsg();
+            final ScheduledTaskGroup scheduledTaskGroup =
+                SerializationUtils.deserialize(scheduleTaskGroupMsg.getTaskGroup().toByteArray());
+            onTaskGroupReceived(scheduledTaskGroup);
+            break;
+          default:
+            throw new IllegalMessageException(
+                new Exception("This message should not be received by an executor :" + message.getType()));
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
       }
     }
 
