@@ -37,7 +37,8 @@ public final class ALSPolicy implements Policy {
         .registerCompileTimePass(new DisaggregationPass())
         .registerCompileTimePass(new DefaultStagePartitioningPass())
         .registerCompileTimePass(new ScheduleGroupPass())
-        .registerCompileTimePass(new InterStageGlusterPass())
+        // .registerCompileTimePass(new InterStageGlusterPass())
+        .registerCompileTimePass(new PadoVertexExecutorPlacementPass())
         .build();
   }
 
