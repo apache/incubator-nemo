@@ -23,6 +23,7 @@ import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -33,6 +34,7 @@ import java.util.stream.StreamSupport;
 public final class BroadcastTransform implements Transform {
   private final PCollectionView pCollectionView;
   private OutputCollector outputCollector;
+  private List<WindowedValue> dataHolder;
 
   /**
    * Constructor of BroadcastTransform.
@@ -45,6 +47,7 @@ public final class BroadcastTransform implements Transform {
   @Override
   public void prepare(final Context context, final OutputCollector oc) {
     this.outputCollector = oc;
+    this.dataHolder = new ArrayList<>();
   }
 
   @Override
@@ -52,8 +55,7 @@ public final class BroadcastTransform implements Transform {
     final List<WindowedValue> windowed = StreamSupport.stream(data.spliterator(), false)
         .map(element -> WindowedValue.valueInGlobalWindow(element.getData()))
         .collect(Collectors.toList());
-    final ViewFn viewFn = this.pCollectionView.getViewFn();
-    outputCollector.emit(new BeamElement<>(viewFn.apply(windowed)));
+    dataHolder.addAll(windowed);
   }
 
   /**
@@ -66,6 +68,8 @@ public final class BroadcastTransform implements Transform {
 
   @Override
   public void close() {
+    final ViewFn viewFn = this.pCollectionView.getViewFn();
+    outputCollector.emit(new BeamElement<>(viewFn.apply(dataHolder)));
   }
 
   @Override
