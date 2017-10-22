@@ -17,7 +17,6 @@ package edu.snu.onyx.compiler.optimizer.policy;
 
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.*;
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.DisaggregationPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
 import edu.snu.onyx.compiler.optimizer.pass.runtime.RuntimePass;
@@ -34,11 +33,11 @@ public final class ALSPolicy implements Policy {
     this.policy = new PolicyBuilder()
         .registerCompileTimePass(new InitiationCompositePass())
         .registerCompileTimePass(new LoopOptimizationCompositePass())
-        .registerCompileTimePass(new DisaggregationPass())
+        .registerCompileTimePass(new DisaggregationEdgeDataStorePass())
         .registerCompileTimePass(new DefaultStagePartitioningPass())
         .registerCompileTimePass(new ScheduleGroupPass())
         // .registerCompileTimePass(new InterStageGlusterPass())
-        .registerCompileTimePass(new PadoVertexExecutorPlacementPass())
+        .registerCompileTimePass(new ALSPadoPass())
         .build();
   }
 

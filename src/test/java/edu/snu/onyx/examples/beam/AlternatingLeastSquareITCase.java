@@ -38,7 +38,7 @@ public final class AlternatingLeastSquareITCase {
   public static ArgBuilder builder = new ArgBuilder()
       .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
       .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-      .addUserArgs(input, numFeatures, numIteration)
+      .addUserArgs(input, "x", numFeatures, numIteration, "0.05")
       .addDAGDirectory(dagDirectory);
 
   @Before

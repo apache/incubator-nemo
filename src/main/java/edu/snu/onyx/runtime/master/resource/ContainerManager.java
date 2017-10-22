@@ -169,18 +169,18 @@ public final class ContainerManager {
     final Set<String> reserveds = new HashSet<>();
     IntStream.range(36, 42).forEach(i -> reserveds.add(aw + i));
 
-    LOG.info("working on: " + descriptor.getNodeDescriptor().getInetSocketAddress().getHostName());
     LOG.info("pendingContainerReq before: " + pendingContainerRequestsByContainerType);
     for (final Map.Entry<String, List<ResourceSpecification>> entry
         : pendingContainerRequestsByContainerType.entrySet()) {
       if (entry.getValue().size() > 0) {
-        final String hostName = descriptor.getNodeDescriptor().getInetSocketAddress().getHostName();
 
-        if (entry.getKey().equals("Transient")) {
+        if (entry.getKey().equals("ttransient")) {
+          final String hostName = descriptor.getNodeDescriptor().getInetSocketAddress().getHostName();
           if (transients.contains(hostName)) {
             return entry.getValue().remove(0);
           }
-        } else if (entry.getKey().equals("Reserved")) {
+        } else if (entry.getKey().equals("rreserved")) {
+          final String hostName = descriptor.getNodeDescriptor().getInetSocketAddress().getHostName();
           if (reserveds.contains(hostName)) {
             return entry.getValue().remove(0);
           }
