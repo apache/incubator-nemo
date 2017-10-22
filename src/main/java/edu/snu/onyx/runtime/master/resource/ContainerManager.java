@@ -24,6 +24,7 @@ import edu.snu.onyx.runtime.executor.PersistentConnectionToMasterMap;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.driver.evaluator.EvaluatorDescriptor;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.tang.Configuration;
@@ -33,6 +34,7 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,7 +138,7 @@ public final class ContainerManager {
   public synchronized void onContainerAllocated(final String executorId,
                                                 final AllocatedEvaluator allocatedContainer,
                                                 final Configuration executorConfiguration) {
-    onContainerAllocated(selectResourceSpecForContainer(), executorId,
+    onContainerAllocated(selectResourceSpecForContainer(allocatedContainer.getEvaluatorDescriptor()), executorId,
         allocatedContainer, executorConfiguration);
   }
 
@@ -159,18 +161,36 @@ public final class ContainerManager {
     allocatedContainer.submitContext(executorConfiguration);
   }
 
-  /**
-   * Selects an executor specification for the executor to be launched on a container.
-   * Important! This is a "hack" to get around the inability to mark evaluators with Node Labels in REEF.
-   * @return the selected executor specification.
-   */
-  private ResourceSpecification selectResourceSpecForContainer() {
+  private ResourceSpecification selectResourceSpecForContainer(final EvaluatorDescriptor descriptor) {
+    System.out.println(descriptor.getNodeDescriptor().getInetSocketAddress());
+    final String aw = "a-w";
+    final Set<String> transients = new HashSet<>();
+    IntStream.range(1, 36).forEach(i -> transients.add(aw + i));
+
+    final Set<String> reserveds = new HashSet<>();
+    IntStream.range(36, 41).forEach(i -> reserveds.add(aw + i));
+
     ResourceSpecification selectedResourceSpec = null;
     for (final Map.Entry<String, List<ResourceSpecification>> entry
         : pendingContainerRequestsByContainerType.entrySet()) {
       if (entry.getValue().size() > 0) {
-        selectedResourceSpec = entry.getValue().remove(0);
-        break;
+        final String hostName = descriptor.getNodeDescriptor().getInetSocketAddress().getHostName();
+        System.out.println("hostname: " + hostName);
+
+        if (entry.getKey().equals("transient")) {
+          if (transients.contains(hostName)) {
+            selectedResourceSpec = entry.getValue().remove(0);
+            break;
+          }
+        } else if (entry.getKey().equals("reserved")) {
+          if (reserveds.contains(hostName)) {
+            selectedResourceSpec = entry.getValue().remove(0);
+            break;
+          }
+        } else {
+          selectedResourceSpec = entry.getValue().remove(0);
+          break;
+        }
       }
     }
 
