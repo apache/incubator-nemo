@@ -193,9 +193,13 @@ public final class AlternatingLeastSquare {
       }
 
       final Map<Integer, List<Double>> fixedMatrix = c.sideInput(fixedMatrixView);
+      final KV<Integer, Pair<List<Integer>, List<Double>>> elem = c.element();
 
-      final List<Integer> indexArr = c.element().getValue().left();
-      final List<Double> ratingArr = c.element().getValue().right();
+      System.out.println("fixed mat: " + fixedMatrix.toString());
+      System.out.println("elem: " + elem.toString());
+
+      final List<Integer> indexArr = elem.getValue().left();
+      final List<Double> ratingArr = elem.getValue().right();
 
       final Integer size = indexArr.size();
 
