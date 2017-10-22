@@ -311,8 +311,11 @@ public final class BatchScheduler implements Scheduler {
   }
 
   private synchronized void scheduleRootStages() {
-    final List<PhysicalStage> rootStages = physicalPlan.getStageDAG().filterVertices(
-        physicalStage -> physicalStage.getScheduleGroupIndex() == initialScheduleGroup);
+    final List<PhysicalStage> rootStages =
+        physicalPlan.getStageDAG().getTopologicalSort().stream().filter(physicalStage ->
+            physicalStage.getScheduleGroupIndex() == initialScheduleGroup)
+            .collect(Collectors.toList());
+    Collections.reverse(rootStages);
     rootStages.forEach(this::scheduleStage);
   }
 
