@@ -176,11 +176,11 @@ public final class ContainerManager {
       if (entry.getValue().size() > 0) {
         final String hostName = descriptor.getNodeDescriptor().getInetSocketAddress().getHostName();
 
-        if (entry.getKey().equals("transient")) {
+        if (entry.getKey().equals("Transient")) {
           if (transients.contains(hostName)) {
             return entry.getValue().remove(0);
           }
-        } else if (entry.getKey().equals("reserved")) {
+        } else if (entry.getKey().equals("Reserved")) {
           if (reserveds.contains(hostName)) {
             return entry.getValue().remove(0);
           }
