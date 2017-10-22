@@ -171,7 +171,6 @@ public final class ContainerManager {
 
     LOG.info("working on: " + descriptor.getNodeDescriptor().getInetSocketAddress().getHostName());
     LOG.info("pendingContainerReq before: " + pendingContainerRequestsByContainerType);
-    ResourceSpecification selectedResourceSpec = null;
     for (final Map.Entry<String, List<ResourceSpecification>> entry
         : pendingContainerRequestsByContainerType.entrySet()) {
       if (entry.getValue().size() > 0) {
@@ -179,25 +178,18 @@ public final class ContainerManager {
 
         if (entry.getKey().equals("transient")) {
           if (transients.contains(hostName)) {
-            selectedResourceSpec = entry.getValue().remove(0);
-            break;
+            return entry.getValue().remove(0);
           }
         } else if (entry.getKey().equals("reserved")) {
           if (reserveds.contains(hostName)) {
-            selectedResourceSpec = entry.getValue().remove(0);
-            break;
+            return entry.getValue().remove(0);
           }
         } else {
-          selectedResourceSpec = entry.getValue().remove(0);
-          break;
+          return entry.getValue().remove(0);
         }
       }
     }
     LOG.info("pendingContainerReq after: " + pendingContainerRequestsByContainerType);
-
-    if (selectedResourceSpec != null) {
-      return selectedResourceSpec;
-    }
     throw new ContainerException(new Throwable("We never requested for an extra container"));
   }
 
