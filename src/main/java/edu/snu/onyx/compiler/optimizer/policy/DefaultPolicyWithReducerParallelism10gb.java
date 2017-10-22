@@ -29,12 +29,13 @@ public final class DefaultPolicyWithReducerParallelism10gb implements Policy {
 
   public DefaultPolicyWithReducerParallelism10gb() {
     this.policy = new PolicyBuilder()
-        .registerCompileTimePass(new ReducerParallelismPass())
+        .registerCompileTimePass(new ReducerParallelism12for10gbPass())
         .registerCompileTimePass(new DefaultVertexExecutorPlacementPass())
         .registerCompileTimePass(new DefaultPartitionerPass())
         .registerCompileTimePass(new DefaultEdgeDataFlowModelPass())
-        .registerCompileTimePass(new DisaggregationEdgeDataStorePass())
+        .registerCompileTimePass(new SmallScalePushPass())
         .registerCompileTimePass(new DefaultEdgeDataStorePass())
+        .registerCompileTimePass(new SmallScaleMemoryPass())
         .registerCompileTimePass(new DefaultStagePartitioningPass())
         .registerCompileTimePass(new ScheduleGroupPass())
         .build();
