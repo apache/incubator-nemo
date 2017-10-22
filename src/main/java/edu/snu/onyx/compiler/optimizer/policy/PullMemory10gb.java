@@ -34,7 +34,7 @@ public final class PullMemory10gb implements Policy {
         .registerCompileTimePass(new DefaultPartitionerPass())
         .registerCompileTimePass(new DefaultEdgeDataFlowModelPass())
         .registerCompileTimePass(new DefaultEdgeDataStorePass())
-        .registerCompileTimePass(new SmallScaleMemoryPass())
+//        .registerCompileTimePass(new SmallScaleMemoryPass())
         .registerCompileTimePass(new DefaultStagePartitioningPass())
         .registerCompileTimePass(new ScheduleGroupPass())
         .build();
