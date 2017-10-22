@@ -20,6 +20,7 @@ import edu.snu.onyx.compiler.ir.IREdge;
 import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.edge.DataFlowModelProperty;
+import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
 
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -40,7 +41,7 @@ public final class SmallScalePushPass extends AnnotatingPass {
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(irVertex ->
         dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          if (irEdge.getProperty(ExecutionProperty.Key.DataStore) == null) {
+          if (ScatterGather.class.equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
             irEdge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
           }
         }));

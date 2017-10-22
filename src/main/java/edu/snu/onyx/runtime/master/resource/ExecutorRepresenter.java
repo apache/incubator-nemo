@@ -68,8 +68,7 @@ public final class ExecutorRepresenter {
     failedTaskGroups.remove(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
 
     try {
-      final ByteString byteString = ByteString.copyFrom(SerializationUtils.serialize(scheduledTaskGroup))
-      final ScheduledTaskGroup maybeBad = SerializationUtils.deserialize(byteString.toByteArray());
+      final ByteString byteString = ByteString.copyFrom(SerializationUtils.serialize(scheduledTaskGroup));
       sendControlMessage(
           ControlMessage.Message.newBuilder()
               .setId(RuntimeIdGenerator.generateMessageId())
@@ -81,7 +80,6 @@ public final class ExecutorRepresenter {
                       .build())
               .build());
     } catch (Exception e) {
-      System.out.println("$$$$" + scheduledTaskGroup.getTaskGroup().toString());
       e.printStackTrace();
       throw new RuntimeException(e);
     }

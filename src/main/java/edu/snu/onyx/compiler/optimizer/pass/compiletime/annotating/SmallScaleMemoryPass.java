@@ -40,11 +40,8 @@ public final class SmallScaleMemoryPass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(irVertex ->
-        dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          if (irEdge.getProperty(ExecutionProperty.Key.DataStore) == null) {
-              irEdge.setProperty(DataStoreProperty.of(MemoryStore.class));
-          }
-        }));
+        dag.getIncomingEdgesOf(irVertex).forEach(irEdge ->
+              irEdge.setProperty(DataStoreProperty.of(MemoryStore.class))));
     return dag;
   }
 }

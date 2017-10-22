@@ -148,6 +148,7 @@ public final class PendingTaskGroupPriorityQueue {
    * NOTE: This method provides the "line up" between stages, by assigning priorities,
    * serving as the key to the "priority" implementation of this class.
    * @param candidateStageId for the stage that can potentially be scheduled.
+   * @param candidateStageContainerType for the stage that can potentially be scheduled.
    */
   private void updateSchedulableStages(final String candidateStageId, final String candidateStageContainerType) {
     boolean readyToScheduleImmediately = true;
