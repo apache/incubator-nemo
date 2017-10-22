@@ -167,7 +167,7 @@ public final class TaskGroupExecutor {
     taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.EXECUTING, Optional.empty(), Optional.empty());
 
     taskGroup.getTaskDAG().topologicalDo(task -> {
-      LOG.info("{}: Executing {}", taskGroup.getTaskGroupId(), task.getId());
+      LOG.info("{}: Executing {}, vertex id {}", taskGroup.getTaskGroupId(), task.getId(), task.getRuntimeVertexId());
       taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.EXECUTING, Optional.empty());
       try {
         if (task instanceof BoundedSourceTask) {
@@ -275,6 +275,9 @@ public final class TaskGroupExecutor {
     final AtomicInteger sourceParallelism = new AtomicInteger(0);
     taskIdToInputReaderMap.get(operatorTask.getId()).stream().filter(inputReader -> !inputReader.isSideInputReader())
         .forEach(inputReader -> {
+          LOG.info("Task {} (vertex {}) has an input from {} in edge {}, {} partitions to read (parallelism)",
+              operatorTask.getId(), operatorTask.getRuntimeVertexId(), inputReader.getSrcVertexId(),
+              inputReader.getRuntimeEdge(), inputReader.getSourceParallelism());
           final List<CompletableFuture<Iterable<Element>>> futures = inputReader.read();
           final String srcVtxId = inputReader.getSrcVertexId();
           sourceParallelism.getAndAdd(inputReader.getSourceParallelism());
