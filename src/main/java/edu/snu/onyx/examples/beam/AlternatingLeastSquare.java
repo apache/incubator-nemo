@@ -188,15 +188,23 @@ public final class AlternatingLeastSquare {
      */
     @ProcessElement
     public void processElement(final ProcessContext c) throws Exception {
+      System.out.println("upper: ");
+      System.out.println(upperTriangularLeftMatrix);
+
       for (Integer j = 0; j < upperTriangularLeftMatrix.length; j++) {
         upperTriangularLeftMatrix[j] = 0.0;
       }
 
-      final Map<Integer, List<Double>> fixedMatrix = c.sideInput(fixedMatrixView);
-      final KV<Integer, Pair<List<Integer>, List<Double>>> elem = c.element();
+      System.out.println("fixed mat view: ");
+      System.out.println(fixedMatrixView);
 
-      System.out.println("fixed mat: " + fixedMatrix.toString());
-      System.out.println("elem: " + elem.toString());
+      final Map<Integer, List<Double>> fixedMatrix = c.sideInput(fixedMatrixView);
+      System.out.println("fixed mat: " + fixedMatrix);
+
+      System.out.println("c: ");
+      System.out.println(c);
+      final KV<Integer, Pair<List<Integer>, List<Double>>> elem = c.element();
+      System.out.println("elem: " + elem);
 
       final List<Integer> indexArr = elem.getValue().left();
       final List<Double> ratingArr = elem.getValue().right();
