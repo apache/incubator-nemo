@@ -162,7 +162,6 @@ public final class ContainerManager {
   }
 
   private ResourceSpecification selectResourceSpecForContainer(final EvaluatorDescriptor descriptor) {
-    System.out.println(descriptor.getNodeDescriptor().getInetSocketAddress());
     final String aw = "a-w";
     final Set<String> transients = new HashSet<>();
     IntStream.range(1, 36).forEach(i -> transients.add(aw + i));
@@ -170,12 +169,13 @@ public final class ContainerManager {
     final Set<String> reserveds = new HashSet<>();
     IntStream.range(36, 41).forEach(i -> reserveds.add(aw + i));
 
+    LOG.info("working on: " + descriptor.getNodeDescriptor().getInetSocketAddress().getHostName());
+    LOG.info("pendingContainerReq before: " + pendingContainerRequestsByContainerType);
     ResourceSpecification selectedResourceSpec = null;
     for (final Map.Entry<String, List<ResourceSpecification>> entry
         : pendingContainerRequestsByContainerType.entrySet()) {
       if (entry.getValue().size() > 0) {
         final String hostName = descriptor.getNodeDescriptor().getInetSocketAddress().getHostName();
-        System.out.println("hostname: " + hostName);
 
         if (entry.getKey().equals("transient")) {
           if (transients.contains(hostName)) {
@@ -193,6 +193,7 @@ public final class ContainerManager {
         }
       }
     }
+    LOG.info("pendingContainerReq after: " + pendingContainerRequestsByContainerType);
 
     if (selectedResourceSpec != null) {
       return selectedResourceSpec;
