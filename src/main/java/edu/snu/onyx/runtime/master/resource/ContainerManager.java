@@ -167,7 +167,7 @@ public final class ContainerManager {
     IntStream.range(1, 36).forEach(i -> transients.add(aw + i));
 
     final Set<String> reserveds = new HashSet<>();
-    IntStream.range(36, 41).forEach(i -> reserveds.add(aw + i));
+    IntStream.range(36, 42).forEach(i -> reserveds.add(aw + i));
 
     LOG.info("working on: " + descriptor.getNodeDescriptor().getInetSocketAddress().getHostName());
     LOG.info("pendingContainerReq before: " + pendingContainerRequestsByContainerType);
