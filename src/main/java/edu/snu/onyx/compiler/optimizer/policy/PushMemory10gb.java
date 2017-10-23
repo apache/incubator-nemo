@@ -24,18 +24,18 @@ import java.util.List;
 /**
  * A basic default policy with fixed reducer parallelism.
  */
-public final class DefaultPolicyWithReducerParallelism10gb implements Policy {
+public final class PushMemory10gb implements Policy {
   private final Policy policy;
 
-  public DefaultPolicyWithReducerParallelism10gb() {
+  public PushMemory10gb() {
     this.policy = new PolicyBuilder()
         .registerCompileTimePass(new ReducerParallelism12for10gbPass())
         .registerCompileTimePass(new DefaultVertexExecutorPlacementPass())
         .registerCompileTimePass(new DefaultPartitionerPass())
         .registerCompileTimePass(new DefaultEdgeDataFlowModelPass())
-//        .registerCompileTimePass(new SmallScalePushPass())
+        .registerCompileTimePass(new SmallScalePushPass())
         .registerCompileTimePass(new DefaultEdgeDataStorePass())
-//        .registerCompileTimePass(new SmallScaleMemoryPass())
+        .registerCompileTimePass(new SmallScaleMemoryPass())
         .registerCompileTimePass(new DefaultStagePartitioningPass())
         .registerCompileTimePass(new ScheduleGroupPass())
         .build();

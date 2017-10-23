@@ -24,10 +24,10 @@ import java.util.List;
 /**
  * A basic default policy with fixed reducer parallelism.
  */
-public final class DefaultPolicyWithReducerParallelism1gb implements Policy {
+public final class PushMemory1gb implements Policy {
   private final Policy policy;
 
-  public DefaultPolicyWithReducerParallelism1gb() {
+  public PushMemory1gb() {
     this.policy = new PolicyBuilder()
         .registerCompileTimePass(new ReducerParallelism1for1gbPass())
         .registerCompileTimePass(new DefaultVertexExecutorPlacementPass())
