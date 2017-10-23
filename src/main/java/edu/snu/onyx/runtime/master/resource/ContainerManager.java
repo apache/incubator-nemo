@@ -122,7 +122,7 @@ public final class ContainerManager {
       evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
           .setNumber(numToRequest)
           .setMemory(resourceSpecification.getMemory())
-          // .setNumberOfCores(resourceSpecification.getCapacity())
+          .setNumberOfCores(1)
           .build());
     } else {
       LOG.info("Request {} containers", numToRequest);
