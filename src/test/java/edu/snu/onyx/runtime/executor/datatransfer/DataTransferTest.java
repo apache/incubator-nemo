@@ -103,6 +103,7 @@ public final class DataTransferTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
   private static final int SCHEDULE_TIMEOUT = 1000;
   private static final Class<? extends PartitionStore> MEMORY_STORE = MemoryStore.class;
+  private static final Class<? extends PartitionStore> SERIALIZING_MEMORY_STORE = SerializingMemoryStore.class;
   private static final Class<? extends PartitionStore> LOCAL_FILE_STORE = LocalFileStore.class;
   private static final Class<? extends PartitionStore> REMOTE_FILE_STORE = GlusterFileStore.class;
   private static final String TMP_LOCAL_FILE_DIRECTORY = "./tmpLocalFiles";
@@ -233,6 +234,12 @@ public final class DataTransferTest {
 
     // test ManyToMany different worker
     writeAndRead(worker1, worker2, ScatterGather.class, MEMORY_STORE);
+
+    // test ManyToMany same worker
+    writeAndRead(worker1, worker1, ScatterGather.class, SERIALIZING_MEMORY_STORE);
+
+    // test ManyToMany different worker
+    writeAndRead(worker1, worker2, ScatterGather.class, SERIALIZING_MEMORY_STORE);
 
     // test ManyToMany same worker (local file)
     writeAndRead(worker1, worker1, ScatterGather.class, LOCAL_FILE_STORE);
