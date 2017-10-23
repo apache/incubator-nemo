@@ -27,7 +27,7 @@ public final class HashRange implements Serializable {
   // Because the hash range is always non-negative,
   // the blocks which do not have a single hash value will be thought to be included in a hash range
   // only when it is "ALL".
-  static final int NOT_HASHED = -1;
+  public static final int NOT_HASHED = -1;
 
   private final boolean all;
   private final int rangeStartInclusive;

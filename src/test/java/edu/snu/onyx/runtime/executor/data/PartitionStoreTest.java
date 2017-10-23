@@ -219,6 +219,21 @@ public final class PartitionStoreTest {
   }
 
   /**
+   * Test {@link SerializingMemoryStore}.
+   */
+  @Test(timeout = 10000)
+  public void testSerializingMemoryStore() throws Exception {
+    final PartitionManagerWorker worker = mock(PartitionManagerWorker.class);
+    when(worker.getCoder(any())).thenReturn(CODER);
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
+    final PartitionStore serializingMemoryStore = injector.getInstance(SerializingMemoryStore.class);
+    scatterGather(serializingMemoryStore, serializingMemoryStore);
+    concurrentRead(serializingMemoryStore, serializingMemoryStore);
+    scatterGatherInHashRange(serializingMemoryStore, serializingMemoryStore);
+  }
+
+  /**
    * Test {@link LocalFileStore}.
    */
   @Test(timeout = 10000)
