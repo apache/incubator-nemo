@@ -20,6 +20,7 @@ import edu.snu.onyx.compiler.ir.IREdge;
 import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
+import edu.snu.onyx.runtime.executor.datatransfer.communication.OneToOne;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
 
 import java.util.List;
@@ -39,12 +40,12 @@ public final class ALSPadoPass extends AnnotatingPass {
     dag.topologicalDo(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (inEdges.isEmpty()) {
-        vertex.setProperty(ExecutorPlacementProperty.of("ttransient"));
+        vertex.setProperty(ExecutorPlacementProperty.of("Transient"));
       } else {
         if (hasM2M(inEdges) || allFromReserved(inEdges)) {
-          vertex.setProperty(ExecutorPlacementProperty.of("rreserved"));
+          vertex.setProperty(ExecutorPlacementProperty.of("Reserved"));
         } else {
-          vertex.setProperty(ExecutorPlacementProperty.of("ttransient"));
+          vertex.setProperty(ExecutorPlacementProperty.of("Transient"));
         }
       }
     });
@@ -69,7 +70,8 @@ public final class ALSPadoPass extends AnnotatingPass {
   private boolean allFromReserved(final List<IREdge> irEdges) {
     return irEdges.stream()
         .allMatch(edge ->
-            edge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement)
+            OneToOne.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))
+            && edge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement)
                 .equals(ExecutorPlacementProperty.RESERVED));
   }
 }

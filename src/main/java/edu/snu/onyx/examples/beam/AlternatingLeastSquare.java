@@ -25,10 +25,7 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.CoderProviders;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.Combine;
-import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.transforms.View;
+import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -98,6 +95,32 @@ public final class AlternatingLeastSquare {
       } else {
         c.output(KV.of(itemId, Pair.of(userList, ratingList)));
       }
+    }
+  }
+
+  /**
+   * Aggregate intermediate data.
+   */
+  public static final class AggregateInterData
+      extends DoFn<KV<Integer, Iterable<List<Double>>>, KV<Integer, List<Double>>> {
+    public AggregateInterData() {
+    }
+
+    @ProcessElement
+    public void processElement(final ProcessContext c) throws Exception {
+      int count = 0;
+      List<Double> accum = null;
+      final KV<Integer, Iterable<List<Double>>> element = c.element();
+      for (final List<Double> list : element.getValue()) {
+        accum = list;
+        count++;
+      }
+
+      if (count != 1 || accum == null) {
+        throw new RuntimeException("Duplicate vector");
+      }
+
+      c.output(KV.of(element.getKey(), accum));
     }
   }
 
@@ -188,24 +211,11 @@ public final class AlternatingLeastSquare {
      */
     @ProcessElement
     public void processElement(final ProcessContext c) throws Exception {
-      // System.out.println("upper: ");
-      // System.out.println(upperTriangularLeftMatrix);
-
       for (Integer j = 0; j < upperTriangularLeftMatrix.length; j++) {
         upperTriangularLeftMatrix[j] = 0.0;
       }
-
-      // System.out.println("fixed mat view: ");
-      // System.out.println(fixedMatrixView);
-
       final Map<Integer, List<Double>> fixedMatrix = c.sideInput(fixedMatrixView);
-      // System.out.println("fixed mat: " + fixedMatrix);
-
-      // System.out.println("c: ");
-      // System.out.println(c);
       final KV<Integer, Pair<List<Integer>, List<Double>>> elem = c.element();
-      // System.out.println("elem: " + elem);
-
       final List<Integer> indexArr = elem.getValue().left();
       final List<Double> ratingArr = elem.getValue().right();
 
@@ -218,7 +228,6 @@ public final class AlternatingLeastSquare {
         final Integer ratingIndex = indexArr.get(i);
         final Double rating = ratingArr.get(i);
         for (Integer j = 0; j < numFeatures; j++) {
-//          LOG.info("Rating index " + ratingIndex);
           if (j < fixedMatrix.get(ratingIndex).size()) {
             tmp[j] = fixedMatrix.get(ratingIndex).get(j).doubleValue();
           } else {
@@ -298,11 +307,13 @@ public final class AlternatingLeastSquare {
     @Override
     public PCollection<KV<Integer, List<Double>>> expand(final PCollection<KV<Integer, List<Double>>> itemMatrix) {
       // Make Item Matrix view.
-      final PCollectionView<Map<Integer, List<Double>>> itemMatrixView = itemMatrix.apply(View.asMap());
+      final PCollectionView<Map<Integer, List<Double>>> itemMatrixView =
+          itemMatrix.apply(GroupByKey.create()).apply(ParDo.of(new AggregateInterData())).apply(View.asMap());
+
       // Get new User Matrix
       final PCollectionView<Map<Integer, List<Double>>> userMatrixView = parsedUserData
           .apply(ParDo.of(new CalculateNextMatrix(numFeatures, lambda, itemMatrixView)).withSideInputs(itemMatrixView))
-          .apply(View.asMap());
+          .apply(GroupByKey.create()).apply(ParDo.of(new AggregateInterData())).apply(View.asMap());
       // return new Item Matrix
       return parsedItemData.apply(ParDo.of(new CalculateNextMatrix(numFeatures, lambda, userMatrixView))
           .withSideInputs(userMatrixView));
