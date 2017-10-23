@@ -34,7 +34,6 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -162,23 +161,11 @@ public final class ContainerManager {
   }
 
   private ResourceSpecification selectResourceSpecForContainer(final EvaluatorDescriptor descriptor) {
-    final String aw = "a-w";
-    final Set<String> rreserveds = new HashSet<>();
-    IntStream.range(1, 6).forEach(i -> rreserveds.add(aw + i));
-
     LOG.info("pendingContainerReq before: " + pendingContainerRequestsByContainerType);
     for (final Map.Entry<String, List<ResourceSpecification>> entry
         : pendingContainerRequestsByContainerType.entrySet()) {
       if (entry.getValue().size() > 0) {
-
-        if (entry.getKey().equals("rreserved")) {
-          final String hostName = descriptor.getNodeDescriptor().getInetSocketAddress().getHostName();
-          if (rreserveds.contains(hostName)) {
-            return entry.getValue().remove(0);
-          }
-        } else {
-          return entry.getValue().remove(0);
-        }
+        return entry.getValue().remove(0);
       }
     }
     LOG.info("pendingContainerReq after: " + pendingContainerRequestsByContainerType);
