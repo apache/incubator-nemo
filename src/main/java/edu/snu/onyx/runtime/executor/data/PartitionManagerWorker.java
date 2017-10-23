@@ -332,10 +332,10 @@ public final class PartitionManagerWorker {
       public void run() {
         try {
           if (SerializingMemoryStore.class.equals(partitionStore)) {
-            final SerializingMemoryStore serializingMemoryStore =
+            final SerializingMemoryStore serializingMemStore =
                 (SerializingMemoryStore) getPartitionStore(partitionStore);
             final Optional<Iterable<byte[]>> optionalResult =
-                serializingMemoryStore.getSerializedBlocksFromPartition(
+                serializingMemStore.getSerializedBlocksFromPartition(
                     outputStream.getPartitionId(), outputStream.getHashRange());
             if (optionalResult.isPresent()) {
               outputStream.writeByteArrays(optionalResult.get()).close();
