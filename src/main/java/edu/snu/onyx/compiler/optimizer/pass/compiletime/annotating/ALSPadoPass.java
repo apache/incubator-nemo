@@ -72,6 +72,6 @@ public final class ALSPadoPass extends AnnotatingPass {
         .allMatch(edge ->
             OneToOne.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))
             && edge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement)
-                .equals(ExecutorPlacementProperty.RESERVED));
+                .equals("rreserved"));
   }
 }
