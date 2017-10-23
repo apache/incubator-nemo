@@ -162,9 +162,6 @@ public final class OnyxDriver {
         final String failedExecutorId = failedContext.getId();
         scheduler.onExecutorRemoved(failedExecutorId);
       });
-
-      throw new RuntimeException(failedEvaluator.getId()
-          + " failed. See driver's log for the stack trace in executor.");
     }
   }
 
