@@ -122,6 +122,10 @@ public final class ExecutorRepresenter {
     return resourceSpecification.getContainerType();
   }
 
+  public ResourceSpecification getResourceSpecification() {
+    return resourceSpecification;
+  }
+
   public void shutDown() {
     activeContext.close();
   }

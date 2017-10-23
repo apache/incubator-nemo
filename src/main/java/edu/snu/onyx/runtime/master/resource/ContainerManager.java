@@ -34,6 +34,7 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.BiFunction;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,8 +115,18 @@ public final class ContainerManager {
       pendingContainerRequestsByContainerType.get(resourceSpecification.getContainerType())
           .addAll(resourceSpecificationList);
 
-      requestLatchByResourceSpecId.put(resourceSpecification.getResourceSpecId(),
-          new CountDownLatch(numToRequest));
+      requestLatchByResourceSpecId.compute(resourceSpecification.getResourceSpecId(),
+          new BiFunction<String, CountDownLatch, CountDownLatch>() {
+        @Override
+        public CountDownLatch apply(String s, CountDownLatch countDownLatch) {
+          if (countDownLatch == null) {
+            return new CountDownLatch(numToRequest);
+          } else {
+            return new CountDownLatch((int) countDownLatch.getCount() + numToRequest);
+          }
+        }
+      }
+      );
 
       // Request the evaluators
       evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
@@ -191,7 +202,7 @@ public final class ContainerManager {
       messageSender =
           messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
     } catch (final Exception e) {
-      throw new RuntimeException(e);
+      e.printStackTrace();
     }
 
     // Create the executor representation.
@@ -225,6 +236,9 @@ public final class ContainerManager {
                 .setExecutorId(failedExecutorId)
                 .build())
             .build());
+
+    // Request for another container of the same resource specification.
+    requestContainer(1, failedExecutor.getResourceSpecification());
   }
 
   public synchronized Map<String, ExecutorRepresenter> getExecutorRepresenterMap() {
