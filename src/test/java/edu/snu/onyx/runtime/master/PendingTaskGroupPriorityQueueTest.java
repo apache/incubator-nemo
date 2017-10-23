@@ -371,6 +371,17 @@ public final class PendingTaskGroupPriorityQueueTest {
 
     final CountDownLatch countDownLatch = new CountDownLatch(2);
 
+    // First schedule the children TaskGroups (since it is push).
+    // BatchScheduler will schedule TaskGroups in this order as well.
+    dagOf2Stages.get(1).getTaskGroupList().forEach(taskGroup ->
+        pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
+
+    // Then, schedule the parent TaskGroups.
+    dagOf2Stages.get(0).getTaskGroupList().forEach(taskGroup ->
+        pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
+
+    countDownLatch.countDown();
+
     // This mimics SchedulerRunner's behavior.
     executorService.execute(() -> {
       try {
@@ -394,20 +405,6 @@ public final class PendingTaskGroupPriorityQueueTest {
       } finally {
         countDownLatch.countDown();
       }
-    });
-
-    // This mimics Batch Scheduler's behavior
-    executorService.execute(() -> {
-      // First schedule the children TaskGroups (since it is push).
-      // BatchScheduler will schedule TaskGroups in this order as well.
-      dagOf2Stages.get(1).getTaskGroupList().forEach(taskGroup ->
-          pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
-
-      // Then, schedule the parent TaskGroups.
-      dagOf2Stages.get(0).getTaskGroupList().forEach(taskGroup ->
-          pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(taskGroup, null, null, 0)));
-
-      countDownLatch.countDown();
     });
 
     countDownLatch.await();
