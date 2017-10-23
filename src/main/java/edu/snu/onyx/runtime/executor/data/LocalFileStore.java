@@ -24,6 +24,8 @@ import edu.snu.onyx.runtime.executor.data.metadata.LocalFileMetadata;
 import edu.snu.onyx.runtime.executor.data.partition.FilePartition;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -38,6 +40,7 @@ import java.util.concurrent.*;
  */
 @ThreadSafe
 public final class LocalFileStore extends FileStore {
+  private static final Logger LOG = LoggerFactory.getLogger(LocalFileStore.class.getName());
   public static final String SIMPLE_NAME = "LocalFileStore";
 
   private final Map<String, FilePartition> partitionIdToFilePartition;
@@ -66,6 +69,7 @@ public final class LocalFileStore extends FileStore {
       try {
         return Optional.of(partition.retrieveInHashRange(hashRange));
       } catch (final IOException retrievalException) {
+        LOG.error("Exception occurs during getFromPartition({}, {}).", partitionId, hashRange);
         final Throwable combinedThrowable = commitPartitionWithException(partitionId, retrievalException);
         throw new PartitionFetchException(combinedThrowable);
       }

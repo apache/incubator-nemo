@@ -114,7 +114,7 @@ public final class PartitionManagerWorker {
       final String runtimeEdgeId,
       final Class<? extends PartitionStore> partitionStore,
       final HashRange hashRange) {
-    LOG.info("RetrieveDataFromPartition: {} from {}", new Object[]{partitionId, partitionStore});
+    LOG.info("RetrieveDataFromPartition: {} from {}, range {}", partitionId, partitionStore, hashRange);
     final PartitionStore store = getPartitionStore(partitionStore);
 
     // First, try to fetch the partition from local PartitionStore.
@@ -172,6 +172,8 @@ public final class PartitionManagerWorker {
       }
       // This is the executor id that we wanted to know
       final String remoteWorkerId = partitionLocationInfoMsg.getOwnerExecutorId();
+      LOG.info("requestPartitionInRemoteWorker: {} should be in {}. Initiate pull transfer.",
+          new Object[]{partitionId, remoteWorkerId});
       return partitionTransfer.initiatePull(remoteWorkerId, false, partitionStore, partitionId,
           runtimeEdgeId, hashRange).getCompleteFuture();
     });
