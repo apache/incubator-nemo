@@ -73,6 +73,8 @@ public final class ContainerManager {
    */
   private final Map<String, ExecutorRepresenter> failedExecutorRepresenterMap;
 
+  private final Map<String, String> containerIdToExecutorIdMap;
+
   /**
    * Keeps track of evaluator and context requests.
    */
@@ -93,6 +95,7 @@ public final class ContainerManager {
     this.pendingContextIdToResourceSpec = new HashMap<>();
     this.pendingContainerRequestsByContainerType = new HashMap<>();
     this.requestLatchByResourceSpecId = new HashMap<>();
+    this.containerIdToExecutorIdMap = new HashMap<>();
   }
 
   /**
@@ -167,6 +170,7 @@ public final class ContainerManager {
     LOG.info("Container type (" + resourceSpecification.getContainerType()
         + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
+    containerIdToExecutorIdMap.put(allocatedContainer.getId(), executorId);
 
     allocatedContainer.submitContext(executorConfiguration);
   }
@@ -214,6 +218,13 @@ public final class ContainerManager {
     executorRepresenterMap.put(executorId, executorRepresenter);
 
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
+  }
+
+  public synchronized void onContainerRemoved(final String failedContainerId) {
+    final String failedExecutorId = containerIdToExecutorIdMap.remove(failedContainerId);
+    LOG.info("[" + failedContainerId + "], for " + failedExecutorId + " failure reported.");
+    
+    onExecutorRemoved(failedExecutorId);
   }
 
   public synchronized void onExecutorRemoved(final String failedExecutorId) {
