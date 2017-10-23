@@ -163,25 +163,17 @@ public final class ContainerManager {
 
   private ResourceSpecification selectResourceSpecForContainer(final EvaluatorDescriptor descriptor) {
     final String aw = "a-w";
-    final Set<String> transients = new HashSet<>();
-    IntStream.range(1, 36).forEach(i -> transients.add(aw + i));
-
-    final Set<String> reserveds = new HashSet<>();
-    IntStream.range(36, 42).forEach(i -> reserveds.add(aw + i));
+    final Set<String> rreserveds = new HashSet<>();
+    IntStream.range(1, 6).forEach(i -> rreserveds.add(aw + i));
 
     LOG.info("pendingContainerReq before: " + pendingContainerRequestsByContainerType);
     for (final Map.Entry<String, List<ResourceSpecification>> entry
         : pendingContainerRequestsByContainerType.entrySet()) {
       if (entry.getValue().size() > 0) {
 
-        if (entry.getKey().equals("ttransient")) {
+        if (entry.getKey().equals("rreserved")) {
           final String hostName = descriptor.getNodeDescriptor().getInetSocketAddress().getHostName();
-          if (transients.contains(hostName)) {
-            return entry.getValue().remove(0);
-          }
-        } else if (entry.getKey().equals("rreserved")) {
-          final String hostName = descriptor.getNodeDescriptor().getInetSocketAddress().getHostName();
-          if (reserveds.contains(hostName)) {
+          if (rreserveds.contains(hostName)) {
             return entry.getValue().remove(0);
           }
         } else {
