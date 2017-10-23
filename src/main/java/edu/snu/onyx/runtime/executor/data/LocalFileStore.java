@@ -21,7 +21,7 @@ import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.runtime.exception.PartitionFetchException;
 import edu.snu.onyx.runtime.exception.PartitionWriteException;
 import edu.snu.onyx.runtime.executor.data.metadata.LocalFileMetadata;
-import edu.snu.onyx.runtime.executor.data.partition.FilePartition;
+import edu.snu.onyx.runtime.executor.data.partition.LocalFilePartition;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -43,7 +43,7 @@ public final class LocalFileStore extends FileStore {
   private static final Logger LOG = LoggerFactory.getLogger(LocalFileStore.class.getName());
   public static final String SIMPLE_NAME = "LocalFileStore";
 
-  private final Map<String, FilePartition> partitionIdToFilePartition;
+  private final Map<String, LocalFilePartition> partitionIdToFilePartition;
 
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
@@ -62,7 +62,7 @@ public final class LocalFileStore extends FileStore {
   public Optional<Iterable<Element>> getFromPartition(final String partitionId,
                                                       final HashRange hashRange) throws PartitionFetchException {
     // Deserialize the target data in the corresponding file.
-    final FilePartition partition = partitionIdToFilePartition.get(partitionId);
+    final LocalFilePartition partition = partitionIdToFilePartition.get(partitionId);
     if (partition == null) {
       return Optional.empty();
     } else {
@@ -90,8 +90,8 @@ public final class LocalFileStore extends FileStore {
     final LocalFileMetadata metadata = new LocalFileMetadata(commitPerBlock);
 
     try {
-      FilePartition partition =
-          new FilePartition(coder, partitionIdToFilePath(partitionId), metadata);
+      LocalFilePartition partition =
+          new LocalFilePartition(coder, partitionIdToFilePath(partitionId), metadata);
       partitionIdToFilePartition.putIfAbsent(partitionId, partition);
       partition = partitionIdToFilePartition.get(partitionId);
 
@@ -110,7 +110,7 @@ public final class LocalFileStore extends FileStore {
    */
   @Override
   public void commitPartition(final String partitionId) throws PartitionWriteException {
-    final FilePartition partition = partitionIdToFilePartition.get(partitionId);
+    final LocalFilePartition partition = partitionIdToFilePartition.get(partitionId);
     if (partition != null) {
       try {
         partition.commit();
@@ -130,7 +130,7 @@ public final class LocalFileStore extends FileStore {
    */
   @Override
   public Boolean removePartition(final String partitionId) throws PartitionFetchException {
-    final FilePartition serializedPartition = partitionIdToFilePartition.remove(partitionId);
+    final LocalFilePartition serializedPartition = partitionIdToFilePartition.remove(partitionId);
     if (serializedPartition == null) {
       return false;
     }
@@ -150,7 +150,7 @@ public final class LocalFileStore extends FileStore {
   public List<FileArea> getFileAreas(final String partitionId,
                                      final HashRange hashRange) {
     try {
-      final FilePartition partition = partitionIdToFilePartition.get(partitionId);
+      final LocalFilePartition partition = partitionIdToFilePartition.get(partitionId);
       if (partition == null) {
         throw new IOException(String.format("%s does not exists", partitionId));
       }
@@ -174,7 +174,7 @@ public final class LocalFileStore extends FileStore {
   private Throwable commitPartitionWithException(final String partitionId,
                                                  final Throwable cause) {
     try {
-      final FilePartition partitionToClose = partitionIdToFilePartition.get(partitionId);
+      final LocalFilePartition partitionToClose = partitionIdToFilePartition.get(partitionId);
       if (partitionToClose != null) {
         partitionToClose.commit();
       }
