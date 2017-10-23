@@ -19,8 +19,11 @@ import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.compiler.ir.IREdge;
 import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
+import edu.snu.onyx.compiler.ir.executionproperty.edge.DataFlowModelProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.edge.DataStoreProperty;
 import edu.snu.onyx.runtime.executor.data.MemoryStore;
+import edu.snu.onyx.runtime.executor.data.SerializingMemoryStore;
+import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
 
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -40,8 +43,13 @@ public final class SmallScaleMemoryPass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(irVertex ->
-        dag.getIncomingEdgesOf(irVertex).forEach(irEdge ->
-              irEdge.setProperty(DataStoreProperty.of(MemoryStore.class))));
+        dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
+          if (ScatterGather.class.equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
+            irEdge.setProperty(DataStoreProperty.of(SerializingMemoryStore.class));
+          } else {
+            irEdge.setProperty(DataStoreProperty.of(MemoryStore.class));
+          }
+        }));
     return dag;
   }
 }
