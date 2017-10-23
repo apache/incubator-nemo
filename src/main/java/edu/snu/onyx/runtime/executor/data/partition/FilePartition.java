@@ -17,6 +17,7 @@ package edu.snu.onyx.runtime.executor.data.partition;
 
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.compiler.ir.Element;
+import edu.snu.onyx.runtime.exception.PartitionWriteException;
 import edu.snu.onyx.runtime.executor.data.HashRange;
 import edu.snu.onyx.runtime.executor.data.metadata.BlockMetadata;
 import edu.snu.onyx.runtime.executor.data.metadata.FileMetadata;
@@ -74,10 +75,46 @@ public final class FilePartition {
         final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true);
         final FileChannel fileChannel = fileOutputStream.getChannel()
     ) {
+      final StringBuilder sb = new StringBuilder();
+      sb.append("WriteBlock: write data of hash value ");
+      sb.append(hashVal);
+      sb.append(" to ");
+      sb.append(filePath);
+      sb.append(" , block metadata is ");
+      sb.append(blockMetadata.toString());
+
       // Wrap the given serialized data (but not copy it) and write.
       fileChannel.position(blockMetadata.getOffset());
+
+      sb.append("\n");
+      sb.append("The block offset is ");
+      sb.append(blockMetadata.getOffset());
+      sb.append(", file channel position is ");
+      sb.append(fileChannel.position());
+      if (blockMetadata.getOffset() != fileChannel.position()) {
+        LOG.error(sb.toString());
+        throw new PartitionWriteException(new Throwable("The file channel can not reach to the offset. Offset: "
+            + blockMetadata.getOffset() + ", position: " + fileChannel.position()));
+      }
+
       final ByteBuffer buf = ByteBuffer.wrap(serializedData);
       fileChannel.write(buf);
+
+      sb.append("\n");
+      sb.append("The block offset + block size is ");
+      sb.append(blockMetadata.getOffset() + blockMetadata.getBlockSize());
+      sb.append(", file channel position is ");
+      sb.append(fileChannel.position());
+
+      if (blockMetadata.getOffset() + blockMetadata.getBlockSize() != fileChannel.position()) {
+        LOG.error(sb.toString());
+        throw new PartitionWriteException(new Throwable("The file channel did not write data fully. Offset + blk size: "
+            + (blockMetadata.getOffset() + blockMetadata.getBlockSize()) + ", position: " + fileChannel.position()));
+      }
+
+      if (filePath.equals("/home/ubuntu/gluster-mnt/Partition-SEdge-edge3_26")) {
+        LOG.info("Write block position check: " + sb.toString());
+      }
     }
 
     // Commit if needed.
