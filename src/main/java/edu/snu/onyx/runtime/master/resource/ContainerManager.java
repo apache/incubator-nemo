@@ -118,7 +118,7 @@ public final class ContainerManager {
       requestLatchByResourceSpecId.compute(resourceSpecification.getResourceSpecId(),
           new BiFunction<String, CountDownLatch, CountDownLatch>() {
         @Override
-        public CountDownLatch apply(String s, CountDownLatch countDownLatch) {
+        public CountDownLatch apply(final String s, final CountDownLatch countDownLatch) {
           if (countDownLatch == null) {
             return new CountDownLatch(numToRequest);
           } else {
@@ -197,7 +197,7 @@ public final class ContainerManager {
     final ResourceSpecification resourceSpec = pendingContextIdToResourceSpec.remove(executorId);
 
     // Connect to the executor and initiate Master side's executor representation.
-    final MessageSender messageSender;
+    MessageSender messageSender = null;
     try {
       messageSender =
           messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
