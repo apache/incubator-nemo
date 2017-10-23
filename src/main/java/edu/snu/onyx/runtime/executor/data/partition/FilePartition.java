@@ -26,6 +26,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -70,10 +71,10 @@ public final class FilePartition {
 
     try (
         final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true);
-        final FileChannel fileChannel = fileOutputStream.getChannel()
+        final FileChannel fileChannel = fileOutputStream.getChannel();
+        final FileLock fileLock = fileChannel.lock()
     ) {
       // Wrap the given serialized data (but not copy it) and write.
-      fileChannel.position(blockMetadata.getOffset());
       final ByteBuffer buf = ByteBuffer.wrap(serializedData);
       fileChannel.write(buf);
     }
