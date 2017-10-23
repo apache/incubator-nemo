@@ -185,6 +185,7 @@ public final class PartitionManagerWorker {
   /**
    * Store an iterable of data blocks to a partition in the target {@code PartitionStore}.
    * Invariant: This should not be invoked after a partition is committed.
+   * Invariant: This method may not support concurrent write. Only one thread have to write at once.
    *
    * @param partitionId    of the partition.
    * @param blocks         to save to a partition.
