@@ -111,7 +111,7 @@ public final class OnyxDriver {
           final ResourceSpecification.Builder builder = ResourceSpecification.newBuilder();
           builder.setContainerType(resourceNode.get("type").traverse().nextTextValue());
           builder.setMemory(resourceNode.get("memory_mb").traverse().getIntValue());
-          builder.setCapacity(4);
+          // builder.setCapacity(4);
           final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
           containerManager.requestContainer(executorNum, builder.build());
         }
