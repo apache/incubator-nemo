@@ -181,7 +181,7 @@ public final class FilePartition {
    */
   private void deserializeBlock(final BlockMetadata blockMetadata,
                                 final FileInputStream fileInputStream,
-                                final List<Element> deserializedData) {
+                                final List<Element> deserializedData) throws IOException {
     final int size = blockMetadata.getBlockSize();
     final long numElements = blockMetadata.getElementsTotal();
     if (size != 0) {

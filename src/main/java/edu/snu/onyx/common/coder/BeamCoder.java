@@ -37,22 +37,13 @@ public final class BeamCoder<Data, Key, Value> implements Coder<Data, Key, Value
   }
 
   @Override
-  public void encode(final Element<Data, Key, Value> value, final OutputStream outStream) {
-    try {
-      beamCoder.encode(value.getData(), outStream);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+  public void encode(final Element<Data, Key, Value> value, final OutputStream outStream) throws IOException {
+    beamCoder.encode(value.getData(), outStream);
   }
 
   @Override
-  public Element<Data, Key, Value> decode(final InputStream inStream) {
-    try {
-      return (Element<Data, Key, Value>)
-          new BeamElement(beamCoder.decode(inStream));
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+  public Element<Data, Key, Value> decode(final InputStream inStream) throws IOException {
+    return (Element<Data, Key, Value>) new BeamElement(beamCoder.decode(inStream));
   }
 
   @Override
