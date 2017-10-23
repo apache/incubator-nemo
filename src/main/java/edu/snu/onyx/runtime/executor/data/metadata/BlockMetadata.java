@@ -69,11 +69,11 @@ public final class BlockMetadata {
 
   @Override
   public String toString() {
-    return "BlockMetadata{" +
-        "hashValue=" + hashValue +
-        ", blockSize=" + blockSize +
-        ", offset=" + offset +
-        ", elementsTotal=" + elementsTotal +
-        '}';
+    return "BlockMetadata{"
+        + "hashValue=" + hashValue
+        + ", blockSize=" + blockSize
+        + ", offset=" + offset
+        + ", elementsTotal=" + elementsTotal
+        + '}';
   }
 }

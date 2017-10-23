@@ -85,8 +85,8 @@ public final class DefaultStagePartitioningPass extends AnnotatingPass {
             // One to one edges
             .filter(edge -> OneToOne.class.equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
             // MemoryStore placement
-            .filter(edge -> (MemoryStore.class.equals(edge.getProperty(ExecutionProperty.Key.DataStore)) ||
-                SerializingMemoryStore.class.equals(edge.getProperty(ExecutionProperty.Key.DataStore))))
+            .filter(edge -> (MemoryStore.class.equals(edge.getProperty(ExecutionProperty.Key.DataStore))
+                || SerializingMemoryStore.class.equals(edge.getProperty(ExecutionProperty.Key.DataStore))))
             // if src and dst are placed on same container types
             .filter(edge -> edge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement)
                 .equals(edge.getDst().getProperty(ExecutionProperty.Key.ExecutorPlacement)))
