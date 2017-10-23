@@ -49,6 +49,7 @@ import org.apache.reef.wake.time.event.StopTime;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -155,16 +156,18 @@ public final class OnyxDriver {
   public final class FailedEvaluatorHandler implements EventHandler<FailedEvaluator> {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
-      containerManager.onContainerRemoved(failedEvaluator.getId());
+      final List<FailedContext> failedContexts = failedEvaluator.getFailedContextList();
 
-      // The list size is 0 if the evaluator failed before an executor started. For now, the size is 1 otherwise.
-      failedEvaluator.getFailedContextList().forEach(failedContext -> {
-        final String failedExecutorId = failedContext.getId();
-        scheduler.onExecutorRemoved(failedExecutorId);
-      });
-
-      throw new RuntimeException(failedEvaluator.getId()
-          + " failed. See driver's log for the stack trace in executor.");
+      if (failedContexts.isEmpty()) {
+        containerManager.onContainerRemoved(failedEvaluator.getId());
+      } else {
+        // The list size is 0 if the evaluator failed before an executor started. For now, the size is 1 otherwise.
+        failedContexts.forEach(failedContext -> {
+          final String failedExecutorId = failedContext.getId();
+          containerManager.onExecutorRemoved(failedExecutorId);
+          scheduler.onExecutorRemoved(failedExecutorId);
+        });
+      }
     }
   }
 

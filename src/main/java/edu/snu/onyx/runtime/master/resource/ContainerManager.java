@@ -223,8 +223,11 @@ public final class ContainerManager {
   public synchronized void onContainerRemoved(final String failedContainerId) {
     final String failedExecutorId = containerIdToExecutorIdMap.remove(failedContainerId);
     LOG.info("[" + failedContainerId + "], for " + failedExecutorId + " failure reported.");
-    
-    onExecutorRemoved(failedExecutorId);
+
+    final ResourceSpecification resourceSpecification = pendingContextIdToResourceSpec.remove(failedExecutorId);
+
+    // Request for another container of the same resource specification.
+    requestContainer(1, resourceSpecification);
   }
 
   public synchronized void onExecutorRemoved(final String failedExecutorId) {
