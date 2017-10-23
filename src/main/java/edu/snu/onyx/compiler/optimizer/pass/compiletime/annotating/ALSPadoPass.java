@@ -40,12 +40,12 @@ public final class ALSPadoPass extends AnnotatingPass {
     dag.topologicalDo(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (inEdges.isEmpty()) {
-        vertex.setProperty(ExecutorPlacementProperty.of("Transient"));
+        vertex.setProperty(ExecutorPlacementProperty.of("ttransient"));
       } else {
         if (hasM2M(inEdges) || allFromReserved(inEdges)) {
-          vertex.setProperty(ExecutorPlacementProperty.of("Reserved"));
+          vertex.setProperty(ExecutorPlacementProperty.of("rreserved"));
         } else {
-          vertex.setProperty(ExecutorPlacementProperty.of("Transient"));
+          vertex.setProperty(ExecutorPlacementProperty.of("ttransient"));
         }
       }
     });
