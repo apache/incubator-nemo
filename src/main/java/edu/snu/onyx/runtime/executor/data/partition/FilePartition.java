@@ -151,6 +151,7 @@ public final class FilePartition {
       }
     } catch (final IOException e) {
       LOG.error(sb.toString());
+      throw e;
     }
 
     return deserializedData;
