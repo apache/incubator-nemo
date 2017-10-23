@@ -21,7 +21,6 @@ import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.edge.DataStoreProperty;
 import edu.snu.onyx.runtime.executor.data.MemoryStore;
-import edu.snu.onyx.runtime.executor.data.SerializingMemoryStore;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
 
 import java.util.stream.Collectors;
