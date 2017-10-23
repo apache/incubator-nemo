@@ -121,12 +121,11 @@ public final class SerializingMemoryStore implements PartitionStore {
                                              final Iterable<Block> blocks,
                                              final boolean commitPerBlock) throws PartitionWriteException {
     partitionMap.putIfAbsent(partitionId, new SerializedMemoryPartition());
-    try {
+    try (final ByteArrayOutputStream bytesOutputStream = new ByteArrayOutputStream()) {
       final Coder coder = getCoderFromWorker(partitionId);
       final List<Long> blockSizeList = new ArrayList<>();
       final SerializedMemoryPartition partition = partitionMap.get(partitionId);
       // Serialize the given blocks
-      final ByteArrayOutputStream bytesOutputStream = new ByteArrayOutputStream();
       for (final Block block : blocks) {
         long numOfElementsInBlock = 0;
         for (final Element element : block.getData()) {
