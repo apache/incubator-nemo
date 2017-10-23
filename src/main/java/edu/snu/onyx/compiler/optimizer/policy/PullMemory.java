@@ -17,6 +17,7 @@ package edu.snu.onyx.compiler.optimizer.policy;
 
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.*;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
 import edu.snu.onyx.compiler.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
@@ -24,16 +25,12 @@ import java.util.List;
 /**
  * A basic default policy with fixed reducer parallelism.
  */
-public final class PullMemory1gb implements Policy {
+public final class PullMemory implements Policy {
   private final Policy policy;
 
-  public PullMemory1gb() {
+  public PullMemory() {
     this.policy = new PolicyBuilder()
-        .registerCompileTimePass(new ReducerParallelism1for1gbPass())
-        .registerCompileTimePass(new DefaultVertexExecutorPlacementPass())
-        .registerCompileTimePass(new DefaultPartitionerPass())
-        .registerCompileTimePass(new DefaultEdgeDataFlowModelPass())
-        .registerCompileTimePass(new DefaultEdgeDataStorePass())
+        .registerCompileTimePass(new InitiationCompositePass())
         .registerCompileTimePass(new SmallScaleMemoryPass())
         .registerCompileTimePass(new DefaultStagePartitioningPass())
         .registerCompileTimePass(new ScheduleGroupPass())
