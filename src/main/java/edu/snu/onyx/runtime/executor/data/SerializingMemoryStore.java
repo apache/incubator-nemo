@@ -18,6 +18,7 @@ package edu.snu.onyx.runtime.executor.data;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
+import edu.snu.onyx.runtime.exception.PartitionFetchException;
 import edu.snu.onyx.runtime.exception.PartitionWriteException;
 import edu.snu.onyx.runtime.executor.data.partition.SerializedMemoryPartition;
 import org.apache.reef.tang.InjectionFuture;
@@ -56,27 +57,31 @@ public final class SerializingMemoryStore implements PartitionStore {
                                                       final HashRange hashRange) {
     final SerializedMemoryPartition partition = partitionMap.get(partitionId);
 
-    if (partition != null) {
-      final Coder coder = getCoderFromWorker(partitionId);
-      final Iterable<SerializedMemoryPartition.SerializedBlock> blocks = partition.getBlocks();
-      final List<Element> deserializedData = new ArrayList<>();
-      blocks.forEach(serializedBlock -> {
-        final int hashVal = serializedBlock.getKey();
-        if (hashRange.includes(hashVal)) {
-          // The hash value of this block is in the range.
-          final long numElements = serializedBlock.getElementsInBlock();
-          // This stream will be not closed, but it is okay as long as the file stream is closed well.
-          final ByteArrayInputStream byteArrayInputStream =
-              new ByteArrayInputStream(serializedBlock.getSerializedData());
-          for (int i = 0; i < numElements; i++) {
-            deserializedData.add(coder.decode(byteArrayInputStream));
+    try {
+      if (partition != null) {
+        final Coder coder = getCoderFromWorker(partitionId);
+        final Iterable<SerializedMemoryPartition.SerializedBlock> blocks = partition.getBlocks();
+        final List<Element> deserializedData = new ArrayList<>();
+        for (final SerializedMemoryPartition.SerializedBlock serializedBlock : blocks) {
+          final int hashVal = serializedBlock.getKey();
+          if (hashRange.includes(hashVal)) {
+            // The hash value of this block is in the range.
+            final long numElements = serializedBlock.getElementsInBlock();
+            // This stream will be not closed, but it is okay as long as the file stream is closed well.
+            final ByteArrayInputStream byteArrayInputStream =
+                new ByteArrayInputStream(serializedBlock.getSerializedData());
+            for (int i = 0; i < numElements; i++) {
+              deserializedData.add(coder.decode(byteArrayInputStream));
+            }
           }
         }
-      });
 
-      return Optional.of(deserializedData);
-    } else {
-      return Optional.empty();
+        return Optional.of(deserializedData);
+      } else {
+        return Optional.empty();
+      }
+    } catch (final IOException e) {
+      throw new PartitionFetchException(e);
     }
   }
 
@@ -116,12 +121,11 @@ public final class SerializingMemoryStore implements PartitionStore {
                                              final Iterable<Block> blocks,
                                              final boolean commitPerBlock) throws PartitionWriteException {
     partitionMap.putIfAbsent(partitionId, new SerializedMemoryPartition());
-    try {
+    try (final ByteArrayOutputStream bytesOutputStream = new ByteArrayOutputStream()) {
       final Coder coder = getCoderFromWorker(partitionId);
       final List<Long> blockSizeList = new ArrayList<>();
       final SerializedMemoryPartition partition = partitionMap.get(partitionId);
       // Serialize the given blocks
-      final ByteArrayOutputStream bytesOutputStream = new ByteArrayOutputStream();
       for (final Block block : blocks) {
         long numOfElementsInBlock = 0;
         for (final Element element : block.getData()) {

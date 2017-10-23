@@ -108,6 +108,7 @@ abstract class FileStore implements PartitionStore {
       blockSizeList.add(blockSize);
       bytesOutputStream.reset();
     }
+    bytesOutputStream.close();
     partition.commitRemainderMetadata();
 
     return blockSizeList;
