@@ -21,6 +21,8 @@ import edu.snu.onyx.runtime.executor.data.HashRange;
 import edu.snu.onyx.runtime.executor.data.metadata.BlockMetadata;
 import edu.snu.onyx.runtime.executor.data.metadata.FileMetadata;
 import edu.snu.onyx.runtime.executor.data.FileArea;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.*;
@@ -36,7 +38,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 @ThreadSafe
 public final class FilePartition {
-
+  private static final Logger LOG = LoggerFactory.getLogger(FilePartition.class.getName());
   private final Coder coder;
   private final String filePath;
   private final FileMetadata metadata;
@@ -108,24 +110,47 @@ public final class FilePartition {
    * @throws IOException if failed to deserialize.
    */
   public Iterable<Element> retrieveInHashRange(final HashRange hashRange) throws IOException {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("RetrieveInHashRange: retrieve data in ");
+    sb.append(hashRange.toString());
+    sb.append("from ");
+    sb.append(filePath);
+
     // Deserialize the data
     final ArrayList<Element> deserializedData = new ArrayList<>();
     try (final FileInputStream fileStream = new FileInputStream(filePath)) {
       for (final BlockMetadata blockMetadata : metadata.getBlockMetadataIterable()) {
-        // TODO #463: Support incremental read.
+        sb.append("\n");
+        sb.append("BlockMetadata: ");
+        sb.append(blockMetadata.toString());
         final int hashVal = blockMetadata.getHashValue();
         if (hashRange.includes(hashVal)) {
           // The hash value of this block is in the range.
+          sb.append("\n");
+          sb.append("In range block. Current file stream position is ");
+          sb.append(fileStream.getChannel().position());
           deserializeBlock(blockMetadata, fileStream, deserializedData);
         } else {
+          sb.append("\n");
+          sb.append("Out of range block. Current file stream position is ");
+          sb.append(fileStream.getChannel().position());
           // Have to skip this block.
           final long bytesToSkip = blockMetadata.getBlockSize();
           final long skippedBytes = fileStream.skip(bytesToSkip);
+          sb.append("\n");
+          sb.append("Bytes to skip is ");
+          sb.append(bytesToSkip);
+          sb.append(", skipped bytes is ");
+          sb.append(skippedBytes);
+          sb.append(", current file stream position is ");
+          sb.append(fileStream.getChannel().position());
           if (skippedBytes != bytesToSkip) {
             throw new IOException("The file stream failed to skip to the next block.");
           }
         }
       }
+    } catch (final IOException e) {
+      LOG.error(sb.toString());
     }
 
     return deserializedData;
@@ -186,9 +211,10 @@ public final class FilePartition {
     final long numElements = blockMetadata.getElementsTotal();
     if (size != 0) {
       // This stream will be not closed, but it is okay as long as the file stream is closed well.
-      final BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream, size);
+      //final BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream, size);
       for (int i = 0; i < numElements; i++) {
-        deserializedData.add(coder.decode(bufferedInputStream));
+        //deserializedData.add(coder.decode(bufferedInputStream));
+        deserializedData.add(coder.decode(fileInputStream));
       }
     }
   }

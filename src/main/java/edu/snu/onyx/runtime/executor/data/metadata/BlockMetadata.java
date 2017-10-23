@@ -66,4 +66,14 @@ public final class BlockMetadata {
   public long getElementsTotal() {
     return elementsTotal;
   }
+
+  @Override
+  public String toString() {
+    return "BlockMetadata{" +
+        "hashValue=" + hashValue +
+        ", blockSize=" + blockSize +
+        ", offset=" + offset +
+        ", elementsTotal=" + elementsTotal +
+        '}';
+  }
 }
