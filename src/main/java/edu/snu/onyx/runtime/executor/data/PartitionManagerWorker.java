@@ -332,7 +332,17 @@ public final class PartitionManagerWorker {
       @Override
       public void run() {
         try {
-          if (SerializingMemoryStore.class.equals(partitionStore)) {
+          if (partitionStore.equals(LocalFileStore.class) || partitionStore.equals(GlusterFileStore.class)) {
+            // TODO #492: Modularize the data communication pattern. Remove execution property value dependant code.
+            final FileStore fileStore = (FileStore) getPartitionStore(partitionStore);
+            try {
+              outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getPartitionId(),
+                  outputStream.getHashRange())).close();
+            } catch (final IOException | PartitionFetchException e) {
+              LOG.error("Closing a pull request exceptionally", e);
+              outputStream.closeExceptionally(e);
+            }
+          } else if (SerializingMemoryStore.class.equals(partitionStore)) {
             final SerializingMemoryStore serializingMemStore =
                 (SerializingMemoryStore) getPartitionStore(partitionStore);
             final Optional<Iterable<byte[]>> optionalResult =
