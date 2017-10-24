@@ -162,8 +162,9 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     public void onException(final Throwable throwable,
                             final SocketAddress socketAddress,
                             final Message<ControlMessage.Message> messages) {
-      final ControlMessage.Message controlMessage = extractSingleMessage(messages);
-      throw new RuntimeException(controlMessage.toString(), throwable);
+      throwable.printStackTrace();
+      // final ControlMessage.Message controlMessage = extractSingleMessage(messages);
+      // throw new RuntimeException(controlMessage.toString(), throwable);
     }
   }
 
