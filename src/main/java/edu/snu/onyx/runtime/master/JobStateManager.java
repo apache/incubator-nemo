@@ -285,73 +285,79 @@ public final class JobStateManager {
     final String stageId = taskGroup.getStageId();
     final Map<String, Object> metric = new HashMap<>();
 
-    switch (newState) {
-    case ON_HOLD:
-    case COMPLETE:
-      taskGroupState.setState(newState);
-      metric.put("ToState", newState);
-      endMeasurement(taskGroup.getTaskGroupId(), metric);
-
-      if (stageIdToRemainingTaskGroupSet.containsKey(stageId)) {
-        final Set<String> remainingTaskGroups = stageIdToRemainingTaskGroupSet.get(stageId);
-
-        if (remainingTaskGroups.size() < 5) {
-          final StringBuilder remaining = new StringBuilder();
-          remainingTaskGroups.forEach(tgId -> remaining.append(tgId).append("{")
-              .append(getTaskGroupState(tgId).getStateMachine().getCurrentState()).append("}, "));
-          LOG.info("{}: Remaining: {}", stageId, remaining.toString());
-        }
-        remainingTaskGroups.remove(taskGroup.getTaskGroupId());
-        LOG.info("{}: {} TaskGroup(s) to go", stageId, remainingTaskGroups.size());
-
-        if (remainingTaskGroups.isEmpty()) {
-          onStageStateChanged(stageId, StageState.State.COMPLETE);
-        }
-      } else {
-        throw new IllegalStateTransitionException(
-            new Throwable("The stage has not yet been submitted for execution"));
-      }
-      break;
-    case EXECUTING:
-      taskGroupState.setState(newState);
-      metric.put("FromState", newState);
-      beginMeasurement(taskGroup.getTaskGroupId(), metric);
-      break;
-    case FAILED_RECOVERABLE:
-      // Multiple calls to set a task group's state to failed_recoverable can occur when
-      // a task group is made failed_recoverable early by another task group's failure detection in the same stage
-      // and the task group finds itself failed_recoverable later, propagating the state change event only then.
-      if (taskGroupState.getCurrentState() != TaskGroupState.State.FAILED_RECOVERABLE) {
+    try {
+      switch (newState) {
+      case ON_HOLD:
+      case COMPLETE:
         taskGroupState.setState(newState);
         metric.put("ToState", newState);
         endMeasurement(taskGroup.getTaskGroupId(), metric);
 
-        // Mark this stage as failed_recoverable as long as it contains at least one failed_recoverable task group
-        if (idToStageStates.get(stageId).getStateMachine().getCurrentState() != StageState.State.FAILED_RECOVERABLE) {
-          onStageStateChanged(stageId, StageState.State.FAILED_RECOVERABLE);
-        }
-
         if (stageIdToRemainingTaskGroupSet.containsKey(stageId)) {
-          stageIdToRemainingTaskGroupSet.get(stageId).add(taskGroup.getTaskGroupId());
+          final Set<String> remainingTaskGroups = stageIdToRemainingTaskGroupSet.get(stageId);
+
+          if (remainingTaskGroups.size() < 5) {
+            final StringBuilder remaining = new StringBuilder();
+            remainingTaskGroups.forEach(tgId -> remaining.append(tgId).append("{")
+                .append(getTaskGroupState(tgId).getStateMachine().getCurrentState()).append("}, "));
+            LOG.info("{}: Remaining: {}", stageId, remaining.toString());
+          }
+          remainingTaskGroups.remove(taskGroup.getTaskGroupId());
+          LOG.info("{}: {} TaskGroup(s) to go", stageId, remainingTaskGroups.size());
+
+          if (remainingTaskGroups.isEmpty()) {
+            onStageStateChanged(stageId, StageState.State.COMPLETE);
+          }
         } else {
           throw new IllegalStateTransitionException(
               new Throwable("The stage has not yet been submitted for execution"));
         }
-      } else {
-        LOG.info("{} state is already FAILED_RECOVERABLE. Skipping this event.",
-            taskGroup.getTaskGroupId());
+        break;
+      case EXECUTING:
+        taskGroupState.setState(newState);
+        metric.put("FromState", newState);
+        beginMeasurement(taskGroup.getTaskGroupId(), metric);
+        break;
+      case FAILED_RECOVERABLE:
+        // Multiple calls to set a task group's state to failed_recoverable can occur when
+        // a task group is made failed_recoverable early by another task group's failure detection in the same stage
+        // and the task group finds itself failed_recoverable later, propagating the state change event only then.
+        if (taskGroupState.getCurrentState() != TaskGroupState.State.FAILED_RECOVERABLE) {
+          taskGroupState.setState(newState);
+          metric.put("ToState", newState);
+          endMeasurement(taskGroup.getTaskGroupId(), metric);
+
+          // Mark this stage as failed_recoverable as long as it contains at least one failed_recoverable task group
+          if (idToStageStates.get(stageId).getStateMachine().getCurrentState() != StageState.State.FAILED_RECOVERABLE) {
+            onStageStateChanged(stageId, StageState.State.FAILED_RECOVERABLE);
+          }
+
+          if (stageIdToRemainingTaskGroupSet.containsKey(stageId)) {
+            stageIdToRemainingTaskGroupSet.get(stageId).add(taskGroup.getTaskGroupId());
+          } else {
+            throw new IllegalStateTransitionException(
+                new Throwable("The stage has not yet been submitted for execution"));
+          }
+        } else {
+          LOG.info("{} state is already FAILED_RECOVERABLE. Skipping this event.",
+              taskGroup.getTaskGroupId());
+        }
+        break;
+      case READY:
+        taskGroupState.setState(newState);
+        break;
+      case FAILED_UNRECOVERABLE:
+        taskGroupState.setState(newState);
+        metric.put("ToState", newState);
+        endMeasurement(taskGroup.getTaskGroupId(), metric);
+        break;
+      default:
+        throw new UnknownExecutionStateException(new Throwable("This task group state is unknown"));
       }
-      break;
-    case READY:
-      taskGroupState.setState(newState);
-      break;
-    case FAILED_UNRECOVERABLE:
-      taskGroupState.setState(newState);
-      metric.put("ToState", newState);
-      endMeasurement(taskGroup.getTaskGroupId(), metric);
-      break;
-    default:
-      throw new UnknownExecutionStateException(new Throwable("This task group state is unknown"));
+    } catch (final IllegalStateTransitionException ex) {
+      LOG.error("IllegalStateTransition for {}", taskGroup.getTaskGroupId());
+      ex.printStackTrace();
+      throw ex;
     }
   }
 
