@@ -31,6 +31,7 @@ import org.apache.reef.tang.Configuration;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
@@ -189,15 +190,35 @@ public final class ContainerManager {
 
       final ResourceSpecification resourceSpec = pendingContextIdToResourceSpec.remove(executorId);
 
-      // Connect to the executor and initiate Master side's executor representation.
       MessageSender messageSender = null;
+
+      // Connect to the executor and initiate Master side's executor representation.
+      final ExecutorService executor = Executors.newSingleThreadExecutor();
+      final Future<MessageSender> future = executor.submit(new Callable<MessageSender>() {
+        @Override
+        public MessageSender call() {
+          try {
+           return messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
+          } catch (final Exception e) {
+            LOG.info("error during asyncConnect");
+            e.printStackTrace();
+            return null;
+          }
+        }
+      });
+
       try {
-        messageSender =
-            messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
-      } catch (final Exception e) {
-        LOG.info("error during asyncConnect");
+        future.get(500, TimeUnit.MILLISECONDS);
+      } catch (Exception e) {
         e.printStackTrace();
       }
+
+      if (!executor.isTerminated()) {
+        executor.shutdownNow(); // If you want to stop the code that hasn't finished.
+      }
+
+
+
 
       // Create the executor representation.
       final ExecutorRepresenter executorRepresenter =
