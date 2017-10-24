@@ -206,6 +206,7 @@ public final class ContainerManager {
       messageSender =
           messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
     } catch (final Exception e) {
+      LOG.info("error during asyncConnect");
       e.printStackTrace();
     }
 
