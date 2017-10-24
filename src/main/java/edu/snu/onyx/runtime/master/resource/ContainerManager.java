@@ -206,6 +206,8 @@ public final class ContainerManager {
       executorsByContainerType.putIfAbsent(resourceSpec.getContainerType(), new ArrayList<>());
       executorsByContainerType.get(resourceSpec.getContainerType()).add(executorRepresenter);
       executorRepresenterMap.put(executorId, executorRepresenter);
+
+      LOG.info("[" + executorId + "] is up and runnin finished");
     }
   }
 

@@ -178,6 +178,8 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   public void onExecutorAdded(final String executorId) {
     lock.lock();
     try {
+      LOG.info("[" + executorId + "] is added started");
+
       updateCachedExecutorRepresenterMap();
       final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
       final String containerType = executor.getContainerType();
@@ -186,6 +188,8 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
       executorIdByContainerType.get(containerType)
           .add(nextExecutorIndexByContainerType.get(containerType), executorId);
       signalPossiblyWaitingScheduler(containerType);
+
+      LOG.info("[" + executorId + "] is added finished");
     } finally {
       lock.unlock();
     }
