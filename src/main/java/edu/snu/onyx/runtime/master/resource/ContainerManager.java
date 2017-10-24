@@ -34,6 +34,7 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 
 import org.slf4j.Logger;
@@ -52,11 +53,6 @@ public final class ContainerManager {
 
   private final EvaluatorRequestor evaluatorRequestor;
   private final MessageEnvironment messageEnvironment;
-
-  /**
-   * A map containing a latch for the container requests for each resource spec ID.
-   */
-  private final Map<String, CountDownLatch> requestLatchByResourceSpecId;
 
   /**
    * A map containing a list of executor representations for each container type.
@@ -83,6 +79,8 @@ public final class ContainerManager {
 
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
+  private final AtomicBoolean isJobTerminated;
+
   @Inject
   public ContainerManager(final EvaluatorRequestor evaluatorRequestor,
                           final MessageEnvironment messageEnvironment) {
@@ -94,8 +92,8 @@ public final class ContainerManager {
     this.failedExecutorRepresenterMap = new HashMap<>();
     this.pendingContextIdToResourceSpec = new HashMap<>();
     this.pendingContainerRequestsByContainerType = new HashMap<>();
-    this.requestLatchByResourceSpecId = new HashMap<>();
     this.containerIdToExecutorIdMap = new HashMap<>();
+    this.isJobTerminated = new AtomicBoolean(false);
   }
 
   /**
@@ -117,19 +115,6 @@ public final class ContainerManager {
       pendingContainerRequestsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>());
       pendingContainerRequestsByContainerType.get(resourceSpecification.getContainerType())
           .addAll(resourceSpecificationList);
-
-      requestLatchByResourceSpecId.compute(resourceSpecification.getResourceSpecId(),
-          new BiFunction<String, CountDownLatch, CountDownLatch>() {
-        @Override
-        public CountDownLatch apply(final String s, final CountDownLatch countDownLatch) {
-          if (countDownLatch == null) {
-            return new CountDownLatch(numToRequest);
-          } else {
-            return new CountDownLatch((int) countDownLatch.getCount() + numToRequest);
-          }
-        }
-      }
-      );
 
       // Request the evaluators
       evaluatorRequestor.submit(EvaluatorRequest.newBuilder()
@@ -193,31 +178,33 @@ public final class ContainerManager {
    * @param activeContext for the launched executor.
    */
   public synchronized void onExecutorLaunched(final ActiveContext activeContext) {
-    // We set contextId = executorId in OnyxDriver when we generate executor configuration.
-    final String executorId = activeContext.getId();
+    if (isJobTerminated.get()) {
+      activeContext.close();
+    } else {
+      // We set contextId = executorId in OnyxDriver when we generate executor configuration.
+      final String executorId = activeContext.getId();
 
-    LOG.info("[" + executorId + "] is up and running");
+      LOG.info("[" + executorId + "] is up and running");
 
-    final ResourceSpecification resourceSpec = pendingContextIdToResourceSpec.remove(executorId);
+      final ResourceSpecification resourceSpec = pendingContextIdToResourceSpec.remove(executorId);
 
-    // Connect to the executor and initiate Master side's executor representation.
-    MessageSender messageSender = null;
-    try {
-      messageSender =
-          messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
-    } catch (final Exception e) {
-      e.printStackTrace();
+      // Connect to the executor and initiate Master side's executor representation.
+      MessageSender messageSender = null;
+      try {
+        messageSender =
+            messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
+      } catch (final Exception e) {
+        e.printStackTrace();
+      }
+
+      // Create the executor representation.
+      final ExecutorRepresenter executorRepresenter =
+          new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext);
+
+      executorsByContainerType.putIfAbsent(resourceSpec.getContainerType(), new ArrayList<>());
+      executorsByContainerType.get(resourceSpec.getContainerType()).add(executorRepresenter);
+      executorRepresenterMap.put(executorId, executorRepresenter);
     }
-
-    // Create the executor representation.
-    final ExecutorRepresenter executorRepresenter =
-        new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext);
-
-    executorsByContainerType.putIfAbsent(resourceSpec.getContainerType(), new ArrayList<>());
-    executorsByContainerType.get(resourceSpec.getContainerType()).add(executorRepresenter);
-    executorRepresenterMap.put(executorId, executorRepresenter);
-
-    requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
   }
 
   public synchronized void onContainerRemoved(final String failedContainerId) {
@@ -276,23 +263,11 @@ public final class ContainerManager {
    * Terminates ContainerManager.
    * Before we terminate, we must wait for all the executors we requested
    * and shutdown all of them if any of them is running.
-   * @return a future that returns a boolean on whether all requested resources were allocated and released.
+   * @return ContainerManager's status on job termination.
    */
-  public synchronized Future<Boolean> terminate() {
+  public synchronized boolean terminate() {
+    isJobTerminated.getAndSet(true);
     shutdownRunningExecutors();
-    return Executors.newSingleThreadExecutor().submit(() -> waitForAllRequestedResources());
-  }
-
-  private boolean waitForAllRequestedResources() {
-    requestLatchByResourceSpecId.forEach((resourceSpecId, latchForRequest) -> {
-      try {
-        latchForRequest.await();
-      } catch (InterruptedException e) {
-        throw new ContainerException(e);
-      }
-    });
-    shutdownRunningExecutors();
-    requestLatchByResourceSpecId.clear();
-    return executorRepresenterMap.isEmpty();
+    return isJobTerminated.get();
   }
 }
