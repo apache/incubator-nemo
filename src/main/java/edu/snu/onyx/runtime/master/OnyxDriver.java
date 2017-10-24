@@ -105,29 +105,27 @@ public final class OnyxDriver {
   public final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      reefEventHandler.execute(() -> {
-        try {
-          final ObjectMapper objectMapper = new ObjectMapper();
-          final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
+      try {
+        final ObjectMapper objectMapper = new ObjectMapper();
+        final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
 
-          for (int i = 0; i < jsonRootNode.size(); i++) {
-            final TreeNode resourceNode = jsonRootNode.get(i);
-            final ResourceSpecification.Builder builder = ResourceSpecification.newBuilder();
-            builder.setContainerType(resourceNode.get("type").traverse().nextTextValue());
-            builder.setMemory(resourceNode.get("memory_mb").traverse().getIntValue());
-            builder.setCapacity(4);
-            final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
-            containerManager.requestContainer(executorNum, builder.build());
-          }
-        } catch (final IOException e) {
-          throw new RuntimeException(e);
+        for (int i = 0; i < jsonRootNode.size(); i++) {
+          final TreeNode resourceNode = jsonRootNode.get(i);
+          final ResourceSpecification.Builder builder = ResourceSpecification.newBuilder();
+          builder.setContainerType(resourceNode.get("type").traverse().nextTextValue());
+          builder.setMemory(resourceNode.get("memory_mb").traverse().getIntValue());
+          builder.setCapacity(4);
+          final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
+          containerManager.requestContainer(executorNum, builder.build());
         }
+      } catch (final IOException e) {
+        throw new RuntimeException(e);
+      }
 
-        // Launch user application (with a new thread)
-        final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor();
-        userApplicationRunnerThread.execute(userApplicationRunner);
-        userApplicationRunnerThread.shutdown();
-      });
+      // Launch user application (with a new thread)
+      final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor();
+      userApplicationRunnerThread.execute(userApplicationRunner);
+      userApplicationRunnerThread.shutdown();
     }
   }
 
