@@ -124,7 +124,8 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   @Override
   public void close() {
     // Commit partition.
-    partitionManagerWorker.commitPartition(partitionId, channelDataPlacement, accumulatedBlockSizeInfo, srcVertexId);
+    partitionManagerWorker
+        .commitPartition(partitionId, channelDataPlacement, accumulatedBlockSizeInfo, srcVertexId, getDstParallelism());
   }
 
   private void writeOneToOne(final List<Block> blocksToWrite) {
@@ -179,6 +180,8 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    * @return the parallelism of the destination task.
    */
   private int getDstParallelism() {
-    return dstVertex == null ? 1 : dstVertex.getProperty(ExecutionProperty.Key.Parallelism);
+    return dstVertex == null
+        || OneToOne.class.equals(runtimeEdge.<Class>getProperty(ExecutionProperty.Key.DataCommunicationPattern))
+        ? 1 : dstVertex.getProperty(ExecutionProperty.Key.Parallelism);
   }
 }

@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Serialize and store data in local memory.
  */
 @ThreadSafe
-public final class SerializingMemoryStore implements PartitionStore {
+public final class SerializingMemoryStore implements SpillablePartitionStore {
   public static final String SIMPLE_NAME = "SerializingMemoryStore";
   // A map between partition id and data blocks.
   private final ConcurrentHashMap<String, SerializedMemoryPartition> partitionMap;
@@ -82,6 +82,40 @@ public final class SerializingMemoryStore implements PartitionStore {
       }
     } catch (final IOException e) {
       throw new PartitionFetchException(e);
+    }
+  }
+
+  /**
+   * @see SpillablePartitionStore#getBlocksFromPartition(String).
+   */
+  @Override
+  public Iterable<Block> getBlocksFromPartition(final String partitionId) throws PartitionFetchException {
+    final SerializedMemoryPartition partition = partitionMap.get(partitionId);
+
+    if (partition != null) {
+      try {
+        final Coder coder = getCoderFromWorker(partitionId);
+        final Iterable<SerializedMemoryPartition.SerializedBlock> blocks = partition.getBlocks();
+        final List<Block> deserializedBlocks = new ArrayList<>();
+        for (final SerializedMemoryPartition.SerializedBlock serializedBlock : blocks) {
+          final List<Element> elementsInBlock = new ArrayList<>();
+          // The hash value of this block is in the range.
+          final long numElements = serializedBlock.getElementsInBlock();
+          // This stream will be not closed, but it is okay as long as the file stream is closed well.
+          final ByteArrayInputStream byteArrayInputStream =
+              new ByteArrayInputStream(serializedBlock.getSerializedData());
+          for (int i = 0; i < numElements; i++) {
+            elementsInBlock.add(coder.decode(byteArrayInputStream));
+          }
+          deserializedBlocks.add(new Block(serializedBlock.getKey(), elementsInBlock));
+        }
+
+        return deserializedBlocks;
+      } catch (final IOException e) {
+        throw new PartitionFetchException(e);
+      }
+    } else {
+      throw new PartitionFetchException(new Throwable("There is no such partition: " + partitionId));
     }
   }
 

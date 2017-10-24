@@ -217,6 +217,7 @@ public final class DataTransferTest {
 
   @Test
   public void testWriteAndRead() throws Exception {
+
     // test OneToOne same worker
     writeAndRead(worker1, worker1, OneToOne.class, MEMORY_STORE);
 
@@ -317,6 +318,20 @@ public final class DataTransferTest {
       dataReadList.add(dataRead);
     });
 
+    // Read again
+    final List<List<Element>> dataReadList2 = new ArrayList<>();
+    IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
+      final InputReader reader =
+          new InputReader(dstTaskIndex, taskGroupPrefix + dstTaskIndex, srcVertex, dummyEdge, receiver);
+      final List<Element> dataRead = new ArrayList<>();
+      try {
+        InputReader.combineFutures(reader.read()).forEach(dataRead::add);
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
+      }
+      dataReadList2.add(dataRead);
+    });
+
     // Compare (should be the same)
     final List<Element> flattenedWrittenData = flatten(dataWrittenList);
     final List<Element> flattenedReadData = flatten(dataReadList);
@@ -327,7 +342,19 @@ public final class DataTransferTest {
       flattenedReadData.forEach(rData -> assertTrue(broadcastedWrittenData.remove(rData)));
     } else {
       assertEquals(flattenedWrittenData.size(), flattenedReadData.size());
-      flattenedReadData.forEach(rData -> assertTrue(flattenedWrittenData.remove(rData)));
+      flattenedReadData.forEach(rData -> assertTrue(flattenedWrittenData.contains(rData)));
+    }
+
+    // Compare2 (should be the same)
+    final List<Element> flattenedReadData2 = flatten(dataReadList2);
+    if (commPattern.equals(Broadcast.class)) {
+      final List<Element> broadcastedWrittenData = new ArrayList<>();
+      IntStream.range(0, PARALLELISM_TEN).forEach(i -> broadcastedWrittenData.addAll(flattenedWrittenData));
+      assertEquals(broadcastedWrittenData.size(), flattenedReadData2.size());
+      flattenedReadData2.forEach(rData -> assertTrue(broadcastedWrittenData.remove(rData)));
+    } else {
+      assertEquals(flattenedWrittenData.size(), flattenedReadData2.size());
+      flattenedReadData2.forEach(rData -> assertTrue(flattenedWrittenData.remove(rData)));
     }
   }
 

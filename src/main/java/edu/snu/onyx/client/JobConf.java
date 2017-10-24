@@ -1,5 +1,6 @@
 package edu.snu.onyx.client;
 
+import edu.snu.onyx.runtime.executor.data.LocalFileStore;
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 import org.apache.reef.tang.formats.ConfigurationModule;
@@ -233,6 +234,14 @@ public final class JobConf extends ConfigurationModuleBuilder {
   @NamedParameter(doc = "The number of threads of PartitionTransport client",
       short_name = "partition_threads_client", default_value = "10")
   public final class PartitionTransportClientNumThreads implements Name<Integer> {
+  }
+
+  /**
+   * The {@link edu.snu.onyx.runtime.executor.data.PartitionStore} to contain spilt data.
+   */
+  @NamedParameter(doc = "The partition store to contain spilt data", short_name = "store_to_spill",
+      default_value = LocalFileStore.SIMPLE_NAME)
+  public final class PartitionStoreToSpill implements Name<String> {
   }
 
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();

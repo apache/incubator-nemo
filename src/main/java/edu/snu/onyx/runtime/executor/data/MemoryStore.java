@@ -16,6 +16,7 @@
 package edu.snu.onyx.runtime.executor.data;
 
 import edu.snu.onyx.compiler.ir.Element;
+import edu.snu.onyx.runtime.exception.PartitionFetchException;
 import edu.snu.onyx.runtime.exception.PartitionWriteException;
 import edu.snu.onyx.runtime.executor.data.partition.MemoryPartition;
 
@@ -32,7 +33,7 @@ import java.util.stream.StreamSupport;
  * Store data in local memory.
  */
 @ThreadSafe
-public final class MemoryStore implements PartitionStore {
+public final class MemoryStore implements SpillablePartitionStore {
   public static final String SIMPLE_NAME = "MemoryStore";
   // A map between partition id and data blocks.
   private final ConcurrentHashMap<String, MemoryPartition> partitionMap;
@@ -63,6 +64,24 @@ public final class MemoryStore implements PartitionStore {
       return Optional.of(concatBlocks(retrievedData));
     } else {
       return Optional.empty();
+    }
+  }
+
+  /**
+   * @see SpillablePartitionStore#getBlocksFromPartition(String).
+   */
+  @Override
+  public Iterable<Block> getBlocksFromPartition(final String partitionId) throws PartitionFetchException {
+    final MemoryPartition partition = partitionMap.get(partitionId);
+
+    if (partition != null) {
+      final Iterable<Block> blocks = partition.getBlocks();
+      // Retrieves data in the hash range from the target partition
+      final List<Block> retrievedBlocks = new ArrayList<>();
+      blocks.forEach(retrievedBlocks::add);
+      return retrievedBlocks;
+    } else {
+      throw new PartitionFetchException(new Throwable("There is no such partition: " + partitionId));
     }
   }
 

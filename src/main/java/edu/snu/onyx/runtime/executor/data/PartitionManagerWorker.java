@@ -36,6 +36,8 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,10 +58,13 @@ public final class PartitionManagerWorker {
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder;
   private final PartitionTransfer partitionTransfer;
   private final ExecutorService ioThreadExecutorService;
+  private final Map<String, AtomicInteger> partitionToSpillMap;
+  private final String partitionStoreToSpill;
 
   @Inject
   private PartitionManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
                                  @Parameter(JobConf.IORequestHandleThreadsTotal.class) final int numThreads,
+                                 @Parameter(JobConf.PartitionStoreToSpill.class) final String partitionStoreToSpill,
                                  final MemoryStore memoryStore,
                                  final SerializingMemoryStore serializingMemoryStore,
                                  final LocalFileStore localFileStore,
@@ -75,6 +80,8 @@ public final class PartitionManagerWorker {
     this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
     this.partitionTransfer = partitionTransfer;
     this.ioThreadExecutorService = Executors.newFixedThreadPool(numThreads);
+    this.partitionToSpillMap = new ConcurrentHashMap<>();
+    this.partitionStoreToSpill = partitionStoreToSpill;
   }
 
   /**
@@ -119,13 +126,24 @@ public final class PartitionManagerWorker {
       final HashRange hashRange) {
     LOG.info("RetrieveDataFromPartition: {} from {}, range {}", partitionId, partitionStore, hashRange);
     final PartitionStore store = getPartitionStore(partitionStore);
+    final PartitionStore spillStore = getPartitionStore(partitionStoreToSpill);
 
     // First, try to fetch the partition from local PartitionStore.
     final Optional<Iterable<Element>> optionalResultData = store.getFromPartition(partitionId, hashRange);
 
     if (optionalResultData.isPresent()) {
       // Partition resides in this evaluator!
+      if (store instanceof SpillablePartitionStore) {
+        spilPartition(partitionId, (SpillablePartitionStore) store);
+      }
       return CompletableFuture.completedFuture(optionalResultData.get());
+    }
+
+    // Check the spill partition store.
+    final Optional<Iterable<Element>> optionalSpiltData = spillStore.getFromPartition(partitionId, hashRange);
+    if (optionalSpiltData.isPresent()) {
+      // Partition resides in this evaluator! (Spilt)
+      return CompletableFuture.completedFuture(optionalSpiltData.get());
     } else if (partitionStore.equals(GlusterFileStore.class)) {
       throw new PartitionFetchException(new Throwable("Cannot find a partition in remote store."));
     } else {
@@ -214,15 +232,17 @@ public final class PartitionManagerWorker {
    * Subscribers waiting for the data of the target partition are notified when the partition is committed.
    * Also, further subscription about a committed partition will not blocked but get the data in it and finished.
    *
-   * @param partitionId    of the partition.
-   * @param partitionStore to store the partition.
-   * @param blockSizeInfo  the size metric of blocks.
-   * @param srcIRVertexId  of the source task.
+   * @param partitionId       of the partition.
+   * @param partitionStore    to store the partition.
+   * @param blockSizeInfo     the size metric of blocks.
+   * @param srcIRVertexId     of the source task.
+   * @param expectedReadTotal the expected number of read for this partition.
    */
   public void commitPartition(final String partitionId,
                               final Class<? extends PartitionStore> partitionStore,
                               final List<Long> blockSizeInfo,
-                              final String srcIRVertexId) {
+                              final String srcIRVertexId,
+                              final int expectedReadTotal) {
     LOG.info("CommitPartition: {} in {}", new Object[]{partitionId, partitionStore});
     final PartitionStore store = getPartitionStore(partitionStore);
     store.commitPartition(partitionId);
@@ -236,6 +256,10 @@ public final class PartitionManagerWorker {
       partitionStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
     } else {
       partitionStateChangedMsgBuilder.setLocation(executorId);
+    }
+
+    if (store instanceof SpillablePartitionStore) {
+      partitionToSpillMap.put(partitionId, new AtomicInteger(expectedReadTotal));
     }
 
     persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
@@ -272,10 +296,11 @@ public final class PartitionManagerWorker {
                               final Class<? extends PartitionStore> partitionStore) {
     LOG.info("RemovePartition: {}", partitionId);
     final PartitionStore store = getPartitionStore(partitionStore);
-    final boolean exist;
-    exist = store.removePartition(partitionId);
+    final boolean exist = store.removePartition(partitionId);
+    final PartitionStore spillStore = getPartitionStore(partitionStoreToSpill);
+    final boolean spilt = spillStore.removePartition(partitionId);
 
-    if (exist) {
+    if (exist || spilt) {
       final ControlMessage.PartitionStateChangedMsg.Builder partitionStateChangedMsgBuilder =
           ControlMessage.PartitionStateChangedMsg.newBuilder()
               .setExecutorId(executorId)
@@ -301,7 +326,11 @@ public final class PartitionManagerWorker {
   }
 
   private PartitionStore getPartitionStore(final Class<? extends PartitionStore> partitionStore) {
-    switch (partitionStore.getSimpleName()) {
+    return getPartitionStore(partitionStore.getSimpleName());
+  }
+
+  private PartitionStore getPartitionStore(final String partitionStoreSimpleName) {
+    switch (partitionStoreSimpleName) {
       case MemoryStore.SIMPLE_NAME:
         return memoryStore;
       case SerializingMemoryStore.SIMPLE_NAME:
@@ -311,7 +340,40 @@ public final class PartitionManagerWorker {
       case GlusterFileStore.SIMPLE_NAME:
         return remoteFileStore;
       default:
-        throw new UnsupportedPartitionStoreException(new Exception(partitionStore + " is not supported."));
+        throw new UnsupportedPartitionStoreException(new Exception(partitionStoreSimpleName + " is not supported."));
+    }
+  }
+
+  /**
+   * Checks whether a partition should be spilt to another {@link PartitionStore} and spill if needed.
+   * @param partitionId  the ID of the partition to check and spill.
+   * @param currentStore the current location of the partition.
+   */
+  private void spilPartition(final String partitionId,
+                             final SpillablePartitionStore currentStore) {
+    // Partition resides in this evaluator!
+    final AtomicInteger remainingExpectedRead = partitionToSpillMap.get(partitionId);
+    if (remainingExpectedRead != null) {
+      if (remainingExpectedRead.decrementAndGet() == 0) {
+        // This partition should be spilt.
+        partitionToSpillMap.remove(partitionId);
+        ioThreadExecutorService.submit(new Runnable() {
+          @Override
+          public void run() {
+            try {
+              final PartitionStore spillStore = getPartitionStore(partitionStoreToSpill);
+              spillStore.putToPartition(partitionId,
+                  currentStore.getBlocksFromPartition(partitionId), false);
+              spillStore.commitPartition(partitionId);
+              currentStore.removePartition(partitionId);
+              LOG.info("RetrieveDataFromPartition: {} is spilt to {}.", partitionId, partitionStoreToSpill);
+            } catch (final PartitionFetchException e) {
+              LOG.error("Failed to spill data from " + currentStore.getClass().getSimpleName()
+                  + " to " + partitionStoreToSpill, e);
+            }
+          }
+        });
+      }
     }
   }
 
@@ -335,13 +397,8 @@ public final class PartitionManagerWorker {
           if (partitionStore.equals(LocalFileStore.class) || partitionStore.equals(GlusterFileStore.class)) {
             // TODO #492: Modularize the data communication pattern. Remove execution property value dependant code.
             final FileStore fileStore = (FileStore) getPartitionStore(partitionStore);
-            try {
-              outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getPartitionId(),
-                  outputStream.getHashRange())).close();
-            } catch (final IOException | PartitionFetchException e) {
-              LOG.error("Closing a pull request exceptionally", e);
-              outputStream.closeExceptionally(e);
-            }
+            outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getPartitionId(),
+                outputStream.getHashRange())).close();
           } else if (SerializingMemoryStore.class.equals(partitionStore)) {
             final SerializingMemoryStore serializingMemStore =
                 (SerializingMemoryStore) getPartitionStore(partitionStore);
@@ -349,10 +406,27 @@ public final class PartitionManagerWorker {
                 serializingMemStore.getSerializedBlocksFromPartition(
                     outputStream.getPartitionId(), outputStream.getHashRange());
             if (optionalResult.isPresent()) {
+              // Partition resides in this evaluator!
+              spilPartition(outputStream.getPartitionId(), serializingMemStore);
               outputStream.writeByteArrays(optionalResult.get()).close();
             } else {
-              throw new PartitionFetchException(
-                  new Throwable("OnPullRequest: There is no such partition " + outputStream.getPartitionId()));
+              // Check the spill partition store.
+              final PartitionStore spillStore = getPartitionStore(partitionStoreToSpill);
+
+              if (spillStore.getClass().equals(LocalFileStore.class)
+                  || spillStore.getClass().equals(GlusterFileStore.class)) {
+                outputStream.writeFileAreas(((FileStore) spillStore).getFileAreas(outputStream.getPartitionId(),
+                    outputStream.getHashRange())).close();
+              } else {
+                final Optional<Iterable<Element>> optionalSpiltData =
+                    spillStore.getFromPartition(outputStream.getPartitionId(), outputStream.getHashRange());
+                if (optionalSpiltData.isPresent()) {
+                  // Partition resides in this evaluator! (Spilt)
+                  outputStream.writeElements(optionalSpiltData.get()).close();
+                } else {
+                  throw new IOException("OnPullRequest: There is no such partition " + outputStream.getPartitionId());
+                }
+              }
             }
           } else {
             final Iterable<Element> partition =
@@ -360,7 +434,7 @@ public final class PartitionManagerWorker {
                     partitionStore, outputStream.getHashRange()).get();
             outputStream.writeElements(partition).close();
           }
-        } catch (final IOException | InterruptedException | ExecutionException e) {
+        } catch (final IOException | InterruptedException | ExecutionException | PartitionFetchException e) {
           LOG.error("Closing a pull request exceptionally", e);
           outputStream.closeExceptionally(e);
         }
