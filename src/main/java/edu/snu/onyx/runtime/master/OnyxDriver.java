@@ -156,6 +156,8 @@ public final class OnyxDriver {
   public final class FailedEvaluatorHandler implements EventHandler<FailedEvaluator> {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
+      LOG.info("failed evaluator: " + failedEvaluator.getId());
+      LOG.info("failed evaluator context list: " + failedEvaluator.getFailedContextList());
       final List<FailedContext> failedContexts = failedEvaluator.getFailedContextList();
 
       if (failedContexts.isEmpty()) {
