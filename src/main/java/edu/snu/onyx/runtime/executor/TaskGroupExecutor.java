@@ -198,8 +198,8 @@ public final class TaskGroupExecutor {
         LOG.warn("{} Execution Failed (Recoverable)! Exception: {}",
             new Object[] {taskGroup.getTaskGroupId(), ex2.toString()});
       } catch (final Exception e) {
-        // Fail the executor on user code exception
-        throw new RuntimeException(e);
+        // Just log user code exceptions
+        e.printStackTrace();
       }
     });
     LOG.info("{} Execution Complete!", taskGroup.getTaskGroupId());
