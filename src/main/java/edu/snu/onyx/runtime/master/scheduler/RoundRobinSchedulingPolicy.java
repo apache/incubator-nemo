@@ -181,12 +181,18 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
       LOG.info("[" + executorId + "] is added started");
 
       updateCachedExecutorRepresenterMap();
+      LOG.info("[" + executorId + "] is added executing 1");
       final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
+      LOG.info("[" + executor.getExecutorId() + "] is added executing 2");
       final String containerType = executor.getContainerType();
+      LOG.info("[" + executor.getExecutorId() + "] is added executing 3");
       initializeContainerTypeIfAbsent(containerType);
+
+      LOG.info("[" + executorId + "] is added executing 4");
 
       executorIdByContainerType.get(containerType)
           .add(nextExecutorIndexByContainerType.get(containerType), executorId);
+      LOG.info("[" + executor.getExecutorId() + "] is added executing 5");
       signalPossiblyWaitingScheduler(containerType);
 
       LOG.info("[" + executorId + "] is added finished");
