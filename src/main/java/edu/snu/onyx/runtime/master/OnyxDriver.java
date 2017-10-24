@@ -147,6 +147,7 @@ public final class OnyxDriver {
     public void onNext(final ActiveContext activeContext) {
       containerManager.onExecutorLaunched(activeContext);
       scheduler.onExecutorAdded(activeContext.getId());
+      LOG.info("Exit: ActiveContextHandler");
     }
   }
 
