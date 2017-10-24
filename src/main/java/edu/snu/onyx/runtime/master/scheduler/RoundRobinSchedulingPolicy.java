@@ -128,6 +128,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
    * @return (optionally) the selected executor.
    */
   private Optional<String> selectExecutorByRR(final String containerType) {
+    LOG.info("executorIdByContainerType " + executorIdByContainerType.toString());
     final List<String> candidateExecutorIds = (containerType.equals(ExecutorPlacementProperty.NONE))
         ? getAllContainers() // all containers
         : executorIdByContainerType.get(containerType); // containers of a particular type
