@@ -89,7 +89,9 @@ public final class ExecutorRepresenter {
   }
 
   public synchronized void sendControlMessage(final ControlMessage.Message message) {
-    messageSender.send(message);
+    if (messageSender != null) {
+      messageSender.send(message);
+    }
   }
 
   public synchronized void onTaskGroupExecutionComplete(final String taskGroupId) {
