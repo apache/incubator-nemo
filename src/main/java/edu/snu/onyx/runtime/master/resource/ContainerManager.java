@@ -148,12 +148,17 @@ public final class ContainerManager {
                                     final String executorId,
                                     final AllocatedEvaluator allocatedContainer,
                                     final Configuration executorConfiguration) {
-    LOG.info("Container type (" + resourceSpecification.getContainerType()
-        + ") allocated, will be used for [" + executorId + "]");
-    pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
-    containerIdToExecutorIdMap.put(allocatedContainer.getId(), executorId);
+    if (isJobTerminated.get()) {
+      // no-op
+      return;
+    } else {
+      LOG.info("Container type (" + resourceSpecification.getContainerType()
+          + ") allocated, will be used for [" + executorId + "]");
+      pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
+      containerIdToExecutorIdMap.put(allocatedContainer.getId(), executorId);
 
-    allocatedContainer.submitContext(executorConfiguration);
+      allocatedContainer.submitContext(executorConfiguration);
+    }
   }
 
   private ResourceSpecification selectResourceSpecForContainer(final EvaluatorDescriptor descriptor) {

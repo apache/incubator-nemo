@@ -31,7 +31,6 @@ import edu.snu.onyx.runtime.common.metric.MetricMessageHandler;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.onyx.runtime.common.state.PartitionState;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
-import edu.snu.onyx.runtime.exception.ContainerException;
 import edu.snu.onyx.runtime.exception.IllegalMessageException;
 import edu.snu.onyx.runtime.exception.UnknownExecutionStateException;
 import edu.snu.onyx.runtime.exception.UnknownFailureCauseException;
@@ -122,16 +121,7 @@ public final class RuntimeMaster {
   }
 
   public void terminate() {
-    final Future<Boolean> allExecutorsClosed = containerManager.terminate();
-
-    try {
-      if (allExecutorsClosed.get()) {
-        LOG.info("All executors were closed successfully!");
-      }
-    } catch (Exception e) {
-      new ContainerException(new Throwable("An exception occurred while trying to terminate ContainerManager"));
-      e.printStackTrace();
-    }
+    containerManager.terminate();
   }
 
   /**
