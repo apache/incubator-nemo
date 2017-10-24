@@ -258,7 +258,7 @@ public final class PartitionManagerWorker {
       partitionStateChangedMsgBuilder.setLocation(executorId);
     }
 
-    if (store instanceof SpillablePartitionStore) {
+    if (store instanceof SpillablePartitionStore && expectedReadTotal > 0) {
       partitionToSpillMap.put(partitionId, new AtomicInteger(expectedReadTotal));
     }
 
@@ -299,6 +299,7 @@ public final class PartitionManagerWorker {
     final boolean exist = store.removePartition(partitionId);
     final PartitionStore spillStore = getPartitionStore(partitionStoreToSpill);
     final boolean spilt = spillStore.removePartition(partitionId);
+    partitionToSpillMap.remove(partitionId);
 
     if (exist || spilt) {
       final ControlMessage.PartitionStateChangedMsg.Builder partitionStateChangedMsgBuilder =
