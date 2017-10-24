@@ -76,6 +76,8 @@ public final class OnyxDriver {
   private final String localDirectory;
   private final String glusterDirectory;
 
+  private final ExecutorService reefEventHandler = Executors.newSingleThreadExecutor();
+
   @Inject
   private OnyxDriver(final ContainerManager containerManager,
                      final Scheduler scheduler,
@@ -103,27 +105,29 @@ public final class OnyxDriver {
   public final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      try {
-        final ObjectMapper objectMapper = new ObjectMapper();
-        final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
+      reefEventHandler.execute(() -> {
+        try {
+          final ObjectMapper objectMapper = new ObjectMapper();
+          final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
 
-        for (int i = 0; i < jsonRootNode.size(); i++) {
-          final TreeNode resourceNode = jsonRootNode.get(i);
-          final ResourceSpecification.Builder builder = ResourceSpecification.newBuilder();
-          builder.setContainerType(resourceNode.get("type").traverse().nextTextValue());
-          builder.setMemory(resourceNode.get("memory_mb").traverse().getIntValue());
-          builder.setCapacity(4);
-          final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
-          containerManager.requestContainer(executorNum, builder.build());
+          for (int i = 0; i < jsonRootNode.size(); i++) {
+            final TreeNode resourceNode = jsonRootNode.get(i);
+            final ResourceSpecification.Builder builder = ResourceSpecification.newBuilder();
+            builder.setContainerType(resourceNode.get("type").traverse().nextTextValue());
+            builder.setMemory(resourceNode.get("memory_mb").traverse().getIntValue());
+            builder.setCapacity(4);
+            final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
+            containerManager.requestContainer(executorNum, builder.build());
+          }
+        } catch (final IOException e) {
+          throw new RuntimeException(e);
         }
-      } catch (final IOException e) {
-        throw new RuntimeException(e);
-      }
 
-      // Launch user application (with a new thread)
-      final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor();
-      userApplicationRunnerThread.execute(userApplicationRunner);
-      userApplicationRunnerThread.shutdown();
+        // Launch user application (with a new thread)
+        final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor();
+        userApplicationRunnerThread.execute(userApplicationRunner);
+        userApplicationRunnerThread.shutdown();
+      });
     }
   }
 
@@ -133,9 +137,11 @@ public final class OnyxDriver {
   public final class AllocatedEvaluatorHandler implements EventHandler<AllocatedEvaluator> {
     @Override
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
-      final String executorId = RuntimeIdGenerator.generateExecutorId();
-      containerManager.onContainerAllocated(executorId, allocatedEvaluator,
-          getExecutorConfiguration(executorId, 4));
+      reefEventHandler.execute(() -> {
+        final String executorId = RuntimeIdGenerator.generateExecutorId();
+        containerManager.onContainerAllocated(executorId, allocatedEvaluator,
+            getExecutorConfiguration(executorId, 4));
+      });
     }
   }
 
@@ -145,9 +151,11 @@ public final class OnyxDriver {
   public final class ActiveContextHandler implements EventHandler<ActiveContext> {
     @Override
     public void onNext(final ActiveContext activeContext) {
-      containerManager.onExecutorLaunched(activeContext);
-      scheduler.onExecutorAdded(activeContext.getId());
-      LOG.info("Exit: ActiveContextHandler");
+      reefEventHandler.execute(() -> {
+        containerManager.onExecutorLaunched(activeContext);
+        scheduler.onExecutorAdded(activeContext.getId());
+        LOG.info("Exit: ActiveContextHandler");
+      });
     }
   }
 
@@ -157,20 +165,22 @@ public final class OnyxDriver {
   public final class FailedEvaluatorHandler implements EventHandler<FailedEvaluator> {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
-      LOG.info("failed evaluator: " + failedEvaluator.getId());
-      LOG.info("failed evaluator context list: " + failedEvaluator.getFailedContextList());
-      final List<FailedContext> failedContexts = failedEvaluator.getFailedContextList();
+      reefEventHandler.execute(() -> {
+        LOG.info("failed evaluator: " + failedEvaluator.getId());
+        LOG.info("failed evaluator context list: " + failedEvaluator.getFailedContextList());
+        final List<FailedContext> failedContexts = failedEvaluator.getFailedContextList();
 
-      if (failedContexts.isEmpty()) {
-        containerManager.onContainerRemoved(failedEvaluator.getId());
-      } else {
-        // The list size is 0 if the evaluator failed before an executor started. For now, the size is 1 otherwise.
-        failedContexts.forEach(failedContext -> {
-          final String failedExecutorId = failedContext.getId();
-          containerManager.onExecutorRemoved(failedExecutorId);
-          scheduler.onExecutorRemoved(failedExecutorId);
-        });
-      }
+        if (failedContexts.isEmpty()) {
+          containerManager.onContainerRemoved(failedEvaluator.getId());
+        } else {
+          // The list size is 0 if the evaluator failed before an executor started. For now, the size is 1 otherwise.
+          failedContexts.forEach(failedContext -> {
+            final String failedExecutorId = failedContext.getId();
+            containerManager.onExecutorRemoved(failedExecutorId);
+            scheduler.onExecutorRemoved(failedExecutorId);
+          });
+        }
+      });
     }
   }
 
