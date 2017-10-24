@@ -221,6 +221,7 @@ public final class ContainerManager {
   }
 
   public synchronized void onContainerRemoved(final String failedContainerId) {
+    LOG.info("onContainerRemoved");
     final String failedExecutorId = containerIdToExecutorIdMap.remove(failedContainerId);
     LOG.info("[" + failedContainerId + "], for " + failedExecutorId + " failure reported.");
 
