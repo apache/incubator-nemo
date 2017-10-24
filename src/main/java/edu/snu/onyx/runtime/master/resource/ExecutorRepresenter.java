@@ -58,12 +58,12 @@ public final class ExecutorRepresenter {
     this.activeContext = activeContext;
   }
 
-  public void onExecutorFailed() {
+  public synchronized void onExecutorFailed() {
     runningTaskGroups.forEach(taskGroupId -> failedTaskGroups.add(taskGroupId));
     runningTaskGroups.clear();
   }
 
-  public void onTaskGroupScheduled(final ScheduledTaskGroup scheduledTaskGroup) {
+  public synchronized void onTaskGroupScheduled(final ScheduledTaskGroup scheduledTaskGroup) {
     runningTaskGroups.add(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
     failedTaskGroups.remove(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
 
@@ -88,45 +88,45 @@ public final class ExecutorRepresenter {
 
   }
 
-  public void sendControlMessage(final ControlMessage.Message message) {
+  public synchronized void sendControlMessage(final ControlMessage.Message message) {
     messageSender.send(message);
   }
 
-  public void onTaskGroupExecutionComplete(final String taskGroupId) {
+  public synchronized void onTaskGroupExecutionComplete(final String taskGroupId) {
     runningTaskGroups.remove(taskGroupId);
     completeTaskGroups.add(taskGroupId);
   }
 
-  public void onTaskGroupExecutionFailed(final String taskGroupId) {
+  public synchronized void onTaskGroupExecutionFailed(final String taskGroupId) {
     runningTaskGroups.remove(taskGroupId);
     failedTaskGroups.add(taskGroupId);
   }
 
-  public int getExecutorCapacity() {
+  public synchronized int getExecutorCapacity() {
     return resourceSpecification.getCapacity();
   }
 
-  public Set<String> getRunningTaskGroups() {
+  public synchronized Set<String> getRunningTaskGroups() {
     return runningTaskGroups;
   }
 
-  public Set<String> getCompleteTaskGroups() {
+  public synchronized Set<String> getCompleteTaskGroups() {
     return completeTaskGroups;
   }
 
-  public String getExecutorId() {
+  public synchronized String getExecutorId() {
     return executorId;
   }
 
-  public String getContainerType() {
+  public synchronized String getContainerType() {
     return resourceSpecification.getContainerType();
   }
 
-  public ResourceSpecification getResourceSpecification() {
+  public synchronized ResourceSpecification getResourceSpecification() {
     return resourceSpecification;
   }
 
-  public void shutDown() {
+  public synchronized void shutDown() {
     activeContext.close();
   }
 }
