@@ -58,11 +58,6 @@ public final class ExecutorRepresenter {
     this.activeContext = activeContext;
   }
 
-  public synchronized void onExecutorFailed() {
-    runningTaskGroups.forEach(taskGroupId -> failedTaskGroups.add(taskGroupId));
-    runningTaskGroups.clear();
-  }
-
   public synchronized void onTaskGroupScheduled(final ScheduledTaskGroup scheduledTaskGroup) {
     runningTaskGroups.add(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
     failedTaskGroups.remove(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
@@ -107,10 +102,6 @@ public final class ExecutorRepresenter {
 
   public synchronized Set<String> getRunningTaskGroups() {
     return runningTaskGroups;
-  }
-
-  public synchronized Set<String> getFailedTaskGroups() {
-    return failedTaskGroups;
   }
 
   public synchronized Set<String> getCompleteTaskGroups() {
