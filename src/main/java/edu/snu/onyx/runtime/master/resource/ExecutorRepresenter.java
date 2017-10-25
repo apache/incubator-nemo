@@ -81,11 +81,8 @@ public final class ExecutorRepresenter {
                       .build())
               .build());
     } catch (Exception e) {
-      System.out.println("$$$$" + scheduledTaskGroup.getTaskGroup().toString());
       e.printStackTrace();
-      throw new RuntimeException(e);
     }
-
   }
 
   public synchronized void sendControlMessage(final ControlMessage.Message message) {
