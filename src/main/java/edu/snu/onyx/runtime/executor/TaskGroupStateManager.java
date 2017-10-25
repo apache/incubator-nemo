@@ -269,9 +269,11 @@ public final class TaskGroupStateManager {
    * @param initialMetric metric to add
    */
   private void beginMeasurement(final String compUnitId, final Map<String, Object> initialMetric) {
+    /*
     final MetricDataBuilder metricDataBuilder = new MetricDataBuilder(compUnitId);
     metricDataBuilder.beginMeasurement(initialMetric);
     metricDataBuilderMap.put(compUnitId, metricDataBuilder);
+    */
   }
 
   /**
@@ -281,10 +283,12 @@ public final class TaskGroupStateManager {
    * @param finalMetric metric to add
    */
   private void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {
+    /*
     final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(compUnitId);
     metricDataBuilder.endMeasurement(finalMetric);
     //metricMessageSender.send(compUnitId, metricDataBuilder.build().toJson());
     metricDataBuilderMap.remove(compUnitId);
+    */
   }
 
   // Tentative
