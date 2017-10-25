@@ -69,6 +69,11 @@ public final class MemoryStore implements PartitionStore {
     }
   }
 
+  @Override
+  public void createPartition(final String partitionId) {
+    partitionMap.put(partitionId, new MemoryPartition());
+  }
+
   /**
    * @see PartitionStore#putToPartition(String, Iterable, boolean).
    */
@@ -76,9 +81,12 @@ public final class MemoryStore implements PartitionStore {
   public Optional<List<Long>> putToPartition(final String partitionId,
                                              final Iterable<Block> blocks,
                                              final boolean commitPerBlock) throws PartitionWriteException {
-    partitionMap.putIfAbsent(partitionId, new MemoryPartition());
     try {
-      partitionMap.get(partitionId).appendBlocks(blocks);
+      final MemoryPartition partition = partitionMap.get(partitionId);
+      if (partition == null) {
+        throw new PartitionWriteException(new Throwable("The partition " + partitionId + "is not created yet."));
+      }
+      partition.appendBlocks(blocks);
       // The partition is not serialized.
       return Optional.empty();
     } catch (final IOException e) {
