@@ -96,7 +96,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   @Override
-  public Optional<String> attemptSchedule(final ScheduledTaskGroup scheduledTaskGroup) {
+  public synchronized Optional<String> attemptSchedule(final ScheduledTaskGroup scheduledTaskGroup) {
     lock.lock();
     try {
       final String containerType = scheduledTaskGroup.getTaskGroup().getContainerType();
@@ -177,7 +177,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   @Override
-  public void onExecutorAdded(final String executorId) {
+  public synchronized void onExecutorAdded(final String executorId) {
     lock.lock();
     try {
       LOG.info("[" + executorId + "] is added started");
@@ -204,7 +204,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   @Override
-  public Set<String> onExecutorRemoved(final String executorId) {
+  public synchronized Set<String> onExecutorRemoved(final String executorId) {
     lock.lock();
     try {
       final ExecutorRepresenter executor = containerManager.getFailedExecutorRepresenterMap().get(executorId);
@@ -223,7 +223,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
 
       updateCachedExecutorRepresenterMap();
 
-      return Collections.unmodifiableSet(executor.getFailedTaskGroups());
+      return Collections.unmodifiableSet(executor.getRunningTaskGroups());
     } finally {
       lock.unlock();
     }
@@ -235,7 +235,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   @Override
-  public void onTaskGroupScheduled(final String executorId, final ScheduledTaskGroup scheduledTaskGroup) {
+  public synchronized void onTaskGroupScheduled(final String executorId, final ScheduledTaskGroup scheduledTaskGroup) {
     lock.lock();
     try {
       final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
@@ -248,7 +248,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   @Override
-  public void onTaskGroupExecutionComplete(final String executorId, final String taskGroupId) {
+  public synchronized void onTaskGroupExecutionComplete(final String executorId, final String taskGroupId) {
     lock.lock();
     try {
       final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
@@ -274,7 +274,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   @Override
-  public void onTaskGroupExecutionFailed(final String executorId, final String taskGroupId) {
+  public synchronized void onTaskGroupExecutionFailed(final String executorId, final String taskGroupId) {
     lock.lock();
     try {
       ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
