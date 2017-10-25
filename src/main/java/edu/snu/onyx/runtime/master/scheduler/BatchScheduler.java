@@ -56,7 +56,7 @@ public final class BatchScheduler implements Scheduler {
   /**
    * The {@link SchedulingPolicy} used to schedule task groups.
    */
-  private SchedulingPolicy schedulingPolicy;
+  private final SchedulingPolicy schedulingPolicy;
 
   private final PartitionManagerMaster partitionManagerMaster;
 
@@ -99,34 +99,38 @@ public final class BatchScheduler implements Scheduler {
   public synchronized JobStateManager scheduleJob(final PhysicalPlan jobToSchedule,
                                                   final MetricMessageHandler metricMessageHandler,
                                                   final int maxScheduleAttempt) {
-    this.physicalPlan = jobToSchedule;
-    this.jobStateManager =
-        new JobStateManager(jobToSchedule, partitionManagerMaster, metricMessageHandler, maxScheduleAttempt);
-    pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
+    synchronized (schedulingPolicy) {
+      this.physicalPlan = jobToSchedule;
+      this.jobStateManager =
+          new JobStateManager(jobToSchedule, partitionManagerMaster, metricMessageHandler, maxScheduleAttempt);
+      pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
 
-    LOG.info("Job to schedule: {}", jobToSchedule.getId());
+      LOG.info("Job to schedule: {}", jobToSchedule.getId());
 
-    this.initialScheduleGroup = jobToSchedule.getStageDAG().getVertices().stream()
-        .mapToInt(physicalStage -> physicalStage.getScheduleGroupIndex())
-        .min().getAsInt();
+      this.initialScheduleGroup = jobToSchedule.getStageDAG().getVertices().stream()
+          .mapToInt(physicalStage -> physicalStage.getScheduleGroupIndex())
+          .min().getAsInt();
 
-    // Launch scheduler
-    final ExecutorService pendingTaskSchedulerThread = Executors.newSingleThreadExecutor();
-    pendingTaskSchedulerThread.execute(
-        new SchedulerRunner(jobStateManager, schedulingPolicy, pendingTaskGroupPriorityQueue, containerManager));
-    pendingTaskSchedulerThread.shutdown();
+      // Launch scheduler
+      final ExecutorService pendingTaskSchedulerThread = Executors.newSingleThreadExecutor();
+      pendingTaskSchedulerThread.execute(
+          new SchedulerRunner(jobStateManager, schedulingPolicy, pendingTaskGroupPriorityQueue, containerManager));
+      pendingTaskSchedulerThread.shutdown();
 
-    scheduleRootStages();
-    return jobStateManager;
+      scheduleRootStages();
+      return jobStateManager;
+    }
   }
 
   @Override
   public void updateJob(final PhysicalPlan newPhysicalPlan, final Pair<String, TaskGroup> taskInfo) {
-    // update the job in the scheduler.
-    // NOTE: what's already been executed is not modified in the new physical plan.
-    this.physicalPlan = newPhysicalPlan;
-    if (taskInfo != null) {
-      onTaskGroupExecutionComplete(taskInfo.left(), taskInfo.right(), true);
+    synchronized (schedulingPolicy) {
+      // update the job in the scheduler.
+      // NOTE: what's already been executed is not modified in the new physical plan.
+      this.physicalPlan = newPhysicalPlan;
+      if (taskInfo != null) {
+        onTaskGroupExecutionComplete(taskInfo.left(), taskInfo.right(), true);
+      }
     }
   }
 
@@ -145,36 +149,41 @@ public final class BatchScheduler implements Scheduler {
                                       final int attemptIdx,
                                       final List<String> tasksPutOnHold,
                                       final TaskGroupState.RecoverableFailureCause failureCause) {
-    final TaskGroup taskGroup = getTaskGroupById(taskGroupId);
-    jobStateManager.onTaskGroupStateChanged(taskGroup, newState);
+    synchronized (schedulingPolicy) {
+      final TaskGroup taskGroup = getTaskGroupById(taskGroupId);
+      jobStateManager.onTaskGroupStateChanged(taskGroup, newState);
 
-    switch (newState) {
-    case COMPLETE:
-      onTaskGroupExecutionComplete(executorId, taskGroup);
-      break;
-    case FAILED_RECOVERABLE:
-      final int attemptIndexForStage =
-          jobStateManager.getAttemptCountForStage(getTaskGroupById(taskGroupId).getStageId());
-      if (attemptIdx == attemptIndexForStage || attemptIdx == SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE) {
-        onTaskGroupExecutionFailedRecoverable(executorId, taskGroup, failureCause);
-      } else if (attemptIdx < attemptIndexForStage) {
-        // if attemptIdx < attemptIndexForStage, we can ignore this late arriving message.
-        LOG.info("{} state change to failed_recoverable arrived late, we will ignore this.", taskGroupId);
-      } else {
-        throw new SchedulingException(new Throwable("AttemptIdx for a task group cannot be greater than its stage"));
+      switch (newState) {
+        case COMPLETE:
+          onTaskGroupExecutionComplete(executorId, taskGroup);
+          break;
+        case FAILED_RECOVERABLE:
+          final int attemptIndexForStage =
+              jobStateManager.getAttemptCountForStage(getTaskGroupById(taskGroupId).getStageId());
+          if (attemptIdx == attemptIndexForStage || attemptIdx == SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE) {
+            onTaskGroupExecutionFailedRecoverable(executorId, taskGroup, failureCause);
+          } else if (attemptIdx < attemptIndexForStage) {
+            // if attemptIdx < attemptIndexForStage, we can ignore this late arriving message.
+            LOG.info("{} state change to failed_recoverable arrived late, we will ignore this.", taskGroupId);
+          } else {
+            throw new SchedulingException(
+                new Throwable("AttemptIdx for a task group cannot be greater than its stage"));
+          }
+          break;
+        case ON_HOLD:
+          onTaskGroupExecutionOnHold(executorId, taskGroup, tasksPutOnHold);
+          break;
+        case FAILED_UNRECOVERABLE:
+          throw new UnrecoverableFailureException(
+              new Exception(new StringBuffer().append("The job failed on TaskGroup #")
+                  .append(taskGroupId).append(" in Executor ").append(executorId).toString()));
+        case READY:
+        case EXECUTING:
+          throw new IllegalStateTransitionException(
+              new Exception("The states READY/EXECUTING cannot occur at this point"));
+        default:
+          throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + newState));
       }
-      break;
-    case ON_HOLD:
-      onTaskGroupExecutionOnHold(executorId, taskGroup, tasksPutOnHold);
-      break;
-    case FAILED_UNRECOVERABLE:
-      throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The job failed on TaskGroup #")
-          .append(taskGroupId).append(" in Executor ").append(executorId).toString()));
-    case READY:
-    case EXECUTING:
-      throw new IllegalStateTransitionException(new Exception("The states READY/EXECUTING cannot occur at this point"));
-    default:
-      throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + newState));
     }
   }
 
@@ -185,7 +194,9 @@ public final class BatchScheduler implements Scheduler {
    */
   private void onTaskGroupExecutionComplete(final String executorId,
                                             final TaskGroup taskGroup) {
-    onTaskGroupExecutionComplete(executorId, taskGroup, false);
+    synchronized (schedulingPolicy) {
+      onTaskGroupExecutionComplete(executorId, taskGroup, false);
+    }
   }
 
   /**
@@ -311,30 +322,35 @@ public final class BatchScheduler implements Scheduler {
 
   @Override
   public synchronized void onExecutorAdded(final String executorId) {
-    schedulingPolicy.onExecutorAdded(executorId);
+    synchronized (schedulingPolicy) {
+
+      schedulingPolicy.onExecutorAdded(executorId);
+    }
   }
 
   @Override
   public synchronized void onExecutorRemoved(final String executorId) {
-    final Set<String> taskGroupsToReExecute = new HashSet<>();
+    synchronized (schedulingPolicy) {
+      final Set<String> taskGroupsToReExecute = new HashSet<>();
 
-    // TaskGroups for lost blocks
-    taskGroupsToReExecute.addAll(partitionManagerMaster.removeWorker(executorId));
+      // TaskGroups for lost blocks
+      taskGroupsToReExecute.addAll(partitionManagerMaster.removeWorker(executorId));
 
-    // TaskGroups executing on the removed executor
-    taskGroupsToReExecute.addAll(schedulingPolicy.onExecutorRemoved(executorId));
+      // TaskGroups executing on the removed executor
+      taskGroupsToReExecute.addAll(schedulingPolicy.onExecutorRemoved(executorId));
 
-    LOG.info("TaskGroupsToReexecute: " + taskGroupsToReExecute);
+      LOG.info("TaskGroupsToReexecute: " + taskGroupsToReExecute);
 
-    taskGroupsToReExecute.forEach(failedTaskGroupId ->
-      onTaskGroupStateChanged(executorId, failedTaskGroupId, TaskGroupState.State.FAILED_RECOVERABLE,
-          SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE, null, TaskGroupState.RecoverableFailureCause.CONTAINER_FAILURE));
+      taskGroupsToReExecute.forEach(failedTaskGroupId ->
+          onTaskGroupStateChanged(executorId, failedTaskGroupId, TaskGroupState.State.FAILED_RECOVERABLE,
+              SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE, null, TaskGroupState.RecoverableFailureCause.CONTAINER_FAILURE));
 
-    if (!taskGroupsToReExecute.isEmpty()) {
-      // Schedule a stage after marking the necessary task groups to failed_recoverable.
-      // The stage for one of the task groups that failed is a starting point to look
-      // for the next stage to be scheduled.
-      scheduleNextStage(getTaskGroupById(taskGroupsToReExecute.iterator().next()).getStageId());
+      if (!taskGroupsToReExecute.isEmpty()) {
+        // Schedule a stage after marking the necessary task groups to failed_recoverable.
+        // The stage for one of the task groups that failed is a starting point to look
+        // for the next stage to be scheduled.
+        scheduleNextStage(getTaskGroupById(taskGroupsToReExecute.iterator().next()).getStageId());
+      }
     }
   }
 
@@ -507,5 +523,8 @@ public final class BatchScheduler implements Scheduler {
 
   @Override
   public void terminate() {
+    synchronized (schedulingPolicy) {
+      final int yo;
+    }
   }
 }
