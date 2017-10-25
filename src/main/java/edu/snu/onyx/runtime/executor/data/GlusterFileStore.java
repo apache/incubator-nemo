@@ -90,6 +90,15 @@ public final class GlusterFileStore extends FileStore implements RemoteFileStore
     }
   }
 
+  @Override
+  public void createPartition(final String partitionId) {
+    try {
+      deleteFile(partitionIdToFilePath(partitionId));
+    } catch (final IOException e) {
+      throw new PartitionFetchException(e);
+    }
+  }
+
   /**
    * Saves an iterable of data blocks to a partition.
    *

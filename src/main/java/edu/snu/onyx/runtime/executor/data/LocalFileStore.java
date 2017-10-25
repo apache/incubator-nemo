@@ -72,6 +72,22 @@ public final class LocalFileStore extends FileStore {
     }
   }
 
+  @Override
+  public void createPartition(final String partitionId) throws PartitionWriteException {
+    try {
+      deleteFile(partitionIdToFilePath(partitionId));
+    } catch (final IOException e) {
+      throw new PartitionFetchException(e);
+    }
+
+    final Coder coder = getCoderFromWorker(partitionId);
+    final LocalFileMetadata metadata = new LocalFileMetadata(false);
+
+    final FilePartition partition =
+        new FilePartition(coder, partitionIdToFilePath(partitionId), metadata);
+    partitionIdToFilePartition.put(partitionId, partition);
+  }
+
   /**
    * Saves an iterable of data blocks to a partition.
    *
@@ -83,13 +99,12 @@ public final class LocalFileStore extends FileStore {
                                              final boolean commitPerBlock) throws PartitionWriteException {
     final Coder coder = getCoderFromWorker(partitionId);
     final List<Long> blockSizeList;
-    final LocalFileMetadata metadata = new LocalFileMetadata(commitPerBlock);
 
     try {
-      FilePartition partition =
-          new FilePartition(coder, partitionIdToFilePath(partitionId), metadata);
-      partitionIdToFilePartition.putIfAbsent(partitionId, partition);
-      partition = partitionIdToFilePartition.get(partitionId);
+      final FilePartition partition = partitionIdToFilePartition.get(partitionId);
+      if (partition == null) {
+        throw new PartitionWriteException(new Throwable("The partition " + partitionId + "is not created yet."));
+      }
 
       // Serialize and write the given blocks.
       blockSizeList = putBlocks(coder, partition, blocks);
