@@ -435,6 +435,7 @@ public final class BatchScheduler implements Scheduler {
    * @param stageToSchedule the stage to schedule.
    */
   private void scheduleStage(final PhysicalStage stageToSchedule) {
+    boolean scheduleCallForFT = false;
     final List<PhysicalStageEdge> stageIncomingEdges =
         physicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
     final List<PhysicalStageEdge> stageOutgoingEdges =
@@ -445,6 +446,7 @@ public final class BatchScheduler implements Scheduler {
     if (stageState == StageState.State.FAILED_RECOVERABLE) {
       // The 'failed_recoverable' stage has been selected as the next stage to execute. Change its state back to 'ready'
       jobStateManager.onStageStateChanged(stageToSchedule.getId(), StageState.State.READY);
+      scheduleCallForFT = true;
     }
 
     // attemptIdx is only initialized/updated when we set the stage's state to executing
@@ -452,7 +454,7 @@ public final class BatchScheduler implements Scheduler {
     final int attemptIdx = jobStateManager.getAttemptCountForStage(stageToSchedule.getId());
     LOG.info("Scheduling Stage {} with attemptIdx={}", new Object[]{stageToSchedule.getId(), attemptIdx});
 
-    stageToSchedule.getTaskGroupList().forEach(taskGroup -> {
+    for (final TaskGroup taskGroup : stageToSchedule.getTaskGroupList()) {
       // this happens when the belonging stage's other task groups have failed recoverable,
       // but this task group's results are safe.
       final TaskGroupState.State taskGroupState =
@@ -461,17 +463,26 @@ public final class BatchScheduler implements Scheduler {
 
       if (taskGroupState == TaskGroupState.State.COMPLETE || taskGroupState == TaskGroupState.State.EXECUTING) {
         LOG.info("Skipping {} because its outputs are safe!", taskGroup.getTaskGroupId());
-      } else {
-        if (taskGroupState == TaskGroupState.State.FAILED_RECOVERABLE) {
-          LOG.info("Re-scheduling {} for failure recovery", taskGroup.getTaskGroupId());
-          jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.READY);
+      } else if (taskGroupState == TaskGroupState.State.READY) {
+        if (scheduleCallForFT) {
+          LOG.info("Skipping {} because it is already in the queue, but just hasn't been scheduled yet!",
+              taskGroup.getTaskGroupId());
+        } else {
+          partitionManagerMaster.onProducerTaskGroupScheduled(taskGroup.getTaskGroupId());
+          LOG.debug("Enquing {}", taskGroup.getTaskGroupId());
+          pendingTaskGroupPriorityQueue.enqueue(
+              new ScheduledTaskGroup(taskGroup, stageIncomingEdges, stageOutgoingEdges, attemptIdx));
         }
+      } else if (taskGroupState == TaskGroupState.State.FAILED_RECOVERABLE) {
+        LOG.info("Re-scheduling {} for failure recovery", taskGroup.getTaskGroupId());
+        jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.READY);
+
         partitionManagerMaster.onProducerTaskGroupScheduled(taskGroup.getTaskGroupId());
         LOG.debug("Enquing {}", taskGroup.getTaskGroupId());
         pendingTaskGroupPriorityQueue.enqueue(
             new ScheduledTaskGroup(taskGroup, stageIncomingEdges, stageOutgoingEdges, attemptIdx));
       }
-    });
+    }
   }
 
   private TaskGroup getTaskGroupById(final String taskGroupId) {
