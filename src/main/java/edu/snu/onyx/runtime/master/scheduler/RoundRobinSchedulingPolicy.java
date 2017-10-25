@@ -223,7 +223,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
 
       updateCachedExecutorRepresenterMap();
 
-      return Collections.unmodifiableSet(executor.getRunningTaskGroups());
+      return Collections.unmodifiableSet(executor.getFailedTaskGroups());
     } finally {
       lock.unlock();
     }

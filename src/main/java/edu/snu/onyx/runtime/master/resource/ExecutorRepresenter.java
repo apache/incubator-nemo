@@ -112,6 +112,10 @@ public final class ExecutorRepresenter {
     return runningTaskGroups;
   }
 
+  public synchronized Set<String> getFailedTaskGroups() {
+    return failedTaskGroups;
+  }
+
   public synchronized Set<String> getCompleteTaskGroups() {
     return completeTaskGroups;
   }

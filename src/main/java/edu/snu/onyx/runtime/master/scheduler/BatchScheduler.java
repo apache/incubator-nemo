@@ -324,6 +324,8 @@ public final class BatchScheduler implements Scheduler {
     // TaskGroups executing on the removed executor
     taskGroupsToReExecute.addAll(schedulingPolicy.onExecutorRemoved(executorId));
 
+    LOG.info("TaskGroupsToReexecute: " + taskGroupsToReExecute);
+
     taskGroupsToReExecute.forEach(failedTaskGroupId ->
       onTaskGroupStateChanged(executorId, failedTaskGroupId, TaskGroupState.State.FAILED_RECOVERABLE,
           SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE, null, TaskGroupState.RecoverableFailureCause.CONTAINER_FAILURE));
