@@ -280,7 +280,7 @@ public final class JobStateManager {
    */
   public synchronized void onTaskGroupStateChanged(final TaskGroup taskGroup, final TaskGroupState.State newState) {
     final StateMachine taskGroupState = idToTaskGroupStates.get(taskGroup.getTaskGroupId()).getStateMachine();
-    LOG.debug("Task Group State Transition: id {} from {} to {}",
+    LOG.info("Task Group State Transition: id {} from {} to {}",
         new Object[]{taskGroup.getTaskGroupId(), taskGroupState.getCurrentState(), newState});
     final String stageId = taskGroup.getStageId();
     final Map<String, Object> metric = new HashMap<>();
