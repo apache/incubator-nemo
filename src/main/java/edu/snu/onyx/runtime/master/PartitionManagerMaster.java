@@ -457,7 +457,9 @@ public final class PartitionManagerMaster {
     readLock.lock();
     try {
       final PartitionMetadata metadata = partitionIdToMetadata.get(partitionId);
-      metadata.removeBlockMetadata();
+      if (metadata != null) {
+        metadata.removeBlockMetadata();
+      } // if else, the partition is not created. Ignore it.
     } finally {
       readLock.unlock();
     }
