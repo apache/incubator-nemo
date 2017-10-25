@@ -226,7 +226,6 @@ public final class ContainerManager {
     LOG.info("[" + failedExecutorId + "] failure reported.");
 
     final ExecutorRepresenter failedExecutor = executorRepresenterMap.remove(failedExecutorId);
-    failedExecutor.onExecutorFailed();
 
     executorsByContainerType.get(failedExecutor.getContainerType()).remove(failedExecutor);
 
