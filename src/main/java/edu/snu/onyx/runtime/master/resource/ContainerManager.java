@@ -212,38 +212,46 @@ public final class ContainerManager {
   }
 
   public synchronized void onContainerRemoved(final String failedContainerId) {
-    LOG.info("onContainerRemoved");
-    final String failedExecutorId = containerIdToExecutorIdMap.remove(failedContainerId);
-    LOG.info("[" + failedContainerId + "], for " + failedExecutorId + " failure reported.");
+    if (isJobTerminated.get()) {
+      LOG.info("onContainerRemoved: job terminated");
+    } else {
+      LOG.info("onContainerRemoved");
+      final String failedExecutorId = containerIdToExecutorIdMap.remove(failedContainerId);
+      LOG.info("[" + failedContainerId + "], for " + failedExecutorId + " failure reported.");
 
-    final ResourceSpecification resourceSpecification = pendingContextIdToResourceSpec.remove(failedExecutorId);
+      final ResourceSpecification resourceSpecification = pendingContextIdToResourceSpec.remove(failedExecutorId);
 
-    // Request for another container of the same resource specification.
-    requestContainer(1, resourceSpecification);
+      // Request for another container of the same resource specification.
+      requestContainer(1, resourceSpecification);
+    }
   }
 
   public synchronized void onExecutorRemoved(final String failedExecutorId) {
-    LOG.info("[" + failedExecutorId + "] failure reported.");
+    if (isJobTerminated.get()) {
+      LOG.info("onExecutorRemoved: job terminated");
+    } else {
+      LOG.info("[" + failedExecutorId + "] failure reported.");
 
-    final ExecutorRepresenter failedExecutor = executorRepresenterMap.remove(failedExecutorId);
+      final ExecutorRepresenter failedExecutor = executorRepresenterMap.remove(failedExecutorId);
 
-    executorsByContainerType.get(failedExecutor.getContainerType()).remove(failedExecutor);
+      executorsByContainerType.get(failedExecutor.getContainerType()).remove(failedExecutor);
 
-    failedExecutorRepresenterMap.put(failedExecutorId, failedExecutor);
+      failedExecutorRepresenterMap.put(failedExecutorId, failedExecutor);
 
-    // Signal RuntimeMaster on CONTAINER_FAILURE type FAILED_RECOVERABLE state
-    persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.ContainerFailed)
-            .setContainerFailedMsg(ControlMessage.ContainerFailedMsg.newBuilder()
-                .setExecutorId(failedExecutorId)
-                .build())
-            .build());
+      // Signal RuntimeMaster on CONTAINER_FAILURE type FAILED_RECOVERABLE state
+      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+          ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdGenerator.generateMessageId())
+              .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+              .setType(ControlMessage.MessageType.ContainerFailed)
+              .setContainerFailedMsg(ControlMessage.ContainerFailedMsg.newBuilder()
+                  .setExecutorId(failedExecutorId)
+                  .build())
+              .build());
 
-    // Request for another container of the same resource specification.
-    requestContainer(1, failedExecutor.getResourceSpecification());
+      // Request for another container of the same resource specification.
+      requestContainer(1, failedExecutor.getResourceSpecification());
+    }
   }
 
   public synchronized Map<String, ExecutorRepresenter> getExecutorRepresenterMap() {
