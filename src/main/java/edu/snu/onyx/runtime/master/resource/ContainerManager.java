@@ -87,7 +87,7 @@ public final class ContainerManager {
     this.executorRepresenterMap = new HashMap<>();
     this.failedExecutorRepresenterMap = new HashMap<>();
     this.pendingContextIdToResourceSpec = new HashMap<>();
-    this.pendingContainerRequestsByContainerType = new HashMap<>();
+    this.pendingContainerRequestsByContainerType = new TreeMap<>(); // sorted keys
     this.containerIdToExecutorIdMap = new HashMap<>();
     this.isJobTerminated = new AtomicBoolean(false);
   }
