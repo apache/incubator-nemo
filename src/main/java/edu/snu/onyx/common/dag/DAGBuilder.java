@@ -328,4 +328,37 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
     integrityCheck(true, true, true, true);
     return new DAG<>(vertices, incomingEdges, outgoingEdges, assignedLoopVertexMap, loopStackDepthMap);
   }
+
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("{\"vertices\": [");
+    boolean isFirstVertex = true;
+    for (final V vertex : vertices) {
+      if (!isFirstVertex) {
+        sb.append(", ");
+      }
+      isFirstVertex = false;
+      sb.append("{\"id\": \"").append(vertex.getId());
+      sb.append("\", \"properties\": ").append(vertex.propertiesToJSON());
+      sb.append("}");
+    }
+    sb.append("], \"edges\": [");
+    boolean isFirstEdge = true;
+    for (final Set<E> edgeList : incomingEdges.values()) {
+      for (final E edge : edgeList) {
+        if (!isFirstEdge) {
+          sb.append(", ");
+        }
+        isFirstEdge = false;
+        sb.append("{\"src\": \"").append(edge.getSrc().getId());
+        sb.append("\", \"dst\": \"").append(edge.getDst().getId());
+        sb.append("\", \"properties\": ").append(edge.propertiesToJSON());
+        sb.append("}");
+      }
+    }
+    sb.append("]}");
+    return sb.toString();
+  }
 }

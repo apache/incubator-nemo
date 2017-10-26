@@ -24,6 +24,8 @@ import edu.snu.onyx.compiler.ir.OperatorVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.OneToOne;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +40,7 @@ import java.util.List;
  */
 public final class DataSkewReshapingPass extends ReshapingPass {
   public static final String SIMPLE_NAME = "DataSkewReshapingPass";
+  private static final Logger LOG = LoggerFactory.getLogger(DataSkewReshapingPass.class.getName());
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
@@ -73,6 +76,7 @@ public final class DataSkewReshapingPass extends ReshapingPass {
         dag.getIncomingEdgesOf(v).forEach(builder::connectVertices);
       }
     });
+    LOG.info(builder.toString());
     final DAG<IRVertex, IREdge> newDAG = builder.build();
     metricCollectionVertices.forEach(v -> v.setDAGSnapshot(newDAG));
     return newDAG;
