@@ -20,6 +20,7 @@ import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.DefaultStageP
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.ScheduleGroupPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.DataSkewCompositePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
 import edu.snu.onyx.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.onyx.compiler.optimizer.pass.runtime.RuntimePass;
 
@@ -34,7 +35,7 @@ public final class DataSkewPolicy implements Policy {
   public DataSkewPolicy() {
     this.policy = new PolicyBuilder()
         .registerCompileTimePass(new InitiationCompositePass())
-//        .registerCompileTimePass(new LoopOptimizationCompositePass())
+        .registerCompileTimePass(new LoopOptimizationCompositePass())
         .registerRuntimePass(new DataSkewRuntimePass(), new DataSkewCompositePass())
         .registerCompileTimePass(new DefaultStagePartitioningPass())
         .registerCompileTimePass(new ScheduleGroupPass())
