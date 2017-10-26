@@ -27,8 +27,6 @@ import org.apache.beam.sdk.values.PCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Random;
-
 /**
  * Sample MapReduce application.
  */
@@ -76,10 +74,6 @@ public final class MapReduce {
     GenericSourceSink.write(result, outputFilePath);
     */
 
-    long start = System.currentTimeMillis();
-    LOG.info("Start: {}", start);
-
-    Random random = new Random(100);
     final Pipeline p = Pipeline.create(options);
     final PCollection<String> result = p.apply(TextIO.read().from(inputFilePath))
         .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
@@ -87,7 +81,7 @@ public final class MapReduce {
           public KV<String, Long> apply(final String line) {
             final String[] words = line.split(" +");
             String ip = words[1];
-            Long data = random.nextLong();
+            Long data = 1L;
             //LOG.info("Map#1 : ip_src {} data_len {}", ip, data);
             return KV.of(ip, data);
           }
@@ -101,11 +95,8 @@ public final class MapReduce {
             return kv.getKey() + ": " + kv.getValue();
           }
         }));
-    result.apply(TextIO.write().to(outputFilePath));
+    GenericSourceSink.write(result, outputFilePath);
 
     p.run();
-    long end = System.currentTimeMillis();
-    LOG.info("End: {}", end);
-    LOG.info("JCT: {}", end - start);
   }
 }
