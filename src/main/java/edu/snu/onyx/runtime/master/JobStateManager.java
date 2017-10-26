@@ -453,9 +453,11 @@ public final class JobStateManager {
    * @param initialMetric metric to add
    */
   private void beginMeasurement(final String compUnitId, final Map<String, Object> initialMetric) {
+    /*
     final MetricDataBuilder metricDataBuilder = new MetricDataBuilder(compUnitId);
     metricDataBuilder.beginMeasurement(initialMetric);
     metricDataBuilderMap.put(compUnitId, metricDataBuilder);
+    */
   }
 
   /**
@@ -465,10 +467,12 @@ public final class JobStateManager {
    * @param finalMetric metric to add
    */
   private void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {
+    /*
     final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(compUnitId);
     metricDataBuilder.endMeasurement(finalMetric);
     //metricMessageHandler.onMetricMessageReceived(compUnitId, metricDataBuilder.build().toJson());
     metricDataBuilderMap.remove(compUnitId);
+    */
   }
 
   /**
