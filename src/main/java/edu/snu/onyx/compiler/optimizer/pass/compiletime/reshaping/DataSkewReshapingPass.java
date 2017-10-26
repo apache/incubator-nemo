@@ -53,6 +53,8 @@ public final class DataSkewReshapingPass extends ReshapingPass {
       if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
           ScatterGather.class.equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))) {
         final MetricCollectionBarrierVertex metricCollectionBarrierVertex = new MetricCollectionBarrierVertex();
+        metricCollectionBarrierVertex.setProperty(ParallelismProperty.of(v.getExecutionProperties().get(ExecutionProperty.Key.Parallelism)));
+
         metricCollectionVertices.add(metricCollectionBarrierVertex);
         builder.addVertex(v);
         builder.addVertex(metricCollectionBarrierVertex);
@@ -62,8 +64,6 @@ public final class DataSkewReshapingPass extends ReshapingPass {
             // We then insert the dynamicOptimizationVertex between the vertex and incoming vertices.
             final IREdge newEdge = new IREdge(OneToOne.class,
                 edge.getSrc(), metricCollectionBarrierVertex, edge.getCoder());
-            newEdge.setProperty(
-                ParallelismProperty.of(edge.getSrc().getExecutionProperties().get(ExecutionProperty.Key.Parallelism)));
 
             final IREdge edgeToGbK = new IREdge(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern),
                 metricCollectionBarrierVertex, v, edge.getCoder(), edge.isSideInput());
