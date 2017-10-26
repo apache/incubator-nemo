@@ -22,6 +22,7 @@ import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.onyx.compiler.ir.OperatorVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
+import edu.snu.onyx.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.OneToOne;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
 import org.slf4j.Logger;
@@ -61,6 +62,8 @@ public final class DataSkewReshapingPass extends ReshapingPass {
             // We then insert the dynamicOptimizationVertex between the vertex and incoming vertices.
             final IREdge newEdge = new IREdge(OneToOne.class,
                 edge.getSrc(), metricCollectionBarrierVertex, edge.getCoder());
+            newEdge.setProperty(
+                ParallelismProperty.of(edge.getSrc().getExecutionProperties().get(ExecutionProperty.Key.Parallelism)));
 
             final IREdge edgeToGbK = new IREdge(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern),
                 metricCollectionBarrierVertex, v, edge.getCoder(), edge.isSideInput());
