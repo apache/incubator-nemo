@@ -21,6 +21,8 @@ import edu.snu.onyx.runtime.executor.data.HashRange;
 import edu.snu.onyx.runtime.executor.data.metadata.BlockMetadata;
 import edu.snu.onyx.runtime.executor.data.metadata.FileMetadata;
 import edu.snu.onyx.runtime.executor.data.FileArea;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.*;
@@ -36,6 +38,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 @ThreadSafe
 public final class FilePartition {
+  private static final Logger LOG = LoggerFactory.getLogger(FilePartition.class.getName());
 
   private final Coder coder;
   private final String filePath;
@@ -67,15 +70,53 @@ public final class FilePartition {
                          final int hashVal) throws IOException {
     // Reserve a block write and get the metadata.
     final BlockMetadata blockMetadata = metadata.reserveBlock(hashVal, serializedData.length, numElement);
+    final StringBuilder sb = new StringBuilder();
 
     try (
         final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true);
         final FileChannel fileChannel = fileOutputStream.getChannel()
     ) {
+      sb.append("WriteBlock: write data of hash value ");
+      sb.append(hashVal);
+      sb.append(" to ");
+      sb.append(filePath);
+      sb.append(" , block metadata is ");
+      sb.append(blockMetadata.toString());
+
+      // Wrap the given serialized data (but not copy it) and write.
+      sb.append("\n");
+      sb.append("The block offset is ");
+      sb.append(blockMetadata.getOffset());
+      sb.append(", file channel position is ");
+      sb.append(fileChannel.position());
+
       // Wrap the given serialized data (but not copy it) and write.
       fileChannel.position(blockMetadata.getOffset());
+
+      if (fileChannel.position() != blockMetadata.getOffset()) {
+        sb.append("\n");
+        sb.append("File channel can not get to the target offset ");
+        sb.append(blockMetadata.getOffset());
+        sb.append(", moved file channel position is ");
+        sb.append(fileChannel.position());
+        LOG.error(sb.toString());
+      }
+
       final ByteBuffer buf = ByteBuffer.wrap(serializedData);
       fileChannel.write(buf);
+
+      sb.append("\n");
+      sb.append("The block offset + block size is ");
+      sb.append(blockMetadata.getOffset() + blockMetadata.getBlockSize());
+      sb.append(", file channel position is ");
+      sb.append(fileChannel.position());
+
+      if (filePath.equals("/home/ubuntu/gluster-mnt/Partition-SEdge-edge3_26")) {
+        LOG.info("Write block position check: " + sb.toString());
+      }
+    } catch (final IOException e) {
+      LOG.error(sb.toString());
+      throw e;
     }
 
     // Commit if needed.

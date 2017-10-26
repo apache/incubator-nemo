@@ -18,16 +18,22 @@ package edu.snu.onyx.examples.beam;
 import edu.snu.onyx.compiler.frontend.beam.Runner;
 import edu.snu.onyx.compiler.frontend.beam.OnyxPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Sample MapReduce application.
  */
 public final class MapReduce {
+
+  private static final Logger LOG = LoggerFactory.getLogger(MapReduce.class.getName());
+
   /**
    * Private Constructor.
    */
@@ -45,6 +51,7 @@ public final class MapReduce {
     options.setRunner(Runner.class);
     options.setJobName("MapReduce");
 
+    /*
     final Pipeline p = Pipeline.create(options);
     final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
         .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
@@ -65,6 +72,31 @@ public final class MapReduce {
           }
         }));
     GenericSourceSink.write(result, outputFilePath);
+    */
+
+    final Pipeline p = Pipeline.create(options);
+    final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
+        .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
+          @Override
+          public KV<String, Long> apply(final String line) {
+            final String[] words = line.split(" +");
+            String ip = words[1];
+            Long data = 1L;
+            //LOG.info("Map#1 : ip_src {} data_len {}", ip, data);
+            return KV.of(ip, data);
+          }
+        }))
+        .apply(GroupByKey.<String, Long>create())
+        .apply(Combine.<String, Long, Long>groupedValues(Sum.ofLongs()))
+        .apply(MapElements.<KV<String, Long>, String>via(new SimpleFunction<KV<String, Long>, String>() {
+          @Override
+          public String apply(final KV<String, Long> kv) {
+            //LOG.info("Map#2 : key {} value {}", kv.getKey(), kv.getValue());
+            return kv.getKey() + ": " + kv.getValue();
+          }
+        }));
+    GenericSourceSink.write(result, outputFilePath);
+
     p.run();
   }
 }

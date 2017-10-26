@@ -61,19 +61,21 @@ public final class SchedulerRunner implements Runnable {
           nextTaskGroupToSchedule = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup();
         } while (!nextTaskGroupToSchedule.isPresent());
 
-        final Optional<String> executorId = schedulingPolicy.attemptSchedule(nextTaskGroupToSchedule.get());
-        if (!executorId.isPresent()) {
-          LOG.info("Failed to assign an executor for {} before the timeout: {}",
-              new Object[] {nextTaskGroupToSchedule.get().getTaskGroup().getTaskGroupId(),
-                  schedulingPolicy.getScheduleTimeoutMs()});
+        synchronized (schedulingPolicy) {
+          final Optional<String> executorId = schedulingPolicy.attemptSchedule(nextTaskGroupToSchedule.get());
+          if (!executorId.isPresent()) {
+            LOG.info("Failed to assign an executor for {} before the timeout: {}",
+                new Object[]{nextTaskGroupToSchedule.get().getTaskGroup().getTaskGroupId(),
+                    schedulingPolicy.getScheduleTimeoutMs()});
 
-          // Put this TaskGroup back to the queue since we failed to schedule it.
-          pendingTaskGroupPriorityQueue.enqueue(nextTaskGroupToSchedule.get());
-        } else {
-          // Must send this scheduledTaskGroup to the destination executor.
-          jobStateManager.onTaskGroupStateChanged(nextTaskGroupToSchedule.get().getTaskGroup(),
-              TaskGroupState.State.EXECUTING);
-          schedulingPolicy.onTaskGroupScheduled(executorId.get(), nextTaskGroupToSchedule.get());
+            // Put this TaskGroup back to the queue since we failed to schedule it.
+            pendingTaskGroupPriorityQueue.enqueue(nextTaskGroupToSchedule.get());
+          } else {
+            // Must send this scheduledTaskGroup to the destination executor.
+            jobStateManager.onTaskGroupStateChanged(nextTaskGroupToSchedule.get().getTaskGroup(),
+                TaskGroupState.State.EXECUTING);
+            schedulingPolicy.onTaskGroupScheduled(executorId.get(), nextTaskGroupToSchedule.get());
+          }
         }
       } catch (final IllegalStateTransitionException ex) {
         throw ex;

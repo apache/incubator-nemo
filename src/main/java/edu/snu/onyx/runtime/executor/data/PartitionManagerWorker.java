@@ -177,6 +177,12 @@ public final class PartitionManagerWorker {
     });
   }
 
+  public void createPartition(final String partitionId,
+                              final Class<? extends PartitionStore> partitionStore) {
+    final PartitionStore store = getPartitionStore(partitionStore);
+    store.createPartition(partitionId);
+  }
+
   /**
    * Store an iterable of data blocks to a partition in the target {@code PartitionStore}.
    * Invariant: This should not be invoked after a partition is committed.

@@ -18,6 +18,9 @@ package edu.snu.onyx.runtime.executor.data;
 import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.compiler.ir.Element;
+import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
+import edu.snu.onyx.runtime.common.comm.ControlMessage;
+import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.exception.PartitionFetchException;
 import edu.snu.onyx.runtime.exception.PartitionWriteException;
 import edu.snu.onyx.runtime.executor.PersistentConnectionToMasterMap;
@@ -87,6 +90,27 @@ public final class GlusterFileStore extends FileStore implements RemoteFileStore
         final Throwable combinedThrowable = commitPartitionWithException(partition, cause);
         throw new PartitionFetchException(combinedThrowable);
       }
+    }
+  }
+
+  @Override
+  public void createPartition(final String partitionId) {
+    try {
+      deleteFile(partitionIdToFilePath(partitionId));
+      // Make master to delete stale metadata.
+      persistentConnectionToMasterMap.getMessageSender(
+          MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).send(
+          ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdGenerator.generateMessageId())
+              .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+              .setType(ControlMessage.MessageType.RemoveBlockMetadata)
+              .setRemoveBlockMetadataMsg(
+                  ControlMessage.RemoveBlockMetadataMsg.newBuilder()
+                      .setPartitionId(partitionId)
+                      .build())
+              .build());
+    } catch (final IOException e) {
+      throw new PartitionFetchException(e);
     }
   }
 

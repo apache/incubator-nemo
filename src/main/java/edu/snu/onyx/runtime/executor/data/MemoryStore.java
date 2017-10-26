@@ -18,6 +18,8 @@ package edu.snu.onyx.runtime.executor.data;
 import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.runtime.exception.PartitionWriteException;
 import edu.snu.onyx.runtime.executor.data.partition.MemoryPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -33,6 +35,7 @@ import java.util.stream.StreamSupport;
  */
 @ThreadSafe
 public final class MemoryStore implements PartitionStore {
+  private static final Logger LOG = LoggerFactory.getLogger(MemoryStore.class.getName());
   public static final String SIMPLE_NAME = "MemoryStore";
   // A map between partition id and data blocks.
   private final ConcurrentHashMap<String, MemoryPartition> partitionMap;
@@ -66,6 +69,11 @@ public final class MemoryStore implements PartitionStore {
     }
   }
 
+  @Override
+  public void createPartition(final String partitionId) {
+    partitionMap.put(partitionId, new MemoryPartition());
+  }
+
   /**
    * @see PartitionStore#putToPartition(String, Iterable, boolean).
    */
@@ -73,9 +81,12 @@ public final class MemoryStore implements PartitionStore {
   public Optional<List<Long>> putToPartition(final String partitionId,
                                              final Iterable<Block> blocks,
                                              final boolean commitPerBlock) throws PartitionWriteException {
-    partitionMap.putIfAbsent(partitionId, new MemoryPartition());
     try {
-      partitionMap.get(partitionId).appendBlocks(blocks);
+      final MemoryPartition partition = partitionMap.get(partitionId);
+      if (partition == null) {
+        throw new PartitionWriteException(new Throwable("The partition " + partitionId + "is not created yet."));
+      }
+      partition.appendBlocks(blocks);
       // The partition is not serialized.
       return Optional.empty();
     } catch (final IOException e) {
@@ -92,6 +103,9 @@ public final class MemoryStore implements PartitionStore {
     final MemoryPartition partition = partitionMap.get(partitionId);
     if (partition != null) {
       partition.commit();
+      if (partition.getBlocks().isEmpty()) {
+        LOG.warn("Empty partition: " + partitionId);
+      }
     } else {
       throw new PartitionWriteException(new Throwable("There isn't any partition with id " + partitionId));
     }

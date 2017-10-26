@@ -42,6 +42,8 @@ public interface PartitionStore {
   Optional<Iterable<Element>> getFromPartition(String partitionId,
                                                HashRange hashRange) throws PartitionFetchException;
 
+  void createPartition(String partitionId) throws PartitionWriteException;
+
   /**
    * Saves an iterable of data blocks to a partition.
    * If the partition exists already, appends the data to it.
