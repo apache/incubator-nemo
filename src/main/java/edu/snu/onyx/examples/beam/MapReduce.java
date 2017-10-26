@@ -18,7 +18,6 @@ package edu.snu.onyx.examples.beam;
 import edu.snu.onyx.compiler.frontend.beam.Runner;
 import edu.snu.onyx.compiler.frontend.beam.OnyxPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.*;
