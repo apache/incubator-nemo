@@ -75,7 +75,7 @@ public final class MapReduce {
     */
 
     final Pipeline p = Pipeline.create(options);
-    final PCollection<String> result = p.apply(TextIO.read().from(inputFilePath))
+    final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
         .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
           @Override
           public KV<String, Long> apply(final String line) {
