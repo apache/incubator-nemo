@@ -53,7 +53,8 @@ public final class DataSkewReshapingPass extends ReshapingPass {
       if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
           ScatterGather.class.equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))) {
         final MetricCollectionBarrierVertex metricCollectionBarrierVertex = new MetricCollectionBarrierVertex();
-        metricCollectionBarrierVertex.setProperty(ParallelismProperty.of(v.getExecutionProperties().get(ExecutionProperty.Key.Parallelism)));
+        metricCollectionBarrierVertex.setProperty(
+            ParallelismProperty.of(v.getExecutionProperties().get(ExecutionProperty.Key.Parallelism)));
 
         metricCollectionVertices.add(metricCollectionBarrierVertex);
         builder.addVertex(v);
