@@ -79,10 +79,11 @@ public final class MapReduce {
           @Override
           public KV<String, Long> apply(final String line) {
             final String[] words = line.split(" +");
-            String ip = words[1];
+            String[] ip = words[1].split("\\.");
+            String network = ip[0] + "." + ip[1];
             Long data = 1L;
-            //LOG.info("Map#1 : ip_src {} data_len {}", ip, data);
-            return KV.of(ip, data);
+            //LOG.info("Map#1 : ip {} network {} data_len {}", ip, network, data);
+            return KV.of(network, data);
           }
         }))
         .apply(GroupByKey.<String, Long>create())
