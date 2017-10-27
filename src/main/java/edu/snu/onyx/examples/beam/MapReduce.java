@@ -79,8 +79,14 @@ public final class MapReduce {
           @Override
           public KV<String, Long> apply(final String line) {
             final String[] words = line.split(" +");
+            String network = "";
             String[] ip = words[1].split("\\.");
-            String network = ip[0] + "." + ip[1];
+            if (ip.length == 1) {
+              String[] ipv6 = words[1].split(":");
+              network = ipv6[0] + ":" + ipv6[1];
+            } else {
+              network = ip[0] + "." + ip[1];
+            }
             Long data = 1L;
             //LOG.info("Map#1 : ip {} network {} data_len {}", ip, network, data);
             return KV.of(network, data);
