@@ -83,7 +83,7 @@ public final class MapReduce {
             String[] ip = words[1].split("\\.");
             if (ip.length == 1) {
               String[] ipv6 = words[1].split(":");
-              if(ipv6.length == 1) {
+              if (ipv6.length == 1) {
                 network = "192.168";
               } else {
                 network = ipv6[0] + ":" + ipv6[1];
