@@ -64,6 +64,17 @@ public final class GlusterFileStore extends FileStore implements RemoteFileStore
   }
 
   /**
+   * Creates a new partition.
+   *
+   * @param partitionId the ID of the partition to create.
+   * @see PartitionStore#createPartition(String).
+   */
+  @Override
+  public void createPartition(final String partitionId) {
+    removePartition(partitionId);
+  }
+
+  /**
    * Retrieves a deserialized partition of data through remote disks.
    *
    * @see PartitionStore#getFromPartition(String, HashRange).

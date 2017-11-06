@@ -70,6 +70,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     partitionerMap.put(IntactPartitioner.class, new IntactPartitioner());
     partitionerMap.put(HashPartitioner.class, new HashPartitioner());
     partitionerMap.put(DataSkewHashPartitioner.class, new DataSkewHashPartitioner(hashRangeMultiplier));
+    partitionManagerWorker.createPartition(partitionId, channelDataPlacement);
   }
 
   /**
