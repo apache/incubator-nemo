@@ -300,6 +300,13 @@ public final class DataTransferTest {
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
       final InputReader reader =
           new InputReader(dstTaskIndex, taskGroupPrefix + dstTaskIndex, srcVertex, dummyEdge, receiver);
+
+      if (commPattern.equals(OneToOne.class)) {
+        assertEquals(1, reader.getSourceParallelism());
+      } else {
+        assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
+      }
+
       final List<Element> dataRead = new ArrayList<>();
       try {
         InputReader.combineFutures(reader.read()).forEach(dataRead::add);
