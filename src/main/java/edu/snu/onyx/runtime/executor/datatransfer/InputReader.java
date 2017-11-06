@@ -175,8 +175,12 @@ public final class InputReader extends DataTransfer {
    */
   public int getSourceParallelism() {
     if (srcVertex != null) {
-      final Integer numSrcTasks = (Integer) srcVertex.getProperty(ExecutionProperty.Key.Parallelism);
-      return numSrcTasks == null ? 1 : numSrcTasks;
+      if (OneToOne.class.equals(runtimeEdge.<Class>getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
+        return 1;
+      } else {
+        final Integer numSrcTasks = srcVertex.getProperty(ExecutionProperty.Key.Parallelism);
+        return numSrcTasks;
+      }
     } else {
       // Memory input reader
       return 1;
