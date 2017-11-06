@@ -27,6 +27,18 @@ import java.util.Optional;
  */
 public interface PartitionStore {
   /**
+   * Creates a new partition.
+   * A stale data created by previous failed task should be handled during the creation of new partition.
+   *
+   * @param partitionId the ID of the partition to create.
+   * @throws PartitionWriteException for any error occurred while trying to create a partition.
+   *         (This exception will be thrown to the {@link edu.snu.onyx.runtime.master.scheduler.Scheduler}
+   *          through {@link edu.snu.onyx.runtime.executor.Executor} and
+   *          have to be handled by the scheduler with fault tolerance mechanism.)
+   */
+  void createPartition(String partitionId) throws PartitionWriteException;
+
+  /**
    * Retrieves data in a specific {@link HashRange} from a partition.
    * If the target partition is not committed yet, the requester may "subscribe" the further data until it is committed.
    *

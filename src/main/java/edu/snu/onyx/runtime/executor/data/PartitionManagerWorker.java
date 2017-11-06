@@ -99,6 +99,19 @@ public final class PartitionManagerWorker {
   }
 
   /**
+   * Creates a new partition.
+   * A stale data created by previous failed task should be handled during the creation of new partition.
+   *
+   * @param partitionId    the ID of the partition to create.
+   * @param partitionStore the store to place the partition.
+   */
+  public void createPartition(final String partitionId,
+                              final Class<? extends PartitionStore> partitionStore) {
+    final PartitionStore store = getPartitionStore(partitionStore);
+    store.createPartition(partitionId);
+  }
+
+  /**
    * Retrieves data from the stored partition. A specific hash value range can be designated.
    * This can be invoked multiple times per partitionId (maybe due to failures).
    * Here, we first check if we have the partition here, and then try to fetch the partition from a remote worker.
