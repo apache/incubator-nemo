@@ -296,6 +296,7 @@ public final class PartitionStoreTest {
             try {
               IntStream.range(writeTaskIdx, writeTaskIdx + 1).forEach(partitionIdx -> {
                   final String partitionId = partitionIdList.get(partitionIdx);
+                  writerSideStore.createPartition(partitionId);
                   writerSideStore.putToPartition(partitionId, blocksPerPartition.get(partitionIdx), false);
                   writerSideStore.commitPartition(partitionId);
                   partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED,
@@ -392,6 +393,7 @@ public final class PartitionStoreTest {
       @Override
       public Boolean call() {
         try {
+          writerSideStore.createPartition(concPartitionId);
           writerSideStore.putToPartition(concPartitionId, Collections.singleton(concPartitionBlock), false);
           writerSideStore.commitPartition(concPartitionId);
           partitionManagerMaster.onPartitionStateChanged(
@@ -482,6 +484,7 @@ public final class PartitionStoreTest {
           public Boolean call() {
             try {
               final String partitionId = hashedPartitionIdList.get(writeTaskIdx);
+              writerSideStore.createPartition(partitionId);
               writerSideStore.putToPartition(partitionId,
                   hashedPartitionBlockList.get(writeTaskIdx), false);
               writerSideStore.commitPartition(partitionId);
