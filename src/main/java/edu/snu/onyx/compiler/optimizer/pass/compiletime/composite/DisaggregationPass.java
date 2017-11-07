@@ -30,7 +30,6 @@ public final class DisaggregationPass extends CompositePass {
 
   public DisaggregationPass() {
     super(Arrays.asList(
-        new DisaggregationVertexExecutorPlacementPass(),
         new DisaggregationEdgeDataStorePass()
     ));
   }

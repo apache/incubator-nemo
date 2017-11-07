@@ -27,6 +27,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Takes a TaskGroup from the pending queue and schedules it to an executor.
+ *
+ * IMPORTANT NOTE:
+ * {@link PendingTaskGroupPriorityQueue} implementation assumes that
+ * there is always a single thread running an instance of this class.
  */
 @DriverSide
 public final class SchedulerRunner implements Runnable {

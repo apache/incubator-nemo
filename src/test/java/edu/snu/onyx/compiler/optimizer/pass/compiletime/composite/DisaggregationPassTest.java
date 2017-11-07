@@ -52,7 +52,6 @@ public class DisaggregationPassTest {
         new DisaggregationPass().apply(new InitiationCompositePass().apply(compiledDAG));
 
     processedDAG.getTopologicalSort().forEach(irVertex -> {
-      assertEquals(ExecutorPlacementProperty.COMPUTE, irVertex.getProperty(ExecutionProperty.Key.ExecutorPlacement));
       processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger -> {
         if (OneToOne.class.equals(edgeToMerger.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
           assertEquals(MemoryStore.class, edgeToMerger.getProperty(ExecutionProperty.Key.DataStore));

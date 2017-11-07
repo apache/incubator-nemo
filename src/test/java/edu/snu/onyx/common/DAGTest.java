@@ -125,6 +125,18 @@ public final class DAGTest {
     assertTrue(ancestors.contains(new IntegerVertex(1)));
     assertTrue(ancestors.contains(new IntegerVertex(2)));
     assertTrue(ancestors.contains(new IntegerVertex(4)));
+
+    List<IntegerVertex> descendants = dag.getDescendants("4");
+    assertEquals(descendants.size(), 2);
+    assertTrue(descendants.contains(new IntegerVertex(3)));
+    assertTrue(descendants.contains(new IntegerVertex(5)));
+
+    descendants = dag.getDescendants("5");
+    assertEquals(descendants.size(), 0);
+
+    descendants = dag.getDescendants("2");
+    assertEquals(descendants.size(), 1);
+    assertTrue(descendants.contains(new IntegerVertex(3)));
   }
 
   final class IntegerVertex extends Vertex {
