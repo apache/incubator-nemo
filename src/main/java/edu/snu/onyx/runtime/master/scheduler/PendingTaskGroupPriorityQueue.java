@@ -15,7 +15,10 @@
  */
 package edu.snu.onyx.runtime.master.scheduler;
 
+import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.onyx.runtime.common.plan.physical.PhysicalStage;
+import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -69,7 +72,7 @@ public final class PendingTaskGroupPriorityQueue {
               if (scheduledTaskGroups == null) {
                 final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = new ArrayDeque<>();
                 pendingTaskGroupsForStage.add(scheduledTaskGroup);
-                updateSchedulableStages(stageId);
+                updateSchedulableStages(stageId, scheduledTaskGroup.getTaskGroup().getContainerType());
                 return pendingTaskGroupsForStage;
               } else {
                 scheduledTaskGroups.add(scheduledTaskGroup);
@@ -99,7 +102,7 @@ public final class PendingTaskGroupPriorityQueue {
         if (pendingTaskGroupsForStage.isEmpty()) {
           stageIdToPendingTaskGroups.remove(stageId);
           stageIdToPendingTaskGroups.forEach((scheduledStageId, taskGroupList) ->
-              updateSchedulableStages(scheduledStageId));
+              updateSchedulableStages(scheduledStageId, taskGroupList.getFirst().getTaskGroup().getContainerType()));
         } else {
           schedulableStages.addLast(stageId);
         }
@@ -114,7 +117,9 @@ public final class PendingTaskGroupPriorityQueue {
    * @param stageId for the stage to begin the removal recursively.
    */
   public void removeStageAndDescendantsFromQueue(final String stageId) {
-    removeStageAndChildren(stageId);
+    synchronized (stageIdToPendingTaskGroups) {
+      removeStageAndChildren(stageId);
+    }
   }
 
   /**
@@ -136,13 +141,43 @@ public final class PendingTaskGroupPriorityQueue {
    * NOTE: This method provides the "line up" between stages, by assigning priorities,
    * serving as the key to the "priority" implementation of this class.
    * @param candidateStageId for the stage that can potentially be scheduled.
+   * @param candidateStageContainerType for the stage that can potentially be scheduled.
    */
-  private void updateSchedulableStages(final String candidateStageId) {
-    // Currently schedules all candidate stages,
-    // with the assumption that schedule groups will be assigned appropriately. (changes made in #480)
-    if (!schedulableStages.contains(candidateStageId)) {
-      schedulableStages.addLast(candidateStageId);
+  private void updateSchedulableStages(final String candidateStageId, final String candidateStageContainerType) {
+    final DAG<PhysicalStage, PhysicalStageEdge> jobDAG = physicalPlan.getStageDAG();
+
+    if (isSchedulable(candidateStageId, candidateStageContainerType)) {
+      // Check for ancestor stages that became schedulable due to candidateStage's absence from the queue.
+      jobDAG.getAncestors(candidateStageId).forEach(ancestorStage -> {
+        if (schedulableStages.contains(ancestorStage.getId())) {
+          // Remove the ancestor stage if it is of the same container type.
+          if (candidateStageContainerType.equals(ancestorStage.getTaskGroupList().get(0).getContainerType())) {
+            schedulableStages.remove(ancestorStage.getId());
+          }
+        }
+      });
+      if (!schedulableStages.contains(candidateStageId)) {
+        schedulableStages.addLast(candidateStageId);
+      }
     }
+  }
+
+  /**
+   * Determines whether the given candidate stage is schedulable immediately or not.
+   * @param candidateStageId for the stage that can potentially be scheduled.
+   * @param candidateStageContainerType for the stage that can potentially be scheduled.
+   * @return true if schedulable, false otherwise.
+   */
+  private boolean isSchedulable(final String candidateStageId, final String candidateStageContainerType) {
+    final DAG<PhysicalStage, PhysicalStageEdge> jobDAG = physicalPlan.getStageDAG();
+    for (final PhysicalStage descendantStage : jobDAG.getDescendants(candidateStageId)) {
+      if (schedulableStages.contains(descendantStage.getId())) {
+        if (candidateStageContainerType.equals(descendantStage.getTaskGroupList().get(0).getContainerType())) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   public void onJobScheduled(final PhysicalPlan physicalPlanForJob) {

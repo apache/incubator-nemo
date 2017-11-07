@@ -21,23 +21,36 @@ import edu.snu.onyx.compiler.optimizer.pass.runtime.RuntimePass;
 import edu.snu.onyx.compiler.optimizer.policy.Policy;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
  * A policy for tests.
  */
 public final class TestPolicy implements Policy {
+  private final boolean testPushPolicy;
+
+  public TestPolicy() {
+    this(false);
+  }
+
+  public TestPolicy(final boolean testPushPolicy) {
+    this.testPushPolicy = testPushPolicy;
+  }
+
   @Override
   public List<CompileTimePass> getCompileTimePasses() {
-    return  Arrays.asList(
-        new DefaultVertexExecutorPlacementPass(),
-        new DefaultPartitionerPass(),
-        new DefaultEdgeDataFlowModelPass(),
-        new DefaultEdgeDataStorePass(),
-        new DefaultStagePartitioningPass(),
-        new ScheduleGroupPass()
-    );
+    List<CompileTimePass> policy = new ArrayList<>();
+    policy.add(new DefaultVertexExecutorPlacementPass());
+    policy.add(new DefaultPartitionerPass());
+    policy.add(new DefaultEdgeDataFlowModelPass());
+    policy.add(new DefaultEdgeDataStorePass());
+    policy.add(new DefaultStagePartitioningPass());
+    policy.add(new ScheduleGroupPass());
+
+    if (testPushPolicy) {
+      policy.add(3, new ScatterGatherEdgePushPass());
+    }
+    return policy;
   }
 
   @Override

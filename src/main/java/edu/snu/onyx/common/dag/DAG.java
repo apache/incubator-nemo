@@ -226,7 +226,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
   }
 
   /**
-   * Retrieves th ancestors of a vertex.
+   * Retrieves the ancestors of a vertex.
    * @param vertexId to find the ancestors for.
    * @return the list of ancestors.
    */
@@ -246,6 +246,20 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
       ancestorList.add(parent);
       addAncestors(ancestorList, parent.getId());
     });
+  }
+
+  /**
+   * Retrieves the descendants of a vertex.
+   * @param vertexId to find the descendants for.
+   * @return the list of descendants.
+   */
+  public List<V> getDescendants(final String vertexId) {
+    final List<V> descendants = new ArrayList<>();
+    final Set<V> visited = new HashSet<>();
+    final V vertex = getVertexById(vertexId);
+    dfsDo(vertex, descendants::add, TraversalOrder.PostOrder, visited);
+    descendants.remove(vertex);
+    return descendants;
   }
 
   /**
