@@ -13,31 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.compiler.ir;
+package edu.snu.onyx.compiler.frontend.beam;
 
-import java.io.Serializable;
+import edu.snu.onyx.compiler.ir.KeyExtractor;
+import org.apache.beam.sdk.values.KV;
 
 /**
- * Key-value pair wrapper for a data element.
- * This is to be implemented in the frontend
- * with language-specific key-value pair definition.
- * @param <Data> data type.
- * @param <Key> key type.
- * @param <Value> value type.
+ * Extracts the key from a KV element.
+ * For non-KV elements, the elements themselves become the key.
  */
-public interface Element<Data, Key, Value> extends Serializable {
-  /**
-   * @return data.
-   */
-  Data getData();
-
-  /**
-   * @return key.
-   */
-  Key getKey();
-
-  /**
-   * @return value.
-   */
-  Value getValue();
+final class BeamKeyExtractor implements KeyExtractor {
+  public Object extractKey(final Object element) {
+    if (element instanceof KV) {
+      return ((KV) element).getKey();
+    } else {
+      return element;
+    }
+  }
 }

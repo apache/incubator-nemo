@@ -15,7 +15,6 @@
  */
 package edu.snu.onyx.runtime.executor.data;
 
-import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.runtime.exception.PartitionFetchException;
 import edu.snu.onyx.runtime.exception.PartitionWriteException;
 
@@ -51,7 +50,7 @@ public interface PartitionStore {
    *          through {@link edu.snu.onyx.runtime.executor.Executor} and
    *          have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  Optional<Iterable<Element>> getFromPartition(String partitionId,
+  Optional<Iterable> getFromPartition(String partitionId,
                                                HashRange hashRange) throws PartitionFetchException;
 
   /**

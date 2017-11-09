@@ -15,41 +15,34 @@
  */
 package edu.snu.onyx.common.coder;
 
-import edu.snu.onyx.compiler.frontend.beam.BeamElement;
-import edu.snu.onyx.compiler.ir.Element;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
  * {@link Coder} from {@link org.apache.beam.sdk.coders.Coder}.
- *
- * @param <Data> data type.
- * @param <Key> key type.
- * @param <Value> value type.
+ * @param <T> element type.
  */
-public final class BeamCoder<Data, Key, Value> implements Coder<Data, Key, Value> {
-  private final org.apache.beam.sdk.coders.Coder<Data> beamCoder;
+public final class BeamCoder<T> implements Coder<T> {
+  private final org.apache.beam.sdk.coders.Coder<T> beamCoder;
 
-  public BeamCoder(final org.apache.beam.sdk.coders.Coder<Data> beamCoder) {
+  public BeamCoder(final org.apache.beam.sdk.coders.Coder<T> beamCoder) {
     this.beamCoder = beamCoder;
   }
 
   @Override
-  public void encode(final Element<Data, Key, Value> value, final OutputStream outStream) {
+  public void encode(final T value, final OutputStream outStream) {
     try {
-      beamCoder.encode(value.getData(), outStream);
+      beamCoder.encode(value, outStream);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
   }
 
   @Override
-  public Element<Data, Key, Value> decode(final InputStream inStream) {
+  public T decode(final InputStream inStream) {
     try {
-      return (Element<Data, Key, Value>)
-          new BeamElement(beamCoder.decode(inStream));
+      return beamCoder.decode(inStream);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

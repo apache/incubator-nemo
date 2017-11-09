@@ -64,6 +64,7 @@ public abstract class ExecutionProperty<T> implements Serializable {
     DataStore,
     MetricCollection,
     Partitioner,
+    KeyExtractor,
     WriteOptimization, // TODO #492: to be removed.
 
     // Applies to IRVertex
@@ -73,8 +74,6 @@ public abstract class ExecutionProperty<T> implements Serializable {
     ScheduleGroupIndex,
     StageId,
 
-    // Applies to entire job DAG
-    SchedulingPolicy,
-    SchedulerType,
+    // TODO #586: Job-wide execution properties
   }
 }

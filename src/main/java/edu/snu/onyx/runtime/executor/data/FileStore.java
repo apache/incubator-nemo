@@ -16,7 +16,6 @@
 package edu.snu.onyx.runtime.executor.data;
 
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.executor.data.partition.FilePartition;
 import org.apache.reef.tang.InjectionFuture;
@@ -98,7 +97,7 @@ abstract class FileStore implements PartitionStore {
     final ByteArrayOutputStream bytesOutputStream = new ByteArrayOutputStream();
     for (final Block block : blocks) {
       long numOfElementsInBlock = 0;
-      for (final Element element : block.getData()) {
+      for (final Object element : block.getData()) {
         coder.encode(element, bytesOutputStream);
         numOfElementsInBlock++;
       }

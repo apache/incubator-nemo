@@ -15,7 +15,6 @@
  */
 package edu.snu.onyx.compiler.frontend.beam.transform;
 
-import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.compiler.ir.OutputCollector;
 import edu.snu.onyx.compiler.ir.Transform;
 
@@ -23,10 +22,11 @@ import java.util.ArrayList;
 
 /**
  * Flatten transform implementation.
+ * @param <T> input/output type.
  */
-public final class FlattenTransform implements Transform {
-  private final ArrayList<Element> collectedElements;
-  private OutputCollector outputCollector;
+public final class FlattenTransform<T> implements Transform<T, T> {
+  private final ArrayList<T> collectedElements;
+  private OutputCollector<T> outputCollector;
 
   /**
    * FlattenTransform Constructor.
@@ -36,13 +36,13 @@ public final class FlattenTransform implements Transform {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector oc) {
+  public void prepare(final Context context, final OutputCollector<T> oc) {
     this.outputCollector = oc;
   }
 
   @Override
-  public void onData(final Iterable<Element> data, final String srcVertexId) {
-    data.forEach(collectedElements::add);
+  public void onData(final Iterable<T> elements, final String srcVertexId) {
+    elements.forEach(collectedElements::add);
   }
 
   @Override

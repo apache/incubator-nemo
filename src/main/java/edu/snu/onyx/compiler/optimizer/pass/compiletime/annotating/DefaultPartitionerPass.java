@@ -21,8 +21,8 @@ import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.edge.PartitionerProperty;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
-import edu.snu.onyx.runtime.executor.datatransfer.partitioning.HashPartitioner;
-import edu.snu.onyx.runtime.executor.datatransfer.partitioning.IntactPartitioner;
+import edu.snu.onyx.compiler.ir.partitioner.HashPartitioner;
+import edu.snu.onyx.compiler.ir.partitioner.IntactPartitioner;
 
 import java.util.Collections;
 import java.util.List;

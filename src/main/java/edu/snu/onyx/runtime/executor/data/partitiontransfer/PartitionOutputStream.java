@@ -16,7 +16,6 @@
 package edu.snu.onyx.runtime.executor.data.partitiontransfer;
 
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.executor.data.FileArea;
 import edu.snu.onyx.runtime.executor.data.HashRange;
@@ -40,8 +39,8 @@ import java.util.concurrent.ExecutorService;
  *
  * Encodes and flushes outbound data elements to other executors. Three threads are involved.
  * <ul>
- *   <li>User thread writes {@link Element}s or {@link FileArea}s to this object</li>
- *   <li>{@link PartitionTransfer#outboundExecutorService} encodes {@link Element}s into {@link ByteBuf}s</li>
+ *   <li>User thread writes elements or {@link FileArea}s to this object</li>
+ *   <li>{@link PartitionTransfer#outboundExecutorService} encodes elements into {@link ByteBuf}s</li>
  *   <li>Netty {@link io.netty.channel.EventLoopGroup} responds to {@link Channel#writeAndFlush(Object)}
  *   by sending {@link ByteBuf}s or {@link FileRegion}s to the remote executor.</li>
  * </ul>
@@ -61,7 +60,7 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
   private ControlMessage.PartitionTransferType transferType;
   private short transferId;
   private Channel channel;
-  private Coder<T, ?, ?> coder;
+  private Coder<T> coder;
   private ExecutorService executorService;
   private int bufferSize;
 
@@ -122,7 +121,7 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
    * @param service the executor service
    * @param bSize   the outbound buffer size
    */
-  void setCoderAndExecutorServiceAndBufferSize(final Coder<T, ?, ?> cdr,
+  void setCoderAndExecutorServiceAndBufferSize(final Coder<T> cdr,
                                                final ExecutorService service,
                                                final int bSize) {
     this.coder = cdr;
@@ -181,14 +180,13 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
             byteBufOutputStream.close();
             break;
           } else if (thing instanceof Iterable) {
-            final Iterable<Element> iterable = (Iterable<Element>) thing;
-            for (final Element element : iterable) {
+            for (final T element : (Iterable<T>) thing) {
               coder.encode(element, byteBufOutputStream);
             }
           } else if (thing instanceof FileArea) {
             byteBufOutputStream.writeFileArea(false, (FileArea) thing);
           } else {
-            coder.encode((Element) thing, byteBufOutputStream);
+            coder.encode((T) thing, byteBufOutputStream);
           }
         }
         final long endTime = System.currentTimeMillis();
@@ -215,14 +213,14 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
   }
 
   /**
-   * Writes an {@link Element}.
+   * Writes an element.
    *
-   * @param element the {@link Element} to write
+   * @param element the element to write
    * @return {@link PartitionOutputStream} (i.e. {@code this})
    * @throws IOException if an exception was set
    * @throws IllegalStateException if this stream is closed already
    */
-  public PartitionOutputStream writeElement(final Element<T, ?, ?> element) throws IOException {
+  public PartitionOutputStream writeElement(final T element) throws IOException {
     checkWritableCondition();
     elementQueue.put(element);
     if (encodePartialPartition) {
@@ -232,7 +230,7 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
   }
 
   /**
-   * Writes a {@link Iterable} of {@link Element}s.
+   * Writes a {@link Iterable} of elements.
    *
    * @param iterable  the {@link Iterable} to write
    * @return {@link PartitionOutputStream} (i.e. {@code this})

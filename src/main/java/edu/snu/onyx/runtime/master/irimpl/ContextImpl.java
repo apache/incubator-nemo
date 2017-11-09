@@ -17,8 +17,6 @@ package edu.snu.onyx.runtime.master.irimpl;
 
 import edu.snu.onyx.compiler.ir.Transform;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -27,22 +25,8 @@ import java.util.Map;
 public final class ContextImpl implements Transform.Context {
   private final Map<Transform, Object> sideInputs;
 
-  public ContextImpl() {
-    this.sideInputs = new HashMap<>();
-  }
-
   public ContextImpl(final Map<Transform, Object> sideInputs) {
     this.sideInputs = sideInputs;
-  }
-
-  @Override
-  public List<String> getSrcVertexIds() {
-    throw new UnsupportedOperationException("getSrcVertexIds() in ContextImpl.");
-  }
-
-  @Override
-  public List<String> getDstVertexIds() {
-    throw new UnsupportedOperationException("getDstVertexIds() in ContextImpl.");
   }
 
   @Override

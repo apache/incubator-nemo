@@ -22,6 +22,6 @@ import java.io.Serializable;
  * @param <O> output type.
  */
 public interface Reader<O> extends Serializable {
-  Iterable<Element<O, ?, ?>> read() throws Exception;
+  Iterable<O> read() throws Exception;
 }
 
