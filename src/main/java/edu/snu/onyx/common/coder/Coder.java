@@ -15,37 +15,32 @@
  */
 package edu.snu.onyx.common.coder;
 
-import edu.snu.onyx.compiler.ir.Element;
-
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 
 /**
  * A {@link Coder Coder&lt;T&gt;} object encodes or decodes values of type {@code T} into byte streams.
- *
- * @param <Data> data type.
- * @param <Key> key type.
- * @param <Value> value type.
+ * @param <T> element type.
  */
-public interface Coder<Data, Key, Value> extends Serializable {
+public interface Coder<T> extends Serializable {
   /**
    * Encodes the given value onto the specified output stream.
    * It have to be able to encode the given stream consequently by calling this method repeatedly.
    *
-   * @param value the value to be encoded
+   * @param element the element to be encoded
    * @param outStream the stream on which encoded bytes are written
    */
-  void encode(Element<Data, Key, Value> value, OutputStream outStream);
+  void encode(T element, OutputStream outStream);
 
   /**
    * Decodes the a value from the given input stream.
    * It have to be able to decode the given stream consequently by calling this method repeatedly.
    *
    * @param inStream the stream from which bytes are read
-   * @return the decoded value
+   * @return the decoded element
    */
-  Element<Data, Key, Value> decode(InputStream inStream);
+  T decode(InputStream inStream);
 
   /**
    * Dummy coder.
@@ -58,12 +53,12 @@ public interface Coder<Data, Key, Value> extends Serializable {
   final class DummyCoder implements Coder {
 
     @Override
-    public void encode(final Element value, final OutputStream outStream) {
+    public void encode(final Object value, final OutputStream outStream) {
       throw new RuntimeException("DummyCoder is not supposed to be used.");
     }
 
     @Override
-    public Element decode(final InputStream inStream) {
+    public Object decode(final InputStream inStream) {
       throw new RuntimeException("DummyCoder is not supposed to be used.");
     }
 

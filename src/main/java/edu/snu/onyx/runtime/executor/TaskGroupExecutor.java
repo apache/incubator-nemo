@@ -226,7 +226,7 @@ public final class TaskGroupExecutor {
    */
   private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask) throws Exception {
     final Reader reader = boundedSourceTask.getReader();
-    final Iterable<Element> readData = reader.read();
+    final Iterable readData = reader.read();
 
     taskIdToOutputWriterMap.get(boundedSourceTask.getId()).forEach(outputWriter -> {
       outputWriter.write(readData);
@@ -268,11 +268,11 @@ public final class TaskGroupExecutor {
 
     // Check for non-side inputs
     // This blocking queue contains the pairs having data and source vertex ids.
-    final BlockingQueue<Pair<Iterable<Element>, String>> dataQueue = new LinkedBlockingQueue<>();
+    final BlockingQueue<Pair<Iterable, String>> dataQueue = new LinkedBlockingQueue<>();
     final AtomicInteger sourceParallelism = new AtomicInteger(0);
     taskIdToInputReaderMap.get(operatorTask.getId()).stream().filter(inputReader -> !inputReader.isSideInputReader())
         .forEach(inputReader -> {
-          final List<CompletableFuture<Iterable<Element>>> futures = inputReader.read();
+          final List<CompletableFuture<Iterable>> futures = inputReader.read();
           final String srcVtxId = inputReader.getSrcVertexId();
           sourceParallelism.getAndAdd(inputReader.getSourceParallelism());
           // Add consumers which will push the data to the data queue when it ready to the futures.
@@ -288,14 +288,14 @@ public final class TaskGroupExecutor {
     IntStream.range(0, sourceParallelism.get()).forEach(srcTaskNum -> {
       try {
         // Because the data queue is a blocking queue, we may need to wait some available data to be pushed.
-        final Pair<Iterable<Element>, String> availableData = dataQueue.take();
+        final Pair<Iterable, String> availableData = dataQueue.take();
         transform.onData(availableData.left(), availableData.right());
       } catch (final InterruptedException e) {
         throw new PartitionFetchException(e);
       }
 
       // Check whether there is any output data from the transform and write the output of this task to the writer.
-      final List<Element> output = outputCollector.collectOutputList();
+      final List output = outputCollector.collectOutputList();
       if (!output.isEmpty() && taskIdToOutputWriterMap.containsKey(operatorTask.getId())) {
         taskIdToOutputWriterMap.get(operatorTask.getId()).forEach(outputWriter -> outputWriter.write(output));
       } // If else, this is a sink task.
@@ -303,7 +303,7 @@ public final class TaskGroupExecutor {
     transform.close();
 
     // Check whether there is any output data from the transform and write the output of this task to the writer.
-    final List<Element> output = outputCollector.collectOutputList();
+    final List output = outputCollector.collectOutputList();
     if (taskIdToOutputWriterMap.containsKey(operatorTask.getId())) {
       taskIdToOutputWriterMap.get(operatorTask.getId()).forEach(outputWriter -> {
         if (!output.isEmpty()) {
@@ -321,7 +321,7 @@ public final class TaskGroupExecutor {
    * @param task the task to carry on the data.
    */
   private void launchMetricCollectionBarrierTask(final MetricCollectionBarrierTask task) {
-    final BlockingQueue<Iterable<Element>> dataQueue = new LinkedBlockingQueue<>();
+    final BlockingQueue<Iterable> dataQueue = new LinkedBlockingQueue<>();
     final AtomicInteger sourceParallelism = new AtomicInteger(0);
     taskIdToInputReaderMap.get(task.getId()).stream().filter(inputReader -> !inputReader.isSideInputReader())
         .forEach(inputReader -> {
@@ -329,10 +329,10 @@ public final class TaskGroupExecutor {
           inputReader.read().forEach(compFuture -> compFuture.thenAccept(dataQueue::add));
         });
 
-    final List<Element> data = new ArrayList<>();
+    final List data = new ArrayList<>();
     IntStream.range(0, sourceParallelism.get()).forEach(srcTaskNum -> {
       try {
-        final Iterable<Element> availableData = dataQueue.take();
+        final Iterable availableData = dataQueue.take();
         availableData.forEach(data::add);
       } catch (final InterruptedException e) {
         throw new PartitionFetchException(e);

@@ -15,7 +15,6 @@
  */
 package edu.snu.onyx.compiler.frontend.beam;
 
-import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.compiler.ir.Reader;
 import edu.snu.onyx.compiler.ir.SourceVertex;
 import org.apache.beam.sdk.io.BoundedSource;
@@ -56,8 +55,6 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
     source.split(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null).forEach(boundedSource -> {
       readers.add(new BoundedSourceReader<>(boundedSource));
     });
-
-    LOG.info("readers: {}", readers);
     return readers;
   }
 
@@ -88,14 +85,14 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
     }
 
     @Override
-    public final Iterable<Element<T, ?, ?>> read() throws Exception {
-      final ArrayList<Element<T, ?, ?>> data = new ArrayList<>();
+    public final Iterable<T> read() throws Exception {
+      final ArrayList<T> elements = new ArrayList<>();
       try (BoundedSource.BoundedReader<T> reader = boundedSource.createReader(null)) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
-          data.add(new BeamElement<>(reader.getCurrent()));
+          elements.add(reader.getCurrent());
         }
       }
-      return data;
+      return elements;
     }
   }
 }

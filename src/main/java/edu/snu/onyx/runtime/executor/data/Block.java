@@ -15,24 +15,22 @@
  */
 package edu.snu.onyx.runtime.executor.data;
 
-import edu.snu.onyx.compiler.ir.Element;
-
 /**
- * A collection of data {@link Element}.
+ * A collection of data elements.
  * This is a unit of write towards {@link PartitionStore}s.
  * TODO #463: Support incremental read. Consider to make the {@link Block} as a unit of read also.
  * TODO #494: Refactor HashRange to be general. int -> generic Key, and so on...
  */
 public final class Block {
   private final int key;
-  private final Iterable<Element> data;
+  private final Iterable data;
 
-  public Block(final Iterable<Element> data) {
+  public Block(final Iterable data) {
     this(HashRange.NOT_HASHED, data);
   }
 
   public Block(final int key,
-               final Iterable<Element> data) {
+               final Iterable data) {
     this.key = key;
     this.data = data;
   }
@@ -41,7 +39,7 @@ public final class Block {
     return key;
   }
 
-  public Iterable<Element> getData() {
+  public Iterable getData() {
     return data;
   }
 }

@@ -23,6 +23,7 @@ import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.LoopVertex;
 import edu.snu.onyx.compiler.ir.OperatorVertex;
 import edu.snu.onyx.common.dag.DAGBuilder;
+import edu.snu.onyx.compiler.ir.executionproperty.edge.KeyExtractorProperty;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.Broadcast;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.DataCommunicationPattern;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.OneToOne;
@@ -107,6 +108,7 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
           final IRVertex src = pValueToVertex.get(pValue);
           final BeamCoder coder = pValueToCoder.get(pValue);
           final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, irVertex), src, irVertex, coder);
+          edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
           this.builder.connectVertices(edge);
         });
   }
@@ -195,6 +197,7 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
           final BeamCoder coder = pValueToCoder.get(pValue);
           final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, irVertex),
               src, irVertex, coder, true);
+          edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
           builder.connectVertices(edge);
         });
   }

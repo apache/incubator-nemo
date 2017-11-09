@@ -17,7 +17,6 @@ package edu.snu.onyx.runtime.executor.data;
 
 import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
@@ -122,7 +121,7 @@ public final class PartitionManagerWorker {
    * @param hashRange      the hash range descriptor
    * @return the result data in the partition.
    */
-  public CompletableFuture<Iterable<Element>> retrieveDataFromPartition(
+  public CompletableFuture<Iterable> retrieveDataFromPartition(
       final String partitionId,
       final String runtimeEdgeId,
       final Class<? extends PartitionStore> partitionStore,
@@ -131,7 +130,7 @@ public final class PartitionManagerWorker {
     final PartitionStore store = getPartitionStore(partitionStore);
 
     // First, try to fetch the partition from local PartitionStore.
-    final Optional<Iterable<Element>> optionalResultData = store.getFromPartition(partitionId, hashRange);
+    final Optional<Iterable> optionalResultData = store.getFromPartition(partitionId, hashRange);
 
     if (optionalResultData.isPresent()) {
       // Partition resides in this evaluator!
@@ -154,7 +153,7 @@ public final class PartitionManagerWorker {
    * @param hashRange         the hash range descriptor
    * @return the {@link CompletableFuture} of the partition.
    */
-  private CompletableFuture<Iterable<Element>> requestPartitionInRemoteWorker(
+  private CompletableFuture<Iterable> requestPartitionInRemoteWorker(
       final String partitionId,
       final String runtimeEdgeId,
       final Class<? extends PartitionStore> partitionStore,
@@ -346,7 +345,7 @@ public final class PartitionManagerWorker {
           }
         } else {
           try {
-            final Iterable<Element> partition =
+            final Iterable partition =
                 retrieveDataFromPartition(outputStream.getPartitionId(), outputStream.getRuntimeEdgeId(),
                     partitionStore, outputStream.getHashRange()).get();
             outputStream.writeElements(partition).close();

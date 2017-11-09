@@ -51,7 +51,7 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
   }
 
   @Override
-  protected void encode(final ChannelHandlerContext ctx, final DataFrame in, final List<Object> out) {
+  protected void encode(final ChannelHandlerContext ctx, final DataFrame in, final List out) {
     // encode header
     final ByteBuf header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
     final short type;

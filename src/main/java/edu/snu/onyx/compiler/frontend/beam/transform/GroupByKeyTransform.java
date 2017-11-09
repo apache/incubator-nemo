@@ -15,8 +15,6 @@
  */
 package edu.snu.onyx.compiler.frontend.beam.transform;
 
-import edu.snu.onyx.compiler.frontend.beam.BeamElement;
-import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.compiler.ir.OutputCollector;
 import edu.snu.onyx.compiler.ir.Transform;
 import org.apache.beam.sdk.values.KV;
@@ -28,10 +26,11 @@ import java.util.Map;
 
 /**
  * Group Beam KVs.
+ * @param <I> input type.
  */
-public final class GroupByKeyTransform implements Transform {
+public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, List>> {
   private final Map<Object, List> keyToValues;
-  private OutputCollector outputCollector;
+  private OutputCollector<KV<Object, List>> outputCollector;
 
   /**
    * GroupByKey constructor.
@@ -41,14 +40,14 @@ public final class GroupByKeyTransform implements Transform {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector oc) {
+  public void prepare(final Context context, final OutputCollector<KV<Object, List>> oc) {
     this.outputCollector = oc;
   }
 
   @Override
-  public void onData(final Iterable<Element> data, final String srcVertexId) {
-    data.forEach(element -> {
-      final KV kv = (KV) element.getData();
+  public void onData(final Iterable<I> elements, final String srcVertexId) {
+    elements.forEach(element -> {
+      final KV kv = (KV) element;
       keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
       keyToValues.get(kv.getKey()).add(kv.getValue());
     });
@@ -57,7 +56,7 @@ public final class GroupByKeyTransform implements Transform {
   @Override
   public void close() {
     keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
-        .forEach(wv -> outputCollector.emit(new BeamElement<>(wv)));
+        .forEach(wv -> outputCollector.emit(wv));
     keyToValues.clear();
   }
 

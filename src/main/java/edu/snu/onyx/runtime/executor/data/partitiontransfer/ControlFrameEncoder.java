@@ -53,7 +53,7 @@ final class ControlFrameEncoder extends MessageToMessageEncoder<ControlMessage.D
   @Override
   protected void encode(final ChannelHandlerContext ctx,
                         final ControlMessage.DataTransferControlMessage in,
-                        final List<Object> out) {
+                        final List out) {
     final byte[] frameBody = in.toByteArray();
     out.add(TYPE_AND_UNUSED.retain());
     out.add(ctx.alloc().ioBuffer(BODYLENGTH_LENGTH, BODYLENGTH_LENGTH).writeInt(frameBody.length));
