@@ -49,6 +49,7 @@ import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
