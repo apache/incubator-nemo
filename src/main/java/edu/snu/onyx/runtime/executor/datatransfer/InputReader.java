@@ -16,7 +16,6 @@
 package edu.snu.onyx.runtime.executor.datatransfer;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
@@ -77,7 +76,7 @@ public final class InputReader extends DataTransfer {
    *
    * @return the read data.
    */
-  public List<CompletableFuture<Iterable<Element>>> read() {
+  public List<CompletableFuture<Iterable>> read() {
 
     switch (((Class) runtimeEdge.<Class>getProperty(ExecutionProperty.Key.DataCommunicationPattern))
         .getSimpleName()) {
@@ -94,17 +93,17 @@ public final class InputReader extends DataTransfer {
     }
   }
 
-  private CompletableFuture<Iterable<Element>> readOneToOne() {
+  private CompletableFuture<Iterable> readOneToOne() {
     final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), dstTaskIndex);
     return partitionManagerWorker.retrieveDataFromPartition(partitionId, getId(),
         (Class<? extends PartitionStore>) runtimeEdge.<Class>getProperty(ExecutionProperty.Key.DataStore),
         HashRange.all());
   }
 
-  private List<CompletableFuture<Iterable<Element>>> readBroadcast() {
+  private List<CompletableFuture<Iterable>> readBroadcast() {
     final int numSrcTasks = this.getSourceParallelism();
 
-    final List<CompletableFuture<Iterable<Element>>> futures = new ArrayList<>();
+    final List<CompletableFuture<Iterable>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
       futures.add(partitionManagerWorker.retrieveDataFromPartition(partitionId, getId(),
@@ -122,7 +121,7 @@ public final class InputReader extends DataTransfer {
    *
    * @return the list of the completable future of the data.
    */
-  private List<CompletableFuture<Iterable<Element>>> readDataInRange() {
+  private List<CompletableFuture<Iterable>> readDataInRange() {
     assert (runtimeEdge instanceof PhysicalStageEdge);
     final HashRange hashRangeToRead =
         ((PhysicalStageEdge) runtimeEdge).getTaskGroupIdToHashRangeMap().get(taskGroupId);
@@ -131,7 +130,7 @@ public final class InputReader extends DataTransfer {
     }
 
     final int numSrcTasks = this.getSourceParallelism();
-    final List<CompletableFuture<Iterable<Element>>> futures = new ArrayList<>();
+    final List<CompletableFuture<Iterable>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String partitionId = RuntimeIdGenerator.generatePartitionId(getId(), srcTaskIdx);
       futures.add(
@@ -164,8 +163,8 @@ public final class InputReader extends DataTransfer {
     if (!isSideInputReader()) {
       throw new RuntimeException();
     }
-    final CompletableFuture<Iterable<Element>> future = this.read().get(0);
-    return future.thenApply(f -> f.iterator().next().getData());
+    final CompletableFuture<Iterable> future = this.read().get(0);
+    return future.thenApply(f -> f.iterator().next());
   }
 
   /**
@@ -196,12 +195,12 @@ public final class InputReader extends DataTransfer {
    * @throws InterruptedException when interrupted during getting results from futures.
    */
   @VisibleForTesting
-  public static Iterable<Element> combineFutures(final List<CompletableFuture<Iterable<Element>>> futures)
+  public static Iterable combineFutures(final List<CompletableFuture<Iterable>> futures)
       throws ExecutionException, InterruptedException {
-    final List<Element> concatStreamBase = new ArrayList<>();
-    Stream<Element> concatStream = concatStreamBase.stream();
+    final List concatStreamBase = new ArrayList<>();
+    Stream<Object> concatStream = concatStreamBase.stream();
     for (int srcTaskIdx = 0; srcTaskIdx < futures.size(); srcTaskIdx++) {
-      final Iterable<Element> dataFromATask = futures.get(srcTaskIdx).get();
+      final Iterable dataFromATask = futures.get(srcTaskIdx).get();
       concatStream = Stream.concat(concatStream, StreamSupport.stream(dataFromATask.spliterator(), false));
     }
     return concatStream.collect(Collectors.toList());

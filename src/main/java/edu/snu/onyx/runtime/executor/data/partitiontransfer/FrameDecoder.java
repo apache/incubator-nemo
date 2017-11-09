@@ -140,7 +140,7 @@ final class FrameDecoder extends ByteToMessageDecoder {
   }
 
   @Override
-  protected void decode(final ChannelHandlerContext ctx, final ByteBuf in, final List<Object> out)
+  protected void decode(final ChannelHandlerContext ctx, final ByteBuf in, final List out)
       throws InvalidProtocolBufferException {
     while (true) {
       final boolean toContinue;
@@ -214,7 +214,7 @@ final class FrameDecoder extends ByteToMessageDecoder {
    * @return {@code true} if the control frame body was emitted, {@code false} otherwise
    * @throws InvalidProtocolBufferException when failed to parse
    */
-  private boolean onControlBodyAdded(final ChannelHandlerContext ctx, final ByteBuf in, final List<Object> out)
+  private boolean onControlBodyAdded(final ChannelHandlerContext ctx, final ByteBuf in, final List out)
       throws InvalidProtocolBufferException {
     assert (controlBodyBytesToRead > 0);
     assert (dataBodyBytesToRead == 0);

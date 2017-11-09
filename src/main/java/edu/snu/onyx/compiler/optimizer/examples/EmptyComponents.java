@@ -15,7 +15,6 @@
  */
 package edu.snu.onyx.compiler.optimizer.examples;
 
-import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.compiler.ir.OutputCollector;
 import edu.snu.onyx.compiler.ir.Transform;
 import org.apache.beam.sdk.io.BoundedSource;
@@ -33,8 +32,10 @@ public class EmptyComponents {
 
   /**
    * An empty transform.
+   * @param <I> input type.
+   * @param <O> output type.
    */
-  public static class EmptyTransform implements Transform {
+  public static class EmptyTransform<I, O> implements Transform<I, O> {
     private final String name;
 
     /**
@@ -55,11 +56,11 @@ public class EmptyComponents {
     }
 
     @Override
-    public void prepare(final Context context, final OutputCollector outputCollector) {
+    public void prepare(final Context context, final OutputCollector<O> outputCollector) {
     }
 
     @Override
-    public void onData(final Iterable<Element> data, final String srcVertexId) {
+    public void onData(final Iterable<I> elements, final String srcVertexId) {
     }
 
     @Override

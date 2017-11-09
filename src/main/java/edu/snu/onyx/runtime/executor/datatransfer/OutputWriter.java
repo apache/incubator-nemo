@@ -15,8 +15,9 @@
  */
 package edu.snu.onyx.runtime.executor.datatransfer;
 
-import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.compiler.ir.IRVertex;
+import edu.snu.onyx.compiler.ir.KeyExtractor;
+import edu.snu.onyx.compiler.ir.partitioner.Partitioner;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
@@ -28,7 +29,7 @@ import edu.snu.onyx.runtime.executor.data.PartitionStore;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.Broadcast;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.OneToOne;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
-import edu.snu.onyx.runtime.executor.datatransfer.partitioning.*;
+import edu.snu.onyx.compiler.ir.partitioner.*;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -78,7 +79,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    *
    * @param dataToWrite An iterable for the elements to be written.
    */
-  public void write(final Iterable<Element> dataToWrite) {
+  public void write(final Iterable dataToWrite) {
     final Boolean isDataSizeMetricCollectionEdge = DataSkewRuntimePass.class
         .equals(runtimeEdge.getProperty(ExecutionProperty.Key.MetricCollection));
 
@@ -93,7 +94,9 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
       throw new UnsupportedPartitionerException(
           new Throwable("Partitioner " + partitionerClass + " is not supported."));
     }
-    final List<Block> blocksToWrite = partitioner.partition(dataToWrite, dstParallelism);
+
+    final KeyExtractor keyExtractor = runtimeEdge.getProperty(ExecutionProperty.Key.KeyExtractor);
+    final List<Block> blocksToWrite = partitioner.partition(dataToWrite, dstParallelism, keyExtractor);
 
     // Write the grouped blocks into partitions.
     // TODO #492: Modularize the data communication pattern.

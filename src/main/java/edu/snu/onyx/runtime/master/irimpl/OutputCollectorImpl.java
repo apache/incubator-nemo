@@ -15,7 +15,6 @@
  */
 package edu.snu.onyx.runtime.master.irimpl;
 
-import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.compiler.ir.OutputCollector;
 
 import java.util.ArrayList;
@@ -24,9 +23,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Output Collector Implementation.
+ * @param <O> output type.
  */
-public final class OutputCollectorImpl implements OutputCollector {
-  private AtomicReference<List<Element>> outputList;
+public final class OutputCollectorImpl<O> implements OutputCollector<O> {
+  private AtomicReference<List<O>> outputList;
 
   /**
    * Constructor of a new OutputCollector.
@@ -36,12 +36,12 @@ public final class OutputCollectorImpl implements OutputCollector {
   }
 
   @Override
-  public void emit(final Element output) {
+  public void emit(final O output) {
     outputList.get().add(output);
   }
 
   @Override
-  public void emit(final String dstVertexId, final Element output) {
+  public void emit(final String dstVertexId, final Object output) {
     throw new UnsupportedOperationException("emit(dstVertexId, output) in OutputCollectorImpl.");
   }
 
@@ -50,7 +50,7 @@ public final class OutputCollectorImpl implements OutputCollector {
    *
    * @return the list of output elements.
    */
-  public List<Element> collectOutputList() {
+  public List<O> collectOutputList() {
     return outputList.getAndSet(new ArrayList<>());
   }
 }

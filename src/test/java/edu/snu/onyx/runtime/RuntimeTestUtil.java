@@ -16,8 +16,6 @@
 package edu.snu.onyx.runtime;
 
 import edu.snu.onyx.common.dag.DAG;
-import edu.snu.onyx.compiler.frontend.beam.BeamElement;
-import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.plan.physical.*;
@@ -224,10 +222,10 @@ public final class RuntimeTestUtil {
    * @param end   value of the range (exclusive).
    * @return the list of elements.
    */
-  public static List<Element> getRangedNumList(final int start,
+  public static List getRangedNumList(final int start,
                                                final int end) {
-    final List<Element> numList = new ArrayList<>(end - start);
-    IntStream.range(start, end).forEach(number -> numList.add(new BeamElement<>(KV.of(number, number))));
+    final List numList = new ArrayList<>(end - start);
+    IntStream.range(start, end).forEach(number -> numList.add(KV.of(number, number)));
     return numList;
   }
 
@@ -237,7 +235,7 @@ public final class RuntimeTestUtil {
    * @param listOfList to flattens.
    * @return the flattened list of elements.
    */
-  public static List<Element> flatten(final List<List<Element>> listOfList) {
-    return listOfList.stream().flatMap(list -> list.stream()).collect(Collectors.toList());
+  public static List flatten(final List<List> listOfList) {
+    return listOfList.stream().flatMap(list -> ((List<Object>) list).stream()).collect(Collectors.toList());
   }
 }

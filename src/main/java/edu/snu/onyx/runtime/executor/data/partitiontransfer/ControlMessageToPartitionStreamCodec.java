@@ -85,7 +85,7 @@ final class ControlMessageToPartitionStreamCodec
   @Override
   protected void encode(final ChannelHandlerContext ctx,
                         final PartitionStream in,
-                        final List<Object> out) {
+                        final List out) {
     if (in instanceof PartitionInputStream) {
       onOutboundPullRequest(ctx, (PartitionInputStream) in, out);
     } else {
@@ -102,7 +102,7 @@ final class ControlMessageToPartitionStreamCodec
    */
   private void onOutboundPullRequest(final ChannelHandlerContext ctx,
                                      final PartitionInputStream in,
-                                     final List<Object> out) {
+                                     final List out) {
     final short transferId = nextOutboundPullTransferId++;
     checkTransferIdAvailability(pullTransferIdToInputStream, ControlMessage.PartitionTransferType.PULL, transferId);
     pullTransferIdToInputStream.put(transferId, in);
@@ -122,7 +122,7 @@ final class ControlMessageToPartitionStreamCodec
    */
   private void onOutboundPushNotification(final ChannelHandlerContext ctx,
                                           final PartitionOutputStream in,
-                                          final List<Object> out) {
+                                          final List out) {
     final short transferId = nextOutboundPushTransferId++;
     checkTransferIdAvailability(pushTransferIdToOutputStream, ControlMessage.PartitionTransferType.PUSH, transferId);
     pushTransferIdToOutputStream.put(transferId, in);
@@ -145,7 +145,7 @@ final class ControlMessageToPartitionStreamCodec
   @Override
   protected void decode(final ChannelHandlerContext ctx,
                         final ControlMessage.DataTransferControlMessage in,
-                        final List<Object> out) {
+                        final List out) {
     if (in.getType() == ControlMessage.PartitionTransferType.PULL) {
       onInboundPullRequest(ctx, in, out);
     } else {
@@ -162,7 +162,7 @@ final class ControlMessageToPartitionStreamCodec
    */
   private void onInboundPullRequest(final ChannelHandlerContext ctx,
                                     final ControlMessage.DataTransferControlMessage in,
-                                    final List<Object> out) {
+                                    final List out) {
     final short transferId = (short) in.getTransferId();
     final HashRange hashRange = in.hasStartRangeInclusive() && in.hasEndRangeExclusive()
         ? HashRange.of(in.getStartRangeInclusive(), in.getEndRangeExclusive()) : HashRange.all();
@@ -187,7 +187,7 @@ final class ControlMessageToPartitionStreamCodec
    */
   private void onInboundPushNotification(final ChannelHandlerContext ctx,
                                          final ControlMessage.DataTransferControlMessage in,
-                                         final List<Object> out) {
+                                         final List out) {
     final short transferId = (short) in.getTransferId();
     final HashRange hashRange = in.hasStartRangeInclusive() && in.hasEndRangeExclusive()
         ? HashRange.of(in.getStartRangeInclusive(), in.getEndRangeExclusive()) : HashRange.all();
@@ -227,7 +227,7 @@ final class ControlMessageToPartitionStreamCodec
   private void emitControlMessage(final ControlMessage.PartitionTransferType transferType,
                                   final short transferId,
                                   final PartitionStream in,
-                                  final List<Object> out) {
+                                  final List out) {
     final ControlMessage.DataTransferControlMessage.Builder controlMessageBuilder
         = ControlMessage.DataTransferControlMessage.newBuilder()
         .setControlMessageSourceId(localExecutorId)

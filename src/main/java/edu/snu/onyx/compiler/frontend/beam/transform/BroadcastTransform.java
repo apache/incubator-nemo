@@ -15,8 +15,6 @@
  */
 package edu.snu.onyx.compiler.frontend.beam.transform;
 
-import edu.snu.onyx.compiler.frontend.beam.BeamElement;
-import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.compiler.ir.OutputCollector;
 import edu.snu.onyx.compiler.ir.Transform;
 import org.apache.beam.sdk.transforms.ViewFn;
@@ -29,31 +27,34 @@ import java.util.stream.StreamSupport;
 
 /**
  * Broadcast transform implementation.
+ * @param <I> input type.
+ * @param <O> output type.
  */
-public final class BroadcastTransform implements Transform {
+public final class BroadcastTransform<I, O> implements Transform<I, O> {
   private final PCollectionView pCollectionView;
-  private OutputCollector outputCollector;
+  private OutputCollector<O> outputCollector;
 
   /**
    * Constructor of BroadcastTransform.
    * @param pCollectionView the pCollectionView to broadcast.
    */
-  public BroadcastTransform(final PCollectionView pCollectionView) {
+  public BroadcastTransform(final PCollectionView<O> pCollectionView) {
     this.pCollectionView = pCollectionView;
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector oc) {
+  public void prepare(final Context context, final OutputCollector<O> oc) {
     this.outputCollector = oc;
   }
 
   @Override
-  public void onData(final Iterable<Element> data, final String srcVertexId) {
-    final List<WindowedValue> windowed = StreamSupport.stream(data.spliterator(), false)
-        .map(element -> WindowedValue.valueInGlobalWindow(element.getData()))
+  public void onData(final Iterable<I> elements, final String srcVertexId) {
+    final List<WindowedValue<I>> windowed = StreamSupport
+        .stream((elements).spliterator(), false)
+        .map(element -> WindowedValue.valueInGlobalWindow(element))
         .collect(Collectors.toList());
-    final ViewFn viewFn = this.pCollectionView.getViewFn();
-    outputCollector.emit(new BeamElement<>(viewFn.apply(windowed)));
+    final ViewFn<Iterable<WindowedValue<I>>, O> viewFn = this.pCollectionView.getViewFn();
+    outputCollector.emit(viewFn.apply(windowed));
   }
 
   /**

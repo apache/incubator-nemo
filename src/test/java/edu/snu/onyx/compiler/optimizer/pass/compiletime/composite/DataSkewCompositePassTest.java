@@ -26,7 +26,7 @@ import edu.snu.onyx.compiler.ir.OperatorVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
-import edu.snu.onyx.runtime.executor.datatransfer.partitioning.DataSkewHashPartitioner;
+import edu.snu.onyx.compiler.ir.partitioner.DataSkewHashPartitioner;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;

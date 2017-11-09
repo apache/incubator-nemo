@@ -13,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.runtime.executor.datatransfer.partitioning;
+package edu.snu.onyx.compiler.ir.partitioner;
 
-import edu.snu.onyx.compiler.ir.Element;
+import edu.snu.onyx.compiler.ir.KeyExtractor;
 import edu.snu.onyx.runtime.executor.data.Block;
 
 import java.util.List;
 
 /**
  * This interface represents the way of partitioning output data from a source task.
- * It takes an iterable of {@link Element} and divide the data into multiple {@link Block}s,
- * according to the number of destination tasks, the key of each {@link Element}, etc.
+ * It takes an iterable of elements and divide the data into multiple {@link Block}s,
+ * according to the number of destination tasks, the key of each element, etc.
  */
 public interface Partitioner {
 
@@ -32,7 +32,8 @@ public interface Partitioner {
    *
    * @param elements       the output data from a source task.
    * @param dstParallelism the number of destination tasks.
+   * @param keyExtractor   extracts keys from elements.
    * @return the list of partitioned blocks.
    */
-  List<Block> partition(Iterable<Element> elements, int dstParallelism);
+  List<Block> partition(Iterable elements, int dstParallelism, KeyExtractor keyExtractor);
 }

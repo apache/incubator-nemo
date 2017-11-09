@@ -16,7 +16,6 @@
 package edu.snu.onyx.runtime.executor.data.partitiontransfer;
 
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.compiler.ir.Element;
 import edu.snu.onyx.runtime.executor.data.HashRange;
 import edu.snu.onyx.runtime.executor.data.PartitionStore;
 import io.netty.buffer.ByteBuf;
@@ -38,13 +37,13 @@ import java.util.function.Consumer;
  * <ul>
  *   <li>Netty {@link io.netty.channel.EventLoopGroup} receives data from other executors and adds them
  *   by {@link #append(ByteBuf)}</li>
- *   <li>{@link PartitionTransfer#inboundExecutorService} decodes {@link ByteBuf}s into {@link Element}s</li>
+ *   <li>{@link PartitionTransfer#inboundExecutorService} decodes {@link ByteBuf}s into elements</li>
  *   <li>User thread may use {@link java.util.Iterator} to iterate over this object for their own work.</li>
  * </ul>
  *
  * @param <T> the type of element
  */
-public final class PartitionInputStream<T> implements Iterable<Element<T, ?, ?>>, PartitionStream {
+public final class PartitionInputStream<T> implements Iterable<T>, PartitionStream {
 
   private static final Logger LOG = LoggerFactory.getLogger(PartitionInputStream.class);
 
@@ -54,12 +53,12 @@ public final class PartitionInputStream<T> implements Iterable<Element<T, ?, ?>>
   private final String partitionId;
   private final String runtimeEdgeId;
   private final HashRange hashRange;
-  private Coder<T, ?, ?> coder;
+  private Coder<T> coder;
   private ExecutorService executorService;
 
   private final CompletableFuture<PartitionInputStream<T>> completeFuture = new CompletableFuture<>();
   private final ByteBufInputStream byteBufInputStream = new ByteBufInputStream();
-  private final ClosableBlockingIterable<Element<T, ?, ?>> elementQueue = new ClosableBlockingIterable<>();
+  private final ClosableBlockingIterable<T> elementQueue = new ClosableBlockingIterable<>();
   private volatile boolean started = false;
 
   @Override
@@ -100,7 +99,7 @@ public final class PartitionInputStream<T> implements Iterable<Element<T, ?, ?>>
    * @param cdr     the coder
    * @param service the executor service
    */
-  void setCoderAndExecutorService(final Coder<T, ?, ?> cdr, final ExecutorService service) {
+  void setCoderAndExecutorService(final Coder<T> cdr, final ExecutorService service) {
     this.coder = cdr;
     this.executorService = service;
   }
@@ -127,7 +126,7 @@ public final class PartitionInputStream<T> implements Iterable<Element<T, ?, ?>>
   }
 
   /**
-   * Start decoding {@link ByteBuf}s into {@link Element}s, if it has not been started.
+   * Start decoding {@link ByteBuf}s into elements, if it has not been started.
    */
   void startDecodingThreadIfNeeded() {
     if (started) {
@@ -209,17 +208,17 @@ public final class PartitionInputStream<T> implements Iterable<Element<T, ?, ?>>
    * @return an {@link Iterator} for this {@link Iterable}
    */
   @Override
-  public Iterator<Element<T, ?, ?>> iterator() {
+  public Iterator<T> iterator() {
     return elementQueue.iterator();
   }
 
   @Override
-  public void forEach(final Consumer<? super Element<T, ?, ?>> consumer) {
+  public void forEach(final Consumer<? super T> consumer) {
     elementQueue.forEach(consumer);
   }
 
   @Override
-  public Spliterator<Element<T, ?, ?>> spliterator() {
+  public Spliterator<T> spliterator() {
     return elementQueue.spliterator();
   }
 

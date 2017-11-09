@@ -22,7 +22,7 @@ import edu.snu.onyx.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.edge.PartitionerProperty;
 import edu.snu.onyx.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
-import edu.snu.onyx.runtime.executor.datatransfer.partitioning.DataSkewHashPartitioner;
+import edu.snu.onyx.compiler.ir.partitioner.DataSkewHashPartitioner;
 
 import java.util.Collections;
 import java.util.List;
