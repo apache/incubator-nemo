@@ -15,17 +15,12 @@
  */
 package edu.snu.onyx.runtime.master;
 
-import com.fasterxml.jackson.core.TreeNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.ncs.NcsMessageEnvironment;
 import edu.snu.onyx.runtime.common.message.ncs.NcsParameters;
 import edu.snu.onyx.runtime.executor.OnyxContext;
-import edu.snu.onyx.runtime.master.resource.ContainerManager;
-import edu.snu.onyx.runtime.master.resource.ResourceSpecification;
-import edu.snu.onyx.runtime.master.scheduler.Scheduler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
@@ -48,7 +43,6 @@ import org.apache.reef.wake.time.event.StartTime;
 import org.apache.reef.wake.time.event.StopTime;
 
 import javax.inject.Inject;
-import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -69,16 +63,14 @@ public final class OnyxDriver {
   private final String resourceSpecificationString;
 
   private final UserApplicationRunner userApplicationRunner;
-  private final ContainerManager containerManager;
-  private final Scheduler scheduler;
+  private final RuntimeMaster runtimeMaster;
   private final String jobId;
   private final String localDirectory;
   private final String glusterDirectory;
 
   @Inject
-  private OnyxDriver(final ContainerManager containerManager,
-                     final Scheduler scheduler,
-                     final UserApplicationRunner userApplicationRunner,
+  private OnyxDriver(final UserApplicationRunner userApplicationRunner,
+                     final RuntimeMaster runtimeMaster,
                      final NameServer nameServer,
                      final LocalAddressProvider localAddressProvider,
                      @Parameter(JobConf.ExecutorJsonContents.class) final String resourceSpecificationString,
@@ -86,8 +78,7 @@ public final class OnyxDriver {
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
                      @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory) {
     this.userApplicationRunner = userApplicationRunner;
-    this.containerManager = containerManager;
-    this.scheduler = scheduler;
+    this.runtimeMaster = runtimeMaster;
     this.nameServer = nameServer;
     this.localAddressProvider = localAddressProvider;
     this.resourceSpecificationString = resourceSpecificationString;
@@ -102,22 +93,7 @@ public final class OnyxDriver {
   public final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
-      try {
-        final ObjectMapper objectMapper = new ObjectMapper();
-        final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
-
-        for (int i = 0; i < jsonRootNode.size(); i++) {
-          final TreeNode resourceNode = jsonRootNode.get(i);
-          final ResourceSpecification.Builder builder = ResourceSpecification.newBuilder();
-          builder.setContainerType(resourceNode.get("type").traverse().nextTextValue());
-          builder.setMemory(resourceNode.get("memory_mb").traverse().getIntValue());
-          builder.setCapacity(resourceNode.get("capacity").traverse().getIntValue());
-          final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
-          containerManager.requestContainer(executorNum, builder.build());
-        }
-      } catch (final IOException e) {
-        throw new RuntimeException(e);
-      }
+      runtimeMaster.requestContainer(resourceSpecificationString);
 
       // Launch user application (with a new thread)
       final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor();
@@ -134,7 +110,7 @@ public final class OnyxDriver {
     public void onNext(final AllocatedEvaluator allocatedEvaluator) {
       final String executorId = RuntimeIdGenerator.generateExecutorId();
       final int numOfCores = allocatedEvaluator.getEvaluatorDescriptor().getNumberOfCores();
-      containerManager.onContainerAllocated(executorId, allocatedEvaluator,
+      runtimeMaster.onContainerAllocated(executorId, allocatedEvaluator,
           getExecutorConfiguration(executorId, numOfCores));
     }
   }
@@ -145,8 +121,7 @@ public final class OnyxDriver {
   public final class ActiveContextHandler implements EventHandler<ActiveContext> {
     @Override
     public void onNext(final ActiveContext activeContext) {
-      containerManager.onExecutorLaunched(activeContext);
-      scheduler.onExecutorAdded(activeContext.getId());
+      runtimeMaster.onExecutorLaunched(activeContext);
     }
   }
 
@@ -159,8 +134,7 @@ public final class OnyxDriver {
       // The list size is 0 if the evaluator failed before an executor started. For now, the size is 1 otherwise.
       failedEvaluator.getFailedContextList().forEach(failedContext -> {
         final String failedExecutorId = failedContext.getId();
-        containerManager.onExecutorRemoved(failedExecutorId);
-        scheduler.onExecutorRemoved(failedExecutorId);
+        runtimeMaster.onExecutorFailed(failedExecutorId);
       });
       throw new RuntimeException(failedEvaluator.getId()
           + " failed. See driver's log for the stack trace in executor.");
