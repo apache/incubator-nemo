@@ -15,6 +15,7 @@
  */
 package edu.snu.onyx.runtime.master;
 
+import com.fasterxml.jackson.core.TreeNode;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.onyx.client.JobConf;
@@ -36,8 +37,12 @@ import edu.snu.onyx.runtime.exception.IllegalMessageException;
 import edu.snu.onyx.runtime.exception.UnknownExecutionStateException;
 import edu.snu.onyx.runtime.exception.UnknownFailureCauseException;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
+import edu.snu.onyx.runtime.master.resource.ResourceSpecification;
 import edu.snu.onyx.runtime.master.scheduler.Scheduler;
 import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
+import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,6 +137,55 @@ public final class RuntimeMaster {
       new ContainerException(new Throwable("An exception occurred while trying to terminate ContainerManager"));
       e.printStackTrace();
     }
+  }
+
+  public void requestContainer(final String resourceSpecificationString) {
+    try {
+      final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
+
+      for (int i = 0; i < jsonRootNode.size(); i++) {
+        final TreeNode resourceNode = jsonRootNode.get(i);
+        final ResourceSpecification.Builder builder = ResourceSpecification.newBuilder();
+        builder.setContainerType(resourceNode.get("type").traverse().nextTextValue());
+        builder.setMemory(resourceNode.get("memory_mb").traverse().getIntValue());
+        builder.setCapacity(resourceNode.get("capacity").traverse().getIntValue());
+        final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
+        containerManager.requestContainer(executorNum, builder.build());
+      }
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Called when a container is allocated for this runtime.
+   * A wrapper function for {@link ContainerManager}.
+   * @param executorId to use for the executor to be launched on this container.
+   * @param allocatedEvaluator to be used as the container.
+   * @param executorConfiguration to use for the executor to be launched on this container.
+   */
+  public void onContainerAllocated(final String executorId,
+                                  final AllocatedEvaluator allocatedEvaluator,
+                                  final Configuration executorConfiguration) {
+    containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration);
+  }
+
+  /**
+   * Called when an executor is launched on a container for this runtime.
+   * @param activeContext of the launched executor.
+   */
+  public void onExecutorLaunched(final ActiveContext activeContext) {
+    containerManager.onExecutorLaunched(activeContext);
+    scheduler.onExecutorAdded(activeContext.getId());
+  }
+
+  /**
+   * Called when an executor fails due to container failure on this runtime.
+   * @param failedExecutorId of the failed executor.
+   */
+  public void onExecutorFailed(final String failedExecutorId) {
+    containerManager.onExecutorRemoved(failedExecutorId);
+    scheduler.onExecutorRemoved(failedExecutorId);
   }
 
   /**
