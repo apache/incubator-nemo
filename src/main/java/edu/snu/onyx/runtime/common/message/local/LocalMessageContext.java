@@ -20,7 +20,6 @@ final class LocalMessageContext implements MessageContext {
     this.senderId = senderId;
   }
 
-  @Override
   public String getSenderId() {
     return senderId;
   }

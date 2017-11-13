@@ -6,13 +6,6 @@ package edu.snu.onyx.runtime.common.message;
 public interface MessageContext {
 
   /**
-   * Return the identifier of sender.
-   *
-   * @return sender id
-   */
-  String getSenderId();
-
-  /**
    * Send back a reply message.
    *
    * @param replyMessage a reply message

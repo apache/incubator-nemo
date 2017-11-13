@@ -2,10 +2,7 @@ package edu.snu.onyx.runtime.common.message.ncs;
 
 import edu.snu.onyx.runtime.common.ReplyFutureMap;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageContext;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.common.message.MessageListener;
-import edu.snu.onyx.runtime.common.message.MessageSender;
+import edu.snu.onyx.runtime.common.message.*;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.network.ConnectionFactory;
@@ -45,12 +42,11 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
   private final Map<String, Connection> receiverToConnectionMap;
   private final ConnectionFactory<ControlMessage.Message> connectionFactory;
 
-
   @Inject
   private NcsMessageEnvironment(
       final NetworkConnectionService networkConnectionService,
       final IdentifierFactory idFactory,
-      @Parameter(NcsParameters.SenderId.class) final String senderId) {
+      @Parameter(MessageParameters.SenderId.class) final String senderId) {
     this.networkConnectionService = networkConnectionService;
     this.idFactory = idFactory;
     this.senderId = senderId;
@@ -98,7 +94,6 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     }
   }
 
-  @Override
   public String getId() {
     return senderId;
   }

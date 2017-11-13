@@ -1,6 +1,6 @@
 package edu.snu.onyx.runtime.common.message;
 
-import edu.snu.onyx.runtime.common.message.ncs.NcsMessageEnvironment;
+import edu.snu.onyx.runtime.common.message.grpc.GrpcMessageEnvironment;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.concurrent.Future;
@@ -9,7 +9,7 @@ import java.util.concurrent.Future;
  * Set up {@link MessageListener}s to handle incoming messages on this node, and connect to remote nodes and return
  * {@link MessageSender}s to send message to them.
  */
-@DefaultImplementation(NcsMessageEnvironment.class)
+@DefaultImplementation(GrpcMessageEnvironment.class)
 public interface MessageEnvironment {
 
   // The ID of the master used for distinguish the sender or receiver.
@@ -45,13 +45,6 @@ public interface MessageEnvironment {
    * @return a message sender
    */
   <T> Future<MessageSender<T>> asyncConnect(String receiverId, String listenerId);
-
-  /**
-   * Return an id of current node.
-   *
-   * @return an identifier
-   */
-  String getId();
 
   /**
    * Close this message environment.
