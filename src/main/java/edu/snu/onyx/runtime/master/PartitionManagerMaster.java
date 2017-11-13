@@ -326,48 +326,6 @@ public final class PartitionManagerMaster {
   }
 
   /**
-   * Reserves the region for a block in a partition, appends the block metadata,
-   * and replies with the starting point of the block in the file.
-   *
-   * @param message        the message having the block metadata to append.
-   * @param messageContext the context which will be used for response.
-   */
-  @VisibleForTesting
-  public void onReserveBlock(final ControlMessage.Message message,
-                             final MessageContext messageContext) {
-    assert (message.getType() == ControlMessage.MessageType.ReserveBlock);
-    final ControlMessage.ReserveBlockMsg reserveBlockMsg = message.getReserveBlockMsg();
-    final String partitionId = reserveBlockMsg.getPartitionId();
-    final ControlMessage.ReserveBlockResponseMsg.Builder responseBuilder =
-        ControlMessage.ReserveBlockResponseMsg.newBuilder()
-            .setRequestId(message.getId());
-
-    final Lock readLock = lock.readLock();
-    readLock.lock();
-    try {
-      final PartitionMetadata metadata = partitionIdToMetadata.get(partitionId);
-
-      // Reserve a region for this block and append the metadata.
-      final Pair<Integer, Long> reserveResult = metadata.reserveBlock(reserveBlockMsg.getBlockMetadata());
-      final int blockIndex = reserveResult.left();
-      final long positionToWrite = reserveResult.right();
-      responseBuilder.setBlockIdx(blockIndex);
-      responseBuilder.setPositionToWrite(positionToWrite);
-
-      // Reply with the position to write in the file.
-      messageContext.reply(
-          ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdGenerator.generateMessageId())
-              .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.ReserveBlockResponse)
-              .setReserveBlockResponseMsg(responseBuilder.build())
-              .build());
-    } finally {
-      readLock.unlock();
-    }
-  }
-
-  /**
    * Commits the blocks for a remote partition.
    *
    * @param message the message having metadata to commit.
@@ -506,9 +464,6 @@ public final class PartitionManagerMaster {
           break;
         case RequestBlockMetadata:
           onRequestBlockMetadata(message, messageContext);
-          break;
-        case ReserveBlock:
-          onReserveBlock(message, messageContext);
           break;
         default:
           throw new IllegalMessageException(

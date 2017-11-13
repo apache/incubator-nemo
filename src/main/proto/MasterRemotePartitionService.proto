@@ -1,0 +1,51 @@
+syntax = "proto2";
+
+package protobuf;
+
+option java_package = "edu.snu.onyx.runtime.master";
+option java_outer_classname = "GrpcServices";
+
+service MasterRemotePartitionManagerService {
+    rpc AskRemoteBlockMetadata(RemoteBlockMetadataRequest) returns (RemoteBlockMetadataResponse) {}
+    rpc RemoveRemoteBlock(RemoteBlockRemovalRequest) returns (RemoteBlockRemovalResponse) {}
+    rpc CommitRemoteBlock(RemoteBlockCommitRequest) returns (RemoteBlockCommitResponse) {}
+}
+
+message RemoteBlockMetadataRequest {
+    required string executorId = 1;
+    required string partitionId = 2;
+}
+message RemoteBlockMetadataResponse {
+    repeated BlockMetadata blockMetadata = 1;
+    optional PartitionStateFromExecutor state = 2;
+}
+
+message RemoteBlockRemovalRequest {
+    required string partitionId = 1;
+}
+
+message RemoteBlockCommitRequest {
+    required string partitionId = 1;
+    repeated int32 blockIdx = 2;
+}
+message RemoteBlockReservationRequest {
+    required string executorId = 1;
+    required string partitionId = 2;
+    required BlockMetadata blockMetadata = 3;
+}
+message RemoteBlockMetadata {
+    required int32 hashValue = 1;
+    required int32 blockSize = 2;
+    optional int64 offset = 3;
+    required int64 numElements = 4;
+}
+
+enum PartitionStateFromExecutor {
+    PARTITION_READY = 0;
+    SCHEDULED = 1;
+    COMMITTED = 2;
+    LOST = 3;
+    LOST_BEFORE_COMMIT = 4;
+    REMOVED = 5;
+}
+

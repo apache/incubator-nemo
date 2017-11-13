@@ -8,23 +8,6 @@ option java_outer_classname = "GrpcMessageService";
 message Empty {
 }
 
-message DataSizeMetric {
-    // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-    repeated int64 blockSizeInfo = 1;
-    required string partitionId = 2;
-    required string srcIRVertexId = 3;
-}
-
-
-message ExecutorFailed {
-    required string executorId = 1;
-    required bytes exception = 2;
-}
-
-message ContainerFailed {
-    required string executorId = 1;
-}
-
 message Metric {
     repeated Metric metric = 1;
 }
@@ -32,35 +15,5 @@ message Metric {
 message Metric {
     required string metricKey = 1;
     required string metricValue = 2;
-}
-
-message DataTransferControlMessage {
-    required string controlMessageSourceId = 1;
-    optional PartitionStore partitionStore = 2;
-    required PartitionTransferType type = 3;
-    required int32 transferId = 4;
-    required bool encodePartialPartition = 5;
-    required string partitionId = 6;
-    required string runtimeEdgeId = 7;
-    optional int32 startRangeInclusive = 8;
-    optional int32 endRangeExclusive = 9;
-}
-enum PartitionTransferType {
-    PUSH = 0;
-    PULL = 1;
-}
-
-message RequestPartition {
-    required string partitionId = 1;
-    required PartitionStore partitionStore = 2;
-    required string runtimeEdgeId = 3;
-    optional int32 hashRangeStartVal = 4; // Inclusive
-    optional int32 hashRangeEndVal = 5; // Exclusive
-}
-enum PartitionStore {
-    MEMORY = 0;
-    SER_MEMORY = 1;
-    LOCAL_FILE = 2;
-    REMOTE_FILE = 3;
 }
 
