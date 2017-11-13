@@ -16,7 +16,7 @@
 package edu.snu.onyx.runtime.executor.data.partitiontransfer;
 
 import edu.snu.onyx.runtime.executor.data.HashRange;
-import edu.snu.onyx.runtime.executor.data.PartitionStore;
+import edu.snu.onyx.runtime.executor.data.stores.PartitionStore;
 
 import java.util.Optional;
 

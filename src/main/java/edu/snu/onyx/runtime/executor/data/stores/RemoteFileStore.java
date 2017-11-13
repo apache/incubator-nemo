@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.runtime.executor.data;
+package edu.snu.onyx.runtime.executor.data.stores;
 
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -21,5 +21,5 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
  * Interface for remote partition stores (e.g., GlusterFS, ...).
  */
 @DefaultImplementation(GlusterFileStore.class)
-interface RemoteFileStore extends PartitionStore {
+public interface RemoteFileStore extends FileStore {
 }
