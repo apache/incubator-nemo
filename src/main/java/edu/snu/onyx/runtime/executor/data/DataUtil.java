@@ -4,6 +4,7 @@ import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,10 +27,11 @@ public final class DataUtil {
    * @param block             the block to serialize.
    * @param bytesOutputStream the output stream to write.
    * @return total number of elements in the block.
+   * @throws IOException if fail to serialize.
    */
   public static long serializeBlock(final Coder coder,
                                     final Block block,
-                                    final ByteArrayOutputStream bytesOutputStream) {
+                                    final ByteArrayOutputStream bytesOutputStream) throws IOException {
     long elementsCount = 0;
     for (final Object element : block.getElements()) {
       coder.encode(element, bytesOutputStream);
@@ -46,11 +48,12 @@ public final class DataUtil {
    * @param coder            the coder to decode the bytes.
    * @param inputStream      the input stream which will return the data in the block as bytes.
    * @param deserializedData the list of elements to put the deserialized data.
+   * @throws IOException if fail to deserialize.
    */
   public static void deserializeBlock(final long elementsInBlock,
                                       final Coder coder,
                                       final InputStream inputStream,
-                                      final List deserializedData) {
+                                      final List deserializedData) throws IOException {
     for (int i = 0; i < elementsInBlock; i++) {
       deserializedData.add(coder.decode(inputStream));
     }
