@@ -23,10 +23,7 @@ import edu.snu.onyx.runtime.executor.data.metadata.BlockMetadata;
 import edu.snu.onyx.runtime.executor.data.metadata.FileMetadata;
 import edu.snu.onyx.runtime.executor.data.FileArea;
 
-import javax.annotation.concurrent.ThreadSafe;
 import java.io.*;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -35,7 +32,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * This class represents a partition which is stored in (local or remote) file.
  */
-@ThreadSafe
 public final class FilePartition implements Partition {
 
   private final Coder coder;
@@ -57,6 +53,8 @@ public final class FilePartition implements Partition {
   /**
    * Writes the serialized data of this partition having a specific hash value as a block to the file
    * where this partition resides.
+   * Invariant: This method not support concurrent write for a single partition.
+   *            Only one thread have to write at once.
    *
    * @param serializedData  the serialized data which will become a block.
    * @param elementsInBlock the number of elements in the serialized data.
@@ -69,14 +67,8 @@ public final class FilePartition implements Partition {
     // Reserve a block write and get the metadata.
     final BlockMetadata blockMetadata = metadata.reserveBlock(hashVal, serializedData.length, elementsInBlock);
 
-    try (
-        final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true);
-        final FileChannel fileChannel = fileOutputStream.getChannel()
-    ) {
-      // Wrap the given serialized data (but not copy it) and write.
-      fileChannel.position(blockMetadata.getOffset());
-      final ByteBuffer buf = ByteBuffer.wrap(serializedData);
-      fileChannel.write(buf);
+    try (final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true)) {
+      fileOutputStream.write(serializedData);
     }
 
     // Commit if needed.

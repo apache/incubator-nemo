@@ -60,7 +60,9 @@ public interface PartitionStore {
    * If the partition exists already, appends the data to it.
    * This method supports concurrent write.
    * If the data is needed to be "incrementally" written (and read),
-   * each block can be committed right after being written by using {@param commitPerBlock}.
+   * each block can be committed right after being written by using {@code commitPerBlock}.
+   * Invariant: This method may not support concurrent write for a single partition.
+   *            Only one thread have to write at once.
    *
    * @param partitionId    of the partition.
    * @param blocks         to save to a partition.

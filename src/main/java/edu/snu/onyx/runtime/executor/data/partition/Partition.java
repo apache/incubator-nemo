@@ -29,7 +29,7 @@ public interface Partition {
 
   /**
    * Writes {@link Block}s to this partition.
-   * Constraint: This should not be invoked after this partition is committed.
+   * Invariant: This should not be invoked after this partition is committed.
    *
    * @param blocks the {@link Block}s to write.
    * @return the size of the data per block (only when the data is serialized).
@@ -39,7 +39,7 @@ public interface Partition {
 
   /**
    * Retrieves the blocks in a specific hash range and deserializes it from this partition.
-   * Constraint: This should not be invoked before this partition is committed.
+   * Invariant: This should not be invoked before this partition is committed.
    *
    * @param hashRange the hash range to retrieve.
    * @return an iterable of deserialized blocks.

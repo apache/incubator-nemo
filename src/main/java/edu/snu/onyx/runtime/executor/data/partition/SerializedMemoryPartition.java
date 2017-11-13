@@ -46,7 +46,7 @@ public final class SerializedMemoryPartition implements Partition {
 
   /**
    * Writes {@link Block}s to this partition.
-   * Constraint: This should not be invoked after this partition is committed.
+   * Invariant: This should not be invoked after this partition is committed.
    *
    * @param blocksToWrite the {@link Block}s to write.
    * @throws IOException if fail to write.
@@ -76,7 +76,7 @@ public final class SerializedMemoryPartition implements Partition {
 
   /**
    * Retrieves the blocks in a specific hash range and deserializes it from this partition.
-   * Constraint: This should not be invoked before this partition is committed.
+   * Invariant: This should not be invoked before this partition is committed.
    *
    * @param hashRange the hash range to retrieve.
    * @return an iterable of deserialized blocks.
