@@ -18,6 +18,7 @@ package edu.snu.onyx.runtime.executor.data.partitiontransfer;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.exception.UnsupportedPartitionStoreException;
 import edu.snu.onyx.runtime.executor.data.*;
+import edu.snu.onyx.runtime.executor.data.stores.*;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageCodec;
 import org.slf4j.Logger;
@@ -305,6 +306,8 @@ final class ControlMessageToPartitionStreamCodec
     switch (partitionStore.getSimpleName()) {
       case MemoryStore.SIMPLE_NAME:
         return ControlMessage.PartitionStore.MEMORY;
+      case SerializedMemoryStore.SIMPLE_NAME:
+        return ControlMessage.PartitionStore.SER_MEMORY;
       case LocalFileStore.SIMPLE_NAME:
         return ControlMessage.PartitionStore.LOCAL_FILE;
       case GlusterFileStore.SIMPLE_NAME:
@@ -319,6 +322,8 @@ final class ControlMessageToPartitionStreamCodec
     switch (partitionStoreType) {
       case MEMORY:
         return MemoryStore.class;
+      case SER_MEMORY:
+        return SerializedMemoryStore.class;
       case LOCAL_FILE:
         return LocalFileStore.class;
       case REMOTE_FILE:

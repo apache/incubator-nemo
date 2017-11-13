@@ -24,7 +24,7 @@ import edu.snu.onyx.compiler.ir.executionproperty.edge.DataFlowModelProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.edge.DataStoreProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.onyx.compiler.optimizer.examples.EmptyComponents;
-import edu.snu.onyx.runtime.executor.data.MemoryStore;
+import edu.snu.onyx.runtime.executor.data.stores.MemoryStore;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.DataCommunicationPattern;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.OneToOne;
 import org.junit.Before;

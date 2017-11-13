@@ -20,8 +20,8 @@ import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.edge.DataStoreProperty;
-import edu.snu.onyx.runtime.executor.data.GlusterFileStore;
-import edu.snu.onyx.runtime.executor.data.LocalFileStore;
+import edu.snu.onyx.runtime.executor.data.stores.GlusterFileStore;
+import edu.snu.onyx.runtime.executor.data.stores.LocalFileStore;
 
 import java.util.Collections;
 import java.util.List;

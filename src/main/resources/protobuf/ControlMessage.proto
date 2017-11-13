@@ -153,8 +153,9 @@ enum PartitionStateFromExecutor {
 
 enum PartitionStore {
     MEMORY = 0;
-    LOCAL_FILE = 1;
-    REMOTE_FILE = 2;
+    SER_MEMORY = 1;
+    LOCAL_FILE = 2;
+    REMOTE_FILE = 3;
 }
 
 // Messages for metadata passing

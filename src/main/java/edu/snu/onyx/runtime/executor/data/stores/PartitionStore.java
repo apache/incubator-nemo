@@ -13,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.runtime.executor.data;
+package edu.snu.onyx.runtime.executor.data.stores;
 
 import edu.snu.onyx.runtime.exception.PartitionFetchException;
 import edu.snu.onyx.runtime.exception.PartitionWriteException;
+import edu.snu.onyx.runtime.executor.data.Block;
+import edu.snu.onyx.runtime.executor.data.HashRange;
 
 import java.util.List;
 import java.util.Optional;
@@ -38,20 +40,20 @@ public interface PartitionStore {
   void createPartition(String partitionId) throws PartitionWriteException;
 
   /**
-   * Retrieves data in a specific {@link HashRange} from a partition.
+   * Retrieves elements in a specific {@link HashRange} from a partition.
    * If the target partition is not committed yet, the requester may "subscribe" the further data until it is committed.
    *
    * @param partitionId of the target partition.
    * @param hashRange   the hash range.
    * TODO #463: Support incremental write. Consider returning Blocks in some "subscribable" data structure.
-   * @return the result data from the target partition (if the target partition exists).
+   * @return the result elements from the target partition (if the target partition exists).
    * @throws PartitionFetchException for any error occurred while trying to fetch a partition.
    *         (This exception will be thrown to the {@link edu.snu.onyx.runtime.master.scheduler.Scheduler}
    *          through {@link edu.snu.onyx.runtime.executor.Executor} and
    *          have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  Optional<Iterable> getFromPartition(String partitionId,
-                                               HashRange hashRange) throws PartitionFetchException;
+  Optional<Iterable> getElements(String partitionId,
+                                 HashRange hashRange) throws PartitionFetchException;
 
   /**
    * Saves an iterable of data blocks to a partition.
@@ -69,9 +71,9 @@ public interface PartitionStore {
    *          through {@link edu.snu.onyx.runtime.executor.Executor} and
    *          have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  Optional<List<Long>> putToPartition(String partitionId,
-                                      Iterable<Block> blocks,
-                                      boolean commitPerBlock) throws PartitionWriteException;
+  Optional<List<Long>> putBlocks(String partitionId,
+                                 Iterable<Block> blocks,
+                                 boolean commitPerBlock) throws PartitionWriteException;
 
   /**
    * Notifies that all writes for a partition is end.

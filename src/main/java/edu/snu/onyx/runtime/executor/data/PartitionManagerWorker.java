@@ -27,6 +27,7 @@ import edu.snu.onyx.runtime.executor.PersistentConnectionToMasterMap;
 import edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionInputStream;
 import edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionOutputStream;
 import edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionTransfer;
+import edu.snu.onyx.runtime.executor.data.stores.*;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -48,6 +49,7 @@ public final class PartitionManagerWorker {
 
   private final String executorId;
   private final MemoryStore memoryStore;
+  private final SerializedMemoryStore serializedMemoryStore;
   private final LocalFileStore localFileStore;
   private final RemoteFileStore remoteFileStore;
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
@@ -59,12 +61,14 @@ public final class PartitionManagerWorker {
   private PartitionManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
                                  @Parameter(JobConf.IORequestHandleThreadsTotal.class) final int numThreads,
                                  final MemoryStore memoryStore,
+                                 final SerializedMemoryStore serializedMemoryStore,
                                  final LocalFileStore localFileStore,
                                  final RemoteFileStore remoteFileStore,
                                  final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                                  final PartitionTransfer partitionTransfer) {
     this.executorId = executorId;
     this.memoryStore = memoryStore;
+    this.serializedMemoryStore = serializedMemoryStore;
     this.localFileStore = localFileStore;
     this.remoteFileStore = remoteFileStore;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
@@ -130,7 +134,7 @@ public final class PartitionManagerWorker {
     final PartitionStore store = getPartitionStore(partitionStore);
 
     // First, try to fetch the partition from local PartitionStore.
-    final Optional<Iterable> optionalResultData = store.getFromPartition(partitionId, hashRange);
+    final Optional<Iterable> optionalResultData = store.getElements(partitionId, hashRange);
 
     if (optionalResultData.isPresent()) {
       // Partition resides in this evaluator!
@@ -207,7 +211,7 @@ public final class PartitionManagerWorker {
     final PartitionStore store = getPartitionStore(partitionStore);
 
     try {
-      return store.putToPartition(partitionId, blocks, commitPerBlock);
+      return store.putBlocks(partitionId, blocks, commitPerBlock);
     } catch (final Exception e) {
       throw new PartitionWriteException(e);
     }
@@ -308,6 +312,8 @@ public final class PartitionManagerWorker {
     switch (partitionStore.getSimpleName()) {
       case MemoryStore.SIMPLE_NAME:
         return memoryStore;
+      case SerializedMemoryStore.SIMPLE_NAME:
+        return serializedMemoryStore;
       case LocalFileStore.SIMPLE_NAME:
         return localFileStore;
       case GlusterFileStore.SIMPLE_NAME:
@@ -333,26 +339,26 @@ public final class PartitionManagerWorker {
     ioThreadExecutorService.submit(new Runnable() {
       @Override
       public void run() {
-        if (partitionStore.equals(LocalFileStore.class) || partitionStore.equals(GlusterFileStore.class)) {
-          // TODO #492: Modularize the data communication pattern. Remove execution property value dependant code.
-          final FileStore fileStore = (FileStore) getPartitionStore(partitionStore);
-          try {
+        try {
+          if (partitionStore.equals(LocalFileStore.class) || partitionStore.equals(GlusterFileStore.class)) {
+            // TODO #492: Modularize the data communication pattern. Remove execution property value dependant code.
+            final FileStore fileStore = (FileStore) getPartitionStore(partitionStore);
             outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getPartitionId(),
                 outputStream.getHashRange())).close();
-          } catch (final IOException | PartitionFetchException e) {
-            LOG.error("Closing a pull request exceptionally", e);
-            outputStream.closeExceptionally(e);
-          }
-        } else {
-          try {
+          } else if (SerializedMemoryStore.class.equals(partitionStore)) {
+            final SerializedMemoryStore serMemoryStore = (SerializedMemoryStore) getPartitionStore(partitionStore);
+            final Optional<Iterable<byte[]>> optionalResult = serMemoryStore.getSerializedBlocksFromPartition(
+                outputStream.getPartitionId(), outputStream.getHashRange());
+            outputStream.writeByteArrays(optionalResult.get()).close();
+          } else {
             final Iterable partition =
                 retrieveDataFromPartition(outputStream.getPartitionId(), outputStream.getRuntimeEdgeId(),
                     partitionStore, outputStream.getHashRange()).get();
             outputStream.writeElements(partition).close();
-          } catch (final IOException | InterruptedException | ExecutionException e) {
-            LOG.error("Closing a pull request exceptionally", e);
-            outputStream.closeExceptionally(e);
           }
+        } catch (final IOException | ExecutionException | InterruptedException | PartitionFetchException e) {
+          LOG.error("Closing a pull request exceptionally", e);
+          outputStream.closeExceptionally(e);
         }
       }
     });

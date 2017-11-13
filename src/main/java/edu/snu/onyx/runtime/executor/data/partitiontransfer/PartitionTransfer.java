@@ -18,7 +18,7 @@ package edu.snu.onyx.runtime.executor.data.partitiontransfer;
 import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.runtime.executor.data.HashRange;
 import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
-import edu.snu.onyx.runtime.executor.data.PartitionStore;
+import edu.snu.onyx.runtime.executor.data.stores.PartitionStore;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;

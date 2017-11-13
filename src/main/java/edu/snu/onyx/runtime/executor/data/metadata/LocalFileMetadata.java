@@ -102,7 +102,6 @@ public final class LocalFileMetadata extends FileMetadata {
    */
   @Override
   public synchronized void commitPartition() {
-    // TODO #463: Support incremental write. Close the "ClosableBlockingIterable".
     committed = true;
   }
 }

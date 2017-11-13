@@ -20,8 +20,8 @@ import edu.snu.onyx.compiler.ir.IREdge;
 import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.edge.DataStoreProperty;
-import edu.snu.onyx.runtime.executor.data.LocalFileStore;
-import edu.snu.onyx.runtime.executor.data.MemoryStore;
+import edu.snu.onyx.runtime.executor.data.stores.LocalFileStore;
+import edu.snu.onyx.runtime.executor.data.stores.MemoryStore;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
 
 /**

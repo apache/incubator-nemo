@@ -22,8 +22,8 @@ import java.util.Arrays;
 
 /**
  * A series of passes to support Disaggregated Resources.
- * After this pass, all {@link edu.snu.onyx.runtime.executor.data.LocalFileStore} property
- * will be replaces with {@link edu.snu.onyx.runtime.executor.data.GlusterFileStore}.
+ * After this pass, all {@link edu.snu.onyx.runtime.executor.data.stores.LocalFileStore} property
+ * will be replaces with {@link edu.snu.onyx.runtime.executor.data.stores.GlusterFileStore}.
  */
 public final class DisaggregationPass extends CompositePass {
   public static final String SIMPLE_NAME = "DisaggregationPass";

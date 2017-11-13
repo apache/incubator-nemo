@@ -19,7 +19,7 @@ import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.executor.data.FileArea;
 import edu.snu.onyx.runtime.executor.data.HashRange;
-import edu.snu.onyx.runtime.executor.data.PartitionStore;
+import edu.snu.onyx.runtime.executor.data.stores.PartitionStore;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import org.slf4j.Logger;
@@ -184,7 +184,9 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
               coder.encode(element, byteBufOutputStream);
             }
           } else if (thing instanceof FileArea) {
-            byteBufOutputStream.writeFileArea(false, (FileArea) thing);
+            byteBufOutputStream.writeFileArea((FileArea) thing);
+          } else if (thing instanceof byte[]) {
+            byteBufOutputStream.write((byte[]) thing);
           } else {
             coder.encode((T) thing, byteBufOutputStream);
           }
@@ -213,23 +215,6 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
   }
 
   /**
-   * Writes an element.
-   *
-   * @param element the element to write
-   * @return {@link PartitionOutputStream} (i.e. {@code this})
-   * @throws IOException if an exception was set
-   * @throws IllegalStateException if this stream is closed already
-   */
-  public PartitionOutputStream writeElement(final T element) throws IOException {
-    checkWritableCondition();
-    elementQueue.put(element);
-    if (encodePartialPartition) {
-      startEncodingThreadIfNeeded();
-    }
-    return this;
-  }
-
-  /**
    * Writes a {@link Iterable} of elements.
    *
    * @param iterable  the {@link Iterable} to write
@@ -240,23 +225,6 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
   public PartitionOutputStream writeElements(final Iterable iterable) throws IOException {
     checkWritableCondition();
     elementQueue.put(iterable);
-    if (encodePartialPartition) {
-      startEncodingThreadIfNeeded();
-    }
-    return this;
-  }
-
-  /**
-   * Writes a {@link FileArea}. Zero-copy transfer is used if possible.
-   *
-   * @param fileArea  provides the descriptor of the file to write
-   * @return {@link PartitionOutputStream} (i.e. {@code this})
-   * @throws IOException if an exception was set
-   * @throws IllegalStateException if this stream is closed already
-   */
-  public PartitionOutputStream writeFileArea(final FileArea fileArea) throws IOException {
-    checkWritableCondition();
-    elementQueue.put(fileArea);
     if (encodePartialPartition) {
       startEncodingThreadIfNeeded();
     }
@@ -276,6 +244,23 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
     for (final FileArea fileArea : fileAreas) {
       elementQueue.put(fileArea);
     }
+    if (encodePartialPartition) {
+      startEncodingThreadIfNeeded();
+    }
+    return this;
+  }
+
+  /**
+   * Writes a collection of arrays of bytes.
+   *
+   * @param byteArrays the collection of arrays of bytes to write
+   * @return {@link PartitionOutputStream} (i.e. {@code this})
+   * @throws IOException if an exception was set
+   * @throws IllegalStateException if this stream is closed already
+   */
+  public PartitionOutputStream writeByteArrays(final Iterable<byte[]> byteArrays) throws IOException {
+    checkWritableCondition();
+    byteArrays.forEach(elementQueue::put);
     if (encodePartialPartition) {
       startEncodingThreadIfNeeded();
     }
@@ -420,11 +405,10 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
     /**
      * Writes a data frame from {@link FileArea}.
      *
-     * @param isLastFrame whether or not the frame is the last frame
      * @param fileArea    the {@link FileArea} to transfer
      * @throws IOException when failed to open the file
      */
-    private void writeFileArea(final boolean isLastFrame, final FileArea fileArea) throws IOException {
+    private void writeFileArea(final FileArea fileArea) throws IOException {
       flush();
       final Path path = Paths.get(fileArea.getPath());
       long cursor = fileArea.getPosition();
@@ -432,7 +416,7 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
       while (bytesToSend > 0) {
         final long size = Math.min(bytesToSend, DataFrameEncoder.LENGTH_MAX);
         final FileRegion fileRegion = new DefaultFileRegion(FileChannel.open(path), cursor, size);
-        channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(transferType, isLastFrame, transferId,
+        channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(transferType, false, transferId,
             size, fileRegion)).addListener(writeFutureListener);
         cursor += size;
         bytesToSend -= size;
