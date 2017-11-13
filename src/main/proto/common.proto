@@ -16,7 +16,7 @@ message Metric {
     required string metricValue = 2;
 }
 
-enum PartitionStateFromExecutor {
+enum PartitionState {
     PARTITION_READY = 0;
     SCHEDULED = 1;
     COMMITTED = 2;

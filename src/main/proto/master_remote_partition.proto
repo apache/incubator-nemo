@@ -6,7 +6,7 @@ option java_package = "edu.snu.onyx.runtime.master.grpc";
 
 import "common.proto";
 
-service MasterRemotePartitionService {
+service MasterRemoteBlockService {
     rpc AskRemoteBlockMetadata(RemoteBlockMetadataRequest) returns (RemoteBlockMetadataResponse) {}
     rpc RemoveRemoteBlock(RemoteBlockRemovalRequest) returns (Empty) {}
     rpc CommitRemoteBlock(RemoteBlockCommitRequest) returns (Empty) {}

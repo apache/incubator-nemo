@@ -29,6 +29,7 @@ import edu.snu.onyx.common.StateMachine;
 import java.util.*;
 
 import edu.snu.onyx.runtime.common.metric.MetricDataBuilder;
+import edu.snu.onyx.runtime.master.grpc.MasterScheduler;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -229,7 +230,7 @@ public final class TaskGroupStateManager {
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  private ControlMessage.TaskGroupStateFromExecutor convertState(final TaskGroupState.State state) {
+  private ControlMessage.TaskGroupStateFromExecutor convertState(final TaskGroupState state) {
     switch (state) {
     case READY:
       return ControlMessage.TaskGroupStateFromExecutor.READY;
@@ -249,13 +250,13 @@ public final class TaskGroupStateManager {
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  private ControlMessage.RecoverableFailureCause convertFailureCause(
+  private MasterScheduler.RecoverableFailureCause convertFailureCause(
     final TaskGroupState.RecoverableFailureCause cause) {
     switch (cause) {
     case INPUT_READ_FAILURE:
-      return ControlMessage.RecoverableFailureCause.InputReadFailure;
+      return MasterScheduler.RecoverableFailureCause.InputReadFailure;
     case OUTPUT_WRITE_FAILURE:
-      return ControlMessage.RecoverableFailureCause.OutputWriteFailure;
+      return MasterScheduler.RecoverableFailureCause.OutputWriteFailure;
     default:
       throw new UnknownFailureCauseException(
           new Throwable("The failure cause for the recoverable failure is unknown"));

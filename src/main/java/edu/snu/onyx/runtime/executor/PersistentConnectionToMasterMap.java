@@ -1,13 +1,9 @@
 package edu.snu.onyx.runtime.executor;
 
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.common.message.MessageSender;
 import edu.snu.onyx.runtime.exception.NodeConnectionException;
 
 import javax.inject.Inject;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 /**

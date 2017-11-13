@@ -18,11 +18,15 @@ package edu.snu.onyx.runtime.executor;
 import com.google.protobuf.ByteString;
 import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
+import edu.snu.onyx.runtime.common.grpc.Common;
 import edu.snu.onyx.runtime.common.metric.MetricMessageSender;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.onyx.runtime.exception.UnknownFailureCauseException;
 import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
+import edu.snu.onyx.runtime.executor.grpc.ExecutorScheduler;
+import edu.snu.onyx.runtime.executor.grpc.ExecutorSchedulerServiceGrpc;
+import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -136,21 +140,17 @@ public final class Executor {
     }
   }
 
-  /**
-   * MessageListener for Executor.
-   */
-  private final class ExecutorMessageReceiver implements MessageListener<ControlMessage.Message> {
+  private class ExecutorSchedulerService extends ExecutorSchedulerServiceGrpc.ExecutorSchedulerServiceImplBase {
+    private final Common.Empty empty = Common.Empty.newBuilder().build();
 
     @Override
-    public void onMessage(final ControlMessage.Message message) {
-      switch (message.getType()) {
-      case ScheduleTaskGroup:
-        final ControlMessage.ScheduleTaskGroupMsg scheduleTaskGroupMsg = message.getScheduleTaskGroupMsg();
-        final ScheduledTaskGroup scheduledTaskGroup =
-            SerializationUtils.deserialize(scheduleTaskGroupMsg.getTaskGroup().toByteArray());
-        onTaskGroupReceived(scheduledTaskGroup);
-        break;
-      }
+    public void executeTaskGroup(final ExecutorScheduler.TaskGroupExecutionRequest request,
+                                 final StreamObserver<Common.Empty> observer) {
+      final ScheduledTaskGroup scheduledTaskGroup =
+          SerializationUtils.deserialize(request.getTaskGroup().toByteArray());
+      onTaskGroupReceived(scheduledTaskGroup);
+      observer.onNext(empty);
+      observer.onCompleted();
     }
   }
 }

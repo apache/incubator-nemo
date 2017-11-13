@@ -9,6 +9,7 @@ import "common.proto";
 // A grpc service for implementing edu.snu.onyx.runtime.common.message components using grpc
 service MasterSchedulerService {
     rpc TaskGroupStateChanged(NewTaskGroupState) returns (Empty) {}
+    rpc ExecutorFailed(FailedExecutor) returns (Empty) {}
 }
 
 message NewTaskGroupState {
@@ -41,7 +42,7 @@ message DataSizeMetric {
 }
 
 
-message ExecutorFailed {
+message FailedExecutor {
     required string executorId = 1;
     required bytes exception = 2;
 }

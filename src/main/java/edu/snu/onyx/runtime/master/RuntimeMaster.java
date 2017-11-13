@@ -31,6 +31,7 @@ import edu.snu.onyx.runtime.exception.ContainerException;
 import edu.snu.onyx.runtime.exception.IllegalMessageException;
 import edu.snu.onyx.runtime.exception.UnknownExecutionStateException;
 import edu.snu.onyx.runtime.exception.UnknownFailureCauseException;
+import edu.snu.onyx.runtime.master.grpc.MasterPartition;
 import edu.snu.onyx.runtime.master.grpc.MasterScheduler;
 import edu.snu.onyx.runtime.master.grpc.MasterSchedulerServiceGrpc;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
@@ -297,7 +298,7 @@ public final class RuntimeMaster {
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  public static PartitionState.State convertPartitionState(final Common.PartitionStateFromExecutor state) {
+  public static PartitionState.State convertPartitionState(final MasterPartition.NewPartitionState state) {
     switch (state) {
     case PARTITION_READY:
       return PartitionState.State.READY;
