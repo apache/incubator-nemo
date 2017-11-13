@@ -13,9 +13,6 @@ service MasterService {
     rpc AskBlockMetadata(BlockMetadataRequest) returns (BlockMetadataResponse) {}
 }
 
-message Empty {
-}
-
 message NewTaskGroupState {
     required string executorId = 1;
     required string taskGroupId = 2;

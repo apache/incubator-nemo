@@ -5,6 +5,9 @@ package protobuf;
 option java_package = "edu.snu.onyx.runtime.common.comm";
 option java_outer_classname = "GrpcMessageService";
 
+message Empty {
+}
+
 message DataSizeMetric {
     // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
     repeated int64 blockSizeInfo = 1;
@@ -60,3 +63,4 @@ enum PartitionStore {
     LOCAL_FILE = 2;
     REMOTE_FILE = 3;
 }
+

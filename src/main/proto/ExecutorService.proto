@@ -12,9 +12,6 @@ service ExecutorService {
     rpc CommitBlock(BlockCommitRequest) returns (BlockCommitResponse) {}
 }
 
-message Empty {
-}
-
 message TaskGroupExecutionRequest {
     required bytes taskGroup = 1;
 }
