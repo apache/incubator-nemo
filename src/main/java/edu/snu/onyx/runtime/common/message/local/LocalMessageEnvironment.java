@@ -40,7 +40,6 @@ public final class LocalMessageEnvironment implements MessageEnvironment {
         currentNodeId, targetId, messageTypeId, dispatcher));
   }
 
-  @Override
   public String getId() {
     return currentNodeId;
   }

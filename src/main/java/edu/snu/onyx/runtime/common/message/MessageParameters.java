@@ -1,12 +1,12 @@
-package edu.snu.onyx.runtime.common.message.ncs;
+package edu.snu.onyx.runtime.common.message;
 
 import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.annotations.NamedParameter;
 
 /**
- * Parameters for NCS.
+ * Parameters for message components.
  */
-public final class NcsParameters {
+public class MessageParameters {
 
   /**
    * Id of the sender.

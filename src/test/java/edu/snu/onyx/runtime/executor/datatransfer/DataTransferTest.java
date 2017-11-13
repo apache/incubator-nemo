@@ -33,9 +33,9 @@ import edu.snu.onyx.compiler.ir.executionproperty.edge.PartitionerProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
+import edu.snu.onyx.runtime.common.message.MessageParameters;
 import edu.snu.onyx.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.onyx.runtime.common.message.local.LocalMessageEnvironment;
-import edu.snu.onyx.runtime.common.message.ncs.NcsParameters;
 import edu.snu.onyx.runtime.common.metric.MetricMessageHandler;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStage;
@@ -167,7 +167,7 @@ public final class DataTransferTest {
     final PersistentConnectionToMasterMap conToMaster = new PersistentConnectionToMasterMap(messageEnvironment);
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
         .bindNamedParameter(JobConf.ExecutorId.class, executorId)
-        .bindNamedParameter(NcsParameters.SenderId.class, executorId)
+        .bindNamedParameter(MessageParameters.SenderId.class, executorId)
         .build();
     final Injector injector = nameClientInjector.forkInjector(executorConfiguration);
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
