@@ -19,6 +19,7 @@ import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
@@ -55,7 +56,7 @@ public final class LoopVertex extends IRVertex {
     this.edgeWithLoopToEdgeWithInternalVertex = new HashMap<>();
     this.edgeWithInternalVertexToEdgeWithLoop = new HashMap<>();
     this.maxNumberOfIterations = 1; // 1 is the default number of iterations.
-    this.terminationCondition = (integer -> false); // nothing much yet.
+    this.terminationCondition = (IntPredicate & Serializable) (integer -> false); // nothing much yet.
   }
 
   @Override

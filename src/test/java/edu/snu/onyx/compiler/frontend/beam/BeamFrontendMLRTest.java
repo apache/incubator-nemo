@@ -28,7 +28,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Test {@link BeamFrontend}.
+ * Test Beam frontend.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)

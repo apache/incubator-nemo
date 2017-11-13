@@ -17,8 +17,6 @@ package edu.snu.onyx.compiler;
 
 import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.client.JobLauncher;
-import edu.snu.onyx.compiler.frontend.Frontend;
-import edu.snu.onyx.compiler.frontend.beam.BeamFrontend;
 import edu.snu.onyx.compiler.ir.*;
 import edu.snu.onyx.compiler.optimizer.policy.*;
 import edu.snu.onyx.examples.beam.*;
@@ -26,6 +24,10 @@ import edu.snu.onyx.common.dag.DAG;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
+import org.mockito.ArgumentCaptor;
+import org.powermock.api.mockito.PowerMockito;
+
+import java.lang.reflect.Method;
 
 /**
  * Utility methods for tests.
@@ -37,26 +39,38 @@ public final class CompilerTestUtil {
   public static final String defaultPolicy = DefaultPolicy.class.getCanonicalName();
   public static final String dataSkewPolicy = DataSkewPolicy.class.getCanonicalName();
 
-  public static DAG<IRVertex, IREdge> compileMRDAG() throws Exception {
-    final Frontend beamFrontend = new BeamFrontend();
-    final ArgBuilder mrArgBuilder = MapReduceITCase.builder;
-    final Configuration configuration = JobLauncher.getJobConf(mrArgBuilder.build());
-    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
-    final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
-    final String[] arguments = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
+  private static DAG<IRVertex, IREdge> compileDAG(final String[] args) throws Exception {
+    final String userMainClassName;
+    final String[] userMainMethodArgs;
 
-    return beamFrontend.compile(className, arguments);
+    try {
+      final Configuration configuration = JobLauncher.getJobConf(args);
+      final Injector injector = Tang.Factory.getTang().newInjector(configuration);
+      userMainClassName = injector.getNamedInstance(JobConf.UserMainClass.class);
+      userMainMethodArgs = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
+    } catch (final Exception e) {
+      throw new RuntimeException("An exception occurred while processing configuration for invoking user main. "
+          + "Note: Using compileDAG for multiple times will fail, as compileDAG method enables static method mocking "
+          + "on JobLauncher and because of this Tang may misbehave afterwards.", e);
+    }
+    final Class userMainClass = Class.forName(userMainClassName);
+    final Method userMainMethod = userMainClass.getMethod("main", String[].class);
+
+    final ArgumentCaptor<DAG> captor = ArgumentCaptor.forClass(DAG.class);
+    PowerMockito.mockStatic(JobLauncher.class);
+    PowerMockito.doNothing().when(JobLauncher.class, "launchDAG", captor.capture());
+    userMainMethod.invoke(null, (Object) userMainMethodArgs);
+    return captor.getValue();
+  }
+
+  public static DAG<IRVertex, IREdge> compileMRDAG() throws Exception {
+    final ArgBuilder mrArgBuilder = MapReduceITCase.builder;
+    return compileDAG(mrArgBuilder.build());
   }
 
   public static DAG<IRVertex, IREdge> compileALSDAG() throws Exception {
-    final Frontend beamFrontend = new BeamFrontend();
     final ArgBuilder alsArgBuilder = AlternatingLeastSquareITCase.builder;
-    final Configuration configuration = JobLauncher.getJobConf(alsArgBuilder.build());
-    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
-    final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
-    final String[] arguments = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
-
-    return beamFrontend.compile(className, arguments);
+    return compileDAG(alsArgBuilder.build());
   }
 
   public static DAG<IRVertex, IREdge> compileALSInefficientDAG() throws Exception {
@@ -66,28 +80,16 @@ public final class CompilerTestUtil {
     final String numIteration = "3";
     final String dagDirectory = "./dag";
 
-    final Frontend beamFrontend = new BeamFrontend();
     final ArgBuilder alsArgBuilder = new ArgBuilder()
         .addJobId(AlternatingLeastSquareInefficient.class.getSimpleName())
         .addUserMain(alsInefficient)
         .addUserArgs(input, numFeatures, numIteration)
         .addDAGDirectory(dagDirectory);
-    final Configuration configuration = JobLauncher.getJobConf(alsArgBuilder.build());
-    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
-    final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
-    final String[] arguments = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
-
-    return beamFrontend.compile(className, arguments);
+    return compileDAG(alsArgBuilder.build());
   }
 
   public static DAG<IRVertex, IREdge> compileMLRDAG() throws Exception {
-    final Frontend beamFrontend = new BeamFrontend();
-    final ArgBuilder alsArgBuilder = MultinomialLogisticRegressionITCase.builder;
-    final Configuration configuration = JobLauncher.getJobConf(alsArgBuilder.build());
-    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
-    final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
-    final String[] arguments = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
-
-    return beamFrontend.compile(className, arguments);
+    final ArgBuilder mlrArgBuilder = MultinomialLogisticRegressionITCase.builder;
+    return compileDAG(mlrArgBuilder.build());
   }
 }
