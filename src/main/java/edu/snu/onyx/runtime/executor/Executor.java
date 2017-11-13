@@ -18,13 +18,8 @@ package edu.snu.onyx.runtime.executor;
 import com.google.protobuf.ByteString;
 import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageContext;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.common.message.MessageListener;
 import edu.snu.onyx.runtime.common.metric.MetricMessageSender;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
-import edu.snu.onyx.runtime.exception.IllegalMessageException;
 import edu.snu.onyx.runtime.exception.UnknownFailureCauseException;
 import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
@@ -155,18 +150,6 @@ public final class Executor {
             SerializationUtils.deserialize(scheduleTaskGroupMsg.getTaskGroup().toByteArray());
         onTaskGroupReceived(scheduledTaskGroup);
         break;
-      default:
-        throw new IllegalMessageException(
-            new Exception("This message should not be received by an executor :" + message.getType()));
-      }
-    }
-
-    @Override
-    public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
-      switch (message.getType()) {
-      default:
-        throw new IllegalMessageException(
-            new Exception("This message should not be requested to an executor :" + message.getType()));
       }
     }
   }

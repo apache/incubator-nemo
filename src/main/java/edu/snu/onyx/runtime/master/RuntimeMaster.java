@@ -22,10 +22,7 @@ import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.DataSkewCompositePass;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageContext;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.common.message.MessageListener;
+import edu.snu.onyx.runtime.common.grpc.Common;
 import edu.snu.onyx.runtime.common.metric.MetricMessageHandler;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.onyx.runtime.common.state.PartitionState;
@@ -34,9 +31,12 @@ import edu.snu.onyx.runtime.exception.ContainerException;
 import edu.snu.onyx.runtime.exception.IllegalMessageException;
 import edu.snu.onyx.runtime.exception.UnknownExecutionStateException;
 import edu.snu.onyx.runtime.exception.UnknownFailureCauseException;
+import edu.snu.onyx.runtime.master.grpc.MasterScheduler;
+import edu.snu.onyx.runtime.master.grpc.MasterSchedulerServiceGrpc;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.resource.ResourceSpecification;
 import edu.snu.onyx.runtime.master.scheduler.Scheduler;
+import io.grpc.stub.StreamObserver;
 import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -208,22 +208,22 @@ public final class RuntimeMaster {
     }
   }
 
-  /**
-  private class MessageService extends MessageServiceGrpc.MessageServiceImplBase {
-
-    private final GrpcMessageService.Void voidMessage = GrpcMessageService.Void.newBuilder().build();
+  private class MasterSchedulerService extends MasterSchedulerServiceGrpc.MasterSchedulerServiceImplBase {
+    private final Common.Empty empty = Common.Empty.newBuilder().build();
 
     @Override
-    public void send(final ControlMessage.Message message,
-                     final StreamObserver<GrpcMessageService.Void> responseObserver) {
-    }
-
-    @Override
-    public void request(final ControlMessage.Message message,
-                        final StreamObserver<ControlMessage.Message> responseObserver) {
+    public void taskGroupStateChanged(final MasterScheduler.NewTaskGroupState newState,
+                                      final StreamObserver<Common.Empty> observer) {
+      scheduler.onTaskGroupStateChanged(newState.getExecutorId(),
+          newState.getTaskGroupId(),
+          convertTaskGroupState(newState.getState()),
+          newState.getAttemptIdx(),
+          newState.getTasksPutOnHoldIdsList(),
+          convertFailureCause(newState.getFailureCause()));
+      observer.onNext(empty);
+      observer.onCompleted();
     }
   }
-  **/
 
   /**
    * Handler for control messages received by Master.
@@ -234,15 +234,6 @@ public final class RuntimeMaster {
       try {
         switch (message.getType()) {
           case TaskGroupStateChanged:
-            final ControlMessage.TaskGroupStateChangedMsg taskGroupStateChangedMsg
-                = message.getTaskGroupStateChangedMsg();
-
-            scheduler.onTaskGroupStateChanged(taskGroupStateChangedMsg.getExecutorId(),
-                taskGroupStateChangedMsg.getTaskGroupId(),
-                convertTaskGroupState(taskGroupStateChangedMsg.getState()),
-                taskGroupStateChangedMsg.getAttemptIdx(),
-                taskGroupStateChangedMsg.getTasksPutOnHoldIdsList(),
-                convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
             break;
           case ExecutorFailed:
             final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
@@ -286,7 +277,7 @@ public final class RuntimeMaster {
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  private static TaskGroupState.State convertTaskGroupState(final ControlMessage.TaskGroupStateFromExecutor state) {
+  private static TaskGroupState.State convertTaskGroupState(final MasterScheduler.TaskGroupStateFromExecutor state) {
     switch (state) {
       case READY:
         return TaskGroupState.State.READY;
@@ -306,7 +297,7 @@ public final class RuntimeMaster {
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  public static PartitionState.State convertPartitionState(final ControlMessage.PartitionStateFromExecutor state) {
+  public static PartitionState.State convertPartitionState(final Common.PartitionStateFromExecutor state) {
     switch (state) {
     case PARTITION_READY:
       return PartitionState.State.READY;
@@ -326,7 +317,7 @@ public final class RuntimeMaster {
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  public static ControlMessage.PartitionStateFromExecutor convertPartitionState(final PartitionState.State state) {
+  public static PartitionStateFromExecutor convertPartitionState(final Common.PartitionStateFromExecutor state) {
     switch (state) {
       case READY:
         return ControlMessage.PartitionStateFromExecutor.PARTITION_READY;
@@ -347,7 +338,7 @@ public final class RuntimeMaster {
 
   // TODO #164: Cleanup Protobuf Usage
   private TaskGroupState.RecoverableFailureCause convertFailureCause(
-      final ControlMessage.RecoverableFailureCause cause) {
+      final MasterScheduler.RecoverableFailureCause cause) {
     switch (cause) {
       case InputReadFailure:
         return TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE;

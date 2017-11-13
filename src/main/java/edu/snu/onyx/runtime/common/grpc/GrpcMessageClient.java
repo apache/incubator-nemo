@@ -1,4 +1,4 @@
-package edu.snu.onyx.runtime.common.message.grpc;
+package edu.snu.onyx.runtime.common.grpc;
 
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.comm.MessageServiceGrpc;

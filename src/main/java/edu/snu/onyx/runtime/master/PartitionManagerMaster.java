@@ -17,10 +17,6 @@ package edu.snu.onyx.runtime.master;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageContext;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.common.message.MessageListener;
 import edu.snu.onyx.runtime.common.state.PartitionState;
 import edu.snu.onyx.runtime.exception.AbsentPartitionException;
 

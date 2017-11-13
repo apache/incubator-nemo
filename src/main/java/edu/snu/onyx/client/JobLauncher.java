@@ -18,7 +18,7 @@ package edu.snu.onyx.client;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.MessageParameters;
-import edu.snu.onyx.runtime.common.message.grpc.GrpcMessageEnvironment;
+import edu.snu.onyx.runtime.common.grpc.GrpcMessageEnvironment;
 import edu.snu.onyx.runtime.master.OnyxDriver;
 import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.client.DriverConfiguration;
