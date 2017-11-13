@@ -15,6 +15,7 @@
  */
 package edu.snu.onyx.common.coder;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -30,8 +31,9 @@ public interface Coder<T> extends Serializable {
    *
    * @param element the element to be encoded
    * @param outStream the stream on which encoded bytes are written
+   * @throws IOException if fail to encode
    */
-  void encode(T element, OutputStream outStream);
+  void encode(T element, OutputStream outStream) throws IOException;
 
   /**
    * Decodes the a value from the given input stream.
@@ -39,8 +41,9 @@ public interface Coder<T> extends Serializable {
    *
    * @param inStream the stream from which bytes are read
    * @return the decoded element
+   * @throws IOException if fail to decode
    */
-  T decode(InputStream inStream);
+  T decode(InputStream inStream) throws IOException;
 
   /**
    * Dummy coder.

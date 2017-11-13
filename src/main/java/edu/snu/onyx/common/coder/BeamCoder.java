@@ -31,21 +31,13 @@ public final class BeamCoder<T> implements Coder<T> {
   }
 
   @Override
-  public void encode(final T value, final OutputStream outStream) {
-    try {
-      beamCoder.encode(value, outStream);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+  public void encode(final T value, final OutputStream outStream) throws IOException {
+    beamCoder.encode(value, outStream);
   }
 
   @Override
-  public T decode(final InputStream inStream) {
-    try {
-      return beamCoder.decode(inStream);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+  public T decode(final InputStream inStream) throws IOException {
+    return beamCoder.decode(inStream);
   }
 
   @Override
