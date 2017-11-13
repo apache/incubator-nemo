@@ -15,6 +15,7 @@
  */
 package edu.snu.onyx.compiler.frontend.beam;
 
+import edu.snu.onyx.client.JobLauncher;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import org.apache.beam.sdk.Pipeline;
@@ -25,14 +26,14 @@ import org.apache.beam.sdk.options.PipelineOptionsValidator;
 /**
  * Runner class for BEAM programs.
  */
-public final class Runner extends PipelineRunner<BeamResult> {
+public final class OnyxPipelineRunner extends PipelineRunner<OnyxPipelineResult> {
   private final OnyxPipelineOptions onyxPipelineOptions;
 
   /**
    * BEAM Pipeline Runner.
    * @param onyxPipelineOptions PipelineOptions.
    */
-  private Runner(final OnyxPipelineOptions onyxPipelineOptions) {
+  private OnyxPipelineRunner(final OnyxPipelineOptions onyxPipelineOptions) {
     this.onyxPipelineOptions = onyxPipelineOptions;
   }
 
@@ -41,9 +42,9 @@ public final class Runner extends PipelineRunner<BeamResult> {
    * @param options given PipelineOptions.
    * @return The created PipelineRunner.
    */
-  public static PipelineRunner<BeamResult> fromOptions(final PipelineOptions options) {
+  public static PipelineRunner<OnyxPipelineResult> fromOptions(final PipelineOptions options) {
     final OnyxPipelineOptions onyxOptions = PipelineOptionsValidator.validate(OnyxPipelineOptions.class, options);
-    return new Runner(onyxOptions);
+    return new OnyxPipelineRunner(onyxOptions);
   }
 
   /**
@@ -51,13 +52,13 @@ public final class Runner extends PipelineRunner<BeamResult> {
    * @param pipeline the Pipeline to run.
    * @return The result of the pipeline.
    */
-  public BeamResult run(final Pipeline pipeline) {
+  public OnyxPipelineResult run(final Pipeline pipeline) {
     final DAGBuilder builder = new DAGBuilder<>();
-    final Visitor visitor = new Visitor(builder, onyxPipelineOptions);
-    pipeline.traverseTopologically(visitor);
+    final OnyxPipelineVisitor onyxPipelineVisitor = new OnyxPipelineVisitor(builder, onyxPipelineOptions);
+    pipeline.traverseTopologically(onyxPipelineVisitor);
     final DAG dag = builder.build();
-    final BeamResult beamResult = new BeamResult();
-    BeamFrontend.supplyDAGFromRunner(dag, beamResult);
-    return beamResult;
+    final OnyxPipelineResult onyxPipelineResult = new OnyxPipelineResult();
+    JobLauncher.launchDAG(dag);
+    return onyxPipelineResult;
   }
 }

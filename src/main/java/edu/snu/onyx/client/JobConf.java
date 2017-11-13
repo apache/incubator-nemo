@@ -134,13 +134,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Executor id.
-   */
-  @NamedParameter(doc = "Executor id", short_name = "executor_id")
-  public final class ExecutorId implements Name<String> {
-  }
-
-  /**
    * Max number of attempts for task group scheduling.
    */
   @NamedParameter(doc = "Max number of schedules", short_name = "max_schedule_attempt", default_value = "3")
@@ -233,6 +226,22 @@ public final class JobConf extends ConfigurationModuleBuilder {
   @NamedParameter(doc = "The number of threads of PartitionTransport client",
       short_name = "partition_threads_client", default_value = "10")
   public final class PartitionTransportClientNumThreads implements Name<Integer> {
+  }
+
+  //////////////////////////////// Intermediate Configurations
+
+  /**
+   * Executor id.
+   */
+  @NamedParameter(doc = "Executor id")
+  public final class ExecutorId implements Name<String> {
+  }
+
+  /**
+   * Serialized {@link edu.snu.onyx.common.dag.DAG} from user main method.
+   */
+  @NamedParameter(doc = "String serialized DAG")
+  public final class SerializedDAG implements Name<String> {
   }
 
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();

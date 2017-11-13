@@ -15,8 +15,8 @@
  */
 package edu.snu.onyx.examples.beam;
 
-import edu.snu.onyx.compiler.frontend.beam.Runner;
 import edu.snu.onyx.compiler.frontend.beam.OnyxPipelineOptions;
+import edu.snu.onyx.compiler.frontend.beam.OnyxPipelineRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -42,7 +42,7 @@ public final class MapReduce {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];
     final PipelineOptions options = PipelineOptionsFactory.create().as(OnyxPipelineOptions.class);
-    options.setRunner(Runner.class);
+    options.setRunner(OnyxPipelineRunner.class);
     options.setJobName("MapReduce");
 
     final Pipeline p = Pipeline.create(options);

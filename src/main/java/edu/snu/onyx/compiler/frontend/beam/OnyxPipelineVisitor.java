@@ -49,7 +49,7 @@ import java.util.Stack;
 /**
  * Visits every node in the beam dag to translate the BEAM program to the IR.
  */
-final class Visitor extends Pipeline.PipelineVisitor.Defaults {
+public final class OnyxPipelineVisitor extends Pipeline.PipelineVisitor.Defaults {
   private final DAGBuilder<IRVertex, IREdge> builder;
   private final Map<PValue, IRVertex> pValueToVertex;
   private final PipelineOptions options;
@@ -62,7 +62,7 @@ final class Visitor extends Pipeline.PipelineVisitor.Defaults {
    * @param builder DAGBuilder to build the DAG with.
    * @param options Pipeline options.
    */
-  Visitor(final DAGBuilder<IRVertex, IREdge> builder, final PipelineOptions options) {
+  public OnyxPipelineVisitor(final DAGBuilder<IRVertex, IREdge> builder, final PipelineOptions options) {
     this.builder = builder;
     this.pValueToVertex = new HashMap<>();
     this.options = options;

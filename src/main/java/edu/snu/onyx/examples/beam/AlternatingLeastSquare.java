@@ -18,9 +18,9 @@ package edu.snu.onyx.examples.beam;
 import com.github.fommil.netlib.BLAS;
 import com.github.fommil.netlib.LAPACK;
 import edu.snu.onyx.client.beam.LoopCompositeTransform;
-import edu.snu.onyx.compiler.frontend.beam.Runner;
 import edu.snu.onyx.common.coder.PairCoder;
 import edu.snu.onyx.common.Pair;
+import edu.snu.onyx.compiler.frontend.beam.OnyxPipelineRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.CoderProviders;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -315,7 +315,7 @@ public final class AlternatingLeastSquare {
     }
 
     final PipelineOptions options = PipelineOptionsFactory.create();
-    options.setRunner(Runner.class);
+    options.setRunner(OnyxPipelineRunner.class);
     options.setJobName("ALS");
     options.setStableUniqueNames(PipelineOptions.CheckEnabled.OFF);
 

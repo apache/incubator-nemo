@@ -16,6 +16,7 @@
 package edu.snu.onyx.runtime.master;
 
 import edu.snu.onyx.client.JobConf;
+import edu.snu.onyx.compiler.ir.IdManager;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.ncs.NcsMessageEnvironment;
@@ -77,6 +78,7 @@ public final class OnyxDriver {
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
                      @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory) {
+    IdManager.setInDriver();
     this.userApplicationRunner = userApplicationRunner;
     this.runtimeMaster = runtimeMaster;
     this.nameServer = nameServer;

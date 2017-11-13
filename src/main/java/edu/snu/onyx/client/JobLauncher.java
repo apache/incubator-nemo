@@ -15,10 +15,12 @@
  */
 package edu.snu.onyx.client;
 
+import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.ncs.NcsMessageEnvironment;
 import edu.snu.onyx.runtime.common.message.ncs.NcsParameters;
 import edu.snu.onyx.runtime.master.OnyxDriver;
+import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
@@ -35,9 +37,12 @@ import org.apache.reef.util.Optional;
 import org.apache.reef.wake.IdentifierFactory;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Base64;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +54,8 @@ public final class JobLauncher {
   private static final Tang TANG = Tang.Factory.getTang();
   private static final Logger LOG = LoggerFactory.getLogger(JobLauncher.class.getName());
   private static final int LOCAL_NUMBER_OF_EVALUATORS = 100; // hopefully large enough for our use....
+  private static Configuration jobAndDriverConf = null;
+  private static Configuration deployModeConf = null;
 
   /**
    * private constructor.
@@ -70,20 +77,63 @@ public final class JobLauncher {
     final Configuration executorResourceConfig = getExecutorResourceConf(jobConf);
 
     // Merge Job and Driver Confs
-    final Configuration jobAndDriverConf = Configurations.merge(jobConf, driverConf, driverNcsConf, driverMessageConfg,
+    jobAndDriverConf = Configurations.merge(jobConf, driverConf, driverNcsConf, driverMessageConfg,
         executorResourceConfig);
 
     // Get DeployMode Conf
-    final Configuration deployModeConf = getDeployModeConf(jobConf);
+    deployModeConf = getDeployModeConf(jobConf);
 
-    // Launch and wait indefinitely for the job to finish
-    final LauncherStatus launcherStatus =  DriverLauncher.getLauncher(deployModeConf).run(jobAndDriverConf);
-    final Optional<Throwable> possibleError = launcherStatus.getError();
-    if (possibleError.isPresent()) {
-      throw new RuntimeException(possibleError.get());
-    } else {
-      LOG.info("Job successfully completed");
+    // Launch client main
+    runUserProgramMain(jobConf);
+  }
+
+  /**
+   * Launch application using the application DAG.
+   * @param dag the application DAG.
+   */
+  // When modifying the signature of this method, see CompilerTestUtil#compileDAG and make corresponding changes
+  public static void launchDAG(final DAG dag) {
+    try {
+      if (jobAndDriverConf == null || deployModeConf == null) {
+        throw new RuntimeException("Configuration for launching driver is not ready");
+      }
+      final String serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
+      final Configuration dagConf = TANG.newConfigurationBuilder()
+          .bindNamedParameter(JobConf.SerializedDAG.class, serializedDAG)
+          .build();
+      // Launch and wait indefinitely for the job to finish
+      final LauncherStatus launcherStatus =  DriverLauncher.getLauncher(deployModeConf)
+          .run(Configurations.merge(jobAndDriverConf, dagConf));
+      final Optional<Throwable> possibleError = launcherStatus.getError();
+      if (possibleError.isPresent()) {
+        throw new RuntimeException(possibleError.get());
+      } else {
+        LOG.info("Job successfully completed");
+      }
+    } catch (final InjectionException e) {
+      throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Run user-provided main method.
+   * @param jobConf the job configuration
+   * @throws Exception on any exceptions on the way
+   */
+  private static void runUserProgramMain(final Configuration jobConf) throws Exception {
+    final Injector injector = TANG.newInjector(jobConf);
+    final String className = injector.getNamedInstance(JobConf.UserMainClass.class);
+    final String[] args = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
+    final Class userCode = Class.forName(className);
+    final Method method = userCode.getMethod("main", String[].class);
+    if (!Modifier.isStatic(method.getModifiers())) {
+      throw new RuntimeException("User Main Method not static");
+    }
+    if (!Modifier.isPublic(userCode.getModifiers())) {
+      throw new RuntimeException("User Main Class not public");
+    }
+
+    method.invoke(null, (Object) args);
   }
 
   private static Configuration getDriverNcsConf() throws InjectionException {
