@@ -68,25 +68,6 @@ under the License.
                 </excludes>
             </resource>
         </resources>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <outputFile>
-                        ${project.build.directory}/${project.artifactId}-${project.version}-shaded.jar
-                    </outputFile>
-                </configuration>
-            </plugin>
-        </plugins>
         <pluginManagement>
             <plugins>
                 <plugin>
