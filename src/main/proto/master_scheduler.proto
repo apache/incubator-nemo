@@ -2,8 +2,9 @@ syntax = "proto2";
 
 package protobuf;
 
-option java_package = "edu.snu.onyx.runtime.master";
-option java_outer_classname = "GrpcServices";
+option java_package = "edu.snu.onyx.runtime.master.grpc";
+
+import "common.proto";
 
 // A grpc service for implementing edu.snu.onyx.runtime.common.message components using grpc
 service MasterSchedulerService {

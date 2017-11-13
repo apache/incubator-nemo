@@ -2,8 +2,9 @@ syntax = "proto2";
 
 package protobuf;
 
-option java_package = "edu.snu.onyx.runtime.executor";
-option java_outer_classname = "GrpcServices";
+option java_package = "edu.snu.onyx.runtime.executor.grpc";
+
+import "common.proto";
 
 message DataTransferControlMessage {
     required string controlMessageSourceId = 1;

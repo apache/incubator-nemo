@@ -16,7 +16,6 @@
 package edu.snu.onyx.runtime.master;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.message.MessageContext;

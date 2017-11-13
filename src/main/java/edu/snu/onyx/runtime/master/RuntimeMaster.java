@@ -209,6 +209,23 @@ public final class RuntimeMaster {
   }
 
   /**
+  private class MessageService extends MessageServiceGrpc.MessageServiceImplBase {
+
+    private final GrpcMessageService.Void voidMessage = GrpcMessageService.Void.newBuilder().build();
+
+    @Override
+    public void send(final ControlMessage.Message message,
+                     final StreamObserver<GrpcMessageService.Void> responseObserver) {
+    }
+
+    @Override
+    public void request(final ControlMessage.Message message,
+                        final StreamObserver<ControlMessage.Message> responseObserver) {
+    }
+  }
+  **/
+
+  /**
    * Handler for control messages received by Master.
    */
   public final class MasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {

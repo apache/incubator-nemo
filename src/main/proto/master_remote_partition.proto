@@ -2,13 +2,14 @@ syntax = "proto2";
 
 package protobuf;
 
-option java_package = "edu.snu.onyx.runtime.master";
-option java_outer_classname = "GrpcServices";
+option java_package = "edu.snu.onyx.runtime.master.grpc";
 
-service MasterRemotePartitionManagerService {
+import "common.proto";
+
+service MasterRemotePartitionService {
     rpc AskRemoteBlockMetadata(RemoteBlockMetadataRequest) returns (RemoteBlockMetadataResponse) {}
-    rpc RemoveRemoteBlock(RemoteBlockRemovalRequest) returns (RemoteBlockRemovalResponse) {}
-    rpc CommitRemoteBlock(RemoteBlockCommitRequest) returns (RemoteBlockCommitResponse) {}
+    rpc RemoveRemoteBlock(RemoteBlockRemovalRequest) returns (Empty) {}
+    rpc CommitRemoteBlock(RemoteBlockCommitRequest) returns (Empty) {}
 }
 
 message RemoteBlockMetadataRequest {

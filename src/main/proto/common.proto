@@ -1,0 +1,33 @@
+syntax = "proto2";
+
+package protobuf;
+
+option java_package = "edu.snu.onyx.runtime.common.grpc";
+
+message Empty {
+}
+
+message Metrics {
+    repeated Metric metric = 1;
+}
+
+message Metric {
+    required string metricKey = 1;
+    required string metricValue = 2;
+}
+
+enum PartitionStateFromExecutor {
+    PARTITION_READY = 0;
+    SCHEDULED = 1;
+    COMMITTED = 2;
+    LOST = 3;
+    LOST_BEFORE_COMMIT = 4;
+    REMOVED = 5;
+}
+
+message BlockMetadata {
+    required int32 hashValue = 1;
+    required int32 blockSize = 2;
+    optional int64 offset = 3;
+    required int64 numElements = 4;
+}

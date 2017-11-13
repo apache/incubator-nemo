@@ -2,8 +2,9 @@ syntax = "proto2";
 
 package protobuf;
 
-option java_package = "edu.snu.onyx.runtime.master";
-option java_outer_classname = "GrpcServices";
+option java_package = "edu.snu.onyx.runtime.master.grpc";
+
+import "common.proto";
 
 // A grpc service for implementing edu.snu.onyx.runtime.common.message components using grpc
 service MasterPartitionService {
@@ -27,13 +28,3 @@ message PartitionLocationResponse {
     optional PartitionStateFromExecutor state = 2;
     optional string ownerExecutorId = 3;
 }
-
-enum PartitionStateFromExecutor {
-    PARTITION_READY = 0;
-    SCHEDULED = 1;
-    COMMITTED = 2;
-    LOST = 3;
-    LOST_BEFORE_COMMIT = 4;
-    REMOVED = 5;
-}
-
