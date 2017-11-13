@@ -1,0 +1,73 @@
+syntax = "proto2";
+
+package protobuf;
+
+option java_package = "edu.snu.onyx.runtime.common.comm";
+option java_outer_classname = "GrpcMessageService";
+
+// A grpc service for implementing edu.snu.onyx.runtime.common.message components using grpc
+service MasterService {
+    rpc TaskGroupStateChanged(NewTaskGroupState) returns (Empty) {}
+    rpc PartitionStateChanged(NewPartitionState) returns (Empty) {}
+    rpc AskPartitionLocation(PartitionLocationRequest) returns (PartitionLocationResponse) {}
+    rpc AskBlockMetadata(BlockMetadataRequest) returns (BlockMetadataResponse) {}
+}
+
+message Empty {
+}
+
+message NewTaskGroupState {
+    required string executorId = 1;
+    required string taskGroupId = 2;
+    required TaskGroupStateFromExecutor state = 3;
+    repeated string tasksPutOnHoldIds = 4;
+    optional RecoverableFailureCause failureCause = 5;
+    required int32 attemptIdx = 6;
+}
+enum TaskGroupStateFromExecutor {
+    READY = 0;
+    EXECUTING = 1;
+    COMPLETE = 2;
+    FAILED_RECOVERABLE = 3;
+    FAILED_UNRECOVERABLE = 4;
+    ON_HOLD = 5;
+}
+enum RecoverableFailureCause {
+    InputReadFailure = 0;
+    OutputWriteFailure = 1;
+    // There is a 3rd cause: container_failure, but this is ommitted here as it is never propagated with a control msg.
+}
+
+message NewPartitionState {
+    required string executorId = 1;
+    required string partitionId = 2;
+    required PartitionStateFromExecutor state = 3;
+    required string location = 4; // The location of the partition (e.g., executor id or remote store).
+}
+enum PartitionStateFromExecutor {
+    PARTITION_READY = 0;
+    SCHEDULED = 1;
+    COMMITTED = 2;
+    LOST = 3;
+    LOST_BEFORE_COMMIT = 4;
+    REMOVED = 5;
+}
+
+message PartitionLocationRequest {
+    required string executorId = 1;
+    required string partitionId = 2;
+}
+message PartitionLocationResponse {
+    required string partitionId = 1;
+    optional PartitionStateFromExecutor state = 2;
+    optional string ownerExecutorId = 3;
+}
+
+message BlockMetadataRequest {
+    required string executorId = 1;
+    required string partitionId = 2;
+}
+message BlockMetadataResponse {
+    repeated BlockMetadata blockMetadata = 1;
+    optional PartitionStateFromExecutor state = 2;
+}
