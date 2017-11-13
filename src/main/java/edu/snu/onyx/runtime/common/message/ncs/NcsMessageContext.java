@@ -27,7 +27,6 @@ final class NcsMessageContext implements MessageContext {
     this.idFactory = idFactory;
   }
 
-  @Override
   public String getSenderId() {
     return senderId;
   }
