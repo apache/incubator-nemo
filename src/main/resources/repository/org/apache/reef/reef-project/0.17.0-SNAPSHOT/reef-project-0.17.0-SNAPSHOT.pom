@@ -774,6 +774,7 @@ under the License.
         <module>lang/java/reef-runtime-local</module>
         <module>lang/java/reef-runtime-yarn</module>
         <module>lang/java/reef-runtime-mesos</module>
+        <module>lang/java/reef-runtime-mock</module>
         <module>lang/java/reef-runtime-multi</module>
         <module>lang/java/reef-runtime-standalone</module>
         <module>lang/java/reef-tang</module>
