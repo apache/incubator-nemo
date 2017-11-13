@@ -17,7 +17,7 @@ package edu.snu.onyx.runtime.executor.data.partitiontransfer;
 
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.executor.data.HashRange;
-import edu.snu.onyx.runtime.executor.data.PartitionStore;
+import edu.snu.onyx.runtime.executor.data.stores.PartitionStore;
 import io.netty.buffer.ByteBuf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

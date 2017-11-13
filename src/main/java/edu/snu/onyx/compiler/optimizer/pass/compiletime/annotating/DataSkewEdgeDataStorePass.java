@@ -21,8 +21,8 @@ import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.edge.DataStoreProperty;
-import edu.snu.onyx.runtime.executor.data.LocalFileStore;
-import edu.snu.onyx.runtime.executor.data.MemoryStore;
+import edu.snu.onyx.runtime.executor.data.stores.LocalFileStore;
+import edu.snu.onyx.runtime.executor.data.stores.MemoryStore;
 
 /**
  * Pass to annotate the DAG for a job to perform data skew.

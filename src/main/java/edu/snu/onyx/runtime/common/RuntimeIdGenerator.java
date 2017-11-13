@@ -130,15 +130,33 @@ public final class RuntimeIdGenerator {
   }
 
   /**
+   * Extracts runtime edge ID from a partition ID.
+   *
+   * @param partitionId the partition ID to extract.
+   * @return the runtime edge ID.
+   */
+  public static String getRuntimeEdgeIdFromPartitionId(final String partitionId) {
+    return parsePartitionId(partitionId)[0];
+  }
+
+  /**
+   * Extracts task index from a partition ID.
+   *
+   * @param partitionId the partition ID to extract.
+   * @return the task index.
+   */
+  public static String getTaskIndexFromPartitionId(final String partitionId) {
+    return parsePartitionId(partitionId)[1];
+  }
+
+  /**
    * Parses a partition id.
-   * If the id represents a partition in scatter gather edge,
-   * the result array will contain runtime edge id, task index, and destination index in order.
-   * In other cases, the result array will contain runtime edge id and task index only.
+   * The result array will contain runtime edge id and task index in order.
    *
    * @param partitionId to parse.
    * @return the array of parsed information.
    */
-  public static String[] parsePartitionId(final String partitionId) {
+  private static String[] parsePartitionId(final String partitionId) {
     final String woPrefix = partitionId.split(partitionPrefix)[1];
     return woPrefix.split(partitionIdSplitter);
   }

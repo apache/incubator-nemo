@@ -13,20 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.compiler.ir.executionproperty.edge;
+package edu.snu.onyx.runtime.executor.data.stores;
 
-import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
-import edu.snu.onyx.runtime.executor.data.stores.PartitionStore;
+import edu.snu.onyx.runtime.executor.data.FileArea;
+import edu.snu.onyx.runtime.executor.data.HashRange;
+
+import java.util.List;
 
 /**
- * DataStore ExecutionProperty.
+ * Stores partitions in (local or remote) files.
  */
-public final class DataStoreProperty extends ExecutionProperty<Class<? extends PartitionStore>> {
-  private DataStoreProperty(final Class<? extends PartitionStore> value) {
-    super(Key.DataStore, value);
-  }
+public interface FileStore extends PartitionStore {
 
-  public static DataStoreProperty of(final Class<? extends PartitionStore> value) {
-    return new DataStoreProperty(value);
-  }
+  /**
+   * Gets the list of {@link FileArea}s for the specified partition.
+   *
+   * @param partitionId the partition id
+   * @param hashRange   the hash range
+   * @return the list of file areas
+   */
+  List<FileArea> getFileAreas(final String partitionId, final HashRange hashRange);
 }
