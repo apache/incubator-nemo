@@ -2,8 +2,8 @@ syntax = "proto2";
 
 package protobuf;
 
-option java_package = "edu.snu.onyx.runtime.common.comm";
-option java_outer_classname = "GrpcMessageService";
+option java_package = "edu.snu.onyx.runtime.common";
+option java_outer_classname = "GrpcServices";
 
 message Empty {
 }

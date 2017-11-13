@@ -39,13 +39,3 @@ message RemoteBlockMetadata {
     optional int64 offset = 3;
     required int64 numElements = 4;
 }
-
-enum PartitionStateFromExecutor {
-    PARTITION_READY = 0;
-    SCHEDULED = 1;
-    COMMITTED = 2;
-    LOST = 3;
-    LOST_BEFORE_COMMIT = 4;
-    REMOVED = 5;
-}
-
