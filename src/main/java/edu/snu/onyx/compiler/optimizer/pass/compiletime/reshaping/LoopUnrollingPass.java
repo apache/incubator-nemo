@@ -36,7 +36,6 @@ public final class LoopUnrollingPass extends ReshapingPass {
    * A function that recursively calls Unroll until there are no more LoopVertex left.
    * @param dag DAG to process.
    * @return DAG without LoopVertex.
-   * @throws Exception Exceptions on the way.
    */
   private DAG<IRVertex, IREdge> recursivelyUnroll(final DAG<IRVertex, IREdge> dag) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();

@@ -23,6 +23,7 @@ import edu.snu.onyx.compiler.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.onyx.runtime.exception.IllegalVertexOperationException;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.OneToOne;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -34,7 +35,7 @@ import java.util.stream.Stream;
  * @param <V> the vertex type.
  * @param <E> the edge type.
  */
-public final class DAGBuilder<V extends Vertex, E extends Edge<V>> {
+public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Serializable {
   private final Set<V> vertices;
   private final Map<V, Set<E>> incomingEdges;
   private final Map<V, Set<E>> outgoingEdges;

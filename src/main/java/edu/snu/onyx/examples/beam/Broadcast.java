@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.examples.beam;
 
-import edu.snu.onyx.compiler.frontend.beam.Runner;
+import edu.snu.onyx.compiler.frontend.beam.OnyxPipelineRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -46,7 +46,7 @@ public final class Broadcast {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];
     final PipelineOptions options = PipelineOptionsFactory.create();
-    options.setRunner(Runner.class);
+    options.setRunner(OnyxPipelineRunner.class);
 
     final Pipeline p = Pipeline.create(options);
     final PCollection<String> elemCollection = GenericSourceSink.read(p, inputFilePath);

@@ -16,7 +16,7 @@
 package edu.snu.onyx.examples.beam;
 
 import edu.snu.onyx.client.beam.LoopCompositeTransform;
-import edu.snu.onyx.compiler.frontend.beam.Runner;
+import edu.snu.onyx.compiler.frontend.beam.OnyxPipelineRunner;
 import edu.snu.onyx.common.Pair;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -418,7 +418,7 @@ public final class MultinomialLogisticRegression {
     }
 
     final PipelineOptions options = PipelineOptionsFactory.create();
-    options.setRunner(Runner.class);
+    options.setRunner(OnyxPipelineRunner.class);
     options.setJobName("MLR");
     options.setStableUniqueNames(PipelineOptions.CheckEnabled.OFF);
 

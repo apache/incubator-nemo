@@ -28,9 +28,9 @@ import java.util.concurrent.TimeUnit;
  * Beam result.
  * TODO #32: Implement Beam BeamResult
  */
-public final class BeamResult extends ClientEndpoint implements PipelineResult {
+public final class OnyxPipelineResult extends ClientEndpoint implements PipelineResult {
 
-  public BeamResult() {
+  public OnyxPipelineResult() {
     super(new BeamStateTranslator());
   }
 
@@ -41,7 +41,7 @@ public final class BeamResult extends ClientEndpoint implements PipelineResult {
 
   @Override
   public State cancel() throws IOException {
-    throw new UnsupportedOperationException("cancel() in frontend.beam.BeamResult");
+    throw new UnsupportedOperationException("cancel() in frontend.beam.OnyxPipelineResult");
   }
 
   @Override
@@ -56,6 +56,6 @@ public final class BeamResult extends ClientEndpoint implements PipelineResult {
 
   @Override
   public MetricResults metrics() {
-    throw new UnsupportedOperationException("metrics() in frontend.beam.BeamResult");
+    throw new UnsupportedOperationException("metrics() in frontend.beam.OnyxPipelineResult");
   }
 }
