@@ -18,7 +18,6 @@ package edu.snu.onyx.runtime.master.scheduler;
 import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.onyx.common.PubSubEventHandlerWrapper;
-import edu.snu.onyx.runtime.common.metric.MetricMessageHandler;
 import edu.snu.onyx.runtime.master.eventhandler.DynamicOptimizationEvent;
 import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.StageState;
@@ -27,12 +26,11 @@ import edu.snu.onyx.runtime.exception.*;
 import edu.snu.onyx.runtime.master.PartitionManagerMaster;
 import edu.snu.onyx.runtime.master.JobStateManager;
 import edu.snu.onyx.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
+import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -40,41 +38,45 @@ import org.slf4j.Logger;
 import static edu.snu.onyx.runtime.common.state.TaskGroupState.State.ON_HOLD;
 
 /**
- * BatchScheduler receives a {@link PhysicalPlan} to execute and asynchronously schedules the task groups.
+ * BatchSingleJobScheduler receives a single {@link PhysicalPlan} to execute and schedules the TaskGroups.
  * The policy by which it schedules them is dependent on the implementation of {@link SchedulingPolicy}.
  */
-public final class BatchScheduler implements Scheduler {
-  private static final Logger LOG = LoggerFactory.getLogger(BatchScheduler.class.getName());
+@DriverSide
+public final class BatchSingleJobScheduler implements Scheduler {
+  private static final Logger LOG = LoggerFactory.getLogger(BatchSingleJobScheduler.class.getName());
   private static final int SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE = Integer.MAX_VALUE;
-  private int initialScheduleGroup;
-
-  private JobStateManager jobStateManager;
 
   /**
-   * The {@link SchedulingPolicy} used to schedule task groups.
+   * Components related to scheduling the given job.
    */
-  private SchedulingPolicy schedulingPolicy;
+  private final SchedulingPolicy schedulingPolicy;
+  private final SchedulerRunner schedulerRunner;
+  private final PendingTaskGroupQueue pendingTaskGroupQueue;
 
+  /**
+   * Other necessary components of this {@link edu.snu.onyx.runtime.master.RuntimeMaster}.
+   */
   private final PartitionManagerMaster partitionManagerMaster;
-
-  private final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue;
-
   private final PubSubEventHandlerWrapper pubSubEventHandlerWrapper;
 
   /**
-   * The current job being executed.
+   * The below variables depend on the submitted job to execute.
    */
   private PhysicalPlan physicalPlan;
+  private JobStateManager jobStateManager;
+  private int initialScheduleGroup;
 
   @Inject
-  public BatchScheduler(final PartitionManagerMaster partitionManagerMaster,
-                        final SchedulingPolicy schedulingPolicy,
-                        final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue,
-                        final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
-                        final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler) {
-    this.partitionManagerMaster = partitionManagerMaster;
-    this.pendingTaskGroupPriorityQueue = pendingTaskGroupPriorityQueue;
+  public BatchSingleJobScheduler(final SchedulingPolicy schedulingPolicy,
+                                 final SchedulerRunner schedulerRunner,
+                                 final PendingTaskGroupQueue pendingTaskGroupQueue,
+                                 final PartitionManagerMaster partitionManagerMaster,
+                                 final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
+                                 final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler) {
     this.schedulingPolicy = schedulingPolicy;
+    this.schedulerRunner = schedulerRunner;
+    this.pendingTaskGroupQueue = pendingTaskGroupQueue;
+    this.partitionManagerMaster = partitionManagerMaster;
     this.pubSubEventHandlerWrapper = pubSubEventHandlerWrapper;
     updatePhysicalPlanEventHandler.setScheduler(this);
     if (pubSubEventHandlerWrapper.getPubSubEventHandler() != null) {
@@ -86,16 +88,16 @@ public final class BatchScheduler implements Scheduler {
   /**
    * Receives a job to schedule.
    * @param jobToSchedule the physical plan for the job.
-   * @return the {@link JobStateManager} to keep track of the submitted job's states.
+   * @param scheduledJobStateManager to keep track of the submitted job's states.
    */
   @Override
-  public synchronized JobStateManager scheduleJob(final PhysicalPlan jobToSchedule,
-                                                  final MetricMessageHandler metricMessageHandler,
-                                                  final int maxScheduleAttempt) {
+  public synchronized void scheduleJob(final PhysicalPlan jobToSchedule,
+                                       final JobStateManager scheduledJobStateManager) {
     this.physicalPlan = jobToSchedule;
-    this.jobStateManager =
-        new JobStateManager(jobToSchedule, partitionManagerMaster, metricMessageHandler, maxScheduleAttempt);
-    pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
+    this.jobStateManager = scheduledJobStateManager;
+
+    schedulerRunner.scheduleJob(scheduledJobStateManager);
+    pendingTaskGroupQueue.onJobScheduled(physicalPlan);
 
     LOG.info("Job to schedule: {}", jobToSchedule.getId());
 
@@ -103,18 +105,13 @@ public final class BatchScheduler implements Scheduler {
         .mapToInt(physicalStage -> physicalStage.getScheduleGroupIndex())
         .min().getAsInt();
 
-    // Launch scheduler
-    final ExecutorService pendingTaskSchedulerThread = Executors.newSingleThreadExecutor();
-    pendingTaskSchedulerThread.execute(
-        new SchedulerRunner(jobStateManager, schedulingPolicy, pendingTaskGroupPriorityQueue));
-    pendingTaskSchedulerThread.shutdown();
-
     scheduleRootStages();
-    return jobStateManager;
   }
 
   @Override
-  public void updateJob(final PhysicalPlan newPhysicalPlan, final Pair<String, TaskGroup> taskInfo) {
+  public void updateJob(final String jobId,
+                        final PhysicalPlan newPhysicalPlan,
+                        final Pair<String, TaskGroup> taskInfo) {
     // update the job in the scheduler.
     // NOTE: what's already been executed is not modified in the new physical plan.
     this.physicalPlan = newPhysicalPlan;
@@ -253,7 +250,7 @@ public final class BatchScheduler implements Scheduler {
       for (final PhysicalStage stage : physicalPlan.getStageDAG().getTopologicalSort()) {
         if (stage.getId().equals(taskGroup.getStageId())) {
           LOG.info("Removing TaskGroups for {} before they are scheduled to an executor", stage.getId());
-          pendingTaskGroupPriorityQueue.removeStageAndDescendantsFromQueue(stage.getId());
+          pendingTaskGroupQueue.removeTaskGroupsAndDescendants(stage.getId());
           stage.getTaskGroupList().forEach(tg -> {
             if (jobStateManager.getTaskGroupState(tg.getTaskGroupId()).getStateMachine().getCurrentState()
                 != TaskGroupState.State.COMPLETE) {
@@ -338,7 +335,7 @@ public final class BatchScheduler implements Scheduler {
   }
 
   /**
-   * Selects the list of stages to schedule, in the order they must be added to {@link PendingTaskGroupPriorityQueue}.
+   * Selects the list of stages to schedule, in the order they must be added to {@link PendingTaskGroupQueue}.
    *
    * This is a recursive function that decides which schedule group to schedule upon a stage completion, or a failure.
    * It takes the currentScheduleGroupIndex as a reference point to begin looking for the stages to execute:
@@ -354,7 +351,7 @@ public final class BatchScheduler implements Scheduler {
    * @param currentScheduleGroupIndex
    *      the index of the schedule group that is executing/has executed when this method is called.
    * @return an optional of the (possibly empty) list of next schedulable stages, in the order they should be
-   * enqueued to {@link PendingTaskGroupPriorityQueue}.
+   * enqueued to {@link PendingTaskGroupQueue}.
    */
   private synchronized Optional<List<PhysicalStage>> selectNextStagesToSchedule(final int currentScheduleGroupIndex) {
     if (currentScheduleGroupIndex > initialScheduleGroup) {
@@ -481,8 +478,8 @@ public final class BatchScheduler implements Scheduler {
     taskGroupsToSchedule.forEach(taskGroup -> {
       partitionManagerMaster.onProducerTaskGroupScheduled(taskGroup.getTaskGroupId());
       LOG.debug("Enquing {}", taskGroup.getTaskGroupId());
-      pendingTaskGroupPriorityQueue.enqueue(
-          new ScheduledTaskGroup(taskGroup, stageIncomingEdges, stageOutgoingEdges, attemptIdx));
+      pendingTaskGroupQueue.enqueue(
+          new ScheduledTaskGroup(physicalPlan.getId(), taskGroup, stageIncomingEdges, stageOutgoingEdges, attemptIdx));
     });
   }
 
@@ -508,5 +505,6 @@ public final class BatchScheduler implements Scheduler {
 
   @Override
   public void terminate() {
+    // nothing to do yet.
   }
 }

@@ -21,67 +21,96 @@ import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.runtime.master.JobStateManager;
 import org.apache.reef.annotations.audience.DriverSide;
 
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+
 /**
  * Takes a TaskGroup from the pending queue and schedules it to an executor.
- *
- * IMPORTANT NOTE:
- * {@link PendingTaskGroupPriorityQueue} implementation assumes that
- * there is always a single thread running an instance of this class.
  */
 @DriverSide
-public final class SchedulerRunner implements Runnable {
+public final class SchedulerRunner {
   private static final Logger LOG = LoggerFactory.getLogger(SchedulerRunner.class.getName());
-  private final JobStateManager jobStateManager;
+  private final Map<String, JobStateManager> jobStateManagers;
   private final SchedulingPolicy schedulingPolicy;
-  private final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue;
+  private final PendingTaskGroupQueue pendingTaskGroupQueue;
+  private final ExecutorService schedulerThread;
+  private boolean initialJobScheduled;
+  private boolean isTerminated;
 
-  SchedulerRunner(final JobStateManager jobStateManager,
-                  final SchedulingPolicy schedulingPolicy,
-                  final PendingTaskGroupPriorityQueue pendingTaskGroupPriorityQueue) {
-    this.jobStateManager = jobStateManager;
+  @Inject
+  public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
+                         final PendingTaskGroupQueue pendingTaskGroupQueue) {
+    this.jobStateManagers = new HashMap<>();
+    this.pendingTaskGroupQueue = pendingTaskGroupQueue;
     this.schedulingPolicy = schedulingPolicy;
-    this.pendingTaskGroupPriorityQueue = pendingTaskGroupPriorityQueue;
+    this.schedulerThread = Executors.newSingleThreadExecutor();
+    this.initialJobScheduled = false;
+    this.isTerminated = false;
+  }
+
+  public synchronized void scheduleJob(final JobStateManager jobStateManager) {
+    if (!isTerminated) {
+      jobStateManagers.put(jobStateManager.getJobId(), jobStateManager);
+
+      if (!initialJobScheduled) {
+        initialJobScheduled = true;
+        schedulerThread.execute(new SchedulerThread());
+        schedulerThread.shutdown();
+      }
+    } // else ignore new incoming jobs when terminated.
+  }
+
+  public synchronized void terminate() {
+    isTerminated = true;
   }
 
   /**
    * A separate thread is run to schedule task groups to executors.
    */
-  @Override
-  public void run() {
-    while (!jobStateManager.checkJobTermination()) {
-      try {
-        Optional<ScheduledTaskGroup> nextTaskGroupToSchedule;
-        do {
-          nextTaskGroupToSchedule = pendingTaskGroupPriorityQueue.dequeueNextTaskGroup();
-        } while (!nextTaskGroupToSchedule.isPresent());
+  private final class SchedulerThread implements Runnable {
+    @Override
+    public void run() {
+      while (!isTerminated) {
+        try {
+          Optional<ScheduledTaskGroup> nextTaskGroupToSchedule;
+          do {
+            nextTaskGroupToSchedule = pendingTaskGroupQueue.dequeue();
+          } while (!nextTaskGroupToSchedule.isPresent());
 
-        final Optional<String> executorId = schedulingPolicy.attemptSchedule(nextTaskGroupToSchedule.get());
-        if (!executorId.isPresent()) {
-          LOG.info("Failed to assign an executor for {} before the timeout: {}",
-              new Object[] {nextTaskGroupToSchedule.get().getTaskGroup().getTaskGroupId(),
-                  schedulingPolicy.getScheduleTimeoutMs()});
+          final Optional<String> executorId = schedulingPolicy.attemptSchedule(nextTaskGroupToSchedule.get());
+          if (!executorId.isPresent()) {
+            LOG.info("Failed to assign an executor for {} before the timeout: {}",
+                new Object[] {nextTaskGroupToSchedule.get().getTaskGroup().getTaskGroupId(),
+                    schedulingPolicy.getScheduleTimeoutMs()});
 
-          // Put this TaskGroup back to the queue since we failed to schedule it.
-          pendingTaskGroupPriorityQueue.enqueue(nextTaskGroupToSchedule.get());
-        } else {
-          // Must send this scheduledTaskGroup to the destination executor.
-          jobStateManager.onTaskGroupStateChanged(nextTaskGroupToSchedule.get().getTaskGroup(),
-              TaskGroupState.State.EXECUTING);
-          schedulingPolicy.onTaskGroupScheduled(executorId.get(), nextTaskGroupToSchedule.get());
+            // Put this TaskGroup back to the queue since we failed to schedule it.
+            pendingTaskGroupQueue.enqueue(nextTaskGroupToSchedule.get());
+          } else {
+            // Must send this scheduledTaskGroup to the destination executor.
+            final JobStateManager jobStateManager = jobStateManagers.get(nextTaskGroupToSchedule.get().getJobId());
+            jobStateManager.onTaskGroupStateChanged(nextTaskGroupToSchedule.get().getTaskGroup(),
+                TaskGroupState.State.EXECUTING);
+            schedulingPolicy.onTaskGroupScheduled(executorId.get(), nextTaskGroupToSchedule.get());
+          }
+        } catch (final Exception e) {
+          e.printStackTrace(System.err);
+          // TODO #285 make SchedulerRunner failure reportable
         }
-      } catch (final Exception e) {
-        e.printStackTrace(System.err);
-        // TODO #285 make SchedulerRunner failure reportable
       }
-    }
-    if (jobStateManager.getJobState().getStateMachine().getCurrentState() == JobState.State.COMPLETE) {
-      LOG.info("Job is complete, scheduler runner will terminate.");
-    } else {
-      LOG.info("Job is failed, scheduler runner will terminate.");
+      jobStateManagers.values().forEach(jobStateManager -> {
+        if (jobStateManager.getJobState().getStateMachine().getCurrentState() == JobState.State.COMPLETE) {
+          LOG.info("{} is complete.", jobStateManager.getJobId());
+        } else {
+          LOG.info("{} is incomplete.", jobStateManager.getJobId());
+        }
+      });
+      LOG.info("SchedulerRunner Terminated!");
     }
   }
 }

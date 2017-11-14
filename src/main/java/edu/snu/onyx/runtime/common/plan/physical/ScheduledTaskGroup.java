@@ -26,19 +26,26 @@ import java.util.List;
  * Thus, this class is serialized and sent to executors by the scheduler (instead of TaskGroup).
  */
 public final class ScheduledTaskGroup implements Serializable {
+  private final String jobId;
   private final TaskGroup taskGroup;
   private final List<PhysicalStageEdge> taskGroupIncomingEdges;
   private final List<PhysicalStageEdge> taskGroupOutgoingEdges;
   private final int attemptIdx;
 
-  public ScheduledTaskGroup(final TaskGroup taskGroup,
+  public ScheduledTaskGroup(final String jobId,
+                            final TaskGroup taskGroup,
                             final List<PhysicalStageEdge> taskGroupIncomingEdges,
                             final List<PhysicalStageEdge> taskGroupOutgoingEdges,
                             final int attemptIdx) {
+    this.jobId = jobId;
     this.taskGroup = taskGroup;
     this.taskGroupIncomingEdges = taskGroupIncomingEdges;
     this.taskGroupOutgoingEdges = taskGroupOutgoingEdges;
     this.attemptIdx = attemptIdx;
+  }
+
+  public String getJobId() {
+    return jobId;
   }
 
   public TaskGroup getTaskGroup() {

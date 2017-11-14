@@ -16,14 +16,16 @@
 package edu.snu.onyx.runtime.master.scheduler;
 
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
+import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.Optional;
 import java.util.Set;
 
 /**
- * Defines the policy by which {@link BatchScheduler} assigns task groups to executors.
+ * Defines the policy by which {@link BatchSingleJobScheduler} assigns task groups to executors.
  */
+@DriverSide
 @DefaultImplementation(RoundRobinSchedulingPolicy.class)
 public interface SchedulingPolicy {
 

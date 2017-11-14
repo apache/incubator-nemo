@@ -35,21 +35,31 @@ public final class MetricManagerMaster implements MetricMessageHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(MetricManagerMaster.class.getName());
   private final Map<String, List<String>> compUnitIdToMetricInJson;
+  private boolean isTerminated;
 
   @Inject
   private MetricManagerMaster() {
     this.compUnitIdToMetricInJson = new HashMap<>();
+    this.isTerminated = false;
   }
 
   @Override
   public synchronized void onMetricMessageReceived(final String metricKey, final String metricValue) {
-    compUnitIdToMetricInJson.putIfAbsent(metricKey, new LinkedList<>());
-    compUnitIdToMetricInJson.get(metricKey).add(metricValue);
-    LOG.debug("{}", metricValue);
+    if (!isTerminated) {
+      compUnitIdToMetricInJson.putIfAbsent(metricKey, new LinkedList<>());
+      compUnitIdToMetricInJson.get(metricKey).add(metricValue);
+      LOG.debug("{}", metricValue);
+    }
   }
 
   @Override
   public synchronized List<String> getMetricByKey(final String metricKey) {
     return compUnitIdToMetricInJson.get(metricKey);
+  }
+
+  @Override
+  public synchronized void terminate() {
+    compUnitIdToMetricInJson.clear();
+    isTerminated = true;
   }
 }

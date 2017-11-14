@@ -35,9 +35,12 @@ import edu.snu.onyx.runtime.exception.IllegalMessageException;
 import edu.snu.onyx.runtime.exception.UnknownExecutionStateException;
 import edu.snu.onyx.runtime.exception.UnknownFailureCauseException;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
+import edu.snu.onyx.runtime.master.scheduler.PendingTaskGroupQueue;
 import edu.snu.onyx.runtime.master.resource.ResourceSpecification;
 import edu.snu.onyx.runtime.master.scheduler.Scheduler;
+import edu.snu.onyx.runtime.master.scheduler.SchedulerRunner;
 import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
+import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.tang.Configuration;
@@ -58,18 +61,24 @@ import static edu.snu.onyx.runtime.common.state.TaskGroupState.State.ON_HOLD;
  * Runtime Master is the central controller of Runtime.
  * Compiler submits an {@link PhysicalPlan} to Runtime Master to execute a job.
  * Runtime Master handles:
- *    a) Scheduling the job with {@link Scheduler}.
- *    b) (Please list others done by Runtime Master as features are added).
+ *    a) Scheduling the job with {@link Scheduler}, {@link SchedulerRunner}, {@link PendingTaskGroupQueue}.
+ *    b) Managing resources with {@link ContainerManager}.
+ *    c) Managing partitions with {@link PartitionManagerMaster}.
+ *    d) Receiving and sending control messages with {@link MessageEnvironment}.
+ *    e) Metric using {@link MetricMessageHandler}.
  */
+@DriverSide
 public final class RuntimeMaster {
   private static final Logger LOG = LoggerFactory.getLogger(RuntimeMaster.class.getName());
   private static final int DAG_LOGGING_PERIOD = 3000;
 
   private final Scheduler scheduler;
+  private final SchedulerRunner schedulerRunner;
+  private final PendingTaskGroupQueue pendingTaskGroupQueue;
   private final ContainerManager containerManager;
+  private final PartitionManagerMaster partitionManagerMaster;
   private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
-  private JobStateManager jobStateManager;
 
   // For converting json data. This is a thread safe.
   // TODO #420: Create a Singleton ObjectMapper
@@ -77,18 +86,21 @@ public final class RuntimeMaster {
 
   private final String dagDirectory;
   private final Set<IRVertex> irVertices;
-  private final int maxScheduleAttempt;
 
   @Inject
   public RuntimeMaster(final Scheduler scheduler,
+                       final SchedulerRunner schedulerRunner,
+                       final PendingTaskGroupQueue pendingTaskGroupQueue,
                        final ContainerManager containerManager,
+                       final PartitionManagerMaster partitionManagerMaster,
                        final MetricMessageHandler metricMessageHandler,
                        final MessageEnvironment masterMessageEnvironment,
-                       @Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
-                       @Parameter(JobConf.MaxScheduleAttempt.class) final int maxScheduleAttempt) {
+                       @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     this.scheduler = scheduler;
-    this.maxScheduleAttempt = maxScheduleAttempt;
+    this.schedulerRunner = schedulerRunner;
+    this.pendingTaskGroupQueue = pendingTaskGroupQueue;
     this.containerManager = containerManager;
+    this.partitionManagerMaster = partitionManagerMaster;
     this.metricMessageHandler = metricMessageHandler;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
@@ -101,16 +113,21 @@ public final class RuntimeMaster {
   /**
    * Submits the {@link PhysicalPlan} to Runtime.
    * @param plan to execute.
+   * @param maxScheduleAttempt the max number of times this plan/sub-part of the plan should be attempted.
    */
-  public void execute(final PhysicalPlan plan) {
+  public void execute(final PhysicalPlan plan,
+                      final int maxScheduleAttempt) {
     this.irVertices.addAll(plan.getTaskIRVertexMap().values());
     try {
-      jobStateManager = scheduler.scheduleJob(plan, metricMessageHandler, maxScheduleAttempt);
+      final JobStateManager jobStateManager =
+          new JobStateManager(plan, partitionManagerMaster, metricMessageHandler, maxScheduleAttempt);
+
+      scheduler.scheduleJob(plan, jobStateManager);
 
       // Schedule dag logging thread
-      final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging();
+      final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(jobStateManager);
 
-      // Wait the job to finish and stop logging
+      // Wait for the job to finish and stop logging
       jobStateManager.waitUntilFinish();
       dagLoggingExecutor.shutdown();
 
@@ -122,11 +139,18 @@ public final class RuntimeMaster {
   }
 
   public void terminate() {
-    final Future<Boolean> allExecutorsClosed = containerManager.terminate();
-
     try {
+      scheduler.terminate();
+      schedulerRunner.terminate();
+      pendingTaskGroupQueue.close();
+      partitionManagerMaster.terminate();
+      masterMessageEnvironment.close();
+      final Future<Boolean> allExecutorsClosed = containerManager.terminate();
+
       if (allExecutorsClosed.get()) {
         LOG.info("All executors were closed successfully!");
+      } else {
+        LOG.error("Failed to shutdown all executors. See log exceptions for details. Terminating RuntimeMaster.");
       }
     } catch (Exception e) {
       new ContainerException(new Throwable("An exception occurred while trying to terminate ContainerManager"));
@@ -345,10 +369,11 @@ public final class RuntimeMaster {
   /**
    * Schedules a periodic DAG logging thread.
    * TODO #58: Web UI (Real-time visualization)
+   * @param jobStateManager for the job the DAG should be logged.
    *
    * @return the scheduled executor service.
    */
-  private ScheduledExecutorService scheduleDagLogging() {
+  private ScheduledExecutorService scheduleDagLogging(final JobStateManager jobStateManager) {
     final ScheduledExecutorService dagLoggingExecutor = Executors.newSingleThreadScheduledExecutor();
     dagLoggingExecutor.scheduleAtFixedRate(new Runnable() {
       private int dagLogFileIndex = 0;
