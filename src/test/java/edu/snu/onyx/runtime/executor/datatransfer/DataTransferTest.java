@@ -152,7 +152,7 @@ public final class DataTransferTest {
   }
 
   private PartitionManagerWorker createWorker(final String executorId) {
-    final MasterRPC masterRPC = new MasterRPC(newGrpcClient(), executorId);
+    final MasterRPC masterRPC = new MasterRPC(newGrpcClient());
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
         .bindNamedParameter(JobConf.ExecutorId.class, executorId)
         .build();

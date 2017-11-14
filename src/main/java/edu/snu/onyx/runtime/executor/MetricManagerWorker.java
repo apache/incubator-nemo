@@ -54,7 +54,7 @@ public final class MetricManagerWorker implements MetricMessageSender {
           metricList.addMetric(i, metric);
         }
 
-        masterRPC.getMetricBlockingStub().reportMetrics(metricList.build());
+        masterRPC.newMetricBlockingStub().reportMetrics(metricList.build());
       }
     };
     this.scheduledExecutorService.scheduleAtFixedRate(batchMetricMessages, 0,

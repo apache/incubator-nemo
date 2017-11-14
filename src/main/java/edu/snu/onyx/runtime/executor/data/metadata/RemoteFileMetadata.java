@@ -79,7 +79,7 @@ public final class RemoteFileMetadata extends FileMetadata {
 
     // Send the block metadata to the metadata server in the master and ask where to store the block.
     final MasterRemoteBlock.RemoteBlockReservationResponse response =
-        masterRPC.getRemoteBlockBlockingStub().reserveRemoteBlock(
+        masterRPC.newRemoteBlockBlockingStub().reserveRemoteBlock(
             MasterRemoteBlock.RemoteBlockReservationRequest.newBuilder()
                 .setExecutorId(executorId)
                 .setPartitionId(partitionId)
@@ -110,7 +110,7 @@ public final class RemoteFileMetadata extends FileMetadata {
     });
 
     // Notify that these blocks are committed to the metadata server.
-    masterRPC.getRemoteBlockBlockingStub().commitRemoteBlock(
+    masterRPC.newRemoteBlockBlockingStub().commitRemoteBlock(
         MasterRemoteBlock.RemoteBlockCommitRequest.newBuilder()
             .setPartitionId(partitionId)
             .addAllBlockIdx(blockIndices)
@@ -136,7 +136,7 @@ public final class RemoteFileMetadata extends FileMetadata {
    */
   @Override
   public void deleteMetadata() throws IOException {
-    masterRPC.getRemoteBlockBlockingStub().removeRemoteBlock(
+    masterRPC.newRemoteBlockBlockingStub().removeRemoteBlock(
         MasterRemoteBlock.RemoteBlockRemovalRequest.newBuilder()
             .setPartitionId(partitionId)
             .build()
@@ -165,7 +165,7 @@ public final class RemoteFileMetadata extends FileMetadata {
 
     // Ask the metadata server in the master for the metadata
     final MasterRemoteBlock.RemoteBlockMetadataResponse response =
-        masterRPC.getRemoteBlockBlockingStub().askRemoteBlockMetadata(
+        masterRPC.newRemoteBlockBlockingStub().askRemoteBlockMetadata(
             MasterRemoteBlock.RemoteBlockMetadataRequest.newBuilder()
                 .setExecutorId(executorId)
                 .setPartitionId(partitionId)

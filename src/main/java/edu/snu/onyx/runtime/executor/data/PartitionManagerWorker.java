@@ -164,7 +164,7 @@ public final class PartitionManagerWorker {
       final HashRange hashRange) {
     // Ask Master for the location
     final CompletableFuture<MasterPartition.PartitionLocationResponse> responseFuture = new CompletableFuture<>();
-    masterRPC.getPartitionAsyncStub().askPartitionLocation(
+    masterRPC.newPartitionAsyncStub().askPartitionLocation(
         MasterPartition.PartitionLocationRequest.newBuilder()
             .setExecutorId(executorId)
             .setPartitionId(partitionId)
@@ -237,11 +237,11 @@ public final class PartitionManagerWorker {
     } else {
       newPartitionState.setLocation(executorId);
     }
-    masterRPC.getPartitionBlockingStub().partitionStateChanged(newPartitionState.build());
+    masterRPC.newPartitionBlockingStub().partitionStateChanged(newPartitionState.build());
 
     if (!blockSizeInfo.isEmpty()) {
       // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-      masterRPC.getMetricBlockingStub()
+      masterRPC.newMetricBlockingStub()
           .reportDataSizeMetric(Metrics.DataSizeMetric.newBuilder()
               .setPartitionId(partitionId)
               .setSrcIRVertexId(srcIRVertexId)
@@ -270,7 +270,7 @@ public final class PartitionManagerWorker {
       } else {
         newPartitionState.setLocation(executorId);
       }
-      masterRPC.getPartitionBlockingStub().partitionStateChanged(newPartitionState.build());
+      masterRPC.newPartitionBlockingStub().partitionStateChanged(newPartitionState.build());
     } else {
       throw new PartitionFetchException(new Throwable("Cannot find corresponding partition " + partitionId));
     }

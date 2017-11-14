@@ -121,7 +121,7 @@ public final class Executor {
           dataTransferFactory,
           partitionManagerWorker).execute();
     } catch (final Exception e) {
-      masterRPC.getSchedulerBlockingStub().executorFailed(MasterScheduler.FailedExecutor.newBuilder()
+      masterRPC.newSchedulerBlockingStub().executorFailed(MasterScheduler.FailedExecutor.newBuilder()
           .setExecutorId(executorId)
           .setException(ByteString.copyFrom(SerializationUtils.serialize(e)))
           .build()

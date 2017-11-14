@@ -253,6 +253,8 @@ public final class PartitionStoreTest {
     final PartitionManagerWorker pmw = mock(PartitionManagerWorker.class);
     when(pmw.getCoder(any())).thenReturn(CODER);
 
+
+
     final RemoteFileStore writerSideRemoteFileStore =
         createGlusterFileStore("writer", pmw);
     final RemoteFileStore readerSideRemoteFileStore =
@@ -274,7 +276,7 @@ public final class PartitionStoreTest {
     injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
 
     final MasterRPC mockedMasterRPC = mock(MasterRPC.class);
-    when(mockedMasterRPC.getRemoteBlockBlockingStub())
+    when(mockedMasterRPC.newRemoteBlockBlockingStub())
         .thenReturn(mock(MasterRemoteBlockServiceGrpc.MasterRemoteBlockServiceBlockingStub.class));
     injector.bindVolatileInstance(MasterRPC.class, mockedMasterRPC);
     return injector.getInstance(GlusterFileStore.class);

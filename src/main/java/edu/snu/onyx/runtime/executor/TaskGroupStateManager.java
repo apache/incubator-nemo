@@ -217,7 +217,7 @@ public final class TaskGroupStateManager {
     }
 
     // Send taskGroupStateChangedMsg to master!
-    masterRPC.getSchedulerBlockingStub().taskGroupStateChanged(newTaskGroupState.build());
+    masterRPC.newSchedulerBlockingStub().taskGroupStateChanged(newTaskGroupState.build());
   }
 
   // TODO #164: Cleanup Protobuf Usage

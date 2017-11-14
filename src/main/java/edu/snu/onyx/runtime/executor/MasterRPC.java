@@ -1,6 +1,5 @@
 package edu.snu.onyx.runtime.executor;
 
-import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.runtime.common.grpc.GrpcClient;
 import edu.snu.onyx.runtime.common.grpc.GrpcServer;
 import edu.snu.onyx.runtime.common.grpc.MasterMetricServiceGrpc;
@@ -10,7 +9,6 @@ import edu.snu.onyx.runtime.master.grpc.MasterSchedulerServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
 import net.jcip.annotations.ThreadSafe;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.io.Closeable;
@@ -24,8 +22,7 @@ public class MasterRPC implements Closeable {
   private final ManagedChannel channelToMaster; // thread-safe
 
   @Inject
-  public MasterRPC(final GrpcClient grpcClient,
-                    @Parameter(JobConf.ExecutorId.class) final String executorId) {
+  public MasterRPC(final GrpcClient grpcClient) {
     try {
       channelToMaster = grpcClient.openChannel(GrpcServer.MASTER_GRPC_SERVER_ID);
     } catch (Exception e) {
@@ -34,25 +31,25 @@ public class MasterRPC implements Closeable {
   }
 
   // Scheduler.
-  public MasterSchedulerServiceGrpc.MasterSchedulerServiceBlockingStub getSchedulerBlockingStub() {
+  public MasterSchedulerServiceGrpc.MasterSchedulerServiceBlockingStub newSchedulerBlockingStub() {
     return MasterSchedulerServiceGrpc.newBlockingStub(channelToMaster);
   }
 
   // Partition.
-  public MasterPartitionServiceGrpc.MasterPartitionServiceBlockingStub getPartitionBlockingStub() {
+  public MasterPartitionServiceGrpc.MasterPartitionServiceBlockingStub newPartitionBlockingStub() {
     return MasterPartitionServiceGrpc.newBlockingStub(channelToMaster);
   }
-  public MasterPartitionServiceGrpc.MasterPartitionServiceStub getPartitionAsyncStub() {
+  public MasterPartitionServiceGrpc.MasterPartitionServiceStub newPartitionAsyncStub() {
     return MasterPartitionServiceGrpc.newStub(channelToMaster);
   }
 
   // RemoteBlock.
-  public MasterRemoteBlockServiceGrpc.MasterRemoteBlockServiceBlockingStub getRemoteBlockBlockingStub() {
+  public MasterRemoteBlockServiceGrpc.MasterRemoteBlockServiceBlockingStub newRemoteBlockBlockingStub() {
     return MasterRemoteBlockServiceGrpc.newBlockingStub(channelToMaster);
   }
 
   // Metrics.
-  public MasterMetricServiceGrpc.MasterMetricServiceBlockingStub getMetricBlockingStub() {
+  public MasterMetricServiceGrpc.MasterMetricServiceBlockingStub newMetricBlockingStub() {
     return MasterMetricServiceGrpc.newBlockingStub(channelToMaster);
   }
 
