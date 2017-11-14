@@ -15,9 +15,7 @@
  */
 package edu.snu.onyx.runtime.executor;
 
-import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
+import edu.snu.onyx.runtime.common.grpc.Metrics;
 import edu.snu.onyx.runtime.common.metric.MetricMessageSender;
 import edu.snu.onyx.runtime.exception.UnknownFailureCauseException;
 import edu.snu.onyx.runtime.common.metric.parameter.MetricFlushPeriod;
@@ -28,20 +26,14 @@ import javax.inject.Inject;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Metric sender that periodically flushes the collected metrics to Driver.
  */
 @EvaluatorSide
 public final class MetricManagerWorker implements MetricMessageSender {
-
   private final ScheduledExecutorService scheduledExecutorService;
-  private final BlockingQueue<ControlMessage.Metric> metricMessageQueue;
+  private final BlockingQueue<Metrics.Metric> metricMessageQueue;
   private final AtomicBoolean closed;
-
-  private static final Logger LOG = LoggerFactory.getLogger(MetricManagerWorker.class.getName());
 
   @Inject
   private MetricManagerWorker(@Parameter(MetricFlushPeriod.class) final long flushingPeriod,
@@ -50,26 +42,19 @@ public final class MetricManagerWorker implements MetricMessageSender {
     this.metricMessageQueue = new LinkedBlockingQueue<>();
     this.closed = new AtomicBoolean(false);
     Runnable batchMetricMessages = () -> {
-
       while (!closed.get() && !metricMessageQueue.isEmpty()) {
 
         // Build batched metric messages
         int size = metricMessageQueue.size();
 
-        final ControlMessage.MetricMsg.Builder metricMsgBuilder = ControlMessage.MetricMsg.newBuilder();
+        final Metrics.MetricList.Builder metricList = Metrics.MetricList.newBuilder();
 
         for (int i = 0; i < size; i++) {
-          final ControlMessage.Metric metric = metricMessageQueue.poll();
-          metricMsgBuilder.addMetric(i, metric);
+          final Metrics.Metric metric = metricMessageQueue.poll();
+          metricList.addMetric(i, metric);
         }
 
-        masterRPC.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.MetricMessageReceived)
-                .setMetricMsg(metricMsgBuilder.build())
-                .build());
+        masterRPC.getMetricBlockingStub().reportMetrics(metricList.build());
       }
     };
     this.scheduledExecutorService.scheduleAtFixedRate(batchMetricMessages, 0,
@@ -78,8 +63,7 @@ public final class MetricManagerWorker implements MetricMessageSender {
 
   @Override
   public void send(final String metricKey, final String metricValue) {
-    metricMessageQueue.add(
-        ControlMessage.Metric.newBuilder().setMetricKey(metricKey).setMetricValue(metricValue).build());
+    metricMessageQueue.add(Metrics.Metric.newBuilder().setMetricKey(metricKey).setMetricValue(metricValue).build());
   }
 
   @Override

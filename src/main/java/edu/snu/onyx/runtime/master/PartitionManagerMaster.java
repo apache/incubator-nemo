@@ -297,6 +297,8 @@ public final class PartitionManagerMaster {
       onPartitionStateChanged(newState.getPartitionId(),
           convertPartitionState(newState.getState()),
           newState.getLocation());
+      observer.onNext(empty);
+      observer.onCompleted();
     }
 
     @Override
@@ -423,6 +425,7 @@ public final class PartitionManagerMaster {
 
         // Reply with the position to write in the file.
         observer.onNext(response.build());
+        observer.onCompleted();
       } finally {
         readLock.unlock();
       }

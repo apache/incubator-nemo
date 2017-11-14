@@ -17,8 +17,8 @@ package edu.snu.onyx.runtime.executor.data;
 
 import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.grpc.Common;
+import edu.snu.onyx.runtime.common.grpc.Metrics;
 import edu.snu.onyx.runtime.exception.PartitionFetchException;
 import edu.snu.onyx.runtime.exception.PartitionWriteException;
 import edu.snu.onyx.runtime.exception.UnsupportedPartitionStoreException;
@@ -241,17 +241,13 @@ public final class PartitionManagerWorker {
 
     if (!blockSizeInfo.isEmpty()) {
       // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-      masterRPC.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-          .send(ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdGenerator.generateMessageId())
-              .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.DataSizeMetric)
-              .setDataSizeMetricMsg(ControlMessage.DataSizeMetricMsg.newBuilder()
-                  .setPartitionId(partitionId)
-                  .setSrcIRVertexId(srcIRVertexId)
-                  .addAllBlockSizeInfo(blockSizeInfo)
-              )
-              .build());
+      masterRPC.getMetricBlockingStub()
+          .reportDataSizeMetric(Metrics.DataSizeMetric.newBuilder()
+              .setPartitionId(partitionId)
+              .setSrcIRVertexId(srcIRVertexId)
+              .addAllBlockSizeInfo(blockSizeInfo)
+              .build()
+          );
     }
   }
 

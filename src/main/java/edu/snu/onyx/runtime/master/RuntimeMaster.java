@@ -22,9 +22,7 @@ import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.DataSkewCompositePass;
-import edu.snu.onyx.runtime.common.grpc.Common;
-import edu.snu.onyx.runtime.common.grpc.GrpcServer;
-import edu.snu.onyx.runtime.common.grpc.GrpcUtil;
+import edu.snu.onyx.runtime.common.grpc.*;
 import edu.snu.onyx.runtime.common.metric.MetricMessageHandler;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.onyx.runtime.common.state.PartitionState;
@@ -103,11 +101,16 @@ public final class RuntimeMaster {
     this.pendingTaskGroupQueue = pendingTaskGroupQueue;
     this.containerManager = containerManager;
     this.partitionManagerMaster = partitionManagerMaster;
-    grpcServer.start(GrpcUtil.MASTER_GRPC_SERVER_ID,
-        new MasterSchedulerService(),
-        new PartitionManagerMaster.MasterPartitionService(),
-        new PartitionManagerMaster.MasterRemoteBlockService());
-    this.grpcServer = grpcServer;
+    try {
+      grpcServer.start(GrpcUtil.MASTER_GRPC_SERVER_ID,
+          new MasterSchedulerService(),
+          partitionManagerMaster.new MasterPartitionService(),
+          partitionManagerMaster.new MasterRemoteBlockService(),
+          new MasterMetricService());
+      this.grpcServer = grpcServer;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
     this.metricMessageHandler = metricMessageHandler;
     this.dagDirectory = dagDirectory;
     this.irVertices = new HashSet<>();
@@ -262,36 +265,34 @@ public final class RuntimeMaster {
       final Exception exception = SerializationUtils.deserialize(failedExecutor.getException().toByteArray());
       LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
       containerManager.onExecutorRemoved(failedExecutorId);
+      observer.onNext(empty);
+      observer.onCompleted();
       throw new RuntimeException(exception);
     }
   }
 
   /**
-   * Handler for control messages received by Master.
+   * Grpc master metric service.
    */
-  public final class MasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
+  private class MasterMetricService extends MasterMetricServiceGrpc.MasterMetricServiceImplBase {
+    private final Common.Empty empty = Common.Empty.newBuilder().build();
+
     @Override
-    public void onMessage(final ControlMessage.Message message) {
-      try {
-        switch (message.getType()) {
-          case DataSizeMetric:
-            final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
-            // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-            accumulateBarrierMetric(dataSizeMetricMsg.getBlockSizeInfoList(),
-                dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getPartitionId());
-            break;
-          case MetricMessageReceived:
-            final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
-            metricList.forEach(metric ->
-                metricMessageHandler.onMetricMessageReceived(metric.getMetricKey(), metric.getMetricValue()));
-            break;
-          default:
-            throw new IllegalMessageException(
-                new Exception("This message should not be received by Master :" + message.getType()));
-        }
-      } catch (final Exception e) {
-        throw new RuntimeException(e);
-      }
+    public void reportDataSizeMetric(final Metrics.DataSizeMetric metric,
+                                     final StreamObserver<Common.Empty> observer) {
+      // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
+      accumulateBarrierMetric(metric.getBlockSizeInfoList(), metric.getSrcIRVertexId(), metric.getPartitionId());
+      observer.onNext(empty);
+      observer.onCompleted();
+    }
+
+    @Override
+    public void reportMetrics(final Metrics.MetricList metricList,
+                              final StreamObserver<Common.Empty> observer) {
+      metricList.getMetricList().forEach(metric ->
+          metricMessageHandler.onMetricMessageReceived(metric.getMetricKey(), metric.getMetricValue()));
+      observer.onNext(empty);
+      observer.onCompleted();
     }
   }
 
