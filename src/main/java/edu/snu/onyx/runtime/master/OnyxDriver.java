@@ -20,7 +20,7 @@ import edu.snu.onyx.compiler.ir.IdManager;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.MessageParameters;
-import edu.snu.onyx.runtime.common.grpc.GrpcMessageEnvironment;
+import edu.snu.onyx.runtime.common.grpc.GrpcEnvironment;
 import edu.snu.onyx.runtime.executor.OnyxContext;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
@@ -193,7 +193,7 @@ public final class OnyxDriver {
 
   private Configuration getExecutorMessageConfiguration(final String executorId) {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MessageEnvironment.class, GrpcMessageEnvironment.class)
+        .bindImplementation(MessageEnvironment.class, GrpcEnvironment.class)
         .bindNamedParameter(MessageParameters.SenderId.class, executorId)
         .build();
   }

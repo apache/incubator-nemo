@@ -16,9 +16,9 @@
 package edu.snu.onyx.client;
 
 import edu.snu.onyx.common.dag.DAG;
+import edu.snu.onyx.runtime.common.grpc.GrpcEnvironment;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.MessageParameters;
-import edu.snu.onyx.runtime.common.grpc.GrpcMessageEnvironment;
 import edu.snu.onyx.runtime.master.OnyxDriver;
 import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.client.DriverConfiguration;
@@ -146,7 +146,7 @@ public final class JobLauncher {
 
   private static Configuration getDriverMessageConf() throws InjectionException {
     return TANG.newConfigurationBuilder()
-        .bindImplementation(MessageEnvironment.class, GrpcMessageEnvironment.class)
+        .bindImplementation(MessageEnvironment.class, GrpcEnvironment.class)
         .bindNamedParameter(MessageParameters.SenderId.class, MessageEnvironment.MASTER_COMMUNICATION_ID)
         .build();
   }

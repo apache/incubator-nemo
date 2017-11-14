@@ -15,9 +15,7 @@
  */
 package edu.snu.onyx.runtime.master;
 
-import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.StateMachine;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.state.PartitionState;
 import edu.snu.onyx.runtime.exception.AbsentPartitionException;
 import org.slf4j.Logger;
@@ -42,7 +40,6 @@ final class PartitionMetadata {
 
   // Block level metadata. These information will be managed only for remote partitions.
   private volatile List<BlockMetadataInServer> blockMetadataList;
-  private volatile long writtenBytesCursor; // How many bytes are (at least, logically) written in the file.
   private volatile int publishedBlockCursor; // Cursor dividing the published blocks and un-published blocks.
 
   /**
@@ -57,7 +54,6 @@ final class PartitionMetadata {
     this.locationFuture = new CompletableFuture<>();
     // Initialize block level metadata.
     this.blockMetadataList = new ArrayList<>();
-    this.writtenBytesCursor = 0;
     this.publishedBlockCursor = 0;
   }
 
@@ -128,29 +124,6 @@ final class PartitionMetadata {
   }
 
   /**
-   * Reserves the region for a block and get the metadata for the block.
-   *
-   * @param blockMetadata the block metadata to append.
-   * @return the pair of the index of reserved block and starting position of the block in the file.
-   */
-  synchronized Pair<Integer, Long> reserveBlock(final ControlMessage.BlockMetadataMsg blockMetadata) {
-    final int blockSize = blockMetadata.getBlockSize();
-    final long currentPosition = writtenBytesCursor;
-    final int blockIdx = blockMetadataList.size();
-    final ControlMessage.BlockMetadataMsg blockMetadataToStore =
-        ControlMessage.BlockMetadataMsg.newBuilder()
-            .setHashValue(blockMetadata.getHashValue())
-            .setBlockSize(blockSize)
-            .setOffset(currentPosition)
-            .setNumElements(blockMetadata.getNumElements())
-            .build();
-
-    writtenBytesCursor += blockSize;
-    blockMetadataList.add(new BlockMetadataInServer(blockMetadataToStore));
-    return Pair.of(blockIdx, currentPosition);
-  }
-
-  /**
    * Notifies that some blocks are written.
    *
    * @param blockIndicesToCommit the indices of the blocks to commit.
@@ -172,7 +145,6 @@ final class PartitionMetadata {
    */
   synchronized void removeBlockMetadata() {
     this.blockMetadataList = new ArrayList<>();
-    this.writtenBytesCursor = 0;
     this.publishedBlockCursor = 0;
   }
 

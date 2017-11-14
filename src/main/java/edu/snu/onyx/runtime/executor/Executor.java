@@ -59,23 +59,21 @@ public final class Executor {
    */
   private final DataTransferFactory dataTransferFactory;
 
-  private TaskGroupStateManager taskGroupStateManager;
-
-  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
+  private final MasterRPC masterRPC;
 
   private final MetricMessageSender metricMessageSender;
 
   @Inject
   public Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                   @Parameter(JobConf.ExecutorCapacity.class) final int executorCapacity,
-                  final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+                  final MasterRPC masterRPC,
                   final MessageEnvironment messageEnvironment,
                   final PartitionManagerWorker partitionManagerWorker,
                   final DataTransferFactory dataTransferFactory,
                   final MetricManagerWorker metricMessageSender) {
     this.executorId = executorId;
     this.executorService = Executors.newFixedThreadPool(executorCapacity);
-    this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
+    this.masterRPC = masterRPC;
     this.partitionManagerWorker = partitionManagerWorker;
     this.dataTransferFactory = dataTransferFactory;
     this.metricMessageSender = metricMessageSender;
@@ -98,9 +96,9 @@ public final class Executor {
    */
   private void launchTaskGroup(final ScheduledTaskGroup scheduledTaskGroup) {
     try {
-      taskGroupStateManager =
+      final TaskGroupStateManager taskGroupStateManager =
           new TaskGroupStateManager(scheduledTaskGroup.getTaskGroup(), scheduledTaskGroup.getAttemptIdx(), executorId,
-              persistentConnectionToMasterMap,
+              masterRPC,
               metricMessageSender);
 
       scheduledTaskGroup.getTaskGroupIncomingEdges()
@@ -115,7 +113,7 @@ public final class Executor {
           dataTransferFactory,
           partitionManagerWorker).execute();
     } catch (final Exception e) {
-      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+      masterRPC.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()
               .setId(RuntimeIdGenerator.generateMessageId())
               .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)

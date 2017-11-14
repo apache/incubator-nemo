@@ -45,7 +45,7 @@ public final class MetricManagerWorker implements MetricMessageSender {
 
   @Inject
   private MetricManagerWorker(@Parameter(MetricFlushPeriod.class) final long flushingPeriod,
-                              final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
+                              final MasterRPC masterRPC) {
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.metricMessageQueue = new LinkedBlockingQueue<>();
     this.closed = new AtomicBoolean(false);
@@ -63,7 +63,7 @@ public final class MetricManagerWorker implements MetricMessageSender {
           metricMsgBuilder.addMetric(i, metric);
         }
 
-        persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+        masterRPC.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
                 .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)

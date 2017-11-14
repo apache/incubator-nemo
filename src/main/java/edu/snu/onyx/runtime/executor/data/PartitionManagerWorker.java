@@ -23,7 +23,7 @@ import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.exception.PartitionFetchException;
 import edu.snu.onyx.runtime.exception.PartitionWriteException;
 import edu.snu.onyx.runtime.exception.UnsupportedPartitionStoreException;
-import edu.snu.onyx.runtime.executor.PersistentConnectionToMasterMap;
+import edu.snu.onyx.runtime.executor.MasterRPC;
 import edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionInputStream;
 import edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionOutputStream;
 import edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionTransfer;
@@ -52,7 +52,7 @@ public final class PartitionManagerWorker {
   private final SerializedMemoryStore serializedMemoryStore;
   private final LocalFileStore localFileStore;
   private final RemoteFileStore remoteFileStore;
-  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
+  private final MasterRPC masterRPC;
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder;
   private final PartitionTransfer partitionTransfer;
   private final ExecutorService ioThreadExecutorService;
@@ -64,14 +64,14 @@ public final class PartitionManagerWorker {
                                  final SerializedMemoryStore serializedMemoryStore,
                                  final LocalFileStore localFileStore,
                                  final RemoteFileStore remoteFileStore,
-                                 final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+                                 final MasterRPC masterRPC,
                                  final PartitionTransfer partitionTransfer) {
     this.executorId = executorId;
     this.memoryStore = memoryStore;
     this.serializedMemoryStore = serializedMemoryStore;
     this.localFileStore = localFileStore;
     this.remoteFileStore = remoteFileStore;
-    this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
+    this.masterRPC = masterRPC;
     this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
     this.partitionTransfer = partitionTransfer;
     this.ioThreadExecutorService = Executors.newFixedThreadPool(numThreads);
@@ -164,7 +164,7 @@ public final class PartitionManagerWorker {
       final HashRange hashRange) {
     // Let's see if a remote worker has it
     // Ask Master for the location
-    final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = persistentConnectionToMasterMap
+    final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = masterRPC
         .getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
@@ -248,7 +248,7 @@ public final class PartitionManagerWorker {
       partitionStateChangedMsgBuilder.setLocation(executorId);
     }
 
-    persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+    masterRPC.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
         .send(ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
             .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
@@ -258,7 +258,7 @@ public final class PartitionManagerWorker {
 
     if (!blockSizeInfo.isEmpty()) {
       // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+      masterRPC.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
           .send(ControlMessage.Message.newBuilder()
               .setId(RuntimeIdGenerator.generateMessageId())
               .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
@@ -298,7 +298,7 @@ public final class PartitionManagerWorker {
         partitionStateChangedMsgBuilder.setLocation(executorId);
       }
 
-      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+      masterRPC.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
           .send(ControlMessage.Message.newBuilder()
               .setId(RuntimeIdGenerator.generateMessageId())
               .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)

@@ -17,9 +17,11 @@ package edu.snu.onyx.runtime.executor.data.metadata;
 
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
+import edu.snu.onyx.runtime.common.grpc.Common;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.executor.PersistentConnectionToMasterMap;
+import edu.snu.onyx.runtime.executor.MasterRPC;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
+import edu.snu.onyx.runtime.master.grpc.MasterRemotePartition;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.*;
@@ -42,7 +44,7 @@ public final class RemoteFileMetadata extends FileMetadata {
 
   private final String partitionId;
   private final String executorId;
-  private final PersistentConnectionToMasterMap connectionToMaster;
+  private final MasterRPC masterRPC;
   private volatile Iterable<BlockMetadata> blockMetadataIterable;
 
   /**
@@ -52,16 +54,16 @@ public final class RemoteFileMetadata extends FileMetadata {
    * @param commitPerBlock     whether commit every block write or not.
    * @param partitionId        the id of the partition.
    * @param executorId         the id of the executor.
-   * @param connectionToMaster the connection for sending messages to master.
+   * @param masterRPC the connection for sending messages to master.
    */
   public RemoteFileMetadata(final boolean commitPerBlock,
                             final String partitionId,
                             final String executorId,
-                            final PersistentConnectionToMasterMap connectionToMaster) {
+                            final MasterRPC masterRPC) {
     super(commitPerBlock);
     this.partitionId = partitionId;
     this.executorId = executorId;
-    this.connectionToMaster = connectionToMaster;
+    this.masterRPC = masterRPC;
   }
 
   /**
@@ -74,16 +76,17 @@ public final class RemoteFileMetadata extends FileMetadata {
                                                  final int blockSize,
                                                  final long elementsTotal) throws IOException {
     // Convert the block metadata to a block metadata message (without offset).
-    final ControlMessage.BlockMetadataMsg blockMetadataMsg =
-        ControlMessage.BlockMetadataMsg.newBuilder()
-            .setHashValue(hashValue)
-            .setBlockSize(blockSize)
-            .setNumElements(elementsTotal)
-            .build();
+    final Common.BlockMetadata blockMetadata = Common.BlockMetadata.newBuilder()
+        .setHashValue(hashValue)
+        .setBlockSize(blockSize)
+        .setNumElements(elementsTotal)
+        .build();
 
     // Send the block metadata to the metadata server in the master and ask where to store the block.
+    masterRPC.getRemoteBlockFutureStub().re
+
     final CompletableFuture<ControlMessage.Message> reserveBlockResponseFuture =
-        connectionToMaster.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
+        masterRPC.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
                 .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
@@ -129,16 +132,12 @@ public final class RemoteFileMetadata extends FileMetadata {
     });
 
     // Notify that these blocks are committed to the metadata server.
-    connectionToMaster.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).send(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.CommitBlock)
-            .setCommitBlockMsg(
-                ControlMessage.CommitBlockMsg.newBuilder()
-                    .setPartitionId(partitionId)
-                    .addAllBlockIdx(blockIndices))
-            .build());
+    masterRPC.getRemoteBlockBlockingStub().commitRemoteBlock(
+        MasterRemotePartition.RemoteBlockCommitRequest.newBuilder()
+            .setPartitionId(partitionId)
+            .addAllBlockIdx(blockIndices)
+            .build()
+    );
   }
 
   /**
@@ -159,15 +158,11 @@ public final class RemoteFileMetadata extends FileMetadata {
    */
   @Override
   public void deleteMetadata() throws IOException {
-    connectionToMaster.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).send(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.RemoveBlockMetadata)
-            .setRemoveBlockMetadataMsg(
-                ControlMessage.RemoveBlockMetadataMsg.newBuilder()
-                    .setPartitionId(partitionId))
-            .build());
+    masterRPC.getRemoteBlockBlockingStub().removeRemoteBlock(
+        MasterRemotePartition.RemoteBlockRemovalRequest.newBuilder()
+            .setPartitionId(partitionId)
+            .build()
+    );
   }
 
   /**
@@ -191,39 +186,25 @@ public final class RemoteFileMetadata extends FileMetadata {
     final List<BlockMetadata> blockMetadataList = new ArrayList<>();
 
     // Ask the metadata server in the master for the metadata
-    final CompletableFuture<ControlMessage.Message> metadataResponseFuture =
-        connectionToMaster.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.RequestBlockMetadata)
-                .setRequestBlockMetadataMsg(
-                    ControlMessage.RequestBlockMetadataMsg.newBuilder()
-                        .setExecutorId(executorId)
-                        .setPartitionId(partitionId)
-                        .build())
-                .build());
+    final MasterRemotePartition.RemoteBlockMetadataResponse response =
+        masterRPC.getRemoteBlockBlockingStub().askRemoteBlockMetadata(
+            MasterRemotePartition.RemoteBlockMetadataRequest.newBuilder()
+                .setExecutorId(executorId)
+                .setPartitionId(partitionId)
+                .build()
+    );
 
-    final ControlMessage.Message responseFromMaster;
-    try {
-      responseFromMaster = metadataResponseFuture.get();
-    } catch (final InterruptedException | ExecutionException e) {
-      throw new IOException(e);
-    }
-
-    assert (responseFromMaster.getType() == ControlMessage.MessageType.MetadataResponse);
-    final ControlMessage.MetadataResponseMsg metadataResponseMsg = responseFromMaster.getMetadataResponseMsg();
-    if (metadataResponseMsg.hasState()) {
+    if (response.hasState()) {
       // Response has an exception state.
       throw new IOException(new Throwable(
           "Cannot get the metadata of partition " + partitionId + " from the metadata server: "
-              + "The partition state is " + RuntimeMaster.convertPartitionState(metadataResponseMsg.getState())));
+              + "The partition state is " + RuntimeMaster.convertPartitionState(response.getState())));
     }
 
     // Construct the metadata from the response.
-    final List<ControlMessage.BlockMetadataMsg> blockMetadataMsgList = metadataResponseMsg.getBlockMetadataList();
+    final List<Common.BlockMetadata> blockMetadataMsgList = response.getBlockMetadataList();
     for (int blockIdx = 0; blockIdx < blockMetadataMsgList.size(); blockIdx++) {
-      final ControlMessage.BlockMetadataMsg blockMetadataMsg = blockMetadataMsgList.get(blockIdx);
+      final Common.BlockMetadata blockMetadataMsg = blockMetadataMsgList.get(blockIdx);
       if (!blockMetadataMsg.hasOffset()) {
         throw new IOException(new Throwable(
             "The metadata of a block in the " + partitionId + " does not have offset value."));

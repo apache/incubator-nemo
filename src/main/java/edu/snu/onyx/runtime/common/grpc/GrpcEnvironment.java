@@ -1,10 +1,5 @@
 package edu.snu.onyx.runtime.common.grpc;
 
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.common.message.MessageListener;
-import edu.snu.onyx.runtime.common.message.MessageParameters;
-import edu.snu.onyx.runtime.common.message.MessageSender;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.IdentifierFactory;
@@ -19,36 +14,36 @@ import java.util.concurrent.Future;
 /**
  * This class is installed when every node, containing both driver and evaluator, has been started, and setup
  * grpc environment to implement RPC semantics defined in {@link edu.snu.onyx.runtime.common.message} package.
- * For each GrpcMessageEnvironment, there are a single {@link GrpcMessageServer} and multiple {@link GrpcMessageClient},
+ * For each GrpcEnvironment, there are a single {@link GrpcServer} and multiple {@link GrpcClient},
  * which are responsible for responding replies for messages from other clients, and for transferring messages
  * to other servers, respectively.
  *
- * The {@link GrpcMessageServer} is started as soon as the environment is initialized, and registers the unique sender
+ * The {@link GrpcServer} is started as soon as the environment is initialized, and registers the unique sender
  * id of the local node to name server, which is used for id-based communication. The {@link MessageListener}s should
  * be setup to correctly handle incoming messages.
  *
- * The {@link GrpcMessageClient}s are created whenever there is a request to create a {@link MessageSender}, a component
- * to issue RPC calls to other servers. Like the {@link GrpcMessageServer} registers its id to the name server, the
- * {@link GrpcMessageClient} uses target receiver id to look up the name server to resolve the ip address of the target
+ * The {@link GrpcClient}s are created whenever there is a request to create a {@link MessageSender}, a component
+ * to issue RPC calls to other servers. Like the {@link GrpcServer} registers its id to the name server, the
+ * {@link GrpcClient} uses target receiver id to look up the name server to resolve the ip address of the target
  * server before establishing a connection to the server.
  */
-public final class GrpcMessageEnvironment implements MessageEnvironment {
+public final class GrpcEnvironment implements MessageEnvironment {
 
-  private static final Logger LOG = LoggerFactory.getLogger(GrpcMessageEnvironment.class);
+  private static final Logger LOG = LoggerFactory.getLogger(GrpcEnvironment.class);
 
   private final NameResolver nameResolver;
   private final IdentifierFactory idFactory;
-  private final GrpcMessageServer grpcServer;
+  private final GrpcServer grpcServer;
 
   @Inject
-  private GrpcMessageEnvironment(
+  private GrpcEnvironment(
       final LocalAddressProvider localAddressProvider,
       final NameResolver nameResolver,
       final IdentifierFactory idFactory,
       @Parameter(MessageParameters.SenderId.class) final String localSenderId) {
     this.nameResolver = nameResolver;
     this.idFactory = idFactory;
-    this.grpcServer = new GrpcMessageServer(localAddressProvider, nameResolver, idFactory, localSenderId);
+    this.grpcServer = new GrpcServer(localAddressProvider, nameResolver, idFactory, localSenderId);
 
     try {
       this.grpcServer.start();
@@ -69,17 +64,16 @@ public final class GrpcMessageEnvironment implements MessageEnvironment {
   }
 
   @Override
-  public <T> Future<MessageSender<T>> asyncConnect(final String receiverId, final String listenerId) {
+  public <T> Future<MessageSender<T>> asyncConnect(final String receiverId) {
     final CompletableFuture completableFuture = new CompletableFuture();
 
     // It can be optimized by sharing  ManagedChannel of same grpc clients connecting to the same ip address,
     // when it figured out there are significant duplicated clients should be created.
-    final GrpcMessageClient grpcClient = new GrpcMessageClient(nameResolver, idFactory, receiverId);
+    final GrpcClient grpcClient = new GrpcClient(nameResolver, idFactory, receiverId);
 
     try {
       grpcClient.connect();
-      final MessageSender<ControlMessage.Message> messageSender = new GrpcMessageSender(
-          receiverId, listenerId, grpcClient);
+      final MessageSender<ControlMessage.Message> messageSender = new GrpcMessageSender(grpcClient);
       completableFuture.complete(messageSender);
     } catch (final Exception e) {
       LOG.warn("Failed to connect a receiver id=" + receiverId + ", listenerId=" + listenerId, e);

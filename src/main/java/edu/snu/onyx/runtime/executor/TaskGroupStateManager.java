@@ -62,18 +62,18 @@ public final class TaskGroupStateManager {
    */
   private Set<String> currentTaskGroupTaskIds;
 
-  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
+  private final MasterRPC masterRPC;
 
 
   public TaskGroupStateManager(final TaskGroup taskGroup,
                                final int attemptIdx,
                                final String executorId,
-                               final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+                               final MasterRPC masterRPC,
                                final MetricMessageSender metricMessageSender) {
     this.taskGroupId = taskGroup.getTaskGroupId();
     this.attemptIdx = attemptIdx;
     this.executorId = executorId;
-    this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
+    this.masterRPC = masterRPC;
     this.metricMessageSender = metricMessageSender;
     metricDataBuilderMap = new HashMap<>();
     idToTaskStates = new HashMap<>();
@@ -220,7 +220,7 @@ public final class TaskGroupStateManager {
     }
 
     // Send taskGroupStateChangedMsg to master!
-    persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+    masterRPC.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
             .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)

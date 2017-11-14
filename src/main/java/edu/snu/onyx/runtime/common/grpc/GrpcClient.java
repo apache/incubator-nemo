@@ -1,11 +1,8 @@
 package edu.snu.onyx.runtime.common.grpc;
 
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.comm.MessageServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
-import io.grpc.stub.StreamObserver;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
@@ -19,13 +16,10 @@ import java.util.concurrent.CompletableFuture;
  * Represent a single RPC client to a specific server. It firstly looks up the name server to resolve
  * ip address of the target receiver, and then tries to connect to that receiver. After the connection established,
  * callers can communicates with the receiver with two methods, send and request.
- *
- * @see edu.snu.onyx.runtime.common.message.MessageSender#send(Object)
- * @see edu.snu.onyx.runtime.common.message.MessageSender#request(Object)
  */
-final class GrpcMessageClient {
+public final class GrpcClient {
 
-  private static final Logger LOG = LoggerFactory.getLogger(GrpcMessageClient.class);
+  private static final Logger LOG = LoggerFactory.getLogger(GrpcClient.class);
 
   private final NameResolver nameResolver;
   private final IdentifierFactory idFactory;
@@ -35,9 +29,9 @@ final class GrpcMessageClient {
   private MessageServiceGrpc.MessageServiceBlockingStub blockingStub;
   private MessageServiceGrpc.MessageServiceStub asyncStub;
 
-  GrpcMessageClient(final NameResolver nameResolver,
-                    final IdentifierFactory idFactory,
-                    final String receiverId) {
+  GrpcClient(final NameResolver nameResolver,
+             final IdentifierFactory idFactory,
+             final String receiverId) {
     this.nameResolver = nameResolver;
     this.idFactory = idFactory;
     this.receiverId = receiverId;
