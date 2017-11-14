@@ -274,10 +274,6 @@ public final class RuntimeMaster {
     public void onMessage(final ControlMessage.Message message) {
       try {
         switch (message.getType()) {
-          case ContainerFailed:
-            final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
-            LOG.error(containerFailedMsg.getExecutorId() + " failed");
-            break;
           case DataSizeMetric:
             final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
             // TODO #511: Refactor metric aggregation for (general) run-rime optimization.

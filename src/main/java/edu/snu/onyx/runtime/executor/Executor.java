@@ -17,7 +17,6 @@ package edu.snu.onyx.runtime.executor;
 
 import com.google.protobuf.ByteString;
 import edu.snu.onyx.client.JobConf;
-import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.grpc.Common;
 import edu.snu.onyx.runtime.common.grpc.GrpcServer;
 import edu.snu.onyx.runtime.common.metric.MetricMessageSender;
@@ -27,6 +26,7 @@ import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.onyx.runtime.executor.grpc.ExecutorScheduler;
 import edu.snu.onyx.runtime.executor.grpc.ExecutorSchedulerServiceGrpc;
+import edu.snu.onyx.runtime.master.grpc.MasterScheduler;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
@@ -121,16 +121,11 @@ public final class Executor {
           dataTransferFactory,
           partitionManagerWorker).execute();
     } catch (final Exception e) {
-      masterRPC.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-          ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdGenerator.generateMessageId())
-              .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.ExecutorFailed)
-              .setExecutorFailedMsg(ControlMessage.ExecutorFailedMsg.newBuilder()
-                  .setExecutorId(executorId)
-                  .setException(ByteString.copyFrom(SerializationUtils.serialize(e)))
-                  .build())
-              .build());
+      masterRPC.getSchedulerBlockingStub().executorFailed(MasterScheduler.FailedExecutor.newBuilder()
+          .setExecutorId(executorId)
+          .setException(ByteString.copyFrom(SerializationUtils.serialize(e)))
+          .build()
+      );
       throw e;
     } finally {
       terminate();

@@ -349,7 +349,7 @@ public final class PartitionManagerMaster {
             final PartitionMetadata metadata = partitionIdToMetadata.get(partitionId);
             if (metadata != null) {
               metadata.getBlockMetadataList().forEach(blockMetadataInServer ->
-                  responseBuilder.addBlockMetadata(blockMetadataInServer.getBlockMetadataMsg()));
+                  responseBuilder.addBlockMetadata(blockMetadataInServer.getBlockMetadata()));
             } else {
               LOG.error("Metadata for {} dose not exist. Failed to get it.", partitionId);
             }

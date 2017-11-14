@@ -16,11 +16,10 @@
 package edu.snu.onyx.runtime.master.resource;
 
 import com.google.protobuf.ByteString;
-import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.common.message.MessageSender;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.onyx.runtime.executor.grpc.ExecutorScheduler;
+import edu.snu.onyx.runtime.executor.grpc.ExecutorSchedulerServiceGrpc;
+import io.grpc.ManagedChannel;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
 
@@ -42,16 +41,16 @@ public final class ExecutorRepresenter {
   private final Set<String> runningTaskGroups;
   private final Set<String> completeTaskGroups;
   private final Set<String> failedTaskGroups;
-  private final MessageSender<ControlMessage.Message> messageSender;
+  private final ManagedChannel channelToExecutor;
   private final ActiveContext activeContext;
 
   public ExecutorRepresenter(final String executorId,
                              final ResourceSpecification resourceSpecification,
-                             final MessageSender<ControlMessage.Message> messageSender,
+                             final ManagedChannel channelToExecutor,
                              final ActiveContext activeContext) {
     this.executorId = executorId;
     this.resourceSpecification = resourceSpecification;
-    this.messageSender = messageSender;
+    this.channelToExecutor = channelToExecutor;
     this.runningTaskGroups = new HashSet<>();
     this.completeTaskGroups = new HashSet<>();
     this.failedTaskGroups = new HashSet<>();
@@ -66,21 +65,11 @@ public final class ExecutorRepresenter {
   public void onTaskGroupScheduled(final ScheduledTaskGroup scheduledTaskGroup) {
     runningTaskGroups.add(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
     failedTaskGroups.remove(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
-
-    sendControlMessage(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.ScheduleTaskGroup)
-            .setScheduleTaskGroupMsg(
-                ControlMessage.ScheduleTaskGroupMsg.newBuilder()
-                    .setTaskGroup(ByteString.copyFrom(SerializationUtils.serialize(scheduledTaskGroup)))
-                    .build())
-            .build());
-  }
-
-  public void sendControlMessage(final ControlMessage.Message message) {
-    messageSender.send(message);
+    ExecutorSchedulerServiceGrpc.newBlockingStub(channelToExecutor).executeTaskGroup(
+        ExecutorScheduler.TaskGroupExecutionRequest.newBuilder()
+            .setTaskGroup(ByteString.copyFrom(SerializationUtils.serialize(scheduledTaskGroup)))
+            .build()
+    );
   }
 
   public void onTaskGroupExecutionComplete(final String taskGroupId) {
@@ -114,6 +103,7 @@ public final class ExecutorRepresenter {
   }
 
   public void shutDown() {
+    channelToExecutor.shutdown();
     activeContext.close();
   }
 }

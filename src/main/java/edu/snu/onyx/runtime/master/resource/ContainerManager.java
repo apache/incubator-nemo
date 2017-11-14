@@ -15,13 +15,15 @@
  */
 package edu.snu.onyx.runtime.master.resource;
 
-import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
+import edu.snu.onyx.runtime.common.grpc.GrpcUtil;
 import edu.snu.onyx.runtime.exception.ContainerException;
+import io.grpc.ManagedChannel;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
+import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.Configuration;
 
 import javax.inject.Inject;
@@ -30,6 +32,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.reef.wake.IdentifierFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,8 +75,13 @@ public final class ContainerManager {
   private final Map<String, ResourceSpecification> pendingContextIdToResourceSpec;
   private final Map<String, List<ResourceSpecification>> pendingContainerRequestsByContainerType;
 
+  private final NameResolver nameResolver;
+  private final IdentifierFactory idFactory;
+
   @Inject
-  public ContainerManager(final EvaluatorRequestor evaluatorRequestor) {
+  public ContainerManager(final EvaluatorRequestor evaluatorRequestor,
+                          final NameResolver nameResolver,
+                          final IdentifierFactory idFactory) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.executorsByContainerType = new HashMap<>();
     this.executorRepresenterMap = new HashMap<>();
@@ -81,6 +89,8 @@ public final class ContainerManager {
     this.pendingContextIdToResourceSpec = new HashMap<>();
     this.pendingContainerRequestsByContainerType = new HashMap<>();
     this.requestLatchByResourceSpecId = new HashMap<>();
+    this.nameResolver = nameResolver;
+    this.idFactory = idFactory;
   }
 
   /**
@@ -184,17 +194,16 @@ public final class ContainerManager {
     final ResourceSpecification resourceSpec = pendingContextIdToResourceSpec.remove(executorId);
 
     // Connect to the executor and initiate Master side's executor representation.
-    final MessageSender messageSender;
+    final ManagedChannel managedChannel;
     try {
-      messageSender =
-          messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
+      managedChannel = GrpcUtil.buildChannel(nameResolver, idFactory, executorId);
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
 
     // Create the executor representation.
     final ExecutorRepresenter executorRepresenter =
-        new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext);
+        new ExecutorRepresenter(executorId, resourceSpec, managedChannel, activeContext);
 
     executorsByContainerType.putIfAbsent(resourceSpec.getContainerType(), new ArrayList<>());
     executorsByContainerType.get(resourceSpec.getContainerType()).add(executorRepresenter);
@@ -205,24 +214,10 @@ public final class ContainerManager {
 
   public synchronized void onExecutorRemoved(final String failedExecutorId) {
     LOG.info("[" + failedExecutorId + "] failure reported.");
-
     final ExecutorRepresenter failedExecutor = executorRepresenterMap.remove(failedExecutorId);
     failedExecutor.onExecutorFailed();
-
     executorsByContainerType.get(failedExecutor.getContainerType()).remove(failedExecutor);
-
     failedExecutorRepresenterMap.put(failedExecutorId, failedExecutor);
-
-    // Signal RuntimeMaster on CONTAINER_FAILURE type FAILED_RECOVERABLE state
-    masterRPC.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.ContainerFailed)
-            .setContainerFailedMsg(ControlMessage.ContainerFailedMsg.newBuilder()
-                .setExecutorId(failedExecutorId)
-                .build())
-            .build());
   }
 
   public synchronized Map<String, ExecutorRepresenter> getExecutorRepresenterMap() {

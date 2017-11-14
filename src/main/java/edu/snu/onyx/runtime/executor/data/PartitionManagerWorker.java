@@ -231,7 +231,7 @@ public final class PartitionManagerWorker {
         MasterPartition.NewPartitionState.newBuilder()
             .setExecutorId(executorId)
             .setPartitionId(partitionId)
-            .setState(Common.PartitionStateFromExecutor.COMMITTED);
+            .setState(Common.PartitionState.COMMITTED);
     if (partitionStore == GlusterFileStore.class) {
       newPartitionState.setLocation(REMOTE_FILE_STORE);
     } else {
@@ -268,7 +268,7 @@ public final class PartitionManagerWorker {
       final MasterPartition.NewPartitionState.Builder newPartitionState = MasterPartition.NewPartitionState.newBuilder()
           .setExecutorId(executorId)
           .setPartitionId(partitionId)
-          .setState(Common.PartitionStateFromExecutor.REMOVED);
+          .setState(Common.PartitionState.REMOVED);
       if (GlusterFileStore.class.equals(partitionStore)) {
         newPartitionState.setLocation(REMOTE_FILE_STORE);
       } else {
