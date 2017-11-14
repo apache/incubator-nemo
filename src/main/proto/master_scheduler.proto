@@ -6,7 +6,6 @@ option java_package = "edu.snu.onyx.runtime.master.grpc";
 
 import "common.proto";
 
-// A grpc service for implementing edu.snu.onyx.runtime.common.message components using grpc
 service MasterSchedulerService {
     rpc TaskGroupStateChanged(NewTaskGroupState) returns (Empty) {}
     rpc ExecutorFailed(FailedExecutor) returns (Empty) {}
@@ -34,19 +33,7 @@ enum RecoverableFailureCause {
     // There is a 3rd cause: container_failure, but this is ommitted here as it is never propagated with a control msg.
 }
 
-message DataSizeMetric {
-    // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-    repeated int64 blockSizeInfo = 1;
-    required string partitionId = 2;
-    required string srcIRVertexId = 3;
-}
-
-
 message FailedExecutor {
     required string executorId = 1;
     required bytes exception = 2;
-}
-
-message ContainerFailed {
-    required string executorId = 1;
 }

@@ -6,7 +6,6 @@ option java_package = "edu.snu.onyx.runtime.master.grpc";
 
 import "common.proto";
 
-// A grpc service for implementing edu.snu.onyx.runtime.common.message components using grpc
 service MasterPartitionService {
     rpc PartitionStateChanged(NewPartitionState) returns (Empty) {}
     rpc AskPartitionLocation(PartitionLocationRequest) returns (PartitionLocationResponse) {}

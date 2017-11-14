@@ -1,0 +1,28 @@
+syntax = "proto2";
+
+package protobuf;
+
+option java_package = "edu.snu.onyx.runtime.common.grpc";
+
+import "common.proto";
+
+service MasterMetricService {
+    rpc ReportDataSizeMetric(DataSizeMetric) returns (Empty) {}
+    rpc ReportMetrics(MetricList) returns (Empty) {}
+}
+
+message DataSizeMetric {
+    // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
+    repeated int64 blockSizeInfo = 1;
+    required string partitionId = 2;
+    required string srcIRVertexId = 3;
+}
+
+message MetricList {
+    repeated Metric metric = 1;
+}
+
+message Metric {
+    required string metricKey = 1;
+    required string metricValue = 2;
+}

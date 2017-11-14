@@ -7,15 +7,6 @@ option java_package = "edu.snu.onyx.runtime.common.grpc";
 message Empty {
 }
 
-message Metrics {
-    repeated Metric metric = 1;
-}
-
-message Metric {
-    required string metricKey = 1;
-    required string metricValue = 2;
-}
-
 enum PartitionState {
     PARTITION_READY = 0;
     SCHEDULED = 1;
