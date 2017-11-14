@@ -28,7 +28,6 @@ import edu.snu.onyx.runtime.executor.grpc.ExecutorScheduler;
 import edu.snu.onyx.runtime.executor.grpc.ExecutorSchedulerServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.SerializationUtils;
-import org.apache.reef.evaluator.context.parameters.ContextIdentifier;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -68,7 +67,6 @@ public final class Executor {
   public Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                   @Parameter(JobConf.ExecutorCapacity.class) final int executorCapacity,
                   final MasterRPC masterRPC,
-                  final MessageEnvironment messageEnvironment,
                   final PartitionManagerWorker partitionManagerWorker,
                   final DataTransferFactory dataTransferFactory,
                   final MetricManagerWorker metricMessageSender) {

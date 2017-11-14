@@ -16,7 +16,6 @@
 package edu.snu.onyx.client;
 
 import edu.snu.onyx.common.dag.DAG;
-import edu.snu.onyx.runtime.common.grpc.GrpcEnvironment;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.MessageParameters;
 import edu.snu.onyx.runtime.master.OnyxDriver;
