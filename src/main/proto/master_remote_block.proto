@@ -10,6 +10,7 @@ service MasterRemoteBlockService {
     rpc AskRemoteBlockMetadata(RemoteBlockMetadataRequest) returns (RemoteBlockMetadataResponse) {}
     rpc RemoveRemoteBlock(RemoteBlockRemovalRequest) returns (Empty) {}
     rpc CommitRemoteBlock(RemoteBlockCommitRequest) returns (Empty) {}
+    rpc ReserveRemoteBlock(RemoteBlockReservationRequest) returns (RemoteBlockReservationResponse) {}
 }
 
 message RemoteBlockMetadataRequest {
@@ -29,14 +30,20 @@ message RemoteBlockCommitRequest {
     required string partitionId = 1;
     repeated int32 blockIdx = 2;
 }
-message RemoteBlockReservationRequest {
-    required string executorId = 1;
-    required string partitionId = 2;
-    required BlockMetadata blockMetadata = 3;
-}
+
 message RemoteBlockMetadata {
     required int32 hashValue = 1;
     required int32 blockSize = 2;
     optional int64 offset = 3;
     required int64 numElements = 4;
+}
+
+message RemoteBlockReservationRequest {
+    required string executorId = 1;
+    required string partitionId = 2;
+    required BlockMetadata blockMetadata = 3;
+}
+message RemoteBlockReservationResponse {
+    optional int64 positionToWrite = 1;
+    optional int32 blockIdx = 2;
 }

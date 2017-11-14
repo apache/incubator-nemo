@@ -16,6 +16,7 @@
 package edu.snu.onyx.runtime.master;
 
 import com.google.common.annotations.VisibleForTesting;
+import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.runtime.common.grpc.Common;
 import edu.snu.onyx.runtime.common.state.PartitionState;
 import edu.snu.onyx.runtime.exception.AbsentPartitionException;
@@ -329,6 +330,7 @@ public final class PartitionManagerMaster {
   public final class MasterRemoteBlockService extends MasterRemoteBlockServiceGrpc.MasterRemoteBlockServiceImplBase {
     private final Common.Empty empty = Common.Empty.newBuilder().build();
 
+    @Override
     public void askRemoteBlockMetadata(
         final MasterRemoteBlock.RemoteBlockMetadataRequest request,
         final StreamObserver<MasterRemoteBlock.RemoteBlockMetadataResponse> observer) {
@@ -363,6 +365,7 @@ public final class PartitionManagerMaster {
       }
     }
 
+    @Override
     public void removeRemoteBlock(final MasterRemoteBlock.RemoteBlockRemovalRequest request,
                                   final StreamObserver<Common.Empty> observer) {
       final Lock readLock = lock.readLock();
@@ -379,6 +382,7 @@ public final class PartitionManagerMaster {
       observer.onCompleted();
     }
 
+    @Override
     public void commitRemoteBlock(final MasterRemoteBlock.RemoteBlockCommitRequest request,
                                   final StreamObserver<Common.Empty> observer) {
       final String partitionId = request.getPartitionId();
@@ -397,6 +401,31 @@ public final class PartitionManagerMaster {
       }
       observer.onNext(empty);
       observer.onCompleted();
+    }
+
+    @Override
+    public void reserveRemoteBlock(final MasterRemoteBlock.RemoteBlockReservationRequest request,
+                                   final StreamObserver<MasterRemoteBlock.RemoteBlockReservationResponse> observer) {
+      final String partitionId = request.getPartitionId();
+      final MasterRemoteBlock.RemoteBlockReservationResponse.Builder response =
+          MasterRemoteBlock.RemoteBlockReservationResponse.newBuilder();
+
+      final Lock readLock = lock.readLock();
+      readLock.lock();
+      try {
+        final PartitionMetadata metadata = partitionIdToMetadata.get(partitionId);
+        // Reserve a region for this block and append the metadata.
+        final Pair<Integer, Long> reserveResult = metadata.reserveBlock(request.getBlockMetadata());
+        final int blockIndex = reserveResult.left();
+        final long positionToWrite = reserveResult.right();
+        response.setBlockIdx(blockIndex);
+        response.setPositionToWrite(positionToWrite);
+
+        // Reply with the position to write in the file.
+        observer.onNext(response.build());
+      } finally {
+        readLock.unlock();
+      }
     }
   }
 

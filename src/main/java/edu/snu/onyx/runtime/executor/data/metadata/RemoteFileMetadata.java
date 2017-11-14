@@ -15,7 +15,6 @@
  */
 package edu.snu.onyx.runtime.executor.data.metadata;
 
-import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.grpc.Common;
 import edu.snu.onyx.runtime.executor.MasterRPC;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
@@ -25,7 +24,6 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 /**
  * This class represents a metadata for a remote file partition.
@@ -80,36 +78,21 @@ public final class RemoteFileMetadata extends FileMetadata {
         .build();
 
     // Send the block metadata to the metadata server in the master and ask where to store the block.
-    final CompletableFuture<ControlMessage.Message> reserveBlockResponseFuture =
-        masterRPC.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.ReserveBlock)
-                .setReserveBlockMsg(
-                    ControlMessage.ReserveBlockMsg.newBuilder()
-                        .setExecutorId(executorId)
-                        .setPartitionId(partitionId)
-                        .setBlockMetadata(blockMetadataMsg))
-                .build());
+    final MasterRemoteBlock.RemoteBlockReservationResponse response =
+        masterRPC.getRemoteBlockBlockingStub().reserveRemoteBlock(
+            MasterRemoteBlock.RemoteBlockReservationRequest.newBuilder()
+                .setExecutorId(executorId)
+                .setPartitionId(partitionId)
+                .setBlockMetadata(blockMetadata)
+                .build()
+        );
 
-    // Get the response from the metadata server.
-    final ControlMessage.Message responseFromMaster;
-    try {
-      responseFromMaster = reserveBlockResponseFuture.get();
-    } catch (final InterruptedException | ExecutionException e) {
-      throw new IOException(e);
-    }
-
-    assert (responseFromMaster.getType() == ControlMessage.MessageType.ReserveBlockResponse);
-    final ControlMessage.ReserveBlockResponseMsg reserveBlockResponseMsg =
-        responseFromMaster.getReserveBlockResponseMsg();
-    if (!reserveBlockResponseMsg.hasPositionToWrite()) {
+    if (!response.hasPositionToWrite()) {
       // TODO #463: Support incremental read. Check whether this partition is committed in the metadata server side.
       throw new IOException("Cannot append the block metadata.");
     }
-    final int blockIndex = reserveBlockResponseMsg.getBlockIdx();
-    final long positionToWrite = reserveBlockResponseMsg.getPositionToWrite();
+    final int blockIndex = response.getBlockIdx();
+    final long positionToWrite = response.getPositionToWrite();
     return new BlockMetadata(blockIndex, hashValue, blockSize, positionToWrite, elementsTotal);
   }
 
@@ -187,7 +170,7 @@ public final class RemoteFileMetadata extends FileMetadata {
                 .setExecutorId(executorId)
                 .setPartitionId(partitionId)
                 .build()
-    );
+        );
 
     if (response.hasState()) {
       // Response has an exception state.
