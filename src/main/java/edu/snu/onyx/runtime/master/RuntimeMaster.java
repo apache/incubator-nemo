@@ -102,7 +102,7 @@ public final class RuntimeMaster {
     this.containerManager = containerManager;
     this.partitionManagerMaster = partitionManagerMaster;
     try {
-      grpcServer.start(GrpcUtil.MASTER_GRPC_SERVER_ID,
+      grpcServer.start(GrpcServer.MASTER_GRPC_SERVER_ID,
           new MasterSchedulerService(),
           partitionManagerMaster.new MasterPartitionService(),
           partitionManagerMaster.new MasterRemoteBlockService(),

@@ -19,6 +19,8 @@ import java.net.InetSocketAddress;
 public final class GrpcServer implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(GrpcServer.class);
 
+  public static final String MASTER_GRPC_SERVER_ID = "_MASTER_GRPC_SERVER_"; // should not conflict with executor ids.
+
   private static final int NAME_SERVER_REGISTER_RETRY_COUNT = 3;
   private static final int NAME_SERVER_REGISTER_RETRY_DELAY_MS = 100;
 

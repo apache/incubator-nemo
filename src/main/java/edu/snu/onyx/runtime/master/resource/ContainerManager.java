@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.runtime.master.resource;
 
-import edu.snu.onyx.runtime.common.grpc.GrpcUtil;
+import edu.snu.onyx.runtime.common.grpc.GrpcClient;
 import edu.snu.onyx.runtime.exception.ContainerException;
 import io.grpc.ManagedChannel;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -23,7 +23,6 @@ import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
-import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.Configuration;
 
 import javax.inject.Inject;
@@ -32,7 +31,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.apache.reef.wake.IdentifierFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,13 +73,11 @@ public final class ContainerManager {
   private final Map<String, ResourceSpecification> pendingContextIdToResourceSpec;
   private final Map<String, List<ResourceSpecification>> pendingContainerRequestsByContainerType;
 
-  private final NameResolver nameResolver;
-  private final IdentifierFactory idFactory;
+  private final GrpcClient grpcClient;
 
   @Inject
   public ContainerManager(final EvaluatorRequestor evaluatorRequestor,
-                          final NameResolver nameResolver,
-                          final IdentifierFactory idFactory) {
+                          final GrpcClient grpcClient) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.executorsByContainerType = new HashMap<>();
     this.executorRepresenterMap = new HashMap<>();
@@ -89,8 +85,7 @@ public final class ContainerManager {
     this.pendingContextIdToResourceSpec = new HashMap<>();
     this.pendingContainerRequestsByContainerType = new HashMap<>();
     this.requestLatchByResourceSpecId = new HashMap<>();
-    this.nameResolver = nameResolver;
-    this.idFactory = idFactory;
+    this.grpcClient = grpcClient;
   }
 
   /**
@@ -196,7 +191,7 @@ public final class ContainerManager {
     // Connect to the executor and initiate Master side's executor representation.
     final ManagedChannel managedChannel;
     try {
-      managedChannel = GrpcUtil.buildChannel(nameResolver, idFactory, executorId);
+      managedChannel = grpcClient.openChannel(executorId);
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }

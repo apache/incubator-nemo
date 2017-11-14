@@ -1,7 +1,7 @@
 package edu.snu.onyx.runtime.executor;
 
 import edu.snu.onyx.client.JobConf;
-import edu.snu.onyx.runtime.common.grpc.GrpcUtil;
+import edu.snu.onyx.runtime.common.grpc.GrpcClient;
 import edu.snu.onyx.runtime.common.grpc.MasterMetricServiceGrpc;
 import edu.snu.onyx.runtime.master.grpc.MasterPartitionServiceGrpc;
 import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlockServiceGrpc;
@@ -9,9 +9,7 @@ import edu.snu.onyx.runtime.master.grpc.MasterSchedulerServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
 import net.jcip.annotations.ThreadSafe;
-import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.tang.annotations.Parameter;
-import org.apache.reef.wake.IdentifierFactory;
 
 import javax.inject.Inject;
 import java.io.Closeable;
@@ -25,11 +23,10 @@ public final class MasterRPC implements Closeable {
   private final ManagedChannel channelToMaster; // thread-safe
 
   @Inject
-  private MasterRPC(final NameResolver nameResolver,
-                    final IdentifierFactory idFactory,
+  public MasterRPC(final GrpcClient grpcClient,
                     @Parameter(JobConf.ExecutorId.class) final String executorId) {
     try {
-      channelToMaster = GrpcUtil.buildChannel(nameResolver, idFactory, executorId);
+      channelToMaster = grpcClient.openChannel(executorId);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

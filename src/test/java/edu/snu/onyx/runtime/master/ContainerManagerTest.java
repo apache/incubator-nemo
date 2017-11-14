@@ -16,7 +16,7 @@
 package edu.snu.onyx.runtime.master;
 
 import edu.snu.onyx.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
+import edu.snu.onyx.runtime.common.grpc.GrpcClient;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.resource.ResourceSpecification;
 import org.apache.reef.driver.context.ActiveContext;
@@ -28,7 +28,6 @@ import org.junit.Test;
 import java.util.concurrent.*;
 
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -38,18 +37,13 @@ import static org.mockito.Mockito.when;
 public final class ContainerManagerTest {
   private ContainerManager containerManager;
   private int testIdNumber = 0;
-  private final ExecutorService containerAllocationPool = Executors.newFixedThreadPool(5);
-  private final BlockingDeque<ActiveContext> mockResourceAllocationQueue = new LinkedBlockingDeque<>();
 
   private final int DEFAULT_CAPACITY = 4;
   private final int DEFAULT_MEMORY = 10240;
 
   @Before
   public void setUp() {
-
-    final MessageEnvironment mockMsgEnv = mock(MessageEnvironment.class);
-    when(mockMsgEnv.asyncConnect(anyString(), anyString())).thenReturn(mock(Future.class));
-    containerManager = new ContainerManager(mock(EvaluatorRequestor.class), mockMsgEnv);
+    containerManager = new ContainerManager(mock(EvaluatorRequestor.class), mock(GrpcClient.class));
   }
 
   @Test(timeout=5000)

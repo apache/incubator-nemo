@@ -6,20 +6,26 @@ import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.IdentifierFactory;
 
+import javax.annotation.concurrent.ThreadSafe;
+import javax.inject.Inject;
 import java.net.InetSocketAddress;
 
 /**
- * Grpc utility methods.
+ * Grpc client.
  */
-public final class GrpcUtil {
-  public GrpcUtil() {
+@ThreadSafe
+public final class GrpcClient {
+  private final NameResolver nameResolver;
+  private final IdentifierFactory idFactory;
+
+  @Inject
+  public GrpcClient(final NameResolver nameResolver,
+                    final IdentifierFactory idFactory) {
+    this.nameResolver = nameResolver;
+    this.idFactory = idFactory;
   }
 
-  public static final String MASTER_GRPC_SERVER_ID = "_MASTER_GRPC_SERVER_"; // should not conflict with executor ids.
-
-  public ManagedChannel buildChannel(final NameResolver nameResolver,
-                                     final IdentifierFactory idFactory,
-                                     final String grpcServerId) throws Exception {
+  public synchronized ManagedChannel openChannel(final String grpcServerId) throws Exception {
     // 1. Look-up destination ip address using receiver id
     final Identifier identifier = idFactory.getNewInstance(grpcServerId);
     final InetSocketAddress ipAddress = nameResolver.lookup(identifier);

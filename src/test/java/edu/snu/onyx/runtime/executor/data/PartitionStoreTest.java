@@ -19,10 +19,8 @@ import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.common.coder.BeamCoder;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.common.message.local.LocalMessageDispatcher;
-import edu.snu.onyx.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.onyx.runtime.common.state.PartitionState;
+import edu.snu.onyx.runtime.executor.MasterRPC;
 import edu.snu.onyx.runtime.executor.data.stores.*;
 import edu.snu.onyx.runtime.master.PartitionManagerMaster;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
@@ -268,14 +266,12 @@ public final class PartitionStoreTest {
   private GlusterFileStore createGlusterFileStore(final String executorId,
                                                   final PartitionManagerWorker worker)
       throws InjectionException {
-    final LocalMessageEnvironment localMessageEnvironment =
-        new LocalMessageEnvironment(executorId, messageDispatcher);
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_FILE_DIRECTORY);
     injector.bindVolatileParameter(JobConf.JobId.class, "GFS test");
     injector.bindVolatileParameter(JobConf.ExecutorId.class, executorId);
     injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
-    injector.bindVolatileInstance(MessageEnvironment.class, localMessageEnvironment);
+    injector.bindVolatileInstance(MasterRPC.class, mock(MasterRPC.class));
     return injector.getInstance(GlusterFileStore.class);
   }
 
