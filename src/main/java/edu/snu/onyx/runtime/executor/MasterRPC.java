@@ -1,39 +1,46 @@
 package edu.snu.onyx.runtime.executor;
 
-import edu.snu.onyx.runtime.common.grpc.GrpcClient;
 import edu.snu.onyx.runtime.master.grpc.MasterPartitionServiceGrpc;
 import edu.snu.onyx.runtime.master.grpc.MasterRemotePartitionServiceGrpc;
 import edu.snu.onyx.runtime.master.grpc.MasterSchedulerServiceGrpc;
+import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
+import net.jcip.annotations.ThreadSafe;
 
 import javax.inject.Inject;
+import java.io.Closeable;
 import java.util.concurrent.CompletableFuture;
 
-public final class MasterRPC {
-  private final GrpcClient
+/**
+ * Helps making RPCs to the master.
+ */
+@ThreadSafe
+public final class MasterRPC implements Closeable {
+  private final ManagedChannel channelToMaster; // thread-safe
 
   @Inject
-  public MasterRPC() {
+  private MasterRPC() {
   }
 
+  // Scheduler.
   public MasterSchedulerServiceGrpc.MasterSchedulerServiceBlockingStub getSchedulerBlockingStub() {
-    return MasterSchedulerServiceGrpc.newFutureStub()
+    return MasterSchedulerServiceGrpc.newBlockingStub(channelToMaster);
   }
 
-  public MasterSchedulerServiceGrpc.MasterSchedulerServiceFutureStub getSchedulerFutureStub() {
-    final MasterSchedulerServiceGrpc.MasterSchedulerServiceFutureStub futureStub;
-    futureStub.taskGroupStateChanged()
-  }
-
+  // Partition.
   public MasterPartitionServiceGrpc.MasterPartitionServiceBlockingStub getPartitionBlockingStub() {
+    return MasterPartitionServiceGrpc.newBlockingStub(channelToMaster);
   }
-
   public MasterPartitionServiceGrpc.MasterPartitionServiceStub getPartitionAsyncStub() {
+    return MasterPartitionServiceGrpc.newStub(channelToMaster);
   }
 
+  // RemoteBlock.
   public MasterRemotePartitionServiceGrpc.MasterRemotePartitionServiceBlockingStub getRemoteBlockBlockingStub() {
+    return MasterRemotePartitionServiceGrpc.newBlockingStub(channelToMaster);
   }
 
+  // Utility methods.
   public <ResponseType> StreamObserver<ResponseType> createObserverFromCompletableFuture(
       final CompletableFuture<ResponseType> completableFuture) {
     return new StreamObserver<ResponseType>() {
@@ -51,5 +58,10 @@ public final class MasterRPC {
       public void onCompleted() {
       }
     };
+  }
+
+  @Override
+  public void close() {
+    channelToMaster.shutdown();
   }
 }
