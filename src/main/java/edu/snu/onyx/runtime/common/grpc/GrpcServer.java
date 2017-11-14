@@ -13,6 +13,9 @@ import javax.inject.Inject;
 import java.io.Closeable;
 import java.net.InetSocketAddress;
 
+/**
+ * A Grpc server wrapper.
+ */
 public final class GrpcServer implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(GrpcServer.class);
 

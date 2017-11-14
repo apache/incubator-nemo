@@ -237,6 +237,9 @@ public final class RuntimeMaster {
     }
   }
 
+  /**
+   * Grpc master scheduler service.
+   */
   private class MasterSchedulerService extends MasterSchedulerServiceGrpc.MasterSchedulerServiceImplBase {
     private final Common.Empty empty = Common.Empty.newBuilder().build();
 

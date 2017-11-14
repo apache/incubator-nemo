@@ -147,7 +147,10 @@ public final class Executor {
     }
   }
 
-  public class ExecutorSchedulerService extends ExecutorSchedulerServiceGrpc.ExecutorSchedulerServiceImplBase {
+  /**
+   * Grpc executor scheduler service.
+   */
+  public final class ExecutorSchedulerService extends ExecutorSchedulerServiceGrpc.ExecutorSchedulerServiceImplBase {
     private final Common.Empty empty = Common.Empty.newBuilder().build();
 
     @Override

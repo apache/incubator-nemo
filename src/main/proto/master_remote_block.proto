@@ -18,7 +18,7 @@ message RemoteBlockMetadataRequest {
 }
 message RemoteBlockMetadataResponse {
     repeated BlockMetadata blockMetadata = 1;
-    optional PartitionStateFromExecutor state = 2;
+    optional PartitionState state = 2;
 }
 
 message RemoteBlockRemovalRequest {

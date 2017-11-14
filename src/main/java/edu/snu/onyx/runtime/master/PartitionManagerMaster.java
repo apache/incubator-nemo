@@ -31,8 +31,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import edu.snu.onyx.runtime.master.grpc.MasterPartition;
 import edu.snu.onyx.runtime.master.grpc.MasterPartitionServiceGrpc;
-import edu.snu.onyx.runtime.master.grpc.MasterRemotePartition;
-import edu.snu.onyx.runtime.master.grpc.MasterRemotePartitionServiceGrpc;
+import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlock;
+import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlockServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
@@ -284,7 +284,10 @@ public final class PartitionManagerMaster {
     }
   }
 
-  public class MasterPartitionService extends MasterPartitionServiceGrpc.MasterPartitionServiceImplBase {
+  /**
+   * Grpc master partition service.
+   */
+  public final class MasterPartitionService extends MasterPartitionServiceGrpc.MasterPartitionServiceImplBase {
     private final Common.Empty empty = Common.Empty.newBuilder().build();
 
     @Override
@@ -320,13 +323,15 @@ public final class PartitionManagerMaster {
     }
   }
 
-  public class MasterRemotePartitionService
-      extends MasterRemotePartitionServiceGrpc.MasterRemotePartitionServiceImplBase {
+  /**
+   * Grpc master remote block service.
+   */
+  public final class MasterRemoteBlockService extends MasterRemoteBlockServiceGrpc.MasterRemoteBlockServiceImplBase {
     private final Common.Empty empty = Common.Empty.newBuilder().build();
 
     public void askRemoteBlockMetadata(
-        final MasterRemotePartition.RemoteBlockMetadataRequest request,
-        final StreamObserver<MasterRemotePartition.RemoteBlockMetadataResponse> observer) {
+        final MasterRemoteBlock.RemoteBlockMetadataRequest request,
+        final StreamObserver<MasterRemoteBlock.RemoteBlockMetadataResponse> observer) {
       final String partitionId = request.getPartitionId();
       final Lock readLock = lock.readLock();
       readLock.lock();
@@ -335,8 +340,8 @@ public final class PartitionManagerMaster {
         final CompletableFuture<String> locationFuture = getPartitionLocationFuture(partitionId);
 
         locationFuture.whenComplete((location, throwable) -> {
-          final MasterRemotePartition.RemoteBlockMetadataResponse.Builder responseBuilder =
-              MasterRemotePartition.RemoteBlockMetadataResponse.newBuilder();
+          final MasterRemoteBlock.RemoteBlockMetadataResponse.Builder responseBuilder =
+              MasterRemoteBlock.RemoteBlockMetadataResponse.newBuilder();
           if (throwable == null) {
             // Well committed.
             final PartitionMetadata metadata = partitionIdToMetadata.get(partitionId);
@@ -358,7 +363,7 @@ public final class PartitionManagerMaster {
       }
     }
 
-    public void removeRemoteBlock(final MasterRemotePartition.RemoteBlockRemovalRequest request,
+    public void removeRemoteBlock(final MasterRemoteBlock.RemoteBlockRemovalRequest request,
                                   final StreamObserver<Common.Empty> observer) {
       final Lock readLock = lock.readLock();
       readLock.lock();
@@ -374,7 +379,7 @@ public final class PartitionManagerMaster {
       observer.onCompleted();
     }
 
-    public void commitRemoteBlock(final MasterRemotePartition.RemoteBlockCommitRequest request,
+    public void commitRemoteBlock(final MasterRemoteBlock.RemoteBlockCommitRequest request,
                                   final StreamObserver<Common.Empty> observer) {
       final String partitionId = request.getPartitionId();
       final List<Integer> blockIndices = request.getBlockIdxList();

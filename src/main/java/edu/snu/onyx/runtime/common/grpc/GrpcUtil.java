@@ -8,8 +8,14 @@ import org.apache.reef.wake.IdentifierFactory;
 
 import java.net.InetSocketAddress;
 
-public final class GrpcUtil {
-  public final static String MASTER_GRPC_SERVER_ID = "_MASTER_GRPC_SERVER_"; // should not conflict with executor ids.
+/**
+ * Grpc utility methods.
+ */
+final class GrpcUtil {
+  private GrpcUtil() {
+  }
+
+  public static final String MASTER_GRPC_SERVER_ID = "_MASTER_GRPC_SERVER_"; // should not conflict with executor ids.
 
   public static ManagedChannel buildChannel(final NameResolver nameResolver,
                                             final IdentifierFactory idFactory,

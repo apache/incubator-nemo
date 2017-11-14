@@ -15,7 +15,7 @@ service MasterPartitionService {
 message NewPartitionState {
     required string executorId = 1;
     required string partitionId = 2;
-    required PartitionStateFromExecutor state = 3;
+    required PartitionState state = 3;
     required string location = 4; // The location of the partition (e.g., executor id or remote store).
 }
 
@@ -25,6 +25,6 @@ message PartitionLocationRequest {
 }
 message PartitionLocationResponse {
     required string partitionId = 1;
-    optional PartitionStateFromExecutor state = 2;
+    optional PartitionState state = 2;
     optional string ownerExecutorId = 3;
 }
