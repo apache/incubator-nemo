@@ -23,6 +23,8 @@ import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.MetricCollectionBarrierVertex;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.DataSkewCompositePass;
 import edu.snu.onyx.runtime.common.grpc.Common;
+import edu.snu.onyx.runtime.common.grpc.GrpcServer;
+import edu.snu.onyx.runtime.common.grpc.GrpcUtil;
 import edu.snu.onyx.runtime.common.metric.MetricMessageHandler;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.onyx.runtime.common.state.PartitionState;
@@ -65,7 +67,7 @@ import static edu.snu.onyx.runtime.common.state.TaskGroupState.State.ON_HOLD;
  *    a) Scheduling the job with {@link Scheduler}, {@link SchedulerRunner}, {@link PendingTaskGroupQueue}.
  *    b) Managing resources with {@link ContainerManager}.
  *    c) Managing partitions with {@link PartitionManagerMaster}.
- *    d) Receiving and sending control messages with {@link MessageEnvironment}.
+ *    d) Receiving rpcs with {@link GrpcServer}.
  *    e) Metric using {@link MetricMessageHandler}.
  */
 @DriverSide
@@ -79,7 +81,7 @@ public final class RuntimeMaster {
   private final ContainerManager containerManager;
   private final PartitionManagerMaster partitionManagerMaster;
   private final MetricMessageHandler metricMessageHandler;
-  private final MessageEnvironment masterMessageEnvironment;
+  private final GrpcServer grpcServer;
 
   // For converting json data. This is a thread safe.
   // TODO #420: Create a Singleton ObjectMapper
@@ -94,18 +96,20 @@ public final class RuntimeMaster {
                        final PendingTaskGroupQueue pendingTaskGroupQueue,
                        final ContainerManager containerManager,
                        final PartitionManagerMaster partitionManagerMaster,
+                       final GrpcServer grpcServer,
                        final MetricMessageHandler metricMessageHandler,
-                       final MessageEnvironment masterMessageEnvironment,
                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     this.scheduler = scheduler;
     this.schedulerRunner = schedulerRunner;
     this.pendingTaskGroupQueue = pendingTaskGroupQueue;
     this.containerManager = containerManager;
     this.partitionManagerMaster = partitionManagerMaster;
+    grpcServer.start(GrpcUtil.MASTER_GRPC_SERVER_ID,
+        new MasterSchedulerService(),
+        new PartitionManagerMaster.MasterPartitionService(),
+        new PartitionManagerMaster.MasterRemotePartitionService());
+    this.grpcServer = grpcServer;
     this.metricMessageHandler = metricMessageHandler;
-    this.masterMessageEnvironment = masterMessageEnvironment;
-    this.masterMessageEnvironment
-        .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.dagDirectory = dagDirectory;
     this.irVertices = new HashSet<>();
     this.objectMapper = new ObjectMapper();
@@ -145,7 +149,7 @@ public final class RuntimeMaster {
       schedulerRunner.terminate();
       pendingTaskGroupQueue.close();
       partitionManagerMaster.terminate();
-      masterMessageEnvironment.close();
+      grpcServer.close();
       final Future<Boolean> allExecutorsClosed = containerManager.terminate();
 
       if (allExecutorsClosed.get()) {

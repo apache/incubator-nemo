@@ -19,6 +19,7 @@ import com.google.protobuf.ByteString;
 import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.grpc.Common;
+import edu.snu.onyx.runtime.common.grpc.GrpcServer;
 import edu.snu.onyx.runtime.common.metric.MetricMessageSender;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.onyx.runtime.exception.UnknownFailureCauseException;
@@ -61,18 +62,27 @@ public final class Executor {
 
   private final MasterRPC masterRPC;
 
+  private final GrpcServer grpcServer;
+
   private final MetricMessageSender metricMessageSender;
 
   @Inject
   public Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                   @Parameter(JobConf.ExecutorCapacity.class) final int executorCapacity,
                   final MasterRPC masterRPC,
+                  final GrpcServer grpcServer,
                   final PartitionManagerWorker partitionManagerWorker,
                   final DataTransferFactory dataTransferFactory,
                   final MetricManagerWorker metricMessageSender) {
     this.executorId = executorId;
     this.executorService = Executors.newFixedThreadPool(executorCapacity);
     this.masterRPC = masterRPC;
+    try {
+      grpcServer.start(executorId, new ExecutorSchedulerService());
+      this.grpcServer = grpcServer;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
     this.partitionManagerWorker = partitionManagerWorker;
     this.dataTransferFactory = dataTransferFactory;
     this.metricMessageSender = metricMessageSender;
@@ -128,6 +138,7 @@ public final class Executor {
   }
 
   public void terminate() {
+    grpcServer.close();
     try {
       metricMessageSender.close();
     } catch (final UnknownFailureCauseException e) {
@@ -136,7 +147,7 @@ public final class Executor {
     }
   }
 
-  private class ExecutorSchedulerService extends ExecutorSchedulerServiceGrpc.ExecutorSchedulerServiceImplBase {
+  public class ExecutorSchedulerService extends ExecutorSchedulerServiceGrpc.ExecutorSchedulerServiceImplBase {
     private final Common.Empty empty = Common.Empty.newBuilder().build();
 
     @Override

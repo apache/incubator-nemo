@@ -16,11 +16,7 @@
 package edu.snu.onyx.runtime.master.resource;
 
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.common.message.MessageSender;
 import edu.snu.onyx.runtime.exception.ContainerException;
-import edu.snu.onyx.runtime.executor.MasterRPC;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -49,7 +45,6 @@ public final class ContainerManager {
   private static final Logger LOG = LoggerFactory.getLogger(ContainerManager.class.getName());
 
   private final EvaluatorRequestor evaluatorRequestor;
-  private final MessageEnvironment messageEnvironment;
 
   /**
    * A map containing a latch for the container requests for each resource spec ID.
@@ -77,14 +72,9 @@ public final class ContainerManager {
   private final Map<String, ResourceSpecification> pendingContextIdToResourceSpec;
   private final Map<String, List<ResourceSpecification>> pendingContainerRequestsByContainerType;
 
-  private final MasterRPC masterRPC;
-
   @Inject
-  public ContainerManager(final EvaluatorRequestor evaluatorRequestor,
-                          final MessageEnvironment messageEnvironment) {
+  public ContainerManager(final EvaluatorRequestor evaluatorRequestor) {
     this.evaluatorRequestor = evaluatorRequestor;
-    this.messageEnvironment = messageEnvironment;
-    this.masterRPC = new MasterRPC(messageEnvironment);
     this.executorsByContainerType = new HashMap<>();
     this.executorRepresenterMap = new HashMap<>();
     this.failedExecutorRepresenterMap = new HashMap<>();

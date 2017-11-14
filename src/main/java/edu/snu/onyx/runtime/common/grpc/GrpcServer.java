@@ -1,18 +1,19 @@
 package edu.snu.onyx.runtime.common.grpc;
 
+import io.grpc.BindableService;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import io.grpc.ServerServiceDefinition;
 import org.apache.reef.io.network.naming.NameResolver;
 import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.io.Closeable;
 import java.net.InetSocketAddress;
 
-final class GrpcServer implements Closeable {
+public final class GrpcServer implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(GrpcServer.class);
 
   private static final int NAME_SERVER_REGISTER_RETRY_COUNT = 3;
@@ -21,30 +22,22 @@ final class GrpcServer implements Closeable {
   private final LocalAddressProvider localAddressProvider;
   private final NameResolver nameResolver;
   private final IdentifierFactory idFactory;
-  private final String grpcServerId;
 
   private Server server;
 
-  GrpcServer(final String grpcServerId,
-             final LocalAddressProvider localAddressProvider,
-             final NameResolver nameResolver,
-             final IdentifierFactory idFactory) {
+  @Inject
+  public GrpcServer(final LocalAddressProvider localAddressProvider,
+                    final NameResolver nameResolver,
+                    final IdentifierFactory idFactory) {
     this.localAddressProvider = localAddressProvider;
     this.nameResolver = nameResolver;
     this.idFactory = idFactory;
-    this.grpcServerId = grpcServerId;
   }
 
-  /**
-   * This method starts a {@link Server} with random port, and register the ip address with the grpcServerId
-   * to the name server.
-   *
-   * @throws Exception when any network exception occur during starting procedure
-   */
-  void start(final ServerServiceDefinition... services) throws Exception {
+  public void start(final String grpcServerId, final BindableService... services) throws Exception {
     // 1. Bind to random port.
     final ServerBuilder serverBuilder = ServerBuilder.forPort(0);
-    for (final ServerServiceDefinition service : services) {
+    for (final BindableService service : services) {
       serverBuilder.addService(service);
     }
     this.server = serverBuilder.build();
