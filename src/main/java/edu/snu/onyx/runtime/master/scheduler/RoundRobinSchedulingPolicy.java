@@ -21,6 +21,7 @@ import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.onyx.runtime.exception.SchedulingException;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.resource.ExecutorRepresenter;
+import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -36,12 +37,13 @@ import java.util.stream.Collectors;
 
 /**
  * {@inheritDoc}
- * A Round-Robin implementation used by {@link BatchScheduler}.
+ * A Round-Robin implementation used by {@link BatchSingleJobScheduler}.
  *
  * This policy keeps a list of available {@link ExecutorRepresenter} for each type of container.
  * The RR policy is used for each container type when trying to schedule a task group.
  */
 @ThreadSafe
+@DriverSide
 public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(RoundRobinSchedulingPolicy.class.getName());
 

@@ -16,39 +16,38 @@
 package edu.snu.onyx.runtime.master.scheduler;
 
 import edu.snu.onyx.common.Pair;
-import edu.snu.onyx.runtime.common.metric.MetricMessageHandler;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.runtime.master.JobStateManager;
+import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.List;
 
 /**
- * Receives a job to execute and schedules {@link edu.snu.onyx.runtime.common.plan.physical.TaskGroup} to executors.
+ * Receives jobs to execute and schedules {@link edu.snu.onyx.runtime.common.plan.physical.TaskGroup} to executors.
  */
-@DefaultImplementation(BatchScheduler.class)
+@DriverSide
+@DefaultImplementation(BatchSingleJobScheduler.class)
 public interface Scheduler {
 
   /**
    * Schedules the given job.
    * @param physicalPlan of the job being submitted.
-   * @param metricMessageHandler to manage the metric of the submitted job
-   * @param maxScheduleAttempt the max. number of times a stage can be attempted for execution.
-   * @return the {@link JobStateManager} for the submitted job to keep track of the execution states.
+   * @param jobStateManager to manage the states of the submitted job.
    */
-  JobStateManager scheduleJob(PhysicalPlan physicalPlan,
-                              MetricMessageHandler metricMessageHandler,
-                              int maxScheduleAttempt);
+  void scheduleJob(PhysicalPlan physicalPlan,
+                   JobStateManager jobStateManager);
 
   /**
-   * Receive and update the scheduler with a new physical plan (job).
-   * @param newPhysicalPlan new physical plan submitted to scheduler.
+   * Receives and updates the scheduler with a new physical plan for a job.
+   * @param jobId the ID of the job to change the physical plan.
+   * @param newPhysicalPlan new physical plan for the job.
    * @param taskInfo pair containing the information of the executor id and task group to mark as complete after the
    *                 update.
    */
-  void updateJob(PhysicalPlan newPhysicalPlan, Pair<String, TaskGroup> taskInfo);
+  void updateJob(String jobId, PhysicalPlan newPhysicalPlan, Pair<String, TaskGroup> taskInfo);
 
   /**
    * Called when an executor is added to Runtime, so that the extra resource can be used to execute the job.

@@ -108,10 +108,10 @@ public final class JobStateManager {
                          final PartitionManagerMaster partitionManagerMaster,
                          final MetricMessageHandler metricMessageHandler,
                          final int maxScheduleAttempt) {
+    this.jobId = physicalPlan.getId();
     this.physicalPlan = physicalPlan;
     this.metricMessageHandler = metricMessageHandler;
     this.maxScheduleAttempt = maxScheduleAttempt;
-    this.jobId = physicalPlan.getId();
     this.jobState = new JobState();
     this.idToStageStates = new HashMap<>();
     this.idToTaskGroupStates = new HashMap<>();
@@ -270,9 +270,10 @@ public final class JobStateManager {
   /**
    * Updates the state of a task group.
    * Task group state changes can occur both in master and executor.
-   * State changes that occur in master are initiated in {@link edu.snu.onyx.runtime.master.scheduler.BatchScheduler}.
+   * State changes that occur in master are
+   * initiated in {@link edu.snu.onyx.runtime.master.scheduler.BatchSingleJobScheduler}.
    * State changes that occur in executors are sent to master as a control message,
-   * and the call to this method is initiated in {@link edu.snu.onyx.runtime.master.scheduler.BatchScheduler}
+   * and the call to this method is initiated in {@link edu.snu.onyx.runtime.master.scheduler.BatchSingleJobScheduler}
    * when the message/event is received.
    * A task group completion implies completion of all its tasks.
    * @param taskGroup the task group.
