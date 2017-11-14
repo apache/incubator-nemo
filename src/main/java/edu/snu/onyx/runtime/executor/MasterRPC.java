@@ -1,12 +1,13 @@
 package edu.snu.onyx.runtime.executor;
 
 import edu.snu.onyx.runtime.common.grpc.GrpcClient;
-import edu.snu.onyx.runtime.exception.NodeConnectionException;
+import edu.snu.onyx.runtime.master.grpc.MasterPartitionServiceGrpc;
 import edu.snu.onyx.runtime.master.grpc.MasterRemotePartitionServiceGrpc;
 import edu.snu.onyx.runtime.master.grpc.MasterSchedulerServiceGrpc;
+import io.grpc.stub.StreamObserver;
 
 import javax.inject.Inject;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CompletableFuture;
 
 public final class MasterRPC {
   private final GrpcClient
@@ -24,30 +25,31 @@ public final class MasterRPC {
     futureStub.taskGroupStateChanged()
   }
 
-  public GrpcClient getPartitionBlockingStub() {
+  public MasterPartitionServiceGrpc.MasterPartitionServiceBlockingStub getPartitionBlockingStub() {
   }
 
-  public GrpcClient getPartitionFutureStub() {
+  public MasterPartitionServiceGrpc.MasterPartitionServiceStub getPartitionAsyncStub() {
   }
 
   public MasterRemotePartitionServiceGrpc.MasterRemotePartitionServiceBlockingStub getRemoteBlockBlockingStub() {
   }
 
-
-  synchronized MessageSender<ControlMessage.Message> getMessageSender(final String listenerId) {
-    final MessageSender<ControlMessage.Message> messageSender = messageSenders.get(listenerId);
-    if (messageSender != null) {
-      return messageSender;
-    } else { // Unknown message listener.
-      final MessageSender<ControlMessage.Message> createdMessageSender;
-      try {
-        createdMessageSender = messageEnvironment.<ControlMessage.Message>asyncConnect(
-            MessageEnvironment.MASTER_COMMUNICATION_ID, listenerId).get();
-        messageSenders.put(listenerId, createdMessageSender);
-      } catch (InterruptedException | ExecutionException e) {
-        throw new NodeConnectionException(e);
+  public <ResponseType> StreamObserver<ResponseType> createObserverFromCompletableFuture(
+      final CompletableFuture<ResponseType> completableFuture) {
+    return new StreamObserver<ResponseType>() {
+      @Override
+      public void onNext(final ResponseType responseMessage) {
+        completableFuture.complete(responseMessage);
       }
-      return createdMessageSender;
-    }
+
+      @Override
+      public void onError(final Throwable e) {
+        completableFuture.completeExceptionally(e);
+      }
+
+      @Override
+      public void onCompleted() {
+      }
+    };
   }
 }

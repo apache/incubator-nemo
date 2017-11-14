@@ -18,8 +18,7 @@ package edu.snu.onyx.runtime.executor.data;
 import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
+import edu.snu.onyx.runtime.common.grpc.Common;
 import edu.snu.onyx.runtime.exception.PartitionFetchException;
 import edu.snu.onyx.runtime.exception.PartitionWriteException;
 import edu.snu.onyx.runtime.exception.UnsupportedPartitionStoreException;
@@ -29,6 +28,7 @@ import edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionOutputStrea
 import edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionTransfer;
 import edu.snu.onyx.runtime.executor.data.stores.*;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
+import edu.snu.onyx.runtime.master.grpc.MasterPartition;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -162,32 +162,24 @@ public final class PartitionManagerWorker {
       final String runtimeEdgeId,
       final Class<? extends PartitionStore> partitionStore,
       final HashRange hashRange) {
-    // Let's see if a remote worker has it
     // Ask Master for the location
-    final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = masterRPC
-        .getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.RequestPartitionLocation)
-                .setRequestPartitionLocationMsg(
-                    ControlMessage.RequestPartitionLocationMsg.newBuilder()
-                        .setExecutorId(executorId)
-                        .setPartitionId(partitionId)
-                        .build())
-                .build());
+    final CompletableFuture<MasterPartition.PartitionLocationResponse> responseFuture = new CompletableFuture<>();
+    masterRPC.getPartitionAsyncStub().askPartitionLocation(
+        MasterPartition.PartitionLocationRequest.newBuilder()
+            .setExecutorId(executorId)
+            .setPartitionId(partitionId)
+            .build(),
+        masterRPC.createObserverFromCompletableFuture(responseFuture));
+
     // Using thenCompose so that fetching partition data starts after getting response from master.
-    return responseFromMasterFuture.thenCompose(responseFromMaster -> {
-      assert (responseFromMaster.getType() == ControlMessage.MessageType.PartitionLocationInfo);
-      final ControlMessage.PartitionLocationInfoMsg partitionLocationInfoMsg =
-          responseFromMaster.getPartitionLocationInfoMsg();
-      if (!partitionLocationInfoMsg.hasOwnerExecutorId()) {
+    return responseFuture.thenCompose(response -> {
+      if (!response.hasOwnerExecutorId()) {
         throw new PartitionFetchException(new Throwable(
             "Partition " + partitionId + " not found both in the local storage and the remote storage: The"
-                + "partition state is " + RuntimeMaster.convertPartitionState(partitionLocationInfoMsg.getState())));
+                + "partition state is " + RuntimeMaster.convertPartitionState(response.getState())));
       }
       // This is the executor id that we wanted to know
-      final String remoteWorkerId = partitionLocationInfoMsg.getOwnerExecutorId();
+      final String remoteWorkerId = response.getOwnerExecutorId();
       return partitionTransfer.initiatePull(remoteWorkerId, false, partitionStore, partitionId,
           runtimeEdgeId, hashRange).getCompleteFuture();
     });
@@ -234,27 +226,18 @@ public final class PartitionManagerWorker {
                               final List<Long> blockSizeInfo,
                               final String srcIRVertexId) {
     LOG.info("CommitPartition: {}", partitionId);
-    final PartitionStore store = getPartitionStore(partitionStore);
-    store.commitPartition(partitionId);
-    final ControlMessage.PartitionStateChangedMsg.Builder partitionStateChangedMsgBuilder =
-        ControlMessage.PartitionStateChangedMsg.newBuilder()
+    getPartitionStore(partitionStore).commitPartition(partitionId);
+    final MasterPartition.NewPartitionState.Builder newPartitionState =
+        MasterPartition.NewPartitionState.newBuilder()
             .setExecutorId(executorId)
             .setPartitionId(partitionId)
-            .setState(ControlMessage.PartitionStateFromExecutor.COMMITTED);
-
+            .setState(Common.PartitionStateFromExecutor.COMMITTED);
     if (partitionStore == GlusterFileStore.class) {
-      partitionStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
+      newPartitionState.setLocation(REMOTE_FILE_STORE);
     } else {
-      partitionStateChangedMsgBuilder.setLocation(executorId);
+      newPartitionState.setLocation(executorId);
     }
-
-    masterRPC.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-        .send(ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.PartitionStateChanged)
-            .setPartitionStateChangedMsg(partitionStateChangedMsgBuilder.build())
-            .build());
+    masterRPC.getPartitionBlockingStub().partitionStateChanged(newPartitionState.build());
 
     if (!blockSizeInfo.isEmpty()) {
       // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
@@ -281,30 +264,17 @@ public final class PartitionManagerWorker {
   public void removePartition(final String partitionId,
                               final Class<? extends PartitionStore> partitionStore) {
     LOG.info("RemovePartition: {}", partitionId);
-    final PartitionStore store = getPartitionStore(partitionStore);
-    final boolean exist;
-    exist = store.removePartition(partitionId);
-
-    if (exist) {
-      final ControlMessage.PartitionStateChangedMsg.Builder partitionStateChangedMsgBuilder =
-          ControlMessage.PartitionStateChangedMsg.newBuilder()
-              .setExecutorId(executorId)
-              .setPartitionId(partitionId)
-              .setState(ControlMessage.PartitionStateFromExecutor.REMOVED);
-
+    if (getPartitionStore(partitionStore).removePartition(partitionId)) {
+      final MasterPartition.NewPartitionState.Builder newPartitionState = MasterPartition.NewPartitionState.newBuilder()
+          .setExecutorId(executorId)
+          .setPartitionId(partitionId)
+          .setState(Common.PartitionStateFromExecutor.REMOVED);
       if (GlusterFileStore.class.equals(partitionStore)) {
-        partitionStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
+        newPartitionState.setLocation(REMOTE_FILE_STORE);
       } else {
-        partitionStateChangedMsgBuilder.setLocation(executorId);
+        newPartitionState.setLocation(executorId);
       }
-
-      masterRPC.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-          .send(ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdGenerator.generateMessageId())
-              .setListenerId(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.PartitionStateChanged)
-              .setPartitionStateChangedMsg(partitionStateChangedMsgBuilder)
-              .build());
+      masterRPC.getPartitionBlockingStub().partitionStateChanged(newPartitionState.build());
     } else {
       throw new PartitionFetchException(new Throwable("Cannot find corresponding partition " + partitionId));
     }

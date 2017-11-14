@@ -77,7 +77,6 @@ public final class Executor {
     this.partitionManagerWorker = partitionManagerWorker;
     this.dataTransferFactory = dataTransferFactory;
     this.metricMessageSender = metricMessageSender;
-    messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
   }
 
   public String getExecutorId() {

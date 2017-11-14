@@ -85,28 +85,6 @@ public final class GrpcClient {
     LOG.debug("[REQUEST] request msg.id={}, msg.listenerId={}, msg.type={}",
         message.getId(), message.getListenerId(), message.getType());
 
-    final CompletableFuture<ControlMessage.Message> completableFuture = new CompletableFuture<>();
-    asyncStub.request(message, new StreamObserver<ControlMessage.Message>() {
-      @Override
-      public void onNext(final ControlMessage.Message responseMessage) {
-        LOG.debug("[REQUEST] response msg.id={}, msg.listenerId={}, msg.type={}",
-            responseMessage.getId(), responseMessage.getListenerId(), responseMessage.getType());
-        completableFuture.complete(responseMessage);
-      }
-
-      @Override
-      public void onError(final Throwable e) {
-        LOG.warn("RPC request call failed with msg.id={}, msg.listenerId={}, msg.type={}, e.cause={}, e.message={}",
-            message.getId(), message.getListenerId(), message.getType(), e.getCause(), e.getMessage());
-        completableFuture.completeExceptionally(e);
-      }
-
-      @Override
-      public void onCompleted() {
-        LOG.debug("[REQUEST] completed. msg.id={}, msg.listenerId={}, msg.type={}",
-            message.getId(), message.getListenerId(), message.getType());
-      }
-    });
 
     return completableFuture;
   }

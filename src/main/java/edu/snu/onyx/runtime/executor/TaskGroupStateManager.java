@@ -15,9 +15,6 @@
  */
 package edu.snu.onyx.runtime.executor;
 
-import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.metric.MetricMessageSender;
 import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
@@ -208,42 +205,36 @@ public final class TaskGroupStateManager {
       tasksPutOnHoldList = tasksPutOnHold;
     }
 
-    final ControlMessage.TaskGroupStateChangedMsg.Builder msgBuilder =
-        ControlMessage.TaskGroupStateChangedMsg.newBuilder()
+    final MasterScheduler.NewTaskGroupState.Builder newTaskGroupState =
+        MasterScheduler.NewTaskGroupState.newBuilder()
           .setExecutorId(executorId)
           .setTaskGroupId(taskGroupId)
           .setAttemptIdx(attemptIdx)
           .setState(convertState(newState))
           .addAllTasksPutOnHoldIds(tasksPutOnHoldList.get());
     if (cause.isPresent()) {
-      msgBuilder.setFailureCause(convertFailureCause(cause.get()));
+      newTaskGroupState.setFailureCause(convertFailureCause(cause.get()));
     }
 
     // Send taskGroupStateChangedMsg to master!
-    masterRPC.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.TaskGroupStateChanged)
-            .setTaskGroupStateChangedMsg(msgBuilder.build())
-            .build());
+    masterRPC.getSchedulerBlockingStub().taskGroupStateChanged(newTaskGroupState.build());
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  private ControlMessage.TaskGroupStateFromExecutor convertState(final TaskGroupState state) {
+  private MasterScheduler.TaskGroupStateFromExecutor convertState(final TaskGroupState.State state) {
     switch (state) {
     case READY:
-      return ControlMessage.TaskGroupStateFromExecutor.READY;
+      return MasterScheduler.TaskGroupStateFromExecutor.READY;
     case EXECUTING:
-      return ControlMessage.TaskGroupStateFromExecutor.EXECUTING;
+      return MasterScheduler.TaskGroupStateFromExecutor.EXECUTING;
     case COMPLETE:
-      return ControlMessage.TaskGroupStateFromExecutor.COMPLETE;
+      return MasterScheduler.TaskGroupStateFromExecutor.COMPLETE;
     case FAILED_RECOVERABLE:
-      return ControlMessage.TaskGroupStateFromExecutor.FAILED_RECOVERABLE;
+      return MasterScheduler.TaskGroupStateFromExecutor.FAILED_RECOVERABLE;
     case FAILED_UNRECOVERABLE:
-      return ControlMessage.TaskGroupStateFromExecutor.FAILED_UNRECOVERABLE;
+      return MasterScheduler.TaskGroupStateFromExecutor.FAILED_UNRECOVERABLE;
     case ON_HOLD:
-      return ControlMessage.TaskGroupStateFromExecutor.ON_HOLD;
+      return MasterScheduler.TaskGroupStateFromExecutor.ON_HOLD;
     default:
       throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
     }
