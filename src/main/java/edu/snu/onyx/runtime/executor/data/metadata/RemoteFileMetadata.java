@@ -16,18 +16,15 @@
 package edu.snu.onyx.runtime.executor.data.metadata;
 
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.grpc.Common;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.executor.MasterRPC;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
-import edu.snu.onyx.runtime.master.grpc.MasterRemotePartition;
+import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlock;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -83,8 +80,6 @@ public final class RemoteFileMetadata extends FileMetadata {
         .build();
 
     // Send the block metadata to the metadata server in the master and ask where to store the block.
-    masterRPC.getRemoteBlockFutureStub().re
-
     final CompletableFuture<ControlMessage.Message> reserveBlockResponseFuture =
         masterRPC.getMessageSender(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
             ControlMessage.Message.newBuilder()
@@ -133,7 +128,7 @@ public final class RemoteFileMetadata extends FileMetadata {
 
     // Notify that these blocks are committed to the metadata server.
     masterRPC.getRemoteBlockBlockingStub().commitRemoteBlock(
-        MasterRemotePartition.RemoteBlockCommitRequest.newBuilder()
+        MasterRemoteBlock.RemoteBlockCommitRequest.newBuilder()
             .setPartitionId(partitionId)
             .addAllBlockIdx(blockIndices)
             .build()
@@ -159,7 +154,7 @@ public final class RemoteFileMetadata extends FileMetadata {
   @Override
   public void deleteMetadata() throws IOException {
     masterRPC.getRemoteBlockBlockingStub().removeRemoteBlock(
-        MasterRemotePartition.RemoteBlockRemovalRequest.newBuilder()
+        MasterRemoteBlock.RemoteBlockRemovalRequest.newBuilder()
             .setPartitionId(partitionId)
             .build()
     );
@@ -186,9 +181,9 @@ public final class RemoteFileMetadata extends FileMetadata {
     final List<BlockMetadata> blockMetadataList = new ArrayList<>();
 
     // Ask the metadata server in the master for the metadata
-    final MasterRemotePartition.RemoteBlockMetadataResponse response =
+    final MasterRemoteBlock.RemoteBlockMetadataResponse response =
         masterRPC.getRemoteBlockBlockingStub().askRemoteBlockMetadata(
-            MasterRemotePartition.RemoteBlockMetadataRequest.newBuilder()
+            MasterRemoteBlock.RemoteBlockMetadataRequest.newBuilder()
                 .setExecutorId(executorId)
                 .setPartitionId(partitionId)
                 .build()

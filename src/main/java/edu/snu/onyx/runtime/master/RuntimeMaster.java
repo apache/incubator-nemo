@@ -33,7 +33,6 @@ import edu.snu.onyx.runtime.exception.ContainerException;
 import edu.snu.onyx.runtime.exception.IllegalMessageException;
 import edu.snu.onyx.runtime.exception.UnknownExecutionStateException;
 import edu.snu.onyx.runtime.exception.UnknownFailureCauseException;
-import edu.snu.onyx.runtime.master.grpc.MasterPartition;
 import edu.snu.onyx.runtime.master.grpc.MasterScheduler;
 import edu.snu.onyx.runtime.master.grpc.MasterSchedulerServiceGrpc;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
@@ -107,7 +106,7 @@ public final class RuntimeMaster {
     grpcServer.start(GrpcUtil.MASTER_GRPC_SERVER_ID,
         new MasterSchedulerService(),
         new PartitionManagerMaster.MasterPartitionService(),
-        new PartitionManagerMaster.MasterRemotePartitionService());
+        new PartitionManagerMaster.MasterRemoteBlockService());
     this.grpcServer = grpcServer;
     this.metricMessageHandler = metricMessageHandler;
     this.dagDirectory = dagDirectory;
@@ -255,6 +254,16 @@ public final class RuntimeMaster {
       observer.onNext(empty);
       observer.onCompleted();
     }
+
+    @Override
+    public void executorFailed(final MasterScheduler.FailedExecutor failedExecutor,
+                               final StreamObserver<Common.Empty> observer) {
+      final String failedExecutorId = failedExecutor.getExecutorId();
+      final Exception exception = SerializationUtils.deserialize(failedExecutor.getException().toByteArray());
+      LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
+      containerManager.onExecutorRemoved(failedExecutorId);
+      throw new RuntimeException(exception);
+    }
   }
 
   /**
@@ -265,15 +274,6 @@ public final class RuntimeMaster {
     public void onMessage(final ControlMessage.Message message) {
       try {
         switch (message.getType()) {
-          case TaskGroupStateChanged:
-            break;
-          case ExecutorFailed:
-            final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
-            final String failedExecutorId = executorFailedMsg.getExecutorId();
-            final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
-            LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
-            containerManager.onExecutorRemoved(failedExecutorId);
-            throw new RuntimeException(exception);
           case ContainerFailed:
             final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
             LOG.error(containerFailedMsg.getExecutorId() + " failed");
@@ -295,15 +295,6 @@ public final class RuntimeMaster {
         }
       } catch (final Exception e) {
         throw new RuntimeException(e);
-      }
-    }
-
-    @Override
-    public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
-      switch (message.getType()) {
-      default:
-        throw new IllegalMessageException(
-            new Exception("This message should not be requested to Master :" + message.getType()));
       }
     }
   }
@@ -329,7 +320,7 @@ public final class RuntimeMaster {
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  public static PartitionState.State convertPartitionState(final MasterPartition.NewPartitionState state) {
+  public static PartitionState.State convertPartitionState(final Common.PartitionState state) {
     switch (state) {
     case PARTITION_READY:
       return PartitionState.State.READY;
@@ -349,20 +340,20 @@ public final class RuntimeMaster {
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  public static PartitionStateFromExecutor convertPartitionState(final Common.PartitionStateFromExecutor state) {
+  public static Common.PartitionState convertPartitionState(final PartitionState.State state) {
     switch (state) {
       case READY:
-        return ControlMessage.PartitionStateFromExecutor.PARTITION_READY;
+        return Common.PartitionState.PARTITION_READY;
       case SCHEDULED:
-        return ControlMessage.PartitionStateFromExecutor.SCHEDULED;
+        return Common.PartitionState.SCHEDULED;
       case COMMITTED:
-        return ControlMessage.PartitionStateFromExecutor.COMMITTED;
+        return Common.PartitionState.COMMITTED;
       case LOST_BEFORE_COMMIT:
-        return ControlMessage.PartitionStateFromExecutor.LOST_BEFORE_COMMIT;
+        return Common.PartitionState.LOST_BEFORE_COMMIT;
       case LOST:
-        return ControlMessage.PartitionStateFromExecutor.LOST;
+        return Common.PartitionState.LOST;
       case REMOVED:
-        return ControlMessage.PartitionStateFromExecutor.REMOVED;
+        return Common.PartitionState.REMOVED;
       default:
         throw new UnknownExecutionStateException(new Exception("This PartitionState is unknown: " + state));
     }

@@ -16,10 +16,10 @@
 package edu.snu.onyx.runtime.executor.data.partitiontransfer;
 
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.executor.data.FileArea;
 import edu.snu.onyx.runtime.executor.data.HashRange;
 import edu.snu.onyx.runtime.executor.data.stores.PartitionStore;
+import edu.snu.onyx.runtime.executor.grpc.ExecutorPartition;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import org.slf4j.Logger;
@@ -57,7 +57,7 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
   private final String partitionId;
   private final String runtimeEdgeId;
   private final HashRange hashRange;
-  private ControlMessage.PartitionTransferType transferType;
+  private ExecutorPartition.PartitionTransferType transferType;
   private short transferId;
   private Channel channel;
   private Coder<T> coder;
@@ -108,7 +108,7 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
    * @param id    the transfer id
    * @param ch    the channel
    */
-  void setTransferIdAndChannel(final ControlMessage.PartitionTransferType type, final short id, final Channel ch) {
+  void setTransferIdAndChannel(final ExecutorPartition.PartitionTransferType type, final short id, final Channel ch) {
     this.transferType = type;
     this.transferId = id;
     this.channel = ch;

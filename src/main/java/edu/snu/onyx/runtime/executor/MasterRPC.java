@@ -3,7 +3,7 @@ package edu.snu.onyx.runtime.executor;
 import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.runtime.common.grpc.GrpcUtil;
 import edu.snu.onyx.runtime.master.grpc.MasterPartitionServiceGrpc;
-import edu.snu.onyx.runtime.master.grpc.MasterRemotePartitionServiceGrpc;
+import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlockServiceGrpc;
 import edu.snu.onyx.runtime.master.grpc.MasterSchedulerServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
@@ -48,8 +48,8 @@ public final class MasterRPC implements Closeable {
   }
 
   // RemoteBlock.
-  public MasterRemotePartitionServiceGrpc.MasterRemotePartitionServiceBlockingStub getRemoteBlockBlockingStub() {
-    return MasterRemotePartitionServiceGrpc.newBlockingStub(channelToMaster);
+  public MasterRemoteBlockServiceGrpc.MasterRemoteBlockServiceBlockingStub getRemoteBlockBlockingStub() {
+    return MasterRemoteBlockServiceGrpc.newBlockingStub(channelToMaster);
   }
 
   // Utility methods.

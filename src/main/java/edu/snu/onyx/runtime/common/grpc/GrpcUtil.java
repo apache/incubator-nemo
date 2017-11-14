@@ -11,7 +11,7 @@ import java.net.InetSocketAddress;
 /**
  * Grpc utility methods.
  */
-final class GrpcUtil {
+public final class GrpcUtil {
   private GrpcUtil() {
   }
 

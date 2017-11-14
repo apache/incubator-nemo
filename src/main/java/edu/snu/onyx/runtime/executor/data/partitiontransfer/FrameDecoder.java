@@ -16,7 +16,7 @@
 package edu.snu.onyx.runtime.executor.data.partitiontransfer;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
+import edu.snu.onyx.runtime.executor.grpc.ExecutorPartition;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
@@ -237,8 +237,8 @@ final class FrameDecoder extends ByteToMessageDecoder {
       in.getBytes(in.readerIndex(), bytes, 0, (int) controlBodyBytesToRead);
       offset = 0;
     }
-    final ControlMessage.DataTransferControlMessage controlMessage
-        = ControlMessage.DataTransferControlMessage.PARSER.parseFrom(bytes, offset, (int) controlBodyBytesToRead);
+    final ExecutorPartition.DataTransferControlMessage controlMessage
+        = ExecutorPartition.DataTransferControlMessage.PARSER.parseFrom(bytes, offset, (int) controlBodyBytesToRead);
 
     out.add(controlMessage);
     in.skipBytes((int) controlBodyBytesToRead);
