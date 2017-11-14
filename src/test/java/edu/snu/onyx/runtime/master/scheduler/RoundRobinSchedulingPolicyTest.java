@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.runtime.master;
+package edu.snu.onyx.runtime.master.scheduler;
 
 import edu.snu.onyx.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
@@ -230,7 +230,7 @@ public final class RoundRobinSchedulingPolicyTest {
   }
 
   private ScheduledTaskGroup wrap(final TaskGroup taskGroup) {
-    return new ScheduledTaskGroup(taskGroup, Collections.emptyList(), Collections.emptyList(),
+    return new ScheduledTaskGroup("TestPlan", taskGroup, Collections.emptyList(), Collections.emptyList(),
         MAGIC_SCHEDULE_ATTEMPT_INDEX);
   }
 }

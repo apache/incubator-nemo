@@ -43,6 +43,7 @@ public final class UserApplicationRunner implements Runnable {
   private final String dagDirectory;
   private final String dagString;
   private final String optimizationPolicyCanonicalName;
+  private final int maxScheduleAttempt;
 
   private final RuntimeMaster runtimeMaster;
   private final Backend<PhysicalPlan> backend;
@@ -51,12 +52,14 @@ public final class UserApplicationRunner implements Runnable {
   private UserApplicationRunner(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
                                 @Parameter(JobConf.SerializedDAG.class) final String dagString,
                                 @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy,
+                                @Parameter(JobConf.MaxScheduleAttempt.class) final int maxScheduleAttempt,
                                 final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                                 final DynamicOptimizationEventHandler dynamicOptimizationEventHandler,
                                 final RuntimeMaster runtimeMaster) {
     this.dagDirectory = dagDirectory;
     this.dagString = dagString;
     this.optimizationPolicyCanonicalName = optimizationPolicy;
+    this.maxScheduleAttempt = maxScheduleAttempt;
     this.runtimeMaster = runtimeMaster;
     this.backend = new OnyxBackend();
     pubSubEventHandlerWrapper.getPubSubEventHandler()
@@ -79,7 +82,7 @@ public final class UserApplicationRunner implements Runnable {
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
 
       physicalPlan.getStageDAG().storeJSON(dagDirectory, "plan", "physical execution plan by compiler");
-      runtimeMaster.execute(physicalPlan);
+      runtimeMaster.execute(physicalPlan, maxScheduleAttempt);
       runtimeMaster.terminate();
     } catch (Exception e) {
       throw new RuntimeException(e);
