@@ -146,6 +146,7 @@ public final class RuntimeMaster {
   }
 
   public void terminate() {
+    LOG.info("Terminating RuntimeMaster");
     try {
       scheduler.terminate();
       schedulerRunner.terminate();

@@ -133,7 +133,6 @@ public final class Executor {
   }
 
   public void terminate() {
-    grpcServer.close();
     try {
       metricMessageSender.close();
     } catch (final UnknownFailureCauseException e) {
