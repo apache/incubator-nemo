@@ -282,7 +282,7 @@ public final class PartitionManagerMaster {
     }
   }
 
-  private class MasterPartitionService extends MasterPartitionServiceGrpc.MasterPartitionServiceImplBase {
+  public class MasterPartitionService extends MasterPartitionServiceGrpc.MasterPartitionServiceImplBase {
     private final Common.Empty empty = Common.Empty.newBuilder().build();
 
     @Override
@@ -318,7 +318,7 @@ public final class PartitionManagerMaster {
     }
   }
 
-  private class MasterRemotePartitionService
+  public class MasterRemotePartitionService
       extends MasterRemotePartitionServiceGrpc.MasterRemotePartitionServiceImplBase {
     private final Common.Empty empty = Common.Empty.newBuilder().build();
 

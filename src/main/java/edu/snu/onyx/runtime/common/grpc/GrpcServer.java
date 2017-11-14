@@ -19,7 +19,7 @@ public final class GrpcServer {
   private final LocalAddressProvider localAddressProvider;
   private final NameResolver nameResolver;
   private final IdentifierFactory idFactory;
-  private final String localSenderId;
+  private final String localSenderId; // TODO: executorId
 
   private Server server;
 
@@ -50,11 +50,7 @@ public final class GrpcServer {
     Runtime.getRuntime().addShutdownHook(new Thread(() -> GrpcServer.this.server.shutdown()));
 
     // 3. Register the bounded ip address to name server
-    registerToNameServer(server.getPort());
-  }
-
-  private void registerToNameServer(final int port) throws Exception {
-    final InetSocketAddress socketAddress = new InetSocketAddress(localAddressProvider.getLocalAddress(), port);
+    final InetSocketAddress socketAddress = new InetSocketAddress(localAddressProvider.getLocalAddress(), server.getPort());
     for (int i = 0; i < NAME_SERVER_REGISTER_RETRY_COUNT; i++) {
       try {
         nameResolver.register(idFactory.getNewInstance(localSenderId), socketAddress);

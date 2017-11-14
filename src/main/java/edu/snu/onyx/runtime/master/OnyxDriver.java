@@ -18,9 +18,6 @@ package edu.snu.onyx.runtime.master;
 import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.compiler.ir.IdManager;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.common.message.MessageParameters;
-import edu.snu.onyx.runtime.common.grpc.GrpcEnvironment;
 import edu.snu.onyx.runtime.executor.OnyxContext;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
@@ -178,9 +175,8 @@ public final class OnyxDriver {
         .build();
 
     final Configuration ncsConfiguration =  getExecutorNcsConfiguration();
-    final Configuration messageConfiguration = getExecutorMessageConfiguration(executorId);
 
-    return Configurations.merge(executorConfiguration, contextConfiguration, ncsConfiguration, messageConfiguration);
+    return Configurations.merge(executorConfiguration, contextConfiguration, ncsConfiguration);
   }
 
   private Configuration getExecutorNcsConfiguration() {
@@ -188,13 +184,6 @@ public final class OnyxDriver {
         .bindNamedParameter(NameResolverNameServerPort.class, Integer.toString(nameServer.getPort()))
         .bindNamedParameter(NameResolverNameServerAddr.class, localAddressProvider.getLocalAddress())
         .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-        .build();
-  }
-
-  private Configuration getExecutorMessageConfiguration(final String executorId) {
-    return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MessageEnvironment.class, GrpcEnvironment.class)
-        .bindNamedParameter(MessageParameters.SenderId.class, executorId)
         .build();
   }
 }
