@@ -59,12 +59,15 @@ import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.commons.io.FileUtils;
+import org.apache.reef.io.network.naming.NameResolverConfiguration;
+import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.wake.IdentifierFactory;
+import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -111,12 +114,16 @@ public final class DataTransferTest {
   private static final Tang TANG = Tang.Factory.getTang();
   private static final int HASH_RANGE_MULTIPLIER = 10;
 
+  private Injector grpcInjector;
+
   private PartitionManagerMaster master;
   private PartitionManagerWorker worker1;
   private PartitionManagerWorker worker2;
 
   @Before
   public void setUp() throws InjectionException {
+    getGrpcConfiguration();
+
     final ContainerManager containerManager = mock(ContainerManager.class);
     final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
@@ -149,7 +156,7 @@ public final class DataTransferTest {
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
         .bindNamedParameter(JobConf.ExecutorId.class, executorId)
         .build();
-    final Injector injector = TANG.newInjector(executorConfiguration);
+    final Injector injector = grpcInjector.forkInjector(executorConfiguration);
     injector.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
     injector.bindVolatileInstance(MasterRPC.class, masterRPC);
     injector.bindVolatileParameter(JobConf.FileDirectory.class, TMP_LOCAL_FILE_DIRECTORY);
@@ -172,10 +179,7 @@ public final class DataTransferTest {
 
   private GrpcServer newGrpcServer() {
     try {
-      final Configuration configuration = TANG.newConfigurationBuilder()
-          .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
-          .build();
-     return TANG.newInjector(configuration).getInstance(GrpcServer.class);
+      return grpcInjector.getInstance(GrpcServer.class);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
@@ -183,10 +187,25 @@ public final class DataTransferTest {
 
   private GrpcClient newGrpcClient() {
     try {
+      return grpcInjector.getInstance(GrpcClient.class);
+    } catch (final InjectionException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private void getGrpcConfiguration() {
+    try {
       final Configuration configuration = TANG.newConfigurationBuilder()
           .bindImplementation(IdentifierFactory.class, StringIdentifierFactory.class)
           .build();
-      return TANG.newInjector(configuration).getInstance(GrpcClient.class);
+      final Injector injector = TANG.newInjector(configuration);
+      final LocalAddressProvider localAddressProvider = injector.getInstance(LocalAddressProvider.class);
+      final NameServer nameServer = injector.getInstance(NameServer.class);
+      final Configuration nameClientConfiguration = NameResolverConfiguration.CONF
+          .set(NameResolverConfiguration.NAME_SERVER_HOSTNAME, localAddressProvider.getLocalAddress())
+          .set(NameResolverConfiguration.NAME_SERVICE_PORT, nameServer.getPort())
+          .build();
+      this.grpcInjector = injector.forkInjector(nameClientConfiguration);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }

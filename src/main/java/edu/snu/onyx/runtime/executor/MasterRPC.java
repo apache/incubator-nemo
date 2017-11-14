@@ -2,6 +2,7 @@ package edu.snu.onyx.runtime.executor;
 
 import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.runtime.common.grpc.GrpcClient;
+import edu.snu.onyx.runtime.common.grpc.GrpcServer;
 import edu.snu.onyx.runtime.common.grpc.MasterMetricServiceGrpc;
 import edu.snu.onyx.runtime.master.grpc.MasterPartitionServiceGrpc;
 import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlockServiceGrpc;
@@ -26,7 +27,7 @@ public class MasterRPC implements Closeable {
   public MasterRPC(final GrpcClient grpcClient,
                     @Parameter(JobConf.ExecutorId.class) final String executorId) {
     try {
-      channelToMaster = grpcClient.openChannel(executorId);
+      channelToMaster = grpcClient.openChannel(GrpcServer.MASTER_GRPC_SERVER_ID);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

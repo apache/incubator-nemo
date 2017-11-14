@@ -31,6 +31,8 @@ public class GrpcClient {
     final InetSocketAddress ipAddress = nameResolver.lookup(identifier);
 
     // 2. Connect to the address
-    return ManagedChannelBuilder.forAddress(ipAddress.getHostName(), ipAddress.getPort()).build();
+    return ManagedChannelBuilder.forAddress(ipAddress.getHostName(), ipAddress.getPort())
+        .usePlaintext(true)
+        .build();
   }
 }
