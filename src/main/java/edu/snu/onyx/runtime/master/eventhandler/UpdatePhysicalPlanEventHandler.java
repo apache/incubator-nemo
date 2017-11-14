@@ -50,6 +50,6 @@ public final class UpdatePhysicalPlanEventHandler implements CompilerEventHandle
     final PhysicalPlan newPlan = updatePhysicalPlanEvent.getNewPhysicalPlan();
     final Pair<String, TaskGroup> taskInfo = updatePhysicalPlanEvent.getTaskInfo();
 
-    this.scheduler.updateJob(newPlan, taskInfo);
+    this.scheduler.updateJob(newPlan.getId(), newPlan, taskInfo);
   }
 }

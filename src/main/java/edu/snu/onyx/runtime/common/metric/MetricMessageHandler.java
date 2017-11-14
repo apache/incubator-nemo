@@ -39,4 +39,9 @@ public interface MetricMessageHandler {
    * @return the list of accumulated metric in string (ex. JSON)
    */
   List<String> getMetricByKey(final String metricKey);
+
+  /**
+   * Cleans up and terminates this handler.
+   */
+  void terminate();
 }
