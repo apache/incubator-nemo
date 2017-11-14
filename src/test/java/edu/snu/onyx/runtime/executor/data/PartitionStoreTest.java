@@ -25,6 +25,9 @@ import edu.snu.onyx.runtime.executor.data.stores.*;
 import edu.snu.onyx.runtime.master.PartitionManagerMaster;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
 import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlockServiceGrpc;
+import io.grpc.Server;
+import io.grpc.inprocess.InProcessChannelBuilder;
+import io.grpc.inprocess.InProcessServerBuilder;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.beam.sdk.values.KV;
@@ -253,17 +256,22 @@ public final class PartitionStoreTest {
     final PartitionManagerWorker pmw = mock(PartitionManagerWorker.class);
     when(pmw.getCoder(any())).thenReturn(CODER);
 
+    final String inProcessServerName = "gluster";
+    final Server server = InProcessServerBuilder.forName(inProcessServerName)
+        .addService(partitionManagerMaster.new MasterRemoteBlockService())
+        .build();
+    server.start();
 
-
-    final RemoteFileStore writerSideRemoteFileStore =
-        createGlusterFileStore("writer", pmw);
-    final RemoteFileStore readerSideRemoteFileStore =
-        createGlusterFileStore("reader", pmw);
+    final RemoteFileStore writerSideRemoteFileStore = createGlusterFileStore("writer", pmw);
+    final RemoteFileStore readerSideRemoteFileStore = createGlusterFileStore("reader", pmw);
 
     scatterGather(writerSideRemoteFileStore, readerSideRemoteFileStore);
     concurrentRead(writerSideRemoteFileStore, readerSideRemoteFileStore);
     scatterGatherInHashRange(writerSideRemoteFileStore, readerSideRemoteFileStore);
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
+
+    server.shutdown();
+    server.awaitTermination();
   }
 
   private GlusterFileStore createGlusterFileStore(final String executorId,
@@ -274,10 +282,9 @@ public final class PartitionStoreTest {
     injector.bindVolatileParameter(JobConf.JobId.class, "GFS test");
     injector.bindVolatileParameter(JobConf.ExecutorId.class, executorId);
     injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
-
     final MasterRPC mockedMasterRPC = mock(MasterRPC.class);
     when(mockedMasterRPC.newRemoteBlockBlockingStub())
-        .thenReturn(mock(MasterRemoteBlockServiceGrpc.MasterRemoteBlockServiceBlockingStub.class));
+        .thenReturn(MasterRemoteBlockServiceGrpc.newBlockingStub(InProcessChannelBuilder.forName("gluster").build()));
     injector.bindVolatileInstance(MasterRPC.class, mockedMasterRPC);
     return injector.getInstance(GlusterFileStore.class);
   }
