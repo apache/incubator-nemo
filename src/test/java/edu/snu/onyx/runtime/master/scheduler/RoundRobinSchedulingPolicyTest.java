@@ -16,15 +16,12 @@
 package edu.snu.onyx.runtime.master.scheduler;
 
 import edu.snu.onyx.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageSender;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.onyx.runtime.master.resource.ResourceSpecification;
-import edu.snu.onyx.runtime.master.scheduler.RoundRobinSchedulingPolicy;
-import edu.snu.onyx.runtime.master.scheduler.SchedulingPolicy;
+import io.grpc.ManagedChannel;
 import org.apache.reef.driver.context.ActiveContext;
 import org.junit.Before;
 import org.junit.Test;
@@ -51,7 +48,7 @@ public final class RoundRobinSchedulingPolicyTest {
 
   private SchedulingPolicy schedulingPolicy;
   private ContainerManager containerManager = mock(ContainerManager.class);
-  private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
+  private final ManagedChannel channel = mock(ManagedChannel.class);
 
   // This schedule index will make sure that task group events are not ignored
   private static final int MAGIC_SCHEDULE_ATTEMPT_INDEX = Integer.MAX_VALUE;
@@ -68,13 +65,13 @@ public final class RoundRobinSchedulingPolicyTest {
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 1, 0);
-    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, channel, activeContext);
+    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, channel, activeContext);
+    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, channel, activeContext);
 
     final ResourceSpecification storageSpec = new ResourceSpecification(ExecutorPlacementProperty.TRANSIENT, 1, 0);
-    final ExecutorRepresenter b2 = new ExecutorRepresenter("b2", storageSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter b1 = new ExecutorRepresenter("b1", storageSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter b2 = new ExecutorRepresenter("b2", storageSpec, channel, activeContext);
+    final ExecutorRepresenter b1 = new ExecutorRepresenter("b1", storageSpec, channel, activeContext);
 
     executorRepresenterMap.put(a1.getExecutorId(), a1);
     executorRepresenterMap.put(a2.getExecutorId(), a2);
@@ -226,7 +223,7 @@ public final class RoundRobinSchedulingPolicyTest {
     assertEquals(1, executingTaskGroups.size());
     assertEquals("A4", executingTaskGroups.iterator().next());
 
-    verify(mockMsgSender, times(8)).send(anyObject());
+    verify(channel, times(8)).newCall(anyObject(), anyObject());
   }
 
   private ScheduledTaskGroup wrap(final TaskGroup taskGroup) {

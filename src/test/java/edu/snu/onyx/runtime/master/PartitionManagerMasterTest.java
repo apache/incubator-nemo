@@ -16,13 +16,8 @@
 package edu.snu.onyx.runtime.master;
 
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.common.message.local.LocalMessageDispatcher;
-import edu.snu.onyx.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.onyx.runtime.common.state.PartitionState;
 import edu.snu.onyx.runtime.exception.AbsentPartitionException;
-import org.apache.reef.tang.Injector;
-import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -41,12 +36,7 @@ public final class PartitionManagerMasterTest {
 
   @Before
   public void setUp() throws Exception {
-    final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
-    final LocalMessageEnvironment messageEnvironment =
-        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
-    final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
-    partitionManagerMaster = injector.getInstance(PartitionManagerMaster.class);
+    partitionManagerMaster = new PartitionManagerMaster();
   }
 
   private static void checkPartitionAbsentException(final CompletableFuture<String> future,

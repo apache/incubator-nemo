@@ -19,9 +19,6 @@ import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.compiler.ir.IREdge;
 import edu.snu.onyx.compiler.ir.IRVertex;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.common.message.local.LocalMessageDispatcher;
-import edu.snu.onyx.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.onyx.runtime.common.metric.MetricMessageHandler;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlanGenerator;
@@ -30,7 +27,6 @@ import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.onyx.runtime.common.state.JobState;
 import edu.snu.onyx.runtime.master.PartitionManagerMaster;
 import edu.snu.onyx.runtime.master.JobStateManager;
-import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -71,15 +67,9 @@ public class ClientEndpointTest {
         Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
-    final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
-    final LocalMessageEnvironment messageEnvironment =
-        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
-    final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
-    final PartitionManagerMaster pmm = injector.getInstance(PartitionManagerMaster.class);
     final JobStateManager jobStateManager = new JobStateManager(
         new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
-        pmm, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+        new PartitionManagerMaster(), metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 
     final DriverEndpoint driverEndpoint = new DriverEndpoint(jobStateManager, clientEndpoint);
 

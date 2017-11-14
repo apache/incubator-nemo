@@ -66,7 +66,6 @@ public final class PartitionStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
   private PartitionManagerMaster partitionManagerMaster;
-  private LocalMessageDispatcher messageDispatcher;
   // Variables for scatter and gather test
   private static final int NUM_WRITE_TASKS = 3;
   private static final int NUM_READ_TASKS = 3;
@@ -93,12 +92,7 @@ public final class PartitionStoreTest {
    */
   @Before
   public void setUp() throws Exception {
-    messageDispatcher = new LocalMessageDispatcher();
-    final LocalMessageEnvironment messageEnvironment =
-        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
-    final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
-    partitionManagerMaster = injector.getInstance(PartitionManagerMaster.class);
+    partitionManagerMaster = new PartitionManagerMaster();
 
     // Following part is for for the scatter and gather test.
     final List<String> writeTaskIdList = new ArrayList<>(NUM_WRITE_TASKS);

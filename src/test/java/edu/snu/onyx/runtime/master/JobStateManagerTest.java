@@ -24,9 +24,6 @@ import edu.snu.onyx.compiler.ir.Transform;
 import edu.snu.onyx.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.onyx.compiler.optimizer.Optimizer;
 import edu.snu.onyx.compiler.optimizer.TestPolicy;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.common.message.local.LocalMessageDispatcher;
-import edu.snu.onyx.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.onyx.runtime.common.metric.MetricMessageHandler;
 import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.JobState;
@@ -35,7 +32,6 @@ import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
-import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
@@ -67,12 +63,7 @@ public final class JobStateManagerTest {
   @Before
   public void setUp() throws InjectionException {
     irDAGBuilder = new DAGBuilder<>();
-    final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
-    final LocalMessageEnvironment messageEnvironment =
-        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
-    final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
-    partitionManagerMaster = injector.getInstance(PartitionManagerMaster.class);
+    partitionManagerMaster = new PartitionManagerMaster();
     metricMessageHandler = mock(MetricMessageHandler.class);
   }
 

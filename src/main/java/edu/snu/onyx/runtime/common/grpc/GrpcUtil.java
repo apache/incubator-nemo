@@ -12,14 +12,14 @@ import java.net.InetSocketAddress;
  * Grpc utility methods.
  */
 public final class GrpcUtil {
-  private GrpcUtil() {
+  public GrpcUtil() {
   }
 
   public static final String MASTER_GRPC_SERVER_ID = "_MASTER_GRPC_SERVER_"; // should not conflict with executor ids.
 
-  public static ManagedChannel buildChannel(final NameResolver nameResolver,
-                                            final IdentifierFactory idFactory,
-                                            final String grpcServerId) throws Exception {
+  public ManagedChannel buildChannel(final NameResolver nameResolver,
+                                     final IdentifierFactory idFactory,
+                                     final String grpcServerId) throws Exception {
     // 1. Look-up destination ip address using receiver id
     final Identifier identifier = idFactory.getNewInstance(grpcServerId);
     final InetSocketAddress ipAddress = nameResolver.lookup(identifier);

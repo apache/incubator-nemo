@@ -61,7 +61,7 @@ public final class PartitionManagerMaster {
   private final ReadWriteLock lock;
 
   @Inject
-  private PartitionManagerMaster() {
+  public PartitionManagerMaster() {
     this.partitionIdToMetadata = new HashMap<>();
     this.producerTaskGroupIdToPartitionIds = new HashMap<>();
     this.lock = new ReentrantReadWriteLock();

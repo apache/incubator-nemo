@@ -29,8 +29,6 @@ import edu.snu.onyx.compiler.optimizer.Optimizer;
 import edu.snu.onyx.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.onyx.compiler.optimizer.TestPolicy;
 import edu.snu.onyx.runtime.RuntimeTestUtil;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageSender;
 import edu.snu.onyx.runtime.common.metric.MetricMessageHandler;
 import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.StageState;
@@ -43,6 +41,7 @@ import edu.snu.onyx.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.onyx.runtime.master.resource.ResourceSpecification;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
+import io.grpc.ManagedChannel;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -79,7 +78,7 @@ public final class BatchSingleJobSchedulerTest {
   private PubSubEventHandlerWrapper pubSubEventHandler;
   private UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler;
   private PartitionManagerMaster partitionManagerMaster = mock(PartitionManagerMaster.class);
-  private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
+  private final ManagedChannel channel = mock(ManagedChannel.class);
   private PhysicalPlanGenerator physicalPlanGenerator;
 
   private static final int TEST_TIMEOUT_MS = 500;
@@ -111,13 +110,13 @@ public final class BatchSingleJobSchedulerTest {
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 1, 0);
-    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, channel, activeContext);
+    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, channel, activeContext);
+    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, channel, activeContext);
 
     final ResourceSpecification storageSpec = new ResourceSpecification(ExecutorPlacementProperty.TRANSIENT, 1, 0);
-    final ExecutorRepresenter b2 = new ExecutorRepresenter("b2", storageSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter b1 = new ExecutorRepresenter("b1", storageSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter b2 = new ExecutorRepresenter("b2", storageSpec, channel, activeContext);
+    final ExecutorRepresenter b1 = new ExecutorRepresenter("b1", storageSpec, channel, activeContext);
 
     executorRepresenterMap.put(a1.getExecutorId(), a1);
     executorRepresenterMap.put(a2.getExecutorId(), a2);
