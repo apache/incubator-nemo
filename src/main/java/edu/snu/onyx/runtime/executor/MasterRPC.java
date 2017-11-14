@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
  * Helps making RPCs to the master.
  */
 @ThreadSafe
-public final class MasterRPC implements Closeable {
+public class MasterRPC implements Closeable {
   private final ManagedChannel channelToMaster; // thread-safe
 
   @Inject

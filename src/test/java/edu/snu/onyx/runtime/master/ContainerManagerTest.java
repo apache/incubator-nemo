@@ -19,15 +19,18 @@ import edu.snu.onyx.compiler.ir.executionproperty.vertex.ExecutorPlacementProper
 import edu.snu.onyx.runtime.common.grpc.GrpcClient;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.resource.ResourceSpecification;
+import io.grpc.ManagedChannel;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.concurrent.*;
 
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -43,7 +46,13 @@ public final class ContainerManagerTest {
 
   @Before
   public void setUp() {
-    containerManager = new ContainerManager(mock(EvaluatorRequestor.class), mock(GrpcClient.class));
+    final GrpcClient mockedGrpcClient = mock(GrpcClient.class);
+    try {
+      Mockito.doReturn(mock(ManagedChannel.class)).when(mockedGrpcClient).openChannel(any());
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    containerManager = new ContainerManager(mock(EvaluatorRequestor.class), mockedGrpcClient);
   }
 
   @Test(timeout=5000)

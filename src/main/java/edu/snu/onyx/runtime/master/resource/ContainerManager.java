@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
 // TODO #60: Specify Types in Requesting Containers
 // We need an overall cleanup of this class after #60 is resolved.
 @DriverSide
-public final class ContainerManager {
+public class ContainerManager {
   private static final Logger LOG = LoggerFactory.getLogger(ContainerManager.class.getName());
 
   private final EvaluatorRequestor evaluatorRequestor;

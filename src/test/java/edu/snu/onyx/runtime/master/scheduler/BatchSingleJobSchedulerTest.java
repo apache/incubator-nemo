@@ -41,10 +41,11 @@ import edu.snu.onyx.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.onyx.runtime.master.resource.ResourceSpecification;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
-import io.grpc.ManagedChannel;
+import io.grpc.Server;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -54,6 +55,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.*;
 
 import static org.junit.Assert.assertTrue;
@@ -78,8 +80,8 @@ public final class BatchSingleJobSchedulerTest {
   private PubSubEventHandlerWrapper pubSubEventHandler;
   private UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler;
   private PartitionManagerMaster partitionManagerMaster = mock(PartitionManagerMaster.class);
-  private final ManagedChannel channel = mock(ManagedChannel.class);
   private PhysicalPlanGenerator physicalPlanGenerator;
+  private Server inProcessServer;
 
   private static final int TEST_TIMEOUT_MS = 500;
 
@@ -109,14 +111,27 @@ public final class BatchSingleJobSchedulerTest {
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
-    final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 1, 0);
-    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, channel, activeContext);
-    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, channel, activeContext);
-    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, channel, activeContext);
+    final InProcessGrpc inProcessGrpc = new InProcessGrpc("RoundRobinSchedulingPolicyTest");
+    try {
+      inProcessServer = inProcessGrpc.getInProcessExecutorSchedulerServer().start();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
 
-    final ResourceSpecification storageSpec = new ResourceSpecification(ExecutorPlacementProperty.TRANSIENT, 1, 0);
-    final ExecutorRepresenter b2 = new ExecutorRepresenter("b2", storageSpec, channel, activeContext);
-    final ExecutorRepresenter b1 = new ExecutorRepresenter("b1", storageSpec, channel, activeContext);
+    final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 1, 0);
+    final ExecutorRepresenter a3 =
+        new ExecutorRepresenter("a3", computeSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler(), activeContext);
+    final ExecutorRepresenter a2 =
+        new ExecutorRepresenter("a2", computeSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler(), activeContext);
+    final ExecutorRepresenter a1 =
+        new ExecutorRepresenter("a1", computeSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler(), activeContext);
+
+    final ResourceSpecification storageSpec =
+        new ResourceSpecification(ExecutorPlacementProperty.TRANSIENT, 1, 0);
+    final ExecutorRepresenter b2 =
+        new ExecutorRepresenter("b2", storageSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler(), activeContext);
+    final ExecutorRepresenter b1 =
+        new ExecutorRepresenter("b1", storageSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler(), activeContext);
 
     executorRepresenterMap.put(a1.getExecutorId(), a1);
     executorRepresenterMap.put(a2.getExecutorId(), a2);
@@ -134,6 +149,16 @@ public final class BatchSingleJobSchedulerTest {
     scheduler.onExecutorAdded(b2.getExecutorId());
 
     physicalPlanGenerator = Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
+  }
+
+  @After
+  public void cleanUp() {
+    inProcessServer.shutdown();
+    try {
+      inProcessServer.awaitTermination();
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**

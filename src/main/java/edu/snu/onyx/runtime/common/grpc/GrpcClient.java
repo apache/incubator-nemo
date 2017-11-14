@@ -14,7 +14,7 @@ import java.net.InetSocketAddress;
  * Grpc client.
  */
 @ThreadSafe
-public final class GrpcClient {
+public class GrpcClient {
   private final NameResolver nameResolver;
   private final IdentifierFactory idFactory;
 
