@@ -220,7 +220,7 @@ public final class SingleTaskGroupQueueTest {
 
         // Schedule the children TaskGroups.
         dagOf2Stages.get(1).getTaskGroupList().forEach(taskGroup ->
-            pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup("TestPlan", taskGroup, null, null, 0)));
+          pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup("TestPlan", taskGroup, null, null, 0)));
       } catch (Exception e) {
         e.printStackTrace();
       } finally {

@@ -454,9 +454,13 @@ public final class JobStateManager {
    */
   private void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {
     final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(compUnitId);
-    metricDataBuilder.endMeasurement(finalMetric);
-    metricMessageHandler.onMetricMessageReceived(compUnitId, metricDataBuilder.build().toJson());
-    metricDataBuilderMap.remove(compUnitId);
+
+    // may be null when a TaskGroup fails without entering the executing state (due to an input read failure)
+    if (metricDataBuilder != null) {
+      metricDataBuilder.endMeasurement(finalMetric);
+      metricMessageHandler.onMetricMessageReceived(compUnitId, metricDataBuilder.build().toJson());
+      metricDataBuilderMap.remove(compUnitId);
+    }
   }
 
   /**
