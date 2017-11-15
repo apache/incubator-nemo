@@ -136,25 +136,17 @@ public final class BatchSingleJobScheduler implements Scheduler {
                                       final List<String> tasksPutOnHold,
                                       final TaskGroupState.RecoverableFailureCause failureCause) {
     final TaskGroup taskGroup = getTaskGroupById(taskGroupId);
-    jobStateManager.onTaskGroupStateChanged(taskGroup, newState);
 
     switch (newState) {
     case COMPLETE:
+      jobStateManager.onTaskGroupStateChanged(taskGroup, newState);
       onTaskGroupExecutionComplete(executorId, taskGroup);
       break;
     case FAILED_RECOVERABLE:
-      final int attemptIndexForStage =
-          jobStateManager.getAttemptCountForStage(getTaskGroupById(taskGroupId).getStageId());
-      if (attemptIdx == attemptIndexForStage || attemptIdx == SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE) {
-        onTaskGroupExecutionFailedRecoverable(executorId, taskGroup, failureCause);
-      } else if (attemptIdx < attemptIndexForStage) {
-        // if attemptIdx < attemptIndexForStage, we can ignore this late arriving message.
-        LOG.info("{} state change to failed_recoverable arrived late, we will ignore this.", taskGroupId);
-      } else {
-        throw new SchedulingException(new Throwable("AttemptIdx for a task group cannot be greater than its stage"));
-      }
+      onTaskGroupExecutionFailedRecoverable(executorId, taskGroup, attemptIdx, newState, failureCause);
       break;
     case ON_HOLD:
+      jobStateManager.onTaskGroupStateChanged(taskGroup, newState);
       onTaskGroupExecutionOnHold(executorId, taskGroup, tasksPutOnHold);
       break;
     case FAILED_UNRECOVERABLE:
@@ -239,40 +231,57 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   private void onTaskGroupExecutionFailedRecoverable(final String executorId, final TaskGroup taskGroup,
+                                                     final int attemptIdx, final TaskGroupState.State newState,
                                                      final TaskGroupState.RecoverableFailureCause failureCause) {
     LOG.info("{} failed in {} by {}", new Object[]{taskGroup.getTaskGroupId(), executorId, failureCause});
     schedulingPolicy.onTaskGroupExecutionFailed(executorId, taskGroup.getTaskGroupId());
 
+    final String taskGroupId = taskGroup.getTaskGroupId();
+    final int attemptIndexForStage =
+        jobStateManager.getAttemptCountForStage(getTaskGroupById(taskGroupId).getStageId());
+
     switch (failureCause) {
     // Previous task group must be re-executed, and incomplete task groups of the belonging stage must be rescheduled.
     case INPUT_READ_FAILURE:
-      LOG.info("All task groups of {} will be made failed_recoverable.", taskGroup.getStageId());
-      for (final PhysicalStage stage : physicalPlan.getStageDAG().getTopologicalSort()) {
-        if (stage.getId().equals(taskGroup.getStageId())) {
-          LOG.info("Removing TaskGroups for {} before they are scheduled to an executor", stage.getId());
-          pendingTaskGroupQueue.removeTaskGroupsAndDescendants(stage.getId());
-          stage.getTaskGroupList().forEach(tg -> {
-            if (jobStateManager.getTaskGroupState(tg.getTaskGroupId()).getStateMachine().getCurrentState()
-                != TaskGroupState.State.COMPLETE) {
-              jobStateManager.onTaskGroupStateChanged(tg, TaskGroupState.State.FAILED_RECOVERABLE);
-              partitionManagerMaster.onProducerTaskGroupFailed(tg.getTaskGroupId());
-            }
-          });
-          break;
+      if (attemptIdx == attemptIndexForStage) {
+        jobStateManager.onTaskGroupStateChanged(taskGroup, newState);
+        LOG.info("All task groups of {} will be made failed_recoverable.", taskGroup.getStageId());
+        for (final PhysicalStage stage : physicalPlan.getStageDAG().getTopologicalSort()) {
+          if (stage.getId().equals(taskGroup.getStageId())) {
+            LOG.info("Removing TaskGroups for {} before they are scheduled to an executor", stage.getId());
+            pendingTaskGroupQueue.removeTaskGroupsAndDescendants(stage.getId());
+            stage.getTaskGroupList().forEach(tg -> {
+              if (jobStateManager.getTaskGroupState(tg.getTaskGroupId()).getStateMachine().getCurrentState()
+                  != TaskGroupState.State.COMPLETE) {
+                jobStateManager.onTaskGroupStateChanged(tg, TaskGroupState.State.FAILED_RECOVERABLE);
+                partitionManagerMaster.onProducerTaskGroupFailed(tg.getTaskGroupId());
+              }
+            });
+            break;
+          }
         }
+        // the stage this task group belongs to has become failed recoverable.
+        // it is a good point to start searching for another stage to schedule.
+        scheduleNextStage(taskGroup.getStageId());
+      } else if (attemptIdx < attemptIndexForStage) {
+        // if attemptIdx < attemptIndexForStage, we can ignore this late arriving message.
+        LOG.info("{} state change to failed_recoverable arrived late, we will ignore this.", taskGroupId);
+      } else {
+        throw new SchedulingException(new Throwable("AttemptIdx for a task group cannot be greater than its stage"));
       }
-      // the stage this task group belongs to has become failed recoverable.
-      // it is a good point to start searching for another stage to schedule.
-      scheduleNextStage(taskGroup.getStageId());
       break;
     // The task group executed successfully but there is something wrong with the output store.
     case OUTPUT_WRITE_FAILURE:
+      jobStateManager.onTaskGroupStateChanged(taskGroup, newState);
+      LOG.info("Only the failed task group will be retried.");
+
       // the stage this task group belongs to has become failed recoverable.
       // it is a good point to start searching for another stage to schedule.
       partitionManagerMaster.onProducerTaskGroupFailed(taskGroup.getTaskGroupId());
       scheduleNextStage(taskGroup.getStageId());
       break;
     case CONTAINER_FAILURE:
+      jobStateManager.onTaskGroupStateChanged(taskGroup, newState);
       LOG.info("Only the failed task group will be retried.");
       break;
     default:

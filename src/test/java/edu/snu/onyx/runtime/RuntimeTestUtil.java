@@ -15,6 +15,7 @@
  */
 package edu.snu.onyx.runtime;
 
+import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
@@ -122,6 +123,22 @@ public final class RuntimeTestUtil {
 
     scheduler.onTaskGroupStateChanged(scheduledExecutor.getExecutorId(), taskGroupId,
         newState, attemptIdx, Collections.emptyList(), cause);
+  }
+
+  public static void mockSchedulerRunner(final PendingTaskGroupQueue pendingTaskGroupQueue,
+                                         final SchedulingPolicy schedulingPolicy,
+                                         final boolean isPartialSchedule) {
+    while (!pendingTaskGroupQueue.isEmpty()) {
+      final ScheduledTaskGroup taskGroupToSchedule = pendingTaskGroupQueue.dequeue().get();
+
+      final String executorId = schedulingPolicy.attemptSchedule(taskGroupToSchedule).get();
+      schedulingPolicy.onTaskGroupScheduled(executorId, taskGroupToSchedule);
+
+      // Schedule only the first task group.
+      if (isPartialSchedule) {
+        break;
+      }
+    }
   }
 
   /**
