@@ -32,6 +32,7 @@ import edu.snu.onyx.runtime.RuntimeTestUtil;
 import edu.snu.onyx.runtime.common.metric.MetricMessageHandler;
 import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.StageState;
+import edu.snu.onyx.runtime.executor.Executor;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
 import edu.snu.onyx.runtime.master.JobStateManager;
 import edu.snu.onyx.runtime.master.PartitionManagerMaster;
@@ -66,8 +67,8 @@ import static org.mockito.Mockito.when;
  * Tests {@link BatchSingleJobScheduler}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ContainerManager.class, PartitionManagerMaster.class,
-    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
+@PrepareForTest({ContainerManager.class, PartitionManagerMaster.class, PubSubEventHandlerWrapper.class,
+    UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class, Executor.ExecutorSchedulerMessageService.class})
 public final class BatchSingleJobSchedulerTest {
   private static final Logger LOG = LoggerFactory.getLogger(BatchSingleJobSchedulerTest.class.getName());
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;

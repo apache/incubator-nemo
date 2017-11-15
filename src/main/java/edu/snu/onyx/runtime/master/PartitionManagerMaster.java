@@ -290,12 +290,14 @@ public final class PartitionManagerMaster {
    */
   public final class MasterPartitionMessageService
       extends MasterPartitionMessageServiceGrpc.MasterPartitionMessageServiceImplBase {
+
     @Override
     public void partitionStateChanged(final MasterPartitionMessage.NewPartitionState newState,
                                       final StreamObserver<CommonMessage.Empty> observer) {
       onPartitionStateChanged(newState.getPartitionId(),
           convertPartitionState(newState.getState()),
           newState.getLocation());
+      observer.onNext(CommonMessage.Empty.newBuilder().build());
       observer.onCompleted();
     }
 
@@ -378,6 +380,7 @@ public final class PartitionManagerMaster {
       } finally {
         readLock.unlock();
       }
+      observer.onNext(CommonMessage.Empty.newBuilder().build());
       observer.onCompleted();
     }
 
@@ -398,6 +401,7 @@ public final class PartitionManagerMaster {
       } finally {
         readLock.unlock();
       }
+      observer.onNext(CommonMessage.Empty.newBuilder().build());
       observer.onCompleted();
     }
 

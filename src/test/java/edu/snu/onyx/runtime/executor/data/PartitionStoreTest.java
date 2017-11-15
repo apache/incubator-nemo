@@ -63,7 +63,7 @@ import static org.mockito.Mockito.when;
  * Tests write and read for {@link PartitionStore}s.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({PartitionManagerWorker.class, PartitionManagerMaster.class, RuntimeMaster.class})
+@PrepareForTest({PartitionManagerWorker.class, PartitionManagerMaster.class, RuntimeMaster.class, RpcToMaster.class})
 public final class PartitionStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));

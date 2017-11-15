@@ -25,7 +25,10 @@ import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mockito;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.concurrent.*;
 
@@ -37,6 +40,8 @@ import static org.mockito.Mockito.when;
 /**
  * Tests {@link edu.snu.onyx.runtime.master.resource.ContainerManager}.
  */
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(GrpcClient.class)
 public final class ContainerManagerTest {
   private ContainerManager containerManager;
   private int testIdNumber = 0;

@@ -20,7 +20,7 @@ import java.util.concurrent.CompletableFuture;
  */
 @ThreadSafe
 @EvaluatorSide
-public class RpcToMaster implements Closeable {
+public final class RpcToMaster implements Closeable {
   private final ManagedChannel channelToMaster; // thread-safe
 
   @Inject

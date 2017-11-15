@@ -95,7 +95,8 @@ import static org.mockito.Mockito.mock;
  * to run the test with leakage reports for netty {@link io.netty.util.ReferenceCounted} objects.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
+@PrepareForTest({PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class,
+    ContainerManager.class})
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final int EXECUTOR_CAPACITY = 1;

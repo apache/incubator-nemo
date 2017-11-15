@@ -144,7 +144,7 @@ public final class Executor {
   /**
    * Grpc executor scheduler service.
    */
-  public class ExecutorSchedulerMessageService
+  public final class ExecutorSchedulerMessageService
       extends ExecutorSchedulerMessageServiceGrpc.ExecutorSchedulerMessageServiceImplBase {
     @Override
     public void executeTaskGroup(final ExecutorSchedulerMessage.TaskGroupExecutionRequest request,
@@ -152,6 +152,7 @@ public final class Executor {
       final ScheduledTaskGroup scheduledTaskGroup =
           SerializationUtils.deserialize(request.getTaskGroup().toByteArray());
       onTaskGroupReceived(scheduledTaskGroup);
+      observer.onNext(CommonMessage.Empty.newBuilder().build());
       observer.onCompleted();
     }
   }

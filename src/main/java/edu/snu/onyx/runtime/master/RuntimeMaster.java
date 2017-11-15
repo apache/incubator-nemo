@@ -255,6 +255,7 @@ public final class RuntimeMaster {
           newState.getAttemptIdx(),
           newState.getTasksPutOnHoldIdsList(),
           convertFailureCause(newState.getFailureCause()));
+      observer.onNext(CommonMessage.Empty.newBuilder().build());
       observer.onCompleted();
     }
 
@@ -265,6 +266,7 @@ public final class RuntimeMaster {
       final Exception exception = SerializationUtils.deserialize(failedExecutor.getException().toByteArray());
       LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
       containerManager.onExecutorRemoved(failedExecutorId);
+      observer.onNext(CommonMessage.Empty.newBuilder().build());
       observer.onCompleted();
       throw new RuntimeException(exception);
     }
@@ -280,6 +282,7 @@ public final class RuntimeMaster {
                                      final StreamObserver<CommonMessage.Empty> observer) {
       // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
       accumulateBarrierMetric(metric.getBlockSizeInfoList(), metric.getSrcIRVertexId(), metric.getPartitionId());
+      observer.onNext(CommonMessage.Empty.newBuilder().build());
       observer.onCompleted();
     }
 
@@ -288,6 +291,7 @@ public final class RuntimeMaster {
                               final StreamObserver<CommonMessage.Empty> observer) {
       metricList.getMetricList().forEach(metric ->
           metricMessageHandler.onMetricMessageReceived(metric.getMetricKey(), metric.getMetricValue()));
+      observer.onNext(CommonMessage.Empty.newBuilder().build());
       observer.onCompleted();
     }
   }

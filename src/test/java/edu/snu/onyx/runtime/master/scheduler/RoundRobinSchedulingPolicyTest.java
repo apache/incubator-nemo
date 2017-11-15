@@ -18,6 +18,7 @@ package edu.snu.onyx.runtime.master.scheduler;
 import edu.snu.onyx.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
+import edu.snu.onyx.runtime.executor.Executor;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.onyx.runtime.master.resource.ResourceSpecification;
@@ -43,7 +44,7 @@ import static org.mockito.Mockito.*;
  * Tests {@link RoundRobinSchedulingPolicy}
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(ContainerManager.class)
+@PrepareForTest({ContainerManager.class, Executor.ExecutorSchedulerMessageService.class})
 public final class RoundRobinSchedulingPolicyTest {
   private static final int TIMEOUT_MS = 1000;
   private SchedulingPolicy schedulingPolicy;
