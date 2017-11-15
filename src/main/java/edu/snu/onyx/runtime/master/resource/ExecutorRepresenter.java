@@ -17,8 +17,8 @@ package edu.snu.onyx.runtime.master.resource;
 
 import com.google.protobuf.ByteString;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
-import edu.snu.onyx.runtime.executor.grpc.ExecutorScheduler;
-import edu.snu.onyx.runtime.executor.grpc.ExecutorSchedulerServiceGrpc;
+import edu.snu.onyx.runtime.executor.grpc.ExecutorSchedulerMessage;
+import edu.snu.onyx.runtime.executor.grpc.ExecutorSchedulerMessageServiceGrpc;
 import io.grpc.ManagedChannel;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
@@ -65,8 +65,8 @@ public final class ExecutorRepresenter {
   public void onTaskGroupScheduled(final ScheduledTaskGroup scheduledTaskGroup) {
     runningTaskGroups.add(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
     failedTaskGroups.remove(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
-    ExecutorSchedulerServiceGrpc.newBlockingStub(channelToExecutor).executeTaskGroup(
-        ExecutorScheduler.TaskGroupExecutionRequest.newBuilder()
+    ExecutorSchedulerMessageServiceGrpc.newBlockingStub(channelToExecutor).executeTaskGroup(
+        ExecutorSchedulerMessage.TaskGroupExecutionRequest.newBuilder()
             .setTaskGroup(ByteString.copyFrom(SerializationUtils.serialize(scheduledTaskGroup)))
             .build()
     );

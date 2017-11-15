@@ -17,7 +17,7 @@ package edu.snu.onyx.runtime.master;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.onyx.common.Pair;
-import edu.snu.onyx.runtime.common.grpc.Common;
+import edu.snu.onyx.runtime.common.grpc.CommonMessage;
 import edu.snu.onyx.runtime.common.state.PartitionState;
 import edu.snu.onyx.runtime.exception.AbsentPartitionException;
 
@@ -30,10 +30,10 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import edu.snu.onyx.runtime.master.grpc.MasterPartition;
-import edu.snu.onyx.runtime.master.grpc.MasterPartitionServiceGrpc;
-import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlock;
-import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlockServiceGrpc;
+import edu.snu.onyx.runtime.master.grpc.MasterPartitionMessage;
+import edu.snu.onyx.runtime.master.grpc.MasterPartitionMessageServiceGrpc;
+import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlockMessage;
+import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlockMessageServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
@@ -288,12 +288,13 @@ public final class PartitionManagerMaster {
   /**
    * Grpc master partition service.
    */
-  public final class MasterPartitionService extends MasterPartitionServiceGrpc.MasterPartitionServiceImplBase {
-    private final Common.Empty empty = Common.Empty.newBuilder().build();
+  public final class MasterPartitionMessageService
+      extends MasterPartitionMessageServiceGrpc.MasterPartitionMessageServiceImplBase {
+    private final CommonMessage.Empty empty = CommonMessage.Empty.newBuilder().build();
 
     @Override
-    public void partitionStateChanged(final MasterPartition.NewPartitionState newState,
-                                      final StreamObserver<Common.Empty> observer) {
+    public void partitionStateChanged(final MasterPartitionMessage.NewPartitionState newState,
+                                      final StreamObserver<CommonMessage.Empty> observer) {
       onPartitionStateChanged(newState.getPartitionId(),
           convertPartitionState(newState.getState()),
           newState.getLocation());
@@ -302,15 +303,15 @@ public final class PartitionManagerMaster {
     }
 
     @Override
-    public void askPartitionLocation(final MasterPartition.PartitionLocationRequest request,
-                                     final StreamObserver<MasterPartition.PartitionLocationResponse> observer) {
+    public void askPartitionLocation(final MasterPartitionMessage.PartitionLocationRequest request,
+                                     final StreamObserver<MasterPartitionMessage.PartitionLocationResponse> observer) {
       final Lock readLock = lock.readLock();
       readLock.lock();
       try {
         final CompletableFuture<String> locationFuture = getPartitionLocationFuture(request.getPartitionId());
         locationFuture.whenComplete((location, throwable) -> {
-          final MasterPartition.PartitionLocationResponse.Builder responseBuilder =
-              MasterPartition.PartitionLocationResponse.newBuilder();
+          final MasterPartitionMessage.PartitionLocationResponse.Builder responseBuilder =
+              MasterPartitionMessage.PartitionLocationResponse.newBuilder();
           responseBuilder.setPartitionId(request.getPartitionId());
           if (throwable == null) {
             responseBuilder.setOwnerExecutorId(location);
@@ -329,13 +330,14 @@ public final class PartitionManagerMaster {
   /**
    * Grpc master remote block service.
    */
-  public final class MasterRemoteBlockService extends MasterRemoteBlockServiceGrpc.MasterRemoteBlockServiceImplBase {
-    private final Common.Empty empty = Common.Empty.newBuilder().build();
+  public final class MasterRemoteBlockMessageService
+      extends MasterRemoteBlockMessageServiceGrpc.MasterRemoteBlockMessageServiceImplBase {
+    private final CommonMessage.Empty empty = CommonMessage.Empty.newBuilder().build();
 
     @Override
     public void askRemoteBlockMetadata(
-        final MasterRemoteBlock.RemoteBlockMetadataRequest request,
-        final StreamObserver<MasterRemoteBlock.RemoteBlockMetadataResponse> observer) {
+        final MasterRemoteBlockMessage.RemoteBlockMetadataRequest request,
+        final StreamObserver<MasterRemoteBlockMessage.RemoteBlockMetadataResponse> observer) {
       final String partitionId = request.getPartitionId();
       final Lock readLock = lock.readLock();
       readLock.lock();
@@ -344,8 +346,8 @@ public final class PartitionManagerMaster {
         final CompletableFuture<String> locationFuture = getPartitionLocationFuture(partitionId);
 
         locationFuture.whenComplete((location, throwable) -> {
-          final MasterRemoteBlock.RemoteBlockMetadataResponse.Builder responseBuilder =
-              MasterRemoteBlock.RemoteBlockMetadataResponse.newBuilder();
+          final MasterRemoteBlockMessage.RemoteBlockMetadataResponse.Builder responseBuilder =
+              MasterRemoteBlockMessage.RemoteBlockMetadataResponse.newBuilder();
           if (throwable == null) {
             // Well committed.
             final PartitionMetadata metadata = partitionIdToMetadata.get(partitionId);
@@ -368,8 +370,8 @@ public final class PartitionManagerMaster {
     }
 
     @Override
-    public void removeRemoteBlock(final MasterRemoteBlock.RemoteBlockRemovalRequest request,
-                                  final StreamObserver<Common.Empty> observer) {
+    public void removeRemoteBlock(final MasterRemoteBlockMessage.RemoteBlockRemovalRequest request,
+                                  final StreamObserver<CommonMessage.Empty> observer) {
       final Lock readLock = lock.readLock();
       readLock.lock();
       try {
@@ -385,8 +387,8 @@ public final class PartitionManagerMaster {
     }
 
     @Override
-    public void commitRemoteBlock(final MasterRemoteBlock.RemoteBlockCommitRequest request,
-                                  final StreamObserver<Common.Empty> observer) {
+    public void commitRemoteBlock(final MasterRemoteBlockMessage.RemoteBlockCommitRequest request,
+                                  final StreamObserver<CommonMessage.Empty> observer) {
       final String partitionId = request.getPartitionId();
       final List<Integer> blockIndices = request.getBlockIdxList();
       final Lock readLock = lock.readLock();
@@ -406,11 +408,12 @@ public final class PartitionManagerMaster {
     }
 
     @Override
-    public void reserveRemoteBlock(final MasterRemoteBlock.RemoteBlockReservationRequest request,
-                                   final StreamObserver<MasterRemoteBlock.RemoteBlockReservationResponse> observer) {
+    public void reserveRemoteBlock(
+        final MasterRemoteBlockMessage.RemoteBlockReservationRequest request,
+        final StreamObserver<MasterRemoteBlockMessage.RemoteBlockReservationResponse> observer) {
       final String partitionId = request.getPartitionId();
-      final MasterRemoteBlock.RemoteBlockReservationResponse.Builder response =
-          MasterRemoteBlock.RemoteBlockReservationResponse.newBuilder();
+      final MasterRemoteBlockMessage.RemoteBlockReservationResponse.Builder response =
+          MasterRemoteBlockMessage.RemoteBlockReservationResponse.newBuilder();
 
       final Lock readLock = lock.readLock();
       readLock.lock();

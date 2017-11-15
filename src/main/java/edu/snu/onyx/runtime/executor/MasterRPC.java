@@ -2,13 +2,14 @@ package edu.snu.onyx.runtime.executor;
 
 import edu.snu.onyx.runtime.common.grpc.GrpcClient;
 import edu.snu.onyx.runtime.common.grpc.GrpcServer;
-import edu.snu.onyx.runtime.common.grpc.MasterMetricServiceGrpc;
-import edu.snu.onyx.runtime.master.grpc.MasterPartitionServiceGrpc;
-import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlockServiceGrpc;
-import edu.snu.onyx.runtime.master.grpc.MasterSchedulerServiceGrpc;
+import edu.snu.onyx.runtime.common.grpc.MasterMetricMessageServiceGrpc;
+import edu.snu.onyx.runtime.master.grpc.MasterPartitionMessageServiceGrpc;
+import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlockMessageServiceGrpc;
+import edu.snu.onyx.runtime.master.grpc.MasterSchedulerMessageServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
 import net.jcip.annotations.ThreadSafe;
+import org.apache.reef.annotations.audience.EvaluatorSide;
 
 import javax.inject.Inject;
 import java.io.Closeable;
@@ -18,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
  * Helps making RPCs to the master.
  */
 @ThreadSafe
+@EvaluatorSide
 public class MasterRPC implements Closeable {
   private final ManagedChannel channelToMaster; // thread-safe
 
@@ -31,26 +33,26 @@ public class MasterRPC implements Closeable {
   }
 
   // Scheduler.
-  public MasterSchedulerServiceGrpc.MasterSchedulerServiceBlockingStub newSchedulerBlockingStub() {
-    return MasterSchedulerServiceGrpc.newBlockingStub(channelToMaster);
+  public MasterSchedulerMessageServiceGrpc.MasterSchedulerMessageServiceBlockingStub newSchedulerBlockingStub() {
+    return MasterSchedulerMessageServiceGrpc.newBlockingStub(channelToMaster);
   }
 
   // Partition.
-  public MasterPartitionServiceGrpc.MasterPartitionServiceBlockingStub newPartitionBlockingStub() {
-    return MasterPartitionServiceGrpc.newBlockingStub(channelToMaster);
+  public MasterPartitionMessageServiceGrpc.MasterPartitionMessageServiceBlockingStub newPartitionBlockingStub() {
+    return MasterPartitionMessageServiceGrpc.newBlockingStub(channelToMaster);
   }
-  public MasterPartitionServiceGrpc.MasterPartitionServiceStub newPartitionAsyncStub() {
-    return MasterPartitionServiceGrpc.newStub(channelToMaster);
+  public MasterPartitionMessageServiceGrpc.MasterPartitionMessageServiceStub newPartitionAsyncStub() {
+    return MasterPartitionMessageServiceGrpc.newStub(channelToMaster);
   }
 
   // RemoteBlock.
-  public MasterRemoteBlockServiceGrpc.MasterRemoteBlockServiceBlockingStub newRemoteBlockBlockingStub() {
-    return MasterRemoteBlockServiceGrpc.newBlockingStub(channelToMaster);
+  public MasterRemoteBlockMessageServiceGrpc.MasterRemoteBlockMessageServiceBlockingStub newRemoteBlockBlockingStub() {
+    return MasterRemoteBlockMessageServiceGrpc.newBlockingStub(channelToMaster);
   }
 
-  // Metrics.
-  public MasterMetricServiceGrpc.MasterMetricServiceBlockingStub newMetricBlockingStub() {
-    return MasterMetricServiceGrpc.newBlockingStub(channelToMaster);
+  // MetricsMessage.
+  public MasterMetricMessageServiceGrpc.MasterMetricMessageServiceBlockingStub newMetricBlockingStub() {
+    return MasterMetricMessageServiceGrpc.newBlockingStub(channelToMaster);
   }
 
   // Utility methods.

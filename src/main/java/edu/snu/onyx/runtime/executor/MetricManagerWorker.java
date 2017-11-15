@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.runtime.executor;
 
-import edu.snu.onyx.runtime.common.grpc.Metrics;
+import edu.snu.onyx.runtime.common.grpc.MetricsMessage;
 import edu.snu.onyx.runtime.common.metric.MetricMessageSender;
 import edu.snu.onyx.runtime.exception.UnknownFailureCauseException;
 import edu.snu.onyx.runtime.common.metric.parameter.MetricFlushPeriod;
@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @EvaluatorSide
 public final class MetricManagerWorker implements MetricMessageSender {
   private final ScheduledExecutorService scheduledExecutorService;
-  private final BlockingQueue<Metrics.Metric> metricMessageQueue;
+  private final BlockingQueue<MetricsMessage.Metric> metricMessageQueue;
   private final AtomicBoolean closed;
 
   @Inject
@@ -47,14 +47,14 @@ public final class MetricManagerWorker implements MetricMessageSender {
         // Build batched metric messages
         int size = metricMessageQueue.size();
 
-        final Metrics.MetricList.Builder metricList = Metrics.MetricList.newBuilder();
+        final MetricsMessage.MetricList.Builder metricList = MetricsMessage.MetricList.newBuilder();
 
         for (int i = 0; i < size; i++) {
-          final Metrics.Metric metric = metricMessageQueue.poll();
+          final MetricsMessage.Metric metric = metricMessageQueue.poll();
           metricList.addMetric(i, metric);
         }
 
-        masterRPC.newMetricBlockingStub().reportMetrics(metricList.build());
+        masterRPC.newMetricBlockingStub().reportMetricsMessage(metricList.build());
       }
     };
     this.scheduledExecutorService.scheduleAtFixedRate(batchMetricMessages, 0,
@@ -63,7 +63,10 @@ public final class MetricManagerWorker implements MetricMessageSender {
 
   @Override
   public void send(final String metricKey, final String metricValue) {
-    metricMessageQueue.add(Metrics.Metric.newBuilder().setMetricKey(metricKey).setMetricValue(metricValue).build());
+    metricMessageQueue.add(MetricsMessage.Metric.newBuilder()
+        .setMetricKey(metricKey)
+        .setMetricValue(metricValue)
+        .build());
   }
 
   @Override

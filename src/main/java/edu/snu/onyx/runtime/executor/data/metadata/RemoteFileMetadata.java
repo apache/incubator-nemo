@@ -15,10 +15,10 @@
  */
 package edu.snu.onyx.runtime.executor.data.metadata;
 
-import edu.snu.onyx.runtime.common.grpc.Common;
+import edu.snu.onyx.runtime.common.grpc.CommonMessage;
 import edu.snu.onyx.runtime.executor.MasterRPC;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
-import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlock;
+import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlockMessage;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.*;
@@ -71,16 +71,16 @@ public final class RemoteFileMetadata extends FileMetadata {
                                                  final int blockSize,
                                                  final long elementsTotal) throws IOException {
     // Convert the block metadata to a block metadata message (without offset).
-    final Common.BlockMetadata blockMetadata = Common.BlockMetadata.newBuilder()
+    final CommonMessage.BlockMetadata blockMetadata = CommonMessage.BlockMetadata.newBuilder()
         .setHashValue(hashValue)
         .setBlockSize(blockSize)
         .setNumElements(elementsTotal)
         .build();
 
     // Send the block metadata to the metadata server in the master and ask where to store the block.
-    final MasterRemoteBlock.RemoteBlockReservationResponse response =
+    final MasterRemoteBlockMessage.RemoteBlockReservationResponse response =
         masterRPC.newRemoteBlockBlockingStub().reserveRemoteBlock(
-            MasterRemoteBlock.RemoteBlockReservationRequest.newBuilder()
+            MasterRemoteBlockMessage.RemoteBlockReservationRequest.newBuilder()
                 .setExecutorId(executorId)
                 .setPartitionId(partitionId)
                 .setBlockMetadata(blockMetadata)
@@ -111,7 +111,7 @@ public final class RemoteFileMetadata extends FileMetadata {
 
     // Notify that these blocks are committed to the metadata server.
     masterRPC.newRemoteBlockBlockingStub().commitRemoteBlock(
-        MasterRemoteBlock.RemoteBlockCommitRequest.newBuilder()
+        MasterRemoteBlockMessage.RemoteBlockCommitRequest.newBuilder()
             .setPartitionId(partitionId)
             .addAllBlockIdx(blockIndices)
             .build()
@@ -137,7 +137,7 @@ public final class RemoteFileMetadata extends FileMetadata {
   @Override
   public void deleteMetadata() throws IOException {
     masterRPC.newRemoteBlockBlockingStub().removeRemoteBlock(
-        MasterRemoteBlock.RemoteBlockRemovalRequest.newBuilder()
+        MasterRemoteBlockMessage.RemoteBlockRemovalRequest.newBuilder()
             .setPartitionId(partitionId)
             .build()
     );
@@ -164,9 +164,9 @@ public final class RemoteFileMetadata extends FileMetadata {
     final List<BlockMetadata> blockMetadataList = new ArrayList<>();
 
     // Ask the metadata server in the master for the metadata
-    final MasterRemoteBlock.RemoteBlockMetadataResponse response =
+    final MasterRemoteBlockMessage.RemoteBlockMetadataResponse response =
         masterRPC.newRemoteBlockBlockingStub().askRemoteBlockMetadata(
-            MasterRemoteBlock.RemoteBlockMetadataRequest.newBuilder()
+            MasterRemoteBlockMessage.RemoteBlockMetadataRequest.newBuilder()
                 .setExecutorId(executorId)
                 .setPartitionId(partitionId)
                 .build()
@@ -180,9 +180,9 @@ public final class RemoteFileMetadata extends FileMetadata {
     }
 
     // Construct the metadata from the response.
-    final List<Common.BlockMetadata> blockMetadataMsgList = response.getBlockMetadataList();
+    final List<CommonMessage.BlockMetadata> blockMetadataMsgList = response.getBlockMetadataList();
     for (int blockIdx = 0; blockIdx < blockMetadataMsgList.size(); blockIdx++) {
-      final Common.BlockMetadata blockMetadataMsg = blockMetadataMsgList.get(blockIdx);
+      final CommonMessage.BlockMetadata blockMetadataMsg = blockMetadataMsgList.get(blockIdx);
       if (!blockMetadataMsg.hasOffset()) {
         throw new IOException(new Throwable(
             "The metadata of a block in the " + partitionId + " does not have offset value."));

@@ -26,7 +26,7 @@ import edu.snu.onyx.common.StateMachine;
 import java.util.*;
 
 import edu.snu.onyx.runtime.common.metric.MetricDataBuilder;
-import edu.snu.onyx.runtime.master.grpc.MasterScheduler;
+import edu.snu.onyx.runtime.master.grpc.MasterSchedulerMessage;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -205,8 +205,8 @@ public final class TaskGroupStateManager {
       tasksPutOnHoldList = tasksPutOnHold;
     }
 
-    final MasterScheduler.NewTaskGroupState.Builder newTaskGroupState =
-        MasterScheduler.NewTaskGroupState.newBuilder()
+    final MasterSchedulerMessage.NewTaskGroupState.Builder newTaskGroupState =
+        MasterSchedulerMessage.NewTaskGroupState.newBuilder()
           .setExecutorId(executorId)
           .setTaskGroupId(taskGroupId)
           .setAttemptIdx(attemptIdx)
@@ -221,33 +221,33 @@ public final class TaskGroupStateManager {
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  private MasterScheduler.TaskGroupStateFromExecutor convertState(final TaskGroupState.State state) {
+  private MasterSchedulerMessage.TaskGroupStateFromExecutor convertState(final TaskGroupState.State state) {
     switch (state) {
     case READY:
-      return MasterScheduler.TaskGroupStateFromExecutor.READY;
+      return MasterSchedulerMessage.TaskGroupStateFromExecutor.READY;
     case EXECUTING:
-      return MasterScheduler.TaskGroupStateFromExecutor.EXECUTING;
+      return MasterSchedulerMessage.TaskGroupStateFromExecutor.EXECUTING;
     case COMPLETE:
-      return MasterScheduler.TaskGroupStateFromExecutor.COMPLETE;
+      return MasterSchedulerMessage.TaskGroupStateFromExecutor.COMPLETE;
     case FAILED_RECOVERABLE:
-      return MasterScheduler.TaskGroupStateFromExecutor.FAILED_RECOVERABLE;
+      return MasterSchedulerMessage.TaskGroupStateFromExecutor.FAILED_RECOVERABLE;
     case FAILED_UNRECOVERABLE:
-      return MasterScheduler.TaskGroupStateFromExecutor.FAILED_UNRECOVERABLE;
+      return MasterSchedulerMessage.TaskGroupStateFromExecutor.FAILED_UNRECOVERABLE;
     case ON_HOLD:
-      return MasterScheduler.TaskGroupStateFromExecutor.ON_HOLD;
+      return MasterSchedulerMessage.TaskGroupStateFromExecutor.ON_HOLD;
     default:
       throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
     }
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  private MasterScheduler.RecoverableFailureCause convertFailureCause(
+  private MasterSchedulerMessage.RecoverableFailureCause convertFailureCause(
     final TaskGroupState.RecoverableFailureCause cause) {
     switch (cause) {
     case INPUT_READ_FAILURE:
-      return MasterScheduler.RecoverableFailureCause.InputReadFailure;
+      return MasterSchedulerMessage.RecoverableFailureCause.InputReadFailure;
     case OUTPUT_WRITE_FAILURE:
-      return MasterScheduler.RecoverableFailureCause.OutputWriteFailure;
+      return MasterSchedulerMessage.RecoverableFailureCause.OutputWriteFailure;
     default:
       throw new UnknownFailureCauseException(
           new Throwable("The failure cause for the recoverable failure is unknown"));

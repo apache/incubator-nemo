@@ -24,7 +24,7 @@ import edu.snu.onyx.runtime.executor.MasterRPC;
 import edu.snu.onyx.runtime.executor.data.stores.*;
 import edu.snu.onyx.runtime.master.PartitionManagerMaster;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
-import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlockServiceGrpc;
+import edu.snu.onyx.runtime.master.grpc.MasterRemoteBlockMessageServiceGrpc;
 import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
@@ -258,7 +258,7 @@ public final class PartitionStoreTest {
 
     final String inProcessServerName = "gluster";
     final Server server = InProcessServerBuilder.forName(inProcessServerName)
-        .addService(partitionManagerMaster.new MasterRemoteBlockService())
+        .addService(partitionManagerMaster.new MasterRemoteBlockMessageService())
         .build();
     server.start();
 
@@ -284,7 +284,7 @@ public final class PartitionStoreTest {
     injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
     final MasterRPC mockedMasterRPC = mock(MasterRPC.class);
     when(mockedMasterRPC.newRemoteBlockBlockingStub())
-        .thenReturn(MasterRemoteBlockServiceGrpc.newBlockingStub(InProcessChannelBuilder.forName("gluster").build()));
+        .thenReturn(MasterRemoteBlockMessageServiceGrpc.newBlockingStub(InProcessChannelBuilder.forName("gluster").build()));
     injector.bindVolatileInstance(MasterRPC.class, mockedMasterRPC);
     return injector.getInstance(GlusterFileStore.class);
   }

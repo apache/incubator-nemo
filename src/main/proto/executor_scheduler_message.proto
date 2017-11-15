@@ -4,9 +4,9 @@ package protobuf;
 
 option java_package = "edu.snu.onyx.runtime.executor.grpc";
 
-import "common.proto";
+import "common_message.proto";
 
-service ExecutorSchedulerService {
+service ExecutorSchedulerMessageService {
     rpc ExecuteTaskGroup(TaskGroupExecutionRequest) returns (Empty) {}
 }
 

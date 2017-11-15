@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.runtime.executor.data.partitiontransfer;
 
-import edu.snu.onyx.runtime.executor.grpc.ExecutorPartition;
+import edu.snu.onyx.runtime.executor.grpc.ExecutorPartitionMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -55,7 +55,7 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
     // encode header
     final ByteBuf header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
     final short type;
-    final boolean isPull = in.type == ExecutorPartition.PartitionTransferType.PULL;
+    final boolean isPull = in.type == ExecutorPartitionMessage.PartitionTransferType.PULL;
     if (isPull) {
       if (in.isLastFrame) {
         type = FrameDecoder.PULL_LASTFRAME;
@@ -120,7 +120,7 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
       this.handle = handle;
     }
 
-    private ExecutorPartition.PartitionTransferType type;
+    private ExecutorPartitionMessage.PartitionTransferType type;
     private boolean isLastFrame;
     private short transferId;
     private long length;
@@ -137,7 +137,7 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
      * @param body        the body
      * @return the {@link DataFrame} object
      */
-    static DataFrame newInstance(final ExecutorPartition.PartitionTransferType type,
+    static DataFrame newInstance(final ExecutorPartitionMessage.PartitionTransferType type,
                                  final boolean isLastFrame,
                                  final short transferId,
                                  final long length,

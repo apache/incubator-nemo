@@ -4,11 +4,11 @@ package protobuf;
 
 option java_package = "edu.snu.onyx.runtime.common.grpc";
 
-import "common.proto";
+import "common_message.proto";
 
-service MasterMetricService {
+service MasterMetricMessageService {
     rpc ReportDataSizeMetric(DataSizeMetric) returns (Empty) {}
-    rpc ReportMetrics(MetricList) returns (Empty) {}
+    rpc ReportMetricsMessage(MetricList) returns (Empty) {}
 }
 
 message DataSizeMetric {

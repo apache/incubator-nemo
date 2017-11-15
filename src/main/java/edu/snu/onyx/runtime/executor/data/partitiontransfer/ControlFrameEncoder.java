@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.runtime.executor.data.partitiontransfer;
 
-import edu.snu.onyx.runtime.executor.grpc.ExecutorPartition;
+import edu.snu.onyx.runtime.executor.grpc.ExecutorPartitionMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
@@ -31,7 +31,7 @@ import java.util.List;
  * @see FrameDecoder
  */
 @ChannelHandler.Sharable
-final class ControlFrameEncoder extends MessageToMessageEncoder<ExecutorPartition.DataTransferControlMessage> {
+final class ControlFrameEncoder extends MessageToMessageEncoder<ExecutorPartitionMessage.DataTransferControlMessage> {
 
   static final int TYPE_LENGTH = Short.BYTES;
   static final int UNUSED_LENGTH = Short.BYTES;
@@ -52,7 +52,7 @@ final class ControlFrameEncoder extends MessageToMessageEncoder<ExecutorPartitio
 
   @Override
   protected void encode(final ChannelHandlerContext ctx,
-                        final ExecutorPartition.DataTransferControlMessage in,
+                        final ExecutorPartitionMessage.DataTransferControlMessage in,
                         final List out) {
     final byte[] frameBody = in.toByteArray();
     out.add(TYPE_AND_UNUSED.retain());

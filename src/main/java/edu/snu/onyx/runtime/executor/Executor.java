@@ -17,16 +17,16 @@ package edu.snu.onyx.runtime.executor;
 
 import com.google.protobuf.ByteString;
 import edu.snu.onyx.client.JobConf;
-import edu.snu.onyx.runtime.common.grpc.Common;
+import edu.snu.onyx.runtime.common.grpc.CommonMessage;
 import edu.snu.onyx.runtime.common.grpc.GrpcServer;
 import edu.snu.onyx.runtime.common.metric.MetricMessageSender;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.onyx.runtime.exception.UnknownFailureCauseException;
 import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
-import edu.snu.onyx.runtime.executor.grpc.ExecutorScheduler;
-import edu.snu.onyx.runtime.executor.grpc.ExecutorSchedulerServiceGrpc;
-import edu.snu.onyx.runtime.master.grpc.MasterScheduler;
+import edu.snu.onyx.runtime.executor.grpc.ExecutorSchedulerMessage;
+import edu.snu.onyx.runtime.executor.grpc.ExecutorSchedulerMessageServiceGrpc;
+import edu.snu.onyx.runtime.master.grpc.MasterSchedulerMessage;
 import io.grpc.stub.StreamObserver;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
@@ -78,7 +78,7 @@ public final class Executor {
     this.executorService = Executors.newFixedThreadPool(executorCapacity);
     this.masterRPC = masterRPC;
     try {
-      grpcServer.start(executorId, new ExecutorSchedulerService());
+      grpcServer.start(executorId, new ExecutorSchedulerMessageService());
       this.grpcServer = grpcServer;
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -121,7 +121,7 @@ public final class Executor {
           dataTransferFactory,
           partitionManagerWorker).execute();
     } catch (final Exception e) {
-      masterRPC.newSchedulerBlockingStub().executorFailed(MasterScheduler.FailedExecutor.newBuilder()
+      masterRPC.newSchedulerBlockingStub().executorFailed(MasterSchedulerMessage.FailedExecutor.newBuilder()
           .setExecutorId(executorId)
           .setException(ByteString.copyFrom(SerializationUtils.serialize(e)))
           .build()
@@ -144,12 +144,13 @@ public final class Executor {
   /**
    * Grpc executor scheduler service.
    */
-  public class ExecutorSchedulerService extends ExecutorSchedulerServiceGrpc.ExecutorSchedulerServiceImplBase {
-    private final Common.Empty empty = Common.Empty.newBuilder().build();
+  public class ExecutorSchedulerMessageService
+      extends ExecutorSchedulerMessageServiceGrpc.ExecutorSchedulerMessageServiceImplBase {
+    private final CommonMessage.Empty empty = CommonMessage.Empty.newBuilder().build();
 
     @Override
-    public void executeTaskGroup(final ExecutorScheduler.TaskGroupExecutionRequest request,
-                                 final StreamObserver<Common.Empty> observer) {
+    public void executeTaskGroup(final ExecutorSchedulerMessage.TaskGroupExecutionRequest request,
+                                 final StreamObserver<CommonMessage.Empty> observer) {
       final ScheduledTaskGroup scheduledTaskGroup =
           SerializationUtils.deserialize(request.getTaskGroup().toByteArray());
       onTaskGroupReceived(scheduledTaskGroup);

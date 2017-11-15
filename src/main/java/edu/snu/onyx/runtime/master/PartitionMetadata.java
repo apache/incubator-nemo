@@ -17,7 +17,7 @@ package edu.snu.onyx.runtime.master;
 
 import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.StateMachine;
-import edu.snu.onyx.runtime.common.grpc.Common;
+import edu.snu.onyx.runtime.common.grpc.CommonMessage;
 import edu.snu.onyx.runtime.common.state.PartitionState;
 import edu.snu.onyx.runtime.exception.AbsentPartitionException;
 import org.slf4j.Logger;
@@ -133,12 +133,12 @@ final class PartitionMetadata {
    * @param blockMetadata the block metadata to append.
    * @return the pair of the index of reserved block and starting position of the block in the file.
    */
-  synchronized Pair<Integer, Long> reserveBlock(final Common.BlockMetadata blockMetadata) {
+  synchronized Pair<Integer, Long> reserveBlock(final CommonMessage.BlockMetadata blockMetadata) {
     final int blockSize = blockMetadata.getBlockSize();
     final long currentPosition = writtenBytesCursor;
     final int blockIdx = blockMetadataList.size();
-    final Common.BlockMetadata blockMetadataToStore =
-        Common.BlockMetadata.newBuilder()
+    final CommonMessage.BlockMetadata blockMetadataToStore =
+        CommonMessage.BlockMetadata.newBuilder()
             .setHashValue(blockMetadata.getHashValue())
             .setBlockSize(blockSize)
             .setOffset(currentPosition)
@@ -190,10 +190,10 @@ final class PartitionMetadata {
    * These information will be managed only for remote partitions.
    */
   final class BlockMetadataInServer {
-    private final Common.BlockMetadata blockMetadata;
+    private final CommonMessage.BlockMetadata blockMetadata;
     private volatile boolean committed;
 
-    private BlockMetadataInServer(final Common.BlockMetadata blockMetadata) {
+    private BlockMetadataInServer(final CommonMessage.BlockMetadata blockMetadata) {
       this.blockMetadata = blockMetadata;
       this.committed = false;
     }
@@ -206,7 +206,7 @@ final class PartitionMetadata {
       committed = true;
     }
 
-    Common.BlockMetadata getBlockMetadata() {
+    CommonMessage.BlockMetadata getBlockMetadata() {
       return blockMetadata;
     }
   }

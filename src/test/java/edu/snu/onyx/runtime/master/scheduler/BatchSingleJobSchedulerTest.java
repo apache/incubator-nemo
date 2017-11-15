@@ -113,25 +113,25 @@ public final class BatchSingleJobSchedulerTest {
 
     final InProcessGrpc inProcessGrpc = new InProcessGrpc("RoundRobinSchedulingPolicyTest");
     try {
-      inProcessServer = inProcessGrpc.getInProcessExecutorSchedulerServer().start();
+      inProcessServer = inProcessGrpc.getInProcessExecutorSchedulerMessageServer().start();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
 
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 1, 0);
     final ExecutorRepresenter a3 =
-        new ExecutorRepresenter("a3", computeSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler(), activeContext);
+        new ExecutorRepresenter("a3", computeSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage(), activeContext);
     final ExecutorRepresenter a2 =
-        new ExecutorRepresenter("a2", computeSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler(), activeContext);
+        new ExecutorRepresenter("a2", computeSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage(), activeContext);
     final ExecutorRepresenter a1 =
-        new ExecutorRepresenter("a1", computeSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler(), activeContext);
+        new ExecutorRepresenter("a1", computeSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage(), activeContext);
 
     final ResourceSpecification storageSpec =
         new ResourceSpecification(ExecutorPlacementProperty.TRANSIENT, 1, 0);
     final ExecutorRepresenter b2 =
-        new ExecutorRepresenter("b2", storageSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler(), activeContext);
+        new ExecutorRepresenter("b2", storageSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage(), activeContext);
     final ExecutorRepresenter b1 =
-        new ExecutorRepresenter("b1", storageSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler(), activeContext);
+        new ExecutorRepresenter("b1", storageSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage(), activeContext);
 
     executorRepresenterMap.put(a1.getExecutorId(), a1);
     executorRepresenterMap.put(a2.getExecutorId(), a2);

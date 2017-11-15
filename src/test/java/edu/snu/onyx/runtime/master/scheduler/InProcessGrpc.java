@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.runtime.master.scheduler;
 
-import edu.snu.onyx.runtime.common.grpc.Common;
+import edu.snu.onyx.runtime.common.grpc.CommonMessage;
 import edu.snu.onyx.runtime.executor.Executor;
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
@@ -34,18 +34,18 @@ class InProcessGrpc {
     this.serviceName = serviceName;
   }
 
-  public Server getInProcessExecutorSchedulerServer() {
-    final Executor.ExecutorSchedulerService executorSchedulerService = mock(Executor.ExecutorSchedulerService.class);
+  public Server getInProcessExecutorSchedulerMessageServer() {
+    final Executor.ExecutorSchedulerMessageService executorSchedulerService = mock(Executor.ExecutorSchedulerMessageService.class);
     Mockito.doAnswer((invocation) -> {
       final StreamObserver observer = invocation.getArgumentAt(1, StreamObserver.class);
-      observer.onNext(Common.Empty.newBuilder().build());
+      observer.onNext(CommonMessage.Empty.newBuilder().build());
       observer.onCompleted();
       return null;
     }).when(executorSchedulerService).executeTaskGroup(any(), any());
     return InProcessServerBuilder.forName(serviceName).addService(executorSchedulerService).build();
   }
 
-  public ManagedChannel getInProcessChannelToExecutorScheduler() {
+  public ManagedChannel getInProcessChannelToExecutorSchedulerMessage() {
     return InProcessChannelBuilder.forName(serviceName).build();
   }
 }

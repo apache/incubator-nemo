@@ -69,7 +69,7 @@ public final class RoundRobinSchedulingPolicyTest {
 
     final InProcessGrpc inProcessGrpc = new InProcessGrpc("RoundRobinSchedulingPolicyTest");
     try {
-      inProcessServer = inProcessGrpc.getInProcessExecutorSchedulerServer().start();
+      inProcessServer = inProcessGrpc.getInProcessExecutorSchedulerMessageServer().start();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -77,18 +77,18 @@ public final class RoundRobinSchedulingPolicyTest {
     final ResourceSpecification computeSpec =
         new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 1, 0);
     final ExecutorRepresenter a3 =
-        getExecutorRepresenter("a3", computeSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler());
+        getExecutorRepresenter("a3", computeSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage());
     final ExecutorRepresenter a2 =
-        getExecutorRepresenter("a2", computeSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler());
+        getExecutorRepresenter("a2", computeSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage());
     final ExecutorRepresenter a1 =
-        getExecutorRepresenter("a1", computeSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler());
+        getExecutorRepresenter("a1", computeSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage());
 
     final ResourceSpecification storageSpec =
         new ResourceSpecification(ExecutorPlacementProperty.TRANSIENT, 1, 0);
     final ExecutorRepresenter b2 =
-        getExecutorRepresenter("b2", storageSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler());
+        getExecutorRepresenter("b2", storageSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage());
     final ExecutorRepresenter b1 =
-        getExecutorRepresenter("b1", storageSpec, inProcessGrpc.getInProcessChannelToExecutorScheduler());
+        getExecutorRepresenter("b1", storageSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage());
 
     executorRepresenterMap.put(a1.getExecutorId(), a1);
     executorRepresenterMap.put(a2.getExecutorId(), a2);

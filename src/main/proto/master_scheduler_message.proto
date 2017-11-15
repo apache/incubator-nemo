@@ -4,9 +4,9 @@ package protobuf;
 
 option java_package = "edu.snu.onyx.runtime.master.grpc";
 
-import "common.proto";
+import "common_message.proto";
 
-service MasterSchedulerService {
+service MasterSchedulerMessageService {
     rpc TaskGroupStateChanged(NewTaskGroupState) returns (Empty) {}
     rpc ExecutorFailed(FailedExecutor) returns (Empty) {}
 }

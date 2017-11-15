@@ -17,8 +17,8 @@ package edu.snu.onyx.runtime.executor.data;
 
 import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.runtime.common.grpc.Common;
-import edu.snu.onyx.runtime.common.grpc.Metrics;
+import edu.snu.onyx.runtime.common.grpc.CommonMessage;
+import edu.snu.onyx.runtime.common.grpc.MetricsMessage;
 import edu.snu.onyx.runtime.exception.PartitionFetchException;
 import edu.snu.onyx.runtime.exception.PartitionWriteException;
 import edu.snu.onyx.runtime.exception.UnsupportedPartitionStoreException;
@@ -28,7 +28,7 @@ import edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionOutputStrea
 import edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionTransfer;
 import edu.snu.onyx.runtime.executor.data.stores.*;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
-import edu.snu.onyx.runtime.master.grpc.MasterPartition;
+import edu.snu.onyx.runtime.master.grpc.MasterPartitionMessage;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -163,9 +163,10 @@ public final class PartitionManagerWorker {
       final Class<? extends PartitionStore> partitionStore,
       final HashRange hashRange) {
     // Ask Master for the location
-    final CompletableFuture<MasterPartition.PartitionLocationResponse> responseFuture = new CompletableFuture<>();
+    final CompletableFuture<MasterPartitionMessage.PartitionLocationResponse> responseFuture =
+        new CompletableFuture<>();
     masterRPC.newPartitionAsyncStub().askPartitionLocation(
-        MasterPartition.PartitionLocationRequest.newBuilder()
+        MasterPartitionMessage.PartitionLocationRequest.newBuilder()
             .setExecutorId(executorId)
             .setPartitionId(partitionId)
             .build(),
@@ -227,11 +228,11 @@ public final class PartitionManagerWorker {
                               final String srcIRVertexId) {
     LOG.info("CommitPartition: {}", partitionId);
     getPartitionStore(partitionStore).commitPartition(partitionId);
-    final MasterPartition.NewPartitionState.Builder newPartitionState =
-        MasterPartition.NewPartitionState.newBuilder()
+    final MasterPartitionMessage.NewPartitionState.Builder newPartitionState =
+        MasterPartitionMessage.NewPartitionState.newBuilder()
             .setExecutorId(executorId)
             .setPartitionId(partitionId)
-            .setState(Common.PartitionState.COMMITTED);
+            .setState(CommonMessage.PartitionState.COMMITTED);
     if (partitionStore == GlusterFileStore.class) {
       newPartitionState.setLocation(REMOTE_FILE_STORE);
     } else {
@@ -242,7 +243,7 @@ public final class PartitionManagerWorker {
     if (!blockSizeInfo.isEmpty()) {
       // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
       masterRPC.newMetricBlockingStub()
-          .reportDataSizeMetric(Metrics.DataSizeMetric.newBuilder()
+          .reportDataSizeMetric(MetricsMessage.DataSizeMetric.newBuilder()
               .setPartitionId(partitionId)
               .setSrcIRVertexId(srcIRVertexId)
               .addAllBlockSizeInfo(blockSizeInfo)
@@ -261,10 +262,10 @@ public final class PartitionManagerWorker {
                               final Class<? extends PartitionStore> partitionStore) {
     LOG.info("RemovePartition: {}", partitionId);
     if (getPartitionStore(partitionStore).removePartition(partitionId)) {
-      final MasterPartition.NewPartitionState.Builder newPartitionState = MasterPartition.NewPartitionState.newBuilder()
-          .setExecutorId(executorId)
-          .setPartitionId(partitionId)
-          .setState(Common.PartitionState.REMOVED);
+      final MasterPartitionMessage.NewPartitionState.Builder newPartitionState =
+          MasterPartitionMessage.NewPartitionState.newBuilder()
+              .setExecutorId(executorId) .setPartitionId(partitionId)
+              .setState(CommonMessage.PartitionState.REMOVED);
       if (GlusterFileStore.class.equals(partitionStore)) {
         newPartitionState.setLocation(REMOTE_FILE_STORE);
       } else {

@@ -4,9 +4,9 @@ package protobuf;
 
 option java_package = "edu.snu.onyx.runtime.master.grpc";
 
-import "common.proto";
+import "common_message.proto";
 
-service MasterPartitionService {
+service MasterPartitionMessageService {
     rpc PartitionStateChanged(NewPartitionState) returns (Empty) {}
     rpc AskPartitionLocation(PartitionLocationRequest) returns (PartitionLocationResponse) {}
 }
