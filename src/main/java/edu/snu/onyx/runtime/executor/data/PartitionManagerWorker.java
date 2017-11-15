@@ -22,7 +22,7 @@ import edu.snu.onyx.runtime.common.grpc.MetricsMessage;
 import edu.snu.onyx.runtime.exception.PartitionFetchException;
 import edu.snu.onyx.runtime.exception.PartitionWriteException;
 import edu.snu.onyx.runtime.exception.UnsupportedPartitionStoreException;
-import edu.snu.onyx.runtime.executor.MasterRPC;
+import edu.snu.onyx.runtime.executor.RpcToMaster;
 import edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionInputStream;
 import edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionOutputStream;
 import edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionTransfer;
@@ -52,7 +52,7 @@ public final class PartitionManagerWorker {
   private final SerializedMemoryStore serializedMemoryStore;
   private final LocalFileStore localFileStore;
   private final RemoteFileStore remoteFileStore;
-  private final MasterRPC masterRPC;
+  private final RpcToMaster rpcToMaster;
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder;
   private final PartitionTransfer partitionTransfer;
   private final ExecutorService ioThreadExecutorService;
@@ -64,14 +64,14 @@ public final class PartitionManagerWorker {
                                  final SerializedMemoryStore serializedMemoryStore,
                                  final LocalFileStore localFileStore,
                                  final RemoteFileStore remoteFileStore,
-                                 final MasterRPC masterRPC,
+                                 final RpcToMaster rpcToMaster,
                                  final PartitionTransfer partitionTransfer) {
     this.executorId = executorId;
     this.memoryStore = memoryStore;
     this.serializedMemoryStore = serializedMemoryStore;
     this.localFileStore = localFileStore;
     this.remoteFileStore = remoteFileStore;
-    this.masterRPC = masterRPC;
+    this.rpcToMaster = rpcToMaster;
     this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
     this.partitionTransfer = partitionTransfer;
     this.ioThreadExecutorService = Executors.newFixedThreadPool(numThreads);
@@ -165,12 +165,12 @@ public final class PartitionManagerWorker {
     // Ask Master for the location
     final CompletableFuture<MasterPartitionMessage.PartitionLocationResponse> responseFuture =
         new CompletableFuture<>();
-    masterRPC.newPartitionAsyncStub().askPartitionLocation(
+    rpcToMaster.newPartitionAsyncStub().askPartitionLocation(
         MasterPartitionMessage.PartitionLocationRequest.newBuilder()
             .setExecutorId(executorId)
             .setPartitionId(partitionId)
             .build(),
-        masterRPC.createObserverFromCompletableFuture(responseFuture));
+        rpcToMaster.createObserverForCompletableFuture(responseFuture));
 
     // Using thenCompose so that fetching partition data starts after getting response from master.
     return responseFuture.thenCompose(response -> {
@@ -238,11 +238,11 @@ public final class PartitionManagerWorker {
     } else {
       newPartitionState.setLocation(executorId);
     }
-    masterRPC.newPartitionBlockingStub().partitionStateChanged(newPartitionState.build());
+    rpcToMaster.newPartitionSyncStub().partitionStateChanged(newPartitionState.build());
 
     if (!blockSizeInfo.isEmpty()) {
       // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-      masterRPC.newMetricBlockingStub()
+      rpcToMaster.newMetricSyncStub()
           .reportDataSizeMetric(MetricsMessage.DataSizeMetric.newBuilder()
               .setPartitionId(partitionId)
               .setSrcIRVertexId(srcIRVertexId)
@@ -271,7 +271,7 @@ public final class PartitionManagerWorker {
       } else {
         newPartitionState.setLocation(executorId);
       }
-      masterRPC.newPartitionBlockingStub().partitionStateChanged(newPartitionState.build());
+      rpcToMaster.newPartitionSyncStub().partitionStateChanged(newPartitionState.build());
     } else {
       throw new PartitionFetchException(new Throwable("Cannot find corresponding partition " + partitionId));
     }

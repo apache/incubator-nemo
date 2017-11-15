@@ -290,15 +290,12 @@ public final class PartitionManagerMaster {
    */
   public final class MasterPartitionMessageService
       extends MasterPartitionMessageServiceGrpc.MasterPartitionMessageServiceImplBase {
-    private final CommonMessage.Empty empty = CommonMessage.Empty.newBuilder().build();
-
     @Override
     public void partitionStateChanged(final MasterPartitionMessage.NewPartitionState newState,
                                       final StreamObserver<CommonMessage.Empty> observer) {
       onPartitionStateChanged(newState.getPartitionId(),
           convertPartitionState(newState.getState()),
           newState.getLocation());
-      observer.onNext(empty);
       observer.onCompleted();
     }
 
@@ -332,7 +329,6 @@ public final class PartitionManagerMaster {
    */
   public final class MasterRemoteBlockMessageService
       extends MasterRemoteBlockMessageServiceGrpc.MasterRemoteBlockMessageServiceImplBase {
-    private final CommonMessage.Empty empty = CommonMessage.Empty.newBuilder().build();
 
     @Override
     public void askRemoteBlockMetadata(
@@ -382,7 +378,6 @@ public final class PartitionManagerMaster {
       } finally {
         readLock.unlock();
       }
-      observer.onNext(empty);
       observer.onCompleted();
     }
 
@@ -403,7 +398,6 @@ public final class PartitionManagerMaster {
       } finally {
         readLock.unlock();
       }
-      observer.onNext(empty);
       observer.onCompleted();
     }
 

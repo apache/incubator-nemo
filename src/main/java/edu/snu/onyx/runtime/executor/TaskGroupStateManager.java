@@ -59,18 +59,18 @@ public final class TaskGroupStateManager {
    */
   private Set<String> currentTaskGroupTaskIds;
 
-  private final MasterRPC masterRPC;
+  private final RpcToMaster rpcToMaster;
 
 
   public TaskGroupStateManager(final TaskGroup taskGroup,
                                final int attemptIdx,
                                final String executorId,
-                               final MasterRPC masterRPC,
+                               final RpcToMaster rpcToMaster,
                                final MetricMessageSender metricMessageSender) {
     this.taskGroupId = taskGroup.getTaskGroupId();
     this.attemptIdx = attemptIdx;
     this.executorId = executorId;
-    this.masterRPC = masterRPC;
+    this.rpcToMaster = rpcToMaster;
     this.metricMessageSender = metricMessageSender;
     metricDataBuilderMap = new HashMap<>();
     idToTaskStates = new HashMap<>();
@@ -217,7 +217,7 @@ public final class TaskGroupStateManager {
     }
 
     // Send taskGroupStateChangedMsg to master!
-    masterRPC.newSchedulerBlockingStub().taskGroupStateChanged(newTaskGroupState.build());
+    rpcToMaster.newSchedulerSyncStub().taskGroupStateChanged(newTaskGroupState.build());
   }
 
   // TODO #164: Cleanup Protobuf Usage

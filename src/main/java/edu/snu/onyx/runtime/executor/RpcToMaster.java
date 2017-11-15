@@ -20,11 +20,11 @@ import java.util.concurrent.CompletableFuture;
  */
 @ThreadSafe
 @EvaluatorSide
-public class MasterRPC implements Closeable {
+public class RpcToMaster implements Closeable {
   private final ManagedChannel channelToMaster; // thread-safe
 
   @Inject
-  public MasterRPC(final GrpcClient grpcClient) {
+  public RpcToMaster(final GrpcClient grpcClient) {
     try {
       channelToMaster = grpcClient.openChannel(GrpcServer.MASTER_GRPC_SERVER_ID);
     } catch (Exception e) {
@@ -33,12 +33,12 @@ public class MasterRPC implements Closeable {
   }
 
   // Scheduler.
-  public MasterSchedulerMessageServiceGrpc.MasterSchedulerMessageServiceBlockingStub newSchedulerBlockingStub() {
+  public MasterSchedulerMessageServiceGrpc.MasterSchedulerMessageServiceBlockingStub newSchedulerSyncStub() {
     return MasterSchedulerMessageServiceGrpc.newBlockingStub(channelToMaster);
   }
 
   // Partition.
-  public MasterPartitionMessageServiceGrpc.MasterPartitionMessageServiceBlockingStub newPartitionBlockingStub() {
+  public MasterPartitionMessageServiceGrpc.MasterPartitionMessageServiceBlockingStub newPartitionSyncStub() {
     return MasterPartitionMessageServiceGrpc.newBlockingStub(channelToMaster);
   }
   public MasterPartitionMessageServiceGrpc.MasterPartitionMessageServiceStub newPartitionAsyncStub() {
@@ -46,17 +46,25 @@ public class MasterRPC implements Closeable {
   }
 
   // RemoteBlock.
-  public MasterRemoteBlockMessageServiceGrpc.MasterRemoteBlockMessageServiceBlockingStub newRemoteBlockBlockingStub() {
+  public MasterRemoteBlockMessageServiceGrpc.MasterRemoteBlockMessageServiceBlockingStub newRemoteBlockSyncStub() {
     return MasterRemoteBlockMessageServiceGrpc.newBlockingStub(channelToMaster);
   }
 
   // MetricsMessage.
-  public MasterMetricMessageServiceGrpc.MasterMetricMessageServiceBlockingStub newMetricBlockingStub() {
+  public MasterMetricMessageServiceGrpc.MasterMetricMessageServiceBlockingStub newMetricSyncStub() {
     return MasterMetricMessageServiceGrpc.newBlockingStub(channelToMaster);
   }
 
   // Utility methods.
-  public <ResponseType> StreamObserver<ResponseType> createObserverFromCompletableFuture(
+  /**
+   * Creates an observer that completes the completableFuture on response/error.
+   * Use this only when the observer#onNext is expected to be called exactly once.
+   * Otherwise, completableFuture might never complete.
+   * @param completableFuture to create an observer for.
+   * @param <ResponseType> of the observer.
+   * @return an observer for the completableFuture.
+   */
+  public <ResponseType> StreamObserver<ResponseType> createObserverForCompletableFuture(
       final CompletableFuture<ResponseType> completableFuture) {
     return new StreamObserver<ResponseType>() {
       @Override
@@ -71,6 +79,7 @@ public class MasterRPC implements Closeable {
 
       @Override
       public void onCompleted() {
+        // Ignore, since onNext() is expected to be called exactly once.
       }
     };
   }

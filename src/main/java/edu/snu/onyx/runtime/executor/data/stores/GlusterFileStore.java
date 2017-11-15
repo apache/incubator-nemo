@@ -19,7 +19,7 @@ import edu.snu.onyx.client.JobConf;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.exception.PartitionFetchException;
 import edu.snu.onyx.runtime.exception.PartitionWriteException;
-import edu.snu.onyx.runtime.executor.MasterRPC;
+import edu.snu.onyx.runtime.executor.RpcToMaster;
 import edu.snu.onyx.runtime.executor.data.*;
 import edu.snu.onyx.runtime.executor.data.metadata.RemoteFileMetadata;
 import edu.snu.onyx.runtime.executor.data.partition.FilePartition;
@@ -48,7 +48,7 @@ public final class GlusterFileStore implements RemoteFileStore {
   public static final String SIMPLE_NAME = "GlusterFileStore";
   private final String fileDirectory;
   private final InjectionFuture<PartitionManagerWorker> partitionManagerWorker;
-  private final MasterRPC masterRPC;
+  private final RpcToMaster rpcToMaster;
   private final String executorId;
 
   @Inject
@@ -56,10 +56,10 @@ public final class GlusterFileStore implements RemoteFileStore {
                            @Parameter(JobConf.JobId.class) final String jobId,
                            @Parameter(JobConf.ExecutorId.class) final String executorId,
                            final InjectionFuture<PartitionManagerWorker> partitionManagerWorker,
-                           final MasterRPC masterRPC) {
+                           final RpcToMaster rpcToMaster) {
     this.fileDirectory = volumeDirectory + "/" + jobId;
     this.partitionManagerWorker = partitionManagerWorker;
-    this.masterRPC = masterRPC;
+    this.rpcToMaster = rpcToMaster;
     this.executorId = executorId;
     new File(fileDirectory).mkdirs();
   }
@@ -91,7 +91,7 @@ public final class GlusterFileStore implements RemoteFileStore {
       final Coder coder = DataUtil.getCoderFromWorker(partitionId, partitionManagerWorker.get());
       try {
         final RemoteFileMetadata metadata =
-            new RemoteFileMetadata(false, partitionId, executorId, masterRPC);
+            new RemoteFileMetadata(false, partitionId, executorId, rpcToMaster);
         final FilePartition partition = new FilePartition(coder, filePath, metadata);
         final Iterable<Block> deserializedBlocks = partition.getBlocks(hashRange);
         return Optional.of(DataUtil.concatBlocks(deserializedBlocks));
@@ -115,7 +115,7 @@ public final class GlusterFileStore implements RemoteFileStore {
 
     try {
       final RemoteFileMetadata metadata =
-          new RemoteFileMetadata(commitPerBlock, partitionId, executorId, masterRPC);
+          new RemoteFileMetadata(commitPerBlock, partitionId, executorId, rpcToMaster);
       final FilePartition partition = new FilePartition(coder, filePath, metadata);
       // Serialize and write the given blocks.
       return partition.putBlocks(blocks);
@@ -133,7 +133,7 @@ public final class GlusterFileStore implements RemoteFileStore {
     final String filePath = DataUtil.partitionIdToFilePath(partitionId, fileDirectory);
 
     final RemoteFileMetadata metadata =
-        new RemoteFileMetadata(false, partitionId, executorId, masterRPC);
+        new RemoteFileMetadata(false, partitionId, executorId, rpcToMaster);
     new FilePartition(coder, filePath, metadata).commit();
   }
 
@@ -151,7 +151,7 @@ public final class GlusterFileStore implements RemoteFileStore {
     try {
       if (new File(filePath).isFile()) {
         final RemoteFileMetadata metadata =
-            new RemoteFileMetadata(false, partitionId, executorId, masterRPC);
+            new RemoteFileMetadata(false, partitionId, executorId, rpcToMaster);
         final FilePartition partition = new FilePartition(coder, filePath, metadata);
         partition.deleteFile();
         return true;
@@ -175,7 +175,7 @@ public final class GlusterFileStore implements RemoteFileStore {
     try {
       if (new File(filePath).isFile()) {
         final RemoteFileMetadata metadata =
-            new RemoteFileMetadata(false, partitionId, executorId, masterRPC);
+            new RemoteFileMetadata(false, partitionId, executorId, rpcToMaster);
         final FilePartition partition = new FilePartition(coder, filePath, metadata);
         return partition.asFileAreas(hashRange);
       } else {

@@ -20,7 +20,7 @@ import edu.snu.onyx.common.coder.BeamCoder;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.state.PartitionState;
-import edu.snu.onyx.runtime.executor.MasterRPC;
+import edu.snu.onyx.runtime.executor.RpcToMaster;
 import edu.snu.onyx.runtime.executor.data.stores.*;
 import edu.snu.onyx.runtime.master.PartitionManagerMaster;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
@@ -282,10 +282,10 @@ public final class PartitionStoreTest {
     injector.bindVolatileParameter(JobConf.JobId.class, "GFS test");
     injector.bindVolatileParameter(JobConf.ExecutorId.class, executorId);
     injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
-    final MasterRPC mockedMasterRPC = mock(MasterRPC.class);
-    when(mockedMasterRPC.newRemoteBlockBlockingStub())
+    final RpcToMaster mockedRpcToMaster = mock(RpcToMaster.class);
+    when(mockedRpcToMaster.newRemoteBlockSyncStub())
         .thenReturn(MasterRemoteBlockMessageServiceGrpc.newBlockingStub(InProcessChannelBuilder.forName("gluster").build()));
-    injector.bindVolatileInstance(MasterRPC.class, mockedMasterRPC);
+    injector.bindVolatileInstance(RpcToMaster.class, mockedRpcToMaster);
     return injector.getInstance(GlusterFileStore.class);
   }
 

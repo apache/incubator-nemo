@@ -245,7 +245,6 @@ public final class RuntimeMaster {
    */
   private class MasterSchedulerMessageService
       extends MasterSchedulerMessageServiceGrpc.MasterSchedulerMessageServiceImplBase {
-    private final CommonMessage.Empty empty = CommonMessage.Empty.newBuilder().build();
 
     @Override
     public void taskGroupStateChanged(final MasterSchedulerMessage.NewTaskGroupState newState,
@@ -256,7 +255,6 @@ public final class RuntimeMaster {
           newState.getAttemptIdx(),
           newState.getTasksPutOnHoldIdsList(),
           convertFailureCause(newState.getFailureCause()));
-      observer.onNext(empty);
       observer.onCompleted();
     }
 
@@ -267,7 +265,6 @@ public final class RuntimeMaster {
       final Exception exception = SerializationUtils.deserialize(failedExecutor.getException().toByteArray());
       LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
       containerManager.onExecutorRemoved(failedExecutorId);
-      observer.onNext(empty);
       observer.onCompleted();
       throw new RuntimeException(exception);
     }
@@ -277,14 +274,12 @@ public final class RuntimeMaster {
    * Grpc master metric service.
    */
   private class MasterMetricService extends MasterMetricMessageServiceGrpc.MasterMetricMessageServiceImplBase {
-    private final CommonMessage.Empty empty = CommonMessage.Empty.newBuilder().build();
 
     @Override
     public void reportDataSizeMetric(final MetricsMessage.DataSizeMetric metric,
                                      final StreamObserver<CommonMessage.Empty> observer) {
       // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
       accumulateBarrierMetric(metric.getBlockSizeInfoList(), metric.getSrcIRVertexId(), metric.getPartitionId());
-      observer.onNext(empty);
       observer.onCompleted();
     }
 
@@ -293,7 +288,6 @@ public final class RuntimeMaster {
                               final StreamObserver<CommonMessage.Empty> observer) {
       metricList.getMetricList().forEach(metric ->
           metricMessageHandler.onMetricMessageReceived(metric.getMetricKey(), metric.getMetricValue()));
-      observer.onNext(empty);
       observer.onCompleted();
     }
   }

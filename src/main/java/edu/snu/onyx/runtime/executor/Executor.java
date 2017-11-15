@@ -60,7 +60,7 @@ public final class Executor {
    */
   private final DataTransferFactory dataTransferFactory;
 
-  private final MasterRPC masterRPC;
+  private final RpcToMaster rpcToMaster;
 
   private final GrpcServer grpcServer;
 
@@ -69,14 +69,14 @@ public final class Executor {
   @Inject
   public Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
                   @Parameter(JobConf.ExecutorCapacity.class) final int executorCapacity,
-                  final MasterRPC masterRPC,
+                  final RpcToMaster rpcToMaster,
                   final GrpcServer grpcServer,
                   final PartitionManagerWorker partitionManagerWorker,
                   final DataTransferFactory dataTransferFactory,
                   final MetricManagerWorker metricMessageSender) {
     this.executorId = executorId;
     this.executorService = Executors.newFixedThreadPool(executorCapacity);
-    this.masterRPC = masterRPC;
+    this.rpcToMaster = rpcToMaster;
     try {
       grpcServer.start(executorId, new ExecutorSchedulerMessageService());
       this.grpcServer = grpcServer;
@@ -106,7 +106,7 @@ public final class Executor {
     try {
       final TaskGroupStateManager taskGroupStateManager =
           new TaskGroupStateManager(scheduledTaskGroup.getTaskGroup(), scheduledTaskGroup.getAttemptIdx(), executorId,
-              masterRPC,
+              rpcToMaster,
               metricMessageSender);
 
       scheduledTaskGroup.getTaskGroupIncomingEdges()
@@ -121,7 +121,7 @@ public final class Executor {
           dataTransferFactory,
           partitionManagerWorker).execute();
     } catch (final Exception e) {
-      masterRPC.newSchedulerBlockingStub().executorFailed(MasterSchedulerMessage.FailedExecutor.newBuilder()
+      rpcToMaster.newSchedulerSyncStub().executorFailed(MasterSchedulerMessage.FailedExecutor.newBuilder()
           .setExecutorId(executorId)
           .setException(ByteString.copyFrom(SerializationUtils.serialize(e)))
           .build()
@@ -146,15 +146,12 @@ public final class Executor {
    */
   public class ExecutorSchedulerMessageService
       extends ExecutorSchedulerMessageServiceGrpc.ExecutorSchedulerMessageServiceImplBase {
-    private final CommonMessage.Empty empty = CommonMessage.Empty.newBuilder().build();
-
     @Override
     public void executeTaskGroup(final ExecutorSchedulerMessage.TaskGroupExecutionRequest request,
                                  final StreamObserver<CommonMessage.Empty> observer) {
       final ScheduledTaskGroup scheduledTaskGroup =
           SerializationUtils.deserialize(request.getTaskGroup().toByteArray());
       onTaskGroupReceived(scheduledTaskGroup);
-      observer.onNext(empty);
       observer.onCompleted();
     }
   }
