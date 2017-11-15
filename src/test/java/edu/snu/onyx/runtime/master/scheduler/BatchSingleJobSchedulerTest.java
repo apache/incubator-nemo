@@ -82,7 +82,7 @@ public final class BatchSingleJobSchedulerTest {
   private UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler;
   private PartitionManagerMaster partitionManagerMaster = mock(PartitionManagerMaster.class);
   private PhysicalPlanGenerator physicalPlanGenerator;
-  private Server inProcessServer;
+  private MockedExecutorRepresenters mockedExecutorRepresenters;
 
   private static final int TEST_TIMEOUT_MS = 500;
 
@@ -110,27 +110,16 @@ public final class BatchSingleJobSchedulerTest {
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
-    final InProcessGrpc inProcessGrpc = new InProcessGrpc("RoundRobinSchedulingPolicyTest");
-    try {
-      inProcessServer = inProcessGrpc.getInProcessExecutorSchedulerMessageServer().start();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-
+    mockedExecutorRepresenters = new MockedExecutorRepresenters(this.getClass().getName());
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 1, 0);
-    final ExecutorRepresenter a3 =
-        new ExecutorRepresenter("a3", computeSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage(), activeContext);
-    final ExecutorRepresenter a2 =
-        new ExecutorRepresenter("a2", computeSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage(), activeContext);
-    final ExecutorRepresenter a1 =
-        new ExecutorRepresenter("a1", computeSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage(), activeContext);
+    final ExecutorRepresenter a3 = mockedExecutorRepresenters.newExecutorRepresenter("a3", computeSpec);
+    final ExecutorRepresenter a2 = mockedExecutorRepresenters.newExecutorRepresenter("a2", computeSpec);
+    final ExecutorRepresenter a1 = mockedExecutorRepresenters.newExecutorRepresenter("a1", computeSpec);
 
     final ResourceSpecification storageSpec =
         new ResourceSpecification(ExecutorPlacementProperty.TRANSIENT, 1, 0);
-    final ExecutorRepresenter b2 =
-        new ExecutorRepresenter("b2", storageSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage(), activeContext);
-    final ExecutorRepresenter b1 =
-        new ExecutorRepresenter("b1", storageSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage(), activeContext);
+    final ExecutorRepresenter b2 = mockedExecutorRepresenters.newExecutorRepresenter("b2", storageSpec);
+    final ExecutorRepresenter b1 = mockedExecutorRepresenters.newExecutorRepresenter("b1", storageSpec);
 
     executorRepresenterMap.put(a1.getExecutorId(), a1);
     executorRepresenterMap.put(a2.getExecutorId(), a2);
@@ -152,12 +141,7 @@ public final class BatchSingleJobSchedulerTest {
 
   @After
   public void cleanUp() {
-    inProcessServer.shutdown();
-    try {
-      inProcessServer.awaitTermination();
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
+    mockedExecutorRepresenters.close();
   }
 
   /**

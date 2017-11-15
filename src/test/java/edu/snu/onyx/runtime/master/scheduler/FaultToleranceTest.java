@@ -24,18 +24,16 @@ import edu.snu.onyx.compiler.ir.IREdge;
 import edu.snu.onyx.compiler.ir.IRVertex;
 import edu.snu.onyx.compiler.ir.OperatorVertex;
 import edu.snu.onyx.compiler.ir.Transform;
-import edu.snu.onyx.compiler.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.vertex.ExecutorPlacementProperty;
 import edu.snu.onyx.compiler.ir.executionproperty.vertex.ParallelismProperty;
 import edu.snu.onyx.compiler.optimizer.Optimizer;
 import edu.snu.onyx.compiler.optimizer.TestPolicy;
 import edu.snu.onyx.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.onyx.runtime.RuntimeTestUtil;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageSender;
 import edu.snu.onyx.runtime.common.metric.MetricMessageHandler;
 import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
+import edu.snu.onyx.runtime.executor.Executor;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.OneToOne;
 import edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather;
 import edu.snu.onyx.runtime.master.JobStateManager;
@@ -46,6 +44,7 @@ import edu.snu.onyx.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.onyx.runtime.master.resource.ResourceSpecification;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Tang;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -58,7 +57,6 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 import static edu.snu.onyx.runtime.common.state.StageState.State.EXECUTING;
-import static edu.snu.onyx.runtime.common.state.StageState.State.READY;
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -70,7 +68,8 @@ import static org.mockito.Mockito.when;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ContainerManager.class, PartitionManagerMaster.class, SchedulerRunner.class,
-    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
+    PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class,
+    Executor.ExecutorSchedulerMessageService.class})
 public final class FaultToleranceTest {
   private static final Logger LOG = LoggerFactory.getLogger(FaultToleranceTest.class.getName());
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
@@ -85,8 +84,9 @@ public final class FaultToleranceTest {
   private PubSubEventHandlerWrapper pubSubEventHandler;
   private UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler;
   private PartitionManagerMaster partitionManagerMaster = mock(PartitionManagerMaster.class);
-  private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
   private PhysicalPlanGenerator physicalPlanGenerator;
+
+  private MockedExecutorRepresenters mockedExecutorRepresenters;
 
   private static final int TEST_TIMEOUT_MS = 500;
   private static final int MAX_SCHEDULE_ATTEMPT = 3;
@@ -107,9 +107,10 @@ public final class FaultToleranceTest {
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
-    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
+    mockedExecutorRepresenters = new MockedExecutorRepresenters(this.getClass().getName());
+    final ExecutorRepresenter a3 = mockedExecutorRepresenters.newExecutorRepresenter("a3", computeSpec);
+    final ExecutorRepresenter a2 = mockedExecutorRepresenters.newExecutorRepresenter("a2", computeSpec);
+    final ExecutorRepresenter a1 = mockedExecutorRepresenters.newExecutorRepresenter("a1", computeSpec);
 
     final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();
     executorRepresenterMap.put(a1.getExecutorId(), a1);
@@ -133,6 +134,11 @@ public final class FaultToleranceTest {
     scheduler.onExecutorAdded(a3.getExecutorId());
 
     physicalPlanGenerator = Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
+  }
+
+  @After
+  public void cleanUp() {
+    mockedExecutorRepresenters.close();
   }
 
   /**

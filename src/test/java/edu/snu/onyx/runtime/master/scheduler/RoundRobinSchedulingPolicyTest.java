@@ -22,9 +22,6 @@ import edu.snu.onyx.runtime.executor.Executor;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.onyx.runtime.master.resource.ResourceSpecification;
-import io.grpc.ManagedChannel;
-import io.grpc.Server;
-import org.apache.reef.driver.context.ActiveContext;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,7 +29,6 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.io.IOException;
 import java.util.*;
 
 import static org.junit.Assert.assertEquals;
@@ -49,47 +45,30 @@ public final class RoundRobinSchedulingPolicyTest {
   private static final int TIMEOUT_MS = 1000;
   private SchedulingPolicy schedulingPolicy;
   private ContainerManager containerManager = mock(ContainerManager.class);
-  private Server inProcessServer;
+  private MockedExecutorRepresenters mockedExecutorRepresenters;
 
   // This schedule index will make sure that task group events are not ignored
   private static final int MAGIC_SCHEDULE_ATTEMPT_INDEX = Integer.MAX_VALUE;
 
-  private ExecutorRepresenter getExecutorRepresenter(final String executorId,
-                                                     final ResourceSpecification spec,
-                                                     final ManagedChannel channelToExecutor) {
-    return new ExecutorRepresenter(executorId, spec, channelToExecutor, mock(ActiveContext.class));
-  }
-
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();
     when(containerManager.getExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
     when(containerManager.getFailedExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
 
     schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TIMEOUT_MS);
 
-    final InProcessGrpc inProcessGrpc = new InProcessGrpc("RoundRobinSchedulingPolicyTest");
-    try {
-      inProcessServer = inProcessGrpc.getInProcessExecutorSchedulerMessageServer().start();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-
+    mockedExecutorRepresenters = new MockedExecutorRepresenters(this.getClass().getName());
     final ResourceSpecification computeSpec =
         new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 1, 0);
-    final ExecutorRepresenter a3 =
-        getExecutorRepresenter("a3", computeSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage());
-    final ExecutorRepresenter a2 =
-        getExecutorRepresenter("a2", computeSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage());
-    final ExecutorRepresenter a1 =
-        getExecutorRepresenter("a1", computeSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage());
+    final ExecutorRepresenter a3 = mockedExecutorRepresenters.newExecutorRepresenter("a3", computeSpec);
+    final ExecutorRepresenter a2 = mockedExecutorRepresenters.newExecutorRepresenter("a2", computeSpec);
+    final ExecutorRepresenter a1 = mockedExecutorRepresenters.newExecutorRepresenter("a1", computeSpec);
 
     final ResourceSpecification storageSpec =
         new ResourceSpecification(ExecutorPlacementProperty.TRANSIENT, 1, 0);
-    final ExecutorRepresenter b2 =
-        getExecutorRepresenter("b2", storageSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage());
-    final ExecutorRepresenter b1 =
-        getExecutorRepresenter("b1", storageSpec, inProcessGrpc.getInProcessChannelToExecutorSchedulerMessage());
+    final ExecutorRepresenter b2 = mockedExecutorRepresenters.newExecutorRepresenter("b2", storageSpec);
+    final ExecutorRepresenter b1 = mockedExecutorRepresenters.newExecutorRepresenter("b1", storageSpec);
 
     executorRepresenterMap.put(a1.getExecutorId(), a1);
     executorRepresenterMap.put(a2.getExecutorId(), a2);
@@ -109,12 +88,7 @@ public final class RoundRobinSchedulingPolicyTest {
 
   @After
   public void cleanUp() {
-    inProcessServer.shutdown();
-    try {
-      inProcessServer.awaitTermination();
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
+    mockedExecutorRepresenters.close();
   }
 
   @Test
