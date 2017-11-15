@@ -17,6 +17,7 @@ package edu.snu.onyx.runtime.master.scheduler;
 
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
+
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
@@ -41,7 +42,7 @@ public interface PendingTaskGroupQueue {
 
   /**
    * Dequeues the next TaskGroup to be scheduled.
-   * @return an optional of the jobID and the next TaskGroup to be scheduled,
+   * @return an optional of the the next TaskGroup to be scheduled,
    * an empty optional if no such TaskGroup exists.
    */
   Optional<ScheduledTaskGroup> dequeue();
@@ -59,6 +60,12 @@ public interface PendingTaskGroupQueue {
    * @param stageIdOfTaskGroups for the stage to begin the removal recursively.
    */
   void removeTaskGroupsAndDescendants(final String stageIdOfTaskGroups);
+
+  /**
+   * Checks whether there are schedulable TaskGroups in the queue or not.
+   * @return true if there are schedulable TaskGroups in the queue, false otherwise.
+   */
+  boolean isEmpty();
 
   /**
    * Closes and cleans up this queue.

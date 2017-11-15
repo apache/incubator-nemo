@@ -86,7 +86,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
 
   /**
    * Dequeues the next TaskGroup to be scheduled according to job dependency priority.
-   * @return the jobID and the next TaskGroup to be scheduled
+   * @return the next TaskGroup to be scheduled
    * @throws InterruptedException can be thrown while trying to take a pending stage ID.
    */
   @Override
@@ -125,6 +125,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
    * Removes a stage and its descendant stages from this PQ.
    * @param stageId for the stage to begin the removal recursively.
    */
+  @Override
   public void removeTaskGroupsAndDescendants(final String stageId) {
     synchronized (stageIdToPendingTaskGroups) {
       removeStageAndChildren(stageId);
@@ -192,6 +193,18 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
   @Override
   public void onJobScheduled(final PhysicalPlan physicalPlanForJob) {
     this.physicalPlan = physicalPlanForJob;
+  }
+
+  @Override
+  public boolean isEmpty() {
+    synchronized (stageIdToPendingTaskGroups) {
+      for (final String stageId : schedulableStages) {
+        if (!stageIdToPendingTaskGroups.get(stageId).isEmpty()) {
+          return false;
+        }
+      }
+      return true;
+    }
   }
 
   @Override
