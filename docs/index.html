@@ -1,0 +1,82 @@
+---
+layout: default
+---
+
+<div class="header-container jumbotron">
+    <div class="container">
+    <h1>Onyx</h1>
+        <p>A Data Processing System for Flexible Employment With Different Deployment Characteristics.</p>
+        <p><a class="btn btn-primary btn-lg" href="{{ "/docs/home/" | prepend: site.baseurl }}" role="button">Learn more</a></p>
+    </div>
+</div>
+
+
+<div class="container">
+
+    <div class="row">
+        <div class="col-md-6">
+            <h2 class="header-light regular-pad">What is Onyx?</h2>
+            <blockquote>
+                <p>
+                    Today, there are hundreds of different data processing systems with different designs for better performance and datacenter efficiency, not only in general and common conditions, but also for various deployment characteristics.
+                    They include processing data on specific resource environments, like on transient resources, and running jobs with specific attributes, like skewed data.
+                    Although each system successfully solves the problems it targets, it fails to cover or adapt to unconsidered cases without substantial effort as most systems are designed in the way that runtime behaviors are planted inside the system core to hide the complexity of distributed computing.
+                    This makes it very hard for a single system to support different deployment characteristics with different runtime behaviors without substantial effort.
+                </p><p>
+                    To solve this problem and to be able to easily modify runtime behaviors, we decouple the logical notion of data processing applications from runtime behaviors and express them on separate layers using the Onyx IR.
+                    Specifically, through a set of high-level graph pass interfaces, Onyx exposes runtime behaviors to be flexibly configured and modified at both compile-time and runtime, and the Onyx Runtime executes the Onyx IR with its modular and extensible design.
+                    We demonstrate that we can express and execute data processing jobs with different deployment characteristics through employing graph passes with several real-world examples.
+                </p>
+              <!--<p>Jekyll is a simple, blog-aware, static site generator. It takes a template-->
+              <!--directory containing raw text files in various formats, runs it through-->
+              <!--a converter (like <a href="https://daringfireball.net/projects/markdown/">Markdown</a>)-->
+              <!--and our <a href="https://github.com/Shopify/liquid/wiki">Liquid</a> renderer, and-->
+              <!--spits out a complete, ready-to-publish static website suitable-->
+              <!--for serving with your favorite web server. Jekyll also happens to be the engine-->
+              <!--behind <a href="https://pages.github.com">GitHub Pages</a>, which means you can use Jekyll-->
+              <!--to host your project’s page, blog, or website from GitHub’s servers <strong>for-->
+              <!--free</strong>.</p>-->
+            </blockquote>
+        </div>
+        <div class="col-md-6 text-center">
+            <img src="img/onyx.png" alt="" class="img-responsive">
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="row">
+        <div class="col-sm-4">
+            <h1 class="text-center"><i class="fa fa-pencil" aria-hidden="true"></i></h1>
+            <h3 class="text-center">Easy to install and publish</h3>
+            <p>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque quis pulvinar lacus, id luctus erat. Curabitur pharetra, ante vitae imperdiet congue,
+                dui dolor sollicitudin eros, id convallis diam magna ut nunc. Fusce blandit tempor fermentum. Nullam tincidunt blandit tincidunt. Etiam mattis ipsum et nisi elementum sollicitudin.
+                <!--Get started by clonening source into GitHub account of your project. Thanks to <a href="https://pages.github.com">GitHub Pages</a>,-->
+              <!--it will be automatically compiled and publsihed under your project's subdomain on `github.io`.-->
+            </p>
+        </div>
+        <div class="col-sm-4">
+            <h1 class="text-center"><i class="fa fa-cogs" aria-hidden="true"></i></h1>
+            <h3 class="text-center">Modular Styling and Templating</h3>
+            <p>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque quis pulvinar lacus, id luctus erat. Curabitur pharetra, ante vitae imperdiet congue,
+                dui dolor sollicitudin eros, id convallis diam magna ut nunc. Fusce blandit tempor fermentum. Nullam tincidunt blandit tincidunt. Etiam mattis ipsum et nisi elementum sollicitudin.
+                <!--This template uses <a href="https://github.com/twbs/bootstrap-sass">bootstrap-sass</a> along with <a href="https://bootswatch.com/">Bootwatch themes</a>.-->
+            <!--You can change the theme or write your custom by overwriting bootstrap sass variables for different color set, font options, etc.-->
+            </p>
+        </div>
+        <div class="col-sm-4">
+            <h1 class="text-center"><i class="fa fa-code-fork" aria-hidden="true"></i></h1>
+            <h3 class="text-center">Git based source control</h3>
+            <p>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque quis pulvinar lacus, id luctus erat. Curabitur pharetra, ante vitae imperdiet congue,
+                dui dolor sollicitudin eros, id convallis diam magna ut nunc. Fusce blandit tempor fermentum. Nullam tincidunt blandit tincidunt. Etiam mattis ipsum et nisi elementum sollicitudin.
+                <!--Leverege from Git version control system by-->
+              <!--maintaining your documentation along with the source code; publish the page when you merge to the master branch.-->
+            </p>
+        </div>
+    </div>
+
+
+</div>
