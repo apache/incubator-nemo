@@ -24,7 +24,7 @@ export JAVA_HOME=/usr/lib/jvm/java-8-oracle/
 echo "export JAVA_HOME=$JAVA_HOME" >> ~/.profile
 
 # Install Hadoop
-cd /tmp
+cd /conf
 wget http://apache.mesi.com.ar/hadoop/common/hadoop-2.7.2/hadoop-2.7.2.tar.gz
 tar -xzvf hadoop-2.7.2.tar.gz
 mv hadoop-2.7.2 ~/hadoop
