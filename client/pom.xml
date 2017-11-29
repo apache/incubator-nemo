@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>edu.snu.onyx</groupId>
+        <artifactId>onyx-project</artifactId>
+        <version>0.1-SNAPSHOT</version>
+        <relativePath>../</relativePath>
+    </parent>
+
+    <artifactId>onyx-client</artifactId>
+    <name>Onyx Client</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>edu.snu.onyx</groupId>
+            <artifactId>onyx-common</artifactId>
+            <version>0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>edu.snu.onyx</groupId>
+            <artifactId>onyx-compiler-frontend</artifactId>
+            <version>0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>edu.snu.onyx</groupId>
+            <artifactId>onyx-compiler-backend</artifactId>
+            <version>0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>edu.snu.onyx</groupId>
+            <artifactId>onyx-compiler-optimizer</artifactId>
+            <version>0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>edu.snu.onyx</groupId>
+            <artifactId>onyx-runtime-common</artifactId>
+            <version>0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>edu.snu.onyx</groupId>
+            <artifactId>onyx-runtime-executor</artifactId>
+            <version>0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>edu.snu.onyx</groupId>
+            <artifactId>onyx-runtime-master</artifactId>
+            <version>0.1-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>edu.snu.onyx</groupId>
+            <artifactId>onyx-conf</artifactId>
+            <version>0.1-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+</project>

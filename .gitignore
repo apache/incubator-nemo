@@ -51,7 +51,7 @@ tmp
 *~
 \#*
 MetricsData
-src/main/resources/.temp*
+.temp*
 #
 # ----------------------------------------------------------------------
 # Unknown Files. Please clean up over time
