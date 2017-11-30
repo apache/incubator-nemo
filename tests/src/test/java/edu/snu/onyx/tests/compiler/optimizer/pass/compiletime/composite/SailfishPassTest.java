@@ -52,12 +52,12 @@ public class SailfishPassTest {
 
     processedDAG.getTopologicalSort().forEach(irVertex -> {
       if (processedDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
-          irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-            .equals(DataCommunicationPatternProperty.Value.ScatterGather))) {
+              DataCommunicationPatternProperty.Value.ScatterGather
+          .equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))) {
         // Merger vertex
         processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger -> {
-          if (edgeToMerger.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-              .equals(DataCommunicationPatternProperty.Value.ScatterGather)) {
+          if (DataCommunicationPatternProperty.Value.ScatterGather
+          .equals(edgeToMerger.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
             assertEquals(DataFlowModelProperty.Value.Push,
                 edgeToMerger.getProperty(ExecutionProperty.Key.DataFlowModel));
             assertEquals(DataStoreProperty.Value.MemoryStore,

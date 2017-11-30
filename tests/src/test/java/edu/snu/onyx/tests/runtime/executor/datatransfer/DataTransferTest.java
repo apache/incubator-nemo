@@ -275,7 +275,7 @@ public final class DataTransferTest {
     edgeProperties.put(DataStoreProperty.of(store));
     final RuntimeEdge dummyEdge;
 
-    if (commPattern.equals(DataCommunicationPatternProperty.Value.ScatterGather)) {
+    if (DataCommunicationPatternProperty.Value.ScatterGather.equals(commPattern)) {
       final IRVertex srcMockVertex = mock(IRVertex.class);
       final IRVertex dstMockVertex = mock(IRVertex.class);
       final PhysicalStage srcStage = setupStages("srcStage", taskGroupPrefix);
@@ -310,7 +310,7 @@ public final class DataTransferTest {
       final InputReader reader =
           new InputReader(dstTaskIndex, taskGroupPrefix + dstTaskIndex, srcVertex, dummyEdge, receiver);
 
-      if (commPattern.equals(DataCommunicationPatternProperty.Value.OneToOne)) {
+      if (DataCommunicationPatternProperty.Value.OneToOne.equals(commPattern)) {
         assertEquals(1, reader.getSourceParallelism());
       } else {
         assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
@@ -328,7 +328,7 @@ public final class DataTransferTest {
     // Compare (should be the same)
     final List flattenedWrittenData = flatten(dataWrittenList);
     final List flattenedReadData = flatten(dataReadList);
-    if (commPattern.equals(DataCommunicationPatternProperty.Value.BroadCast)) {
+    if (DataCommunicationPatternProperty.Value.BroadCast.equals(commPattern)) {
       final List broadcastedWrittenData = new ArrayList<>();
       IntStream.range(0, PARALLELISM_TEN).forEach(i -> broadcastedWrittenData.addAll(flattenedWrittenData));
       assertEquals(broadcastedWrittenData.size(), flattenedReadData.size());

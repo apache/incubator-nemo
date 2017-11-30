@@ -267,8 +267,8 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
         }));
     // All vertices connected with OneToOne edge should have identical Parallelism execution property.
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> e.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-        .equals(DataCommunicationPatternProperty.Value.OneToOne))
+        .filter(e -> DataCommunicationPatternProperty.Value.OneToOne
+                .equals(e.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
         .filter(e -> !Boolean.TRUE.equals(e.isSideInput())).forEach(e -> {
           if (e.getSrc() != null && e.getDst() != null
               && !(e.getSrc() instanceof LoopVertex) && !(e.getDst() instanceof LoopVertex)
