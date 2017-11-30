@@ -79,8 +79,8 @@ public class DataSkewCompositePassTest {
     final Integer originalVerticesNum = mrDAG.getVertices().size();
     final Long numOfScatterGatherEdges = mrDAG.getVertices().stream().filter(irVertex ->
         mrDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
-            irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-              .equals(DataCommunicationPatternProperty.Value.ScatterGather)))
+            DataCommunicationPatternProperty.Value.ScatterGather
+            .equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))))
         .count();
     final DAG<IRVertex, IREdge> processedDAG = new DataSkewCompositePass().apply(mrDAG);
 

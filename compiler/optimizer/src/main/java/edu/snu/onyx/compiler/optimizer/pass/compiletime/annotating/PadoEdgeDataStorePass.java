@@ -50,8 +50,8 @@ public final class PadoEdgeDataStorePass extends AnnotatingPass {
           } else if (fromReservedToTransient(edge)) {
             edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
           } else {
-            if (edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-                .equals(DataCommunicationPatternProperty.Value.OneToOne)) {
+            if (DataCommunicationPatternProperty.Value.OneToOne
+                  .equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
               edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
             } else {
               edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
@@ -69,10 +69,10 @@ public final class PadoEdgeDataStorePass extends AnnotatingPass {
    * @return whether or not the edge satisfies the condition.
    */
   static boolean fromTransientToReserved(final IREdge irEdge) {
-    return irEdge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement)
-        .equals(ExecutorPlacementProperty.TRANSIENT)
-        && irEdge.getDst().getProperty(ExecutionProperty.Key.ExecutorPlacement)
-        .equals(ExecutorPlacementProperty.RESERVED);
+    return ExecutorPlacementProperty.TRANSIENT
+        .equals(irEdge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement))
+        && ExecutorPlacementProperty.RESERVED
+        .equals(irEdge.getDst().getProperty(ExecutionProperty.Key.ExecutorPlacement));
   }
 
   /**
@@ -81,9 +81,9 @@ public final class PadoEdgeDataStorePass extends AnnotatingPass {
    * @return whether or not the edge satisfies the condition.
    */
   static boolean fromReservedToTransient(final IREdge irEdge) {
-    return irEdge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement)
-        .equals(ExecutorPlacementProperty.RESERVED)
-        && irEdge.getDst().getProperty(ExecutionProperty.Key.ExecutorPlacement)
-        .equals(ExecutorPlacementProperty.TRANSIENT);
+    return ExecutorPlacementProperty.RESERVED
+        .equals(irEdge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement))
+        && ExecutorPlacementProperty.TRANSIENT
+        .equals(irEdge.getDst().getProperty(ExecutionProperty.Key.ExecutorPlacement));
   }
 }

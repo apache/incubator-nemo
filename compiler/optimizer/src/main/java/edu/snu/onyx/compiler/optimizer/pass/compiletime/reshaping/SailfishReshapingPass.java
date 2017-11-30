@@ -41,11 +41,11 @@ public final class SailfishReshapingPass extends ReshapingPass {
       // We care about OperatorVertices that have any incoming edge that
       // has ScatterGather as data communication pattern.
       if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
-          irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-                              .equals(DataCommunicationPatternProperty.Value.ScatterGather))) {
+              DataCommunicationPatternProperty.Value.ScatterGather
+          .equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))) {
         dag.getIncomingEdgesOf(v).forEach(edge -> {
-          if (edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-              .equals(DataCommunicationPatternProperty.Value.ScatterGather)) {
+          if (DataCommunicationPatternProperty.Value.ScatterGather
+                .equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
             // Insert a merger vertex having transform that write received data immediately
             // before the vertex receiving shuffled data.
             final OperatorVertex iFileMergerVertex = new OperatorVertex(new RelayTransform());

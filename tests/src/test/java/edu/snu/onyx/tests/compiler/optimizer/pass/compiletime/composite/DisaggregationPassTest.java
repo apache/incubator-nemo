@@ -53,8 +53,8 @@ public class DisaggregationPassTest {
 
     processedDAG.getTopologicalSort().forEach(irVertex -> {
       processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger -> {
-        if (edgeToMerger.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-            .equals(DataCommunicationPatternProperty.Value.OneToOne)) {
+        if (DataCommunicationPatternProperty.Value.OneToOne
+              .equals(edgeToMerger.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
           assertEquals(DataStoreProperty.Value.MemoryStore, edgeToMerger.getProperty(ExecutionProperty.Key.DataStore));
         } else {
           assertEquals(DataStoreProperty.Value.GlusterFileStore,
