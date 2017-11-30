@@ -142,7 +142,7 @@ public final class PartitionManagerWorker {
     if (optionalResultData.isPresent()) {
       // Partition resides in this evaluator!
       return CompletableFuture.completedFuture(optionalResultData.get());
-    } else if (partitionStore.equals(DataStoreProperty.Value.GlusterFileStore)) {
+    } else if (DataStoreProperty.Value.GlusterFileStore.equals(partitionStore)) {
       throw new PartitionFetchException(new Throwable("Cannot find a partition in remote store."));
     } else {
       // We don't have the partition here...
@@ -245,7 +245,7 @@ public final class PartitionManagerWorker {
             .setPartitionId(partitionId)
             .setState(ControlMessage.PartitionStateFromExecutor.COMMITTED);
 
-    if (partitionStore.equals(DataStoreProperty.Value.GlusterFileStore)) {
+    if (DataStoreProperty.Value.GlusterFileStore.equals(partitionStore)) {
       partitionStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
     } else {
       partitionStateChangedMsgBuilder.setLocation(executorId);
@@ -345,8 +345,8 @@ public final class PartitionManagerWorker {
       @Override
       public void run() {
         try {
-          if (partitionStore.equals(DataStoreProperty.Value.LocalFileStore)
-              || partitionStore.equals(DataStoreProperty.Value.GlusterFileStore)) {
+          if (DataStoreProperty.Value.LocalFileStore.equals(partitionStore)
+              || DataStoreProperty.Value.GlusterFileStore.equals(partitionStore)) {
             // TODO #492: Modularize the data communication pattern. Remove execution property value dependant code.
             final FileStore fileStore = (FileStore) getPartitionStore(partitionStore);
             outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getPartitionId(),

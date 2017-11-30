@@ -57,14 +57,14 @@ public class DefaultPartitionerPassTest {
     final DAG<IRVertex, IREdge> processedDAG = partitionerPass.apply(compiledDAG);
 
     processedDAG.getVertices().forEach(v -> processedDAG.getIncomingEdgesOf(v).stream()
-        .filter(e -> e.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-                      .equals(DataCommunicationPatternProperty.Value.ScatterGather))
+        .filter(e -> DataCommunicationPatternProperty.Value.ScatterGather
+                      .equals(e.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
         .forEach(e -> assertEquals(e.getProperty(ExecutionProperty.Key.Partitioner),
             PartitionerProperty.Value.HashPartitioner)));
 
     processedDAG.getVertices().forEach(v -> processedDAG.getIncomingEdgesOf(v).stream()
-        .filter(e -> !e.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-                        .equals(DataCommunicationPatternProperty.Value.ScatterGather))
+        .filter(e -> !DataCommunicationPatternProperty.Value.ScatterGather
+                      .equals(e.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
         .forEach(e -> assertEquals(e.getProperty(ExecutionProperty.Key.Partitioner),
             PartitionerProperty.Value.IntactPartitioner)));
   }
