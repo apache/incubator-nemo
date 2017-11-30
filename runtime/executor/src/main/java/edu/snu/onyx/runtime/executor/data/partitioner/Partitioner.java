@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.runtime.common.partitioner;
+package edu.snu.onyx.runtime.executor.data.partitioner;
 
 import edu.snu.onyx.common.KeyExtractor;
 import edu.snu.onyx.runtime.common.data.Block;
