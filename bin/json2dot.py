@@ -180,7 +180,7 @@ class NormalVertex:
             label += '\\n{}'.format(clazz_name)
         except:
             pass
-        if (self.properties['class'] == 'MetricCollectionBarrierVertex'):
+        if ('class' in self.properties and self.properties['class'] == 'MetricCollectionBarrierVertex'):
             shape = ', shape=box'
             label += '\\nMetricCollectionBarrier'
         else:
