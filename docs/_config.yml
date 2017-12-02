@@ -2,8 +2,7 @@
 title: Onyx
 email: onyx@spl.snu.ac.kr
 description: >
-  Jekyll Template for Project Websites
-  providing documentation and blog post pages.
+  A Data Processing System for Flexible Employment With Different Deployment Characteristics.
 
 baseurl: "/onyx" # the subpath of your site, e.g. /blog/
 url: https://snuspl.github.io/onyx/ # the base hostname & protocol for your site

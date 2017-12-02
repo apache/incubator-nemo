@@ -1,11 +1,15 @@
 - title: Getting Started
   docs:
   - home
-  - themes
-  - customization
-
-- title: Examples
+  - getting_started
+  
+- title: Optimizations
   docs:
-  - cheatsheet
-  - font-awesome
-  - bootstrap
+  - ir
+  - passes_and_policies
+  
+- title: Detailed Explanations
+  docs:
+  - extending_onyx
+  - compiler_design
+  - runtime_design
