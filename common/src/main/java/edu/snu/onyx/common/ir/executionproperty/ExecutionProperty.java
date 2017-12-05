@@ -65,7 +65,7 @@ public abstract class ExecutionProperty<T> implements Serializable {
     MetricCollection,
     Partitioner,
     KeyExtractor,
-    WriteOptimization, // TODO #492: to be removed.
+    UsedDataHandling,
 
     // Applies to IRVertex
     DynamicOptimizationType,
