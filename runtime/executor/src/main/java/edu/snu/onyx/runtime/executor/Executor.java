@@ -16,6 +16,7 @@
 package edu.snu.onyx.runtime.executor;
 
 import com.google.protobuf.ByteString;
+import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.exception.IllegalMessageException;
 import edu.snu.onyx.common.exception.UnknownFailureCauseException;
@@ -25,7 +26,9 @@ import edu.snu.onyx.runtime.common.message.MessageContext;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.MessageListener;
 import edu.snu.onyx.runtime.common.message.PersistentConnectionToMasterMap;
+import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.onyx.runtime.common.plan.physical.Task;
 import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
 import org.apache.commons.lang3.SerializationUtils;
@@ -108,6 +111,11 @@ public final class Executor {
           .forEach(e -> partitionManagerWorker.registerCoder(e.getId(), e.getCoder()));
       scheduledTaskGroup.getTaskGroupOutgoingEdges()
           .forEach(e -> partitionManagerWorker.registerCoder(e.getId(), e.getCoder()));
+      // TODO #432: remove these coders when we "streamize" task execution within a TaskGroup.
+      final DAG<Task, RuntimeEdge<Task>> taskDag = scheduledTaskGroup.getTaskGroup().getTaskDAG();
+      taskDag.getVertices().forEach(v -> {
+        taskDag.getOutgoingEdgesOf(v).forEach(e -> partitionManagerWorker.registerCoder(e.getId(), e.getCoder()));
+      });
 
       new TaskGroupExecutor(scheduledTaskGroup.getTaskGroup(),
           taskGroupStateManager,

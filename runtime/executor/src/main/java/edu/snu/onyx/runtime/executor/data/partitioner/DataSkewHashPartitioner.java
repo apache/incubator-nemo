@@ -16,7 +16,8 @@
 package edu.snu.onyx.runtime.executor.data.partitioner;
 
 import edu.snu.onyx.common.KeyExtractor;
-import edu.snu.onyx.runtime.common.data.Block;
+import edu.snu.onyx.runtime.executor.data.Block;
+import edu.snu.onyx.runtime.executor.data.NonSerializedBlock;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +34,6 @@ import java.util.stream.IntStream;
  * For more information, please check {@link edu.snu.onyx.conf.JobConf.HashRangeMultiplier}.
  */
 public final class DataSkewHashPartitioner implements Partitioner {
-  public static final String SIMPLE_NAME = "FinerHash";
   private final int hashRangeMultiplier; // Hash range multiplier.
 
   public DataSkewHashPartitioner(final int hashRangeMultiplier) {
@@ -58,7 +58,7 @@ public final class DataSkewHashPartitioner implements Partitioner {
 
     final List<Block> blocks = new ArrayList<>(hashRange);
     for (int hashIdx = 0; hashIdx < hashRange; hashIdx++) {
-      blocks.add(new Block(hashIdx, elementsByKey.get(hashIdx)));
+      blocks.add(new NonSerializedBlock(hashIdx, elementsByKey.get(hashIdx)));
     }
     return blocks;
   }

@@ -22,22 +22,15 @@ import java.io.Serializable;
  * TODO #494: Refactor HashRange to be general.
  */
 public final class HashRange implements Serializable {
-  private static final HashRange ALL = new HashRange(true, 0, Integer.MAX_VALUE);
-  // A hash value which represents that a block does not have single hash value.
-  // Because the hash range is always non-negative,
-  // the blocks which do not have a single hash value will be thought to be included in a hash range
-  // only when it is "ALL".
-  static final int NOT_HASHED = -1;
+  private static final HashRange ALL = new HashRange(0, Integer.MAX_VALUE);
 
-  private final boolean all;
   private final int rangeStartInclusive;
   private final int rangeEndExclusive;
 
-  private HashRange(final boolean all, final int rangeStartInclusive, final int rangeEndExclusive) {
+  private HashRange(final int rangeStartInclusive, final int rangeEndExclusive) {
     if (rangeStartInclusive < 0 || rangeEndExclusive < 0) {
       throw new RuntimeException("Each boundary value of the range have to be non-negative.");
     }
-    this.all = all;
     this.rangeStartInclusive = rangeStartInclusive;
     this.rangeEndExclusive = rangeEndExclusive;
   }
@@ -55,14 +48,14 @@ public final class HashRange implements Serializable {
    * @return A hash range descriptor representing [{@code rangeStartInclusive}, {@code rangeEndExclusive})
    */
   public static HashRange of(final int rangeStartInclusive, final int rangeEndExclusive) {
-    return new HashRange(false, rangeStartInclusive, rangeEndExclusive);
+    return new HashRange(rangeStartInclusive, rangeEndExclusive);
   }
 
   /**
    * @return whether this hash range descriptor represents the whole data or not
    */
   public boolean isAll() {
-    return all;
+    return this.equals(ALL);
   }
 
   /**
@@ -91,16 +84,12 @@ public final class HashRange implements Serializable {
    * @return {@code true} if this hash range includes the specified value, {@code false} otherwise
    */
   public boolean includes(final int i) {
-    return all || (i >= rangeStartInclusive && i < rangeEndExclusive);
+    return i >= rangeStartInclusive && i < rangeEndExclusive;
   }
 
   @Override
   public String toString() {
-    if (all) {
-      return "ALL";
-    } else {
-      return String.format("[%d, %d)", rangeStartInclusive, rangeEndExclusive);
-    }
+    return String.format("[%d, %d)", rangeStartInclusive, rangeEndExclusive);
   }
 
   @Override
@@ -112,9 +101,6 @@ public final class HashRange implements Serializable {
       return false;
     }
     final HashRange hashRange = (HashRange) o;
-    if (all != hashRange.all) {
-      return false;
-    }
     if (rangeStartInclusive != hashRange.rangeStartInclusive) {
       return false;
     }
@@ -123,8 +109,7 @@ public final class HashRange implements Serializable {
 
   @Override
   public int hashCode() {
-    int result = (all ? 1 : 0);
-    result = 31 * result + rangeStartInclusive;
+    int result = rangeStartInclusive;
     result = 31 * result + rangeEndExclusive;
     return result;
   }

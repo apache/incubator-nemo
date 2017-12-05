@@ -16,7 +16,7 @@
 package edu.snu.onyx.runtime.executor.data.partitioner;
 
 import edu.snu.onyx.common.KeyExtractor;
-import edu.snu.onyx.runtime.common.data.Block;
+import edu.snu.onyx.runtime.executor.data.Block;
 
 import java.util.List;
 
