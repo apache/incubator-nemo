@@ -15,7 +15,9 @@
  */
 package edu.snu.onyx.runtime.executor.data;
 
+import edu.snu.onyx.common.exception.UnsupportedExecutionPropertyException;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
+import edu.snu.onyx.common.ir.edge.executionproperty.UsedDataHandlingProperty;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.common.data.HashRange;
@@ -38,6 +40,8 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +61,9 @@ public final class PartitionManagerWorker {
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder;
   private final PartitionTransfer partitionTransfer;
-  private final ExecutorService ioThreadExecutorService;
+  // Executor service to schedule I/O Runnable which can be done in background.
+  private final ExecutorService backgroundExecutorService;
+  private final Map<String, AtomicInteger> partitionToRemainingRead;
 
   @Inject
   private PartitionManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -76,7 +82,8 @@ public final class PartitionManagerWorker {
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
     this.partitionTransfer = partitionTransfer;
-    this.ioThreadExecutorService = Executors.newFixedThreadPool(numThreads);
+    this.backgroundExecutorService = Executors.newFixedThreadPool(numThreads);
+    this.partitionToRemainingRead = new ConcurrentHashMap<>();
   }
 
   /**
@@ -140,6 +147,8 @@ public final class PartitionManagerWorker {
     final Optional<Iterable<NonSerializedBlock>> optionalResultBlocks = store.getBlocks(partitionId, hashRange);
 
     if (optionalResultBlocks.isPresent()) {
+      handleUsedData(partitionStore, partitionId);
+
       // Partition resides in this evaluator!
       try {
         return CompletableFuture.completedFuture(DataUtil.concatNonSerBlocks(optionalResultBlocks.get()));
@@ -232,16 +241,31 @@ public final class PartitionManagerWorker {
    * Subscribers waiting for the data of the target partition are notified when the partition is committed.
    * Also, further subscription about a committed partition will not blocked but get the data in it and finished.
    *
-   * @param partitionId    of the partition.
-   * @param partitionStore to store the partition.
-   * @param blockSizeInfo  the size metric of blocks.
-   * @param srcIRVertexId  of the source task.
+   * @param partitionId       the ID of the partition.
+   * @param partitionStore    the store to save the partition.
+   * @param blockSizeInfo     the size metric of blocks.
+   * @param srcIRVertexId     the IR vertex ID of the source task.
+   * @param expectedReadTotal the expected number of read for this partition.
+   * @param usedDataHandling  how to handle the used partition.
    */
   public void commitPartition(final String partitionId,
                               final DataStoreProperty.Value partitionStore,
                               final List<Long> blockSizeInfo,
-                              final String srcIRVertexId) {
+                              final String srcIRVertexId,
+                              final int expectedReadTotal,
+                              final UsedDataHandlingProperty.Value usedDataHandling) {
     LOG.info("CommitPartition: {}", partitionId);
+    switch (usedDataHandling) {
+      case Discard:
+        partitionToRemainingRead.put(partitionId, new AtomicInteger(expectedReadTotal));
+        break;
+      case Keep:
+        // Do nothing but just keep the data.
+        break;
+      default:
+        throw new UnsupportedExecutionPropertyException("This used data handling property is not supported.");
+    }
+
     final PartitionStore store = getPartitionStore(partitionStore);
     store.commitPartition(partitionId);
     final ControlMessage.PartitionStateChangedMsg.Builder partitionStateChangedMsgBuilder =
@@ -283,8 +307,8 @@ public final class PartitionManagerWorker {
   /**
    * Remove the partition from store.
    *
-   * @param partitionId    of the partition to remove.
-   * @param partitionStore tha the partition is stored.
+   * @param partitionId    the ID of the partition to remove.
+   * @param partitionStore the store which contains the partition.
    */
   public void removePartition(final String partitionId,
                               final DataStoreProperty.Value partitionStore) {
@@ -318,6 +342,29 @@ public final class PartitionManagerWorker {
     }
   }
 
+  /**
+   * Handles used {@link edu.snu.onyx.runtime.executor.data.partition.Partition}.
+   *
+   * @param partitionStore the store which contains the partition.
+   * @param partitionId    the ID of the {@link edu.snu.onyx.runtime.executor.data.partition.Partition}.
+   */
+  private void handleUsedData(final DataStoreProperty.Value partitionStore,
+                              final String partitionId) {
+    final AtomicInteger remainingExpectedRead = partitionToRemainingRead.get(partitionId);
+    if (remainingExpectedRead != null) {
+      if (remainingExpectedRead.decrementAndGet() == 0) {
+        // This partition should be spilt.
+        partitionToRemainingRead.remove(partitionId);
+        backgroundExecutorService.submit(new Runnable() {
+          @Override
+          public void run() {
+            removePartition(partitionId, partitionStore);
+          }
+        });
+      }
+    } // If null, just keep the data in the store.
+  }
+
   private PartitionStore getPartitionStore(final DataStoreProperty.Value partitionStore) {
     switch (partitionStore) {
       case MemoryStore:
@@ -346,7 +393,7 @@ public final class PartitionManagerWorker {
     final Optional<DataStoreProperty.Value> partitionStoreOptional = outputStream.getPartitionStore();
     final DataStoreProperty.Value partitionStore = partitionStoreOptional.get();
 
-    ioThreadExecutorService.submit(new Runnable() {
+    backgroundExecutorService.submit(new Runnable() {
       @Override
       public void run() {
         try {
