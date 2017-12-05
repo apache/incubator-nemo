@@ -15,11 +15,12 @@
  */
 package edu.snu.onyx.compiler.optimizer.policy;
 
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.DefaultStagePartitioningPass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.ReviseInterStageEdgeDataStorePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.ScheduleGroupPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.CompositePass;
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
 import edu.snu.onyx.runtime.common.optimizer.pass.runtime.RuntimePass;
 
 import java.util.Arrays;
@@ -34,8 +35,8 @@ public final class DefaultPolicyWithSeparatePass implements Policy {
   private final Policy policy;
 
   public DefaultPolicyWithSeparatePass() {
-    this.policy = new PolicyBuilder()
-        .registerCompileTimePass(new InitiationCompositePass())
+    this.policy = new PolicyBuilder(true)
+        .registerCompileTimePass(new DefaultParallelismPass())
         .registerCompileTimePass(new RefactoredPass())
         .build();
   }
@@ -54,11 +55,10 @@ public final class DefaultPolicyWithSeparatePass implements Policy {
    * A simple custom pass consisted of the two passes at the end of the default pass.
    */
   public final class RefactoredPass extends CompositePass {
-    public static final String SIMPLE_NAME =  "RefactoredPass";
-
     RefactoredPass() {
       super(Arrays.asList(
           new DefaultStagePartitioningPass(),
+          new ReviseInterStageEdgeDataStorePass(), // after stage partitioning
           new ScheduleGroupPass()
       ));
     }

@@ -31,10 +31,8 @@ import java.util.stream.Collectors;
 /**
  * Optimization pass for tagging parallelism execution property.
  */
-public final class ParallelismPass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "ParallelismPass";
-
-  public ParallelismPass() {
+public final class DefaultParallelismPass extends AnnotatingPass {
+  public DefaultParallelismPass() {
     super(ExecutionProperty.Key.Parallelism);
   }
 
@@ -46,6 +44,7 @@ public final class ParallelismPass extends AnnotatingPass {
         final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex).stream()
             .filter(edge -> !Boolean.TRUE.equals(edge.isSideInput()))
             .collect(Collectors.toList());
+        // We manipulate them if it is set as default value of 1.
         if (inEdges.isEmpty() && vertex instanceof SourceVertex) {
           final SourceVertex sourceVertex = (SourceVertex) vertex;
           vertex.setProperty(ParallelismProperty.of(sourceVertex.getReaders(1).size()));

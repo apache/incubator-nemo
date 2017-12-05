@@ -24,6 +24,8 @@ import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
 import edu.snu.onyx.compiler.frontend.beam.transform.RelayTransform;
 
+import java.util.Collections;
+
 /**
  * Pass to modify the DAG for a job to batch the disk seek.
  * It adds a {@link OperatorVertex} with {@link RelayTransform} before the vertices
@@ -31,7 +33,9 @@ import edu.snu.onyx.compiler.frontend.beam.transform.RelayTransform;
  * to merge the shuffled data in memory and write to the disk at once.
  */
 public final class SailfishReshapingPass extends ReshapingPass {
-  public static final String SIMPLE_NAME = "SailfishReshapingPass";
+  public SailfishReshapingPass() {
+    super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
+  }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {

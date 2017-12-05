@@ -40,16 +40,13 @@ public final class TestPolicy implements Policy {
   @Override
   public List<CompileTimePass> getCompileTimePasses() {
     List<CompileTimePass> policy = new ArrayList<>();
-    policy.add(new DefaultVertexExecutorPlacementPass());
-    policy.add(new DefaultPartitionerPass());
-    policy.add(new DefaultEdgeDataFlowModelPass());
-    policy.add(new DefaultEdgeDataStorePass());
     policy.add(new DefaultStagePartitioningPass());
-    policy.add(new ScheduleGroupPass());
 
     if (testPushPolicy) {
-      policy.add(3, new ScatterGatherEdgePushPass());
+      policy.add(new ScatterGatherEdgePushPass());
     }
+
+    policy.add(new ScheduleGroupPass());
     return policy;
   }
 

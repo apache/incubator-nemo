@@ -25,13 +25,11 @@ import java.util.Arrays;
  * A series of passes to support Sailfish-like disk seek batching during shuffle.
  */
 public final class SailfishPass extends CompositePass {
-  public static final String SIMPLE_NAME = "SailfishPass";
-
   public SailfishPass() {
     super(Arrays.asList(
         new SailfishReshapingPass(),
-        new SailfishEdgeDataStorePass(),
-        new SailfishEdgeDataFlowModelPass()
+        new SailfishEdgeDataFlowModelPass(),
+        new SailfishEdgeDataStorePass()
     ));
   }
 }

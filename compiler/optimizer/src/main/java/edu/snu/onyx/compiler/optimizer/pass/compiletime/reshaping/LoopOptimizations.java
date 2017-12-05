@@ -97,7 +97,9 @@ public final class LoopOptimizations {
    * Pass for Loop Fusion optimization.
    */
   public static final class LoopFusionPass extends ReshapingPass {
-    public static final String SIMPLE_NAME = "LoopFusionPass";
+    public LoopFusionPass() {
+      super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
+    }
 
     @Override
     public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
@@ -240,7 +242,9 @@ public final class LoopOptimizations {
    * Pass for Loop Invariant Code Motion optimization.
    */
   public static final class LoopInvariantCodeMotionPass extends ReshapingPass {
-    public static final String SIMPLE_NAME = "LoopInvariantCodeMotionPass";
+    public LoopInvariantCodeMotionPass() {
+      super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
+    }
 
     @Override
     public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {

@@ -21,7 +21,7 @@ import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.ParallelismPass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import edu.snu.onyx.tests.compiler.CompilerTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,25 +32,25 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Test {@link ParallelismPass}.
+ * Test {@link DefaultParallelismPass}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public class ParallelismPassTest {
+public class DefaultParallelismPassTest {
   @Before
   public void setUp() throws Exception {
   }
 
   @Test
   public void testAnnotatingPass() {
-    final AnnotatingPass parallelismPass = new ParallelismPass();
+    final AnnotatingPass parallelismPass = new DefaultParallelismPass();
     assertEquals(ExecutionProperty.Key.Parallelism, parallelismPass.getExecutionPropertyToModify());
   }
 
   @Test
   public void testParallelism() throws Exception {
     final DAG<IRVertex, IREdge> compiledDAG = CompilerTestUtil.compileALSDAG();
-    final DAG<IRVertex, IREdge> processedDAG = new ParallelismPass().apply(compiledDAG);
+    final DAG<IRVertex, IREdge> processedDAG = new DefaultParallelismPass().apply(compiledDAG);
 
     processedDAG.getTopologicalSort().forEach(irVertex ->
         assertEquals(1, irVertex.<Integer>getProperty(ExecutionProperty.Key.Parallelism).longValue()));

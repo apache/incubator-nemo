@@ -20,8 +20,6 @@ import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.CompositePass;
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.reshaping.ReshapingPass;
 import edu.snu.onyx.runtime.common.optimizer.pass.runtime.RuntimePass;
 
 import java.util.ArrayList;
@@ -35,16 +33,28 @@ import java.util.Set;
 public final class PolicyBuilder {
   private final List<CompileTimePass> compileTimePasses;
   private final List<RuntimePass<?>> runtimePasses;
-  private final Set<ExecutionProperty.Key> requiredExecutionProperties;
+  private final Set<ExecutionProperty.Key> finalizedExecutionProperties;
   private final Set<ExecutionProperty.Key> annotatedExecutionProperties;
+  private final Boolean strictPrerequisiteCheckMode;
 
   public PolicyBuilder() {
+    this(false);
+  }
+
+  public PolicyBuilder(final Boolean strictPrerequisiteCheckMode) {
     this.compileTimePasses = new ArrayList<>();
     this.runtimePasses = new ArrayList<>();
-    this.requiredExecutionProperties = new HashSet<>();
+    this.finalizedExecutionProperties = new HashSet<>();
     this.annotatedExecutionProperties = new HashSet<>();
+    this.strictPrerequisiteCheckMode = strictPrerequisiteCheckMode;
     // DataCommunicationPattern is already set when creating the IREdge itself.
     annotatedExecutionProperties.add(ExecutionProperty.Key.DataCommunicationPattern);
+    // Some default values are already annotated.
+    annotatedExecutionProperties.add(ExecutionProperty.Key.ExecutorPlacement);
+    annotatedExecutionProperties.add(ExecutionProperty.Key.Parallelism);
+    annotatedExecutionProperties.add(ExecutionProperty.Key.DataFlowModel);
+    annotatedExecutionProperties.add(ExecutionProperty.Key.DataStore);
+    annotatedExecutionProperties.add(ExecutionProperty.Key.Partitioner);
   }
 
   public PolicyBuilder registerCompileTimePass(final CompileTimePass compileTimePass) {
@@ -65,13 +75,16 @@ public final class PolicyBuilder {
     if (compileTimePass instanceof AnnotatingPass) {
       final AnnotatingPass annotatingPass = (AnnotatingPass) compileTimePass;
       this.annotatedExecutionProperties.add(annotatingPass.getExecutionPropertyToModify());
+      if (strictPrerequisiteCheckMode
+          && finalizedExecutionProperties.contains(annotatingPass.getExecutionPropertyToModify())) {
+        throw new CompileTimeOptimizationException(annotatingPass.getExecutionPropertyToModify()
+            + " should have already been finalized.");
+      }
     }
+    finalizedExecutionProperties.addAll(compileTimePass.getPrerequisiteExecutionProperties());
+
     this.compileTimePasses.add(compileTimePass);
 
-    // re-initiate after each reshaping pass.
-    if (compileTimePass instanceof ReshapingPass) {
-      this.registerCompileTimePass(new InitiationCompositePass());
-    }
     return this;
   }
 
@@ -82,17 +95,7 @@ public final class PolicyBuilder {
     return this;
   }
 
-  public PolicyBuilder addExecutionPropertyRequirement(final ExecutionProperty.Key key) {
-    requiredExecutionProperties.add(key);
-    return this;
-  }
-
   public Policy build() {
-    // see if required execution properties have been met
-    if (!annotatedExecutionProperties.containsAll(requiredExecutionProperties)) {
-      throw new CompileTimeOptimizationException("Required execution properties has not been met for the policy");
-    }
-
     return new Policy() {
       @Override
       public List<CompileTimePass> getCompileTimePasses() {
