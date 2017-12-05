@@ -33,7 +33,9 @@ import java.util.stream.Collectors;
  * Refer to CommonSubexpressionEliminationPassTest for such cases.
  */
 public final class CommonSubexpressionEliminationPass extends ReshapingPass {
-  public static final String SIMPLE_NAME = "CommonSubexpressionEliminationPass";
+  public CommonSubexpressionEliminationPass() {
+    super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
+  }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {

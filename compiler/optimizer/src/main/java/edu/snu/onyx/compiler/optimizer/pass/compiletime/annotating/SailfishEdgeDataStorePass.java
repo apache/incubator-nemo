@@ -22,15 +22,15 @@ import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 
+import java.util.Collections;
+
 /**
  * A pass to support Sailfish-like shuffle by tagging edges.
  * This pass handles the DataStore ExecutionProperty.
  */
 public final class SailfishEdgeDataStorePass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "SailfishEdgeDataStorePass";
-
   public SailfishEdgeDataStorePass() {
-    super(ExecutionProperty.Key.DataStore);
+    super(ExecutionProperty.Key.DataStore, Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }
 
   @Override

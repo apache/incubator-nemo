@@ -26,6 +26,7 @@ import edu.snu.onyx.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
 import edu.snu.onyx.compiler.frontend.beam.transform.GroupByKeyTransform;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.CompositePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.DataSkewCompositePass;
 import edu.snu.onyx.tests.compiler.CompilerTestUtil;
@@ -65,6 +66,11 @@ public class DataSkewCompositePassTest {
     final Set<ExecutionProperty.Key> prerequisites = new HashSet<>();
     dataSkewPass.getPassList().forEach(compileTimePass ->
         prerequisites.addAll(compileTimePass.getPrerequisiteExecutionProperties()));
+    dataSkewPass.getPassList().forEach(compileTimePass -> {
+      if (compileTimePass instanceof AnnotatingPass) {
+        prerequisites.remove(((AnnotatingPass) compileTimePass).getExecutionPropertyToModify());
+      }
+    });
     assertEquals(prerequisites, dataSkewPass.getPrerequisiteExecutionProperties());
   }
 

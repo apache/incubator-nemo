@@ -29,8 +29,6 @@ import java.util.Arrays;
  * at the end of each passes for metricCollectionVertices.
  */
 public final class DataSkewCompositePass extends CompositePass {
-  public static final String SIMPLE_NAME = "DataSkewCompositePass";
-
   public DataSkewCompositePass() {
     super(Arrays.asList(
         new DataSkewReshapingPass(),
