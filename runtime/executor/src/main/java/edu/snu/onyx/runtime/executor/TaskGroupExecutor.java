@@ -15,16 +15,13 @@
  */
 package edu.snu.onyx.runtime.executor;
 
-import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.ContextImpl;
 import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.exception.PartitionFetchException;
 import edu.snu.onyx.common.exception.PartitionWriteException;
 import edu.snu.onyx.common.ir.Reader;
 import edu.snu.onyx.common.ir.Transform;
-import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
-import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
@@ -177,12 +174,10 @@ public final class TaskGroupExecutor {
           LOG.info("{} Execution Complete!", taskGroup.getTaskGroupId());
         } else if (task instanceof OperatorTask) {
           launchOperatorTask((OperatorTask) task);
-          garbageCollectLocalIntermediateData(task);
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.COMPLETE, Optional.empty());
           LOG.info("{} Execution Complete!", taskGroup.getTaskGroupId());
         } else if (task instanceof MetricCollectionBarrierTask) {
           launchMetricCollectionBarrierTask((MetricCollectionBarrierTask) task);
-          garbageCollectLocalIntermediateData(task);
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.ON_HOLD, Optional.empty());
           LOG.info("{} Execution Complete!", taskGroup.getTaskGroupId());
         } else {
@@ -203,22 +198,6 @@ public final class TaskGroupExecutor {
         throw new RuntimeException(e);
       }
     });
-  }
-
-  /**
-   * Data on stage-internal edges can be garbage collected after they're consumed.
-   * Without garbage collection, JVM will be filled with no-longer needed data, and will eventually crash with an OOM.
-   * TODO #266: Introduce Caching
-   * @param executedTask that consumed the data
-   */
-  private void garbageCollectLocalIntermediateData(final Task executedTask) {
-    final DAG<Task, RuntimeEdge<Task>> dag = taskGroup.getTaskDAG();
-    dag.getIncomingEdgesOf(executedTask).stream() // inEdges within the stage
-        .forEach(edge -> {
-          final String partitionId = RuntimeIdGenerator.generatePartitionId(edge.getId(), edge.getSrc().getIndex());
-          partitionManagerWorker
-              .removePartition(partitionId, edge.getProperty(ExecutionProperty.Key.DataStore));
-        });
   }
 
   /**

@@ -19,7 +19,6 @@ package edu.snu.onyx.runtime.executor.datatransfer.communication;
  * TODO #492: Implement Runtime classes for each DataCommunicationPatternProperty.
  */
 public final class ScatterGather implements DataCommunicationPattern {
-  public static final String SIMPLE_NAME = "ScatterGather";
 
   /**
    * TODO #492: Implement Runtime classes for each DataCommunicationPatternProperty.

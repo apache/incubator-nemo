@@ -30,7 +30,7 @@ public final class DisaggregationPolicy implements Policy {
   private final Policy policy;
 
   public DisaggregationPolicy() {
-    this.policy = new PolicyBuilder(true)
+    this.policy = new PolicyBuilder(false)
         .registerCompileTimePass(new LoopOptimizationCompositePass())
         .registerCompileTimePass(new PrimitiveCompositePass())
         .registerCompileTimePass(new DisaggregationEdgeDataStorePass())

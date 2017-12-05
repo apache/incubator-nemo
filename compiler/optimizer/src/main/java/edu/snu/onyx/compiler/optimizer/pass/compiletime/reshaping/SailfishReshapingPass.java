@@ -29,10 +29,11 @@ import java.util.Collections;
 /**
  * Pass to modify the DAG for a job to batch the disk seek.
  * It adds a {@link OperatorVertex} with {@link RelayTransform} before the vertices
- * receiving {@link edu.snu.onyx.runtime.executor.datatransfer.communication.ScatterGather} edges,
+ * receiving scatter-gather edges,
  * to merge the shuffled data in memory and write to the disk at once.
  */
 public final class SailfishReshapingPass extends ReshapingPass {
+
   public SailfishReshapingPass() {
     super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }

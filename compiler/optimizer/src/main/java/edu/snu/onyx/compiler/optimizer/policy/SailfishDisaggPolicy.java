@@ -33,7 +33,7 @@ public final class SailfishDisaggPolicy implements Policy {
   private final Policy policy;
 
   public SailfishDisaggPolicy() {
-    this.policy = new PolicyBuilder(true)
+    this.policy = new PolicyBuilder(false)
         .registerCompileTimePass(new SailfishPass())
         .registerCompileTimePass(new LoopOptimizationCompositePass())
         .registerCompileTimePass(new PrimitiveCompositePass())
