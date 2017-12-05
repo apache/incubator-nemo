@@ -265,21 +265,21 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
           throw new RuntimeException("DAG execution property check: "
               + "DataSizeMetricCollection edge is not compatible with push" + e.getId());
         }));
-    // All vertices connected with OneToOne edge should have identical Parallelism execution property.
-    vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> DataCommunicationPatternProperty.Value.OneToOne
-                .equals(e.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
-        .filter(e -> !Boolean.TRUE.equals(e.isSideInput())).forEach(e -> {
-          if (e.getSrc() != null && e.getDst() != null
-              && !(e.getSrc() instanceof LoopVertex) && !(e.getDst() instanceof LoopVertex)
-              && (e.getSrc()).getProperty(ExecutionProperty.Key.Parallelism) != null
-              && (e.getDst()).getProperty(ExecutionProperty.Key.Parallelism) != null
-              && !(e.getSrc()).getProperty(ExecutionProperty.Key.Parallelism)
-              .equals((e.getDst()).getProperty(ExecutionProperty.Key.Parallelism))) {
-            throw new RuntimeException("DAG execution property check: vertices are connected by OneToOne edge, "
-                + "but has different parallelism execution properties: " + e.getId());
+    // All vertices with same Stage Id should have identical Parallelism execution property.
+    final HashMap<Integer, Integer> stageIdToParallelismMap = new HashMap<>();
+    vertices.stream().filter(v -> v instanceof IRVertex)
+        .map(v -> (IRVertex) v)
+        .forEach(v -> {
+          final Integer stageId = v.getProperty(ExecutionProperty.Key.StageId);
+          if (stageId != null) {
+            if (!stageIdToParallelismMap.containsKey(stageId)) {
+              stageIdToParallelismMap.put(stageId, v.getProperty(ExecutionProperty.Key.Parallelism));
+            } else if (!stageIdToParallelismMap.get(stageId).equals(v.getProperty(ExecutionProperty.Key.Parallelism))) {
+              throw new RuntimeException("DAG execution property check: vertices are in a same stage, "
+                  + "but has different parallelism execution properties: Stage" + stageId + ": " + v.getId());
+            }
           }
-        }));
+        });
   }
 
   /**

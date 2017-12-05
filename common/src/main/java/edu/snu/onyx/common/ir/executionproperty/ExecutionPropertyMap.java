@@ -16,8 +16,12 @@
 package edu.snu.onyx.common.ir.executionproperty;
 
 import edu.snu.onyx.common.ir.edge.IREdge;
+import edu.snu.onyx.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
+import edu.snu.onyx.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.onyx.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -56,6 +60,24 @@ public final class ExecutionPropertyMap implements Serializable {
                                         final DataCommunicationPatternProperty.Value commPattern) {
     final ExecutionPropertyMap map = new ExecutionPropertyMap(irEdge.getId());
     map.put(DataCommunicationPatternProperty.of(commPattern));
+    map.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    switch (commPattern) {
+      case ScatterGather:
+        map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+        break;
+      case BroadCast:
+        map.put(PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
+        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+        break;
+      case OneToOne:
+        map.put(PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
+        map.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+        break;
+      default:
+        map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+    }
     return map;
   }
   /**
@@ -66,6 +88,7 @@ public final class ExecutionPropertyMap implements Serializable {
   public static ExecutionPropertyMap of(final IRVertex irVertex) {
     final ExecutionPropertyMap map = new ExecutionPropertyMap(irVertex.getId());
     map.put(ParallelismProperty.of(1));
+    map.put(ExecutorPlacementProperty.of(ExecutorPlacementProperty.NONE));
     return map;
   }
 

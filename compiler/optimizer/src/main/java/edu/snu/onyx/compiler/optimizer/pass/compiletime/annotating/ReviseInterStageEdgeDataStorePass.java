@@ -17,22 +17,22 @@ package edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.ir.edge.IREdge;
-import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.onyx.common.ir.vertex.IRVertex;
+import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
-import edu.snu.onyx.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.onyx.common.ir.vertex.IRVertex;
 
-import java.util.Collections;
 import java.util.List;
-
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
- * A pass for tagging scatter-gather edges different from the default ones.
- * It sets DataFlowModel ExecutionProperty as "push".
+ * Edge data store pass to process inter-stage memory store edges.
  */
-public final class ScatterGatherEdgePushPass extends AnnotatingPass {
-  public ScatterGatherEdgePushPass() {
-    super(ExecutionProperty.Key.DataFlowModel, Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
+public final class ReviseInterStageEdgeDataStorePass extends AnnotatingPass {
+  public ReviseInterStageEdgeDataStorePass() {
+    super(ExecutionProperty.Key.DataStore, Stream.of(
+        ExecutionProperty.Key.StageId
+    ).collect(Collectors.toSet()));
   }
 
   @Override
@@ -41,9 +41,10 @@ public final class ScatterGatherEdgePushPass extends AnnotatingPass {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
-          if (edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-              .equals(DataCommunicationPatternProperty.Value.ScatterGather)) {
-            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
+          if (DataStoreProperty.Value.MemoryStore.equals(edge.getProperty(ExecutionProperty.Key.DataStore))
+              && !edge.getSrc().getProperty(ExecutionProperty.Key.StageId)
+              .equals(edge.getDst().getProperty(ExecutionProperty.Key.StageId))) {
+            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
           }
         });
       }

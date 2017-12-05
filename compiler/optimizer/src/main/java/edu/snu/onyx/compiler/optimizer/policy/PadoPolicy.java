@@ -16,8 +16,7 @@
 package edu.snu.onyx.compiler.optimizer.policy;
 
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.*;
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.*;
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.PrimitiveCompositePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.PadoCompositePass;
 import edu.snu.onyx.runtime.common.optimizer.pass.runtime.RuntimePass;
@@ -32,12 +31,10 @@ public final class PadoPolicy implements Policy {
   private final Policy policy;
 
   public PadoPolicy() {
-    this.policy = new PolicyBuilder()
-        .registerCompileTimePass(new InitiationCompositePass())
-        .registerCompileTimePass(new LoopOptimizationCompositePass())
+    this.policy = new PolicyBuilder(true)
         .registerCompileTimePass(new PadoCompositePass())
-        .registerCompileTimePass(new DefaultStagePartitioningPass())
-        .registerCompileTimePass(new ScheduleGroupPass())
+        .registerCompileTimePass(new LoopOptimizationCompositePass())
+        .registerCompileTimePass(new PrimitiveCompositePass())
         .build();
   }
 
