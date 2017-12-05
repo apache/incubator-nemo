@@ -16,21 +16,22 @@
 package edu.snu.onyx.runtime.executor.data.partitioner;
 
 import edu.snu.onyx.common.KeyExtractor;
-import edu.snu.onyx.runtime.common.data.Block;
+import edu.snu.onyx.runtime.executor.data.Block;
+import edu.snu.onyx.runtime.executor.data.NonSerializedBlock;
 
 import java.util.Collections;
 import java.util.List;
 
 /**
- * An implementation of {@link Partitioner} which makes an output data from a source task to a single {@link Block}.
+ * An implementation of {@link Partitioner} which makes an output data
+ * from a source task to a single {@link Block}.
  */
 public final class IntactPartitioner implements Partitioner {
-  public static final String SIMPLE_NAME = "Intact";
 
   @Override
   public List<Block> partition(final Iterable elements,
                                final int dstParallelism,
                                final KeyExtractor keyExtractor) {
-    return Collections.singletonList(new Block(elements));
+    return Collections.singletonList(new NonSerializedBlock(0, elements));
   }
 }

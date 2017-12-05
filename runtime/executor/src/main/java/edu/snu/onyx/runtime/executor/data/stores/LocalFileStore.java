@@ -35,14 +35,13 @@ import java.util.List;
  */
 @ThreadSafe
 public final class LocalFileStore extends LocalPartitionStore implements FileStore {
-  public static final String SIMPLE_NAME = "LocalFileStore";
   private final String fileDirectory;
   private final InjectionFuture<PartitionManagerWorker> partitionManagerWorker;
 
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
                          final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
-    super();
+    super(partitionManagerWorker);
     this.fileDirectory = fileDirectory;
     this.partitionManagerWorker = partitionManagerWorker;
     new File(fileDirectory).mkdirs();
@@ -58,7 +57,7 @@ public final class LocalFileStore extends LocalPartitionStore implements FileSto
   public void createPartition(final String partitionId) {
     removePartition(partitionId);
 
-    final Coder coder = DataUtil.getCoderFromWorker(partitionId, partitionManagerWorker.get());
+    final Coder coder = getCoderFromWorker(partitionId);
     final LocalFileMetadata metadata = new LocalFileMetadata(false);
 
     final FilePartition partition =

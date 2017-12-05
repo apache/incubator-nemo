@@ -16,7 +16,8 @@
 package edu.snu.onyx.runtime.executor.data.partitioner;
 
 import edu.snu.onyx.common.KeyExtractor;
-import edu.snu.onyx.runtime.common.data.Block;
+import edu.snu.onyx.runtime.executor.data.Block;
+import edu.snu.onyx.runtime.executor.data.NonSerializedBlock;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +29,6 @@ import java.util.stream.IntStream;
  * The data will be hashed by their key, and applied "modulo" operation by the number of destination tasks.
  */
 public final class HashPartitioner implements Partitioner {
-  public static final String SIMPLE_NAME = "Hash";
 
   @Override
   public List<Block> partition(final Iterable elements,
@@ -44,7 +44,7 @@ public final class HashPartitioner implements Partitioner {
 
     final List<Block> blocks = new ArrayList<>(dstParallelism);
     for (int hashIdx = 0; hashIdx < dstParallelism; hashIdx++) {
-      blocks.add(new Block(hashIdx, elementsByKey.get(hashIdx)));
+      blocks.add(new NonSerializedBlock(hashIdx, elementsByKey.get(hashIdx)));
     }
     return blocks;
   }

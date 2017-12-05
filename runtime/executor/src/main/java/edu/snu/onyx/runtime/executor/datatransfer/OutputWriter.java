@@ -25,8 +25,8 @@ import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
+import edu.snu.onyx.runtime.executor.data.Block;
 import edu.snu.onyx.runtime.executor.data.partitioner.*;
-import edu.snu.onyx.runtime.common.data.Block;
 import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
 
 import javax.annotation.Nullable;

@@ -18,7 +18,6 @@ package edu.snu.onyx.runtime.executor.data;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.runtime.common.data.Block;
 import edu.snu.onyx.runtime.common.data.HashRange;
 import edu.snu.onyx.runtime.executor.data.stores.PartitionStore;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
@@ -121,11 +120,12 @@ public final class PartitionManagerWorker {
    * Retrieves data from the stored partition. A specific hash value range can be designated.
    * This can be invoked multiple times per partitionId (maybe due to failures).
    * Here, we first check if we have the partition here, and then try to fetch the partition from a remote worker.
+   // TODO #626: Enable Serialized Read From PartitionTransfer - implement getBlocks
    *
    * @param partitionId    of the partition.
    * @param runtimeEdgeId  id of the runtime edge that corresponds to the partition.
    * @param partitionStore for the data storage.
-   * @param hashRange      the hash range descriptor
+   * @param hashRange      the hash range descriptor.
    * @return the result data in the partition.
    */
   public CompletableFuture<Iterable> retrieveDataFromPartition(
@@ -137,11 +137,15 @@ public final class PartitionManagerWorker {
     final PartitionStore store = getPartitionStore(partitionStore);
 
     // First, try to fetch the partition from local PartitionStore.
-    final Optional<Iterable> optionalResultData = store.getElements(partitionId, hashRange);
+    final Optional<Iterable<NonSerializedBlock>> optionalResultBlocks = store.getBlocks(partitionId, hashRange);
 
-    if (optionalResultData.isPresent()) {
+    if (optionalResultBlocks.isPresent()) {
       // Partition resides in this evaluator!
-      return CompletableFuture.completedFuture(optionalResultData.get());
+      try {
+        return CompletableFuture.completedFuture(DataUtil.concatNonSerBlocks(optionalResultBlocks.get()));
+      } catch (final IOException e) {
+        throw new PartitionFetchException(e);
+      }
     } else if (DataStoreProperty.Value.GlusterFileStore.equals(partitionStore)) {
       throw new PartitionFetchException(new Throwable("Cannot find a partition in remote store."));
     } else {
@@ -201,6 +205,7 @@ public final class PartitionManagerWorker {
    * Invariant: This should not be invoked after a partition is committed.
    * Invariant: This method may not support concurrent write for a single partition.
    *            Only one thread have to write at once.
+   * TODO #626: Enable Serialized Read From PartitionTransfer - implement putSerializedBlocks
    *
    * @param partitionId    of the partition.
    * @param blocks         to save to a partition.
@@ -216,7 +221,7 @@ public final class PartitionManagerWorker {
     final PartitionStore store = getPartitionStore(partitionStore);
 
     try {
-      return store.putBlocks(partitionId, blocks, commitPerBlock);
+      return store.putBlocks(partitionId, (Iterable) blocks, commitPerBlock);
     } catch (final Exception e) {
       throw new PartitionWriteException(e);
     }
@@ -353,9 +358,13 @@ public final class PartitionManagerWorker {
                 outputStream.getHashRange())).close();
           } else if (DataStoreProperty.Value.SerializedMemoryStore.equals(partitionStore)) {
             final SerializedMemoryStore serMemoryStore = (SerializedMemoryStore) getPartitionStore(partitionStore);
-            final Optional<Iterable<byte[]>> optionalResult = serMemoryStore.getSerializedBlocksFromPartition(
+            final Optional<Iterable<SerializedBlock>> optionalResult = serMemoryStore.getSerializedBlocks(
                 outputStream.getPartitionId(), outputStream.getHashRange());
-            outputStream.writeByteArrays(optionalResult.get()).close();
+            final List<byte[]> byteArrays = new ArrayList<>();
+            for (final SerializedBlock serializedBlock : optionalResult.get()) {
+              byteArrays.add(serializedBlock.getData());
+            }
+            outputStream.writeByteArrays(byteArrays).close();
           } else {
             final Iterable partition =
                 retrieveDataFromPartition(outputStream.getPartitionId(), outputStream.getRuntimeEdgeId(),

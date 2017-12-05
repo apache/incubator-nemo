@@ -15,7 +15,10 @@
  */
 package edu.snu.onyx.runtime.executor.data.stores;
 
-import edu.snu.onyx.runtime.executor.data.partition.MemoryPartition;
+import edu.snu.onyx.common.coder.Coder;
+import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
+import edu.snu.onyx.runtime.executor.data.partition.NonSerializedMemoryPartition;
+import org.apache.reef.tang.InjectionFuture;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -25,16 +28,16 @@ import javax.inject.Inject;
  */
 @ThreadSafe
 public final class MemoryStore extends LocalPartitionStore {
-  public static final String SIMPLE_NAME = "MemoryStore";
 
   @Inject
-  private MemoryStore() {
-    super();
+  private MemoryStore(final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
+    super(partitionManagerWorker);
   }
 
   @Override
   public void createPartition(final String partitionId) {
-    getPartitionMap().put(partitionId, new MemoryPartition());
+    final Coder coder = getCoderFromWorker(partitionId);
+    getPartitionMap().put(partitionId, new NonSerializedMemoryPartition(coder));
   }
 
   /**

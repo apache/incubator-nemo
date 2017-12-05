@@ -13,32 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.runtime.common.data;
+package edu.snu.onyx.runtime.executor.data;
 
 /**
  * A collection of data elements.
- * This is a unit of write towards {@link edu.snu.onyx.runtime.executor.data.stores.PartitionStore}s.
- * TODO #494: Refactor HashRange to be general. int -> generic Key, and so on...
+ * This is a unit of read / write towards {@link edu.snu.onyx.runtime.executor.data.partition.Partition}s.
+ * @param <T> the type of the data stored in this {@link Block}.
  */
-public final class Block {
-  private final int key;
-  private final Iterable data;
+public interface Block<T> {
 
-  public Block(final Iterable data) {
-    this(HashRange.NOT_HASHED, data);
-  }
+  /**
+   * @return the key value.
+   */
+  int getKey();
 
-  public Block(final int key,
-               final Iterable data) {
-    this.key = key;
-    this.data = data;
-  }
+  /**
+   * @return whether the data in this {@link Block} is serialized or not.
+   */
+  boolean isSerialized();
 
-  public int getKey() {
-    return key;
-  }
-
-  public Iterable getElements() {
-    return data;
-  }
+  /**
+   * @return the data in this {@link Block}.
+   */
+  T getData();
 }
