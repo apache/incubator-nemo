@@ -33,20 +33,17 @@ public final class BroadcastITCase {
   private static final int TIMEOUT = 120000;
   private static final String input = CompilerTestUtil.rootDir + "/../examples/src/main/resources/sample_input_mr";
   private static final String output = CompilerTestUtil.rootDir + "/../examples/src/main/resources/sample_output";
-  private static final String dagDirectory = CompilerTestUtil.dagDir;
 
   private static ArgBuilder builder = new ArgBuilder()
       .addJobId(BroadcastITCase.class.getSimpleName())
       .addUserMain(Broadcast.class.getCanonicalName())
-      .addUserArgs(input, output)
-      .addDAGDirectory(dagDirectory);
+      .addUserArgs(input, output);
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
         .addUserMain(Broadcast.class.getCanonicalName())
-        .addUserArgs(input, output)
-        .addDAGDirectory(dagDirectory);
+        .addUserArgs(input, output);
   }
 
   @Test (timeout = TIMEOUT)

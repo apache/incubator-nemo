@@ -61,7 +61,7 @@ public final class PhysicalPlanGenerator
     // first, stage-partition the IR DAG.
     final DAG<Stage, StageEdge> dagOfStages = stagePartitionIrDAG(irDAG);
     // for debugging purposes.
-    dagOfStages.storeJSON("../" + dagDirectory, "plan-logical", "logical execution plan");
+    dagOfStages.storeJSON(dagDirectory, "plan-logical", "logical execution plan");
     // then create tasks and make it into a physical execution plan.
     return stagesIntoPlan(dagOfStages);
   }
