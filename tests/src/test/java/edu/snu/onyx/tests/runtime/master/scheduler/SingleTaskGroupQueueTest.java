@@ -26,9 +26,11 @@ import edu.snu.onyx.common.ir.vertex.OperatorVertex;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.onyx.compiler.optimizer.CompiletimeOptimizer;
+import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.master.scheduler.SingleJobTaskGroupQueue;
 import edu.snu.onyx.tests.compiler.optimizer.TestPolicy;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,6 +49,7 @@ import static org.mockito.Mockito.mock;
 public final class SingleTaskGroupQueueTest {
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
   private SingleJobTaskGroupQueue pendingTaskGroupPriorityQueue;
+  private PhysicalPlanGenerator physicalPlanGenerator;
 
   /**
    * To be used for a thread pool to execute task groups.
@@ -54,10 +57,14 @@ public final class SingleTaskGroupQueueTest {
   private ExecutorService executorService;
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception{
     irDAGBuilder = new DAGBuilder<>();
     pendingTaskGroupPriorityQueue = new SingleJobTaskGroupQueue();
     executorService = Executors.newFixedThreadPool(2);
+
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
+    physicalPlanGenerator = injector.getInstance(PhysicalPlanGenerator.class);
   }
 
   /**
@@ -90,8 +97,7 @@ public final class SingleTaskGroupQueueTest {
 
     final DAG<IRVertex, IREdge> irDAG = CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
         new TestPolicy(true), "");
-    final PhysicalPlanGenerator physicalPlanGenerator =
-        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
+
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     pendingTaskGroupPriorityQueue.onJobScheduled(
@@ -176,8 +182,7 @@ public final class SingleTaskGroupQueueTest {
 
     final DAG<IRVertex, IREdge> irDAG = CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
         new TestPolicy(), "");
-    final PhysicalPlanGenerator physicalPlanGenerator =
-        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
+
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     pendingTaskGroupPriorityQueue.onJobScheduled(
@@ -261,8 +266,7 @@ public final class SingleTaskGroupQueueTest {
 
     final DAG<IRVertex, IREdge> irDAG = CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
         new TestPolicy(true), "");
-    final PhysicalPlanGenerator physicalPlanGenerator =
-        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
+
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     pendingTaskGroupPriorityQueue.onJobScheduled(
@@ -354,8 +358,7 @@ public final class SingleTaskGroupQueueTest {
 
     final DAG<IRVertex, IREdge> irDAG = CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
         new TestPolicy(true), "");
-    final PhysicalPlanGenerator physicalPlanGenerator =
-        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
+
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     pendingTaskGroupPriorityQueue.onJobScheduled(

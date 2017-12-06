@@ -53,4 +53,4 @@ MetricsData
 ml-data
 tang.conf
 *.sw[op]
-*.json
+-profile-*.json
