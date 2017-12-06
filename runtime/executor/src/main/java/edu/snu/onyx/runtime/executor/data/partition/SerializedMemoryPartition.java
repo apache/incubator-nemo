@@ -76,7 +76,7 @@ public final class SerializedMemoryPartition implements Partition {
     if (!committed) {
       final List<Long> blockSizeList = new ArrayList<>();
       blocksToWrite.forEach(serializedBlock -> {
-        blockSizeList.add((long) serializedBlock.getData().length);
+        blockSizeList.add((long) serializedBlock.getLength());
         serializedBlocks.add(serializedBlock);
       });
 
