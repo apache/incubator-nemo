@@ -23,6 +23,7 @@ public final class SerializedBlock implements Block<byte[]> {
   private final int key;
   private final long elementsTotal;
   private final byte[] serializedData;
+  private final int length;
 
   /**
    * Creates a serialized {@link Block} having a specific key value.
@@ -30,13 +31,16 @@ public final class SerializedBlock implements Block<byte[]> {
    * @param key            the key.
    * @param elementsTotal  the total number of elements.
    * @param serializedData the serialized data.
+   * @param length         the length of the actual serialized data. (It can be different with serializedData.length)
    */
   public SerializedBlock(final int key,
                          final long elementsTotal,
-                         final byte[] serializedData) {
+                         final byte[] serializedData,
+                         final int length) {
     this.key = key;
     this.elementsTotal = elementsTotal;
     this.serializedData = serializedData;
+    this.length = length;
   }
 
   /**
@@ -61,6 +65,13 @@ public final class SerializedBlock implements Block<byte[]> {
   @Override
   public byte[] getData() {
     return serializedData;
+  }
+
+  /**
+   * @return the length of the actual data.
+   */
+  public int getLength() {
+    return length;
   }
 
   /**

@@ -62,8 +62,8 @@ public final class FilePartition implements Partition {
       for (final SerializedBlock serializedBlock : serializedBlocks) {
         // Reserve a block write and get the metadata.
         final BlockMetadata blockMetadata = metadata.reserveBlock(
-            serializedBlock.getKey(), serializedBlock.getData().length, serializedBlock.getElementsTotal());
-        fileOutputStream.write(serializedBlock.getData());
+            serializedBlock.getKey(), serializedBlock.getLength(), serializedBlock.getElementsTotal());
+        fileOutputStream.write(serializedBlock.getData(), 0, serializedBlock.getLength());
 
         // Commit if needed.
         if (commitPerBlock) {
@@ -99,8 +99,8 @@ public final class FilePartition implements Partition {
   public synchronized List<Long> putSerializedBlocks(final Iterable<SerializedBlock> blocksToStore)
       throws IOException {
     final List<Long> blockSizeList = new ArrayList<>();
-    for (final SerializedBlock convertedBlock : blocksToStore) {
-      blockSizeList.add((long) convertedBlock.getData().length);
+    for (final SerializedBlock serializedBlock : blocksToStore) {
+      blockSizeList.add((long) serializedBlock.getLength());
     }
     writeSerializedBlocks(blocksToStore);
     commitRemainderMetadata();
@@ -173,7 +173,8 @@ public final class FilePartition implements Partition {
           if (readBytes != serializedData.length) {
             throw new IOException("The read data size does not match with the block size.");
           }
-          blocksInRange.add(new SerializedBlock(hashVal, blockMetadata.getElementsTotal(), serializedData));
+          blocksInRange.add(
+              new SerializedBlock(hashVal, blockMetadata.getElementsTotal(), serializedData, serializedData.length));
         } else {
           // Have to skip this block.
           skipBytes(fileStream, blockMetadata.getBlockSize());
