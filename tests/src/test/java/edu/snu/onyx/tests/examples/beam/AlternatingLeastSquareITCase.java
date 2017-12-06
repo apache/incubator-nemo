@@ -34,20 +34,17 @@ public final class AlternatingLeastSquareITCase {
   private static final String input = CompilerTestUtil.rootDir + "/../examples/src/main/resources/sample_input_als";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
-  private static final String dagDirectory = CompilerTestUtil.dagDir;
 
   public static ArgBuilder builder = new ArgBuilder()
       .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
       .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-      .addUserArgs(input, numFeatures, numIteration)
-      .addDAGDirectory(dagDirectory);
+      .addUserArgs(input, numFeatures, numIteration);
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
         .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-        .addUserArgs(input, numFeatures, numIteration)
-        .addDAGDirectory(dagDirectory);
+        .addUserArgs(input, numFeatures, numIteration);
   }
 
   // Disabled for speed purposes. To be re-enabled through TODO #138.
