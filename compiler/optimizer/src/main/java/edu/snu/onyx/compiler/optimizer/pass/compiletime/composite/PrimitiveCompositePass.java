@@ -20,18 +20,18 @@ import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.*;
 import java.util.Arrays;
 
 /**
- * Pass for initiating DAG ExecutionProperties with default values.
+ * A series of primitive passes that is applied commonly to all policies.
+ * It is highly recommended to place reshaping passes before this pass,
+ * and annotating passes after that and before this pass.
  */
-public final class InitiationCompositePass extends CompositePass {
-  public static final String SIMPLE_NAME = "InitiationCompositePass";
-
-  public InitiationCompositePass() {
+public final class PrimitiveCompositePass extends CompositePass {
+  public PrimitiveCompositePass() {
     super(Arrays.asList(
-        new ParallelismPass(),
-        new DefaultVertexExecutorPlacementPass(),
-        new DefaultPartitionerPass(),
-        new DefaultEdgeDataFlowModelPass(),
-        new DefaultEdgeDataStorePass()
+        new DefaultParallelismPass(), // annotating after reshaping passes, before stage partitioning
+        new DefaultStagePartitioningPass(),
+        new ReviseInterStageEdgeDataStorePass(), // after stage partitioning
+        new DefaultEdgeUsedDataHandlingPass(),
+        new ScheduleGroupPass()
     ));
   }
 }

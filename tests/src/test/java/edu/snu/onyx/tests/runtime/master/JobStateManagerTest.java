@@ -24,6 +24,7 @@ import edu.snu.onyx.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.onyx.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.onyx.common.ir.Transform;
 import edu.snu.onyx.compiler.optimizer.CompiletimeOptimizer;
+import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.onyx.runtime.common.message.local.LocalMessageEnvironment;
@@ -39,7 +40,6 @@ import edu.snu.onyx.runtime.master.PartitionManagerMaster;
 import edu.snu.onyx.tests.compiler.optimizer.TestPolicy;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -65,9 +65,10 @@ public final class JobStateManagerTest {
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
   private PartitionManagerMaster partitionManagerMaster;
   private MetricMessageHandler metricMessageHandler;
+  private PhysicalPlanGenerator physicalPlanGenerator;
 
   @Before
-  public void setUp() throws InjectionException {
+  public void setUp() throws Exception {
     irDAGBuilder = new DAGBuilder<>();
     final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
     final LocalMessageEnvironment messageEnvironment =
@@ -76,6 +77,8 @@ public final class JobStateManagerTest {
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
     partitionManagerMaster = injector.getInstance(PartitionManagerMaster.class);
     metricMessageHandler = mock(MetricMessageHandler.class);
+    injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
+    physicalPlanGenerator = injector.getInstance(PhysicalPlanGenerator.class);
   }
 
   /**
@@ -119,8 +122,6 @@ public final class JobStateManagerTest {
 
     final DAG<IRVertex, IREdge> irDAG = CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
         new TestPolicy(), "");
-    final PhysicalPlanGenerator physicalPlanGenerator =
-        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
     final JobStateManager jobStateManager = new JobStateManager(
         new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
@@ -157,11 +158,9 @@ public final class JobStateManagerTest {
    * Test whether the methods waiting finish of job works properly.
    */
   @Test(timeout = 1000)
-  public void testWaitUntilFinish() throws Exception {
+  public void testWaitUntilFinish() {
     // Create a JobStateManager of an empty dag.
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.build();
-    final PhysicalPlanGenerator physicalPlanGenerator =
-        Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
     final JobStateManager jobStateManager = new JobStateManager(
         new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),

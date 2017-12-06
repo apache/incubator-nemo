@@ -23,16 +23,19 @@ import edu.snu.onyx.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.MetricCollectionProperty;
 
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 /**
  * Pass to annotate the DAG for a job to perform data skew.
  * It specifies the outgoing ScatterGather edges from MetricCollectionVertices with a MetricCollection ExecutionProperty
  * which lets the edge to know what metric collection it should perform.
  */
 public final class DataSkewEdgeMetricCollectionPass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "DataSkewEdgeMetricCollectionPass";
-
   public DataSkewEdgeMetricCollectionPass() {
-    super(ExecutionProperty.Key.MetricCollection);
+    super(ExecutionProperty.Key.MetricCollection, Stream.of(
+        ExecutionProperty.Key.DataCommunicationPattern
+    ).collect(Collectors.toSet()));
   }
 
   @Override

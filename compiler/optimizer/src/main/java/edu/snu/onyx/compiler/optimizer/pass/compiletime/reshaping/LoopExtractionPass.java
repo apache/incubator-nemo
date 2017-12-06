@@ -33,7 +33,9 @@ import java.util.*;
  * other iterative computations.
  */
 public final class LoopExtractionPass extends ReshapingPass {
-  public static final String SIMPLE_NAME = "LoopExtractionPass";
+  public LoopExtractionPass() {
+    super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
+  }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {

@@ -29,8 +29,6 @@ import java.util.List;
  * This pass handles the DataStore ExecutionProperty.
  */
 public final class DisaggregationEdgeDataStorePass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "DisaggregationEdgeDataStorePass";
-
   public DisaggregationEdgeDataStorePass() {
     super(ExecutionProperty.Key.DataStore, Collections.singleton(ExecutionProperty.Key.DataStore));
   }

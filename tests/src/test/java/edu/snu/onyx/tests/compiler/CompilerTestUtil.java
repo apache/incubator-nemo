@@ -42,7 +42,6 @@ import java.lang.reflect.Method;
  */
 public final class CompilerTestUtil {
   public static final String rootDir = System.getProperty("user.dir");
-  public static final String dagDir = rootDir + "/../dag";
   public static final String padoPolicy = PadoPolicy.class.getCanonicalName();
   public static final String sailfishDisaggPolicy = SailfishDisaggPolicy.class.getCanonicalName();
   public static final String defaultPolicy = DefaultPolicy.class.getCanonicalName();
@@ -87,13 +86,11 @@ public final class CompilerTestUtil {
     final String input = rootDir + "/../examples/src/main/resources/sample_input_als";
     final String numFeatures = "10";
     final String numIteration = "3";
-    final String dagDirectory = dagDir;
 
     final ArgBuilder alsArgBuilder = new ArgBuilder()
         .addJobId(AlternatingLeastSquareInefficient.class.getSimpleName())
         .addUserMain(alsInefficient)
-        .addUserArgs(input, numFeatures, numIteration)
-        .addDAGDirectory(dagDirectory);
+        .addUserArgs(input, numFeatures, numIteration);
     return compileDAG(alsArgBuilder.build());
   }
 

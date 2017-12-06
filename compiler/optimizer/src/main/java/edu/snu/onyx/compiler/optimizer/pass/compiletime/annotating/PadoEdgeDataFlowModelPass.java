@@ -17,7 +17,6 @@ package edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.ir.edge.IREdge;
-import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataFlowModelProperty;
@@ -26,15 +25,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.PadoEdgeDataStorePass.fromReservedToTransient;
 import static edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.PadoEdgeDataStorePass.fromTransientToReserved;
 
 /**
  * Pado pass for tagging edges with DataFlowModel ExecutionProperty.
  */
 public final class PadoEdgeDataFlowModelPass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "PadoEdgeDataFlowModelPass";
-
   public PadoEdgeDataFlowModelPass() {
     super(ExecutionProperty.Key.DataFlowModel, Stream.of(
         ExecutionProperty.Key.ExecutorPlacement
@@ -49,15 +45,8 @@ public final class PadoEdgeDataFlowModelPass extends AnnotatingPass {
         inEdges.forEach(edge -> {
           if (fromTransientToReserved(edge)) {
             edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
-          } else if (fromReservedToTransient(edge)) {
-            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
           } else {
-            if (edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-                .equals(DataCommunicationPatternProperty.Value.OneToOne)) {
-              edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
-            } else {
-              edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
-            }
+            edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
           }
         });
       }

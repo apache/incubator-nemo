@@ -27,8 +27,6 @@ import edu.snu.onyx.common.ir.vertex.LoopVertex;
  * Then, it decomposes each of the LoopVertices with the DAG information that each of them contain.
  */
 public final class LoopUnrollingPass extends ReshapingPass {
-  public static final String SIMPLE_NAME = "LoopUnrollingPass";
-
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     return recursivelyUnroll(dag);

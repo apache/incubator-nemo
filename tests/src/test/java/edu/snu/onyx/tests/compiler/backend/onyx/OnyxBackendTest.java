@@ -29,7 +29,11 @@ import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.onyx.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.onyx.compiler.optimizer.policy.PadoPolicy;
+import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlanGenerator;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -45,6 +49,7 @@ public final class OnyxBackendTest<I, O> {
   private final IRVertex groupByKey = new OperatorVertex(new EmptyComponents.EmptyTransform("GroupByKey"));
   private final IRVertex combine = new OperatorVertex(new EmptyComponents.EmptyTransform("Combine"));
   private final IRVertex map2 = new OperatorVertex(new DoTransform(null, null));
+  private PhysicalPlanGenerator physicalPlanGenerator;
 
   private final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
   private DAG<IRVertex, IREdge> dag;
@@ -61,6 +66,10 @@ public final class OnyxBackendTest<I, O> {
         .build();
 
     this.dag = CompiletimeOptimizer.optimize(dag, new PadoPolicy(), EMPTY_DAG_DIRECTORY);
+
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
+    this.physicalPlanGenerator = injector.getInstance(PhysicalPlanGenerator.class);
   }
 
   /**
@@ -68,9 +77,9 @@ public final class OnyxBackendTest<I, O> {
    * @throws Exception during the Execution Plan generation.
    */
   @Test
-  public void testExecutionPlanGeneration() throws Exception {
-    final Backend<PhysicalPlan> backend = new OnyxBackend();
-    final PhysicalPlan executionPlan = backend.compile(dag);
+  public void testExecutionPlanGeneration() {
+    final OnyxBackend backend = new OnyxBackend();
+    final PhysicalPlan executionPlan = backend.compile(dag, physicalPlanGenerator);
 
     assertEquals(2, executionPlan.getStageDAG().getVertices().size());
     assertEquals(1, executionPlan.getStageDAG().getTopologicalSort().get(0).getTaskGroupList().size());

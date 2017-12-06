@@ -27,8 +27,6 @@ import edu.snu.onyx.common.ir.vertex.executionproperty.DynamicOptimizationProper
  * It specifies which optimization to perform on the MetricCollectionBarrierVertex.
  */
 public final class DataSkewVertexPass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "DataSkewVertexPass";
-
   public DataSkewVertexPass() {
     super(ExecutionProperty.Key.DynamicOptimizationType);
   }
