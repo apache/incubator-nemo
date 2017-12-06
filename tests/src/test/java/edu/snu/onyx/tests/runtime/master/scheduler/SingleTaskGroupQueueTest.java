@@ -37,8 +37,10 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -104,6 +106,8 @@ public final class SingleTaskGroupQueueTest {
 
     final CountDownLatch countDownLatch = new CountDownLatch(2);
 
+    final AtomicBoolean passed = new AtomicBoolean(true);
+
     // This mimics Batch Scheduler's behavior
     executorService.execute(() -> {
       // First schedule the children TaskGroups (since it is push).
@@ -138,12 +142,14 @@ public final class SingleTaskGroupQueueTest {
             dagOf2Stages.get(0).getId());
       } catch (Exception e) {
         e.printStackTrace();
+        passed.getAndSet(false);
       } finally {
         countDownLatch.countDown();
       }
     });
 
     countDownLatch.await();
+    assertTrue(passed.get());
   }
 
   /**
