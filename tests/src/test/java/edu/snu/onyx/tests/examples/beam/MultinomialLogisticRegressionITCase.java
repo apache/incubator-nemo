@@ -35,20 +35,17 @@ public final class MultinomialLogisticRegressionITCase {
   private static final String numFeatures = "100";
   private static final String numClasses = "5";
   private static final String numIteration = "3";
-  private static final String dagDirectory = CompilerTestUtil.dagDir;
 
   public static ArgBuilder builder = new ArgBuilder()
       .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName())
       .addUserMain(MultinomialLogisticRegression.class.getCanonicalName())
-      .addUserArgs(input, numFeatures, numClasses, numIteration)
-      .addDAGDirectory(dagDirectory);
+      .addUserArgs(input, numFeatures, numClasses, numIteration);
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
         .addUserMain(MultinomialLogisticRegression.class.getCanonicalName())
-        .addUserArgs(input, numFeatures, numClasses, numIteration)
-        .addDAGDirectory(dagDirectory);
+        .addUserArgs(input, numFeatures, numClasses, numIteration);
   }
 
   // Disabled for speed purposes. To be re-enabled through TODO #138.

@@ -45,8 +45,6 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
   private final List<V> rootVertices;
   private final Map<String, List<E>> incomingEdges;
   private final Map<String, List<E>> outgoingEdges;
-
-
   private final Map<String, LoopVertex> assignedLoopVertexMap;
   private final Map<String, Integer> loopStackDepthMap;
 
