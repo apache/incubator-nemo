@@ -38,12 +38,13 @@ import java.util.stream.Stream;
  * connect it to the stage, and otherwise we don't.
  */
 public final class DefaultStagePartitioningPass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "DefaultStagePartitioningPass";
-
   public DefaultStagePartitioningPass() {
     super(ExecutionProperty.Key.StageId, Stream.of(
+        ExecutionProperty.Key.DataCommunicationPattern,
         ExecutionProperty.Key.ExecutorPlacement,
-        ExecutionProperty.Key.DataStore
+        ExecutionProperty.Key.DataFlowModel,
+        ExecutionProperty.Key.Partitioner,
+        ExecutionProperty.Key.Parallelism
     ).collect(Collectors.toSet()));
   }
 
@@ -90,6 +91,9 @@ public final class DefaultStagePartitioningPass extends AnnotatingPass {
             // if src and dst are placed on same container types
             .filter(edge -> edge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement)
                 .equals(edge.getDst().getProperty(ExecutionProperty.Key.ExecutorPlacement)))
+            // if src and dst have same parallelism
+            .filter(edge -> edge.getSrc().getProperty(ExecutionProperty.Key.Parallelism)
+                .equals(edge.getDst().getProperty(ExecutionProperty.Key.Parallelism)))
             // Src that is already included in a stage
             .filter(edge -> vertexStageNumHashMap.containsKey(edge.getSrc()))
             // Others don't depend on the candidate stage.

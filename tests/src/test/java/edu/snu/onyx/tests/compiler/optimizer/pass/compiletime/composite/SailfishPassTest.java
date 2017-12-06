@@ -21,6 +21,7 @@ import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataFlowModelProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
+import edu.snu.onyx.common.ir.edge.executionproperty.UsedDataHandlingProperty;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.SailfishPass;
@@ -60,6 +61,8 @@ public class SailfishPassTest {
           .equals(edgeToMerger.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
             assertEquals(DataFlowModelProperty.Value.Push,
                 edgeToMerger.getProperty(ExecutionProperty.Key.DataFlowModel));
+            assertEquals(UsedDataHandlingProperty.Value.Discard,
+                edgeToMerger.getProperty(ExecutionProperty.Key.UsedDataHandling));
             assertEquals(DataStoreProperty.Value.MemoryStore,
                 edgeToMerger.getProperty(ExecutionProperty.Key.DataStore));
           } else {

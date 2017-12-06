@@ -17,17 +17,15 @@ package edu.snu.onyx.runtime.executor.datatransfer;
 
 import edu.snu.onyx.common.KeyExtractor;
 import edu.snu.onyx.common.exception.*;
-import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
-import edu.snu.onyx.common.ir.edge.executionproperty.MetricCollectionProperty;
-import edu.snu.onyx.common.ir.edge.executionproperty.PartitionerProperty;
+import edu.snu.onyx.common.ir.edge.executionproperty.*;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
+import edu.snu.onyx.runtime.executor.data.Block;
 import edu.snu.onyx.runtime.executor.data.partitioner.*;
-import edu.snu.onyx.runtime.common.data.Block;
 import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
+import edu.snu.onyx.runtime.executor.datatransfer.communication.OneToOne;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -126,7 +124,10 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   @Override
   public void close() {
     // Commit partition.
-    partitionManagerWorker.commitPartition(partitionId, channelDataPlacement, accumulatedBlockSizeInfo, srcVertexId);
+    final UsedDataHandlingProperty.Value usedDataHandling =
+        runtimeEdge.getProperty(ExecutionProperty.Key.UsedDataHandling);
+    partitionManagerWorker.commitPartition(partitionId, channelDataPlacement,
+        accumulatedBlockSizeInfo, srcVertexId, getDstParallelism(), usedDataHandling);
   }
 
   private void writeOneToOne(final List<Block> blocksToWrite) {
@@ -181,6 +182,8 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    * @return the parallelism of the destination task.
    */
   private int getDstParallelism() {
-    return dstVertex == null ? 1 : dstVertex.getProperty(ExecutionProperty.Key.Parallelism);
+    return dstVertex == null
+        || OneToOne.class.equals(runtimeEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))
+        ? 1 : dstVertex.getProperty(ExecutionProperty.Key.Parallelism);
   }
 }

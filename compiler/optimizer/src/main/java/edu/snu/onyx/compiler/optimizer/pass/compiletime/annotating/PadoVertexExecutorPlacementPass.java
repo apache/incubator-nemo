@@ -23,15 +23,17 @@ import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Pado pass for tagging vertices.
  */
 public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
-  public static final String SIMPLE_NAME = "PadoVertexExecutorPlacementPass";
-
   public PadoVertexExecutorPlacementPass() {
-    super(ExecutionProperty.Key.ExecutorPlacement);
+    super(ExecutionProperty.Key.ExecutorPlacement, Stream.of(
+        ExecutionProperty.Key.DataCommunicationPattern
+    ).collect(Collectors.toSet()));
   }
 
   @Override

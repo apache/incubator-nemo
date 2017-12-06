@@ -15,8 +15,9 @@
  */
 package edu.snu.onyx.runtime.executor.data.partition;
 
-import edu.snu.onyx.runtime.common.data.Block;
 import edu.snu.onyx.runtime.common.data.HashRange;
+import edu.snu.onyx.runtime.executor.data.NonSerializedBlock;
+import edu.snu.onyx.runtime.executor.data.SerializedBlock;
 
 import java.io.IOException;
 import java.util.List;
@@ -28,24 +29,45 @@ import java.util.Optional;
 public interface Partition {
 
   /**
-   * Writes {@link Block}s to this partition.
+   * Stores {@link NonSerializedBlock}s to this partition.
    * Invariant: This should not be invoked after this partition is committed.
    *
-   * @param blocks the {@link Block}s to write.
-   * @return the size of the data per block (only when the data is serialized).
-   * @throws IOException if fail to write.
+   * @param blocks the {@link NonSerializedBlock}s to store.
+   * @return the size of the data per block (only when the data is serialized in this method).
+   * @throws IOException if fail to store.
    */
-  Optional<List<Long>> putBlocks(final Iterable<Block> blocks) throws IOException;
+  Optional<List<Long>> putBlocks(final Iterable<NonSerializedBlock> blocks) throws IOException;
 
   /**
-   * Retrieves the blocks in a specific hash range and deserializes it from this partition.
+   * Stores {@link SerializedBlock}s to this partition.
+   * Invariant: This should not be invoked after this partition is committed.
+   *
+   * @param blocks the {@link SerializedBlock}s to store.
+   * @return the size of the data per block.
+   * @throws IOException if fail to store.
+   */
+  List<Long> putSerializedBlocks(final Iterable<SerializedBlock> blocks) throws IOException;
+
+  /**
+   * Retrieves the {@link NonSerializedBlock}s in a specific hash range from this partition.
+   * If the data is serialized, deserializes it.
    * Invariant: This should not be invoked before this partition is committed.
    *
    * @param hashRange the hash range to retrieve.
-   * @return an iterable of deserialized blocks.
-   * @throws IOException if failed to deserialize.
+   * @return an iterable of {@link NonSerializedBlock}s.
+   * @throws IOException if failed to retrieve.
    */
-  Iterable<Block> getBlocks(final HashRange hashRange) throws IOException;
+  Iterable<NonSerializedBlock> getBlocks(final HashRange hashRange) throws IOException;
+
+  /**
+   * Retrieves the {@link SerializedBlock}s in a specific hash range.
+   * Invariant: This should not be invoked before this partition is committed.
+   *
+   * @param hashRange the hash range to retrieve.
+   * @return an iterable of {@link SerializedBlock}s.
+   * @throws IOException if failed to retrieve.
+   */
+  Iterable<SerializedBlock> getSerializedBlocks(final HashRange hashRange) throws IOException;
 
   /**
    * Commits this partition to prevent further write.

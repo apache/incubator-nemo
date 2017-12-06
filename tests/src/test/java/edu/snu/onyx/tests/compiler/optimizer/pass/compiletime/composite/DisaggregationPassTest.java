@@ -22,8 +22,10 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternPro
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.DisaggregationPass;
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.InitiationCompositePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.DefaultStagePartitioningPass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.DisaggregationEdgeDataStorePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.ReviseInterStageEdgeDataStorePass;
 import edu.snu.onyx.tests.compiler.CompilerTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,7 +36,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Test {@link DisaggregationPass}.
+ * Test {@link DisaggregationEdgeDataStorePass}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
@@ -49,12 +51,17 @@ public class DisaggregationPassTest {
   @Test
   public void testDisaggregation() throws Exception {
     final DAG<IRVertex, IREdge> processedDAG =
-        new DisaggregationPass().apply(new InitiationCompositePass().apply(compiledDAG));
+        new DisaggregationEdgeDataStorePass().apply(
+            new ReviseInterStageEdgeDataStorePass().apply(
+                new DefaultStagePartitioningPass().apply(
+                    new DefaultParallelismPass().apply(compiledDAG))));
 
     processedDAG.getTopologicalSort().forEach(irVertex -> {
       processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger -> {
         if (DataCommunicationPatternProperty.Value.OneToOne
-              .equals(edgeToMerger.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
+            .equals(edgeToMerger.getProperty(ExecutionProperty.Key.DataCommunicationPattern))
+            && edgeToMerger.getSrc().getProperty(ExecutionProperty.Key.StageId)
+            .equals(edgeToMerger.getDst().getProperty(ExecutionProperty.Key.StageId))) {
           assertEquals(DataStoreProperty.Value.MemoryStore, edgeToMerger.getProperty(ExecutionProperty.Key.DataStore));
         } else {
           assertEquals(DataStoreProperty.Value.GlusterFileStore,
