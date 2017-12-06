@@ -407,11 +407,7 @@ public final class PartitionManagerWorker {
             final SerializedMemoryStore serMemoryStore = (SerializedMemoryStore) getPartitionStore(partitionStore);
             final Optional<Iterable<SerializedBlock>> optionalResult = serMemoryStore.getSerializedBlocks(
                 outputStream.getPartitionId(), outputStream.getHashRange());
-            final List<byte[]> byteArrays = new ArrayList<>();
-            for (final SerializedBlock serializedBlock : optionalResult.get()) {
-              byteArrays.add(serializedBlock.getData());
-            }
-            outputStream.writeByteArrays(byteArrays).close();
+            outputStream.writeSerializedBlocks(optionalResult.get()).close();
           } else {
             final Iterable partition =
                 retrieveDataFromPartition(outputStream.getPartitionId(), outputStream.getRuntimeEdgeId(),
