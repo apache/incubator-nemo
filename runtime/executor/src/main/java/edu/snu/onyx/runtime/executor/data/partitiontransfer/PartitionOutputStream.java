@@ -20,6 +20,7 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.executor.data.FileArea;
 import edu.snu.onyx.runtime.common.data.HashRange;
+import edu.snu.onyx.runtime.executor.data.SerializedBlock;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import org.slf4j.Logger;
@@ -185,8 +186,8 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
             }
           } else if (thing instanceof FileArea) {
             byteBufOutputStream.writeFileArea((FileArea) thing);
-          } else if (thing instanceof byte[]) {
-            byteBufOutputStream.write((byte[]) thing);
+          } else if (thing instanceof SerializedBlock) {
+            byteBufOutputStream.write(((SerializedBlock) thing).getData(), 0, ((SerializedBlock) thing).getLength());
           } else {
             coder.encode((T) thing, byteBufOutputStream);
           }
@@ -251,16 +252,17 @@ public final class PartitionOutputStream<T> implements AutoCloseable, PartitionS
   }
 
   /**
-   * Writes a collection of arrays of bytes.
+   * Writes a collection of {@link SerializedBlock}s.
    *
-   * @param byteArrays the collection of arrays of bytes to write
+   * @param serializedBlocks the collection of {@link SerializedBlock}
    * @return {@link PartitionOutputStream} (i.e. {@code this})
    * @throws IOException if an exception was set
    * @throws IllegalStateException if this stream is closed already
    */
-  public PartitionOutputStream writeByteArrays(final Iterable<byte[]> byteArrays) throws IOException {
+  public PartitionOutputStream writeSerializedBlocks(final Iterable<SerializedBlock> serializedBlocks)
+      throws IOException {
     checkWritableCondition();
-    byteArrays.forEach(elementQueue::put);
+    serializedBlocks.forEach(elementQueue::put);
     if (encodePartialPartition) {
       startEncodingThreadIfNeeded();
     }

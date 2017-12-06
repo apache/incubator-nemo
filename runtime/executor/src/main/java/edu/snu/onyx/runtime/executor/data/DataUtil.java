@@ -1,5 +1,6 @@
 package edu.snu.onyx.runtime.executor.data;
 
+import edu.snu.onyx.common.DirectByteArrayOutputStream;
 import edu.snu.onyx.common.coder.Coder;
 
 import java.io.ByteArrayInputStream;
@@ -73,14 +74,14 @@ public final class DataUtil {
   public static Iterable<SerializedBlock> convertToSerBlocks(final Coder coder,
                                                              final Iterable<NonSerializedBlock> blocksToConvert)
       throws IOException {
-    // The blocks in this iterable seem to be not serialized yet.
     final List<SerializedBlock> serializedBlocks = new ArrayList<>();
-    try (final ByteArrayOutputStream bytesOutputStream = new ByteArrayOutputStream()) {
-      for (final NonSerializedBlock blockToConvert : blocksToConvert) {
+    for (final NonSerializedBlock blockToConvert : blocksToConvert) {
+      try (final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream()) {
         final long elementsTotal = serializeBlock(coder, blockToConvert, bytesOutputStream);
-        final byte[] serializedBytes = bytesOutputStream.toByteArray();
-        serializedBlocks.add(new SerializedBlock(blockToConvert.getKey(), elementsTotal, serializedBytes));
-        bytesOutputStream.reset();
+        final byte[] serializedBytes = bytesOutputStream.getBufDirectly();
+        final int actualLength = bytesOutputStream.getCount();
+        serializedBlocks.add(
+            new SerializedBlock(blockToConvert.getKey(), elementsTotal, serializedBytes, actualLength));
       }
     }
     return serializedBlocks;
@@ -97,18 +98,17 @@ public final class DataUtil {
   public static Iterable<NonSerializedBlock> convertToNonSerBlocks(final Coder coder,
                                                                    final Iterable<SerializedBlock> blocksToConvert)
       throws IOException {
-      // The blocks in this iterable seem to be serialized.
-      final List<NonSerializedBlock> nonSerializedBlocks = new ArrayList<>();
-      for (final SerializedBlock blockToConvert : blocksToConvert) {
-        final int hashVal = blockToConvert.getKey();
-        try (final ByteArrayInputStream byteArrayInputStream =
-                 new ByteArrayInputStream(blockToConvert.getData())) {
-          final NonSerializedBlock deserializeBlock = deserializeBlock(
-              blockToConvert.getElementsTotal(), coder, hashVal, byteArrayInputStream);
-          nonSerializedBlocks.add(deserializeBlock);
-        }
+    final List<NonSerializedBlock> nonSerializedBlocks = new ArrayList<>();
+    for (final SerializedBlock blockToConvert : blocksToConvert) {
+      final int hashVal = blockToConvert.getKey();
+      try (final ByteArrayInputStream byteArrayInputStream =
+               new ByteArrayInputStream(blockToConvert.getData())) {
+        final NonSerializedBlock deserializeBlock = deserializeBlock(
+            blockToConvert.getElementsTotal(), coder, hashVal, byteArrayInputStream);
+        nonSerializedBlocks.add(deserializeBlock);
       }
-      return nonSerializedBlocks;
+    }
+    return nonSerializedBlocks;
   }
 
   /**
