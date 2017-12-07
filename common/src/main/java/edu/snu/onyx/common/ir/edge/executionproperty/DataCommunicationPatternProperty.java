@@ -36,6 +36,6 @@ public final class DataCommunicationPatternProperty
   public enum Value {
     OneToOne,
     BroadCast,
-    ScatterGather
+    Shuffle
   }
 }

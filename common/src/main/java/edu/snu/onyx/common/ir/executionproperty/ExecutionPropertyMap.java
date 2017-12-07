@@ -62,7 +62,7 @@ public final class ExecutionPropertyMap implements Serializable {
     map.put(DataCommunicationPatternProperty.of(commPattern));
     map.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
     switch (commPattern) {
-      case ScatterGather:
+      case Shuffle:
         map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
         map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
         break;

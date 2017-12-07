@@ -61,7 +61,7 @@ public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
   private boolean hasM2M(final List<IREdge> irEdges) {
     return irEdges.stream().anyMatch(edge ->
         edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-          .equals(DataCommunicationPatternProperty.Value.ScatterGather));
+          .equals(DataCommunicationPatternProperty.Value.Shuffle));
   }
 
   /**

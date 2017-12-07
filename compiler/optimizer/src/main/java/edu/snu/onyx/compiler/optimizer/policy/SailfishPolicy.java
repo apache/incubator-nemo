@@ -16,8 +16,6 @@
 package edu.snu.onyx.compiler.optimizer.policy;
 
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.DisaggregationEdgeDataStorePass;
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.SailfishEdgeDataStorePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.PrimitiveCompositePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.SailfishPass;
@@ -26,19 +24,16 @@ import edu.snu.onyx.runtime.common.optimizer.pass.runtime.RuntimePass;
 import java.util.List;
 
 /**
- * A policy to demonstrate the Sailfish optimization, that batches disk seek during data shuffle
- * and uses GlusterFS as file storage.
+ * A policy to demonstrate the Sailfish optimization, that batches disk seek during data shuffle.
  */
-public final class SailfishDisaggPolicy implements Policy {
+public final class SailfishPolicy implements Policy {
   private final Policy policy;
 
-  public SailfishDisaggPolicy() {
+  public SailfishPolicy() {
     this.policy = new PolicyBuilder(false)
         .registerCompileTimePass(new SailfishPass())
         .registerCompileTimePass(new LoopOptimizationCompositePass())
         .registerCompileTimePass(new PrimitiveCompositePass())
-        .registerCompileTimePass(new SailfishEdgeDataStorePass())
-        .registerCompileTimePass(new DisaggregationEdgeDataStorePass())
         .build();
   }
 
