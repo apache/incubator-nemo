@@ -160,7 +160,8 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   private boolean hasFreeSlot(final ExecutorRepresenter executor) {
-    return executor.getRunningTaskGroups().size() < executor.getExecutorCapacity();
+    return executor.getRunningTaskGroups().size() - executor.getSmallTaskGroups().size()
+        < executor.getExecutorCapacity(); // Scheduling hack
   }
 
   private void initializeContainerTypeIfAbsent(final String containerType) {

@@ -218,7 +218,7 @@ public final class PhysicalPlanGenerator
           } else if (irVertex instanceof OperatorVertex) {
             final OperatorVertex operatorVertex = (OperatorVertex) irVertex;
             newTaskToAdd = new OperatorTask(RuntimeIdGenerator.generateTaskId(), operatorVertex.getId(),
-                taskGroupIndex, operatorVertex.getTransform(), taskGroupId);
+                taskGroupIndex, operatorVertex.getTransform(), taskGroupId, operatorVertex.isSmall());
 
           } else if (irVertex instanceof MetricCollectionBarrierVertex) {
             final MetricCollectionBarrierVertex metricCollectionBarrierVertex =

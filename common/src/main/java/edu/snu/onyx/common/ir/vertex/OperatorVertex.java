@@ -23,14 +23,21 @@ import edu.snu.onyx.common.ir.Transform;
  */
 public final class OperatorVertex extends IRVertex {
   private final Transform transform;
+  private final boolean isSmall; // Scheduling hack
 
   /**
    * Constructor of OperatorVertex.
    * @param t transform for the OperatorVertex.
    */
   public OperatorVertex(final Transform t) {
+    this(t, false);
+  }
+
+  public OperatorVertex(final Transform t,
+                        final boolean isSmall) {
     super();
     this.transform = t;
+    this.isSmall = isSmall;
   }
 
   @Override
@@ -45,6 +52,10 @@ public final class OperatorVertex extends IRVertex {
    */
   public Transform getTransform() {
     return transform;
+  }
+
+  public boolean isSmall() {
+    return isSmall;
   }
 
   @Override

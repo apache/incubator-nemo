@@ -22,17 +22,32 @@ import edu.snu.onyx.common.ir.Transform;
  */
 public final class OperatorTask extends Task {
   private final Transform transform;
+  private final boolean isSmall; // Scheduling hack
 
   public OperatorTask(final String taskId,
                       final String runtimeVertexId,
                       final int index,
                       final Transform transform,
                       final String taskGroupId) {
+    this(taskId, runtimeVertexId, index, transform, taskGroupId, false);
+  }
+
+  public OperatorTask(final String taskId,
+                      final String runtimeVertexId,
+                      final int index,
+                      final Transform transform,
+                      final String taskGroupId,
+                      final boolean isSmall) {
     super(taskId, runtimeVertexId, index, taskGroupId);
     this.transform = transform;
+    this.isSmall = isSmall;
   }
 
   public Transform getTransform() {
     return transform;
+  }
+
+  public boolean isSmall() {
+    return isSmall;
   }
 }
