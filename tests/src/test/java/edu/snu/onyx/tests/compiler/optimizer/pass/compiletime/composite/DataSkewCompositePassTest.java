@@ -83,14 +83,14 @@ public class DataSkewCompositePassTest {
   public void testDataSkewPass() throws Exception {
     mrDAG = CompilerTestUtil.compileMRDAG();
     final Integer originalVerticesNum = mrDAG.getVertices().size();
-    final Long numOfScatterGatherEdges = mrDAG.getVertices().stream().filter(irVertex ->
+    final Long numOfShuffleGatherEdges = mrDAG.getVertices().stream().filter(irVertex ->
         mrDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
-            DataCommunicationPatternProperty.Value.ScatterGather
+            DataCommunicationPatternProperty.Value.Shuffle
             .equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))))
         .count();
     final DAG<IRVertex, IREdge> processedDAG = new DataSkewCompositePass().apply(mrDAG);
 
-    assertEquals(originalVerticesNum + numOfScatterGatherEdges, processedDAG.getVertices().size());
+    assertEquals(originalVerticesNum + numOfShuffleGatherEdges, processedDAG.getVertices().size());
     processedDAG.getVertices().stream().filter(irVertex -> irVertex instanceof OperatorVertex
         && ((OperatorVertex) irVertex).getTransform() instanceof GroupByKeyTransform).forEach(irVertex ->
           processedDAG.getIncomingEdgesOf(irVertex).stream().map(IREdge::getSrc).forEach(irVertex1 ->

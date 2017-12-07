@@ -25,13 +25,12 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataFlowModelProperty;
 import java.util.Collections;
 import java.util.List;
 
-
 /**
- * A pass for tagging scatter-gather edges different from the default ones.
+ * A pass for tagging shuffle edges different from the default ones.
  * It sets DataFlowModel ExecutionProperty as "push".
  */
-public final class ScatterGatherEdgePushPass extends AnnotatingPass {
-  public ScatterGatherEdgePushPass() {
+public final class ShuffleEdgePushPass extends AnnotatingPass {
+  public ShuffleEdgePushPass() {
     super(ExecutionProperty.Key.DataFlowModel, Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }
 
@@ -42,7 +41,7 @@ public final class ScatterGatherEdgePushPass extends AnnotatingPass {
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
           if (edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-              .equals(DataCommunicationPatternProperty.Value.ScatterGather)) {
+              .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
             edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
           }
         });

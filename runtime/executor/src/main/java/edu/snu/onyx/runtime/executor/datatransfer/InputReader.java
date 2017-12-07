@@ -83,7 +83,7 @@ public final class InputReader extends DataTransfer {
       return Collections.singletonList(readOneToOne());
     } else if (comValue.equals(DataCommunicationPatternProperty.Value.BroadCast)) {
       return readBroadcast();
-    } else if (comValue.equals(DataCommunicationPatternProperty.Value.ScatterGather)) {
+    } else if (comValue.equals(DataCommunicationPatternProperty.Value.Shuffle)) {
       // If the dynamic optimization which detects data skew is enabled, read the data in the assigned range.
       // TODO #492: Modularize the data communication pattern.
       return readDataInRange();

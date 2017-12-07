@@ -43,7 +43,7 @@ public final class TestPolicy implements Policy {
     policy.add(new DefaultStagePartitioningPass());
 
     if (testPushPolicy) {
-      policy.add(new ScatterGatherEdgePushPass());
+      policy.add(new ShuffleEdgePushPass());
     }
 
     policy.add(new ScheduleGroupPass());

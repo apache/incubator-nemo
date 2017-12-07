@@ -89,7 +89,7 @@ public final class SingleTaskGroupQueueTest {
     v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     irDAGBuilder.addVertex(v3);
 
-    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather, v1, v2, Coder.DUMMY_CODER);
+    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e1);
 
     final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v2, v3, Coder.DUMMY_CODER);
@@ -174,7 +174,7 @@ public final class SingleTaskGroupQueueTest {
     v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     irDAGBuilder.addVertex(v3);
 
-    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather, v1, v2, Coder.DUMMY_CODER);
+    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e1);
 
     final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v2, v3, Coder.DUMMY_CODER);
@@ -258,7 +258,7 @@ public final class SingleTaskGroupQueueTest {
     v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     irDAGBuilder.addVertex(v3);
 
-    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather, v1, v2, Coder.DUMMY_CODER);
+    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e1);
 
     final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v2, v3, Coder.DUMMY_CODER);
@@ -350,7 +350,7 @@ public final class SingleTaskGroupQueueTest {
     v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.TRANSIENT));
     irDAGBuilder.addVertex(v3);
 
-    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather, v1, v2, Coder.DUMMY_CODER);
+    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e1);
 
     final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v2, v3, Coder.DUMMY_CODER);

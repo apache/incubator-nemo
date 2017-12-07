@@ -169,13 +169,13 @@ public final class FaultToleranceTest {
     v5.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     irDAGBuilder.addVertex(v5);
 
-    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather, v1, v2, Coder.DUMMY_CODER);
+    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e1);
 
-    final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather, v3, v2, Coder.DUMMY_CODER);
+    final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v3, v2, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e2);
 
-    final IREdge e3 = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather, v2, v4, Coder.DUMMY_CODER);
+    final IREdge e3 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v2, v4, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e3);
 
     final IREdge e4 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v4, v5, Coder.DUMMY_CODER);
@@ -287,13 +287,13 @@ public final class FaultToleranceTest {
     v5.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     irDAGBuilder.addVertex(v5);
 
-    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather, v1, v2, Coder.DUMMY_CODER);
+    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e1);
 
-    final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather, v3, v2, Coder.DUMMY_CODER);
+    final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v3, v2, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e2);
 
-    final IREdge e3 = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather, v2, v4, Coder.DUMMY_CODER);
+    final IREdge e3 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v2, v4, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e3);
 
     final IREdge e4 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v4, v5, Coder.DUMMY_CODER);
@@ -379,13 +379,13 @@ public final class FaultToleranceTest {
     v5.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     irDAGBuilder.addVertex(v5);
 
-    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather, v1, v2, Coder.DUMMY_CODER);
+    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e1);
 
-    final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather, v3, v2, Coder.DUMMY_CODER);
+    final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v3, v2, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e2);
 
-    final IREdge e4 = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather, v2, v4, Coder.DUMMY_CODER);
+    final IREdge e4 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v2, v4, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e4);
 
     final IREdge e5 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v4, v5, Coder.DUMMY_CODER);
