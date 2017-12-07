@@ -353,7 +353,7 @@ public final class PartitionManagerWorker {
     final AtomicInteger remainingExpectedRead = partitionToRemainingRead.get(partitionId);
     if (remainingExpectedRead != null) {
       if (remainingExpectedRead.decrementAndGet() == 0) {
-        // This partition should be spilt.
+        // This partition should be discarded.
         partitionToRemainingRead.remove(partitionId);
         backgroundExecutorService.submit(new Runnable() {
           @Override

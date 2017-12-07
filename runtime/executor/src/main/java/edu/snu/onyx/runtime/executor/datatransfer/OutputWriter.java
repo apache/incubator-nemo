@@ -104,12 +104,12 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
       writeOneToOne(blocksToWrite);
     } else if (DataCommunicationPatternProperty.Value.BroadCast.equals(comValue)) {
       writeBroadcast(blocksToWrite);
-    } else if (DataCommunicationPatternProperty.Value.ScatterGather.equals(comValue)) {
+    } else if (DataCommunicationPatternProperty.Value.Shuffle.equals(comValue)) {
       // If the dynamic optimization which detects data skew is enabled, sort the data and write it.
       if (isDataSizeMetricCollectionEdge) {
         dataSkewWrite(blocksToWrite);
       } else {
-        writeScatterGather(blocksToWrite);
+        writeShuffleGather(blocksToWrite);
       }
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
@@ -140,7 +140,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     writeOneToOne(blocksToWrite);
   }
 
-  private void writeScatterGather(final List<Block> blocksToWrite) {
+  private void writeShuffleGather(final List<Block> blocksToWrite) {
     final int dstParallelism = getDstParallelism();
     if (blocksToWrite.size() != dstParallelism) {
       throw new PartitionWriteException(

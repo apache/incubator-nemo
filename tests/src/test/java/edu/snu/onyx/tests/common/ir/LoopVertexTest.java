@@ -56,7 +56,7 @@ public class LoopVertexTest {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     loopDAGBuilder.addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.ScatterGather,
+        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.Shuffle,
             map1, groupByKey, Coder.DUMMY_CODER))
         .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
             groupByKey, combine, Coder.DUMMY_CODER))
@@ -70,7 +70,7 @@ public class LoopVertexTest {
     originalDAG = builder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
         .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
             source, map1, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.ScatterGather,
+        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.Shuffle,
             map1, groupByKey, Coder.DUMMY_CODER))
         .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
             groupByKey, combine, Coder.DUMMY_CODER))
