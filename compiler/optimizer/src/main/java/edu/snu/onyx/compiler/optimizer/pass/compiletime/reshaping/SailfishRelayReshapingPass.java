@@ -22,19 +22,19 @@ import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
-import edu.snu.onyx.compiler.frontend.beam.transform.RelayTransform;
+import edu.snu.onyx.compiler.frontend.onyx.transform.transform.RelayTransform;
 
 import java.util.Collections;
 
 /**
  * Pass to modify the DAG for a job to batch the disk seek.
  * It adds a {@link OperatorVertex} with {@link RelayTransform} before the vertices
- * receiving scatter-gather edges,
+ * receiving shuffle edges,
  * to merge the shuffled data in memory and write to the disk at once.
  */
-public final class SailfishReshapingPass extends ReshapingPass {
+public final class SailfishRelayReshapingPass extends ReshapingPass {
 
-  public SailfishReshapingPass() {
+  public SailfishRelayReshapingPass() {
     super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }
 
@@ -44,18 +44,18 @@ public final class SailfishReshapingPass extends ReshapingPass {
     dag.topologicalDo(v -> {
       builder.addVertex(v);
       // We care about OperatorVertices that have any incoming edge that
-      // has ScatterGather as data communication pattern.
+      // has Shuffle as data communication pattern.
       if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
-              DataCommunicationPatternProperty.Value.ScatterGather
+              DataCommunicationPatternProperty.Value.Shuffle
           .equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))) {
         dag.getIncomingEdgesOf(v).forEach(edge -> {
-          if (DataCommunicationPatternProperty.Value.ScatterGather
+          if (DataCommunicationPatternProperty.Value.Shuffle
                 .equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
             // Insert a merger vertex having transform that write received data immediately
             // before the vertex receiving shuffled data.
             final OperatorVertex iFileMergerVertex = new OperatorVertex(new RelayTransform());
             builder.addVertex(iFileMergerVertex);
-            final IREdge newEdgeToMerger = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather,
+            final IREdge newEdgeToMerger = new IREdge(DataCommunicationPatternProperty.Value.Shuffle,
                 edge.getSrc(), iFileMergerVertex, edge.getCoder(), edge.isSideInput());
             final IREdge newEdgeFromMerger = new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
                 iFileMergerVertex, v, edge.getCoder());

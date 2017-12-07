@@ -21,7 +21,6 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternPro
 import edu.snu.onyx.common.ir.vertex.BoundedSourceVertex;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
-import edu.snu.onyx.compiler.backend.Backend;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.compiler.backend.onyx.OnyxBackend;
 import edu.snu.onyx.compiler.frontend.beam.transform.DoTransform;
@@ -58,7 +57,7 @@ public final class OnyxBackendTest<I, O> {
   public void setUp() throws Exception {
     this.dag = builder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
         .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, source, map1, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.ScatterGather,
+        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.Shuffle,
             map1, groupByKey, Coder.DUMMY_CODER))
         .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
             groupByKey, combine, Coder.DUMMY_CODER))

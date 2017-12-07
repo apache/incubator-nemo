@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.compiler.frontend.beam.transform;
+package edu.snu.onyx.compiler.frontend.onyx.transform.transform;
 
 import edu.snu.onyx.common.ir.OutputCollector;
 import edu.snu.onyx.common.ir.Transform;
@@ -54,4 +54,3 @@ public final class RelayTransform<T> implements Transform<T, T> {
     return sb.toString();
   }
 }
-
