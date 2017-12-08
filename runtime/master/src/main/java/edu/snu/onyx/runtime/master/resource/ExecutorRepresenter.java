@@ -16,6 +16,7 @@
 package edu.snu.onyx.runtime.master.resource;
 
 import com.google.protobuf.ByteString;
+import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
@@ -70,9 +71,10 @@ public final class ExecutorRepresenter {
   public void onTaskGroupScheduled(final ScheduledTaskGroup scheduledTaskGroup) {
     runningTaskGroups.add(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
     failedTaskGroups.remove(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
-    if (scheduledTaskGroup.getTaskGroup().getTaskDAG().getTopologicalSort().stream()
+    final DAG taskDag = scheduledTaskGroup.getTaskGroup().getTaskDAG(); // Scheduler hack
+    if (taskDag != null && taskDag.getTopologicalSort().stream()
         .filter(task -> task instanceof OperatorTask)
-        .anyMatch(opTask -> ((OperatorTask) opTask).isSmall())) { // Scheduler hack
+        .anyMatch(opTask -> ((OperatorTask) opTask).isSmall())) {
       smallTaskGroups.add(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
     }
 
