@@ -18,7 +18,6 @@ package edu.snu.onyx.compiler.optimizer.pass.compiletime.composite;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.SailfishEdgeDataFlowModelPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.SailfishEdgeDataStorePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.SailfishEdgeUsedDataHandlingPass;
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.reshaping.SailfishCodecReshapingPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.reshaping.SailfishRelayReshapingPass;
 
 import java.util.Arrays;
