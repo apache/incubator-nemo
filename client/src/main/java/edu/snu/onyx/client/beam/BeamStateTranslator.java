@@ -21,7 +21,7 @@ import edu.snu.onyx.runtime.common.state.JobState;
 import static org.apache.beam.sdk.PipelineResult.State.*;
 
 /**
- * A {@link StateTranslator} for Beam.
+ * A {@link edu.snu.onyx.client.StateTranslator} for Beam.
  * It provides the translation between the state of job and Beam pipeline.
  */
 public final class BeamStateTranslator extends StateTranslator {

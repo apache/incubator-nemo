@@ -13,24 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.client;
+package edu.snu.onyx.driver;
 
-import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.dag.DAG;
+import edu.snu.onyx.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
-import edu.snu.onyx.common.eventhandler.PubSubEventHandlerWrapper;
-
 import edu.snu.onyx.compiler.backend.Backend;
 import edu.snu.onyx.compiler.backend.onyx.OnyxBackend;
 import edu.snu.onyx.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.onyx.compiler.optimizer.policy.Policy;
-
+import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.runtime.common.eventhandler.DynamicOptimizationEventHandler;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
-
-import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

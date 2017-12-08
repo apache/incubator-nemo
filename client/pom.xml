@@ -22,32 +22,7 @@
         </dependency>
         <dependency>
             <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-compiler-frontend</artifactId>
-            <version>0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-compiler-backend</artifactId>
-            <version>0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-compiler-optimizer</artifactId>
-            <version>0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-runtime-common</artifactId>
-            <version>0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-runtime-executor</artifactId>
-            <version>0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-runtime-master</artifactId>
+            <artifactId>onyx-driver</artifactId>
             <version>0.1-SNAPSHOT</version>
         </dependency>
         <dependency>

@@ -40,8 +40,9 @@
         <module>compiler/optimizer</module>
         <module>examples</module>
         <module>runtime/common</module>
-        <module>runtime/executor</module>
-        <module>runtime/master</module>
+    	<module>runtime/executor</module>
+	    <module>runtime/master</module>
+        <module>runtime/driver</module>
         <module>tests</module>
     </modules>
 
