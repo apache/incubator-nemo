@@ -16,14 +16,12 @@
 package edu.snu.onyx.client;
 
 import edu.snu.onyx.common.dag.DAG;
-
+import edu.snu.onyx.conf.JobConf;
+import edu.snu.onyx.driver.OnyxDriver;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.MessageParameters;
 import edu.snu.onyx.runtime.common.message.grpc.GrpcMessageEnvironment;
-
-import edu.snu.onyx.conf.JobConf;
 import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
-
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
@@ -38,6 +36,8 @@ import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.util.EnvironmentUtils;
 import org.apache.reef.util.Optional;
 import org.apache.reef.wake.IdentifierFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -46,9 +46,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Base64;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Job launcher.
