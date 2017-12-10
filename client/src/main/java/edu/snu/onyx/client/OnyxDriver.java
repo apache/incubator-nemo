@@ -18,9 +18,7 @@ package edu.snu.onyx.client;
 import edu.snu.onyx.common.ir.IdManager;
 
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.MessageParameters;
-import edu.snu.onyx.runtime.common.message.grpc.GrpcMessageEnvironment;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
 
 import edu.snu.onyx.conf.JobConf;
@@ -195,7 +193,7 @@ public final class OnyxDriver {
 
   private Configuration getExecutorMessageConfiguration(final String executorId) {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MessageEnvironment.class, GrpcMessageEnvironment.class)
+        //.bindImplementation(MessageEnvironment.class, GrpcMessageEnvironment.class)
         .bindNamedParameter(MessageParameters.SenderId.class, executorId)
         .build();
   }
