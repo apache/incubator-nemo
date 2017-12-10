@@ -114,7 +114,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    *    (e.g., schedule TaskGroup to the executor currently with the maximum number of available slots)
    * 2) Executor's number of TaskGroup execution threads is set to this number.
    */
-  @NamedParameter(doc = "Executor capacity", short_name = "executor_capacity", default_value = "1")
+  @NamedParameter(doc = "Executor capacity", short_name = "executor_capacity", default_value = "4")
   public final class ExecutorCapacity implements Name<Integer> {
   }
 

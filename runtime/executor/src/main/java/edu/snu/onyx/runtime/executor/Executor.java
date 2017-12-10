@@ -91,7 +91,7 @@ public final class Executor {
   }
 
   private synchronized void onTaskGroupReceived(final ScheduledTaskGroup scheduledTaskGroup) {
-    LOG.debug("Executor [{}] received TaskGroup [{}] to execute.",
+    LOG.info("Executor [{}] received TaskGroup [{}] to execute.",
         new Object[]{executorId, scheduledTaskGroup.getTaskGroup().getTaskGroupId()});
     executorService.execute(() -> launchTaskGroup(scheduledTaskGroup));
   }
