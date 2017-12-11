@@ -40,7 +40,7 @@ public final class SailfishEdgeDataFlowModelPass extends AnnotatingPass {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       inEdges.forEach(edge -> {
         if (edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-            .equals(DataCommunicationPatternProperty.Value.ScatterGather)) {
+            .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
           edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push)); // Push to the merger vertex.
         } else {
           edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));

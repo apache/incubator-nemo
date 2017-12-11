@@ -236,7 +236,7 @@ public final class OnyxPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
   private static DataCommunicationPatternProperty.Value getEdgeCommunicationPattern(final IRVertex src,
                                                                               final IRVertex dst) {
     if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof GroupByKeyTransform) {
-      return DataCommunicationPatternProperty.Value.ScatterGather;
+      return DataCommunicationPatternProperty.Value.Shuffle;
     } else if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof BroadcastTransform) {
       return DataCommunicationPatternProperty.Value.BroadCast;
     } else {

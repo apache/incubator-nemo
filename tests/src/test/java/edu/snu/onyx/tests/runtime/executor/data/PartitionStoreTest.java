@@ -71,7 +71,7 @@ public final class PartitionStoreTest {
   private static final PartitionManagerWorker worker = mock(PartitionManagerWorker.class);
   private PartitionManagerMaster partitionManagerMaster;
   private LocalMessageDispatcher messageDispatcher;
-  // Variables for scatter and gather test
+  // Variables for shuffle test
   private static final int NUM_WRITE_TASKS = 3;
   private static final int NUM_READ_TASKS = 3;
   private static final int DATA_SIZE = 1000;
@@ -82,7 +82,7 @@ public final class PartitionStoreTest {
   private static final int CONC_READ_DATA_SIZE = 1000;
   private String concPartitionId;
   private NonSerializedBlock concPartitionBlock;
-  // Variables for scatter and gather in range test
+  // Variables for shuffle in range test
   private static final int NUM_WRITE_HASH_TASKS = 2;
   private static final int NUM_READ_HASH_TASKS = 3;
   private static final int HASH_DATA_SIZE = 1000;
@@ -105,7 +105,7 @@ public final class PartitionStoreTest {
     partitionManagerMaster = injector.getInstance(PartitionManagerMaster.class);
     when(worker.getCoder(any())).thenReturn(CODER);
 
-    // Following part is for for the scatter and gather test.
+    // Following part is for for the shuffle test.
     final List<String> writeTaskIdList = new ArrayList<>(NUM_WRITE_TASKS);
     final List<String> readTaskIdList = new ArrayList<>(NUM_READ_TASKS);
     partitionIdList = new ArrayList<>(NUM_WRITE_TASKS);
@@ -151,7 +151,7 @@ public final class PartitionStoreTest {
         number -> concReadTaskIdList.add(RuntimeIdGenerator.generateTaskId()));
     concPartitionBlock = new NonSerializedBlock(0, getRangedNumList(0, CONC_READ_DATA_SIZE));
 
-    // Following part is for the scatter and gather in hash range test
+    // Following part is for the shuffle in hash range test
     final int numHashedPartitions = NUM_WRITE_HASH_TASKS;
     final List<String> writeHashTaskIdList = new ArrayList<>(NUM_WRITE_HASH_TASKS);
     final List<String> readHashTaskIdList = new ArrayList<>(NUM_READ_HASH_TASKS);
@@ -169,7 +169,7 @@ public final class PartitionStoreTest {
     // Generates the ids and the data of the partitions to be used.
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writeTaskIdx -> {
       final String partitionId = RuntimeIdGenerator.generatePartitionId(
-          RuntimeIdGenerator.generateRuntimeEdgeId("scatter gather in range"),
+          RuntimeIdGenerator.generateRuntimeEdgeId("shuffle in range"),
           NUM_WRITE_TASKS + NUM_READ_TASKS + 1 + writeTaskIdx);
       hashedPartitionIdList.add(partitionId);
       partitionManagerMaster.initializeState(partitionId, "Unused");
@@ -220,9 +220,9 @@ public final class PartitionStoreTest {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
     final PartitionStore memoryStore = injector.getInstance(MemoryStore.class);
-    scatterGather(memoryStore, memoryStore);
+    shuffle(memoryStore, memoryStore);
     concurrentRead(memoryStore, memoryStore);
-    scatterGatherInHashRange(memoryStore, memoryStore);
+    shuffleInHashRange(memoryStore, memoryStore);
   }
 
   /**
@@ -233,9 +233,9 @@ public final class PartitionStoreTest {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
     final PartitionStore serMemoryStore = injector.getInstance(SerializedMemoryStore.class);
-    scatterGather(serMemoryStore, serMemoryStore);
+    shuffle(serMemoryStore, serMemoryStore);
     concurrentRead(serMemoryStore, serMemoryStore);
-    scatterGatherInHashRange(serMemoryStore, serMemoryStore);
+    shuffleInHashRange(serMemoryStore, serMemoryStore);
   }
 
   /**
@@ -248,9 +248,9 @@ public final class PartitionStoreTest {
     injector.bindVolatileInstance(PartitionManagerWorker.class, worker);
 
     final PartitionStore localFileStore = injector.getInstance(LocalFileStore.class);
-    scatterGather(localFileStore, localFileStore);
+    shuffle(localFileStore, localFileStore);
     concurrentRead(localFileStore, localFileStore);
-    scatterGatherInHashRange(localFileStore, localFileStore);
+    shuffleInHashRange(localFileStore, localFileStore);
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
   }
 
@@ -266,9 +266,9 @@ public final class PartitionStoreTest {
     final RemoteFileStore readerSideRemoteFileStore =
         createGlusterFileStore("reader");
 
-    scatterGather(writerSideRemoteFileStore, readerSideRemoteFileStore);
+    shuffle(writerSideRemoteFileStore, readerSideRemoteFileStore);
     concurrentRead(writerSideRemoteFileStore, readerSideRemoteFileStore);
-    scatterGatherInHashRange(writerSideRemoteFileStore, readerSideRemoteFileStore);
+    shuffleInHashRange(writerSideRemoteFileStore, readerSideRemoteFileStore);
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
   }
 
@@ -286,7 +286,7 @@ public final class PartitionStoreTest {
   }
 
   /**
-   * Tests scatter and gather for {@link PartitionStore}s.
+   * Tests shuffle for {@link PartitionStore}s.
    * Assumes following circumstances:
    * Task 1 (write)->         (read)-> Task 4
    * Task 2 (write)-> shuffle (read)-> Task 5
@@ -294,8 +294,8 @@ public final class PartitionStoreTest {
    * It checks that each writer and reader does not throw any exception
    * and the read data is identical with written data (including the order).
    */
-  private void scatterGather(final PartitionStore writerSideStore,
-                             final PartitionStore readerSideStore) {
+  private void shuffle(final PartitionStore writerSideStore,
+                       final PartitionStore readerSideStore) {
     final ExecutorService writeExecutor = Executors.newFixedThreadPool(NUM_WRITE_TASKS);
     final ExecutorService readExecutor = Executors.newFixedThreadPool(NUM_READ_TASKS);
     final List<Future<Boolean>> writeFutureList = new ArrayList<>(NUM_WRITE_TASKS);
@@ -314,7 +314,7 @@ public final class PartitionStoreTest {
                 writerSideStore.putBlocks(partitionId, blocksPerPartition.get(partitionIdx), false);
                 writerSideStore.commitPartition(partitionId);
                 partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED,
-                    "Writer side of the scatter gather edge");
+                    "Writer side of the shuffle edge");
               });
               return true;
             } catch (final Exception e) {
@@ -375,7 +375,7 @@ public final class PartitionStoreTest {
     readExecutor.shutdown();
 
     System.out.println(
-        "Scatter and gather - write time in millis: " + (writeEndNano - startNano) / 1000000 +
+        "Shuffle - write time in millis: " + (writeEndNano - startNano) / 1000000 +
             ", Read time in millis: " + (readEndNano - writeEndNano) / 1000000 + " in store " +
             writerSideStore.getClass().toString());
   }
@@ -464,7 +464,7 @@ public final class PartitionStoreTest {
   }
 
   /**
-   * Tests scatter and gather in hash range for {@link PartitionStore}s.
+   * Tests shuffle in hash range for {@link PartitionStore}s.
    * Assumes following circumstances:
    * Task 1 (write (hash 0~3))->         (read (hash 0~1))-> Task 3
    * Task 2 (write (hash 0~3))-> shuffle (read (hash 2))-> Task 4
@@ -472,8 +472,8 @@ public final class PartitionStoreTest {
    * It checks that each writer and reader does not throw any exception
    * and the read data is identical with written data (including the order).
    */
-  private void scatterGatherInHashRange(final PartitionStore writerSideStore,
-                                        final PartitionStore readerSideStore) {
+  private void shuffleInHashRange(final PartitionStore writerSideStore,
+                                  final PartitionStore readerSideStore) {
     final ExecutorService writeExecutor = Executors.newFixedThreadPool(NUM_WRITE_HASH_TASKS);
     final ExecutorService readExecutor = Executors.newFixedThreadPool(NUM_READ_HASH_TASKS);
     final List<Future<Boolean>> writeFutureList = new ArrayList<>(NUM_WRITE_HASH_TASKS);
@@ -492,7 +492,7 @@ public final class PartitionStoreTest {
                   hashedPartitionBlockList.get(writeTaskIdx), false);
               writerSideStore.commitPartition(partitionId);
               partitionManagerMaster.onPartitionStateChanged(partitionId, PartitionState.State.COMMITTED,
-                  "Writer side of the scatter gather in hash range edge");
+                  "Writer side of the shuffle in hash range edge");
               return true;
             } catch (final Exception e) {
               e.printStackTrace();
@@ -554,7 +554,7 @@ public final class PartitionStoreTest {
     readExecutor.shutdown();
 
     System.out.println(
-        "Scatter and gather in hash range - write time in millis: " + (writeEndNano - startNano) / 1000000 +
+        "Shuffle in hash range - write time in millis: " + (writeEndNano - startNano) / 1000000 +
             ", Read time in millis: " + (readEndNano - writeEndNano) / 1000000 + " in store " +
             writerSideStore.getClass().toString());
   }

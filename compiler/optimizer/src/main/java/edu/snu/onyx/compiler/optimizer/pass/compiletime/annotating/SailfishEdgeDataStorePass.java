@@ -38,13 +38,13 @@ public final class SailfishEdgeDataStorePass extends AnnotatingPass {
     dag.getVertices().forEach(vertex -> {
       // Find the merger vertex inserted by reshaping pass.
       if (dag.getIncomingEdgesOf(vertex).stream().anyMatch(irEdge ->
-              DataCommunicationPatternProperty.Value.ScatterGather
+              DataCommunicationPatternProperty.Value.Shuffle
           .equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))) {
         dag.getIncomingEdgesOf(vertex).forEach(edgeToMerger -> {
-          if (DataCommunicationPatternProperty.Value.ScatterGather
+          if (DataCommunicationPatternProperty.Value.Shuffle
           .equals(edgeToMerger.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
             // Pass data through memory to the merger vertex.
-            edgeToMerger.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+            edgeToMerger.setProperty(DataStoreProperty.of(DataStoreProperty.Value.SerializedMemoryStore));
           }
         });
         dag.getOutgoingEdgesOf(vertex).forEach(edgeFromMerger ->

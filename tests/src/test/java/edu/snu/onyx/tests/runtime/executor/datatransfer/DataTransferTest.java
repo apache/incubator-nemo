@@ -227,28 +227,28 @@ public final class DataTransferTest {
     writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
 
     // test ManyToMany same worker
-    writeAndRead(worker1, worker1, DataCommunicationPatternProperty.Value.ScatterGather, MEMORY_STORE);
+    writeAndRead(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
 
     // test ManyToMany different worker
-    writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.ScatterGather, MEMORY_STORE);
+    writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
 
     // test ManyToMany same worker
-    writeAndRead(worker1, worker1, DataCommunicationPatternProperty.Value.ScatterGather, SER_MEMORY_STORE);
+    writeAndRead(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
 
     // test ManyToMany different worker
-    writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.ScatterGather, SER_MEMORY_STORE);
+    writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
 
     // test ManyToMany same worker (local file)
-    writeAndRead(worker1, worker1, DataCommunicationPatternProperty.Value.ScatterGather, LOCAL_FILE_STORE);
+    writeAndRead(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
 
     // test ManyToMany different worker (local file)
-    writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.ScatterGather, LOCAL_FILE_STORE);
+    writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
 
     // test ManyToMany same worker (remote file)
-    writeAndRead(worker1, worker1, DataCommunicationPatternProperty.Value.ScatterGather, REMOTE_FILE_STORE);
+    writeAndRead(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
 
     // test ManyToMany different worker (remote file)
-    writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.ScatterGather, REMOTE_FILE_STORE);
+    writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
   }
 
   private void writeAndRead(final PartitionManagerWorker sender,
@@ -273,7 +273,7 @@ public final class DataTransferTest {
     edgeProperties.put(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
     final RuntimeEdge dummyEdge;
 
-    if (DataCommunicationPatternProperty.Value.ScatterGather.equals(commPattern)) {
+    if (DataCommunicationPatternProperty.Value.Shuffle.equals(commPattern)) {
       final IRVertex srcMockVertex = mock(IRVertex.class);
       final IRVertex dstMockVertex = mock(IRVertex.class);
       final PhysicalStage srcStage = setupStages("srcStage", taskGroupPrefix);

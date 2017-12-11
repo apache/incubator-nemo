@@ -28,6 +28,8 @@ public interface Coder<T> extends Serializable {
   /**
    * Encodes the given value onto the specified output stream.
    * It have to be able to encode the given stream consequently by calling this method repeatedly.
+   * Because the user can want to keep a single output stream and continuously concatenate elements,
+   * the output stream should not be closed.
    *
    * @param element the element to be encoded
    * @param outStream the stream on which encoded bytes are written
@@ -38,6 +40,7 @@ public interface Coder<T> extends Serializable {
   /**
    * Decodes the a value from the given input stream.
    * It have to be able to decode the given stream consequently by calling this method repeatedly.
+   * Because there are many elements in the input stream, the stream should not be closed.
    *
    * @param inStream the stream from which bytes are read
    * @return the decoded element

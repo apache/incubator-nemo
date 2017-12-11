@@ -64,7 +64,7 @@ public final class MapReduceDisaggregationOptimization {
         source, map, Coder.DUMMY_CODER);
     builder.connectVertices(edge1);
 
-    final IREdge edge2 = new IREdge(DataCommunicationPatternProperty.Value.ScatterGather,
+    final IREdge edge2 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle,
         map, reduce, Coder.DUMMY_CODER);
     builder.connectVertices(edge2);
 

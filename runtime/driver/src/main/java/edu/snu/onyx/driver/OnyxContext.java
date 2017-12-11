@@ -13,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.client;
+package edu.snu.onyx.driver;
 
 import edu.snu.onyx.runtime.executor.Executor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.evaluator.context.events.ContextStart;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
-
-import javax.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.inject.Inject;
 
 /**
  * REEF Context for the Executor.
