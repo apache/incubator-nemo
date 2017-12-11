@@ -27,11 +27,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Sample MapReduce application.
+ * Sample MapReduce application for skew experiment
  */
 public final class MapReduceSkewExperiment {
 
-  private static final Logger LOG = LoggerFactory.getLogger(MapReduce.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(MapReduceSkewExperiment.class.getName());
 
   /**
    * Private Constructor.
@@ -48,7 +48,7 @@ public final class MapReduceSkewExperiment {
     final String outputFilePath = args[1];
     final PipelineOptions options = PipelineOptionsFactory.create().as(OnyxPipelineOptions.class);
     options.setRunner(OnyxPipelineRunner.class);
-    options.setJobName("MapReduce");
+    options.setJobName("MapReduceSkewExperiment");
 
     final Pipeline p = Pipeline.create(options);
     final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
