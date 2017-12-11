@@ -19,6 +19,13 @@ package edu.snu.onyx.runtime.common.plan.physical;
  * MetricCollectionBarrierTask.
  */
 public final class MetricCollectionBarrierTask extends Task {
+  /**
+   * Constructor.
+   * @param taskId id of the task.
+   * @param runtimeVertexId id of the runtime vertex.
+   * @param index index in the taskGroup.
+   * @param taskGroupId id of the taskGroup.
+   */
   MetricCollectionBarrierTask(final String taskId,
                               final String runtimeVertexId,
                               final int index,

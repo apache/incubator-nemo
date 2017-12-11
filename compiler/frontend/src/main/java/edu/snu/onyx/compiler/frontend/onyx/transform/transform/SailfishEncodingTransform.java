@@ -31,6 +31,10 @@ public final class SailfishEncodingTransform<T> implements Transform<T, byte[]> 
   private OutputCollector<byte[]> outputCollector;
   private final Coder<T> coder;
 
+  /**
+   * Default constructor.
+   * @param coder coder for encoding.
+   */
   public SailfishEncodingTransform(final Coder<T> coder) {
     this.coder = coder;
   }

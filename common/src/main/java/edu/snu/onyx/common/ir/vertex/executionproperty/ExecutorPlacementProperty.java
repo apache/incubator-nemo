@@ -21,10 +21,19 @@ import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
  * ExecutionPlacement ExecutionProperty.
  */
 public final class ExecutorPlacementProperty extends ExecutionProperty<String> {
+  /**
+   * Constructor.
+   * @param value value of the execution property.
+   */
   private ExecutorPlacementProperty(final String value) {
     super(Key.ExecutorPlacement, value);
   }
 
+  /**
+   * Static method exposing the constructor.
+   * @param value value of the new execution property.
+   * @return the newly created execution property.
+   */
   public static ExecutorPlacementProperty of(final String value) {
     return new ExecutorPlacementProperty(value);
   }

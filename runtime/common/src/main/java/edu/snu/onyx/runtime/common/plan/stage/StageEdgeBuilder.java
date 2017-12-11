@@ -41,36 +41,71 @@ public final class StageEdgeBuilder {
     this.stageEdgeId = irEdgeId;
   }
 
+  /**
+   * Setter for edge properties.
+   * @param ea the edge properties.
+   * @return the updated StageEdgeBuilder.
+   */
   public StageEdgeBuilder setEdgeProperties(final ExecutionPropertyMap ea) {
     this.edgeProperties = ea;
     return this;
   }
 
+  /**
+   * Setter for the source stage.
+   * @param ss the source stage.
+   * @return the updated StageEdgeBuilder.
+   */
   public StageEdgeBuilder setSrcStage(final Stage ss) {
     this.srcStage = ss;
     return this;
   }
 
+  /**
+   * Setter for the destination stage.
+   * @param ds the destination stage.
+   * @return the updated StageEdgeBuilder.
+   */
   public StageEdgeBuilder setDstStage(final Stage ds) {
     this.dstStage = ds;
     return this;
   }
 
+  /**
+   * Setter for the source vertex.
+   * @param sv the source vertex.
+   * @return the updated StageEdgeBuilder.
+   */
   public StageEdgeBuilder setSrcVertex(final IRVertex sv) {
     this.srcVertex = sv;
     return this;
   }
 
+  /**
+   * Setter for the destination vertex.
+   * @param dv the destination vertex.
+   * @return the updated StageEdgeBuilder.
+   */
   public StageEdgeBuilder setDstVertex(final IRVertex dv) {
     this.dstVertex = dv;
     return this;
   }
 
+  /**
+   * Setter for coder.
+   * @param c the coder.
+   * @return the updated StageEdgeBuilder.
+   */
   public StageEdgeBuilder setCoder(final Coder c) {
     this.coder = c;
     return this;
   }
 
+  /**
+   * Setter for side input flag.
+   * @param sideInputFlag the side input flag.
+   * @return the updated StageEdgeBuilder.
+   */
   public StageEdgeBuilder setSideInputFlag(final Boolean sideInputFlag) {
     this.isSideInput = sideInputFlag;
     return this;

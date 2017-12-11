@@ -22,10 +22,19 @@ import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
  * This property represents the used data handling strategy.
  */
 public final class UsedDataHandlingProperty extends ExecutionProperty<UsedDataHandlingProperty.Value> {
+  /**
+   * Constructor.
+   * @param value value of the execution property.
+   */
   private UsedDataHandlingProperty(final Value value) {
     super(Key.UsedDataHandling, value);
   }
 
+  /**
+   * Static method exposing the constructor.
+   * @param value value of the new execution property.
+   * @return the newly created execution property.
+   */
   public static UsedDataHandlingProperty of(final Value value) {
     return new UsedDataHandlingProperty(value);
   }

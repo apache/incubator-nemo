@@ -32,6 +32,11 @@ public final class StateMachine {
   private final Map<Enum, State> stateMap;
   private State currentState;
 
+  /**
+   * Private constructor.
+   * @param stateMap Map of state enum to the state.
+   * @param initialState initial state of the state machine.
+   */
   private StateMachine(final Map<Enum, State> stateMap, final Enum initialState) {
     this.stateMap = stateMap;
     this.currentState = stateMap.get(initialState);
@@ -114,6 +119,9 @@ public final class StateMachine {
     return currentState.stateEnum;
   }
 
+  /**
+   * @return String of possible transitions from the current state.
+   */
   private String getPossibleTransitionsFromCurrentState() {
     final StringBuilder stringBuilder = new StringBuilder()
         .append("Possible transitions from the current state are").append('\n');
@@ -154,12 +162,21 @@ public final class StateMachine {
     private final String description;
     private final Map<Enum, Transition> transitions;
 
+    /**
+     * Private constructor.
+     * @param stateEnum Enum of the state.
+     * @param description Description of the state.
+     */
     private State(final Enum stateEnum, final String description) {
       this.stateEnum = stateEnum;
       this.description = description;
       this.transitions = new HashMap<>();
     }
 
+    /**
+     * Adds a transition to the state.
+     * @param transition the added transition.
+     */
     private void addTransition(final Transition transition) {
       if (transition.from != this) {
         throw new RuntimeException("An illegal transition " + transition + " was added to " + this);
@@ -168,10 +185,17 @@ public final class StateMachine {
       transitions.put(transition.to.stateEnum, transition);
     }
 
+    /**
+     * @param to transition that we try switching to.
+     * @return whether or not this transition is legal.
+     */
     private boolean isLegalTransition(final Enum to) {
       return transitions.containsKey(to);
     }
 
+    /**
+     * @return all transitions.
+     */
     private Collection<Transition> getAllTransitions() {
       return transitions.values();
     }
@@ -189,6 +213,13 @@ public final class StateMachine {
     private final State from;
     private final State to;
     private final String description;
+
+    /**
+     * Private constructor.
+     * @param from State from which we switch.
+     * @param to State that we switch to.
+     * @param description Description of the transition.
+     */
     private Transition(final State from, final State to, final String description) {
       this.from = from;
       this.to = to;
@@ -211,6 +242,9 @@ public final class StateMachine {
 
     private Enum initialState;
 
+    /**
+     * Private constructor.
+     */
     private Builder() {
       this.stateEnumSet = new HashSet<>();
       this.stateDescriptionMap = new HashMap<>();
