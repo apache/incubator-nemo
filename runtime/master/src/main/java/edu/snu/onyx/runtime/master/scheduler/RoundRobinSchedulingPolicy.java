@@ -97,6 +97,8 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     return scheduleTimeoutMs;
   }
 
+
+
   @Override
   public Optional<String> attemptSchedule(final ScheduledTaskGroup scheduledTaskGroup) {
     lock.lock();
@@ -134,12 +136,16 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
         ? getAllContainers() // all containers
         : executorIdByContainerType.get(containerType); // containers of a particular type
 
+    print("selectExecutorByRR", containerType);
+
     if (candidateExecutorIds != null && !candidateExecutorIds.isEmpty()) {
       final int numExecutors = candidateExecutorIds.size();
       int nextExecutorIndex = nextExecutorIndexByContainerType.get(containerType);
       for (int i = 0; i < numExecutors; i++) {
         final int index = (nextExecutorIndex + i) % numExecutors;
         final String selectedExecutorId = candidateExecutorIds.get(index);
+
+        LOG.info("Candidates: {}", candidateExecutorIds);
 
         final ExecutorRepresenter executor = executorRepresenterMap.get(selectedExecutorId);
         if (hasFreeSlot(executor)) {
@@ -160,6 +166,8 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   private boolean hasFreeSlot(final ExecutorRepresenter executor) {
+    LOG.info("Has Free Slot: " + executor.getExecutorId());
+    LOG.info("Running TaskGroups: " + executor.getRunningTaskGroups());
     return executor.getRunningTaskGroups().size() < executor.getExecutorCapacity();
   }
 
@@ -200,6 +208,8 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
       final ExecutorRepresenter executor = containerManager.getFailedExecutorRepresenterMap().get(executorId);
       final String containerType = executor.getContainerType();
 
+      print("onExecutorRemoved Before", containerType);
+
       final List<String> executorIdList = executorIdByContainerType.get(containerType);
       int nextExecutorIndex = nextExecutorIndexByContainerType.get(containerType);
 
@@ -213,10 +223,22 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
 
       updateCachedExecutorRepresenterMap();
 
+      print("onExecutorRemoved After", containerType);
+
       return Collections.unmodifiableSet(executor.getRunningTaskGroups());
     } finally {
       lock.unlock();
     }
+  }
+
+  private void print(final String calledMethod, final String containerType) {
+    LOG.info(calledMethod);
+
+    final List<String> executorIdList = executorIdByContainerType.get(containerType);
+    LOG.info("ExecutorId By ContainerType: {}", executorIdList);
+
+
+    LOG.info("ExecutorRepresentorMap: {}", executorRepresenterMap);
   }
 
   private void updateCachedExecutorRepresenterMap() {
