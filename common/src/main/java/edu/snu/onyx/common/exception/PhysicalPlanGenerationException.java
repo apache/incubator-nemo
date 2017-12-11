@@ -30,6 +30,10 @@ public final class PhysicalPlanGenerationException extends RuntimeException {
     super(message);
   }
 
+  /**
+   * PhysicalPlanGenerationException.
+   * @param e throwable cause of the exception.
+   */
   public PhysicalPlanGenerationException(final Throwable e) {
     super(e);
   }

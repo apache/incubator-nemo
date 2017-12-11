@@ -28,6 +28,9 @@ import javax.inject.Inject;
 public final class PubSubEventHandlerWrapper {
   private final PubSubEventHandler pubSubEventHandler;
 
+  /**
+   * Default constructor.
+   */
   @Inject
   private PubSubEventHandlerWrapper() {
     this.pubSubEventHandler = new PubSubEventHandler();

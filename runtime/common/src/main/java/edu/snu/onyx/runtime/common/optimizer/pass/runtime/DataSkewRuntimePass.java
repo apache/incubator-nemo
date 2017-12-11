@@ -41,18 +41,15 @@ import java.util.stream.Stream;
  * Dynamic optimization pass for handling data skew.
  */
 public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<Long>>> {
-  public static final String SIMPLE_NAME = "DataSkewRuntimePass";
   private final Set<Class<? extends CommonEventHandler<?>>> eventHandlers;
 
+  /**
+   * Constructor.
+   */
   public DataSkewRuntimePass() {
     this.eventHandlers = Stream.of(
         DynamicOptimizationEventHandler.class
     ).collect(Collectors.toSet());
-  }
-
-  @Override
-  public String getName() {
-    return SIMPLE_NAME;
   }
 
   @Override
@@ -97,6 +94,12 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     return new PhysicalPlan(originalPlan.getId(), physicalDAGBuilder.build(), originalPlan.getTaskIRVertexMap());
   }
 
+  /**
+   * Method for calculating hash ranges to evenly distribute the skewed metric data.
+   * @param metricData the metric data.
+   * @param taskGroupListSize the size of the task group list.
+   * @return  the list of hash ranges calculated.
+   */
   @VisibleForTesting
   public List<HashRange> calculateHashRanges(final Map<String, List<Long>> metricData,
                                              final Integer taskGroupListSize) {

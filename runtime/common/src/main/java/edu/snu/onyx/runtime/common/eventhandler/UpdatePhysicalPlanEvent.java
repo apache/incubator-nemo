@@ -27,16 +27,27 @@ public final class UpdatePhysicalPlanEvent implements CompilerEvent {
   private final PhysicalPlan newPhysicalPlan;
   private final Pair<String, TaskGroup> taskInfo;
 
+  /**
+   * Constructor.
+   * @param newPhysicalPlan the newly optimized physical plan.
+   * @param taskInfo information of the task at which this optimization occurs: its name and its taskGroup.
+   */
   UpdatePhysicalPlanEvent(final PhysicalPlan newPhysicalPlan,
                           final Pair<String, TaskGroup> taskInfo) {
     this.newPhysicalPlan = newPhysicalPlan;
     this.taskInfo = taskInfo;
   }
 
+  /**
+   * @return the updated, newly optimized physical plan.
+   */
   public PhysicalPlan getNewPhysicalPlan() {
     return this.newPhysicalPlan;
   }
 
+  /**
+   * @return the information of the task at which this optimization occurs: its name and its taskGroup.
+   */
   public Pair<String, TaskGroup> getTaskInfo() {
     return this.taskInfo;
   }

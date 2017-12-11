@@ -22,6 +22,9 @@ import java.io.*;
  */
 public final class BytesCoder implements Coder<byte[]> {
 
+  /**
+   * Constructor.
+   */
   public BytesCoder() {
   }
 
