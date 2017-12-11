@@ -26,6 +26,9 @@ import edu.snu.onyx.common.ir.Transform;
 public final class RelayTransform<T> implements Transform<T, T> {
   private OutputCollector<T> outputCollector;
 
+  /**
+   * Default constructor.
+   */
   public RelayTransform() {
     // Do nothing.
   }

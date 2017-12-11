@@ -27,6 +27,10 @@ public final class MetricDataBuilder {
   private long endTime;
   private Map<String, Object> metrics;
 
+  /**
+   * Constructor.
+   * @param computationUnitId id of the computation unit.
+   */
   public MetricDataBuilder(final String computationUnitId) {
     this.computationUnitId = computationUnitId;
     startTime = 0;
@@ -34,28 +38,48 @@ public final class MetricDataBuilder {
     metrics = null;
   }
 
+  /**
+   * @return the id of the computation unit.
+   */
   public String getComputationUnitId() {
     return computationUnitId;
   }
 
+  /**
+   * @return the metric data.
+   */
   public Map<String, Object> getMetrics() {
     return metrics;
   }
 
+  /**
+   * @return the time at which metric collection starts.
+   */
   public long getStartTime() {
     return startTime;
   }
 
+  /**
+   * @return the time at which metric collection ends.
+   */
   public long getEndTime() {
     return endTime;
   }
 
+  /**
+   * Begin the measurement of metric data.
+   * @param metricMap map on which to collect metrics.
+   */
   public void beginMeasurement(final Map<String, Object> metricMap) {
     startTime = System.nanoTime();
     metricMap.put("StartTime", startTime);
     this.metrics = metricMap;
   }
 
+  /**
+   * End the measurement of metric data.
+   * @param metricMap map on which to collect metrics.
+   */
   public void endMeasurement(final Map<String, Object> metricMap) {
     endTime = System.nanoTime();
     metricMap.put("EndTime", endTime);

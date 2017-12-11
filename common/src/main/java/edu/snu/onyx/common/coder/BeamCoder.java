@@ -26,6 +26,10 @@ import java.io.OutputStream;
 public final class BeamCoder<T> implements Coder<T> {
   private final org.apache.beam.sdk.coders.Coder<T> beamCoder;
 
+  /**
+   * Constructor of BeamCoder.
+   * @param beamCoder actual Beam coder to use.
+   */
   public BeamCoder(final org.apache.beam.sdk.coders.Coder<T> beamCoder) {
     this.beamCoder = beamCoder;
   }

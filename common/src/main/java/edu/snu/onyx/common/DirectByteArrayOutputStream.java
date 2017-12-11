@@ -8,18 +8,31 @@ import java.io.ByteArrayOutputStream;
  */
 public final class DirectByteArrayOutputStream extends ByteArrayOutputStream {
 
+  /**
+   * Default constructor.
+   */
   public DirectByteArrayOutputStream() {
     super();
   }
 
+  /**
+   * Constructor specifying the size.
+   * @param size the initial size.
+   */
   public DirectByteArrayOutputStream(final int size) {
     super(size);
   }
 
+  /**
+   * @return the buffer where data is stored.
+   */
   public byte[] getBufDirectly() {
     return buf;
   }
 
+  /**
+   * @return the number of valid bytes in the buffer.
+   */
   public int getCount() {
     return count;
   }

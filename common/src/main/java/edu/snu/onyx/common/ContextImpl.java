@@ -25,6 +25,10 @@ import java.util.Map;
 public final class ContextImpl implements Transform.Context {
   private final Map<Transform, Object> sideInputs;
 
+  /**
+   * Constructor of Context Implementation.
+   * @param sideInputs side inputs.
+   */
   public ContextImpl(final Map<Transform, Object> sideInputs) {
     this.sideInputs = sideInputs;
   }
