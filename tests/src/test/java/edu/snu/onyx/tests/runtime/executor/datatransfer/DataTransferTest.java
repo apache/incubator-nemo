@@ -41,12 +41,12 @@ import edu.snu.onyx.runtime.common.plan.physical.Task;
 import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.executor.Executor;
 import edu.snu.onyx.runtime.executor.MetricManagerWorker;
-import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
+import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.onyx.runtime.executor.datatransfer.InputReader;
 import edu.snu.onyx.runtime.executor.datatransfer.OutputWriter;
 import edu.snu.onyx.runtime.master.MetricMessageHandler;
-import edu.snu.onyx.runtime.master.PartitionManagerMaster;
+import edu.snu.onyx.runtime.master.BlockManagerMaster;
 import edu.snu.onyx.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
@@ -111,9 +111,9 @@ public final class DataTransferTest {
   private static final Tang TANG = Tang.Factory.getTang();
   private static final int HASH_RANGE_MULTIPLIER = 10;
 
-  private PartitionManagerMaster master;
-  private PartitionManagerWorker worker1;
-  private PartitionManagerWorker worker2;
+  private BlockManagerMaster master;
+  private BlockManagerWorker worker1;
+  private BlockManagerWorker worker2;
 
   @Before
   public void setUp() throws InjectionException {
@@ -140,7 +140,7 @@ public final class DataTransferTest {
     final Injector injector1 = Tang.Factory.getTang().newInjector();
     injector1.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
     injector1.bindVolatileInstance(RuntimeMaster.class, runtimeMaster);
-    final PartitionManagerMaster master = injector1.getInstance(PartitionManagerMaster.class);
+    final BlockManagerMaster master = injector1.getInstance(BlockManagerMaster.class);
 
     final Injector injector2 = createNameClientInjector();
     injector2.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
@@ -158,8 +158,8 @@ public final class DataTransferTest {
     FileUtils.deleteDirectory(new File(TMP_REMOTE_FILE_DIRECTORY));
   }
 
-  private PartitionManagerWorker createWorker(final String executorId, final LocalMessageDispatcher messageDispatcher,
-                                              final Injector nameClientInjector) {
+  private BlockManagerWorker createWorker(final String executorId, final LocalMessageDispatcher messageDispatcher,
+                                          final Injector nameClientInjector) {
     final LocalMessageEnvironment messageEnvironment = new LocalMessageEnvironment(executorId, messageDispatcher);
     final PersistentConnectionToMasterMap conToMaster = new PersistentConnectionToMasterMap(messageEnvironment);
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
@@ -171,10 +171,10 @@ public final class DataTransferTest {
     injector.bindVolatileInstance(PersistentConnectionToMasterMap.class, conToMaster);
     injector.bindVolatileParameter(JobConf.FileDirectory.class, TMP_LOCAL_FILE_DIRECTORY);
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_REMOTE_FILE_DIRECTORY);
-    final PartitionManagerWorker partitionManagerWorker;
+    final BlockManagerWorker blockManagerWorker;
     final MetricManagerWorker metricManagerWorker;
     try {
-      partitionManagerWorker = injector.getInstance(PartitionManagerWorker.class);
+      blockManagerWorker = injector.getInstance(BlockManagerWorker.class);
       metricManagerWorker =  injector.getInstance(MetricManagerWorker.class);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
@@ -186,12 +186,12 @@ public final class DataTransferTest {
         EXECUTOR_CAPACITY,
         conToMaster,
         messageEnvironment,
-        partitionManagerWorker,
-        new DataTransferFactory(HASH_RANGE_MULTIPLIER, partitionManagerWorker),
+        blockManagerWorker,
+        new DataTransferFactory(HASH_RANGE_MULTIPLIER, blockManagerWorker),
         metricManagerWorker);
     injector.bindVolatileInstance(Executor.class, executor);
 
-    return partitionManagerWorker;
+    return blockManagerWorker;
   }
 
   private Injector createNameClientInjector() {
@@ -251,8 +251,8 @@ public final class DataTransferTest {
     writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
   }
 
-  private void writeAndRead(final PartitionManagerWorker sender,
-                            final PartitionManagerWorker receiver,
+  private void writeAndRead(final BlockManagerWorker sender,
+                            final BlockManagerWorker receiver,
                             final DataCommunicationPatternProperty.Value commPattern,
                             final DataStoreProperty.Value store) throws RuntimeException {
     final int testIndex = TEST_INDEX.getAndIncrement();
@@ -286,8 +286,8 @@ public final class DataTransferTest {
 
     // Initialize states in Master
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
-      final String partitionId = RuntimeIdGenerator.generatePartitionId(edgeId, srcTaskIndex);
-      master.initializeState(partitionId, taskGroupPrefix + srcTaskIndex);
+      final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskIndex);
+      master.initializeState(blockId, taskGroupPrefix + srcTaskIndex);
       master.onProducerTaskGroupScheduled(taskGroupPrefix + srcTaskIndex);
     });
 
@@ -338,8 +338,8 @@ public final class DataTransferTest {
   }
 
   private Pair<IRVertex, IRVertex> setupVertices(final String edgeId,
-                                                 final PartitionManagerWorker sender,
-                                                 final PartitionManagerWorker receiver) {
+                                                 final BlockManagerWorker sender,
+                                                 final BlockManagerWorker receiver) {
     sender.registerCoder(edgeId, CODER);
     receiver.registerCoder(edgeId, CODER);
 

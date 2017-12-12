@@ -28,8 +28,8 @@ public final class RuntimeIdGenerator {
   private static AtomicInteger executorIdGenerator = new AtomicInteger(1);
   private static AtomicLong messageIdGenerator = new AtomicLong(1L);
   private static AtomicLong resourceSpecIdGenerator = new AtomicLong(1);
-  private static String partitionPrefix = "Partition-";
-  private static String partitionIdSplitter = "_";
+  private static String blockPrefix = "Block-";
+  private static String blockIdSplitter = "_";
 
   private RuntimeIdGenerator() {
   }
@@ -100,15 +100,15 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for a partition, whose data is the output of a task.
+   * Generates the ID for a block, whose data is the output of a task.
    *
-   * @param runtimeEdgeId of the partition
-   * @param taskIndex     of the partition
+   * @param runtimeEdgeId of the block
+   * @param taskIndex     of the block
    * @return the generated ID
    */
-  public static String generatePartitionId(final String runtimeEdgeId,
-                                           final int taskIndex) {
-    return partitionPrefix + runtimeEdgeId + partitionIdSplitter + taskIndex;
+  public static String generateBlockId(final String runtimeEdgeId,
+                                       final int taskIndex) {
+    return blockPrefix + runtimeEdgeId + blockIdSplitter + taskIndex;
   }
 
   /**
@@ -130,34 +130,34 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Extracts runtime edge ID from a partition ID.
+   * Extracts runtime edge ID from a block ID.
    *
-   * @param partitionId the partition ID to extract.
+   * @param blockId the block ID to extract.
    * @return the runtime edge ID.
    */
-  public static String getRuntimeEdgeIdFromPartitionId(final String partitionId) {
-    return parsePartitionId(partitionId)[0];
+  public static String getRuntimeEdgeIdFromBlockId(final String blockId) {
+    return parseBlockId(blockId)[0];
   }
 
   /**
-   * Extracts task index from a partition ID.
+   * Extracts task index from a block ID.
    *
-   * @param partitionId the partition ID to extract.
+   * @param blockId the block ID to extract.
    * @return the task index.
    */
-  public static String getTaskIndexFromPartitionId(final String partitionId) {
-    return parsePartitionId(partitionId)[1];
+  public static String getTaskIndexFromBlockId(final String blockId) {
+    return parseBlockId(blockId)[1];
   }
 
   /**
-   * Parses a partition id.
+   * Parses a block id.
    * The result array will contain runtime edge id and task index in order.
    *
-   * @param partitionId to parse.
+   * @param blockId to parse.
    * @return the array of parsed information.
    */
-  private static String[] parsePartitionId(final String partitionId) {
-    final String woPrefix = partitionId.split(partitionPrefix)[1];
-    return woPrefix.split(partitionIdSplitter);
+  private static String[] parseBlockId(final String blockId) {
+    final String woPrefix = blockId.split(blockPrefix)[1];
+    return woPrefix.split(blockIdSplitter);
   }
 }

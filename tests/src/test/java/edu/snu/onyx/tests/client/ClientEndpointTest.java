@@ -32,7 +32,7 @@ import edu.snu.onyx.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.onyx.runtime.common.state.JobState;
 import edu.snu.onyx.runtime.master.MetricMessageHandler;
-import edu.snu.onyx.runtime.master.PartitionManagerMaster;
+import edu.snu.onyx.runtime.master.BlockManagerMaster;
 import edu.snu.onyx.runtime.master.JobStateManager;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -80,7 +80,7 @@ public class ClientEndpointTest {
     final LocalMessageEnvironment messageEnvironment =
         new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
-    final PartitionManagerMaster pmm = injector.getInstance(PartitionManagerMaster.class);
+    final BlockManagerMaster pmm = injector.getInstance(BlockManagerMaster.class);
     final JobStateManager jobStateManager = new JobStateManager(
         new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()),
         pmm, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);

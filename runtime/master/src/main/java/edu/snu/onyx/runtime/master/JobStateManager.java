@@ -50,7 +50,6 @@ import static edu.snu.onyx.common.dag.DAG.EMPTY_DAG_DIRECTORY;
  * Manages the states related to a job.
  * This class can be used to track a job's execution status to task level in the future.
  * The methods of this class are synchronized.
- * TODO #493: Detach partitioning from writing.
  */
 @DriverSide
 public final class JobStateManager {
@@ -104,7 +103,7 @@ public final class JobStateManager {
   private final Map<String, MetricDataBuilder> metricDataBuilderMap;
 
   public JobStateManager(final PhysicalPlan physicalPlan,
-                         final PartitionManagerMaster partitionManagerMaster,
+                         final BlockManagerMaster blockManagerMaster,
                          final MetricMessageHandler metricMessageHandler,
                          final int maxScheduleAttempt) {
     this.jobId = physicalPlan.getId();
@@ -122,7 +121,7 @@ public final class JobStateManager {
     this.jobFinishedCondition = finishLock.newCondition();
     this.metricDataBuilderMap = new HashMap<>();
     initializeComputationStates();
-    initializePartitionStates(partitionManagerMaster);
+    initializePartitionStates(blockManagerMaster);
   }
 
   /**
@@ -143,30 +142,30 @@ public final class JobStateManager {
     });
   }
 
-  private void initializePartitionStates(final PartitionManagerMaster partitionManagerMaster) {
+  private void initializePartitionStates(final BlockManagerMaster blockManagerMaster) {
     final DAG<PhysicalStage, PhysicalStageEdge> stageDAG = physicalPlan.getStageDAG();
     stageDAG.topologicalDo(physicalStage -> {
       final List<TaskGroup> taskGroupsForStage = physicalStage.getTaskGroupList();
       final List<PhysicalStageEdge> stageOutgoingEdges = stageDAG.getOutgoingEdgesOf(physicalStage);
 
-      // Initialize states for partitions of inter-stage edges
+      // Initialize states for blocks of inter-stage edges
       stageOutgoingEdges.forEach(physicalStageEdge -> {
         final int srcParallelism = taskGroupsForStage.size();
         IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-          final String partitionId = RuntimeIdGenerator.generatePartitionId(physicalStageEdge.getId(), srcTaskIdx);
-          partitionManagerMaster.initializeState(partitionId, taskGroupsForStage.get(srcTaskIdx).getTaskGroupId());
+          final String blockId = RuntimeIdGenerator.generateBlockId(physicalStageEdge.getId(), srcTaskIdx);
+          blockManagerMaster.initializeState(blockId, taskGroupsForStage.get(srcTaskIdx).getTaskGroupId());
         });
       });
 
-      // Initialize states for partitions of stage internal edges
+      // Initialize states for blocks of stage internal edges
       taskGroupsForStage.forEach(taskGroup -> {
         final DAG<Task, RuntimeEdge<Task>> taskGroupInternalDag = taskGroup.getTaskDAG();
         taskGroupInternalDag.getVertices().forEach(task -> {
           final List<RuntimeEdge<Task>> internalOutgoingEdges = taskGroupInternalDag.getOutgoingEdgesOf(task);
           internalOutgoingEdges.forEach(taskRuntimeEdge -> {
             final int srcTaskIdx = taskGroup.getTaskGroupIdx();
-            final String partitionId = RuntimeIdGenerator.generatePartitionId(taskRuntimeEdge.getId(), srcTaskIdx);
-            partitionManagerMaster.initializeState(partitionId, taskGroup.getTaskGroupId());
+            final String blockId = RuntimeIdGenerator.generateBlockId(taskRuntimeEdge.getId(), srcTaskIdx);
+            blockManagerMaster.initializeState(blockId, taskGroup.getTaskGroupId());
           });
         });
       });

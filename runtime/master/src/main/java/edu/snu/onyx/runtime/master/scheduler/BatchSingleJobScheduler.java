@@ -24,7 +24,7 @@ import edu.snu.onyx.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.StageState;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
-import edu.snu.onyx.runtime.master.PartitionManagerMaster;
+import edu.snu.onyx.runtime.master.BlockManagerMaster;
 import edu.snu.onyx.runtime.master.JobStateManager;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.LoggerFactory;
@@ -56,7 +56,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   /**
    * Other necessary components of this {@link edu.snu.onyx.runtime.master.RuntimeMaster}.
    */
-  private final PartitionManagerMaster partitionManagerMaster;
+  private final BlockManagerMaster blockManagerMaster;
   private final PubSubEventHandlerWrapper pubSubEventHandlerWrapper;
 
   /**
@@ -70,13 +70,13 @@ public final class BatchSingleJobScheduler implements Scheduler {
   public BatchSingleJobScheduler(final SchedulingPolicy schedulingPolicy,
                                  final SchedulerRunner schedulerRunner,
                                  final PendingTaskGroupQueue pendingTaskGroupQueue,
-                                 final PartitionManagerMaster partitionManagerMaster,
+                                 final BlockManagerMaster blockManagerMaster,
                                  final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                                  final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler) {
     this.schedulingPolicy = schedulingPolicy;
     this.schedulerRunner = schedulerRunner;
     this.pendingTaskGroupQueue = pendingTaskGroupQueue;
-    this.partitionManagerMaster = partitionManagerMaster;
+    this.blockManagerMaster = blockManagerMaster;
     this.pubSubEventHandlerWrapper = pubSubEventHandlerWrapper;
     updatePhysicalPlanEventHandler.setScheduler(this);
     if (pubSubEventHandlerWrapper.getPubSubEventHandler() != null) {
@@ -254,7 +254,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
               if (jobStateManager.getTaskGroupState(tg.getTaskGroupId()).getStateMachine().getCurrentState()
                   != TaskGroupState.State.COMPLETE) {
                 jobStateManager.onTaskGroupStateChanged(tg, TaskGroupState.State.FAILED_RECOVERABLE);
-                partitionManagerMaster.onProducerTaskGroupFailed(tg.getTaskGroupId());
+                blockManagerMaster.onProducerTaskGroupFailed(tg.getTaskGroupId());
               }
             });
             break;
@@ -277,7 +277,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
       // the stage this task group belongs to has become failed recoverable.
       // it is a good point to start searching for another stage to schedule.
-      partitionManagerMaster.onProducerTaskGroupFailed(taskGroup.getTaskGroupId());
+      blockManagerMaster.onProducerTaskGroupFailed(taskGroup.getTaskGroupId());
       scheduleNextStage(taskGroup.getStageId());
       break;
     case CONTAINER_FAILURE:
@@ -299,7 +299,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     final Set<String> taskGroupsToReExecute = new HashSet<>();
 
     // TaskGroups for lost blocks
-    taskGroupsToReExecute.addAll(partitionManagerMaster.removeWorker(executorId));
+    taskGroupsToReExecute.addAll(blockManagerMaster.removeWorker(executorId));
 
     // TaskGroups executing on the removed executor
     taskGroupsToReExecute.addAll(schedulingPolicy.onExecutorRemoved(executorId));
@@ -485,7 +485,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     LOG.info("Scheduling Stage {} with attemptIdx={}", new Object[]{stageToSchedule.getId(), attemptIdx});
 
     taskGroupsToSchedule.forEach(taskGroup -> {
-      partitionManagerMaster.onProducerTaskGroupScheduled(taskGroup.getTaskGroupId());
+      blockManagerMaster.onProducerTaskGroupScheduled(taskGroup.getTaskGroupId());
       LOG.debug("Enquing {}", taskGroup.getTaskGroupId());
       pendingTaskGroupQueue.enqueue(
           new ScheduledTaskGroup(physicalPlan.getId(), taskGroup, stageIncomingEdges, stageOutgoingEdges, attemptIdx));
