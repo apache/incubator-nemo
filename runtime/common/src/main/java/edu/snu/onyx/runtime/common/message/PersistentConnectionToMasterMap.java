@@ -24,9 +24,9 @@ public final class PersistentConnectionToMasterMap {
       messageSenders.put(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID,
           messageEnvironment.<ControlMessage.Message>asyncConnect(MessageEnvironment.MASTER_COMMUNICATION_ID,
               MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).get());
-      messageSenders.put(MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID,
+      messageSenders.put(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID,
           messageEnvironment.<ControlMessage.Message>asyncConnect(MessageEnvironment.MASTER_COMMUNICATION_ID,
-              MessageEnvironment.PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID).get());
+              MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).get());
     } catch (InterruptedException | ExecutionException e) {
       throw new NodeConnectionException(e);
     }

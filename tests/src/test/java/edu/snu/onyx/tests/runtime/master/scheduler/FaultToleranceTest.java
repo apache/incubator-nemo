@@ -37,7 +37,7 @@ import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.runtime.master.JobStateManager;
 import edu.snu.onyx.runtime.master.MetricMessageHandler;
-import edu.snu.onyx.runtime.master.PartitionManagerMaster;
+import edu.snu.onyx.runtime.master.BlockManagerMaster;
 import edu.snu.onyx.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.resource.ExecutorRepresenter;
@@ -69,7 +69,7 @@ import static org.mockito.Mockito.when;
  * Tests fault tolerance.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ContainerManager.class, PartitionManagerMaster.class, SchedulerRunner.class,
+@PrepareForTest({ContainerManager.class, BlockManagerMaster.class, SchedulerRunner.class,
     PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
 public final class FaultToleranceTest {
   private static final Logger LOG = LoggerFactory.getLogger(FaultToleranceTest.class.getName());
@@ -84,7 +84,7 @@ public final class FaultToleranceTest {
   private PendingTaskGroupQueue pendingTaskGroupQueue;
   private PubSubEventHandlerWrapper pubSubEventHandler;
   private UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler;
-  private PartitionManagerMaster partitionManagerMaster = mock(PartitionManagerMaster.class);
+  private BlockManagerMaster blockManagerMaster = mock(BlockManagerMaster.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
   private PhysicalPlanGenerator physicalPlanGenerator;
 
@@ -125,7 +125,7 @@ public final class FaultToleranceTest {
     schedulerRunner = mock(SchedulerRunner.class);//new SchedulerRunner(schedulingPolicy, pendingTaskGroupQueue);
     scheduler =
         new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, pendingTaskGroupQueue,
-            partitionManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler);
+            blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler);
 
     // Add nodes
     scheduler.onExecutorAdded(a1.getExecutorId());
@@ -187,7 +187,7 @@ public final class FaultToleranceTest {
 
     final PhysicalPlan plan = new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap());
     final JobStateManager jobStateManager =
-        new JobStateManager(plan, partitionManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+        new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
 
     final List<PhysicalStage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
@@ -305,7 +305,7 @@ public final class FaultToleranceTest {
 
     final PhysicalPlan plan = new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap());
     final JobStateManager jobStateManager =
-        new JobStateManager(plan, partitionManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+        new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
 
     final List<PhysicalStage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
@@ -397,7 +397,7 @@ public final class FaultToleranceTest {
 
     final PhysicalPlan plan = new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap());
     final JobStateManager jobStateManager =
-        new JobStateManager(plan, partitionManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+        new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
 
     final List<PhysicalStage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
