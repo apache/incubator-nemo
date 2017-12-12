@@ -26,6 +26,13 @@ public abstract class Task extends Vertex {
   private final int index;
   private final String taskGroupId;
 
+  /**
+   * Constructor.
+   * @param taskId id of the task.
+   * @param runtimeVertexId id fo the runtime vertex.
+   * @param index index in the taskGroup.
+   * @param taskGroupId id of the taskGroup.
+   */
   public Task(final String taskId,
               final String runtimeVertexId,
               final int index,
@@ -36,14 +43,23 @@ public abstract class Task extends Vertex {
     this.taskGroupId = taskGroupId;
   }
 
+  /**
+   * @return the id of the runtime vertex.
+   */
   public final String getRuntimeVertexId() {
     return runtimeVertexId;
   }
 
+  /**
+   * @return the index in the taskGroup.
+   */
   public final int getIndex() {
     return index;
   }
 
+  /**
+   * @return the id of the taskGroup.
+   */
   public final String getTaskGroupId() {
     return taskGroupId;
   }

@@ -108,6 +108,11 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     private final ObjectMapper mapper;
     private final PipelineOptions options;
 
+    /**
+     * StartBundleContext.
+     * @param fn DoFn.
+     * @param serializedOptions serialized options of the DoTransform.
+     */
     StartBundleContext(final DoFn<I, O> fn,
                        final String serializedOptions) {
       fn.super();
@@ -135,6 +140,12 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     private final ObjectMapper mapper;
     private final PipelineOptions options;
 
+    /**
+     * Constructor.
+     * @param fn DoFn.
+     * @param outputCollector output collector of the DoTransform.
+     * @param serializedOptions serialized options of the DoTransform.
+     */
     FinishBundleContext(final DoFn<I, O> fn,
                         final OutputCollector<O> outputCollector,
                         final String serializedOptions) {

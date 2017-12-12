@@ -29,6 +29,8 @@ import java.util.function.BiFunction;
  * @param <T> type of the metric data used for dynamic optimization.
  */
 public interface RuntimePass<T> extends BiFunction<PhysicalPlan, T, PhysicalPlan>, Serializable {
-  String getName();
+  /**
+   * @return the set of event handlers used with the runtime pass.
+   */
   Set<Class<? extends CommonEventHandler<?>>> getEventHandlers();
 }

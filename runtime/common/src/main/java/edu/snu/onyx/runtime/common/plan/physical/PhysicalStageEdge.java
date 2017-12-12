@@ -47,6 +47,17 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
    */
   private final Map<String, HashRange> taskGroupIdToHashRangeMap;
 
+  /**
+   * Constructor.
+   * @param runtimeEdgeId id of the runtime edge.
+   * @param edgeProperties edge execution properties.
+   * @param srcVertex source vertex.
+   * @param dstVertex destination vertex.
+   * @param srcStage source stage.
+   * @param dstStage destination stage.
+   * @param coder the coder for enconding and deconding.
+   * @param isSideInput whether or not the edge is a sideInput edge.
+   */
   public PhysicalStageEdge(final String runtimeEdgeId,
                            final ExecutionPropertyMap edgeProperties,
                            final IRVertex srcVertex,
@@ -66,10 +77,16 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     }
   }
 
+  /**
+   * @return the source vertex of the edge.
+   */
   public IRVertex getSrcVertex() {
     return srcVertex;
   }
 
+  /**
+   * @return the destination vertex of the edge.
+   */
   public IRVertex getDstVertex() {
     return dstVertex;
   }

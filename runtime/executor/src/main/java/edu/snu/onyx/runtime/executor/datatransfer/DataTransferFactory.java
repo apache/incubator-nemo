@@ -4,7 +4,7 @@ import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.plan.physical.Task;
-import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
+import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -14,14 +14,14 @@ import javax.inject.Inject;
  */
 public final class DataTransferFactory {
 
-  private final PartitionManagerWorker partitionManagerWorker;
+  private final BlockManagerWorker blockManagerWorker;
   private final int hashRangeMultiplier;
 
   @Inject
   public DataTransferFactory(@Parameter(JobConf.HashRangeMultiplier.class) final int hashRangeMultiplier,
-                             final PartitionManagerWorker partitionManagerWorker) {
+                             final BlockManagerWorker blockManagerWorker) {
     this.hashRangeMultiplier = hashRangeMultiplier;
-    this.partitionManagerWorker = partitionManagerWorker;
+    this.blockManagerWorker = blockManagerWorker;
   }
 
   /**
@@ -36,7 +36,7 @@ public final class DataTransferFactory {
                                    final IRVertex dstRuntimeVertex,
                                    final RuntimeEdge<?> runtimeEdge) {
     return new OutputWriter(hashRangeMultiplier, srcTask.getIndex(),
-        srcTask.getRuntimeVertexId(), dstRuntimeVertex, runtimeEdge, partitionManagerWorker);
+        srcTask.getRuntimeVertexId(), dstRuntimeVertex, runtimeEdge, blockManagerWorker);
   }
 
   public OutputWriter createLocalWriter(final Task srcTask,
@@ -56,7 +56,7 @@ public final class DataTransferFactory {
                                   final IRVertex srcRuntimeVertex,
                                   final RuntimeEdge runtimeEdge) {
     return new InputReader(
-        dstTask.getIndex(), dstTask.getTaskGroupId(), srcRuntimeVertex, runtimeEdge, partitionManagerWorker);
+        dstTask.getIndex(), dstTask.getTaskGroupId(), srcRuntimeVertex, runtimeEdge, blockManagerWorker);
   }
 
   /**

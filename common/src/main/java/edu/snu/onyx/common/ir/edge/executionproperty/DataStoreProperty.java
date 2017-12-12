@@ -21,10 +21,19 @@ import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
  * DataStore ExecutionProperty.
  */
 public final class DataStoreProperty extends ExecutionProperty<DataStoreProperty.Value> {
+  /**
+   * Constructor.
+   * @param value value of the execution property.
+   */
   private DataStoreProperty(final Value value) {
     super(Key.DataStore, value);
   }
 
+  /**
+   * Static method exposing the constructor.
+   * @param value value of the new execution property.
+   * @return the newly created execution property.
+   */
   public static DataStoreProperty of(final Value value) {
     return new DataStoreProperty(value);
   }

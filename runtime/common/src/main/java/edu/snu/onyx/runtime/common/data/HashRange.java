@@ -27,6 +27,11 @@ public final class HashRange implements Serializable {
   private final int rangeStartInclusive;
   private final int rangeEndExclusive;
 
+  /**
+   * Private constructor.
+   * @param rangeStartInclusive point at which the hash range starts (inclusive).
+   * @param rangeEndExclusive point at which the hash range ends (exclusive).
+   */
   private HashRange(final int rangeStartInclusive, final int rangeEndExclusive) {
     if (rangeStartInclusive < 0 || rangeEndExclusive < 0) {
       throw new RuntimeException("Each boundary value of the range have to be non-negative.");

@@ -36,6 +36,12 @@ public final class PhysicalPlan implements Serializable {
 
   private final Map<Task, IRVertex> taskIRVertexMap;
 
+  /**
+   * Constructor.
+   * @param id id of the plan.
+   * @param stageDAG the DAG of stages.
+   * @param taskIRVertexMap map from task to IR vertex.
+   */
   public PhysicalPlan(final String id,
                       final DAG<PhysicalStage, PhysicalStageEdge> stageDAG,
                       final Map<Task, IRVertex> taskIRVertexMap) {
@@ -44,18 +50,32 @@ public final class PhysicalPlan implements Serializable {
     this.taskIRVertexMap = taskIRVertexMap;
   }
 
+  /**
+   * @return id of the plan.
+   */
   public String getId() {
     return id;
   }
 
+  /**
+   * @return the DAG of stages.
+   */
   public DAG<PhysicalStage, PhysicalStageEdge> getStageDAG() {
     return stageDAG;
   }
 
+  /**
+   * Get an IR vertex of the given task.
+   * @param task task to find the IR vertex of.
+   * @return the corresponding IR vertex of the given task.
+   */
   public IRVertex getIRVertexOf(final Task task) {
     return taskIRVertexMap.get(task);
   }
 
+  /**
+   * @return the map from task to IR vertex.
+   */
   public Map<Task, IRVertex> getTaskIRVertexMap() {
     return taskIRVertexMap;
   }
