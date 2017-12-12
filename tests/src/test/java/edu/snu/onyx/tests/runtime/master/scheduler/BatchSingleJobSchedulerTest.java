@@ -36,7 +36,7 @@ import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.StageState;
 import edu.snu.onyx.runtime.master.JobStateManager;
 import edu.snu.onyx.runtime.master.MetricMessageHandler;
-import edu.snu.onyx.runtime.master.PartitionManagerMaster;
+import edu.snu.onyx.runtime.master.BlockManagerMaster;
 import edu.snu.onyx.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.resource.ExecutorRepresenter;
@@ -68,7 +68,7 @@ import static org.mockito.Mockito.when;
  * Tests {@link BatchSingleJobScheduler}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ContainerManager.class, PartitionManagerMaster.class,
+@PrepareForTest({ContainerManager.class, BlockManagerMaster.class,
     PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
 public final class BatchSingleJobSchedulerTest {
   private static final Logger LOG = LoggerFactory.getLogger(BatchSingleJobSchedulerTest.class.getName());
@@ -81,7 +81,7 @@ public final class BatchSingleJobSchedulerTest {
   private PendingTaskGroupQueue pendingTaskGroupQueue;
   private PubSubEventHandlerWrapper pubSubEventHandler;
   private UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler;
-  private PartitionManagerMaster partitionManagerMaster = mock(PartitionManagerMaster.class);
+  private BlockManagerMaster blockManagerMaster = mock(BlockManagerMaster.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
   private PhysicalPlanGenerator physicalPlanGenerator;
 
@@ -103,7 +103,7 @@ public final class BatchSingleJobSchedulerTest {
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     scheduler =
         new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, pendingTaskGroupQueue,
-            partitionManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler);
+            blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler);
 
     final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();
     when(containerManager.getExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
@@ -247,7 +247,7 @@ public final class BatchSingleJobSchedulerTest {
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     final PhysicalPlan plan = new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap());
-    final JobStateManager jobStateManager = new JobStateManager(plan, partitionManagerMaster, metricMessageHandler, 1);
+    final JobStateManager jobStateManager = new JobStateManager(plan, blockManagerMaster, metricMessageHandler, 1);
     scheduler.scheduleJob(plan, jobStateManager);
 
     // For each ScheduleGroup, test:

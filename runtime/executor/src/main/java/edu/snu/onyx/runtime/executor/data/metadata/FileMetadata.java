@@ -18,49 +18,48 @@ package edu.snu.onyx.runtime.executor.data.metadata;
 import java.io.IOException;
 
 /**
- * This class represents a metadata for a (local / remote) file partition.
- * The writer and reader determine the status of a file partition
+ * This class represents a metadata for a {@link edu.snu.onyx.runtime.executor.data.block.Block}.
+ * The writer and reader determine the status of a file block
  * (such as accessibility, how many bytes are written, etc.) by using this metadata.
  */
 public abstract class FileMetadata {
 
-  private final boolean blockCommitPerWrite; // Whether need to commit block per every block write or not.
+  private final boolean partitionCommitPerWrite; // Whether need to commit partition per every block write or not.
 
-  protected FileMetadata(final boolean blockCommitPerWrite) {
-    this.blockCommitPerWrite = blockCommitPerWrite;
+  protected FileMetadata(final boolean partitionCommitPerWrite) {
+    this.partitionCommitPerWrite = partitionCommitPerWrite;
   }
 
   /**
-   * Reserves the region for a block and get the metadata for the block.
-   * When a writer reserves the region (or space) of a file for a data block,
+   * Reserves the region for a partition and get the metadata for the partition.
+   * When a writer reserves the region (or space) of a file for a data partition,
    * other writers will write their data after the region.
-   * Also, the readers will judge a data block available after the block is committed.
+   * Also, the readers will judge a data partition available after the partition is committed.
    *
    * @param hashValue     the hash range of the block.
-   * @param blockSize     the size of the block.
-   * @param elementsTotal the number of elements in the block.
-   * @return the {@link BlockMetadata} having all given information, the block offset, and the index.
-   * @throws IOException if fail to append the block metadata.
+   * @param partitionSize the size of the block.
+   * @param elementsTotal the number of elements in the partition.
+   * @return the {@link PartitionMetadata} having all given information, the partition offset, and the index.
+   * @throws IOException if fail to append the partition metadata.
    */
-  public abstract BlockMetadata reserveBlock(final int hashValue,
-                                             final int blockSize,
-                                             final long elementsTotal) throws IOException;
+  public abstract PartitionMetadata reservePartition(final int hashValue,
+                                                     final int partitionSize,
+                                                     final long elementsTotal) throws IOException;
 
   /**
-   * Notifies that some blocks are written.
+   * Notifies that some partitions are written.
    *
-   * @param blockMetadataToCommit the block metadata of the blocks to commit.
+   * @param partitionMetadataToCommit the metadata of the partitions to commit.
    */
-  public abstract void commitBlocks(final Iterable<BlockMetadata> blockMetadataToCommit);
+  public abstract void commitPartitions(final Iterable<PartitionMetadata> partitionMetadataToCommit);
 
   /**
-   * Gets a iterable containing the block metadata of corresponding partition.
-   * It returns a "blocking iterable" to which metadata for blocks that become available will be published.
+   * Gets a iterable containing the partition metadata of corresponding block.
    *
-   * @return the "blocking iterable" containing the block metadata.
+   * @return the iterable containing the partition metadata.
    * @throws IOException if fail to get the iterable.
    */
-  public abstract Iterable<BlockMetadata> getBlockMetadataIterable() throws IOException;
+  public abstract Iterable<PartitionMetadata> getPartitionMetadataIterable() throws IOException;
 
   /**
    * Deletes the metadata.
@@ -70,16 +69,14 @@ public abstract class FileMetadata {
   public abstract void deleteMetadata() throws IOException;
 
   /**
-   * @return whether commit every block write or not.
+   * @return whether commit every partition write or not.
    */
-  public final boolean isBlockCommitPerWrite() {
-    return blockCommitPerWrite;
+  public final boolean isPartitionCommitPerWrite() {
+    return partitionCommitPerWrite;
   }
 
   /**
-   * Notifies that all writes are finished for the partition corresponding to this metadata.
-   * Subscribers waiting for the data of the target partition are notified when the partition is committed.
-   * Also, further subscription about a committed partition will not blocked but get the data in it and finished.
+   * Notifies that all writes are finished for the block corresponding to this metadata.
    */
-  public abstract void commitPartition();
+  public abstract void commitBlock();
 }
