@@ -252,10 +252,12 @@ public final class BlockManagerWorker {
                           final String srcIRVertexId,
                           final int expectedReadTotal,
                           final UsedDataHandlingProperty.Value usedDataHandling) {
-    LOG.info("CommitBlock: {}", blockId);
+    //LOG.info("CommitBlock: {}", blockId);
+    LOG.info("CommitBlock: {}, usedDataHandling: {}", blockId, usedDataHandling.toString());
     switch (usedDataHandling) {
       case Discard:
         blockToRemainingRead.put(blockId, new AtomicInteger(expectedReadTotal));
+        LOG.info("CommitBlock: adding {} to the map with expected read {}", blockId, expectedReadTotal);
         break;
       case Keep:
         // Do nothing but just keep the data.
