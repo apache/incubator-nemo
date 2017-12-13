@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.common;
 
-import edu.snu.onyx.common.ir.Transform;
+import edu.snu.onyx.common.ir.vertex.transform.Transform;
 
 import java.util.Map;
 

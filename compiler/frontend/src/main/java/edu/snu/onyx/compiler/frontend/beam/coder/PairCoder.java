@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.common.coder;
+package edu.snu.onyx.compiler.frontend.beam.coder;
 
 import edu.snu.onyx.common.Pair;
 import org.apache.beam.sdk.coders.Coder;

@@ -16,7 +16,7 @@
 package edu.snu.onyx.tests.runtime.executor.data;
 
 import edu.snu.onyx.conf.JobConf;
-import edu.snu.onyx.common.coder.BeamCoder;
+import edu.snu.onyx.compiler.frontend.beam.coder.BeamCoder;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.data.HashRange;

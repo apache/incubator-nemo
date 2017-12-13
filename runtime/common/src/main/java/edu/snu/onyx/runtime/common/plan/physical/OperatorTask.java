@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.runtime.common.plan.physical;
 
-import edu.snu.onyx.common.ir.Transform;
+import edu.snu.onyx.common.ir.vertex.transform.Transform;
 
 /**
  * OperatorTask.

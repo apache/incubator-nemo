@@ -16,7 +16,8 @@
 package edu.snu.onyx.tests.runtime.common.plan;
 
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.common.ir.Transform;
+import edu.snu.onyx.common.ir.vertex.Source;
+import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataFlowModelProperty;
@@ -112,15 +113,15 @@ public final class DAGConverterTest {
   @Test
   public void testComplexPlan() throws Exception {
     // Tests a plan of 4 stages.
-    final BoundedSource s = mock(BoundedSource.class);
-    final BoundedSource.BoundedReader r = mock(BoundedSource.BoundedReader.class);
-    final List<BoundedSource.BoundedReader> dummyReaderList = new ArrayList<>(3);
+    final Source s = mock(Source.class);
+    final Source.Reader r = mock(Source.Reader.class);
+    final List<Source.Reader> dummyReaderList = new ArrayList<>(3);
     dummyReaderList.add(r);
     dummyReaderList.add(r);
     dummyReaderList.add(r);
-    when(s.getEstimatedSizeBytes(null)).thenReturn(9L);
-    when(s.createReader(null)).thenReturn(r);
-    when(s.split(3L, null)).thenReturn(dummyReaderList);
+    when(s.getEstimatedSizeBytes()).thenReturn(9L);
+    when(s.createReader()).thenReturn(r);
+    when(s.split(3L)).thenReturn(dummyReaderList);
 
     final IRVertex v1 = new BoundedSourceVertex<>(s);
     v1.setProperty(ParallelismProperty.of(3));

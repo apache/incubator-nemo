@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.common.coder;
+package edu.snu.onyx.compiler.frontend.beam.coder;
+
+import edu.snu.onyx.common.coder.Coder;
 
 import java.io.IOException;
 import java.io.InputStream;
