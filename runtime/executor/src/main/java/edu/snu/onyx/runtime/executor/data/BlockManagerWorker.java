@@ -82,8 +82,7 @@ public final class BlockManagerWorker {
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
     this.blockTransfer = blockTransfer;
-    //this.backgroundExecutorService = Executors.newFixedThreadPool(numThreads);
-    this.backgroundExecutorService = Executors.newCachedThreadPool();
+    this.backgroundExecutorService = Executors.newFixedThreadPool(numThreads);
     this.blockToRemainingRead = new ConcurrentHashMap<>();
   }
 
@@ -252,8 +251,7 @@ public final class BlockManagerWorker {
                           final String srcIRVertexId,
                           final int expectedReadTotal,
                           final UsedDataHandlingProperty.Value usedDataHandling) {
-    //LOG.info("CommitBlock: {}", blockId);
-    LOG.info("CommitBlock: {}, usedDataHandling: {}", blockId, usedDataHandling.toString());
+    LOG.info("CommitBlock: {}", blockId);
     switch (usedDataHandling) {
       case Discard:
         blockToRemainingRead.put(blockId, new AtomicInteger(expectedReadTotal));
@@ -352,7 +350,6 @@ public final class BlockManagerWorker {
                               final String blockId) {
     final AtomicInteger remainingExpectedRead = blockToRemainingRead.get(blockId);
     if (remainingExpectedRead != null) {
-      LOG.info("handleUsedData: remainingExpectedRead for {} is {}", blockId, remainingExpectedRead.get());
       if (remainingExpectedRead.decrementAndGet() == 0) {
         // This block should be discarded.
         blockToRemainingRead.remove(blockId);
