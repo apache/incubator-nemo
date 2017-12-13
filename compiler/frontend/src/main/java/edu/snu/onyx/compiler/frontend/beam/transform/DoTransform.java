@@ -17,7 +17,7 @@ package edu.snu.onyx.compiler.frontend.beam.transform;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.onyx.common.ir.OutputCollector;
-import edu.snu.onyx.common.ir.Transform;
+import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.state.State;
 import org.apache.beam.sdk.state.Timer;

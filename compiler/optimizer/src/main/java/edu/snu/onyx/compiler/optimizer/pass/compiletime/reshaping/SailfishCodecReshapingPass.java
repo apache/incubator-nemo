@@ -24,8 +24,8 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternPro
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
-import edu.snu.onyx.compiler.frontend.onyx.transform.transform.SailfishDecodingTransform;
-import edu.snu.onyx.compiler.frontend.onyx.transform.transform.SailfishEncodingTransform;
+import edu.snu.onyx.common.ir.vertex.transform.SailfishDecodingTransform;
+import edu.snu.onyx.common.ir.vertex.transform.SailfishEncodingTransform;
 
 import java.util.Collections;
 
