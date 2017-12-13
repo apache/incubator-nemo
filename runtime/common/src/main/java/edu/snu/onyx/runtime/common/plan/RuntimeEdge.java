@@ -84,6 +84,9 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
     return edgeProperties;
   }
 
+  /**
+   * @return the coder for encoding and decoding.
+   */
   public final Coder getCoder() {
     return coder;
   }

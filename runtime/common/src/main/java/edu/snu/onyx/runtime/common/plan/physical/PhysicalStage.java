@@ -26,6 +26,12 @@ public final class PhysicalStage extends Vertex {
   private final List<TaskGroup> taskGroupList;
   private final int scheduleGroupIndex;
 
+  /**
+   * Constructor.
+   * @param stageId id of the stage.
+   * @param taskGroupList list of taskGroups.
+   * @param scheduleGroupIndex the schedule group index.
+   */
   public PhysicalStage(final String stageId,
                        final List<TaskGroup> taskGroupList,
                        final int scheduleGroupIndex) {
@@ -34,10 +40,16 @@ public final class PhysicalStage extends Vertex {
     this.scheduleGroupIndex = scheduleGroupIndex;
   }
 
+  /**
+   * @return the list of taskGroups.
+   */
   public List<TaskGroup> getTaskGroupList() {
     return taskGroupList;
   }
 
+  /**
+   * @return the schedule group index.
+   */
   public int getScheduleGroupIndex() {
     return scheduleGroupIndex;
   }

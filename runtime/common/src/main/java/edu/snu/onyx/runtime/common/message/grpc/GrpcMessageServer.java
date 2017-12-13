@@ -46,6 +46,13 @@ final class GrpcMessageServer {
 
   private Server server;
 
+  /**
+   * Constructor.
+   * @param localAddressProvider local address provider.
+   * @param nameResolver name resolver.
+   * @param idFactory identifier factory.
+   * @param localSenderId id of the local sender.
+   */
   GrpcMessageServer(final LocalAddressProvider localAddressProvider,
                     final NameResolver nameResolver,
                     final IdentifierFactory idFactory,
@@ -57,12 +64,21 @@ final class GrpcMessageServer {
     this.listenerMap = new ConcurrentHashMap<>();
   }
 
+  /**
+   * Set up a listener.
+   * @param listenerId id of the listener.
+   * @param listener the message listener.
+   */
   void setupListener(final String listenerId, final MessageListener<ControlMessage.Message> listener) {
     if (listenerMap.putIfAbsent(listenerId, listener) != null) {
       throw new RuntimeException("A listener for " + listenerId + " was already setup");
     }
   }
 
+  /**
+   * Remove a listener by its id.
+   * @param listenerId id of the listener to remove.
+   */
   void removeListener(final String listenerId) {
     listenerMap.remove(listenerId);
   }
@@ -87,6 +103,11 @@ final class GrpcMessageServer {
     registerToNameServer(server.getPort());
   }
 
+  /**
+   * For registering to the name server.
+   * @param port port of the socket address.
+   * @throws Exception
+   */
   private void registerToNameServer(final int port) throws Exception {
     final InetSocketAddress socketAddress = new InetSocketAddress(localAddressProvider.getLocalAddress(), port);
     for (int i = 0; i < NAME_SERVER_REGISTER_RETRY_COUNT; i++) {
@@ -103,6 +124,10 @@ final class GrpcMessageServer {
         + NAME_SERVER_REGISTER_RETRY_COUNT + " retries");
   }
 
+  /**
+   * Closes the server.
+   * @throws Exception exception while closing.
+   */
   void close() throws Exception {
     server.shutdown();
   }

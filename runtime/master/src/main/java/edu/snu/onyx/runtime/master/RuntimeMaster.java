@@ -24,7 +24,7 @@ import edu.snu.onyx.runtime.common.message.MessageContext;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.MessageListener;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.onyx.runtime.common.state.PartitionState;
+import edu.snu.onyx.runtime.common.state.BlockState;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.scheduler.PendingTaskGroupQueue;
@@ -60,7 +60,7 @@ import static edu.snu.onyx.runtime.common.state.TaskGroupState.State.ON_HOLD;
  * Runtime Master handles:
  *    a) Scheduling the job with {@link Scheduler}, {@link SchedulerRunner}, {@link PendingTaskGroupQueue}.
  *    b) Managing resources with {@link ContainerManager}.
- *    c) Managing partitions with {@link PartitionManagerMaster}.
+ *    c) Managing blocks with {@link BlockManagerMaster}.
  *    d) Receiving and sending control messages with {@link MessageEnvironment}.
  *    e) Metric using {@link MetricMessageHandler}.
  */
@@ -73,7 +73,7 @@ public final class RuntimeMaster {
   private final SchedulerRunner schedulerRunner;
   private final PendingTaskGroupQueue pendingTaskGroupQueue;
   private final ContainerManager containerManager;
-  private final PartitionManagerMaster partitionManagerMaster;
+  private final BlockManagerMaster blockManagerMaster;
   private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
 
@@ -89,7 +89,7 @@ public final class RuntimeMaster {
                        final SchedulerRunner schedulerRunner,
                        final PendingTaskGroupQueue pendingTaskGroupQueue,
                        final ContainerManager containerManager,
-                       final PartitionManagerMaster partitionManagerMaster,
+                       final BlockManagerMaster blockManagerMaster,
                        final MetricMessageHandler metricMessageHandler,
                        final MessageEnvironment masterMessageEnvironment,
                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
@@ -97,7 +97,7 @@ public final class RuntimeMaster {
     this.schedulerRunner = schedulerRunner;
     this.pendingTaskGroupQueue = pendingTaskGroupQueue;
     this.containerManager = containerManager;
-    this.partitionManagerMaster = partitionManagerMaster;
+    this.blockManagerMaster = blockManagerMaster;
     this.metricMessageHandler = metricMessageHandler;
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
@@ -117,7 +117,7 @@ public final class RuntimeMaster {
     this.irVertices.addAll(plan.getTaskIRVertexMap().values());
     try {
       final JobStateManager jobStateManager =
-          new JobStateManager(plan, partitionManagerMaster, metricMessageHandler, maxScheduleAttempt);
+          new JobStateManager(plan, blockManagerMaster, metricMessageHandler, maxScheduleAttempt);
 
       scheduler.scheduleJob(plan, jobStateManager);
 
@@ -140,7 +140,7 @@ public final class RuntimeMaster {
       scheduler.terminate();
       schedulerRunner.terminate();
       pendingTaskGroupQueue.close();
-      partitionManagerMaster.terminate();
+      blockManagerMaster.terminate();
       masterMessageEnvironment.close();
       final Future<Boolean> allExecutorsClosed = containerManager.terminate();
 
@@ -211,11 +211,11 @@ public final class RuntimeMaster {
    *
    * @param blockSizeInfo the block size info to accumulate.
    * @param srcVertexId   the ID of the source vertex.
-   * @param partitionId   the ID of the partition.
+   * @param blockId       the ID of the block.
    */
   public void accumulateBarrierMetric(final List<Long> blockSizeInfo,
                                       final String srcVertexId,
-                                      final String partitionId) {
+                                      final String blockId) {
     final IRVertex vertexToSendMetricDataTo = irVertices.stream()
         .filter(irVertex -> irVertex.getId().equals(srcVertexId)).findFirst()
         .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
@@ -223,7 +223,7 @@ public final class RuntimeMaster {
     if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
       final MetricCollectionBarrierVertex<Long> metricCollectionBarrierVertex =
           (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
-      metricCollectionBarrierVertex.accumulateMetric(partitionId, blockSizeInfo);
+      metricCollectionBarrierVertex.accumulateMetric(blockId, blockSizeInfo);
     } else {
       throw new RuntimeException("Something wrong happened at DataSkewCompositePass.");
     }
@@ -262,8 +262,8 @@ public final class RuntimeMaster {
           case DataSizeMetric:
             final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
             // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-            accumulateBarrierMetric(dataSizeMetricMsg.getBlockSizeInfoList(),
-                dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getPartitionId());
+            accumulateBarrierMetric(dataSizeMetricMsg.getPartitionSizeInfoList(),
+                dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getBlockId());
             break;
           case MetricMessageReceived:
             final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
@@ -310,42 +310,42 @@ public final class RuntimeMaster {
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  public static PartitionState.State convertPartitionState(final ControlMessage.PartitionStateFromExecutor state) {
+  public static BlockState.State convertBlockState(final ControlMessage.BlockStateFromExecutor state) {
     switch (state) {
-    case PARTITION_READY:
-      return PartitionState.State.READY;
+    case BLOCK_READY:
+      return BlockState.State.READY;
     case SCHEDULED:
-      return PartitionState.State.SCHEDULED;
+      return BlockState.State.SCHEDULED;
     case COMMITTED:
-      return PartitionState.State.COMMITTED;
+      return BlockState.State.COMMITTED;
     case LOST_BEFORE_COMMIT:
-      return PartitionState.State.LOST_BEFORE_COMMIT;
+      return BlockState.State.LOST_BEFORE_COMMIT;
     case LOST:
-      return PartitionState.State.LOST;
+      return BlockState.State.LOST;
     case REMOVED:
-      return PartitionState.State.REMOVED;
+      return BlockState.State.REMOVED;
     default:
-      throw new UnknownExecutionStateException(new Exception("This PartitionState is unknown: " + state));
+      throw new UnknownExecutionStateException(new Exception("This BlockState is unknown: " + state));
     }
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  public static ControlMessage.PartitionStateFromExecutor convertPartitionState(final PartitionState.State state) {
+  public static ControlMessage.BlockStateFromExecutor convertBlockState(final BlockState.State state) {
     switch (state) {
       case READY:
-        return ControlMessage.PartitionStateFromExecutor.PARTITION_READY;
+        return ControlMessage.BlockStateFromExecutor.BLOCK_READY;
       case SCHEDULED:
-        return ControlMessage.PartitionStateFromExecutor.SCHEDULED;
+        return ControlMessage.BlockStateFromExecutor.SCHEDULED;
       case COMMITTED:
-        return ControlMessage.PartitionStateFromExecutor.COMMITTED;
+        return ControlMessage.BlockStateFromExecutor.COMMITTED;
       case LOST_BEFORE_COMMIT:
-        return ControlMessage.PartitionStateFromExecutor.LOST_BEFORE_COMMIT;
+        return ControlMessage.BlockStateFromExecutor.LOST_BEFORE_COMMIT;
       case LOST:
-        return ControlMessage.PartitionStateFromExecutor.LOST;
+        return ControlMessage.BlockStateFromExecutor.LOST;
       case REMOVED:
-        return ControlMessage.PartitionStateFromExecutor.REMOVED;
+        return ControlMessage.BlockStateFromExecutor.REMOVED;
       default:
-        throw new UnknownExecutionStateException(new Exception("This PartitionState is unknown: " + state));
+        throw new UnknownExecutionStateException(new Exception("This BlockState is unknown: " + state));
     }
   }
 

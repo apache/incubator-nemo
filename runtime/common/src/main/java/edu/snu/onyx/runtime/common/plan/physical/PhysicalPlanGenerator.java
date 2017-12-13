@@ -46,6 +46,10 @@ public final class PhysicalPlanGenerator
 
   final String dagDirectory;
 
+  /**
+   * Private constructor.
+   * @param dagDirectory the directory in which to store DAG data.
+   */
   @Inject
   private PhysicalPlanGenerator(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     this.dagDirectory = dagDirectory;

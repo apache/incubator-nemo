@@ -41,18 +41,15 @@ import java.util.stream.Stream;
  * Dynamic optimization pass for handling data skew.
  */
 public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<Long>>> {
-  public static final String SIMPLE_NAME = "DataSkewRuntimePass";
   private final Set<Class<? extends CommonEventHandler<?>>> eventHandlers;
 
+  /**
+   * Constructor.
+   */
   public DataSkewRuntimePass() {
     this.eventHandlers = Stream.of(
         DynamicOptimizationEventHandler.class
     ).collect(Collectors.toSet());
-  }
-
-  @Override
-  public String getName() {
-    return SIMPLE_NAME;
   }
 
   @Override
@@ -67,15 +64,15 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
         new DAGBuilder<>(originalPlan.getStageDAG());
 
     // get edges to optimize
-    final List<String> optimizationEdgeIds = metricData.keySet().stream().map(partitionId ->
-        RuntimeIdGenerator.getRuntimeEdgeIdFromPartitionId(partitionId)).collect(Collectors.toList());
+    final List<String> optimizationEdgeIds = metricData.keySet().stream().map(blockId ->
+        RuntimeIdGenerator.getRuntimeEdgeIdFromBlockId(blockId)).collect(Collectors.toList());
     final DAG<PhysicalStage, PhysicalStageEdge> stageDAG = originalPlan.getStageDAG();
     final List<PhysicalStageEdge> optimizationEdges = stageDAG.getVertices().stream()
         .flatMap(physicalStage -> stageDAG.getIncomingEdgesOf(physicalStage).stream())
         .filter(physicalStageEdge -> optimizationEdgeIds.contains(physicalStageEdge.getId()))
         .collect(Collectors.toList());
 
-    // Get number of evaluators of the next stage (number of partitions).
+    // Get number of evaluators of the next stage (number of blocks).
     final Integer taskGroupListSize = optimizationEdges.stream().findFirst().orElseThrow(() ->
         new RuntimeException("optimization edges is empty")).getDst().getTaskGroupList().size();
 
@@ -97,11 +94,17 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     return new PhysicalPlan(originalPlan.getId(), physicalDAGBuilder.build(), originalPlan.getTaskIRVertexMap());
   }
 
+  /**
+   * Method for calculating hash ranges to evenly distribute the skewed metric data.
+   * @param metricData the metric data.
+   * @param taskGroupListSize the size of the task group list.
+   * @return  the list of hash ranges calculated.
+   */
   @VisibleForTesting
   public List<HashRange> calculateHashRanges(final Map<String, List<Long>> metricData,
                                              final Integer taskGroupListSize) {
-    // NOTE: metricData is made up of a map of partitionId to blockSizes.
-    // Count the hash range (number of blocks for each partition).
+    // NOTE: metricData is made up of a map of blockId to blockSizes.
+    // Count the hash range (number of blocks for each block).
     final int hashRangeCount = metricData.values().stream().findFirst().orElseThrow(() ->
         new DynamicOptimizationException("no valid metric data.")).size();
 
@@ -115,7 +118,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     final Long totalSize = aggregatedMetricData.stream().mapToLong(n -> n).sum(); // get total size
     final Long idealSizePerTaskGroup = totalSize / taskGroupListSize; // and derive the ideal size per task group
 
-    // find HashRanges to apply (for each blocks of each partition).
+    // find HashRanges to apply (for each blocks of each block).
     final List<HashRange> hashRanges = new ArrayList<>(taskGroupListSize);
     int startingHashValue = 0;
     int finishingHashValue = 1; // initial values
