@@ -17,22 +17,23 @@ package edu.snu.onyx.runtime.executor.data.metadata;
 
 /**
  * This class represents a metadata for a partition.
+ * @param <K> the key type of its partitions.
  */
-public final class PartitionMetadata {
+public final class PartitionMetadata<K> {
   private final int partitionIdx;
-  private final int hashValue;
+  private final K key;
   private final int partitionSize;
   private final long offset;
   private final long elementsTotal;
   private volatile boolean committed;
 
   public PartitionMetadata(final int partitionIdx,
-                           final int hashValue,
+                           final K key,
                            final int partitionSize,
                            final long offset,
                            final long elementsTotal) {
     this.partitionIdx = partitionIdx;
-    this.hashValue = hashValue;
+    this.key = key;
     this.partitionSize = partitionSize;
     this.offset = offset;
     this.elementsTotal = elementsTotal;
@@ -51,8 +52,8 @@ public final class PartitionMetadata {
     return partitionIdx;
   }
 
-  public int getHashValue() {
-    return hashValue;
+  public K getKey() {
+    return key;
   }
 
   public int getPartitionSize() {

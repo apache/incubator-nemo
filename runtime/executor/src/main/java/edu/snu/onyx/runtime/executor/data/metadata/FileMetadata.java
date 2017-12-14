@@ -16,13 +16,15 @@
 package edu.snu.onyx.runtime.executor.data.metadata;
 
 import java.io.IOException;
+import java.io.Serializable;
 
 /**
  * This class represents a metadata for a {@link edu.snu.onyx.runtime.executor.data.block.Block}.
  * The writer and reader determine the status of a file block
  * (such as accessibility, how many bytes are written, etc.) by using this metadata.
+ * @param <K> the key type of its partitions.
  */
-public abstract class FileMetadata {
+public abstract class FileMetadata<K extends Serializable> {
 
   private final boolean partitionCommitPerWrite; // Whether need to commit partition per every block write or not.
 
@@ -36,13 +38,13 @@ public abstract class FileMetadata {
    * other writers will write their data after the region.
    * Also, the readers will judge a data partition available after the partition is committed.
    *
-   * @param hashValue     the hash range of the block.
-   * @param partitionSize the size of the block.
+   * @param key     the key of the partition.
+   * @param partitionSize the size of the partition.
    * @param elementsTotal the number of elements in the partition.
    * @return the {@link PartitionMetadata} having all given information, the partition offset, and the index.
    * @throws IOException if fail to append the partition metadata.
    */
-  public abstract PartitionMetadata reservePartition(final int hashValue,
+  public abstract PartitionMetadata<K> reservePartition(final K key,
                                                      final int partitionSize,
                                                      final long elementsTotal) throws IOException;
 
@@ -59,7 +61,7 @@ public abstract class FileMetadata {
    * @return the iterable containing the partition metadata.
    * @throws IOException if fail to get the iterable.
    */
-  public abstract Iterable<PartitionMetadata> getPartitionMetadataIterable() throws IOException;
+  public abstract Iterable<PartitionMetadata<K>> getPartitionMetadataIterable() throws IOException;
 
   /**
    * Deletes the metadata.
