@@ -16,6 +16,7 @@
 package edu.snu.onyx.client.beam;
 
 import edu.snu.onyx.common.KeyExtractor;
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
 
 /**
@@ -24,10 +25,11 @@ import org.apache.beam.sdk.values.KV;
  */
 final class BeamKeyExtractor implements KeyExtractor {
   public Object extractKey(final Object element) {
-    if (element instanceof KV) {
-      return ((KV) element).getKey();
+    Object value = ((WindowedValue) element).getValue();
+    if (value instanceof KV) {
+      return ((KV) value).getKey();
     } else {
-      return element;
+      return value;
     }
   }
 }

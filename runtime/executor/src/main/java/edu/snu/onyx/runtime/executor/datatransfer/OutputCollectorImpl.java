@@ -16,6 +16,7 @@
 package edu.snu.onyx.runtime.executor.datatransfer;
 
 import edu.snu.onyx.common.ir.OutputCollector;
+import org.apache.beam.sdk.util.WindowedValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,8 +26,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * Output Collector Implementation.
  * @param <O> output type.
  */
-public final class OutputCollectorImpl<O> implements OutputCollector<O> {
-  private AtomicReference<List<O>> outputList;
+public final class OutputCollectorImpl<O> implements OutputCollector<WindowedValue<O>> {
+  private AtomicReference<List<WindowedValue<O>>> outputList;
 
   /**
    * Constructor of a new OutputCollector.
@@ -36,7 +37,7 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   }
 
   @Override
-  public void emit(final O output) {
+  public void emit(final WindowedValue<O> output) {
     outputList.get().add(output);
   }
 
@@ -50,7 +51,7 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    *
    * @return the list of output elements.
    */
-  public List<O> collectOutputList() {
+  public List<WindowedValue<O>> collectOutputList() {
     return outputList.getAndSet(new ArrayList<>());
   }
 }

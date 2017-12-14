@@ -17,6 +17,7 @@ package edu.snu.onyx.compiler.frontend.beam.transform;
 
 import edu.snu.onyx.common.ir.OutputCollector;
 import edu.snu.onyx.common.ir.Transform;
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
 
 import java.util.ArrayList;
@@ -28,9 +29,9 @@ import java.util.Map;
  * Group Beam KVs.
  * @param <I> input type.
  */
-public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, List>> {
+public final class GroupByKeyTransform<I> implements Transform<WindowedValue<I>, WindowedValue<KV<Object, List>>> {
   private final Map<Object, List> keyToValues;
-  private OutputCollector<KV<Object, List>> outputCollector;
+  private OutputCollector<WindowedValue<KV<Object, List>>> outputCollector;
 
   /**
    * GroupByKey constructor.
@@ -40,14 +41,14 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<KV<Object, List>> oc) {
+  public void prepare(final Context context, final OutputCollector<WindowedValue<KV<Object, List>>> oc) {
     this.outputCollector = oc;
   }
 
   @Override
-  public void onData(final Iterable<I> elements, final String srcVertexId) {
+  public void onData(final Iterable<WindowedValue<I>> elements, final String srcVertexId) {
     elements.forEach(element -> {
-      final KV kv = (KV) element;
+      final KV kv = (KV) ((WindowedValue) element).getValue();
       keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
       keyToValues.get(kv.getKey()).add(kv.getValue());
     });
@@ -56,7 +57,7 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
   @Override
   public void close() {
     keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
-        .forEach(wv -> outputCollector.emit(wv));
+        .forEach(wv -> outputCollector.emit(WindowedValue.valueInGlobalWindow(wv)));
     keyToValues.clear();
   }
 
@@ -68,4 +69,3 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
     return sb.toString();
   }
 }
-

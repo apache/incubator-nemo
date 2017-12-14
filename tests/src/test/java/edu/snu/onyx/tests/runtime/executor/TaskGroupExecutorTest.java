@@ -34,6 +34,7 @@ import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.onyx.runtime.executor.datatransfer.InputReader;
 import edu.snu.onyx.runtime.executor.datatransfer.OutputWriter;
+import org.apache.beam.sdk.util.WindowedValue;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -289,17 +290,17 @@ public final class TaskGroupExecutorTest {
    * Simple {@link Transform} for testing.
    * @param <T> input/output type.
    */
-  private class SimpleTransform<T> implements Transform<T, T> {
-    private OutputCollector<T> outputCollector;
+  private class SimpleTransform<T> implements Transform<WindowedValue<T>, WindowedValue<T>> {
+    private OutputCollector<WindowedValue<T>> outputCollector;
 
     @Override
-    public void prepare(final Context context, final OutputCollector<T> outputCollector) {
+    public void prepare(final Context context, final OutputCollector<WindowedValue<T>> outputCollector) {
       this.outputCollector = outputCollector;
     }
 
     @Override
-    public void onData(final Iterable<T> elements, final String srcVertexId) {
-      elements.forEach(element -> outputCollector.emit(element));
+    public void onData(final Iterable<WindowedValue<T>> elements, final String srcVertexId) {
+      elements.forEach(outputCollector::emit);
     }
 
     @Override

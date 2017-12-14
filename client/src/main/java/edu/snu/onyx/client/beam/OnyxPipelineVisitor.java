@@ -34,7 +34,11 @@ import org.apache.beam.sdk.io.WriteFiles;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.*;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.transforms.windowing.WindowFn;
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.PCollectionViews;
@@ -61,7 +65,7 @@ public final class OnyxPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
    * @param builder DAGBuilder to build the DAG with.
    * @param options Pipeline options.
    */
-  public OnyxPipelineVisitor(final DAGBuilder<IRVertex, IREdge> builder, final PipelineOptions options) {
+  public  OnyxPipelineVisitor(final DAGBuilder<IRVertex, IREdge> builder, final PipelineOptions options) {
     this.builder = builder;
     this.pValueToVertex = new HashMap<>();
     this.options = options;
@@ -98,7 +102,20 @@ public final class OnyxPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     final IRVertex irVertex = convertToVertex(beamNode, builder, pValueToVertex, pValueToCoder, options,
         loopVertexStack);
     beamNode.getOutputs().values().stream().filter(v -> v instanceof PCollection).map(v -> (PCollection) v)
-        .forEach(output -> pValueToCoder.put(output, new BeamCoder(output.getCoder())));
+        .forEach(output -> {
+          WindowFn<?, ?> windowFn =
+              output.getWindowingStrategy().getWindowFn();
+          Coder<? extends BoundedWindow> windowCoder = windowFn.windowCoder();
+          final WindowedValue.WindowedValueCoder windowedValueCoder;
+          if (windowFn instanceof GlobalWindows) {
+            windowedValueCoder =
+                WindowedValue.ValueOnlyWindowedValueCoder.of(output.getCoder());
+          } else {
+            windowedValueCoder =
+                WindowedValue.FullWindowedValueCoder.of(output.getCoder(), windowCoder);
+          }
+          pValueToCoder.put(output, new BeamCoder(windowedValueCoder));
+        });
 
     beamNode.getOutputs().values().forEach(output -> pValueToVertex.put(output, irVertex));
 
@@ -151,7 +168,9 @@ public final class OnyxPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
       final Coder beamInputCoder = beamNode.getInputs().values().stream()
           .filter(v -> v instanceof PCollection).findFirst().map(v -> (PCollection) v).get().getCoder();
       beamNode.getOutputs().values().stream()
-          .forEach(output -> pValueToCoder.put(output, getCoderForView(view.getView().getViewFn(), beamInputCoder)));
+          .forEach(output -> {
+            pValueToCoder.put(output, getCoderForView(view.getView().getViewFn(), beamInputCoder));
+          });
     } else if (beamTransform instanceof Window) {
       final Window<I> window = (Window<I>) beamTransform;
       final WindowTransform transform = new WindowTransform(window.getWindowFn());

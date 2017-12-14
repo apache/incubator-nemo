@@ -19,6 +19,7 @@ import edu.snu.onyx.common.ir.OutputCollector;
 import edu.snu.onyx.common.ir.Transform;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.util.WindowedValue;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,7 +36,7 @@ public class EmptyComponents {
    * @param <I> input type.
    * @param <O> output type.
    */
-  public static class EmptyTransform<I, O> implements Transform<I, O> {
+  public static class EmptyTransform<I, O> implements Transform<WindowedValue<I>, WindowedValue<O>> {
     private final String name;
 
     /**
@@ -56,11 +57,11 @@ public class EmptyComponents {
     }
 
     @Override
-    public void prepare(final Context context, final OutputCollector<O> outputCollector) {
+    public void prepare(final Context context, final OutputCollector<WindowedValue<O>> outputCollector) {
     }
 
     @Override
-    public void onData(final Iterable<I> elements, final String srcVertexId) {
+    public void onData(final Iterable<WindowedValue<I>> elements, final String srcVertexId) {
     }
 
     @Override
