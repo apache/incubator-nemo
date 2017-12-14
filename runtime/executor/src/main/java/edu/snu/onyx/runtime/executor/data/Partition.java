@@ -19,13 +19,14 @@ package edu.snu.onyx.runtime.executor.data;
  * A collection of data elements.
  * This is a unit of read / write towards {@link edu.snu.onyx.runtime.executor.data.block.Block}s.
  * @param <T> the type of the data stored in this {@link Partition}.
+ * @param <K> the type of key used for {@link Partition}.
  */
-public interface Partition<T> {
+public interface Partition<T, K> {
 
   /**
    * @return the key value.
    */
-  int getKey();
+  K getKey();
 
   /**
    * @return whether the data in this {@link Partition} is serialized or not.

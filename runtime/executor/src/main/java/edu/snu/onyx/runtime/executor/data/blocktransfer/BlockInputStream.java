@@ -17,7 +17,7 @@ package edu.snu.onyx.runtime.executor.data.blocktransfer;
 
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
-import edu.snu.onyx.runtime.common.data.HashRange;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import io.netty.buffer.ByteBuf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +52,7 @@ public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
   private final Optional<DataStoreProperty.Value> blockStoreValue;
   private final String blockId;
   private final String runtimeEdgeId;
-  private final HashRange hashRange;
+  private final KeyRange keyRange;
   private Coder<T> coder;
   private ExecutorService executorService;
 
@@ -64,7 +64,7 @@ public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
   @Override
   public String toString() {
     return String.format("BlockInputStream(%s of %s%s from %s, %s, encodePartial: %b)",
-        hashRange.toString(), blockId, blockStoreValue.isPresent() ? " in " + blockStoreValue.get() : "",
+        keyRange.toString(), blockId, blockStoreValue.isPresent() ? " in " + blockStoreValue.get() : "",
         senderExecutorId, runtimeEdgeId, encodePartialBlock);
   }
 
@@ -77,20 +77,20 @@ public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
    * @param blockStoreValue    the block store
    * @param blockId            the block id
    * @param runtimeEdgeId      the runtime edge id
-   * @param hashRange          the hash range
+   * @param keyRange          the key range
    */
   BlockInputStream(final String senderExecutorId,
                    final boolean encodePartialBlock,
                    final Optional<DataStoreProperty.Value> blockStoreValue,
                    final String blockId,
                    final String runtimeEdgeId,
-                   final HashRange hashRange) {
+                   final KeyRange keyRange) {
     this.senderExecutorId = senderExecutorId;
     this.encodePartialBlock = encodePartialBlock;
     this.blockStoreValue = blockStoreValue;
     this.blockId = blockId;
     this.runtimeEdgeId = runtimeEdgeId;
-    this.hashRange = hashRange;
+    this.keyRange = keyRange;
   }
 
   /**
@@ -195,9 +195,8 @@ public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
     return runtimeEdgeId;
   }
 
-  @Override
-  public HashRange getHashRange() {
-    return hashRange;
+  public KeyRange getKeyRange() {
+    return keyRange;
   }
 
   /**

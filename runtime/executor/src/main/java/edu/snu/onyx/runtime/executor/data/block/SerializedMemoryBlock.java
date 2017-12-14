@@ -16,24 +16,26 @@
 package edu.snu.onyx.runtime.executor.data.block;
 
 import edu.snu.onyx.common.coder.Coder;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.DataUtil;
-import edu.snu.onyx.runtime.common.data.HashRange;
 import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
 import edu.snu.onyx.runtime.executor.data.SerializedPartition;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 /**
  * This class represents a block which is serialized and stored in local memory.
+ * @param <K> the key type of its partitions.
  */
 @ThreadSafe
-public final class SerializedMemoryBlock implements Block {
+public final class SerializedMemoryBlock<K extends Serializable> implements Block<K> {
 
-  private final List<SerializedPartition> serializedPartitions;
+  private final List<SerializedPartition<K>> serializedPartitions;
   private final Coder coder;
   private volatile boolean committed;
 
@@ -52,10 +54,10 @@ public final class SerializedMemoryBlock implements Block {
    * @throws IOException if fail to store.
    */
   @Override
-  public synchronized Optional<List<Long>> putPartitions(final Iterable<NonSerializedPartition> partitions)
+  public synchronized Optional<List<Long>> putPartitions(final Iterable<NonSerializedPartition<K>> partitions)
       throws IOException {
     if (!committed) {
-      final Iterable<SerializedPartition> convertedPartitions = DataUtil.convertToSerPartitions(coder, partitions);
+      final Iterable<SerializedPartition<K>> convertedPartitions = DataUtil.convertToSerPartitions(coder, partitions);
 
       return Optional.of(putSerializedPartitions(convertedPartitions));
     } else {
@@ -71,7 +73,7 @@ public final class SerializedMemoryBlock implements Block {
    * @throws IOException if fail to store.
    */
   @Override
-  public synchronized List<Long> putSerializedPartitions(final Iterable<SerializedPartition> partitions)
+  public synchronized List<Long> putSerializedPartitions(final Iterable<SerializedPartition<K>> partitions)
       throws IOException {
     if (!committed) {
       final List<Long> partitionSizeList = new ArrayList<>();
@@ -91,30 +93,30 @@ public final class SerializedMemoryBlock implements Block {
    * Because the data is stored in a serialized form, it have to be deserialized.
    * Invariant: This should not be invoked before this block is committed.
    *
-   * @param hashRange the hash range to retrieve.
+   * @param keyRange the key range to retrieve.
    * @return an iterable of {@link NonSerializedPartition}s.
    * @throws IOException if failed to retrieve.
    */
   @Override
-  public Iterable<NonSerializedPartition> getPartitions(final HashRange hashRange) throws IOException {
-    return DataUtil.convertToNonSerPartitions(coder, getSerializedPartitions(hashRange));
+  public Iterable<NonSerializedPartition<K>> getPartitions(final KeyRange keyRange) throws IOException {
+    return DataUtil.convertToNonSerPartitions(coder, getSerializedPartitions(keyRange));
   }
 
   /**
    * Retrieves the {@link SerializedPartition}s in a specific hash range.
    * Invariant: This should not be invoked before this block is committed.
    *
-   * @param hashRange the hash range to retrieve.
+   * @param keyRange the key range to retrieve.
    * @return an iterable of {@link SerializedPartition}s.
    * @throws IOException if failed to retrieve.
    */
   @Override
-  public Iterable<SerializedPartition> getSerializedPartitions(final HashRange hashRange) throws IOException {
+  public Iterable<SerializedPartition<K>> getSerializedPartitions(final KeyRange keyRange) throws IOException {
     if (committed) {
-      final List<SerializedPartition> partitionsInRange = new ArrayList<>();
+      final List<SerializedPartition<K>> partitionsInRange = new ArrayList<>();
       serializedPartitions.forEach(serializedPartition -> {
-        final int hashVal = serializedPartition.getKey();
-        if (hashRange.includes(hashVal)) {
+        final K key = serializedPartition.getKey();
+        if (keyRange.includes(key)) {
           // The hash value of this partition is in the range.
           partitionsInRange.add(serializedPartition);
         }
