@@ -175,9 +175,13 @@ class NormalVertex:
         except:
             pass
         try:
-            clazz = self.properties['transform'].split('.')[-1]
-            clazz_name = clazz.split('$')[0]
-            label += '\\n{}'.format(clazz_name)
+            transform = self.properties['transform'].split(':')
+            transform_name = transform[0]
+            try:
+                class_name = transform[1].split('{')[0].split('.')[-1].split('$')[0].split('@')[0]
+            except IndexError:
+                class_name = '?'
+            label += '\\n{}:{}'.format(transform_name, class_name)
         except:
             pass
         if ('class' in self.properties and self.properties['class'] == 'MetricCollectionBarrierVertex'):
