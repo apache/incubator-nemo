@@ -120,17 +120,7 @@ message DataTransferControlMessage {
     required bool encodePartialBlock = 5;
     required string blockId = 6;
     required string runtimeEdgeId = 7;
-    optional int32 startRangeInclusive = 8;
-    optional int32 endRangeExclusive = 9;
-}
-
-message RequestBlockMsg {
-    required int64 requestId = 1; // To handle multiple outstanding requests on one link between BlockTransferPeers
-    required string blockId = 2;
-    required BlockStore blockStore = 3;
-    required string runtimeEdgeId = 4;
-    optional int32 hashRangeStartVal = 5; // Inclusive
-    optional int32 hashRangeEndVal = 6; // Exclusive
+    optional bytes keyRange = 8;
 }
 
 enum TaskGroupStateFromExecutor {
@@ -195,7 +185,7 @@ message RequestPartitionMetadataMsg {
 
 // Common messages
 message PartitionMetadataMsg {
-    required int32 hashValue = 1;
+    required bytes key = 1;
     required int32 partitionSize = 2;
     optional int64 offset = 3;
     required int64 numElements = 4;

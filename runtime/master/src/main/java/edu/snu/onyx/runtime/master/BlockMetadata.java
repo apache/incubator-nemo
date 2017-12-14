@@ -138,7 +138,7 @@ final class BlockMetadata {
     final int partitionIdx = partitionMetadataList.size();
     final ControlMessage.PartitionMetadataMsg partitionMetadataToStore =
         ControlMessage.PartitionMetadataMsg.newBuilder()
-            .setHashValue(partitionMetadata.getHashValue())
+            .setKey(partitionMetadata.getKey())
             .setPartitionSize(partitionSize)
             .setOffset(currentPosition)
             .setNumElements(partitionMetadata.getNumElements())

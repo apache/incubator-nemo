@@ -17,7 +17,7 @@ package edu.snu.onyx.runtime.executor.data.blocktransfer;
 
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.conf.JobConf;
-import edu.snu.onyx.runtime.common.data.HashRange;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
@@ -97,7 +97,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
    * @param blockStoreValue    the block store
    * @param blockId            the id of the block to transfer
    * @param runtimeEdgeId      the runtime edge id
-   * @param hashRange          the hash range
+   * @param keyRange          the key range
    * @return a {@link BlockInputStream} from which the received data can be read
    */
   public BlockInputStream initiatePull(final String executorId,
@@ -105,9 +105,9 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
                                        final DataStoreProperty.Value blockStoreValue,
                                        final String blockId,
                                        final String runtimeEdgeId,
-                                       final HashRange hashRange) {
+                                       final KeyRange keyRange) {
     final BlockInputStream stream = new BlockInputStream(executorId, encodePartialBlock,
-        Optional.of(blockStoreValue), blockId, runtimeEdgeId, hashRange);
+        Optional.of(blockStoreValue), blockId, runtimeEdgeId, keyRange);
     stream.setCoderAndExecutorService(blockManagerWorker.get().getCoder(runtimeEdgeId), inboundExecutorService);
     write(executorId, stream, stream::onExceptionCaught);
     return stream;
@@ -120,16 +120,16 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
    * @param encodePartialBlock whether to start encoding even though the whole block has not been written yet
    * @param blockId            the id of the block to transfer
    * @param runtimeEdgeId      the runtime edge id
-   * @param hashRange          the hash range
+   * @param keyRange          the key range
    * @return a {@link BlockOutputStream} to which data can be written
    */
   public BlockOutputStream initiatePush(final String executorId,
                                         final boolean encodePartialBlock,
                                         final String blockId,
                                         final String runtimeEdgeId,
-                                        final HashRange hashRange) {
+                                        final KeyRange keyRange) {
     final BlockOutputStream stream = new BlockOutputStream(executorId, encodePartialBlock, Optional.empty(),
-        blockId, runtimeEdgeId, hashRange);
+        blockId, runtimeEdgeId, keyRange);
     stream.setCoderAndExecutorServiceAndBufferSize(blockManagerWorker.get().getCoder(runtimeEdgeId),
         outboundExecutorService, bufferSize);
     write(executorId, stream, stream::onExceptionCaught);

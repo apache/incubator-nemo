@@ -17,7 +17,7 @@ package edu.snu.onyx.runtime.executor.data.stores;
 
 import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.common.exception.BlockWriteException;
-import edu.snu.onyx.runtime.common.data.HashRange;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
 import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
 import edu.snu.onyx.runtime.executor.data.SerializedPartition;
@@ -25,6 +25,7 @@ import edu.snu.onyx.runtime.executor.data.block.Block;
 import org.apache.reef.tang.InjectionFuture;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,8 +48,8 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
    * @see BlockStore#putPartitions(String, Iterable, boolean).
    */
   @Override
-  public final Optional<List<Long>> putPartitions(final String blockId,
-                                                  final Iterable<NonSerializedPartition> partitions,
+  public final <K extends Serializable> Optional<List<Long>> putPartitions(final String blockId,
+                                                  final Iterable<NonSerializedPartition<K>> partitions,
                                                   final boolean commitPerPartition) throws BlockWriteException {
     try {
       final Block block = blockMap.get(blockId);
@@ -65,8 +66,8 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
    * @see BlockStore#putSerializedPartitions(String, Iterable, boolean).
    */
   @Override
-  public final List<Long> putSerializedPartitions(final String blockId,
-                                                  final Iterable<SerializedPartition> partitions,
+  public final <K extends Serializable> List<Long> putSerializedPartitions(final String blockId,
+                                                  final Iterable<SerializedPartition<K>> partitions,
                                                   final boolean commitPerPartition) {
     try {
       final Block block = blockMap.get(blockId);
@@ -80,16 +81,16 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   }
 
   /**
-   * @see BlockStore#getPartitions(String, HashRange).
+   * @see BlockStore#getPartitions(String, KeyRange).
    */
   @Override
-  public final Optional<Iterable<NonSerializedPartition>> getPartitions(final String blockId,
-                                                                        final HashRange hashRange) {
+  public final <K extends Serializable>
+  Optional<Iterable<NonSerializedPartition<K>>> getPartitions(final String blockId, final KeyRange<K> keyRange) {
     final Block block = blockMap.get(blockId);
 
     if (block != null) {
       try {
-        final Iterable<NonSerializedPartition> partitionsInRange = block.getPartitions(hashRange);
+        final Iterable<NonSerializedPartition<K>> partitionsInRange = block.getPartitions(keyRange);
         return Optional.of(partitionsInRange);
       } catch (final IOException e) {
         throw new BlockFetchException(e);
@@ -100,16 +101,16 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   }
 
   /**
-   * @see BlockStore#getSerializedPartitions(String, HashRange).
+   * @see BlockStore#getSerializedPartitions(String, edu.snu.onyx.runtime.common.data.KeyRange).
    */
   @Override
-  public final Optional<Iterable<SerializedPartition>> getSerializedPartitions(final String blockId,
-                                                                               final HashRange hashRange) {
+  public final <K extends Serializable>
+  Optional<Iterable<SerializedPartition<K>>> getSerializedPartitions(final String blockId, final KeyRange<K> keyRange) {
     final Block block = blockMap.get(blockId);
 
     if (block != null) {
       try {
-        final Iterable<SerializedPartition> partitionsInRange = block.getSerializedPartitions(hashRange);
+        final Iterable<SerializedPartition<K>> partitionsInRange = block.getSerializedPartitions(keyRange);
         return Optional.of(partitionsInRange);
       } catch (final IOException e) {
         throw new BlockFetchException(e);

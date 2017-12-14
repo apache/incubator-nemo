@@ -19,6 +19,7 @@ package edu.snu.onyx.runtime.common.plan.physical;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionPropertyMap;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.data.HashRange;
 
@@ -43,9 +44,9 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
   private final IRVertex dstVertex;
 
   /**
-   * The map between the task group id and hash range to read.
+   * The map between the task group id and key range to read.
    */
-  private final Map<String, HashRange> taskGroupIdToHashRangeMap;
+  private final Map<String, KeyRange> taskGroupIdToKeyRangeMap;
 
   /**
    * Constructor.
@@ -70,10 +71,10 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
     // Initialize the key range of each dst task.
-    this.taskGroupIdToHashRangeMap = new HashMap<>();
+    this.taskGroupIdToKeyRangeMap = new HashMap<>();
     final List<TaskGroup> taskGroups = dstStage.getTaskGroupList();
     for (int taskIdx = 0; taskIdx < taskGroups.size(); taskIdx++) {
-      taskGroupIdToHashRangeMap.put(taskGroups.get(taskIdx).getTaskGroupId(), HashRange.of(taskIdx, taskIdx + 1));
+      taskGroupIdToKeyRangeMap.put(taskGroups.get(taskIdx).getTaskGroupId(), HashRange.of(taskIdx, taskIdx + 1));
     }
   }
 
@@ -103,7 +104,7 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     return sb.toString();
   }
 
-  public Map<String, HashRange> getTaskGroupIdToHashRangeMap() {
-    return taskGroupIdToHashRangeMap;
+  public Map<String, KeyRange> getTaskGroupIdToKeyRangeMap() {
+    return taskGroupIdToKeyRangeMap;
   }
 }
