@@ -21,12 +21,13 @@ import edu.snu.onyx.common.ir.edge.executionproperty.*;
 import edu.snu.onyx.common.ir.vertex.BoundedSourceVertex;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ParallelismProperty;
+import edu.snu.onyx.compiler.frontend.beam.source.BeamBoundedSource;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
-import edu.snu.onyx.common.coder.BeamCoder;
+import edu.snu.onyx.compiler.frontend.beam.coder.BeamCoder;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
@@ -53,7 +54,6 @@ import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.scheduler.*;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
-import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.commons.io.FileUtils;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServer;
@@ -91,7 +91,8 @@ import static org.mockito.Mockito.mock;
  * to run the test with leakage reports for netty {@link io.netty.util.ReferenceCounted} objects.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
+@PrepareForTest({PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class,
+    BeamBoundedSource.class})
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final int EXECUTOR_CAPACITY = 1;
@@ -344,7 +345,7 @@ public final class DataTransferTest {
     receiver.registerCoder(edgeId, CODER);
 
     // Src setup
-    final BoundedSource s = mock(BoundedSource.class);
+    final BeamBoundedSource s = mock(BeamBoundedSource.class);
     final BoundedSourceVertex srcVertex = new BoundedSourceVertex<>(s);
     final ExecutionPropertyMap srcVertexProperties = srcVertex.getExecutionProperties();
     srcVertexProperties.put(ParallelismProperty.of(PARALLELISM_TEN));

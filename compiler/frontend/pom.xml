@@ -18,7 +18,7 @@
 	    <dependency>
             <groupId>edu.snu.onyx</groupId>
             <artifactId>onyx-common</artifactId>
-            <version>0.1-SNAPSHOT</version>
+            <version>${version}</version>
         </dependency>
     </dependencies>
 </project>

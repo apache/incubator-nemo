@@ -16,8 +16,8 @@
 package edu.snu.onyx.runtime.executor.data.block;
 
 import edu.snu.onyx.common.coder.Coder;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.*;
-import edu.snu.onyx.runtime.common.data.HashRange;
 import edu.snu.onyx.runtime.executor.data.metadata.PartitionMetadata;
 import edu.snu.onyx.runtime.executor.data.metadata.FileMetadata;
 
@@ -29,13 +29,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * This class represents a block which is stored in (local or remote) file.
+ * @param <K> the key type of its partitions.
  */
-public final class FileBlock implements Block {
+public final class FileBlock<K extends Serializable> implements Block<K> {
 
   private final Coder coder;
   private final String filePath;
-  private final FileMetadata metadata;
-  private final Queue<PartitionMetadata> partitionMetadataToCommit;
+  private final FileMetadata<K> metadata;
+  private final Queue<PartitionMetadata<K>> partitionMetadataToCommit;
   private final boolean commitPerBlock;
 
   public FileBlock(final Coder coder,
@@ -49,7 +50,7 @@ public final class FileBlock implements Block {
   }
 
   /**
-   * Writes the serialized data of this block having a specific hash value as a partition to the file
+   * Writes the serialized data of this block having a specific key value as a partition to the file
    * where this block resides.
    * Invariant: This method does not support concurrent write for a single block.
    *            Only one thread have to write at once.
@@ -57,9 +58,10 @@ public final class FileBlock implements Block {
    * @param serializedPartitions the iterable of the serialized partitions to write.
    * @throws IOException if fail to write.
    */
-  private void writeSerializedPartitions(final Iterable<SerializedPartition> serializedPartitions) throws IOException {
+  private void writeSerializedPartitions(final Iterable<SerializedPartition<K>> serializedPartitions)
+      throws IOException {
     try (final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true)) {
-      for (final SerializedPartition serializedPartition : serializedPartitions) {
+      for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
         // Reserve a partition write and get the metadata.
         final PartitionMetadata partitionMetadata = metadata.reservePartition(
             serializedPartition.getKey(), serializedPartition.getLength(), serializedPartition.getElementsTotal());
@@ -82,12 +84,11 @@ public final class FileBlock implements Block {
    * @throws IOException if fail to write.
    */
   @Override
-  public Optional<List<Long>> putPartitions(final Iterable<NonSerializedPartition> partitions) throws IOException {
-    final Iterable<SerializedPartition> convertedPartitions = DataUtil.convertToSerPartitions(coder, partitions);
+  public Optional<List<Long>> putPartitions(final Iterable<NonSerializedPartition<K>> partitions) throws IOException {
+    final Iterable<SerializedPartition<K>> convertedPartitions = DataUtil.convertToSerPartitions(coder, partitions);
 
     return Optional.of(putSerializedPartitions(convertedPartitions));
   }
-
 
   /**
    * Writes {@link SerializedPartition}s to this block.
@@ -96,7 +97,7 @@ public final class FileBlock implements Block {
    * @throws IOException if fail to store.
    */
   @Override
-  public synchronized List<Long> putSerializedPartitions(final Iterable<SerializedPartition> partitions)
+  public synchronized List<Long> putSerializedPartitions(final Iterable<SerializedPartition<K>> partitions)
       throws IOException {
     final List<Long> partitionSizeList = new ArrayList<>();
     for (final SerializedPartition serializedPartition : partitions) {
@@ -123,23 +124,23 @@ public final class FileBlock implements Block {
   }
 
   /**
-   * Retrieves the partitions of this block from the file in a specific hash range and deserializes it.
+   * Retrieves the partitions of this block from the file in a specific key range and deserializes it.
    *
-   * @param hashRange the hash range.
+   * @param keyRange the key range.
    * @return an iterable of {@link NonSerializedPartition}s.
    * @throws IOException if failed to retrieve.
    */
   @Override
-  public Iterable<NonSerializedPartition> getPartitions(final HashRange hashRange) throws IOException {
+  public Iterable<NonSerializedPartition<K>> getPartitions(final KeyRange keyRange) throws IOException {
     // Deserialize the data
-    final List<NonSerializedPartition> deserializedPartitions = new ArrayList<>();
+    final List<NonSerializedPartition<K>> deserializedPartitions = new ArrayList<>();
     try (final FileInputStream fileStream = new FileInputStream(filePath)) {
-      for (final PartitionMetadata partitionMetadata : metadata.getPartitionMetadataIterable()) {
-        final int hashVal = partitionMetadata.getHashValue();
-        if (hashRange.includes(hashVal)) {
-          // The hash value of this partition is in the range.
+      for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataIterable()) {
+        final K key = partitionMetadata.getKey();
+        if (keyRange.includes(key)) {
+          // The key value of this partition is in the range.
           final NonSerializedPartition deserializePartition =
-              DataUtil.deserializePartition(partitionMetadata.getElementsTotal(), coder, hashVal, fileStream);
+              DataUtil.deserializePartition(partitionMetadata.getElementsTotal(), coder, key, fileStream);
           deserializedPartitions.add(deserializePartition);
         } else {
           // Have to skip this partition.
@@ -152,21 +153,21 @@ public final class FileBlock implements Block {
   }
 
   /**
-   * Retrieves the {@link SerializedPartition}s in a specific hash range.
+   * Retrieves the {@link SerializedPartition}s in a specific key range.
    * Invariant: This should not be invoked before this block is committed.
    *
-   * @param hashRange the hash range to retrieve.
+   * @param keyRange the key range to retrieve.
    * @return an iterable of {@link SerializedPartition}s.
    * @throws IOException if failed to retrieve.
    */
   @Override
-  public Iterable<SerializedPartition> getSerializedPartitions(final HashRange hashRange) throws IOException {
+  public Iterable<SerializedPartition> getSerializedPartitions(final KeyRange keyRange) throws IOException {
     // Deserialize the data
     final List<SerializedPartition> partitionsInRange = new ArrayList<>();
     try (final FileInputStream fileStream = new FileInputStream(filePath)) {
-      for (final PartitionMetadata partitionmetadata : metadata.getPartitionMetadataIterable()) {
-        final int hashVal = partitionmetadata.getHashValue();
-        if (hashRange.includes(hashVal)) {
+      for (final PartitionMetadata<K> partitionmetadata : metadata.getPartitionMetadataIterable()) {
+        final K key = partitionmetadata.getKey();
+        if (keyRange.includes(key)) {
           // The hash value of this partition is in the range.
           final byte[] serializedData = new byte[partitionmetadata.getPartitionSize()];
           final int readBytes = fileStream.read(serializedData);
@@ -174,7 +175,7 @@ public final class FileBlock implements Block {
             throw new IOException("The read data size does not match with the partition size.");
           }
           partitionsInRange.add(new SerializedPartition(
-              hashVal, partitionmetadata.getElementsTotal(), serializedData, serializedData.length));
+              key, partitionmetadata.getElementsTotal(), serializedData, serializedData.length));
         } else {
           // Have to skip this partition.
           skipBytes(fileStream, partitionmetadata.getPartitionSize());
@@ -205,16 +206,16 @@ public final class FileBlock implements Block {
   }
 
   /**
-   * Retrieves the list of {@link FileArea}s for the specified {@link HashRange}.
+   * Retrieves the list of {@link FileArea}s for the specified {@link KeyRange}.
    *
-   * @param hashRange the hash range
+   * @param keyRange the key range
    * @return list of the file areas
    * @throws IOException if failed to open a file channel
    */
-  public List<FileArea> asFileAreas(final HashRange hashRange) throws IOException {
+  public List<FileArea> asFileAreas(final KeyRange keyRange) throws IOException {
     final List<FileArea> fileAreas = new ArrayList<>();
-    for (final PartitionMetadata partitionMetadata : metadata.getPartitionMetadataIterable()) {
-      if (hashRange.includes(partitionMetadata.getHashValue())) {
+    for (final PartitionMetadata<K> partitionMetadata : metadata.getPartitionMetadataIterable()) {
+      if (keyRange.includes(partitionMetadata.getKey())) {
         fileAreas.add(new FileArea(filePath, partitionMetadata.getOffset(), partitionMetadata.getPartitionSize()));
       }
     }

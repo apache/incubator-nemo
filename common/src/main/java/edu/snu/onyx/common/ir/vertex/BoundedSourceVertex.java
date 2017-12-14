@@ -16,7 +16,6 @@
 package edu.snu.onyx.common.ir.vertex;
 
 import edu.snu.onyx.common.ir.Reader;
-import org.apache.beam.sdk.io.BoundedSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,13 +28,13 @@ import org.slf4j.LoggerFactory;
  */
 public final class BoundedSourceVertex<O> extends SourceVertex<O> {
   private static final Logger LOG = LoggerFactory.getLogger(BoundedSourceVertex.class.getName());
-  private final BoundedSource<O> source;
+  private final Source<O> source;
 
   /**
    * Constructor of BoundedSourceVertex.
    * @param source BoundedSource to read from.
    */
-  public BoundedSourceVertex(final BoundedSource<O> source) {
+  public BoundedSourceVertex(final Source<O> source) {
     this.source = source;
   }
 
@@ -49,11 +48,10 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
   @Override
   public List<Reader<O>> getReaders(final int desiredNumOfSplits) throws Exception {
     final List<Reader<O>> readers = new ArrayList<>();
-    LOG.info("estimate: {}", source.getEstimatedSizeBytes(null));
+    LOG.info("estimate: {}", source.getEstimatedSizeBytes());
     LOG.info("desired: {}", desiredNumOfSplits);
-    source.split(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null).forEach(boundedSource -> {
-      readers.add(new BoundedSourceReader<>(boundedSource));
-    });
+    source.split(source.getEstimatedSizeBytes() / desiredNumOfSplits).forEach(boundedSource ->
+        readers.add(new BoundedSourceReader<>(boundedSource)));
     return readers;
   }
 
@@ -73,20 +71,20 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
    * @param <T> type.
    */
   public class BoundedSourceReader<T> implements Reader<T> {
-    private final BoundedSource<T> boundedSource;
+    private final Source<T> boundedSource;
 
     /**
      * Constructor of the BoundedSourceReader.
      * @param boundedSource the BoundedSource.
      */
-    BoundedSourceReader(final BoundedSource boundedSource) {
+    BoundedSourceReader(final Source<T> boundedSource) {
       this.boundedSource = boundedSource;
     }
 
     @Override
     public final Iterable<T> read() throws Exception {
       final ArrayList<T> elements = new ArrayList<>();
-      try (BoundedSource.BoundedReader<T> reader = boundedSource.createReader(null)) {
+      try (Source.Reader<T> reader = boundedSource.createReader()) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
           elements.add(reader.getCurrent());
         }

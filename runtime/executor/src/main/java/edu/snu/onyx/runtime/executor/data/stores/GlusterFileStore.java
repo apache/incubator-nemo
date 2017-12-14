@@ -19,7 +19,7 @@ import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.exception.BlockWriteException;
-import edu.snu.onyx.runtime.common.data.HashRange;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.onyx.runtime.executor.data.*;
 import edu.snu.onyx.runtime.executor.data.metadata.RemoteFileMetadata;
@@ -31,6 +31,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;
 
@@ -78,8 +79,8 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    * @see BlockStore#putPartitions(String, Iterable, boolean).
    */
   @Override
-  public Optional<List<Long>> putPartitions(final String blockId,
-                                            final Iterable<NonSerializedPartition> partitions,
+  public <K extends Serializable> Optional<List<Long>> putPartitions(final String blockId,
+                                            final Iterable<NonSerializedPartition<K>> partitions,
                                             final boolean commitPerPartition) throws BlockWriteException {
     try {
       final FileBlock block = createTmpBlock(commitPerPartition, blockId);
@@ -94,8 +95,8 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    * @see BlockStore#putSerializedPartitions(String, Iterable, boolean).
    */
   @Override
-  public List<Long> putSerializedPartitions(final String blockId,
-                                            final Iterable<SerializedPartition> partitions,
+  public <K extends Serializable> List<Long> putSerializedPartitions(final String blockId,
+                                            final Iterable<SerializedPartition<K>> partitions,
                                             final boolean commitPerPartition) throws BlockWriteException {
     try {
       final FileBlock block = createTmpBlock(commitPerPartition, blockId);
@@ -107,13 +108,13 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   }
 
   /**
-   * Retrieves {@link NonSerializedPartition}s in a specific {@link HashRange} from a block.
+   * Retrieves {@link NonSerializedPartition}s in a specific {@link KeyRange} from a block.
    *
-   * @see BlockStore#getPartitions(String, HashRange).
+   * @see BlockStore#getPartitions(String, KeyRange).
    */
   @Override
-  public Optional<Iterable<NonSerializedPartition>> getPartitions(final String blockId,
-                                                                  final HashRange hashRange)
+  public <K extends Serializable> Optional<Iterable<NonSerializedPartition<K>>> getPartitions(final String blockId,
+                                                                  final KeyRange<K> keyRange)
       throws BlockFetchException {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     if (!new File(filePath).isFile()) {
@@ -122,7 +123,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
       // Deserialize the target data in the corresponding file.
       try {
         final FileBlock block = createTmpBlock(false, blockId);
-        final Iterable<NonSerializedPartition> partitionsInRange = block.getPartitions(hashRange);
+        final Iterable<NonSerializedPartition<K>> partitionsInRange = block.getPartitions(keyRange);
         return Optional.of(partitionsInRange);
       } catch (final IOException e) {
         throw new BlockFetchException(e);
@@ -131,18 +132,18 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   }
 
   /**
-   * @see BlockStore#getSerializedPartitions(String, HashRange).
+   * @see BlockStore#getSerializedPartitions(String, KeyRange).
    */
   @Override
-  public Optional<Iterable<SerializedPartition>> getSerializedPartitions(final String blockId,
-                                                                         final HashRange hashRange) {
+  public <K extends Serializable>
+  Optional<Iterable<SerializedPartition<K>>> getSerializedPartitions(final String blockId, final KeyRange<K> keyRange) {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     if (!new File(filePath).isFile()) {
       return Optional.empty();
     } else {
       try {
         final FileBlock block = createTmpBlock(false, blockId);
-        final Iterable<SerializedPartition> partitionsInRange = block.getSerializedPartitions(hashRange);
+        final Iterable<SerializedPartition<K>> partitionsInRange = block.getSerializedPartitions(keyRange);
         return Optional.of(partitionsInRange);
       } catch (final IOException e) {
         throw new BlockFetchException(e);
@@ -187,17 +188,17 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   }
 
   /**
-   * @see FileStore#getFileAreas(String, HashRange).
+   * @see FileStore#getFileAreas(String, KeyRange).
    */
   @Override
   public List<FileArea> getFileAreas(final String blockId,
-                                     final HashRange hashRange) {
+                                     final KeyRange keyRange) {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
 
     try {
       if (new File(filePath).isFile()) {
         final FileBlock block = createTmpBlock(false, blockId);
-        return block.asFileAreas(hashRange);
+        return block.asFileAreas(keyRange);
       } else {
         throw new BlockFetchException(new Throwable(String.format("%s does not exists", blockId)));
       }

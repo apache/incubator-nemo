@@ -22,7 +22,7 @@ import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
-import edu.snu.onyx.compiler.frontend.onyx.transform.transform.RelayTransform;
+import edu.snu.onyx.common.ir.vertex.transform.RelayTransform;
 
 import java.util.Collections;
 

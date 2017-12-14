@@ -15,12 +15,14 @@
  */
 package edu.snu.onyx.runtime.executor.data.blocktransfer;
 
+import com.google.protobuf.ByteString;
 import edu.snu.onyx.common.exception.UnsupportedBlockStoreException;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
-import edu.snu.onyx.runtime.common.data.HashRange;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageCodec;
+import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,7 +112,7 @@ final class ControlMessageToBlockStreamCodec
     emitControlMessage(ControlMessage.BlockTransferType.PULL, transferId, in, out);
     LOG.debug("Sending pull request {} from {}({}) to {}({}) for {} ({}, {} in {})",
         new Object[]{transferId, localExecutorId, localAddress, in.getRemoteExecutorId(), remoteAddress,
-            in.getBlockId(), in.getRuntimeEdgeId(), in.getHashRange().toString(),
+            in.getBlockId(), in.getRuntimeEdgeId(), in.getKeyRange().toString(),
             in.getBlockStore().get().toString()});
   }
 
@@ -131,7 +133,7 @@ final class ControlMessageToBlockStreamCodec
     emitControlMessage(ControlMessage.BlockTransferType.PUSH, transferId, in, out);
     LOG.debug("Sending push notification {} from {}({}) to {}({}) for {} ({}, {})",
         new Object[]{transferId, localExecutorId, localAddress, in.getRemoteExecutorId(), remoteAddress,
-            in.getBlockId(), in.getRuntimeEdgeId(), in.getHashRange().toString()});
+            in.getBlockId(), in.getRuntimeEdgeId(), in.getKeyRange().toString()});
   }
 
   /**
@@ -165,17 +167,16 @@ final class ControlMessageToBlockStreamCodec
                                     final ControlMessage.DataTransferControlMessage in,
                                     final List out) {
     final short transferId = (short) in.getTransferId();
-    final HashRange hashRange = in.hasStartRangeInclusive() && in.hasEndRangeExclusive()
-        ? HashRange.of(in.getStartRangeInclusive(), in.getEndRangeExclusive()) : HashRange.all();
+    final KeyRange keyRange = SerializationUtils.deserialize(in.getKeyRange().toByteArray());
     final BlockOutputStream outputStream = new BlockOutputStream(in.getControlMessageSourceId(),
         in.getEncodePartialBlock(), Optional.of(convertBlockStore(in.getBlockStore())), in.getBlockId(),
-        in.getRuntimeEdgeId(), hashRange);
+        in.getRuntimeEdgeId(), keyRange);
     pullTransferIdToOutputStream.put(transferId, outputStream);
     outputStream.setTransferIdAndChannel(ControlMessage.BlockTransferType.PULL, transferId, ctx.channel());
     out.add(outputStream);
     LOG.debug("Received pull request {} from {}({}) to {}({}) for {} ({}, {} in {})",
         new Object[]{transferId, in.getControlMessageSourceId(), remoteAddress, localExecutorId, localAddress,
-            in.getBlockId(), in.getRuntimeEdgeId(), outputStream.getHashRange().toString(),
+            in.getBlockId(), in.getRuntimeEdgeId(), outputStream.getKeyRange().toString(),
             outputStream.getBlockStore().get().toString()});
   }
 
@@ -190,15 +191,14 @@ final class ControlMessageToBlockStreamCodec
                                          final ControlMessage.DataTransferControlMessage in,
                                          final List out) {
     final short transferId = (short) in.getTransferId();
-    final HashRange hashRange = in.hasStartRangeInclusive() && in.hasEndRangeExclusive()
-        ? HashRange.of(in.getStartRangeInclusive(), in.getEndRangeExclusive()) : HashRange.all();
+    final KeyRange keyRange = SerializationUtils.deserialize(in.getKeyRange().toByteArray());
     final BlockInputStream inputStream = new BlockInputStream(in.getControlMessageSourceId(),
-        in.getEncodePartialBlock(), Optional.empty(), in.getBlockId(), in.getRuntimeEdgeId(), hashRange);
+        in.getEncodePartialBlock(), Optional.empty(), in.getBlockId(), in.getRuntimeEdgeId(), keyRange);
     pushTransferIdToInputStream.put(transferId, inputStream);
     out.add(inputStream);
     LOG.debug("Received push notification {} from {}({}) to {}({}) for {} ({}, {})",
         new Object[]{transferId, in.getControlMessageSourceId(), remoteAddress, localExecutorId, localAddress,
-            in.getBlockId(), in.getRuntimeEdgeId(), inputStream.getHashRange().toString()});
+            in.getBlockId(), in.getRuntimeEdgeId(), inputStream.getKeyRange().toString()});
   }
 
   /**
@@ -236,14 +236,10 @@ final class ControlMessageToBlockStreamCodec
         .setTransferId(transferId)
         .setEncodePartialBlock(in.isEncodePartialBlockEnabled())
         .setBlockId(in.getBlockId())
-        .setRuntimeEdgeId(in.getRuntimeEdgeId());
+        .setRuntimeEdgeId(in.getRuntimeEdgeId())
+        .setKeyRange(ByteString.copyFrom(SerializationUtils.serialize(in.getKeyRange())));
     if (in.getBlockStore().isPresent()) {
       controlMessageBuilder.setBlockStore(convertBlockStore(in.getBlockStore().get()));
-    }
-    if (!in.getHashRange().isAll()) {
-      controlMessageBuilder
-          .setStartRangeInclusive(in.getHashRange().rangeStartInclusive())
-          .setEndRangeExclusive(in.getHashRange().rangeEndExclusive());
     }
     out.add(controlMessageBuilder.build());
   }

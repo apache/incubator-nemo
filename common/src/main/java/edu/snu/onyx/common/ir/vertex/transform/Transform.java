@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.common.ir;
+package edu.snu.onyx.common.ir.vertex.transform;
+
+import edu.snu.onyx.common.ir.OutputCollector;
 
 import java.io.Serializable;
 import java.util.Map;

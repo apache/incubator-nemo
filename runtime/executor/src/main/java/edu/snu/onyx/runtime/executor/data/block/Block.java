@@ -15,18 +15,20 @@
  */
 package edu.snu.onyx.runtime.executor.data.block;
 
-import edu.snu.onyx.runtime.common.data.HashRange;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
 import edu.snu.onyx.runtime.executor.data.SerializedPartition;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;
 
 /**
  * This interface represents a block, which is the output of a specific task.
+ * @param <K> the key type of its partitions.
  */
-public interface Block {
+public interface Block<K extends Serializable> {
 
   /**
    * Stores {@link NonSerializedPartition}s to this block.
@@ -36,7 +38,7 @@ public interface Block {
    * @return the size of the data per partition (only when the data is serialized in this method).
    * @throws IOException if fail to store.
    */
-  Optional<List<Long>> putPartitions(final Iterable<NonSerializedPartition> partitions) throws IOException;
+  Optional<List<Long>> putPartitions(final Iterable<NonSerializedPartition<K>> partitions) throws IOException;
 
   /**
    * Stores {@link SerializedPartition}s to this block.
@@ -46,28 +48,28 @@ public interface Block {
    * @return the size of the data per partition.
    * @throws IOException if fail to store.
    */
-  List<Long> putSerializedPartitions(final Iterable<SerializedPartition> partitions) throws IOException;
+  List<Long> putSerializedPartitions(final Iterable<SerializedPartition<K>> partitions) throws IOException;
 
   /**
-   * Retrieves the {@link NonSerializedPartition}s in a specific hash range from this block.
+   * Retrieves the {@link NonSerializedPartition}s in a specific key range from this block.
    * If the data is serialized, deserializes it.
    * Invariant: This should not be invoked before this block is committed.
    *
-   * @param hashRange the hash range to retrieve.
+   * @param keyRange the key range to retrieve.
    * @return an iterable of {@link NonSerializedPartition}s.
    * @throws IOException if failed to retrieve.
    */
-  Iterable<NonSerializedPartition> getPartitions(final HashRange hashRange) throws IOException;
+  Iterable<NonSerializedPartition<K>> getPartitions(final KeyRange<K> keyRange) throws IOException;
 
   /**
-   * Retrieves the {@link SerializedPartition}s in a specific hash range.
+   * Retrieves the {@link SerializedPartition}s in a specific key range.
    * Invariant: This should not be invoked before this block is committed.
    *
-   * @param hashRange the hash range to retrieve.
+   * @param keyRange the hash range to retrieve.
    * @return an iterable of {@link SerializedPartition}s.
    * @throws IOException if failed to retrieve.
    */
-  Iterable<SerializedPartition> getSerializedPartitions(final HashRange hashRange) throws IOException;
+  Iterable<SerializedPartition<K>> getSerializedPartitions(final KeyRange<K> keyRange) throws IOException;
 
   /**
    * Commits this block to prevent further write.

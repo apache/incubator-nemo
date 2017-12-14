@@ -13,43 +13,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.compiler.frontend.onyx.transform.transform;
+package edu.snu.onyx.common.ir.vertex.transform;
 
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.ir.OutputCollector;
-import edu.snu.onyx.common.ir.Transform;
 
-import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 /**
- * A {@link Transform} encodes input values into bytes and emits.
- * Through this transform, the {@link RelayTransform} can receive data in a form of byte array in Sailfish optimization.
- * @param <T> input type.
+ * A {@link Transform} decodes input values into bytes and emits.
+ * Through this transform, the {@link RelayTransform} can emit data in a form of byte array in Sailfish optimization.
+ * @param <T> output type.
  */
-public final class SailfishEncodingTransform<T> implements Transform<T, byte[]> {
-  private OutputCollector<byte[]> outputCollector;
+public final class SailfishDecodingTransform<T> implements Transform<byte[], T> {
+  private OutputCollector<T> outputCollector;
   private final Coder<T> coder;
 
   /**
    * Default constructor.
-   * @param coder coder for encoding.
+   * @param coder coder for decoding.
    */
-  public SailfishEncodingTransform(final Coder<T> coder) {
+  public SailfishDecodingTransform(final Coder<T> coder) {
     this.coder = coder;
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<byte[]> oc) {
+  public void prepare(final Context context, final OutputCollector<T> oc) {
     this.outputCollector = oc;
   }
 
   @Override
-  public void onData(final Iterable<T> elements, final String srcVertexId) {
+  public void onData(final Iterable<byte[]> elements, final String srcVertexId) {
     elements.forEach(element -> {
-      try (final ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-        coder.encode(element, outputStream);
-        outputCollector.emit(outputStream.toByteArray());
+      try (final ByteArrayInputStream inputStream = new ByteArrayInputStream(element)) {
+        outputCollector.emit(coder.decode(inputStream));
       } catch (final IOException e) {
         throw new RuntimeException(e);
       }
@@ -64,7 +62,7 @@ public final class SailfishEncodingTransform<T> implements Transform<T, byte[]> 
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append(SailfishEncodingTransform.class);
+    sb.append(SailfishDecodingTransform.class);
     sb.append(":");
     sb.append(super.toString());
     return sb.toString();
