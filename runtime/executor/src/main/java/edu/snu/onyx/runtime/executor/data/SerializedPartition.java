@@ -18,9 +18,10 @@ package edu.snu.onyx.runtime.executor.data;
 /**
  * A collection of data elements. The data is stored as an array of bytes.
  * This is a unit of read / write towards {@link edu.snu.onyx.runtime.executor.data.block.Block}s.
+ * @param <K> the key type of its partitions.
  */
-public final class SerializedPartition implements Partition<byte[]> {
-  private final int key;
+public final class SerializedPartition<K> implements Partition<byte[], K> {
+  private final K key;
   private final long elementsTotal;
   private final byte[] serializedData;
   private final int length;
@@ -33,7 +34,7 @@ public final class SerializedPartition implements Partition<byte[]> {
    * @param serializedData the serialized data.
    * @param length         the length of the actual serialized data. (It can be different with serializedData.length)
    */
-  public SerializedPartition(final int key,
+  public SerializedPartition(final K key,
                              final long elementsTotal,
                              final byte[] serializedData,
                              final int length) {
@@ -47,7 +48,7 @@ public final class SerializedPartition implements Partition<byte[]> {
    * @return the key value.
    */
   @Override
-  public int getKey() {
+  public K getKey() {
     return key;
   }
 

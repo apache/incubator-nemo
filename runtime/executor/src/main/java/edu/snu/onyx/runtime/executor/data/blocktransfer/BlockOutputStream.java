@@ -18,8 +18,8 @@ package edu.snu.onyx.runtime.executor.data.blocktransfer;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.FileArea;
-import edu.snu.onyx.runtime.common.data.HashRange;
 import edu.snu.onyx.runtime.executor.data.SerializedPartition;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
@@ -57,7 +57,7 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
   private final Optional<DataStoreProperty.Value> blockStoreValue;
   private final String blockId;
   private final String runtimeEdgeId;
-  private final HashRange hashRange;
+  private final KeyRange keyRange;
   private ControlMessage.BlockTransferType transferType;
   private short transferId;
   private Channel channel;
@@ -74,7 +74,7 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
   @Override
   public String toString() {
     return String.format("BlockOutputStream(%s of %s%s to %s, %s, encodePartial: %b)",
-        hashRange.toString(), blockId, blockStoreValue.isPresent() ? " in " + blockStoreValue.get() : "",
+        keyRange.toString(), blockId, blockStoreValue.isPresent() ? " in " + blockStoreValue.get() : "",
         receiverExecutorId, runtimeEdgeId, encodePartialBlock);
   }
 
@@ -86,20 +86,20 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
    * @param blockStoreValue    the block store
    * @param blockId            the block id
    * @param runtimeEdgeId      the runtime edge id
-   * @param hashRange          the hash range
+   * @param keyRange          the key range
    */
   BlockOutputStream(final String receiverExecutorId,
                     final boolean encodePartialBlock,
                     final Optional<DataStoreProperty.Value> blockStoreValue,
                     final String blockId,
                     final String runtimeEdgeId,
-                    final HashRange hashRange) {
+                    final KeyRange keyRange) {
     this.receiverExecutorId = receiverExecutorId;
     this.encodePartialBlock = encodePartialBlock;
     this.blockStoreValue = blockStoreValue;
     this.blockId = blockId;
     this.runtimeEdgeId = runtimeEdgeId;
-    this.hashRange = hashRange;
+    this.keyRange = keyRange;
   }
 
   /**
@@ -155,9 +155,8 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
     return runtimeEdgeId;
   }
 
-  @Override
-  public HashRange getHashRange() {
-    return hashRange;
+  public KeyRange getKeyRange() {
+    return keyRange;
   }
 
   /**

@@ -15,28 +15,25 @@
  */
 package edu.snu.onyx.runtime.common.data;
 
-import java.io.Serializable;
-
 /**
  * Descriptor for hash range.
- * TODO #494: Refactor HashRange to be general.
  */
-public final class HashRange implements Serializable {
+public final class HashRange implements KeyRange<Integer> {
   private static final HashRange ALL = new HashRange(0, Integer.MAX_VALUE);
 
-  private final int rangeStartInclusive;
+  private final int rangeBeginInclusive;
   private final int rangeEndExclusive;
 
   /**
    * Private constructor.
-   * @param rangeStartInclusive point at which the hash range starts (inclusive).
+   * @param rangeBeginInclusive point at which the hash range starts (inclusive).
    * @param rangeEndExclusive point at which the hash range ends (exclusive).
    */
-  private HashRange(final int rangeStartInclusive, final int rangeEndExclusive) {
-    if (rangeStartInclusive < 0 || rangeEndExclusive < 0) {
+  private HashRange(final int rangeBeginInclusive, final int rangeEndExclusive) {
+    if (rangeBeginInclusive < 0 || rangeEndExclusive < 0) {
       throw new RuntimeException("Each boundary value of the range have to be non-negative.");
     }
-    this.rangeStartInclusive = rangeStartInclusive;
+    this.rangeBeginInclusive = rangeBeginInclusive;
     this.rangeEndExclusive = rangeEndExclusive;
   }
 
@@ -50,51 +47,56 @@ public final class HashRange implements Serializable {
   /**
    * @param rangeStartInclusive the start of the range (inclusive)
    * @param rangeEndExclusive   the end of the range (exclusive)
-   * @return A hash range descriptor representing [{@code rangeStartInclusive}, {@code rangeEndExclusive})
+   * @return A hash range descriptor representing [{@code rangeBeginInclusive}, {@code rangeEndExclusive})
    */
   public static HashRange of(final int rangeStartInclusive, final int rangeEndExclusive) {
     return new HashRange(rangeStartInclusive, rangeEndExclusive);
   }
 
   /**
-   * @return whether this hash range descriptor represents the whole data or not
+   * @return whether this hash range descriptor represents the whole data or not.
    */
+  @Override
   public boolean isAll() {
     return this.equals(ALL);
   }
 
   /**
-   * @return the start of the range (inclusive)
+   * @return the beginning of this range (inclusive).
    */
-  public int rangeStartInclusive() {
-    return rangeStartInclusive;
+  @Override
+  public Integer rangeBeginInclusive() {
+    return rangeBeginInclusive;
   }
 
   /**
    * @return the end of the range (exclusive)
    */
-  public int rangeEndExclusive() {
+  @Override
+  public Integer rangeEndExclusive() {
     return rangeEndExclusive;
-  }
-
-  /**
-   * @return the length of this range
-   */
-  public int length() {
-    return rangeEndExclusive - rangeStartInclusive;
   }
 
   /**
    * @param i the value to test
    * @return {@code true} if this hash range includes the specified value, {@code false} otherwise
    */
-  public boolean includes(final int i) {
-    return i >= rangeStartInclusive && i < rangeEndExclusive;
+  @Override
+  public boolean includes(final Integer i) {
+    return i >= rangeBeginInclusive && i < rangeEndExclusive;
   }
 
+  /**
+   * {@inheritDoc}
+   * This method should be overridden for a readable representation of KeyRange.
+   * The generic type K should override {@link Object}'s toString() as well.
+   */
   @Override
   public String toString() {
-    return String.format("[%d, %d)", rangeStartInclusive, rangeEndExclusive);
+    final StringBuilder printableKeyRange = new StringBuilder("[");
+    printableKeyRange.append(rangeBeginInclusive()).append(rangeEndExclusive()).append(")");
+
+    return printableKeyRange.toString();
   }
 
   @Override
@@ -106,7 +108,7 @@ public final class HashRange implements Serializable {
       return false;
     }
     final HashRange hashRange = (HashRange) o;
-    if (rangeStartInclusive != hashRange.rangeStartInclusive) {
+    if (rangeBeginInclusive != hashRange.rangeBeginInclusive) {
       return false;
     }
     return rangeEndExclusive == hashRange.rangeEndExclusive;
@@ -114,7 +116,7 @@ public final class HashRange implements Serializable {
 
   @Override
   public int hashCode() {
-    int result = rangeStartInclusive;
+    int result = rangeBeginInclusive;
     result = 31 * result + rangeEndExclusive;
     return result;
   }

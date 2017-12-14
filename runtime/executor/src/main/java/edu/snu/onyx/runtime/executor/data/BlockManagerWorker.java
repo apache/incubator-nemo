@@ -22,7 +22,7 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.UsedDataHandlingProperty;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.runtime.common.data.HashRange;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.blocktransfer.BlockTransfer;
 import edu.snu.onyx.runtime.executor.data.stores.BlockStore;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
@@ -131,20 +131,20 @@ public final class BlockManagerWorker {
    * @param blockId       of the block.
    * @param runtimeEdgeId id of the runtime edge that corresponds to the block.
    * @param blockStore    for the data storage.
-   * @param hashRange     the hash range descriptor.
+   * @param keyRange     the key range descriptor.
    * @return the result data in the block.
    */
   public CompletableFuture<Iterable> retrieveDataFromBlock(
       final String blockId,
       final String runtimeEdgeId,
       final DataStoreProperty.Value blockStore,
-      final HashRange hashRange) {
+      final KeyRange keyRange) {
     LOG.info("RetrieveDataFromBlock: {}", blockId);
     final BlockStore store = getBlockStore(blockStore);
 
     // First, try to fetch the block from local BlockStore.
     final Optional<Iterable<NonSerializedPartition>> optionalResultPartitions =
-        store.getPartitions(blockId, hashRange);
+        store.getPartitions(blockId, keyRange);
 
     if (optionalResultPartitions.isPresent()) {
       handleUsedData(blockStore, blockId);
@@ -159,7 +159,7 @@ public final class BlockManagerWorker {
       throw new BlockFetchException(new Throwable("Cannot find a block in remote store."));
     } else {
       // We don't have the block here...
-      return requestBlockInRemoteWorker(blockId, runtimeEdgeId, blockStore, hashRange);
+      return requestBlockInRemoteWorker(blockId, runtimeEdgeId, blockStore, keyRange);
     }
   }
 
@@ -170,14 +170,14 @@ public final class BlockManagerWorker {
    * @param blockId       of the block.
    * @param runtimeEdgeId id of the runtime edge that corresponds to the block.
    * @param blockStore    for the data storage.
-   * @param hashRange     the hash range descriptor
+   * @param keyRange     the key range descriptor
    * @return the {@link CompletableFuture} of the block.
    */
   private CompletableFuture<Iterable> requestBlockInRemoteWorker(
       final String blockId,
       final String runtimeEdgeId,
       final DataStoreProperty.Value blockStore,
-      final HashRange hashRange) {
+      final KeyRange keyRange) {
     // Let's see if a remote worker has it
     // Ask Master for the location
     final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = persistentConnectionToMasterMap
@@ -205,7 +205,7 @@ public final class BlockManagerWorker {
       // This is the executor id that we wanted to know
       final String remoteWorkerId = blockLocationInfoMsg.getOwnerExecutorId();
       return blockTransfer.initiatePull(remoteWorkerId, false, blockStore, blockId,
-          runtimeEdgeId, hashRange).getCompleteFuture();
+          runtimeEdgeId, keyRange).getCompleteFuture();
     });
   }
 
@@ -398,16 +398,16 @@ public final class BlockManagerWorker {
               || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
             final FileStore fileStore = (FileStore) getBlockStore(blockStore);
             outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getBlockId(),
-                outputStream.getHashRange())).close();
+                outputStream.getKeyRange())).close();
           } else if (DataStoreProperty.Value.SerializedMemoryStore.equals(blockStore)) {
             final SerializedMemoryStore serMemoryStore = (SerializedMemoryStore) getBlockStore(blockStore);
             final Optional<Iterable<SerializedPartition>> optionalResult = serMemoryStore.getSerializedPartitions(
-                outputStream.getBlockId(), outputStream.getHashRange());
+                outputStream.getBlockId(), outputStream.getKeyRange());
             outputStream.writeSerializedPartitions(optionalResult.get()).close();
           } else {
             final Iterable block =
                 retrieveDataFromBlock(outputStream.getBlockId(), outputStream.getRuntimeEdgeId(),
-                    blockStore, outputStream.getHashRange()).get();
+                    blockStore, outputStream.getKeyRange()).get();
             outputStream.writeElements(block).close();
           }
         } catch (final IOException | ExecutionException | InterruptedException | BlockFetchException e) {
