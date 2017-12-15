@@ -366,8 +366,7 @@ public final class BlockManagerWorker {
       throw new RuntimeException("Streaming is supported only on non-serialized memory store.");
     }
     final MemoryStore store = (MemoryStore) getBlockStore(DataStoreProperty.Value.MemoryStore);
-
-
+    store.subscribe(outputStream, outputStream.getBlockId(), outputStream.getKeyRange());
   }
 
   /**

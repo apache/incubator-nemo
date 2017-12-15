@@ -63,6 +63,8 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
         final KeyRange keyRange = entry.getValue();
         for (final NonSerializedPartition<K> partition : partitions) {
           if (keyRange.includes(partition.getKey())) {
+            System.out.println(String.format("SVT: putPartition %s, %s", stream.toString(),
+                partition.getKey().toString()));
             stream.writeElements(partition.getData());
           }
         }
@@ -98,6 +100,8 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
         final KeyRange keyRange = entry.getValue();
         for (final SerializedPartition<K> partition : partitions) {
           if (keyRange.includes(partition.getKey())) {
+            System.out.println(String.format("SVT: putPartition %s, %s", stream.toString(),
+                partition.getKey().toString()));
             stream.writeSerializedPartitions(Collections.singletonList(partition));
           }
         }
@@ -170,6 +174,22 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
    * @param keyRange  key range
    */
   public synchronized void subscribe(final BlockOutputStream<?> stream, final KeyRange keyRange) {
-    subscriptions.put(stream, keyRange);
+    try {
+      for (final NonSerializedPartition<K> partition : nonSerializedPartitions) {
+        if (keyRange.includes(partition.getKey())) {
+          System.out.println(String.format("SVT: existing %s, %s", stream.toString(),
+              partition.getKey().toString()));
+          stream.writeElements(partition.getData());
+        }
+      }
+      if (committed) {
+        stream.close();
+      }
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
+    if (!committed) {
+      subscriptions.put(stream, keyRange);
+    }
   }
 }
