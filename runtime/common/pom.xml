@@ -28,10 +28,6 @@ limitations under the License.
     <artifactId>onyx-runtime-common</artifactId>
     <name>Onyx Runtime Common</name>
 
-    <properties>
-        <grpc.version>1.7.0</grpc.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>edu.snu.onyx</groupId>
