@@ -32,7 +32,7 @@ limitations under the License.
 	    <dependency>
             <groupId>edu.snu.onyx</groupId>
             <artifactId>onyx-common</artifactId>
-            <version>${version}</version>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>
