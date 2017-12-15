@@ -15,10 +15,10 @@
  */
 package edu.snu.onyx.common.dag;
 
-import edu.snu.onyx.common.ir.vertex.LoopVertex;
 import edu.snu.onyx.common.exception.IllegalEdgeOperationException;
 import edu.snu.onyx.common.exception.IllegalVertexOperationException;
-
+import edu.snu.onyx.common.ir.vertex.LoopVertex;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
@@ -28,8 +28,6 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import org.slf4j.Logger;
-
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -92,7 +90,6 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
    * @param <E2> the converted DAG's edge type.
    * @return the converted DAG.
    */
-  // TODO #153: DAG conversion using Vertex/Edge Converters
   public <V2 extends Vertex, E2 extends Edge<V2>> DAG<V2, E2> convert(final Function<DAG<V, E>, DAG<V2, E2>> function) {
     return function.apply(this);
   }

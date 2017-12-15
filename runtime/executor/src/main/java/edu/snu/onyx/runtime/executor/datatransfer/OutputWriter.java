@@ -155,7 +155,6 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    * This partition will be the unit of retrieval and recombination of this block.
    * Constraint: If a block is written by this method, it have to be read by {@link InputReader#readDataInRange()}.
    * TODO #378: Elaborate block construction during data skew pass
-   * TODO #428: DynOpt-clean up the metric collection flow
    *
    * @param partitionsToWrite a list of the partitions to be written.
    */
