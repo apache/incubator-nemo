@@ -17,21 +17,20 @@
  */
 package edu.snu.onyx.examples.beam.common;
 
+import static com.google.common.base.Verify.verifyNotNull;
+
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.FileBasedSink;
 import org.apache.beam.sdk.io.FileBasedSink.FilenamePolicy;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.IntervalWindow;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
-
-
-import static com.google.common.base.Verify.verifyNotNull;
 
 /**
  * A {@link DoFn} that writes elements to files with names deterministically derived from the lower
@@ -43,9 +42,12 @@ import static com.google.common.base.Verify.verifyNotNull;
 public final class WriteOneFilePerWindow extends PTransform<PCollection<String>, PDone> {
   private static final DateTimeFormatter FORMATTER = ISODateTimeFormat.hourMinute();
   private String filenamePrefix;
+  @Nullable
+  private Integer numShards;
 
-  public WriteOneFilePerWindow(final String filenamePrefix) {
+  public WriteOneFilePerWindow(final String filenamePrefix, final Integer numShards) {
     this.filenamePrefix = filenamePrefix;
+    this.numShards = numShards;
   }
 
   @Override
@@ -53,7 +55,7 @@ public final class WriteOneFilePerWindow extends PTransform<PCollection<String>,
     // filenamePrefix may contain a directory and a filename component. Pull out only the filename
     // component from that path for the PerWindowFiles.
     String prefix = "";
-    ResourceId resource = FileBasedSink.convertToFileResourceIfPossible(filenamePrefix);
+    final ResourceId resource = FileBasedSink.convertToFileResourceIfPossible(filenamePrefix);
     if (!resource.isDirectory()) {
       prefix = verifyNotNull(
           resource.getFilename(),
@@ -66,7 +68,9 @@ public final class WriteOneFilePerWindow extends PTransform<PCollection<String>,
         .to(resource.getCurrentDirectory())
         .withFilenamePolicy(new PerWindowFiles(prefix))
         .withWindowedWrites();
-
+    if (numShards != null) {
+      write = write.withNumShards(numShards);
+    }
     return input.apply(write);
   }
 
@@ -84,22 +88,19 @@ public final class WriteOneFilePerWindow extends PTransform<PCollection<String>,
       this.prefix = prefix;
     }
 
-    public String filenamePrefixForWindow(final IntervalWindow window,
-                                          final WindowedContext context,
-                                          final String extension) {
-      return String.format(
-          "%s-%s-%s-%s-of-%s%s",
-          prefix, FORMATTER.print(window.start()), FORMATTER.print(window.end()),
-          context.getShardNumber(), context.getNumShards(), extension);
+    public String filenamePrefixForWindow(final IntervalWindow window) {
+      return String.format("%s-%s-%s",
+          prefix, FORMATTER.print(window.start()), FORMATTER.print(window.end()));
     }
 
     @Override
     public ResourceId windowedFilename(
         final ResourceId outputDirectory, final WindowedContext context, final String extension) {
-      final BoundedWindow window = context.getWindow();
-      final String filename = (window instanceof IntervalWindow)
-          ? filenamePrefixForWindow((IntervalWindow) window, context, extension) : prefix;
-
+      final IntervalWindow window = (IntervalWindow) context.getWindow();
+      final String filename = String.format(
+          "%s-%s-of-%s%s",
+          filenamePrefixForWindow(window), context.getShardNumber(), context.getNumShards(),
+          extension);
       return outputDirectory.resolve(filename, StandardResolveOptions.RESOLVE_FILE);
     }
 

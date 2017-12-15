@@ -66,7 +66,7 @@ public final class MapReduce {
           }
         }));
 
-    result.apply(new WriteOneFilePerWindow(outputFilePath));
+    result.apply(new WriteOneFilePerWindow(outputFilePath, 1));
 
     p.run();
   }

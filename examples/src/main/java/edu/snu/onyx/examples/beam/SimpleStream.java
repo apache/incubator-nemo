@@ -17,6 +17,7 @@ package edu.snu.onyx.examples.beam;
 
 import edu.snu.onyx.client.beam.OnyxPipelineOptions;
 import edu.snu.onyx.client.beam.OnyxPipelineRunner;
+import edu.snu.onyx.examples.beam.common.WriteOneFilePerWindow;
 import org.apache.beam.runners.apex.examples.UnboundedTextSource;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.Read;
@@ -24,7 +25,9 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.SimpleFunction;
-import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
+import org.joda.time.Duration;
 
 /**
  * Simple stream.
@@ -45,14 +48,15 @@ public final class SimpleStream {
     options.setJobName("SimpleStream");
 
     final Pipeline p = Pipeline.create(options);
-    final PCollection<String> result = p.apply(Read.from(new UnboundedTextSource()))
+    p.apply(Read.from(new UnboundedTextSource()))
         .apply(MapElements.<String, String>via(new SimpleFunction<String, String>() {
           @Override
           public String apply(final String line) {
             return line;
           }
-        }));
-    GenericSourceSink.write(result, outputFilePath);
+        }))
+        .apply(Window.<String>into(FixedWindows.of(Duration.standardSeconds(5))))
+        .apply(new WriteOneFilePerWindow(outputFilePath,  1));
     p.run();
   }
 }

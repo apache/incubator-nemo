@@ -111,7 +111,7 @@ public final class WindowedMapReduce {
           }
         }));
 
-    wordCounts.apply(new WriteOneFilePerWindow(outputFilePath));
+    wordCounts.apply(new WriteOneFilePerWindow(outputFilePath, 1));
     p.run();
   }
 }
