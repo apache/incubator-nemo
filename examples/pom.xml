@@ -34,6 +34,12 @@ limitations under the License.
             <artifactId>onyx-client</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-runners-apex</artifactId>
+            <version>${beam.version}</version>
+            <type>test-jar</type>
+        </dependency>
     </dependencies>
 
     <build>
