@@ -49,7 +49,7 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
    * Creates a new block.
    *
    * @param blockId the ID of the block to create.
-   * @see BlockStore#createBlock(String).
+   * @see BlockStore#createBlock(String)
    */
   @Override
   public void createBlock(final String blockId) {
@@ -84,7 +84,7 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
   }
 
   /**
-   * @see FileStore#getFileAreas(String, KeyRange).
+   * @see FileStore#getFileAreas(String, KeyRange)
    */
   @Override
   public List<FileArea> getFileAreas(final String blockId,

@@ -64,7 +64,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    * Creates a new block.
    *
    * @param blockId the ID of the block to create.
-   * @see BlockStore#createBlock(String).
+   * @see BlockStore#createBlock(String)
    */
   @Override
   public void createBlock(final String blockId) {
@@ -74,7 +74,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   /**
    * Saves an iterable of data partitions to a block.
    *
-   * @see BlockStore#putPartitions(String, Iterable, boolean).
+   * @see BlockStore#putPartitions(String, Iterable, boolean)
    */
   @Override
   public <K extends Serializable> Optional<List<Long>> putPartitions(final String blockId,
@@ -90,7 +90,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   }
 
   /**
-   * @see BlockStore#putSerializedPartitions(String, Iterable, boolean).
+   * @see BlockStore#putSerializedPartitions(String, Iterable, boolean)
    */
   @Override
   public <K extends Serializable> List<Long> putSerializedPartitions(final String blockId,
@@ -108,7 +108,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   /**
    * Retrieves {@link NonSerializedPartition}s in a specific {@link KeyRange} from a block.
    *
-   * @see BlockStore#getPartitions(String, KeyRange).
+   * @see BlockStore#getPartitions(String, KeyRange)
    */
   @Override
   public <K extends Serializable> Optional<Iterable<NonSerializedPartition<K>>> getPartitions(final String blockId,
@@ -130,7 +130,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   }
 
   /**
-   * @see BlockStore#getSerializedPartitions(String, KeyRange).
+   * @see BlockStore#getSerializedPartitions(String, KeyRange)
    */
   @Override
   public <K extends Serializable>
@@ -150,7 +150,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   }
 
   /**
-   * @see BlockStore#commitBlock(String).
+   * @see BlockStore#commitBlock(String)
    */
   @Override
   public void commitBlock(final String blockId) throws BlockWriteException {
@@ -186,7 +186,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   }
 
   /**
-   * @see FileStore#getFileAreas(String, KeyRange).
+   * @see FileStore#getFileAreas(String, KeyRange)
    */
   @Override
   public List<FileArea> getFileAreas(final String blockId,
