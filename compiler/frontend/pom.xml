@@ -28,11 +28,25 @@ limitations under the License.
     <artifactId>onyx-compiler-frontend</artifactId>
     <name>Onyx Compiler Frontend</name>
 
+    <properties>
+        <jackson.version>2.8.8</jackson.version>
+    </properties>
+
     <dependencies>
 	    <dependency>
             <groupId>edu.snu.onyx</groupId>
             <artifactId>onyx-common</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
     </dependencies>
 </project>
