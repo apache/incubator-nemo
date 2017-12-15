@@ -27,4 +27,23 @@ limitations under the License.
 
     <artifactId>onyx-common</artifactId>
     <name>Onyx Common</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.reef</groupId>
+            <artifactId>reef-io</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.reef</groupId>
+            <artifactId>reef-common</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-mapreduce-client-core</artifactId>
+            <version>${hadoop.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 </project>
