@@ -47,7 +47,6 @@ public final class AlternatingLeastSquareITCase {
         .addUserArgs(input, numFeatures, numIteration);
   }
 
-  // Disabled for speed purposes. To be re-enabled through TODO #138.
 //  @Test (timeout = TIMEOUT)
 //  public void test() throws Exception {
 //    JobLauncher.main(builder

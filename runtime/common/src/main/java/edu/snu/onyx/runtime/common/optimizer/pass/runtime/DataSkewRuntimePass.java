@@ -109,7 +109,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     final int hashRangeCount = metricData.values().stream().findFirst().orElseThrow(() ->
         new DynamicOptimizationException("no valid metric data.")).size();
 
-    // Aggregate metric data. TODO #458: aggregate metric data beforehand.
+    // Aggregate metric data.
     final List<Long> aggregatedMetricData = new ArrayList<>(hashRangeCount);
     // for each hash range index, we aggregate the metric data.
     IntStream.range(0, hashRangeCount).forEach(i ->

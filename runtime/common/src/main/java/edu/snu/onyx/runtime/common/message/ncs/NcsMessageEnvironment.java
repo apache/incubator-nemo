@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Message environment for NCS.
- * TODO #206: Rethink/Refactor NCS as our RPC stack
  */
 public final class NcsMessageEnvironment implements MessageEnvironment {
   private static final Logger LOG = LoggerFactory.getLogger(NcsMessageEnvironment.class.getName());

@@ -30,7 +30,7 @@ public final class LoopOptimizationCompositePass extends CompositePass {
         new LoopExtractionPass(),
         LoopOptimizations.getLoopFusionPass(),
         LoopOptimizations.getLoopInvariantCodeMotionPass(),
-        new LoopUnrollingPass() // Groups then unrolls loops. TODO #162: remove unrolling pt.,
+        new LoopUnrollingPass() // Groups then unrolls loops.
     ));
   }
 }

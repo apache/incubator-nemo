@@ -40,8 +40,6 @@ import java.util.Optional;
  * Because the data is stored in remote files and globally accessed by multiple nodes,
  * each access (write, read, or deletion) for a file needs one instance of {@link FileBlock}.
  * These accesses are judiciously synchronized by the metadata server in master.
- * TODO #485: Merge LocalFileStore and GlusterFileStore.
- * TODO #410: Implement metadata caching for the RemoteFileMetadata.
  */
 @ThreadSafe
 public final class GlusterFileStore extends AbstractBlockStore implements RemoteFileStore {
