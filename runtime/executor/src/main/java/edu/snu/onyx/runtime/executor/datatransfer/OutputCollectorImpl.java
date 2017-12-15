@@ -16,9 +16,11 @@
 package edu.snu.onyx.runtime.executor.datatransfer;
 
 import edu.snu.onyx.common.ir.OutputCollector;
+import org.apache.beam.sdk.util.WindowedValue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -26,18 +28,22 @@ import java.util.concurrent.atomic.AtomicReference;
  * @param <O> output type.
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
-  private AtomicReference<List<O>> outputList;
+  private AtomicReference<LinkedBlockingQueue<O>> outputQueue;
 
   /**
    * Constructor of a new OutputCollector.
    */
   public OutputCollectorImpl() {
-    outputList = new AtomicReference<>(new ArrayList<>());
+    outputQueue = new AtomicReference<>(new LinkedBlockingQueue<>());
   }
 
   @Override
   public void emit(final O output) {
-    outputList.get().add(output);
+    try {
+      outputQueue.get().put(output);
+    } catch (InterruptedException e) {
+      throw new RuntimeException("Interrupted while OutputCollectorImpl#emit", e);
+    }
   }
 
   @Override
@@ -46,11 +52,28 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   }
 
   /**
+   * Inter-Task data is transferred from sender-side Task's OutputCollectorImpl to receiver-side Task.
+   * @return the output element that is transferred to the next Task of TaskGroup.
+   */
+  public O remove() {
+    return outputQueue.get().remove();
+  }
+
+  public boolean isEmpty() {
+    return outputQueue.get().isEmpty();
+  }
+
+  /**
    * Collects the accumulated output and replace the output list.
    *
    * @return the list of output elements.
    */
   public List<O> collectOutputList() {
-    return outputList.getAndSet(new ArrayList<>());
+    LinkedBlockingQueue<O> currentOutputQueue = outputQueue.getAndSet(new LinkedBlockingQueue<>());
+    List<O> outputList = new ArrayList<>();
+    while (currentOutputQueue.size() > 0) {
+      outputList.add(currentOutputQueue.remove());
+    }
+    return outputList;
   }
 }

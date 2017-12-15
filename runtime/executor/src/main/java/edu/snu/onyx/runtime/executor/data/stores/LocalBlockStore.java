@@ -62,6 +62,25 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   }
 
   /**
+   * @see BlockStore#putPartition(String, NonSerializedPartition, boolean)
+   */
+  @Override
+  public final <K extends Serializable> Optional<Long> putPartition(final String blockId,
+                                                                    final NonSerializedPartition<K> partition,
+                                                                    final boolean commitPerPartition)
+      throws BlockWriteException {
+    try {
+      final Block block = blockMap.get(blockId);
+      if (block == null) {
+        throw new BlockWriteException(new Throwable("The block " + blockId + "is not created yet."));
+      }
+      return block.putPartition(partition);
+    } catch (final IOException e) {
+      throw new BlockWriteException(new Throwable("Failed to store partitions to this block."));
+    }
+  }
+
+  /**
    * @see BlockStore#putSerializedPartitions(String, Iterable, boolean)
    */
   @Override
@@ -91,6 +110,26 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
       try {
         final Iterable<NonSerializedPartition<K>> partitionsInRange = block.getPartitions(keyRange);
         return Optional.of(partitionsInRange);
+      } catch (final IOException e) {
+        throw new BlockFetchException(e);
+      }
+    } else {
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * @see BlockStore#getPartition(String, KeyRange)
+   */
+  @Override
+  public final <K extends Serializable>
+  Optional<NonSerializedPartition<K>> getPartition(final String blockId, final KeyRange<K> keyRange) {
+    final Block block = blockMap.get(blockId);
+
+    if (block != null) {
+      try {
+        final NonSerializedPartition<K> partitionInRange = block.getPartition(keyRange);
+        return Optional.of(partitionInRange);
       } catch (final IOException e) {
         throw new BlockFetchException(e);
       }
