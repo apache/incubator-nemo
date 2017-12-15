@@ -24,7 +24,6 @@ import edu.snu.onyx.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.onyx.runtime.executor.data.*;
 import edu.snu.onyx.runtime.executor.data.metadata.RemoteFileMetadata;
 import edu.snu.onyx.runtime.executor.data.block.FileBlock;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -53,9 +52,9 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   private GlusterFileStore(@Parameter(JobConf.GlusterVolumeDirectory.class) final String volumeDirectory,
                            @Parameter(JobConf.JobId.class) final String jobId,
                            @Parameter(JobConf.ExecutorId.class) final String executorId,
-                           final InjectionFuture<BlockManagerWorker> blockManagerWorker,
+                           final CoderManager coderManager,
                            final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
-    super(blockManagerWorker);
+    super(coderManager);
     this.fileDirectory = volumeDirectory + "/" + jobId;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.executorId = executorId;

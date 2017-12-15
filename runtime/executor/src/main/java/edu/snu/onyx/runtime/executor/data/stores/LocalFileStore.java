@@ -22,7 +22,6 @@ import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.*;
 import edu.snu.onyx.runtime.executor.data.metadata.LocalFileMetadata;
 import edu.snu.onyx.runtime.executor.data.block.FileBlock;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -39,8 +38,8 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
 
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
-                         final InjectionFuture<BlockManagerWorker> blockManagerWorker) {
-    super(blockManagerWorker);
+                         final CoderManager coderManager) {
+    super(coderManager);
     this.fileDirectory = fileDirectory;
     new File(fileDirectory).mkdirs();
   }

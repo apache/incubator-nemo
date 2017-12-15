@@ -30,7 +30,6 @@ import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.TaskState;
 import edu.snu.onyx.runtime.executor.TaskGroupExecutor;
 import edu.snu.onyx.runtime.executor.TaskGroupStateManager;
-import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.onyx.runtime.executor.datatransfer.InputReader;
 import edu.snu.onyx.runtime.executor.datatransfer.OutputWriter;
@@ -60,12 +59,11 @@ import static org.mockito.Mockito.when;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({InputReader.class, OutputWriter.class, DataTransferFactory.class,
-    TaskGroupStateManager.class, BlockManagerWorker.class, PhysicalStageEdge.class})
+    TaskGroupStateManager.class, PhysicalStageEdge.class})
 public final class TaskGroupExecutorTest {
   private static final int DATA_SIZE = 100;
   private static final String CONTAINER_TYPE = "CONTAINER_TYPE";
   private static final int SOURCE_PARALLELISM = 5;
-  private BlockManagerWorker blockManagerWorker;
   private List elements;
   private Map<String, List<Iterable>> taskIdToOutputData;
   private DataTransferFactory dataTransferFactory;
@@ -77,7 +75,6 @@ public final class TaskGroupExecutorTest {
   public void setUp() throws Exception {
     elements = getRangedNumList(0, DATA_SIZE);
     taskIdToStateList = new HashMap<>();
-    blockManagerWorker = mock(BlockManagerWorker.class);
     expectedTaskStateList = new ArrayList<>();
     expectedTaskStateList.add(TaskState.State.EXECUTING);
     expectedTaskStateList.add(TaskState.State.COMPLETE);
@@ -136,7 +133,7 @@ public final class TaskGroupExecutorTest {
     // Execute the task group.
     final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
         sourceTaskGroup, taskGroupStateManager, Collections.emptyList(), Collections.singletonList(stageOutEdge),
-        dataTransferFactory, blockManagerWorker);
+        dataTransferFactory);
     taskGroupExecutor.execute();
 
     // Check the output.
@@ -194,7 +191,7 @@ public final class TaskGroupExecutorTest {
     // Execute the task group.
     final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
         operatorTaskGroup, taskGroupStateManager, Collections.singletonList(stageInEdge),
-        Collections.singletonList(stageOutEdge), dataTransferFactory, blockManagerWorker);
+        Collections.singletonList(stageOutEdge), dataTransferFactory);
     taskGroupExecutor.execute();
 
     // Check the output.

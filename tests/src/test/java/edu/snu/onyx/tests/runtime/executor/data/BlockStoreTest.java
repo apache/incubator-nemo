@@ -66,11 +66,11 @@ import static org.mockito.Mockito.when;
  * Tests write and read for {@link BlockStore}s.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({BlockManagerWorker.class, BlockManagerMaster.class, RuntimeMaster.class})
+@PrepareForTest({BlockManagerMaster.class, RuntimeMaster.class, CoderManager.class})
 public final class BlockStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
-  private static final BlockManagerWorker worker = mock(BlockManagerWorker.class);
+  private static final CoderManager coderManager = mock(CoderManager.class);
   private BlockManagerMaster blockManagerMaster;
   private LocalMessageDispatcher messageDispatcher;
   // Variables for shuffle test
@@ -105,7 +105,7 @@ public final class BlockStoreTest {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
     blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
-    when(worker.getCoder(any())).thenReturn(CODER);
+    when(coderManager.getCoder(any())).thenReturn(CODER);
 
     // Following part is for for the shuffle test.
     final List<String> writeTaskIdList = new ArrayList<>(NUM_WRITE_TASKS);
@@ -220,7 +220,7 @@ public final class BlockStoreTest {
   @Test(timeout = 10000)
   public void testMemoryStore() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(BlockManagerWorker.class, worker);
+    injector.bindVolatileInstance(CoderManager.class, coderManager);
     final BlockStore memoryStore = injector.getInstance(MemoryStore.class);
     shuffle(memoryStore, memoryStore);
     concurrentRead(memoryStore, memoryStore);
@@ -233,7 +233,7 @@ public final class BlockStoreTest {
   @Test(timeout = 10000)
   public void testSerMemoryStore() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(BlockManagerWorker.class, worker);
+    injector.bindVolatileInstance(CoderManager.class, coderManager);
     final BlockStore serMemoryStore = injector.getInstance(SerializedMemoryStore.class);
     shuffle(serMemoryStore, serMemoryStore);
     concurrentRead(serMemoryStore, serMemoryStore);
@@ -247,7 +247,7 @@ public final class BlockStoreTest {
   public void testLocalFileStore() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(JobConf.FileDirectory.class, TMP_FILE_DIRECTORY);
-    injector.bindVolatileInstance(BlockManagerWorker.class, worker);
+    injector.bindVolatileInstance(CoderManager.class, coderManager);
 
     final BlockStore localFileStore = injector.getInstance(LocalFileStore.class);
     shuffle(localFileStore, localFileStore);
@@ -282,7 +282,7 @@ public final class BlockStoreTest {
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_FILE_DIRECTORY);
     injector.bindVolatileParameter(JobConf.JobId.class, "GFS test");
     injector.bindVolatileParameter(JobConf.ExecutorId.class, executorId);
-    injector.bindVolatileInstance(BlockManagerWorker.class, worker);
+    injector.bindVolatileInstance(CoderManager.class, coderManager);
     injector.bindVolatileInstance(MessageEnvironment.class, localMessageEnvironment);
     return injector.getInstance(GlusterFileStore.class);
   }
