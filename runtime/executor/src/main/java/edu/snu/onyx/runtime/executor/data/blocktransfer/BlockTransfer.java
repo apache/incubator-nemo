@@ -19,6 +19,7 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
+import edu.snu.onyx.runtime.executor.data.CoderManager;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
@@ -48,6 +49,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
   private static final String OUTBOUND = "block:outbound";
 
   private final InjectionFuture<BlockManagerWorker> blockManagerWorker;
+  private final CoderManager coderManager;
   private final BlockTransport blockTransport;
   private final String localExecutorId;
   private final int bufferSize;
@@ -61,7 +63,8 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
   /**
    * Creates a block transfer and registers this transfer to the name server.
    *
-   * @param blockManagerWorker provides {@link edu.snu.onyx.common.coder.Coder}s
+   * @param blockManagerWorker respond to the new push/pulls
+   * @param coderManager       provides {@link edu.snu.onyx.common.coder.Coder}s
    * @param blockTransport     provides {@link io.netty.channel.Channel}
    * @param localExecutorId    the id of this executor
    * @param inboundThreads     the number of threads in thread pool for inbound block transfer
@@ -71,6 +74,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
   @Inject
   private BlockTransfer(
       final InjectionFuture<BlockManagerWorker> blockManagerWorker,
+      final CoderManager coderManager,
       final BlockTransport blockTransport,
       @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
       @Parameter(JobConf.PartitionTransferInboundNumThreads.class) final int inboundThreads,
@@ -78,6 +82,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
       @Parameter(JobConf.PartitionTransferOutboundBufferSize.class) final int bufferSize) {
 
     this.blockManagerWorker = blockManagerWorker;
+    this.coderManager = coderManager;
     this.blockTransport = blockTransport;
     this.localExecutorId = localExecutorId;
     this.bufferSize = bufferSize;
@@ -108,7 +113,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
                                        final KeyRange keyRange) {
     final BlockInputStream stream = new BlockInputStream(executorId, encodePartialBlock,
         Optional.of(blockStoreValue), blockId, runtimeEdgeId, keyRange);
-    stream.setCoderAndExecutorService(blockManagerWorker.get().getCoder(runtimeEdgeId), inboundExecutorService);
+    stream.setCoderAndExecutorService(coderManager.getCoder(runtimeEdgeId), inboundExecutorService);
     write(executorId, stream, stream::onExceptionCaught);
     return stream;
   }
@@ -130,7 +135,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
                                         final KeyRange keyRange) {
     final BlockOutputStream stream = new BlockOutputStream(executorId, encodePartialBlock, Optional.empty(),
         blockId, runtimeEdgeId, keyRange);
-    stream.setCoderAndExecutorServiceAndBufferSize(blockManagerWorker.get().getCoder(runtimeEdgeId),
+    stream.setCoderAndExecutorServiceAndBufferSize(coderManager.getCoder(runtimeEdgeId),
         outboundExecutorService, bufferSize);
     write(executorId, stream, stream::onExceptionCaught);
     return stream;
@@ -210,7 +215,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
    * @param stream {@link BlockOutputStream}
    */
   private void onPullRequest(final BlockOutputStream stream) {
-    stream.setCoderAndExecutorServiceAndBufferSize(blockManagerWorker.get().getCoder(stream.getRuntimeEdgeId()),
+    stream.setCoderAndExecutorServiceAndBufferSize(coderManager.getCoder(stream.getRuntimeEdgeId()),
         outboundExecutorService, bufferSize);
     blockManagerWorker.get().onPullRequest(stream);
   }
@@ -221,7 +226,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
    * @param stream {@link BlockInputStream}
    */
   private void onPushNotification(final BlockInputStream stream) {
-    stream.setCoderAndExecutorService(blockManagerWorker.get().getCoder(stream.getRuntimeEdgeId()),
+    stream.setCoderAndExecutorService(coderManager.getCoder(stream.getRuntimeEdgeId()),
         inboundExecutorService);
     blockManagerWorker.get().onPushNotification(stream);
   }
