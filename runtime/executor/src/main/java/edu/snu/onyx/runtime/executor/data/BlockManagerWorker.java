@@ -351,6 +351,22 @@ public final class BlockManagerWorker {
   }
 
   /**
+   * Respond to a pull stream request.
+   * @param outputStream {@link BlockOutputStream}
+   */
+  private void onPullStreamRequest(final BlockOutputStream<?> outputStream) {
+    // We are getting the block from local store!
+    final Optional<DataStoreProperty.Value> blockStoreOptional = outputStream.getBlockStore();
+    final DataStoreProperty.Value blockStore = blockStoreOptional.get();
+    if (!DataStoreProperty.Value.MemoryStore.equals(blockStore)) {
+      throw new RuntimeException("Streaming is supported only on non-serialized memory store.");
+    }
+    final MemoryStore store = (MemoryStore) getBlockStore(DataStoreProperty.Value.MemoryStore);
+
+
+  }
+
+  /**
    * Respond to a pull request by another executor.
    * <p>
    * This method is executed by {edu.snu.onyx.runtime.executor.data.blocktransfer.BlockTransport} thread. \
@@ -362,6 +378,11 @@ public final class BlockManagerWorker {
     // We are getting the block from local store!
     final Optional<DataStoreProperty.Value> blockStoreOptional = outputStream.getBlockStore();
     final DataStoreProperty.Value blockStore = blockStoreOptional.get();
+
+    if (outputStream.isEncodePartialBlockEnabled()) {
+      onPullStreamRequest(outputStream);
+      return;
+    }
 
     backgroundExecutorService.submit(new Runnable() {
       @Override
