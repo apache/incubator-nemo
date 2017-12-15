@@ -18,11 +18,10 @@ package edu.snu.onyx.runtime.executor.data.stores;
 import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.common.exception.BlockWriteException;
 import edu.snu.onyx.runtime.common.data.KeyRange;
-import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
+import edu.snu.onyx.runtime.executor.data.CoderManager;
 import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
 import edu.snu.onyx.runtime.executor.data.SerializedPartition;
 import edu.snu.onyx.runtime.executor.data.block.Block;
-import org.apache.reef.tang.InjectionFuture;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -39,8 +38,8 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   // A map between block id and data blocks.
   private final ConcurrentHashMap<String, Block> blockMap;
 
-  protected LocalBlockStore(final InjectionFuture<BlockManagerWorker> blockManagerWorker) {
-    super(blockManagerWorker);
+  protected LocalBlockStore(final CoderManager coderManager) {
+    super(coderManager);
     this.blockMap = new ConcurrentHashMap<>();
   }
 
