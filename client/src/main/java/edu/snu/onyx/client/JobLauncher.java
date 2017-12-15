@@ -25,6 +25,7 @@ import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtil
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
+import org.apache.reef.client.parameters.JobMessageHandler;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
@@ -75,13 +76,14 @@ public final class JobLauncher {
     final Configuration driverNcsConf = getDriverNcsConf();
     final Configuration driverMessageConfg = getDriverMessageConf();
     final Configuration executorResourceConfig = getExecutorResourceConf(jobConf);
+    final Configuration clientConf = getClientConf();
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(jobConf, driverConf, driverNcsConf, driverMessageConfg,
         executorResourceConfig);
 
     // Get DeployMode Conf
-    deployModeConf = getDeployModeConf(jobConf);
+    deployModeConf = Configurations.merge(getDeployModeConf(jobConf), clientConf);
 
     // Launch client main
     runUserProgramMain(jobConf);
@@ -134,6 +136,12 @@ public final class JobLauncher {
     }
 
     method.invoke(null, (Object) args);
+  }
+
+  private static Configuration getClientConf() {
+    final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
+    jcb.bindNamedParameter(JobMessageHandler.class, OnyxClient.JobMessageHandler.class);
+    return jcb.build();
   }
 
   /**
