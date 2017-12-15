@@ -31,6 +31,10 @@ public abstract class CompositePass implements CompileTimePass {
   private final List<CompileTimePass> passList;
   private final Set<ExecutionProperty.Key> prerequisiteExecutionProperties;
 
+  /**
+   * Constructor.
+   * @param passList list of compile time passes.
+   */
   public CompositePass(final List<CompileTimePass> passList) {
     this.passList = passList;
     this.prerequisiteExecutionProperties = new HashSet<>();
@@ -42,6 +46,10 @@ public abstract class CompositePass implements CompileTimePass {
     });
   }
 
+  /**
+   * Getter for list of compile time passes.
+   * @return the list of CompileTimePass.
+   */
   public final List<CompileTimePass> getPassList() {
     return passList;
   }
@@ -51,6 +59,13 @@ public abstract class CompositePass implements CompileTimePass {
     return recursivelyApply(irVertexIREdgeDAG, getPassList().iterator());
   }
 
+   // TODO #119: fill the below document.
+  /**
+   *
+   * @param dag dag.
+   * @param passIterator pass iterator.
+   * @return dag.
+   */
   private DAG<IRVertex, IREdge> recursivelyApply(final DAG<IRVertex, IREdge> dag,
                                                  final Iterator<CompileTimePass> passIterator) {
     if (passIterator.hasNext()) {

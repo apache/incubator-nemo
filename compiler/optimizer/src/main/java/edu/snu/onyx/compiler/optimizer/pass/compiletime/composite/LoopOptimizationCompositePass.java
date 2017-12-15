@@ -25,6 +25,9 @@ import java.util.Arrays;
  * A series of passes to perform LoopOptimization.
  */
 public final class LoopOptimizationCompositePass extends CompositePass {
+  /**
+   * Default constructor.
+   */
   public LoopOptimizationCompositePass() {
     super(Arrays.asList(
         new LoopExtractionPass(),

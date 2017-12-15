@@ -30,7 +30,9 @@ import java.util.*;
  * Compile time optimizer class.
  */
 public final class CompiletimeOptimizer {
-  // Private constructor
+  /**
+   * Private constructor.
+   */
   private CompiletimeOptimizer() {
   }
 

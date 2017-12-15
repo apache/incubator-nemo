@@ -29,6 +29,9 @@ import java.util.List;
 public final class SailfishPolicy implements Policy {
   private final Policy policy;
 
+  /**
+   * Default constructor.
+   */
   public SailfishPolicy() {
     this.policy = new PolicyBuilder(false)
         .registerCompileTimePass(new SailfishPass())

@@ -29,6 +29,9 @@ import java.util.Collections;
  * This pass handles the DataStore ExecutionProperty.
  */
 public final class SailfishEdgeDataStorePass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public SailfishEdgeDataStorePass() {
     super(ExecutionProperty.Key.DataStore, Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }

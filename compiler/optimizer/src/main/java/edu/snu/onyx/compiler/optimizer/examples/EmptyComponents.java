@@ -74,6 +74,10 @@ public class EmptyComponents {
   public static final class EmptyBoundedSource implements Source {
     private final String name;
 
+    /**
+     * Constructor.
+     * @param name the name of bounded source.
+     */
     public EmptyBoundedSource(final String name) {
       this.name = name;
     }
@@ -87,30 +91,58 @@ public class EmptyComponents {
       return sb.toString();
     }
 
+    /**
+     * Do nothing.
+     * @return throws exception.
+     * @throws Exception throws UnsupportedOperationException
+     */
     public boolean producesSortedKeys() throws Exception {
       throw new UnsupportedOperationException("Empty bounded source");
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public Reader createReader() throws IOException {
       throw new UnsupportedOperationException("Empty bounded source");
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<? extends Source> split(final long l) throws Exception {
       return Arrays.asList(this);
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public long getEstimatedSizeBytes() throws Exception {
       return 0;
     }
 
-    public List<? extends Source> splitIntoBundles(final long desiredBundleSizeBytes) throws Exception {
+    /**
+     * Do nothing.
+     * @param desiredBundleSizeBytes the bundle size to split the source.
+     * @return an empty list
+     */
+    public List<? extends Source> splitIntoBundles(final long desiredBundleSizeBytes) {
       return new ArrayList<>();
     }
 
+    /**
+     * Do nothing.
+     */
     public void validate() {
     }
 
+    /**
+     * Do nothing.
+     * @return throw UnsupportedOperationException
+     */
     public Coder getDefaultOutputCoder() {
       throw new UnsupportedOperationException("Empty bounded source");
     }

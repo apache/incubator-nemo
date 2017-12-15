@@ -34,6 +34,9 @@ import java.util.Collections;
  */
 public final class SailfishRelayReshapingPass extends ReshapingPass {
 
+  /**
+   * Default constructor.
+   */
   public SailfishRelayReshapingPass() {
     super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }

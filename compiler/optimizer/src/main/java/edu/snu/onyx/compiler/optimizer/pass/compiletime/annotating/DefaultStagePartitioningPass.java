@@ -38,6 +38,9 @@ import java.util.stream.Stream;
  * connect it to the stage, and otherwise we don't.
  */
 public final class DefaultStagePartitioningPass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public DefaultStagePartitioningPass() {
     super(ExecutionProperty.Key.StageId, Stream.of(
         ExecutionProperty.Key.DataCommunicationPattern,
