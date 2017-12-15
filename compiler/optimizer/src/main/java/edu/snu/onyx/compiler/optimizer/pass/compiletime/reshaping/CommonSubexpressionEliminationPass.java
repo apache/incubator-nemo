@@ -33,6 +33,9 @@ import java.util.stream.Collectors;
  * Refer to CommonSubexpressionEliminationPassTest for such cases.
  */
 public final class CommonSubexpressionEliminationPass extends ReshapingPass {
+  /**
+   * Default constructor.
+   */
   public CommonSubexpressionEliminationPass() {
     super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }

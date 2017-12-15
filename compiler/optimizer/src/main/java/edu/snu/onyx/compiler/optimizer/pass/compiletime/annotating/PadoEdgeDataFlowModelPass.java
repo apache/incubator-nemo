@@ -31,6 +31,9 @@ import static edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.PadoEd
  * Pado pass for tagging edges with DataFlowModel ExecutionProperty.
  */
 public final class PadoEdgeDataFlowModelPass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public PadoEdgeDataFlowModelPass() {
     super(ExecutionProperty.Key.DataFlowModel, Stream.of(
         ExecutionProperty.Key.ExecutorPlacement

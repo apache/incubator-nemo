@@ -28,6 +28,9 @@ import java.util.concurrent.TimeUnit;
  */
 public final class OnyxPipelineResult extends ClientEndpoint implements PipelineResult {
 
+  /**
+   * Default constructor.
+   */
   public OnyxPipelineResult() {
     super(new BeamStateTranslator());
   }

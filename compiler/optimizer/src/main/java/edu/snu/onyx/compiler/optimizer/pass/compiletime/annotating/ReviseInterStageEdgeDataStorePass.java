@@ -29,6 +29,9 @@ import java.util.stream.Stream;
  * Edge data store pass to process inter-stage memory store edges.
  */
 public final class ReviseInterStageEdgeDataStorePass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public ReviseInterStageEdgeDataStorePass() {
     super(ExecutionProperty.Key.DataStore, Stream.of(
         ExecutionProperty.Key.StageId

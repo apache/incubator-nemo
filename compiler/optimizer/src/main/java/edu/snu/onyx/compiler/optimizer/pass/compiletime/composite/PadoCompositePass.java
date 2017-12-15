@@ -25,6 +25,9 @@ import java.util.Arrays;
  * A series of passes to support Pado optimization.
  */
 public final class PadoCompositePass extends CompositePass {
+  /**
+   * Default constructor.
+   */
   public PadoCompositePass() {
     super(Arrays.asList(
         new PadoVertexExecutorPlacementPass(),

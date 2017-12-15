@@ -27,6 +27,9 @@ import java.util.Arrays;
  * A series of passes to support Sailfish-like disk seek batching during shuffle.
  */
 public final class SailfishPass extends CompositePass {
+  /**
+   * Default constructor.
+   */
   public SailfishPass() {
     super(Arrays.asList(
         new SailfishCodecReshapingPass(),

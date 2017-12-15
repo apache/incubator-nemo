@@ -62,6 +62,11 @@ public final class BeamBoundedSource<T> implements Source<T> {
     private final BeamBoundedSource<T> source;
     private final BoundedSource.BoundedReader<T> boundedReader;
 
+    /**
+     * Constructor.
+     * @param source source to read.
+     * @param boundedReader the Beam boundedReader to wrap.
+     */
     BeamBoundedReader(final BeamBoundedSource<T> source, final BoundedSource.BoundedReader<T> boundedReader) {
       this.source = source;
       this.boundedReader = boundedReader;
