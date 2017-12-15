@@ -112,7 +112,6 @@ public final class WindowedMapReduce {
         }));
 
     wordCounts.apply(new WriteOneFilePerWindow(outputFilePath));
-    GenericSourceSink.write(wordCounts, outputFilePath);
     p.run();
   }
 }

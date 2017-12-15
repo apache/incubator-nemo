@@ -17,6 +17,7 @@ package edu.snu.onyx.examples.beam;
 
 import edu.snu.onyx.client.beam.OnyxPipelineOptions;
 import edu.snu.onyx.client.beam.OnyxPipelineRunner;
+import edu.snu.onyx.examples.beam.common.WriteOneFilePerWindow;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -64,7 +65,9 @@ public final class MapReduce {
             return kv.getKey() + ": " + kv.getValue();
           }
         }));
-    GenericSourceSink.write(result, outputFilePath);
+
+    result.apply(new WriteOneFilePerWindow(outputFilePath));
+
     p.run();
   }
 }
