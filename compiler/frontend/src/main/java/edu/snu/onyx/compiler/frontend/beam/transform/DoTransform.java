@@ -156,7 +156,11 @@ public final class DoTransform<I, O> implements Transform<WindowedValue<I>, Wind
 
     @Override
     public void output(final O output, final Instant instant, final BoundedWindow boundedWindow) {
-      outputCollector.emit(WindowedValue.valueInGlobalWindow(output));
+      outputCollector.emit(
+          WindowedValue.of(output,
+              boundedWindow.maxTimestamp(),
+              boundedWindow,
+              PaneInfo.ON_TIME_AND_ONLY_FIRING));
     }
 
     @Override

@@ -84,11 +84,13 @@ public final class WriteOneFilePerWindow extends PTransform<PCollection<String>,
       this.prefix = prefix;
     }
 
-    public String filenamePrefixForWindow(final IntervalWindow window, final WindowedContext context) {
+    public String filenamePrefixForWindow(final IntervalWindow window,
+                                          final WindowedContext context,
+                                          final String extension) {
       return String.format(
-          "%s-%s-%s-%s-%s-of-%s%s",
+          "%s-%s-%s-%s-of-%s%s",
           prefix, FORMATTER.print(window.start()), FORMATTER.print(window.end()),
-          context.getShardNumber(), context.getNumShards());
+          context.getShardNumber(), context.getNumShards(), extension);
     }
 
     @Override
@@ -96,7 +98,7 @@ public final class WriteOneFilePerWindow extends PTransform<PCollection<String>,
         final ResourceId outputDirectory, final WindowedContext context, final String extension) {
       final BoundedWindow window = context.getWindow();
       final String filename = (window instanceof IntervalWindow)
-          ? filenamePrefixForWindow((IntervalWindow) window, context) : prefix;
+          ? filenamePrefixForWindow((IntervalWindow) window, context, extension) : prefix;
 
       return outputDirectory.resolve(filename, StandardResolveOptions.RESOLVE_FILE);
     }
