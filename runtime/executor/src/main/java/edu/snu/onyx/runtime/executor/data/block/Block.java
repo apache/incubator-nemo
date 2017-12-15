@@ -41,16 +41,6 @@ public interface Block<K extends Serializable> {
   Optional<List<Long>> putPartitions(final Iterable<NonSerializedPartition<K>> partitions) throws IOException;
 
   /**
-   * Stores {@link NonSerializedPartition} to this block.
-   * Invariant: This should not be invoked after this block is committed.
-   *
-   * @param partition the {@link NonSerializedPartition} to store.
-   * @return the size of the data per partition (only when the data is serialized in this method).
-   * @throws IOException if fail to store.
-   */
-  Optional<Long> putPartition(final NonSerializedPartition<K> partition) throws IOException;
-
-  /**
    * Stores {@link SerializedPartition}s to this block.
    * Invariant: This should not be invoked after this block is committed.
    *
@@ -70,17 +60,6 @@ public interface Block<K extends Serializable> {
    * @throws IOException if failed to retrieve.
    */
   Iterable<NonSerializedPartition<K>> getPartitions(final KeyRange<K> keyRange) throws IOException;
-
-  /**
-   * Retrieves the {@link NonSerializedPartition} in a specific key range from this block.
-   * If the data is serialized, deserializes it.
-   * Invariant: This should not be invoked before this block is committed.
-   *
-   * @param keyRange the key range to retrieve.
-   * @return an iterable of {@link NonSerializedPartition}s.
-   * @throws IOException if failed to retrieve.
-   */
-  NonSerializedPartition<K> getPartition(final KeyRange<K> keyRange) throws IOException;
 
   /**
    * Retrieves the {@link SerializedPartition}s in a specific key range.

@@ -20,9 +20,9 @@ package edu.snu.onyx.runtime.executor.data;
  * This is a unit of read / write towards {@link edu.snu.onyx.runtime.executor.data.block.Block}s.
  * @param <K> the key type of its partitions.
  */
-public final class NonSerializedPartition<K, D> implements Partition<D, K> {
+public final class NonSerializedPartition<K> implements Partition<Iterable, K> {
   private final K key;
-  private final D nonSerializedData;
+  private final Iterable nonSerializedData;
 
   /**
    * Creates a non-serialized {@link Partition} having a specific key value.
@@ -31,7 +31,7 @@ public final class NonSerializedPartition<K, D> implements Partition<D, K> {
    * @param data the non-serialized data.
    */
   public NonSerializedPartition(final K key,
-                                final D data) {
+                                final Iterable data) {
     this.key = key;
     this.nonSerializedData = data;
   }
@@ -56,7 +56,7 @@ public final class NonSerializedPartition<K, D> implements Partition<D, K> {
    * @return the non-serialized data.
    */
   @Override
-  public D getData() {
+  public Iterable getData() {
     return nonSerializedData;
   }
 }

@@ -16,6 +16,7 @@
 package edu.snu.onyx.runtime.executor;
 
 import edu.snu.onyx.common.ContextImpl;
+import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.common.exception.BlockWriteException;
 import edu.snu.onyx.common.ir.Reader;
@@ -25,7 +26,6 @@ import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.runtime.common.state.TaskState;
-import edu.snu.onyx.runtime.executor.data.Partition;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.onyx.runtime.executor.datatransfer.InputReader;
 import edu.snu.onyx.runtime.executor.datatransfer.OutputCollectorImpl;
@@ -55,12 +55,6 @@ public final class TaskGroupExecutor {
   private final List<PhysicalStageEdge> stageOutgoingEdges;
   private final DataTransferFactory channelFactory;
 
-  // For intra-TaskGroup element-wise data transfer.
-  // Inter-Task data are transferred via OutputCollector of each Task.
-  private final Map<String, OutputCollectorImpl> taskIdToLocalWriterMap;
-  private final Map<String, List<OutputCollectorImpl>> taskIdToLocalReaderMap;
-  private final AtomicInteger sourceParallelism;
-
   /**
    * Map of task IDs in this task group to their readers/writers.
    */
@@ -84,10 +78,6 @@ public final class TaskGroupExecutor {
     this.taskIdToOutputWriterMap = new HashMap<>();
 
     this.isExecutionRequested = false;
-
-    this.taskIdToLocalWriterMap = new HashMap<>();
-    this.taskIdToLocalReaderMap = new HashMap<>();
-    this.sourceParallelism = new AtomicInteger(0);
 
     initializeDataTransfer();
   }
@@ -113,21 +103,12 @@ public final class TaskGroupExecutor {
         addOutputWriter(task, outputWriter);
       });
 
-      // Add OutputCollectors for inter- and intra-stage data transfer
-      addLocalWriter(task);
+      final List<RuntimeEdge<Task>> inEdgesWithinStage = taskGroup.getTaskDAG().getIncomingEdgesOf(task);
+      inEdgesWithinStage.forEach(internalEdge -> createLocalReader(task, internalEdge));
 
-      // Add LocalReaders for intra-stage data transfer
-      if (!taskGroup.getTaskDAG().getIncomingEdgesOf(task).isEmpty()
-          && !hasInputReader(task)) {
-        addLocalReaders(task);
-        LOG.info("log: Added LocalReaders {} {} {}", taskGroup.getTaskGroupId(),
-            task.getId(), task.getRuntimeVertexId());
-      }
+      final List<RuntimeEdge<Task>> outEdgesWithinStage = taskGroup.getTaskDAG().getOutgoingEdgesOf(task);
+      outEdgesWithinStage.forEach(internalEdge -> createLocalWriter(task, internalEdge));
     }));
-
-    if (sourceParallelism.get() == 0) {
-      sourceParallelism.getAndAdd(1);
-    }
   }
 
   // Helper functions to initializes cross-stage edges.
@@ -143,6 +124,17 @@ public final class TaskGroupExecutor {
         .collect(Collectors.toSet());
   }
 
+  // Helper functions to initializes stage-internal edges.
+  private void createLocalReader(final Task task, final RuntimeEdge<Task> internalEdge) {
+    final InputReader inputReader = channelFactory.createLocalReader(task, internalEdge);
+    addInputReader(task, inputReader);
+  }
+
+  private void createLocalWriter(final Task task, final RuntimeEdge<Task> internalEdge) {
+    final OutputWriter outputWriter = channelFactory.createLocalWriter(task, internalEdge);
+    addOutputWriter(task, outputWriter);
+  }
+
   // Helper functions to add the initialized reader/writer to the maintained map.
   private void addInputReader(final Task task, final InputReader inputReader) {
     taskIdToInputReaderMap.computeIfAbsent(task.getId(), readerList -> new ArrayList<>());
@@ -152,40 +144,6 @@ public final class TaskGroupExecutor {
   private void addOutputWriter(final Task task, final OutputWriter outputWriter) {
     taskIdToOutputWriterMap.computeIfAbsent(task.getId(), readerList -> new ArrayList<>());
     taskIdToOutputWriterMap.get(task.getId()).add(outputWriter);
-  }
-
-  private void addLocalWriter(final Task task) {
-    taskIdToLocalWriterMap.put(task.getId(), new OutputCollectorImpl());
-  }
-
-  // Create a map of Task and its parent Task's OutputCollectorImpls,
-  // which are the Task's LocalReaders(intra-TaskGroup readers).
-  private void addLocalReaders(final Task task) {
-    List<OutputCollectorImpl> localReaders = new ArrayList<>();
-    List<Task> parentTasks = taskGroup.getTaskDAG().getParents(task.getId());
-
-    if (parentTasks != null) {
-      LOG.info("log: Added LocalReader, {} {} {}", taskGroup.getTaskGroupId(),
-          task.getId(), task.getRuntimeVertexId());
-      parentTasks.forEach(parent -> LOG.info("log: Parents of {} {}: {}", taskGroup.getTaskGroupId(),
-          task.getRuntimeVertexId(), parent.getRuntimeVertexId()));
-
-      parentTasks.forEach(parentTask -> {
-        localReaders.add(taskIdToLocalWriterMap.get(parentTask.getId()));
-      });
-
-      taskIdToLocalReaderMap.put(task.getId(), localReaders);
-    } else {
-      taskIdToLocalReaderMap.put(task.getId(), null);
-    }
-  }
-
-  private boolean hasInputReader(final Task task) {
-    return taskIdToInputReaderMap.containsKey(task.getId());
-  }
-
-  private boolean hasOutputWriter(final Task task) {
-    return taskIdToOutputWriterMap.containsKey(task.getId());
   }
 
   /**
@@ -243,27 +201,12 @@ public final class TaskGroupExecutor {
    */
   private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask) throws Exception {
     final Reader reader = boundedSourceTask.getReader();
-    final Iterable<Partition> readData = reader.read();
+    final Iterable readData = reader.read();
 
-    // For inter-stage data, we need to write them to OutputWriters.
-    // For intra-stage data, we need to emit data to OutputCollectorImpl.
-    if (hasOutputWriter(boundedSourceTask)) {
-      taskIdToOutputWriterMap.get(boundedSourceTask.getId()).forEach(outputWriter -> {
-        readData.forEach(outputWriter::writeElement);
-        outputWriter.close();
-      });
-    } else {
-      OutputCollectorImpl outputCollector = taskIdToLocalWriterMap.get(boundedSourceTask.getId());
-      try {
-        readData.forEach(data -> {
-          outputCollector.emit(data);
-          LOG.info("log: {} {} {} Put {} to LocalWriter", taskGroup.getTaskGroupId(),
-              boundedSourceTask.getId(), boundedSourceTask.getRuntimeVertexId(), data);
-        });
-      } catch (final Exception e) {
-        throw new RuntimeException();
-      }
-    }
+    taskIdToOutputWriterMap.get(boundedSourceTask.getId()).forEach(outputWriter -> {
+      outputWriter.write(readData);
+      outputWriter.close();
+    });
   }
 
   /**
@@ -274,92 +217,77 @@ public final class TaskGroupExecutor {
     final Map<Transform, Object> sideInputMap = new HashMap<>();
 
     // Check for side inputs
-    if (hasInputReader(operatorTask)) {
-      taskIdToInputReaderMap.get(operatorTask.getId()).stream().filter(InputReader::isSideInputReader)
-          .forEach(inputReader -> {
-            try {
-              final Object sideInput = inputReader.getSideInput().get();
-              final RuntimeEdge inEdge = inputReader.getRuntimeEdge();
-              final Transform srcTransform;
-              if (inEdge instanceof PhysicalStageEdge) {
-                srcTransform = ((OperatorVertex) ((PhysicalStageEdge) inEdge).getSrcVertex())
-                    .getTransform();
-              } else {
-                srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
-              }
-              sideInputMap.put(srcTransform, sideInput);
-            } catch (final InterruptedException | ExecutionException e) {
-              throw new BlockFetchException(e);
+    taskIdToInputReaderMap.get(operatorTask.getId()).stream().filter(InputReader::isSideInputReader)
+        .forEach(inputReader -> {
+          try {
+            final Object sideInput = inputReader.getSideInput().get();
+            final RuntimeEdge inEdge = inputReader.getRuntimeEdge();
+            final Transform srcTransform;
+            if (inEdge instanceof PhysicalStageEdge) {
+              srcTransform = ((OperatorVertex) ((PhysicalStageEdge) inEdge).getSrcVertex())
+                  .getTransform();
+            } else {
+              srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
             }
-          });
-    }
-
-    final Transform.Context transformContext = new ContextImpl(sideInputMap);
-    final Transform transform = operatorTask.getTransform();
-    final OutputCollectorImpl outputCollector = taskIdToLocalWriterMap.get(operatorTask.getId());
-    transform.prepare(transformContext, outputCollector);
-
-    // Check for non-side inputs.
-    final BlockingQueue<Object> dataQueue = new LinkedBlockingQueue<>();
-    if (hasInputReader(operatorTask)) {
-      // If this task accepts inter-stage data, read them from InputReader.
-      // Inter-stage data is assumed to be sent element-wise.
-      taskIdToInputReaderMap.get(operatorTask.getId()).stream().filter(inputReader -> !inputReader.isSideInputReader())
-          .forEach(inputReader -> {
-            // For inter-stage data, read them as element.
-            final List<CompletableFuture<Iterable>> futures = inputReader.readElement();
-            // Add consumers which will push the data to the data queue when it ready to the futures.
-            futures.forEach(compFuture -> compFuture.whenComplete((data, exception) -> {
-              if (exception != null) {
-                throw new RuntimeException(exception);
-              }
-              LOG.info("log: Reading from InputReader {} {} {}, data {}",
-                  taskGroup.getTaskGroupId(), operatorTask.getId(), operatorTask.getRuntimeVertexId(),
-                  data);
-              data.forEach(dataQueue::add);
-            }));
-          });
-    } else {
-    // If else, this task accepts intra-stage data.
-    // Intra-stage data are removed from parent Task's OutputCollectors, element-wise.
-    taskIdToLocalReaderMap.get(operatorTask.getId())
-        .forEach(localReader -> {
-          if (!localReader.isEmpty()) {
-            final Object output = localReader.remove();
-            LOG.info("log: {} {}: Reading from LocalReader. output {}", taskGroup.getTaskGroupId(),
-                operatorTask.getId(), output.toString());
-            dataQueue.add(output);
+            sideInputMap.put(srcTransform, sideInput);
+          } catch (final InterruptedException | ExecutionException e) {
+            throw new BlockFetchException(e);
           }
         });
-    }
 
-    // Consumes the received element from incoming edges.
+    final Transform.Context transformContext = new ContextImpl(sideInputMap);
+    final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
+
+    final Transform transform = operatorTask.getTransform();
+    transform.prepare(transformContext, outputCollector);
+
+    // Check for non-side inputs
+    // This blocking queue contains the pairs having data and source vertex ids.
+    final BlockingQueue<Pair<Iterable, String>> dataQueue = new LinkedBlockingQueue<>();
+    final AtomicInteger sourceParallelism = new AtomicInteger(0);
+    taskIdToInputReaderMap.get(operatorTask.getId()).stream().filter(inputReader -> !inputReader.isSideInputReader())
+        .forEach(inputReader -> {
+          final List<CompletableFuture<Iterable>> futures = inputReader.read();
+          final String srcVtxId = inputReader.getSrcVertexId();
+          sourceParallelism.getAndAdd(inputReader.getSourceParallelism());
+          // Add consumers which will push the data to the data queue when it ready to the futures.
+          futures.forEach(compFuture -> compFuture.whenComplete((data, exception) -> {
+            if (exception != null) {
+              throw new BlockFetchException(exception);
+            }
+            dataQueue.add(Pair.of(data, srcVtxId));
+          }));
+        });
+
+    // Consumes all of the partitions from incoming edges.
     IntStream.range(0, sourceParallelism.get()).forEach(srcTaskNum -> {
       try {
-        Object availableData = dataQueue.take();
-        LOG.info("log: {} {}: transform consume data {}", taskGroup.getTaskGroupId(),
-            operatorTask.getId(), availableData.toString());
         // Because the data queue is a blocking queue, we may need to wait some available data to be pushed.
-        transform.onData(availableData);
+        final Pair<Iterable, String> availableData = dataQueue.take();
+        transform.onData(availableData.left(), availableData.right());
       } catch (final InterruptedException e) {
-        throw new RuntimeException(e);
+        throw new BlockFetchException(e);
       }
+
+      // Check whether there is any output data from the transform and write the output of this task to the writer.
+      final List output = outputCollector.collectOutputList();
+      if (!output.isEmpty() && taskIdToOutputWriterMap.containsKey(operatorTask.getId())) {
+        taskIdToOutputWriterMap.get(operatorTask.getId()).forEach(outputWriter -> outputWriter.write(output));
+      } // If else, this is a sink task.
     });
     transform.close();
 
     // Check whether there is any output data from the transform and write the output of this task to the writer.
-    // Here, too, we need to consider only inter-stage data and write them to OutputWriters.
     final List output = outputCollector.collectOutputList();
-
-    if (!output.isEmpty()) {
-      LOG.info("log: {} {}: output to OutputWriter {}", taskGroup.getTaskGroupId(),
-          operatorTask.getId(), output.toString());
-      if (hasOutputWriter(operatorTask)) {
-        taskIdToOutputWriterMap.get(operatorTask.getId()).forEach(outputWriter -> {
-          output.forEach(outputWriter::writeElement);
-          outputWriter.close();
-        });
-      }
+    if (taskIdToOutputWriterMap.containsKey(operatorTask.getId())) {
+      taskIdToOutputWriterMap.get(operatorTask.getId()).forEach(outputWriter -> {
+        if (!output.isEmpty()) {
+          outputWriter.write(output);
+        }
+        outputWriter.close();
+      });
+    } else {
+      LOG.info("This is a sink task: {}", operatorTask.getId());
     }
   }
 

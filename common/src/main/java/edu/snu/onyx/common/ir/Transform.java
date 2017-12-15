@@ -35,9 +35,10 @@ public interface Transform<I, O> extends Serializable {
 
   /**
    * On data received.
-   * @param element data received.
+   * @param elements data received.
+   * @param srcVertexId sender of the data.
    */
-  void onData(I element);
+  void onData(Iterable<I> elements, String srcVertexId);
 
   /**
    * Close the transform.

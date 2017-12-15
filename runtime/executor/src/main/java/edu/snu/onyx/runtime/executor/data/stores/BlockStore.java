@@ -62,26 +62,6 @@ public interface BlockStore {
                                      boolean commitPerPartition) throws BlockWriteException;
 
   /**
-   * Saves a {@link NonSerializedPartition} to a block.
-   * If the block exists already, appends the data to it.
-   * Invariant: This method may not support concurrent write for a single block.
-   *            Only one thread have to write at once.
-   *
-   * @param blockId            of the block.
-   * @param partitions         to save to a block.
-   * @param commitPerPartition whether commit every partition write or not.
-   * @param <K> the key type of the partitions.
-   * @return the size of the data per partition (only when the data is serialized).
-   * @throws BlockWriteException for any error occurred while trying to write a block.
-   *         (This exception will be thrown to the scheduler
-   *          through {@link edu.snu.onyx.runtime.executor.Executor} and
-   *          have to be handled by the scheduler with fault tolerance mechanism.)
-   */
-  <K extends Serializable> Optional<Long> putPartition(String blockId,
-                                                       NonSerializedPartition<K> partition,
-                                                       boolean commitPerPartition) throws BlockWriteException;
-
-  /**
    * Saves an iterable of {@link SerializedPartition}s to a block.
    * If the block exists already, appends the data to it.
    * Invariant: This method may not support concurrent write for a single block.
@@ -116,24 +96,6 @@ public interface BlockStore {
    */
   <K extends Serializable> Optional<Iterable<NonSerializedPartition<K>>> getPartitions(String blockId,
                                                            KeyRange<K> keyRange) throws BlockFetchException;
-
-  /**
-   * Retrieves {@link NonSerializedPartition}.
-   * This belongs to a specific {@link edu.snu.onyx.runtime.common.data.KeyRange} from a block.
-   *
-   * @param blockId   of the target partition.
-   * @param keyRange the key range.
-   * @param <K> the key type of the partitions.
-   * @return the result elements from the target block (if the target block exists).
-   * @throws BlockFetchException for any error occurred while trying to fetch a block.
-   *         (This exception will be thrown to the scheduler
-   *          through {@link edu.snu.onyx.runtime.executor.Executor} and
-   *          have to be handled by the scheduler with fault tolerance mechanism.)
-   */
-  <K extends Serializable> Optional<NonSerializedPartition<K>> getPartition(String blockId,
-                                                                             KeyRange<K> keyRange)
-      throws BlockFetchException;
-
 
   /**
    * Retrieves {@link SerializedPartition}s in a specific {@link KeyRange} from a block.
