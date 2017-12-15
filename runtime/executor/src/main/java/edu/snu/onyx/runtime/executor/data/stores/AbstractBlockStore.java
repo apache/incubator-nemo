@@ -17,28 +17,27 @@ package edu.snu.onyx.runtime.executor.data.stores;
 
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
-import org.apache.reef.tang.InjectionFuture;
+import edu.snu.onyx.runtime.executor.data.CoderManager;
 
 /**
  * This abstract class represents a default {@link BlockStore},
  * which contains other components used in each implementation of {@link BlockStore}.
  */
 public abstract class AbstractBlockStore implements BlockStore {
-  private final InjectionFuture<BlockManagerWorker> blockManagerWorker;
+  private final CoderManager coderManager;
 
-  protected AbstractBlockStore(final InjectionFuture<BlockManagerWorker> blockManagerWorker) {
-    this.blockManagerWorker = blockManagerWorker;
+  protected AbstractBlockStore(final CoderManager coderManager) {
+    this.coderManager = coderManager;
   }
 
   /**
-   * Gets data coder for a block from the {@link BlockManagerWorker}.
+   * Gets data coder for a block from the {@link CoderManager}.
    *
    * @param blockId the ID of the block to get the coder.
    * @return the coder.
    */
   public final Coder getCoderFromWorker(final String blockId) {
     final String runtimeEdgeId = RuntimeIdGenerator.getRuntimeEdgeIdFromBlockId(blockId);
-    return blockManagerWorker.get().getCoder(runtimeEdgeId);
+    return coderManager.getCoder(runtimeEdgeId);
   }
 }
