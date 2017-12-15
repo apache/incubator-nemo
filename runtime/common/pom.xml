@@ -28,6 +28,10 @@ limitations under the License.
     <artifactId>onyx-runtime-common</artifactId>
     <name>Onyx Runtime Common</name>
 
+    <properties>
+        <grpc.version>1.7.0</grpc.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>edu.snu.onyx</groupId>
@@ -38,6 +42,28 @@ limitations under the License.
             <groupId>edu.snu.onyx</groupId>
             <artifactId>onyx-conf</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <!-- GRPC -->
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-protobuf</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-testing</artifactId>
+            <version>${grpc.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

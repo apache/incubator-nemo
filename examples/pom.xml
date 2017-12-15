@@ -28,11 +28,37 @@ limitations under the License.
     <artifactId>onyx-examples</artifactId>
     <name>Onyx Examples</name>
 
+    <properties>
+        <netlib.version>1.1.2</netlib.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>edu.snu.onyx</groupId>
             <artifactId>onyx-client</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.fommil.netlib</groupId>
+            <artifactId>all</artifactId>
+            <version>${netlib.version}</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-io-hadoop-input-format</artifactId>
+            <version>${beam.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-mapreduce-client-core</artifactId>
+            <version>${hadoop.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-aws</artifactId>
+            <version>${hadoop.version}</version>
         </dependency>
     </dependencies>
 
