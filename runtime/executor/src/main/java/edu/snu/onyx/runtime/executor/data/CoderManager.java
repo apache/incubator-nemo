@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentMap;
  */
 public final class CoderManager {
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Boolean> sameScheduleGroupMap = new ConcurrentHashMap<>();
 
   @Inject
   public CoderManager() {
@@ -53,5 +54,19 @@ public final class CoderManager {
       throw new RuntimeException("No coder is registered for " + runtimeEdgeId);
     }
     return coder;
+  }
+
+  /**
+   * Return whether two physical stage belongs to a same schedule group.
+   * @param runtimeEdgeId the runtime edge id
+   * @return whether two physical stage belongs to a same schedule group.
+   */
+  public boolean isInSameScheduleGroup(final String runtimeEdgeId) {
+    final Boolean isInSame = sameScheduleGroupMap.get(runtimeEdgeId);
+    if (isInSame == null) {
+      // throw new RuntimeException("Not a registered runtime edge: " + runtimeEdgeId);
+      return false;
+    }
+    return isInSame;
   }
 }

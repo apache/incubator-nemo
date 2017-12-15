@@ -270,7 +270,8 @@ public final class PhysicalPlanGenerator
             stageEdge.getSrcVertex(), stageEdge.getDstVertex(),
             srcStage, dstStage,
             stageEdge.getCoder(),
-            stageEdge.isSideInput()));
+            stageEdge.isSideInput(),
+            srcStage.getScheduleGroupIndex() == dstStage.getScheduleGroupIndex()));
       }));
 
     return physicalDAGBuilder.build();
