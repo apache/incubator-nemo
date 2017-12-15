@@ -177,8 +177,8 @@ public final class BlockManagerWorker {
       }
       // This is the executor id that we wanted to know
       final String remoteWorkerId = blockLocationInfoMsg.getOwnerExecutorId();
-      return blockTransfer.initiatePull(remoteWorkerId, false, blockStore, blockId,
-          runtimeEdgeId, keyRange).getCompleteFuture();
+      return CompletableFuture.completedFuture(blockTransfer.initiatePull(remoteWorkerId, false, blockStore, blockId,
+          runtimeEdgeId, keyRange));
     });
   }
 
