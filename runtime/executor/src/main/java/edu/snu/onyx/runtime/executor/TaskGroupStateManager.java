@@ -228,7 +228,6 @@ public final class TaskGroupStateManager {
             .build());
   }
 
-  // TODO #164: Cleanup Protobuf Usage
   private ControlMessage.TaskGroupStateFromExecutor convertState(final TaskGroupState.State state) {
     switch (state) {
     case READY:
@@ -248,7 +247,6 @@ public final class TaskGroupStateManager {
     }
   }
 
-  // TODO #164: Cleanup Protobuf Usage
   private ControlMessage.RecoverableFailureCause convertFailureCause(
     final TaskGroupState.RecoverableFailureCause cause) {
     switch (cause) {

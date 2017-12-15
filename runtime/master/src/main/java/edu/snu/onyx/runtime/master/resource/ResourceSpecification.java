@@ -5,7 +5,6 @@ import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 /**
  * Represents the specifications of a resource.
  */
-// TODO #249: Clean up Execution Properties.
 // We should clean up and add execution properties related to resource specification.
 public final class ResourceSpecification {
   private final String resourceSpecId;

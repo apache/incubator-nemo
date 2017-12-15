@@ -48,7 +48,6 @@ public final class MultinomialLogisticRegressionITCase {
         .addUserArgs(input, numFeatures, numClasses, numIteration);
   }
 
-  // Disabled for speed purposes. To be re-enabled through TODO #138.
 //  @Test (timeout = TIMEOUT)
 //  public void test() throws Exception {
 //    JobLauncher.main(builder
