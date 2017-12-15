@@ -45,7 +45,7 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   }
 
   /**
-   * @see BlockStore#putPartitions(String, Iterable, boolean).
+   * @see BlockStore#putPartitions(String, Iterable, boolean)
    */
   @Override
   public final <K extends Serializable> Optional<List<Long>> putPartitions(final String blockId,
@@ -63,7 +63,7 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   }
 
   /**
-   * @see BlockStore#putSerializedPartitions(String, Iterable, boolean).
+   * @see BlockStore#putSerializedPartitions(String, Iterable, boolean)
    */
   @Override
   public final <K extends Serializable> List<Long> putSerializedPartitions(final String blockId,
@@ -81,7 +81,7 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   }
 
   /**
-   * @see BlockStore#getPartitions(String, KeyRange).
+   * @see BlockStore#getPartitions(String, KeyRange)
    */
   @Override
   public final <K extends Serializable>
@@ -101,7 +101,7 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   }
 
   /**
-   * @see BlockStore#getSerializedPartitions(String, edu.snu.onyx.runtime.common.data.KeyRange).
+   * @see BlockStore#getSerializedPartitions(String, edu.snu.onyx.runtime.common.data.KeyRange)
    */
   @Override
   public final <K extends Serializable>
@@ -121,7 +121,7 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   }
 
   /**
-   * @see BlockStore#commitBlock(String).
+   * @see BlockStore#commitBlock(String)
    */
   @Override
   public final void commitBlock(final String blockId) {

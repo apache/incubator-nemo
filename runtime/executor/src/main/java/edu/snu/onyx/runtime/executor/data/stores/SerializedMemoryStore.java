@@ -41,7 +41,7 @@ public final class SerializedMemoryStore extends LocalBlockStore {
   }
 
   /**
-   * @see BlockStore#removeBlock(String).
+   * @see BlockStore#removeBlock(String)
    */
   @Override
   public Boolean removeBlock(final String blockId) {
