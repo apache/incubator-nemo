@@ -15,9 +15,15 @@
  */
 package edu.snu.onyx.compiler.frontend.beam.transform;
 
+import com.google.common.collect.Iterables;
 import edu.snu.onyx.common.ir.OutputCollector;
 import edu.snu.onyx.common.ir.Transform;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.WindowFn;
+import org.apache.beam.sdk.util.WindowedValue;
+import org.joda.time.Instant;
+
+import java.util.Collection;
 
 /**
  * Windowing transform implementation.
@@ -25,9 +31,9 @@ import org.apache.beam.sdk.transforms.windowing.WindowFn;
  * As this functionality is unnecessary for batch processing workloads and for Runtime, this is left as below.
  * @param <T> input/output type.
  */
-public final class WindowTransform<T> implements Transform<T, T> {
-  private final WindowFn windowFn;
-  private OutputCollector<T> outputCollector;
+public final class WindowTransform<T> implements Transform<WindowedValue<T>, WindowedValue<T>> {
+  private final WindowFn<T, BoundedWindow> windowFn;
+  private OutputCollector<WindowedValue<T>> outputCollector;
 
   /**
    * Default Constructor.
@@ -38,14 +44,43 @@ public final class WindowTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<T> oc) {
+  public void prepare(final Context context, final OutputCollector<WindowedValue<T>> oc) {
     this.outputCollector = oc;
   }
 
   @Override
-  public void onData(final Iterable<T> elements, final String srcVertexId) {
+  public void onData(final Iterable<WindowedValue<T>> elements, final String srcVertexId) {
     // TODO #36: Actually assign windows
-    elements.forEach(element -> outputCollector.emit(element));
+    elements.forEach(element -> {
+        try {
+          final Collection<BoundedWindow> windows = windowFn.assignWindows(windowFn.new AssignContext() {
+            @Override
+            public T element() {
+              return element.getValue();
+            }
+
+            @Override
+            public Instant timestamp() {
+              return element.getTimestamp();
+            }
+
+            @Override
+            public BoundedWindow window() {
+              return Iterables.getOnlyElement(element.getWindows());
+            }
+          });
+
+          for (BoundedWindow window : windows) {
+            outputCollector.emit(WindowedValue.of(
+                element.getValue(),
+                element.getTimestamp(),
+                window,
+                element.getPane()));
+          }
+        } catch (Exception e) {
+          throw new RuntimeException();
+        }
+    });
   }
 
   @Override

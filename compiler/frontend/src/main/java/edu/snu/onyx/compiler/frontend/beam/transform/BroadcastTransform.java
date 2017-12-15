@@ -21,18 +21,14 @@ import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
 /**
  * Broadcast transform implementation.
  * @param <I> input type.
  * @param <O> output type.
  */
-public final class BroadcastTransform<I, O> implements Transform<I, O> {
+public final class BroadcastTransform<I, O> implements Transform<WindowedValue<I>, WindowedValue<O>> {
   private final PCollectionView pCollectionView;
-  private OutputCollector<O> outputCollector;
+  private OutputCollector<WindowedValue<O>> outputCollector;
 
   /**
    * Constructor of BroadcastTransform.
@@ -43,18 +39,14 @@ public final class BroadcastTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> oc) {
+  public void prepare(final Context context, final OutputCollector<WindowedValue<O>> oc) {
     this.outputCollector = oc;
   }
 
   @Override
-  public void onData(final Iterable<I> elements, final String srcVertexId) {
-    final List<WindowedValue<I>> windowed = StreamSupport
-        .stream((elements).spliterator(), false)
-        .map(element -> WindowedValue.valueInGlobalWindow(element))
-        .collect(Collectors.toList());
-    final ViewFn<Iterable<WindowedValue<I>>, O> viewFn = this.pCollectionView.getViewFn();
-    outputCollector.emit(viewFn.apply(windowed));
+  public void onData(final Iterable<WindowedValue<I>> elements, final String srcVertexId) {
+    final ViewFn<Iterable<WindowedValue<I>>, WindowedValue<O>> viewFn = this.pCollectionView.getViewFn();
+    outputCollector.emit(viewFn.apply(elements));
   }
 
   /**

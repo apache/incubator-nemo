@@ -22,17 +22,45 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.*;
+import org.apache.beam.sdk.transforms.windowing.FixedWindows;
+import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.joda.time.Duration;
+import org.joda.time.Instant;
 
 /**
  * Sample MapReduce application.
  */
-public final class MapReduce {
+public final class FixedWindowedMapReduce {
+  static final int WINDOW_SIZE = 10;  // Default window duration in minutes
+
   /**
    * Private Constructor.
    */
-  private MapReduce() {
+  private FixedWindowedMapReduce() {
+  }
+
+  /**
+   * Each line of the word will get a random associated timestamp somewhere in a 1-hour period.
+   */
+  static class AddTimestampFn extends DoFn<String, KV<String, Long>> {
+    private final Instant minTimestamp;
+    private final Instant maxTimestamp;
+
+    AddTimestampFn(final Instant minTimestamp, final Instant maxTimestamp) {
+      this.minTimestamp = minTimestamp;
+      this.maxTimestamp = maxTimestamp;
+    }
+
+    @ProcessElement
+    public void processElement(final ProcessContext c) {
+      final String[] words = c.element().split(" +");
+      final String word = words[0];
+      final Long count = Long.parseLong(words[1]);
+      final Long time = Long.parseLong(words[2]);
+      c.outputWithTimestamp(KV.of(word, count), new Instant(time));
+    }
   }
 
   /**
@@ -43,20 +71,17 @@ public final class MapReduce {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];
     final PipelineOptions options = PipelineOptionsFactory.create().as(OnyxPipelineOptions.class);
+    final Instant minTimestamp = new Instant(System.currentTimeMillis());
+    final Instant maxTimestamp = new Instant(minTimestamp.getMillis() + Duration.standardHours(1).getMillis());
+
     options.setRunner(OnyxPipelineRunner.class);
     options.setJobName("MapReduce");
 
     final Pipeline p = Pipeline.create(options);
     final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
-        .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
-          @Override
-          public KV<String, Long> apply(final String line) {
-            final String[] words = line.split(" +");
-            final String documentId = words[0] + "#" + words[1];
-            final Long count = Long.parseLong(words[2]);
-            return KV.of(documentId, count);
-          }
-        }))
+        .apply(ParDo.of(new AddTimestampFn(minTimestamp, maxTimestamp)))
+        .apply(Window.<KV<String, Long>>into(
+                FixedWindows.of(Duration.standardMinutes(WINDOW_SIZE))))
         .apply(GroupByKey.<String, Long>create())
         .apply(Combine.<String, Long, Long>groupedValues(Sum.ofLongs()))
         .apply(MapElements.<KV<String, Long>, String>via(new SimpleFunction<KV<String, Long>, String>() {
@@ -67,7 +92,6 @@ public final class MapReduce {
         }));
 
     result.apply(new WriteOneFilePerWindow(outputFilePath));
-
     p.run();
   }
 }

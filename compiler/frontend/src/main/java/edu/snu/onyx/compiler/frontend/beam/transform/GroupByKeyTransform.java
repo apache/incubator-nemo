@@ -17,37 +17,40 @@ package edu.snu.onyx.compiler.frontend.beam.transform;
 
 import edu.snu.onyx.common.ir.OutputCollector;
 import edu.snu.onyx.common.ir.Transform;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.PaneInfo;
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Group Beam KVs.
  * @param <I> input type.
  */
-public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, List>> {
-  private final Map<Object, List> keyToValues;
-  private OutputCollector<KV<Object, List>> outputCollector;
+public final class GroupByKeyTransform<I> implements Transform<WindowedValue<I>, WindowedValue<KV<Object, List>>> {
+  private final Map<BoundedWindow, Map<Object, List>> kwToDataMap;
+  private OutputCollector<WindowedValue<KV<Object, List>>> outputCollector;
 
   /**
    * GroupByKey constructor.
    */
   public GroupByKeyTransform() {
-    this.keyToValues = new HashMap<>();
+    this.kwToDataMap = new HashMap<>();
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<KV<Object, List>> oc) {
+  public void prepare(final Context context, final OutputCollector<WindowedValue<KV<Object, List>>> oc) {
     this.outputCollector = oc;
   }
 
   @Override
-  public void onData(final Iterable<I> elements, final String srcVertexId) {
+  public void onData(final Iterable<WindowedValue<I>> elements, final String srcVertexId) {
     elements.forEach(element -> {
-      final KV kv = (KV) element;
+      final BoundedWindow window = element.getWindows().iterator().next();
+      kwToDataMap.putIfAbsent(window, new HashMap<>());
+      final KV kv = (KV) ((WindowedValue) element).getValue();
+      final Map<Object, List> keyToValues = kwToDataMap.get(window);
       keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
       keyToValues.get(kv.getKey()).add(kv.getValue());
     });
@@ -55,9 +58,20 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
 
   @Override
   public void close() {
-    keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
-        .forEach(wv -> outputCollector.emit(wv));
-    keyToValues.clear();
+    kwToDataMap.entrySet().stream().forEach(windowEntry -> {
+      final BoundedWindow window = windowEntry.getKey();
+      final  Map<Object, List> keyToValues = windowEntry.getValue();
+
+      keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
+          .forEach(wv ->
+              outputCollector
+              .emit(WindowedValue.of(wv,
+                  window.maxTimestamp(),
+                  window,
+                  PaneInfo.ON_TIME_AND_ONLY_FIRING)
+          ));
+      keyToValues.clear();
+    });
   }
 
   @Override
@@ -68,4 +82,3 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
     return sb.toString();
   }
 }
-

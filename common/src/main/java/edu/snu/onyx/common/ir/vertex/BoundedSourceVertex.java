@@ -20,6 +20,8 @@ import org.apache.beam.sdk.io.BoundedSource;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.beam.sdk.util.WindowedValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +54,7 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
     LOG.info("estimate: {}", source.getEstimatedSizeBytes(null));
     LOG.info("desired: {}", desiredNumOfSplits);
     source.split(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null).forEach(boundedSource -> {
-      readers.add(new BoundedSourceReader<>(boundedSource));
+      readers.add(new BoundedSourceReader(boundedSource));
     });
     return readers;
   }
@@ -72,7 +74,7 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
    * BoundedSourceReader class.
    * @param <T> type.
    */
-  public class BoundedSourceReader<T> implements Reader<T> {
+  public class BoundedSourceReader<T> implements Reader<WindowedValue<T>> {
     private final BoundedSource<T> boundedSource;
 
     /**
@@ -84,11 +86,11 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
     }
 
     @Override
-    public final Iterable<T> read() throws Exception {
-      final ArrayList<T> elements = new ArrayList<>();
+    public final Iterable<WindowedValue<T>> read() throws Exception {
+      final ArrayList<WindowedValue<T>> elements = new ArrayList<>();
       try (BoundedSource.BoundedReader<T> reader = boundedSource.createReader(null)) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
-          elements.add(reader.getCurrent());
+          elements.add(WindowedValue.valueInGlobalWindow(reader.getCurrent()));
         }
       }
       return elements;

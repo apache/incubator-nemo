@@ -15,6 +15,7 @@
  */
 package edu.snu.onyx.compiler.frontend.beam.transform;
 
+import avro.shaded.com.google.common.collect.Iterables;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.onyx.common.ir.OutputCollector;
 import edu.snu.onyx.common.ir.Transform;
@@ -26,8 +27,8 @@ import org.apache.beam.sdk.transforms.reflect.DoFnInvoker;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvokers;
 import org.apache.beam.sdk.transforms.splittabledofn.RestrictionTracker;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
-import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
+import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.Instant;
@@ -41,12 +42,12 @@ import java.util.Map;
  * @param <I> input type.
  * @param <O> output type.
  */
-public final class DoTransform<I, O> implements Transform<I, O> {
+public final class DoTransform<I, O> implements Transform<WindowedValue<I>, WindowedValue<O>> {
   private final DoFn doFn;
   private final ObjectMapper mapper;
   private final String serializedOptions;
   private Map<PCollectionView, Object> sideInputs;
-  private OutputCollector<O> outputCollector;
+  private OutputCollector<WindowedValue<O>> outputCollector;
 
   /**
    * DoTransform Constructor.
@@ -64,14 +65,14 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> oc) {
+  public void prepare(final Context context, final OutputCollector<WindowedValue<O>> oc) {
     this.outputCollector = oc;
     this.sideInputs = new HashMap<>();
     context.getSideInputs().forEach((k, v) -> this.sideInputs.put(((BroadcastTransform) k).getTag(), v));
   }
 
   @Override
-  public void onData(final Iterable<I> elements, final String srcVertexId) {
+  public void onData(final Iterable<WindowedValue<I>> elements, final String srcVertexId) {
     final StartBundleContext startBundleContext = new StartBundleContext(doFn, serializedOptions);
     final FinishBundleContext finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
     final ProcessContext processContext = new ProcessContext(doFn, outputCollector, sideInputs, serializedOptions);
@@ -136,7 +137,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
    * @param <O> output type.
    */
   private static final class FinishBundleContext<I, O> extends DoFn<I, O>.FinishBundleContext {
-    private final OutputCollector<O> outputCollector;
+    private final OutputCollector<WindowedValue<O>> outputCollector;
     private final ObjectMapper mapper;
     private final PipelineOptions options;
 
@@ -147,7 +148,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
      * @param serializedOptions serialized options of the DoTransform.
      */
     FinishBundleContext(final DoFn<I, O> fn,
-                        final OutputCollector<O> outputCollector,
+                        final OutputCollector<WindowedValue<O>> outputCollector,
                         final String serializedOptions) {
       fn.super();
       this.outputCollector = outputCollector;
@@ -166,7 +167,11 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public void output(final O output, final Instant instant, final BoundedWindow boundedWindow) {
-      outputCollector.emit(output);
+      outputCollector.emit(
+          WindowedValue.of(output,
+              boundedWindow.maxTimestamp(),
+              boundedWindow,
+              PaneInfo.ON_TIME_AND_ONLY_FIRING));
     }
 
     @Override
@@ -186,8 +191,8 @@ public final class DoTransform<I, O> implements Transform<I, O> {
    */
   private static final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext
       implements DoFnInvoker.ArgumentProvider<I, O> {
-    private I input;
-    private final OutputCollector<O> outputCollector;
+    private WindowedValue<I> input;
+    private final OutputCollector<WindowedValue<O>> outputCollector;
     private final Map<PCollectionView, Object> sideInputs;
     private final ObjectMapper mapper;
     private final PipelineOptions options;
@@ -200,7 +205,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
      * @param serializedOptions Options, serialized.
      */
     ProcessContext(final DoFn<I, O> fn,
-                   final OutputCollector<O> outputCollector,
+                   final OutputCollector<WindowedValue<O>> outputCollector,
                    final Map<PCollectionView, Object> sideInputs,
                    final String serializedOptions) {
       fn.super();
@@ -218,13 +223,13 @@ public final class DoTransform<I, O> implements Transform<I, O> {
      * Setter for input element.
      * @param in input element.
      */
-    void setElement(final I in) {
+    void setElement(final WindowedValue<I> in) {
       this.input = in;
     }
 
     @Override
     public I element() {
-      return this.input;
+      return this.input.getValue();
     }
 
     @Override
@@ -234,12 +239,12 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public Instant timestamp() {
-      throw new UnsupportedOperationException("timestamp() in ProcessContext under DoTransform");
+      return this.input.getTimestamp();
     }
 
     @Override
     public PaneInfo pane() {
-      throw new UnsupportedOperationException("pane() in ProcessContext under DoTransform");
+      return this.input.getPane();
     }
 
     @Override
@@ -254,12 +259,12 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public void output(final O output) {
-      outputCollector.emit(output);
+      outputCollector.emit(WindowedValue.of(output, input.getTimestamp(), input.getWindows(), input.getPane()));
     }
 
     @Override
     public void outputWithTimestamp(final O output, final Instant timestamp) {
-      throw new UnsupportedOperationException("outputWithTimestamp() in ProcessContext under DoTransform");
+      outputCollector.emit(WindowedValue.of(output, timestamp, input.getWindows(), input.getPane()));
     }
 
     @Override
@@ -274,12 +279,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public BoundedWindow window() {
-      return new BoundedWindow() {
-        @Override
-        public Instant maxTimestamp() {
-          return GlobalWindow.INSTANCE.maxTimestamp();
-        }
-      };
+      return Iterables.getOnlyElement(input.getWindows());
     }
 
     @Override
