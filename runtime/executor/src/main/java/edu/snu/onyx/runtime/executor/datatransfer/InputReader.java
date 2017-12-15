@@ -29,6 +29,7 @@ import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.common.exception.UnsupportedCommPatternException;
 import edu.snu.onyx.runtime.common.data.HashRange;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
+import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -136,6 +137,19 @@ public final class InputReader extends DataTransfer {
           blockManagerWorker.retrieveDataFromBlock(blockId, getId(),
               (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
               hashRangeToRead));
+    }
+
+    return futures;
+  }
+
+  public List<CompletableFuture<Iterable>> readElement() {
+    final int numSrcTasks = this.getSourceParallelism();
+
+    final List<CompletableFuture<Iterable>> futures = new ArrayList<>();
+    for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
+      final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
+      futures.add(blockManagerWorker.retrieveDataFromBlock(blockId, getId(),
+          DataStoreProperty.Value.MemoryStore, HashRange.all()));
     }
 
     return futures;

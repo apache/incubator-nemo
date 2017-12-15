@@ -23,6 +23,7 @@ import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
+import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
 import edu.snu.onyx.runtime.executor.data.Partition;
 import edu.snu.onyx.runtime.executor.data.partitioner.*;
 
@@ -107,6 +108,13 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     } else {
       throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
+  }
+
+  public void writeElement(final Object dataToWrite) {
+    List<Partition> partitionsToWrite = Collections.singletonList(new NonSerializedPartition(0, dataToWrite));
+    // Write data.
+    blockManagerWorker.putPartitions(
+        blockId, partitionsToWrite, blockStoreValue, false);
   }
 
   /**
