@@ -32,6 +32,9 @@ import java.util.stream.Stream;
  * which lets the edge to know what metric collection it should perform.
  */
 public final class DataSkewEdgeMetricCollectionPass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public DataSkewEdgeMetricCollectionPass() {
     super(ExecutionProperty.Key.MetricCollection, Stream.of(
         ExecutionProperty.Key.DataCommunicationPattern

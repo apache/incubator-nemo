@@ -28,13 +28,18 @@ import java.util.NoSuchElementException;
 public interface Source<T> extends Serializable {
   /**
    * Splits the source into bundles of desiredBundleSizeBytes, approximately.
+   * @param var1 desiredBundleSizeBytes.
+   * @return list of sources.
+   * @throws Exception exception while splitting the source.
    */
   List<? extends Source<T>> split(long var1) throws Exception;
 
   /**
-   * An estimate of the total size (in bytes) of the data that would be read from this source.
+   * Estimate the total size (in bytes) of the data that would be read from this source.
    * This estimate is in terms of external storage size, before any decompression or other
    * processing done by the reader.
+   * @return estimated total size in bytes.
+   * @throws Exception exception while estimating the total size of the data.
    */
   long getEstimatedSizeBytes() throws Exception;
 

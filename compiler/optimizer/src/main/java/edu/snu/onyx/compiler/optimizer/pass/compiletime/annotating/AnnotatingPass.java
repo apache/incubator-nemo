@@ -29,17 +29,30 @@ public abstract class AnnotatingPass implements CompileTimePass {
   private final ExecutionProperty.Key keyOfExecutionPropertyToModify;
   private final Set<ExecutionProperty.Key> prerequisiteExecutionProperties;
 
+  /**
+   * Constructor.
+   * @param keyOfExecutionPropertyToModify key of execution property to modify.
+   * @param prerequisiteExecutionProperties prerequisite execution properties.
+   */
   public AnnotatingPass(final ExecutionProperty.Key keyOfExecutionPropertyToModify,
                         final Set<ExecutionProperty.Key> prerequisiteExecutionProperties) {
     this.keyOfExecutionPropertyToModify = keyOfExecutionPropertyToModify;
     this.prerequisiteExecutionProperties = prerequisiteExecutionProperties;
   }
 
+  /**
+   * Constructor.
+   * @param keyOfExecutionPropertyToModify key of execution property to modify.
+   */
   public AnnotatingPass(final ExecutionProperty.Key keyOfExecutionPropertyToModify) {
     this.keyOfExecutionPropertyToModify = keyOfExecutionPropertyToModify;
     this.prerequisiteExecutionProperties = new HashSet<>();
   }
 
+  /**
+   * Getter for key of execution property to modify.
+   * @return key of execution property to modify.
+   */
   public final ExecutionProperty.Key getExecutionPropertyToModify() {
     return keyOfExecutionPropertyToModify;
   }

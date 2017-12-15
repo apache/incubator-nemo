@@ -37,6 +37,9 @@ import java.util.List;
  * DAG at the end of each passes for metricCollectionVertices.
  */
 public final class DataSkewReshapingPass extends ReshapingPass {
+  /**
+   * Default constructor.
+   */
   public DataSkewReshapingPass() {
     super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }

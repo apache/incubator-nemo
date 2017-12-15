@@ -30,6 +30,9 @@ import java.util.List;
  * Pado pass for tagging edges with {@link PartitionerProperty}.
  */
 public final class DataSkewEdgePartitionerPass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public DataSkewEdgePartitionerPass() {
     super(ExecutionProperty.Key.Partitioner, Collections.singleton(ExecutionProperty.Key.MetricCollection));
   }

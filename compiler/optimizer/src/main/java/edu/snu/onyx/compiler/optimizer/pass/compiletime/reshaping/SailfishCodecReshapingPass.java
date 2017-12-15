@@ -42,6 +42,9 @@ import java.util.Collections;
  */
 public final class SailfishCodecReshapingPass extends ReshapingPass {
 
+  /**
+   * Default constructor.
+   */
   public SailfishCodecReshapingPass() {
     super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }
