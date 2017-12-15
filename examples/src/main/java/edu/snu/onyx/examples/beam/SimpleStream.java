@@ -26,6 +26,9 @@ import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.PCollection;
 
+/**
+ * Simple stream.
+ */
 public final class SimpleStream {
 
   private SimpleStream() {
@@ -36,8 +39,7 @@ public final class SimpleStream {
    * @param args arguments.
    */
   public static void main(final String[] args) {
-    final String inputFilePath = args[0];
-    final String outputFilePath = args[1];
+    final String outputFilePath = args[0];
     final PipelineOptions options = PipelineOptionsFactory.create().as(OnyxPipelineOptions.class);
     options.setRunner(OnyxPipelineRunner.class);
     options.setJobName("SimpleStream");
