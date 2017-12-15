@@ -39,7 +39,7 @@ public final class StreamPolicy implements Policy {
     this.policy = new PolicyBuilder(true)
         .registerCompileTimePass(new DefaultParallelismPass())
         .registerCompileTimePass(new DefaultStagePartitioningPass())
-        .registerCompileTimePass(new ReviseInterStageEdgeDataStorePass())
+        .registerCompileTimePass(new InterStageEdgeMemoryStorePass())
         .registerCompileTimePass(new DefaultEdgeUsedDataHandlingPass())
         .registerCompileTimePass(new StreamScheduleGroupPass())
         .build();

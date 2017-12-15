@@ -58,6 +58,7 @@ public final class MemoryStore extends LocalBlockStore {
   public void subscribe(final BlockOutputStream<?> stream,
                         final String blockId,
                         final KeyRange keyRange) {
+    System.out.println(String.format("SVT: subscribe %s, %s", stream.toString(), blockId, keyRange.toString()));
     ((NonSerializedMemoryBlock) getBlockMap().get(blockId)).subscribe(stream, keyRange);
   }
 }

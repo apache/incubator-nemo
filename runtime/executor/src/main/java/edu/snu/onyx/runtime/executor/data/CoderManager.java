@@ -43,6 +43,18 @@ public final class CoderManager {
   }
 
   /**
+   * Register a coder for runtime edge.
+   *
+   * @param runtimeEdgeId id of the runtime edge.
+   * @param coder         the corresponding coder.
+   * @param isInSame      whether in same or not
+   */
+  public void registerCoder(final String runtimeEdgeId, final Coder coder, final boolean isInSame) {
+    runtimeEdgeIdToCoder.putIfAbsent(runtimeEdgeId, coder);
+    sameScheduleGroupMap.putIfAbsent(runtimeEdgeId, isInSame);
+  }
+
+  /**
    * Return the coder for the specified runtime edge.
    *
    * @param runtimeEdgeId id of the runtime edge.
