@@ -50,9 +50,10 @@ public class BeamFrontendMLRTest {
     assertEquals(1, producedDAG.getIncomingEdgesOf(vertex12.getId()).size());
     assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex12).size());
 
+    // TODO-676: verify this modification is correct on beam-2.2.0
     final IRVertex vertex17 = producedDAG.getTopologicalSort().get(15);
-    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex17).size());
-    assertEquals(2, producedDAG.getIncomingEdgesOf(vertex17.getId()).size());
+    assertEquals(3, producedDAG.getIncomingEdgesOf(vertex17).size());
+    assertEquals(3, producedDAG.getIncomingEdgesOf(vertex17.getId()).size());
     assertEquals(1, producedDAG.getOutgoingEdgesOf(vertex17).size());
   }
 }

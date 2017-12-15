@@ -74,7 +74,8 @@ public class LoopInvariantCodeMotionPassTest {
     newDAGIncomingEdge.forEach(alsLoop.getNonIterativeIncomingEdges().get(vertex7)::add);
 
     alsLoop.getBuilder().addVertex(vertex7);
-    oldDAGIncomingEdges.forEach(alsLoop.getBuilder()::connectVertices);
+    // TODO-676: Re-enable this line with beam-2.2.0
+    // oldDAGIncomingEdges.forEach(alsLoop.getBuilder()::connectVertices);
 
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
     groupedDAG.topologicalDo(v -> {

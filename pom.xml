@@ -28,7 +28,7 @@ limitations under the License.
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <beam.version>2.0.0</beam.version>
+        <beam.version>2.2.0</beam.version>
         <reef.version>0.17.0-SNAPSHOT</reef.version>
         <protobuf.version>2.5.0</protobuf.version>
         <hadoop.version>2.7.2</hadoop.version>

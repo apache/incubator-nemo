@@ -283,6 +283,11 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     }
 
     @Override
+    public PipelineOptions pipelineOptions() {
+      return options;
+    }
+
+    @Override
     public DoFn<I, O>.StartBundleContext startBundleContext(final DoFn<I, O> doFn) {
       throw new UnsupportedOperationException("StartBundleContext parameters are not supported.");
     }
