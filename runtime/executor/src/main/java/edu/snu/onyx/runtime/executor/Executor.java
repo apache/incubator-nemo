@@ -108,9 +108,9 @@ public final class Executor {
               metricMessageSender);
 
       scheduledTaskGroup.getTaskGroupIncomingEdges()
-          .forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
+          .forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder(), e.isInSameScheduleGroup()));
       scheduledTaskGroup.getTaskGroupOutgoingEdges()
-          .forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
+          .forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder(), e.isInSameScheduleGroup()));
       // TODO #432: remove these coders when we "streamize" task execution within a TaskGroup.
       final DAG<Task, RuntimeEdge<Task>> taskDag = scheduledTaskGroup.getTaskGroup().getTaskDAG();
       taskDag.getVertices().forEach(v -> {

@@ -10,8 +10,9 @@
     "capacity": 1
   },
   {
+    "num": 4,
     "type": "Compute",
     "memory_mb": 1024,
-    "capacity": 12
+    "capacity": 1
   }
 ]
