@@ -62,6 +62,7 @@ public final class BlockManagerWorker {
   // Executor service to schedule I/O Runnable which can be done in background.
   private final ExecutorService backgroundExecutorService;
   private final Map<String, AtomicInteger> blockToRemainingRead;
+  private final CoderManager coderManager;
 
   @Inject
   private BlockManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -71,7 +72,8 @@ public final class BlockManagerWorker {
                              final LocalFileStore localFileStore,
                              final RemoteFileStore remoteFileStore,
                              final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
-                             final BlockTransfer blockTransfer) {
+                             final BlockTransfer blockTransfer,
+                             final CoderManager coderManager) {
     this.executorId = executorId;
     this.memoryStore = memoryStore;
     this.serializedMemoryStore = serializedMemoryStore;
@@ -81,6 +83,7 @@ public final class BlockManagerWorker {
     this.blockTransfer = blockTransfer;
     this.backgroundExecutorService = Executors.newFixedThreadPool(numThreads);
     this.blockToRemainingRead = new ConcurrentHashMap<>();
+    this.coderManager = coderManager;
   }
 
   /**
@@ -177,8 +180,9 @@ public final class BlockManagerWorker {
       }
       // This is the executor id that we wanted to know
       final String remoteWorkerId = blockLocationInfoMsg.getOwnerExecutorId();
-      return CompletableFuture.completedFuture(blockTransfer.initiatePull(remoteWorkerId, false, blockStore, blockId,
-          runtimeEdgeId, keyRange));
+      final boolean streamMode = coderManager.isInSameScheduleGroup(runtimeEdgeId);
+      return CompletableFuture.completedFuture(blockTransfer.initiatePull(remoteWorkerId, streamMode, blockStore,
+          blockId, runtimeEdgeId, keyRange));
     });
   }
 

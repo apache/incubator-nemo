@@ -48,6 +48,8 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
    */
   private final Map<String, KeyRange> taskGroupIdToKeyRangeMap;
 
+  private final boolean isInSameScheduleGroup;
+
   /**
    * Constructor.
    * @param runtimeEdgeId id of the runtime edge.
@@ -58,6 +60,7 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
    * @param dstStage destination stage.
    * @param coder the coder for enconding and deconding.
    * @param isSideInput whether or not the edge is a sideInput edge.
+   * @param isInSameScheduleGroup whether two physical stage is in the same schedule group or not
    */
   public PhysicalStageEdge(final String runtimeEdgeId,
                            final ExecutionPropertyMap edgeProperties,
@@ -66,7 +69,8 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
                            final PhysicalStage srcStage,
                            final PhysicalStage dstStage,
                            final Coder coder,
-                           final Boolean isSideInput) {
+                           final Boolean isSideInput,
+                           final boolean isInSameScheduleGroup) {
     super(runtimeEdgeId, edgeProperties, srcStage, dstStage, coder, isSideInput);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
@@ -76,6 +80,14 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     for (int taskIdx = 0; taskIdx < taskGroups.size(); taskIdx++) {
       taskGroupIdToKeyRangeMap.put(taskGroups.get(taskIdx).getTaskGroupId(), HashRange.of(taskIdx, taskIdx + 1));
     }
+    this.isInSameScheduleGroup = isInSameScheduleGroup;
+  }
+
+  /**
+   * @return whether two physical stage is in the same schedule group or not
+   */
+  public boolean isInSameScheduleGroup() {
+    return isInSameScheduleGroup;
   }
 
   /**

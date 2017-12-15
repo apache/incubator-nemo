@@ -284,7 +284,7 @@ public final class DataTransferTest {
       final PhysicalStage srcStage = setupStages("srcStage", taskGroupPrefix);
       final PhysicalStage dstStage = setupStages("dstStage", taskGroupPrefix);
       dummyEdge = new PhysicalStageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
-          srcStage, dstStage, CODER, false);
+          srcStage, dstStage, CODER, false, false);
     } else {
       dummyEdge = new RuntimeEdge<>(edgeId, edgeProperties, srcVertex, dstVertex, CODER);
     }
