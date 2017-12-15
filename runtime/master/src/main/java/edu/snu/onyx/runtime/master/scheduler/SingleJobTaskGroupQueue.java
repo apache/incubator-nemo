@@ -57,9 +57,6 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
     schedulableStages = new LinkedBlockingDeque<>();
   }
 
-  /**
-   * @inheritDoc
-   */
   @Override
   public void enqueue(final ScheduledTaskGroup scheduledTaskGroup) {
     final String stageId = scheduledTaskGroup.getTaskGroup().getStageId();
@@ -87,7 +84,6 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
   /**
    * Dequeues the next TaskGroup to be scheduled according to job dependency priority.
    * @return the next TaskGroup to be scheduled
-   * @throws InterruptedException can be thrown while trying to take a pending stage ID.
    */
   @Override
   public Optional<ScheduledTaskGroup> dequeue() {

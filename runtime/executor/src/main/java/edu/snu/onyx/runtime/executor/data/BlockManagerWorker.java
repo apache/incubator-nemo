@@ -380,7 +380,7 @@ public final class BlockManagerWorker {
   /**
    * Respond to a pull request by another executor.
    * <p>
-   * This method is executed by {@link edu.snu.onyx.runtime.executor.data.blocktransfer.BlockTransport} thread. \
+   * This method is executed by {edu.snu.onyx.runtime.executor.data.blocktransfer.BlockTransport} thread. \
    * Never execute a blocking call in this method!
    *
    * @param outputStream {@link BlockOutputStream}
@@ -427,7 +427,7 @@ public final class BlockManagerWorker {
    * .blocktransfer.BlockTransfer#initiatePush(String, boolean, String, String, HashRange)} to transfer
    * a block to another executor.
    * <p>
-   * This method is executed by {@link edu.snu.onyx.runtime.executor.data.blocktransfer.BlockTransport}
+   * This method is executed by {edu.snu.onyx.runtime.executor.data.blocktransfer.BlockTransport}
    * thread. Never execute a blocking call in this method!
    *
    * @param inputStream {@link BlockInputStream}

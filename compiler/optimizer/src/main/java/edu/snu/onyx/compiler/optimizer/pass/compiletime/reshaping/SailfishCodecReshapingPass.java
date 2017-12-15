@@ -32,7 +32,7 @@ import java.util.Collections;
 /**
  * Pass to modify the DAG for a job to batch the disk seek.
  * It adds two {@link OperatorVertex}s with {@link SailfishEncodingTransform}
- * and {@link SailfishDecodingTransform} before & after the shuffle edges,
+ * and {@link SailfishDecodingTransform} before and after the shuffle edges,
  * to enable the relaying vertex to receive and send data in arrays of bytes.
  *
  * If the DAG before this pass like below:
