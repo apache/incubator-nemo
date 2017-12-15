@@ -16,8 +16,10 @@
 package edu.snu.onyx.runtime.executor.data.stores;
 
 import edu.snu.onyx.common.coder.Coder;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.CoderManager;
 import edu.snu.onyx.runtime.executor.data.block.NonSerializedMemoryBlock;
+import edu.snu.onyx.runtime.executor.data.blocktransfer.BlockOutputStream;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -45,5 +47,17 @@ public final class MemoryStore extends LocalBlockStore {
   @Override
   public Boolean removeBlock(final String blockId) {
     return getBlockMap().remove(blockId) != null;
+  }
+
+  /**
+   * Register a {@link BlockOutputStream} to specific partition request.
+   * @param stream    the {@link BlockOutputStream} to write on
+   * @param blockId   block id
+   * @param keyRange  key range
+   */
+  public void subscribe(final BlockOutputStream<?> stream,
+                        final String blockId,
+                        final KeyRange keyRange) {
+    ((NonSerializedMemoryBlock) getBlockMap().get(blockId)).subscribe(stream, keyRange);
   }
 }

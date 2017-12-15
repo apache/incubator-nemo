@@ -20,13 +20,13 @@ import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.DataUtil;
 import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
 import edu.snu.onyx.runtime.executor.data.SerializedPartition;
+import edu.snu.onyx.runtime.executor.data.blocktransfer.BlockOutputStream;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class represents a block which is stored in local memory and not serialized.
@@ -38,6 +38,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
   private final List<NonSerializedPartition<K>> nonSerializedPartitions;
   private final Coder coder;
   private volatile boolean committed;
+  private final Map<BlockOutputStream<?>, KeyRange> subscriptions = new ConcurrentHashMap<>();
 
   public NonSerializedMemoryBlock(final Coder coder) {
     this.nonSerializedPartitions = new ArrayList<>();
@@ -57,6 +58,15 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
       throws IOException {
     if (!committed) {
       partitions.forEach(nonSerializedPartitions::add);
+      for (final Map.Entry<BlockOutputStream<?>, KeyRange> entry : subscriptions.entrySet()) {
+        final BlockOutputStream<?> stream = entry.getKey();
+        final KeyRange keyRange = entry.getValue();
+        for (final NonSerializedPartition<K> partition : partitions) {
+          if (keyRange.includes(partition.getKey())) {
+            stream.writeElements(partition.getData());
+          }
+        }
+      }
     } else {
       throw new IOException("Cannot append partition to the committed block");
     }
@@ -82,6 +92,16 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
       final List<Long> dataSizePerPartition = new ArrayList<>();
       partitions.forEach(serializedPartition -> dataSizePerPartition.add((long) serializedPartition.getData().length));
       putPartitions(convertedPartitions);
+
+      for (final Map.Entry<BlockOutputStream<?>, KeyRange> entry : subscriptions.entrySet()) {
+        final BlockOutputStream<?> stream = entry.getKey();
+        final KeyRange keyRange = entry.getValue();
+        for (final SerializedPartition<K> partition : partitions) {
+          if (keyRange.includes(partition.getKey())) {
+            stream.writeSerializedPartitions(Collections.singletonList(partition));
+          }
+        }
+      }
 
       return dataSizePerPartition;
     } else {
@@ -135,5 +155,21 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
   @Override
   public synchronized void commit() {
     committed = true;
+    try {
+      for (final BlockOutputStream<?> stream : subscriptions.keySet()) {
+        stream.close();
+      }
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Register a {@link BlockOutputStream} to specific partition request.
+   * @param stream    the {@link BlockOutputStream} to write on
+   * @param keyRange  key range
+   */
+  public synchronized void subscribe(final BlockOutputStream<?> stream, final KeyRange keyRange) {
+    subscriptions.put(stream, keyRange);
   }
 }
