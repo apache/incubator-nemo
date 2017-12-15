@@ -399,11 +399,13 @@ public final class BlockManagerWorker {
             final FileStore fileStore = (FileStore) getBlockStore(blockStore);
             outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getBlockId(),
                 outputStream.getKeyRange())).close();
+            handleUsedData(blockStore, outputStream.getBlockId());
           } else if (DataStoreProperty.Value.SerializedMemoryStore.equals(blockStore)) {
             final SerializedMemoryStore serMemoryStore = (SerializedMemoryStore) getBlockStore(blockStore);
             final Optional<Iterable<SerializedPartition>> optionalResult = serMemoryStore.getSerializedPartitions(
                 outputStream.getBlockId(), outputStream.getKeyRange());
             outputStream.writeSerializedPartitions(optionalResult.get()).close();
+            handleUsedData(blockStore, outputStream.getBlockId());
           } else {
             final Iterable block =
                 retrieveDataFromBlock(outputStream.getBlockId(), outputStream.getRuntimeEdgeId(),
