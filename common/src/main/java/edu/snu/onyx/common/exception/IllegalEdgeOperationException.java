@@ -18,7 +18,7 @@ package edu.snu.onyx.common.exception;
 
 /**
  * IllegalEdgeOperationException.
- * Thrown when an operation is conducted with a {@link edu.snu.onyx.runtime.common.plan.stage.StageEdge}
+ * Thrown when an operation is conducted with a {edu.snu.onyx.runtime.common.plan.stage.StageEdge}
  * that is unknown/invalid/out of scope.
  */
 public final class IllegalEdgeOperationException extends RuntimeException {

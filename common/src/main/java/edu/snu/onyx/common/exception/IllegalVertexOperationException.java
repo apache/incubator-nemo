@@ -17,7 +17,7 @@ package edu.snu.onyx.common.exception;
 
 /**
  * IllegalVertexOperationException.
- * Thrown when an operation is conducted with a {@link edu.snu.onyx.common.ir.IRVertex}
+ * Thrown when an operation is conducted with a {edu.snu.onyx.common.ir.IRVertex}
  * that is unknown/invalid/out of scope.
  */
 public final class IllegalVertexOperationException extends RuntimeException {
