@@ -54,3 +54,4 @@ ml-data
 tang.conf
 *.sw[op]
 -profile-*.json
+*.sh
