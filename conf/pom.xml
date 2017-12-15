@@ -28,10 +28,6 @@ limitations under the License.
     <artifactId>onyx-conf</artifactId>
     <name>Onyx Job Configuration</name>
 
-    <properties>
-        <netty.version>4.1.16.Final</netty.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.apache.reef</groupId>
