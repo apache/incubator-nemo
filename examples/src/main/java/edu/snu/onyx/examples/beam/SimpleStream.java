@@ -33,14 +33,12 @@ import org.joda.time.Duration;
  * Simple stream.
  */
 public final class SimpleStream {
-
+  /**
+   * Main function for the BEAM Stream program.
+   */
   private SimpleStream() {
   }
 
-  /**
-   * Main function for the Stream BEAM program.
-   * @param args arguments.
-   */
   public static void main(final String[] args) {
     final String outputFilePath = args[0];
     final PipelineOptions options = PipelineOptionsFactory.create().as(OnyxPipelineOptions.class);

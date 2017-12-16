@@ -18,10 +18,10 @@ package edu.snu.onyx.runtime.common.plan.physical;
 import edu.snu.onyx.common.ir.Reader;
 
 /**
- * BoundedSourceTask.
+ * SourceTask.
  * @param <O> the output type.
  */
-public final class BoundedSourceTask<O> extends Task {
+public final class SourceTask<O> extends Task {
   private final Reader<O> reader;
 
   /**
@@ -32,11 +32,11 @@ public final class BoundedSourceTask<O> extends Task {
    * @param reader reader for the source data.
    * @param taskGroupId id of the taskGroup.
    */
-  public BoundedSourceTask(final String taskId,
-                           final String runtimeVertexId,
-                           final int index,
-                           final Reader<O> reader,
-                           final String taskGroupId) {
+  public SourceTask(final String taskId,
+                    final String runtimeVertexId,
+                    final int index,
+                    final Reader<O> reader,
+                    final String taskGroupId) {
     super(taskId, runtimeVertexId, index, taskGroupId);
     this.reader = reader;
   }

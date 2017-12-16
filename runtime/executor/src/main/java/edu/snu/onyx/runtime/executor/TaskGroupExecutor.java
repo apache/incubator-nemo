@@ -162,8 +162,8 @@ public final class TaskGroupExecutor {
     taskGroup.getTaskDAG().topologicalDo(task -> {
       taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.EXECUTING, Optional.empty());
       try {
-        if (task instanceof BoundedSourceTask) {
-          launchBoundedSourceTask((BoundedSourceTask) task);
+        if (task instanceof SourceTask) {
+          launchBoundedSourceTask((SourceTask) task);
           taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.COMPLETE, Optional.empty());
           LOG.info("{} Execution Complete!", taskGroup.getTaskGroupId());
         } else if (task instanceof OperatorTask) {
@@ -195,15 +195,15 @@ public final class TaskGroupExecutor {
   }
 
   /**
-   * Processes a BoundedSourceTask.
-   * @param boundedSourceTask to execute
+   * Processes a SourceTask.
+   * @param sourceTask to execute
    * @throws Exception occurred during input read.
    */
-  private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask) throws Exception {
-    final Reader reader = boundedSourceTask.getReader();
+  private void launchBoundedSourceTask(final SourceTask sourceTask) throws Exception {
+    final Reader reader = sourceTask.getReader();
     final Iterable readData = reader.read();
 
-    taskIdToOutputWriterMap.get(boundedSourceTask.getId()).forEach(outputWriter -> {
+    taskIdToOutputWriterMap.get(sourceTask.getId()).forEach(outputWriter -> {
       outputWriter.write(readData);
       outputWriter.close();
     });
