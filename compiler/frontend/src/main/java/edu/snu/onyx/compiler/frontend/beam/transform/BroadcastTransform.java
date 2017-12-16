@@ -44,9 +44,9 @@ public final class BroadcastTransform<I, O> implements Transform<WindowedValue<I
   }
 
   @Override
-  public void onData(final Iterable<WindowedValue<I>> elements, final String srcVertexId) {
-    final ViewFn<Iterable<WindowedValue<I>>, WindowedValue<O>> viewFn = this.pCollectionView.getViewFn();
-    outputCollector.emit(viewFn.apply(elements));
+  public void onData(final WindowedValue<I> element) {
+    final ViewFn<WindowedValue<I>, WindowedValue<O>> viewFn = this.pCollectionView.getViewFn();
+    outputCollector.emit(viewFn.apply(element));
   }
 
   /**

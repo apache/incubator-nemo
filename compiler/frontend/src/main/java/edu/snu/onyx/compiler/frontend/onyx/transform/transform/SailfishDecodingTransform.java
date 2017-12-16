@@ -45,14 +45,12 @@ public final class SailfishDecodingTransform<T> implements Transform<byte[], T> 
   }
 
   @Override
-  public void onData(final Iterable<byte[]> elements, final String srcVertexId) {
-    elements.forEach(element -> {
-      try (final ByteArrayInputStream inputStream = new ByteArrayInputStream(element)) {
-        outputCollector.emit(coder.decode(inputStream));
-      } catch (final IOException e) {
-        throw new RuntimeException(e);
-      }
-    });
+  public void onData(final byte[] element) {
+    try (final ByteArrayInputStream inputStream = new ByteArrayInputStream(element)) {
+      outputCollector.emit(coder.decode(inputStream));
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

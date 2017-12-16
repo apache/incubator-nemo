@@ -72,17 +72,18 @@ public final class DoTransform<I, O> implements Transform<WindowedValue<I>, Wind
   }
 
   @Override
-  public void onData(final Iterable<WindowedValue<I>> elements, final String srcVertexId) {
+  public void onData(final WindowedValue<I> element) {
     final StartBundleContext startBundleContext = new StartBundleContext(doFn, serializedOptions);
     final FinishBundleContext finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
     final ProcessContext processContext = new ProcessContext(doFn, outputCollector, sideInputs, serializedOptions);
     final DoFnInvoker invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
-    elements.forEach(element -> { // No need to check for input index, since it is always 0 for DoTransform
-      processContext.setElement(element);
-      invoker.invokeProcessElement(processContext);
-    });
+
+    // No need to check for input index, since it is always 0 for DoTransform
+    processContext.setElement(element);
+    invoker.invokeProcessElement(processContext);
+
     invoker.invokeFinishBundle(finishBundleContext);
     invoker.invokeTeardown();
   }

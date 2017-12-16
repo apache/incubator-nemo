@@ -49,38 +49,36 @@ public final class WindowTransform<T> implements Transform<WindowedValue<T>, Win
   }
 
   @Override
-  public void onData(final Iterable<WindowedValue<T>> elements, final String srcVertexId) {
+  public void onData(final WindowedValue<T> element) {
     // TODO #36: Actually assign windows
-    elements.forEach(element -> {
-        try {
-          final Collection<BoundedWindow> windows = windowFn.assignWindows(windowFn.new AssignContext() {
-            @Override
-            public T element() {
-              return element.getValue();
-            }
-
-            @Override
-            public Instant timestamp() {
-              return element.getTimestamp();
-            }
-
-            @Override
-            public BoundedWindow window() {
-              return Iterables.getOnlyElement(element.getWindows());
-            }
-          });
-
-          for (BoundedWindow window : windows) {
-            outputCollector.emit(WindowedValue.of(
-                element.getValue(),
-                element.getTimestamp(),
-                window,
-                element.getPane()));
-          }
-        } catch (Exception e) {
-          throw new RuntimeException();
+    try {
+      final Collection<BoundedWindow> windows = windowFn.assignWindows(windowFn.new AssignContext() {
+        @Override
+        public T element() {
+          return element.getValue();
         }
-    });
+
+        @Override
+        public Instant timestamp() {
+          return element.getTimestamp();
+        }
+
+        @Override
+        public BoundedWindow window() {
+          return Iterables.getOnlyElement(element.getWindows());
+        }
+      });
+
+      for (BoundedWindow window : windows) {
+        outputCollector.emit(WindowedValue.of(
+            element.getValue(),
+            element.getTimestamp(),
+            window,
+            element.getPane()));
+      }
+    } catch (Exception e) {
+      throw new RuntimeException();
+    }
   }
 
   @Override

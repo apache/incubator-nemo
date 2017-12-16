@@ -40,8 +40,8 @@ public final class RelayTransform<T> implements Transform<WindowedValue<T>, Wind
   }
 
   @Override
-  public void onData(final Iterable<WindowedValue<T>> elements, final String srcVertexId) {
-    elements.forEach(element -> outputCollector.emit(element));
+  public void onData(final WindowedValue<T> element) {
+    outputCollector.emit(element);
   }
 
   @Override

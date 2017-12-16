@@ -39,11 +39,6 @@ public final class DataTransferFactory {
         srcTask.getRuntimeVertexId(), dstRuntimeVertex, runtimeEdge, blockManagerWorker);
   }
 
-  public OutputWriter createLocalWriter(final Task srcTask,
-                                        final RuntimeEdge<?> runtimeEdge) {
-    return createWriter(srcTask, null, runtimeEdge);
-  }
-
   /**
    * Creates an {@link InputReader} between two stages.
    *
@@ -57,17 +52,5 @@ public final class DataTransferFactory {
                                   final RuntimeEdge runtimeEdge) {
     return new InputReader(
         dstTask.getIndex(), dstTask.getTaskGroupId(), srcRuntimeVertex, runtimeEdge, blockManagerWorker);
-  }
-
-  /**
-   * Creates a local {@link InputReader} between two task in a single task group.
-   *
-   * @param dstTask          the {@link Task} that takes the input data.
-   * @param runtimeEdge      that connects the tasks belonging to srcRuntimeVertex to dstTask.
-   * @return the {@link InputReader} created.
-   */
-  public InputReader createLocalReader(final Task dstTask,
-                                       final RuntimeEdge runtimeEdge) {
-    return createReader(dstTask, null, runtimeEdge);
   }
 }

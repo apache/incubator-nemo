@@ -42,8 +42,8 @@ public final class FlattenTransform<T> implements Transform<WindowedValue<T>, Wi
   }
 
   @Override
-  public void onData(final Iterable<WindowedValue<T>> elements, final String srcVertexId) {
-    elements.forEach(collectedElements::add);
+  public void onData(final WindowedValue<T> element) {
+    collectedElements.add(element);
   }
 
   @Override

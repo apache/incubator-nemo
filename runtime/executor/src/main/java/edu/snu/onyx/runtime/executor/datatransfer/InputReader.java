@@ -141,6 +141,19 @@ public final class InputReader extends DataTransfer {
     return futures;
   }
 
+  public List<CompletableFuture<Iterable>> readElement() {
+    final int numSrcTasks = this.getSourceParallelism();
+
+    final List<CompletableFuture<Iterable>> futures = new ArrayList<>();
+    for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
+      final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
+      futures.add(blockManagerWorker.retrieveDataFromBlock(blockId, getId(),
+          DataStoreProperty.Value.MemoryStore, HashRange.all()));
+    }
+
+    return futures;
+  }
+
   public RuntimeEdge getRuntimeEdge() {
     return runtimeEdge;
   }

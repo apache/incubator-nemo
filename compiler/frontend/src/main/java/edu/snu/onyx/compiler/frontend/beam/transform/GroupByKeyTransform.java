@@ -45,15 +45,13 @@ public final class GroupByKeyTransform<I> implements Transform<WindowedValue<I>,
   }
 
   @Override
-  public void onData(final Iterable<WindowedValue<I>> elements, final String srcVertexId) {
-    elements.forEach(element -> {
-      final BoundedWindow window = element.getWindows().iterator().next();
-      kwToDataMap.putIfAbsent(window, new HashMap<>());
-      final KV kv = (KV) ((WindowedValue) element).getValue();
-      final Map<Object, List> keyToValues = kwToDataMap.get(window);
-      keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
-      keyToValues.get(kv.getKey()).add(kv.getValue());
-    });
+  public void onData(final WindowedValue<I> element) {
+    final BoundedWindow window = element.getWindows().iterator().next();
+    kwToDataMap.putIfAbsent(window, new HashMap<>());
+    final KV kv = (KV) ((WindowedValue) element).getValue();
+    final Map<Object, List> keyToValues = kwToDataMap.get(window);
+    keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
+    keyToValues.get(kv.getKey()).add(kv.getValue());
   }
 
   @Override

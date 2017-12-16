@@ -80,6 +80,7 @@ public final class TaskGroupExecutorTest {
     expectedTaskStateList.add(TaskState.State.EXECUTING);
     expectedTaskStateList.add(TaskState.State.COMPLETE);
 
+    /*
     // Mock a TaskGroupStateManager. It accumulates the state change into a list.
     taskGroupStateManager = mock(TaskGroupStateManager.class);
     doAnswer(new Answer() {
@@ -93,13 +94,11 @@ public final class TaskGroupExecutorTest {
         return null;
       }
     }).when(taskGroupStateManager).onTaskStateChanged(any(), any(), any());
-
+  */
     // Mock a DataTransferFactory.
     taskIdToOutputData = new HashMap<>();
     dataTransferFactory = mock(DataTransferFactory.class);
-    when(dataTransferFactory.createLocalReader(any(), any())).then(new IntraStageReaderAnswer());
     when(dataTransferFactory.createReader(any(), any(), any())).then(new InterStageReaderAnswer());
-    when(dataTransferFactory.createLocalWriter(any(), any())).then(new WriterAnswer());
     when(dataTransferFactory.createWriter(any(), any(), any())).then(new WriterAnswer());
   }
 
@@ -296,8 +295,8 @@ public final class TaskGroupExecutorTest {
     }
 
     @Override
-    public void onData(final Iterable<WindowedValue<T>> elements, final String srcVertexId) {
-      elements.forEach(outputCollector::emit);
+    public void onData(final WindowedValue<T> element) {
+      outputCollector.emit(element);
     }
 
     @Override

@@ -23,6 +23,7 @@ import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
+import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
 import edu.snu.onyx.runtime.executor.data.Partition;
 import edu.snu.onyx.runtime.executor.data.partitioner.*;
 
@@ -139,6 +140,14 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
       throw new BlockWriteException(
           new Throwable("The number of given blocks are not matched with the destination parallelism."));
     }
+
+    // Write data.
+    blockManagerWorker.putPartitions(
+        blockId, partitionsToWrite, blockStoreValue, false);
+  }
+
+  public void writeElement(final Iterable dataToWrite) {
+    List<Partition> partitionsToWrite = Collections.singletonList(new NonSerializedPartition(0, dataToWrite));
 
     // Write data.
     blockManagerWorker.putPartitions(

@@ -17,7 +17,6 @@ package edu.snu.onyx.runtime.executor;
 
 import edu.snu.onyx.common.exception.UnknownExecutionStateException;
 import edu.snu.onyx.common.exception.UnknownFailureCauseException;
-import edu.snu.onyx.common.StateMachine;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
@@ -105,86 +104,41 @@ public final class TaskGroupStateManager {
     switch (newState) {
     case EXECUTING:
       LOG.debug("Executing TaskGroup ID {}...", this.taskGroupId);
+      /*
       metric.put("ExecutorId", executorId);
       metric.put("ScheduleAttempt", attemptIdx);
       metric.put("FromState", newState);
       beginMeasurement(taskGroupId, metric);
+      */
       idToTaskStates.forEach((taskId, state) -> state.getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR));
       break;
     case COMPLETE:
       LOG.debug("TaskGroup ID {} complete!", this.taskGroupId);
+      /*
       metric.put("ToState", newState);
       endMeasurement(taskGroupId, metric);
+      */
       notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case FAILED_RECOVERABLE:
       LOG.debug("TaskGroup ID {} failed (recoverable).", this.taskGroupId);
+      /*
       metric.put("ToState", newState);
       endMeasurement(taskGroupId, metric);
+      */
       notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case FAILED_UNRECOVERABLE:
       LOG.debug("TaskGroup ID {} failed (unrecoverable).", this.taskGroupId);
+      /*
       metric.put("ToState", newState);
       endMeasurement(taskGroupId, metric);
+      */
       notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case ON_HOLD:
       LOG.debug("TaskGroup ID {} put on hold.", this.taskGroupId);
       notifyTaskGroupStateToMaster(newState, tasksPutOnHold, cause);
-      break;
-    default:
-      throw new IllegalStateException("Illegal state at this point");
-    }
-  }
-
-  /**
-   * Updates the state of a task.
-   * Task state changes only occur in executor.
-   * @param taskId of the task.
-   * @param newState of the task.
-   * @param cause only provided as non-empty upon recoverable failures.
-   */
-  public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newState,
-                                              final Optional<TaskGroupState.RecoverableFailureCause> cause) {
-    final StateMachine taskStateChanged = idToTaskStates.get(taskId).getStateMachine();
-    LOG.debug("Task State Transition: id {} from {} to {}",
-        new Object[]{taskGroupId, taskStateChanged.getCurrentState(), newState});
-    taskStateChanged.setState(newState);
-
-    final Map<String, Object> metric = new HashMap<>();
-
-    switch (newState) {
-    case READY:
-    case EXECUTING:
-      metric.put("ExecutorId", executorId);
-      metric.put("ScheduleAttempt", attemptIdx);
-      metric.put("FromState", newState);
-      beginMeasurement(taskId, metric);
-      break;
-    case COMPLETE:
-      currentTaskGroupTaskIds.remove(taskId);
-      if (currentTaskGroupTaskIds.isEmpty()) {
-        onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), cause);
-      }
-      metric.put("ToState", newState);
-      endMeasurement(taskId, metric);
-      break;
-    case FAILED_RECOVERABLE:
-      onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE, Optional.empty(), cause);
-      metric.put("ToState", newState);
-      endMeasurement(taskId, metric);
-      break;
-    case FAILED_UNRECOVERABLE:
-      onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE, Optional.empty(), cause);
-      metric.put("ToState", newState);
-      endMeasurement(taskId, metric);
-      break;
-    case ON_HOLD:
-      currentTaskGroupTaskIds.remove(taskId);
-      if (currentTaskGroupTaskIds.isEmpty()) {
-        onTaskGroupStateChanged(TaskGroupState.State.ON_HOLD, Optional.of(Arrays.asList(taskId)), cause);
-      }
       break;
     default:
       throw new IllegalStateException("Illegal state at this point");
