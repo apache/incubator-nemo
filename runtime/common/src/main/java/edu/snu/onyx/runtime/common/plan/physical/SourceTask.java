@@ -16,13 +16,15 @@
 package edu.snu.onyx.runtime.common.plan.physical;
 
 import edu.snu.onyx.common.ir.Reader;
+import org.apache.beam.sdk.io.BoundedSource;
 
 /**
- * BoundedSourceTask.
+ * SourceTask.
  * @param <O> the output type.
  */
-public final class BoundedSourceTask<O> extends Task {
+public final class SourceTask<O> extends Task {
   private final Reader<O> reader;
+  private final boolean isBoundedSource;
 
   /**
    * Constructor.
@@ -32,13 +34,21 @@ public final class BoundedSourceTask<O> extends Task {
    * @param reader reader for the source data.
    * @param taskGroupId id of the taskGroup.
    */
-  public BoundedSourceTask(final String taskId,
-                           final String runtimeVertexId,
-                           final int index,
-                           final Reader<O> reader,
-                           final String taskGroupId) {
+  public SourceTask(final String taskId,
+                    final String runtimeVertexId,
+                    final int index,
+                    final Reader<O> reader,
+                    final String taskGroupId) {
     super(taskId, runtimeVertexId, index, taskGroupId);
     this.reader = reader;
+    this.isBoundedSource = (reader instanceof BoundedSource.Reader);
+  }
+
+  /**
+   * @return the boolean value which tells source reader is Bounded or not.
+   */
+  public boolean isBoundedSource() {
+    return this.isBoundedSource;
   }
 
   /**

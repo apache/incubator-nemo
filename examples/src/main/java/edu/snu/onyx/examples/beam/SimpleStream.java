@@ -16,47 +16,90 @@
 package edu.snu.onyx.examples.beam;
 
 import edu.snu.onyx.client.beam.OnyxPipelineOptions;
+import edu.snu.onyx.client.beam.OnyxPipelineResult;
 import edu.snu.onyx.client.beam.OnyxPipelineRunner;
-import edu.snu.onyx.examples.beam.common.WriteOneFilePerWindow;
-import org.apache.beam.runners.apex.examples.UnboundedTextSource;
+import edu.snu.onyx.examples.beam.common.UnboundedTextSource;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.Read;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.SimpleFunction;
+import org.apache.beam.sdk.transforms.Count;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
+
+import java.io.IOException;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Simple stream.
  */
 public final class SimpleStream {
-
+  /**
+   * Main function for the BEAM Stream program.
+   */
   private SimpleStream() {
   }
 
   /**
-   * Main function for the Stream BEAM program.
-   * @param args arguments.
+   * Extract space separated words.
    */
-  public static void main(final String[] args) {
-    final String outputFilePath = args[0];
+  static class ExtractWordsFn extends DoFn<String, String> {
+    @ProcessElement
+    public void processElement(final ProcessContext c) {
+      String[] words = c.element().split("[^a-zA-Z']+");
+
+      for (String word : words) {
+        if (!word.isEmpty()) {
+          c.output(word);
+        }
+      }
+    }
+  }
+
+  /**
+   * Collects streaming pipeline results to memory.
+   */
+  static class CollectResultsFn extends DoFn<KV<String, Long>, String> {
+    static final ConcurrentHashMap<String, Long> RESULTS = new ConcurrentHashMap<>();
+
+    @ProcessElement
+    public void processElement(final ProcessContext c) {
+      RESULTS.put(c.element().getKey(), c.element().getValue());
+    }
+  }
+
+  public static void main(final String[] args) throws IOException {
     final PipelineOptions options = PipelineOptionsFactory.create().as(OnyxPipelineOptions.class);
     options.setRunner(OnyxPipelineRunner.class);
     options.setJobName("SimpleStream");
 
     final Pipeline p = Pipeline.create(options);
-    p.apply(Read.from(new UnboundedTextSource()))
-        .apply(MapElements.<String, String>via(new SimpleFunction<String, String>() {
-          @Override
-          public String apply(final String line) {
-            return line;
-          }
-        }))
-        .apply(Window.<String>into(FixedWindows.of(Duration.standardSeconds(5))))
-        .apply(new WriteOneFilePerWindow(outputFilePath,  1));
-    p.run();
+
+    PCollection<KV<String, Long>> wordCounts =
+        p.apply(Read.from(new UnboundedTextSource()))
+        .apply(ParDo.of(new ExtractWordsFn()))
+        .apply(Window.<String>into(FixedWindows.of(Duration.standardSeconds(10))))
+        .apply(Count.<String>perElement());
+
+    wordCounts.apply(ParDo.of(new CollectResultsFn()));
+
+    final OnyxPipelineResult result = (OnyxPipelineResult) p.run();
+
+    long timeout = System.currentTimeMillis() + 30000;
+    while (System.currentTimeMillis() < timeout) {
+      if (CollectResultsFn.RESULTS.containsKey("foo")
+          && CollectResultsFn.RESULTS.containsKey("bar")) {
+        break;
+      }
+      result.waitUntilFinish(Duration.millis(1000));
+    }
+    result.cancel();
+    System.out.println("#####" + CollectResultsFn.RESULTS.toString());
+    CollectResultsFn.RESULTS.clear();
   }
 }

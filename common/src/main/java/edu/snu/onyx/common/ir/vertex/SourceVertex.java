@@ -16,6 +16,7 @@
 package edu.snu.onyx.common.ir.vertex;
 
 import edu.snu.onyx.common.ir.Reader;
+import org.apache.beam.sdk.io.Source;
 
 import java.util.List;
 
@@ -25,6 +26,8 @@ import java.util.List;
  * @param <O> output type.
  */
 public abstract class SourceVertex<O> extends IRVertex {
+  private Source<O> source;
+
   /**
    * Get parallel readers.
    * @param desiredNumOfSplits number of splits desired.
@@ -32,4 +35,18 @@ public abstract class SourceVertex<O> extends IRVertex {
    * @throws Exception .
    */
   public abstract List<Reader<O>> getReaders(int desiredNumOfSplits) throws Exception;
+
+  /**
+   * Get source properties.
+   * @return JSON String of source.
+   */
+  public final String propertiesToJSON() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("{");
+    sb.append(irVertexPropertiesToString());
+    sb.append(", \"source\": \"");
+    sb.append(source);
+    sb.append("\"}");
+    return sb.toString();
+  }
 }

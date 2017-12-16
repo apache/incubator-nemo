@@ -103,7 +103,7 @@ public final class TaskGroupExecutorTest {
   }
 
   /**
-   * Test the {@link BoundedSourceTask} processing in {@link TaskGroupExecutor}.
+   * Test the {@link SourceTask} processing in {@link TaskGroupExecutor}.
    */
   @Test(timeout=2000)
   public void testSourceTask() throws Exception {
@@ -121,11 +121,11 @@ public final class TaskGroupExecutorTest {
         return elements;
       }
     };
-    final BoundedSourceTask<Integer> boundedSourceTask =
-        new BoundedSourceTask<>(sourceTaskId, sourceIrVertexId, 0, sourceReader, taskGroupId);
+    final SourceTask<Integer> sourceTask =
+        new SourceTask<>(sourceTaskId, sourceIrVertexId, 0, sourceReader, taskGroupId);
 
     final DAG<Task, RuntimeEdge<Task>> taskDag =
-        new DAGBuilder<Task, RuntimeEdge<Task>>().addVertex(boundedSourceTask).build();
+        new DAGBuilder<Task, RuntimeEdge<Task>>().addVertex(sourceTask).build();
     final TaskGroup sourceTaskGroup = new TaskGroup(taskGroupId, stageId, 0, taskDag, CONTAINER_TYPE);
     final PhysicalStageEdge stageOutEdge = mock(PhysicalStageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(sourceIRVertex);

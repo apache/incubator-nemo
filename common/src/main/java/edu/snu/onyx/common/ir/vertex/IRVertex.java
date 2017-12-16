@@ -35,7 +35,7 @@ public abstract class IRVertex extends Vertex {
   }
 
   /**
-   * @return a clone elemnt of the IRVertex.
+   * @return a clone element of the IRVertex.
    */
   public abstract IRVertex getClone();
 

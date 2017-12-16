@@ -59,17 +59,6 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
     return readers;
   }
 
-  @Override
-  public String propertiesToJSON() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("{");
-    sb.append(irVertexPropertiesToString());
-    sb.append(", \"source\": \"");
-    sb.append(source);
-    sb.append("\"}");
-    return sb.toString();
-  }
-
   /**
    * BoundedSourceReader class.
    * @param <T> type.

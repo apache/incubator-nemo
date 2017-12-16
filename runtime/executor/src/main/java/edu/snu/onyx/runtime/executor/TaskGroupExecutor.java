@@ -215,8 +215,8 @@ public final class TaskGroupExecutor {
     while (!isTaskGroupComplete()) {
       taskGroup.getTaskDAG().topologicalDo(task -> {
         try {
-          if (task instanceof BoundedSourceTask) {
-            launchBoundedSourceTask((BoundedSourceTask) task);
+          if (task instanceof SourceTask) {
+            launchBoundedSourceTask((SourceTask) task);
           } else if (task instanceof OperatorTask) {
             launchOperatorTask((OperatorTask) task);
           } else if (task instanceof MetricCollectionBarrierTask) {
@@ -251,14 +251,15 @@ public final class TaskGroupExecutor {
   }
 
   /**
-   * Processes a BoundedSourceTask.
-   * @param boundedSourceTask to execute
+   * Processes a SourceTask.
+   * @param sourceTask to execute
    * @throws Exception occurred during input read.
    */
-  private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask) throws Exception {
-    final Reader reader = boundedSourceTask.getReader();
+  private void launchBoundedSourceTask(final SourceTask sourceTask) throws Exception {
+    final Reader reader = sourceTask.getReader();
     final Iterable readData = reader.read();
 
+<<<<<<< HEAD
     LOG.info("log: Read {}", readData);
 
     // For inter-stage data, we need to write them to OutputWriters.
@@ -283,6 +284,12 @@ public final class TaskGroupExecutor {
         throw new RuntimeException();
       }
     }
+=======
+    taskIdToOutputWriterMap.get(sourceTask.getId()).forEach(outputWriter -> {
+      outputWriter.write(readData);
+      outputWriter.close();
+    });
+>>>>>>> cda0a745cf7fa11593e81e063efc3523cf2a20ed
   }
 
   /**
