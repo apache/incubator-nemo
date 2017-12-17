@@ -244,18 +244,16 @@ public final class TaskGroupExecutor {
     while (!isTaskGroupComplete()) {
       taskGroup.getTaskDAG().topologicalDo(task -> {
         try {
-          if (task instanceof SourceTask) {
-            if (pendingTaskList.contains(task.getId())) {
+          if (pendingTaskList.contains(task.getId())) {
+            if (task instanceof SourceTask) {
               launchBoundedSourceTask((SourceTask) task);
-            }
-          } else if (task instanceof OperatorTask) {
-            if (pendingTaskList.contains(task.getId())) {
+            } else if (task instanceof OperatorTask) {
               launchOperatorTask((OperatorTask) task);
+            } else if (task instanceof MetricCollectionBarrierTask) {
+              launchMetricCollectionBarrierTask((MetricCollectionBarrierTask) task);
+            } else {
+              throw new UnsupportedOperationException(task.toString());
             }
-          } else if (task instanceof MetricCollectionBarrierTask) {
-            launchMetricCollectionBarrierTask((MetricCollectionBarrierTask) task);
-          } else {
-            throw new UnsupportedOperationException(task.toString());
           }
         } catch (final BlockFetchException ex) {
           taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
@@ -309,7 +307,6 @@ public final class TaskGroupExecutor {
 
     LOG.info("log: Read {}", readData);
     System.out.println(String.format("log: BoundedSourceTask Started! Read %s", readData));
-
 
     // For inter-stage data, we need to write them to OutputWriters.
     if (hasOutputWriter(sourceTask)) {
@@ -396,35 +393,29 @@ public final class TaskGroupExecutor {
       // Inter-stage data is assumed to be sent element-wise.
       taskIdToInputReaderMap.get(operatorTask.getId()).stream().filter(inputReader -> !inputReader.isSideInputReader())
           .forEach(inputReader -> {
-            // For inter-stage data, read them as element.
             List<CompletableFuture<Iterable>> futures = inputReader.readElement();
-
-            // Add consumers which will push the data to the data queue when it ready to the futures.
-            futures.forEach(compFuture -> compFuture.whenComplete((iterable, exception) -> {
-              System.out.println(String.format("log: %s %s InputReader's contents: %s",
-                  taskGroup.getTaskGroupId(), operatorTask.getId(), iterable));
-
-              if (exception != null) {
-                throw new RuntimeException(exception);
+            futures.forEach(compFuture -> {
+              try {
+                Iterable iterable = compFuture.get();
+                System.out.println(String.format("log: %s %s InputReader's contents: %s",
+                    taskGroup.getTaskGroupId(), operatorTask.getId(), iterable));
+                iterable.forEach(data -> {
+                  System.out.println(String.format("log: %s %s data: %s",
+                      taskGroup.getTaskGroupId(), operatorTask.getId(), data));
+                  dataQueue.add(data);
+                });
+              } catch (InterruptedException e) {
+                throw new RuntimeException("Interrupted while waiting for InputReader.readElement()", e);
+              } catch (ExecutionException e1) {
+                throw new RuntimeException("ExecutionException while waiting for InputReader.readElement()", e1);
               }
-              LOG.info("log: Reading from InputReader {} {} {}, data {}",
-                  taskGroup.getTaskGroupId(), operatorTask.getId(), operatorTask.getRuntimeVertexId(),
-                  iterable);
-
-              System.out.println(String.format("log: Reading from InputReader %s %s %s, data %s",
-                  taskGroup.getTaskGroupId(), operatorTask.getId(), operatorTask.getRuntimeVertexId(),
-                  iterable));
-
-              iterable.forEach(dataQueue::add);
-            }));
+            });
           });
     } else {
       // If else, this task accepts intra-stage data.
       // Intra-stage data are removed from parent Task's OutputCollectors, element-wise.
 
-      taskIdToLocalReaderMap.get(operatorTask.getId())
-          .forEach(localReader ->
-          {
+      taskIdToLocalReaderMap.get(operatorTask.getId()).forEach(localReader -> {
             if (!localReader.isEmpty()) {
               nonEmptyLocalReader.getAndIncrement();
               final Object output = localReader.remove();
@@ -432,9 +423,7 @@ public final class TaskGroupExecutor {
                   operatorTask.getId(), output.toString());
 
               System.out.println(String.format("log: %s %s: Reading from LocalReader. output %s",
-                  taskGroup.getTaskGroupId(),
-                  operatorTask.getId(), output.toString()));
-
+                  taskGroup.getTaskGroupId(), operatorTask.getId(), output.toString()));
 
               dataQueue.add(output);
             }

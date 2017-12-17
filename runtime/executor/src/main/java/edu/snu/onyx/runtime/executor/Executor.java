@@ -116,7 +116,6 @@ public final class Executor {
       taskDag.getVertices().forEach(v -> {
         taskDag.getOutgoingEdgesOf(v).forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
       });
-
       new TaskGroupExecutor(scheduledTaskGroup.getTaskGroup(),
           taskGroupStateManager,
           scheduledTaskGroup.getTaskGroupIncomingEdges(),
