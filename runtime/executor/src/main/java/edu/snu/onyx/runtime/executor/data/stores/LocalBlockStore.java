@@ -55,6 +55,9 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
       if (block == null) {
         throw new BlockWriteException(new Throwable("The block " + blockId + "is not created yet."));
       }
+
+      System.out.println(String.format("log: LocalPartitionStore.putPartitions() to Block %s", blockId));
+
       return block.putPartitions(partitions);
     } catch (final IOException e) {
       throw new BlockWriteException(new Throwable("Failed to store partitions to this block."));

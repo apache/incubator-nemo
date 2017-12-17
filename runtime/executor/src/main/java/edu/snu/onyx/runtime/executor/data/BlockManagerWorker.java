@@ -127,6 +127,7 @@ public final class BlockManagerWorker {
 
       // Block resides in this evaluator!
       try {
+        System.out.println(String.format("log: retrieveDataFromBlock(): Block resides in this evaluator!"));
         return CompletableFuture.completedFuture(DataUtil.concatNonSerPartitions(optionalResultPartitions.get()));
       } catch (final IOException e) {
         throw new BlockFetchException(e);
@@ -135,6 +136,7 @@ public final class BlockManagerWorker {
       throw new BlockFetchException(new Throwable("Cannot find a block in remote store."));
     } else {
       // We don't have the block here...
+      System.out.println(String.format("log: retrieveDataFromBlock(): We don't shave block in this evaluator..."));
       return requestBlockInRemoteWorker(blockId, runtimeEdgeId, blockStore, keyRange);
     }
   }

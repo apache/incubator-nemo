@@ -62,6 +62,10 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
         final BlockOutputStream<?> stream = entry.getKey();
         final KeyRange keyRange = entry.getValue();
         for (final NonSerializedPartition<K> partition : partitions) {
+
+          System.out.println(String.format("log: NonSerializedMemoryBlock(): partition's key %s, data %s",
+              partition.getKey(), partition.getData()));
+
           if (keyRange.includes(partition.getKey())) {
             System.out.println(String.format("SVT: putPartition %s, %s", stream.toString(),
                 partition.getKey().toString()));
@@ -177,7 +181,8 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
     try {
       for (final NonSerializedPartition<K> partition : nonSerializedPartitions) {
         if (keyRange.includes(partition.getKey())) {
-          System.out.println(String.format("SVT: existing %s, %s", stream.toString(),
+          System.out.println(String.format("SVT: subscribe(): existing OutputStream %s, partition's key %s",
+              stream.toString(),
               partition.getKey().toString()));
           stream.writeElements(partition.getData());
         }

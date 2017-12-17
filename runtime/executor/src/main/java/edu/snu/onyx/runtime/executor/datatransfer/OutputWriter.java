@@ -149,6 +149,8 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   public void writeElement(final Iterable dataToWrite) {
     List<Partition> partitionsToWrite = Collections.singletonList(new NonSerializedPartition(0, dataToWrite));
 
+    System.out.println(String.format("log: writeElement: %s %s", blockId, blockStoreValue));
+
     // Write data.
     blockManagerWorker.putPartitions(
         blockId, partitionsToWrite, blockStoreValue, false);

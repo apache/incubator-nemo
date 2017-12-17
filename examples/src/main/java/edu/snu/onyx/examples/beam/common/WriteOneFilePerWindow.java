@@ -26,6 +26,7 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.IntervalWindow;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
@@ -88,19 +89,22 @@ public final class WriteOneFilePerWindow extends PTransform<PCollection<String>,
       this.prefix = prefix;
     }
 
-    public String filenamePrefixForWindow(final IntervalWindow window) {
-      return String.format("%s-%s-%s",
-          prefix, FORMATTER.print(window.start()), FORMATTER.print(window.end()));
+    public String filenamePrefixForWindow(final IntervalWindow window,
+                                          final WindowedContext context,
+                                          final String extension) {
+      return String.format(
+          "%s-%s-%s-%s-of-%s%s",
+          prefix, FORMATTER.print(window.start()), FORMATTER.print(window.end()),
+          context.getShardNumber(), context.getNumShards(), extension);
     }
 
     @Override
     public ResourceId windowedFilename(
         final ResourceId outputDirectory, final WindowedContext context, final String extension) {
-      final IntervalWindow window = (IntervalWindow) context.getWindow();
-      final String filename = String.format(
-          "%s-%s-of-%s%s",
-          filenamePrefixForWindow(window), context.getShardNumber(), context.getNumShards(),
-          extension);
+      final BoundedWindow window = context.getWindow();
+      final String filename = (window instanceof IntervalWindow)
+          ? filenamePrefixForWindow((IntervalWindow) window, context, extension) : prefix;
+
       return outputDirectory.resolve(filename, StandardResolveOptions.RESOLVE_FILE);
     }
 

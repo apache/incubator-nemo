@@ -109,8 +109,9 @@ public final class TaskGroupStateManager {
       metric.put("ScheduleAttempt", attemptIdx);
       metric.put("FromState", newState);
       beginMeasurement(taskGroupId, metric);
-      */
+
       idToTaskStates.forEach((taskId, state) -> state.getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR));
+      */
       break;
     case COMPLETE:
       LOG.debug("TaskGroup ID {} complete!", this.taskGroupId);
