@@ -20,6 +20,7 @@ package edu.snu.onyx.examples.beam.common;
 import static com.google.common.base.Verify.verifyNotNull;
 
 import javax.annotation.Nullable;
+
 import org.apache.beam.sdk.io.FileBasedSink;
 import org.apache.beam.sdk.io.FileBasedSink.FilenamePolicy;
 import org.apache.beam.sdk.io.TextIO;
@@ -63,7 +64,6 @@ public final class WriteOneFilePerWindow extends PTransform<PCollection<String>,
           "A non-directory resource should have a non-null filename: %s",
           resource);
     }
-
 
     TextIO.Write write = TextIO.write()
         .to(resource.getCurrentDirectory())
