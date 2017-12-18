@@ -7,7 +7,6 @@
   docs:
   - ir
   - passes_and_policies
-  - extending_onyx
 
 - title: System Designs
   docs:
