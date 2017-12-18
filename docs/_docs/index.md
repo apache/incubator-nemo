@@ -11,7 +11,7 @@ There exists many data processing systems with different designs to solve each o
 The primary reason is because system runtime behaviors are hidden and planted inside the system core to hide the complexity of distributed computing.
 This makes it very hard for a single system to support different *deployment characteristics* with different *runtime behaviors* without substantial effort.
 
-To solve this problem and easily modify *runtime behaviors* for different *deployment characteristics*, Onyx expresses workloads using the [Onyx IR](../ir), which represents the logical notion of data processing applications and its runtime behaviors on separate layers.
+To solve this problem and easily modify *runtime behaviors* for different *deployment characteristics*, Onyx expresses workloads using the [Onyx Intermediate Representation (IR)](../ir), which represents the logical notion of data processing applications and its runtime behaviors on separate layers.
 These layers can be easily modified through a set of high-level [graph pass](../passes_and_policies) interfaces, exposed by the [Onyx Compiler](../compiler_design), enabling users to flexibly modify *runtime behaviors* at both compile-time and runtime.
 Works represented this way can be executed by the [Onyx Execution Runtime](../runtime_design) through its [modular and extensible](../extending_onyx) design.
 
