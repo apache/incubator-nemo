@@ -125,7 +125,6 @@ public final class SingleTaskGroupQueueTest {
     // This mimics SchedulerRunner's behavior
     Future<?> testResult = executorService.submit(() -> {
       try {
-        assertFalse(true);
         assertEquals(pendingTaskGroupPriorityQueue.dequeue().get().getTaskGroup().getStageId(),
             dagOf2Stages.get(1).getId());
         final ScheduledTaskGroup dequeuedTaskGroup = pendingTaskGroupPriorityQueue.dequeue().get();
