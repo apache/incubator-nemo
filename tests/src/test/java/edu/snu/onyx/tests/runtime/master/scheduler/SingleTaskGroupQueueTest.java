@@ -146,6 +146,7 @@ public final class SingleTaskGroupQueueTest {
       }
     });
     testResult.get();
+    pendingTaskGroupPriorityQueue.printLog();
   }
 
   /**

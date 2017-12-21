@@ -51,6 +51,8 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
    */
   private final BlockingDeque<String> schedulableStages;
 
+  final List<StringBuffer> logs = new ArrayList<>();
+
   @Inject
   public SingleJobTaskGroupQueue() {
     stageIdToPendingTaskGroups = new ConcurrentHashMap<>();
@@ -203,7 +205,11 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
       });
     }
 
-    System.err.println(result.toString());
+    logs.add(result);
+  }
+
+  public void printLog() {
+    logs.forEach(log -> System.err.println(log));
   }
 
   @Override
