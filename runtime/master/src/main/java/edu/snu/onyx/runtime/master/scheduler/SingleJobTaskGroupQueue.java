@@ -62,6 +62,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
     final String stageId = scheduledTaskGroup.getTaskGroup().getStageId();
 
     synchronized (stageIdToPendingTaskGroups) {
+      print("enq1");
       stageIdToPendingTaskGroups.compute(stageId,
           new BiFunction<String, Deque<ScheduledTaskGroup>, Deque<ScheduledTaskGroup>>() {
             @Override
@@ -78,6 +79,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
               }
             }
           });
+      print("enq2");
     }
   }
 
@@ -96,6 +98,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
       throw new SchedulingException(new Throwable("An exception occurred while trying to dequeue the next TaskGroup"));
     }
 
+    print("deq1");
     synchronized (stageIdToPendingTaskGroups) {
       final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = stageIdToPendingTaskGroups.get(stageId);
 
@@ -113,6 +116,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
       }
     }
 
+    print("deq2");
     return (taskGroupToSchedule == null) ? Optional.empty()
         : Optional.of(taskGroupToSchedule);
   }
@@ -184,6 +188,22 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
       }
     }
     return true;
+  }
+
+  private void print(final String calledMethod) {
+    final StringBuffer result = new StringBuffer();
+
+    synchronized (this) {
+      result.append("\n").append(calledMethod).append("\n");
+      schedulableStages.forEach(stageId -> result.append(stageId).append(", "));
+      stageIdToPendingTaskGroups.forEach((stageId, tgs) -> {
+        result.append(stageId).append(": ");
+        tgs.forEach(tg ->
+            result.append(tg.getTaskGroup().getTaskGroupId()).append(", ").append(tg.getTaskGroup().getStageId()));
+      });
+    }
+
+    System.err.println(result.toString());
   }
 
   @Override
