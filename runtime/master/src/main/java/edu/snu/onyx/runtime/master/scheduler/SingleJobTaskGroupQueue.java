@@ -51,7 +51,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
    */
   private final BlockingDeque<String> schedulableStages;
 
-  final List<StringBuffer> logs = new ArrayList<>();
+  private final List<StringBuffer> logs = new ArrayList<>();
 
   @Inject
   public SingleJobTaskGroupQueue() {
