@@ -18,9 +18,7 @@ package edu.snu.onyx.driver;
 import edu.snu.onyx.common.ir.IdManager;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.MessageParameters;
-import edu.snu.onyx.runtime.common.message.grpc.GrpcMessageEnvironment;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.client.JobMessageObserver;
@@ -212,7 +210,6 @@ public final class OnyxDriver {
 
   private Configuration getExecutorMessageConfiguration(final String executorId) {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        .bindImplementation(MessageEnvironment.class, GrpcMessageEnvironment.class)
         .bindNamedParameter(MessageParameters.SenderId.class, executorId)
         .build();
   }
