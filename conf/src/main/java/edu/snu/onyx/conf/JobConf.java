@@ -119,9 +119,9 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Number of I/O threads for partition fetch requests from other executor.
+   * Number of I/O threads for block fetch requests from other executor.
    */
-  @NamedParameter(doc = "Number of I/O threads for partition fetch request.", short_name = "io_request_threads",
+  @NamedParameter(doc = "Number of I/O threads for block fetch request.", short_name = "io_request_threads",
       default_value = "5")
   public final class IORequestHandleThreadsTotal implements Name<Integer> {
   }
@@ -154,77 +154,71 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * The number of threads in thread pool for inbound
-   * {@link edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionTransfer}.
+   * The number of threads in thread pool for inbound block transfer.
    *
-   * These threads are responsible for de-serializing bytes into partition.
+   * These threads are responsible for de-serializing bytes into block.
    */
-  @NamedParameter(doc = "Number of threads for inbound partition transfer", short_name = "partition_threads_inbound",
+  @NamedParameter(doc = "Number of threads for inbound block transfer", short_name = "block_threads_inbound",
       default_value = "5")
   public final class PartitionTransferInboundNumThreads implements Name<Integer> {
   }
 
   /**
-   * The number of threads in thread pool for outbound
-   * {@link edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionTransfer}.
+   * The number of threads in thread pool for outbound block transfer..
    *
-   * These threads are responsible for serializing partition into bytes.
+   * These threads are responsible for serializing block into bytes.
    */
-  @NamedParameter(doc = "Number of threads for outbound partition transfer", short_name = "partition_threads_outbound",
+  @NamedParameter(doc = "Number of threads for outbound block transfer", short_name = "block_threads_outbound",
       default_value = "5")
   public final class PartitionTransferOutboundNumThreads implements Name<Integer> {
   }
 
   /**
-   * The size of outbound buffers for {@link edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionTransfer},
-   * in bytes.
+   * The size of outbound buffers for block transfer in bytes.
    */
-  @NamedParameter(doc = "Size of outbound buffers for partition transfer, in bytes",
-      short_name = "partition_outbound_buffer", default_value = "10485760")
+  @NamedParameter(doc = "Size of outbound buffers for block transfer, in bytes",
+      short_name = "block_outbound_buffer", default_value = "10485760")
   public final class PartitionTransferOutboundBufferSize implements Name<Integer> {
   }
 
   /**
-   * The TCP port to which local
-   * {@link edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionTransport} binds. 0 means random port.
+   * The TCP port to which local block transfer binds. 0 means random port.
    */
   @NamedParameter(doc = "Port to which PartitionTransport binds (0 means random port)",
-      short_name = "partition_port", default_value = "0")
+      short_name = "block_port", default_value = "0")
   public final class PartitionTransportServerPort implements Name<Integer> {
   }
 
   /**
-   * The maximum length which the pending connection queue of
-   * {@link edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionTransport} may grow to.
+   * The maximum length which the pending connection queue of block transfer may grow to.
    */
   @NamedParameter(doc = "The maximum number of pending connections to PartitionTransport server",
-      short_name = "partition_backlog", default_value = "128")
+      short_name = "block_backlog", default_value = "128")
   public final class PartitionTransportServerBacklog implements Name<Integer> {
   }
 
   /**
-   * The number of listening threads of
-   * {@link edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionTransport} server.
+   * The number of listening threads of block transfer server.
    */
   @NamedParameter(doc = "The number of listening threads of PartitionTransport server",
-      short_name = "partition_threads_listening", default_value = "3")
+      short_name = "block_threads_listening", default_value = "3")
   public final class PartitionTransportServerNumListeningThreads implements Name<Integer> {
   }
 
   /**
-   * The number of {@link edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionTransport} server threads
+   * The number of block transfer server threads
    * which work on accepted connections.
    */
   @NamedParameter(doc = "The number of working threads of PartitionTransport server",
-      short_name = "partition_threads_working", default_value = "10")
+      short_name = "block_threads_working", default_value = "10")
   public final class PartitionTransportServerNumWorkingThreads implements Name<Integer> {
   }
 
   /**
-   * The number of threads of {@link edu.snu.onyx.runtime.executor.data.partitiontransfer.PartitionTransport} client.
+   * The number of threads of block transfer client.
    */
   @NamedParameter(doc = "The number of threads of PartitionTransport client",
-      short_name = "partition_threads_client", default_value = "10")
+      short_name = "block_threads_client", default_value = "10")
   public final class PartitionTransportClientNumThreads implements Name<Integer> {
   }
 
@@ -238,7 +232,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Serialized {@link edu.snu.onyx.common.dag.DAG} from user main method.
+   * Serialized {edu.snu.onyx.common.dag.DAG} from user main method.
    */
   @NamedParameter(doc = "String serialized DAG")
   public final class SerializedDAG implements Name<String> {

@@ -7,7 +7,7 @@ permalink: /docs/compiler_design/
 
 Compiler takes an arbitrary dataflow program as input, and outputs an optimized physical execution plan to be understood by the execution runtime. The steps are as followings:
 
-1. **Compiler frontend** first translates the logical layer of given dataflow program written in high-level languages, like Apache Beam, into an expressive, general-purpose [Onyx IR](../ir).
+1. **Compiler frontend** first translates the logical layer of given dataflow program written in high-level languages, like Apache Beam, into an expressive, general-purpose [Onyx Intermediate Representation (IR)](../ir).
 2. Then using the [optimization pass](../passes_and_policies) interface provided by the **Compiler optimizer**, the IR can be flexibly reshaped and annotated with a variety of execution properties that configures the underlying runtime behaviors.
 3. After being processed by _optimization passes_, the **Compiler backend** finally lays out the IR into a physical execution plan, composed of tasks and stages, to be carried out by the [Onyx Execution Runtime](../runtime_design).
 

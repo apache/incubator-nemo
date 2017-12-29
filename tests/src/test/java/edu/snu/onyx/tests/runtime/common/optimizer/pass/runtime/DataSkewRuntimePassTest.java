@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.tests.runtime.common.optimizer.pass.runtime;
 
-import edu.snu.onyx.runtime.common.data.HashRange;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,18 +48,18 @@ public class DataSkewRuntimePassTest {
   public void testDataSkewDynamicOptimizationPass() {
     final Integer taskGroupListSize = 5;
 
-    final List<HashRange> hashRanges =
+    final List<KeyRange> keyRanges =
         new DataSkewRuntimePass().calculateHashRanges(testMetricData, taskGroupListSize);
 
-    assertEquals(0, hashRanges.get(0).rangeStartInclusive());
-    assertEquals(3, hashRanges.get(0).rangeEndExclusive());
-    assertEquals(3, hashRanges.get(1).rangeStartInclusive());
-    assertEquals(5, hashRanges.get(1).rangeEndExclusive());
-    assertEquals(5, hashRanges.get(2).rangeStartInclusive());
-    assertEquals(7, hashRanges.get(2).rangeEndExclusive());
-    assertEquals(7, hashRanges.get(3).rangeStartInclusive());
-    assertEquals(9, hashRanges.get(3).rangeEndExclusive());
-    assertEquals(9, hashRanges.get(4).rangeStartInclusive());
-    assertEquals(10, hashRanges.get(4).rangeEndExclusive());
+    assertEquals(0, keyRanges.get(0).rangeBeginInclusive());
+    assertEquals(3, keyRanges.get(0).rangeEndExclusive());
+    assertEquals(3, keyRanges.get(1).rangeBeginInclusive());
+    assertEquals(5, keyRanges.get(1).rangeEndExclusive());
+    assertEquals(5, keyRanges.get(2).rangeBeginInclusive());
+    assertEquals(7, keyRanges.get(2).rangeEndExclusive());
+    assertEquals(7, keyRanges.get(3).rangeBeginInclusive());
+    assertEquals(9, keyRanges.get(3).rangeEndExclusive());
+    assertEquals(9, keyRanges.get(4).rangeBeginInclusive());
+    assertEquals(10, keyRanges.get(4).rangeEndExclusive());
   }
 }

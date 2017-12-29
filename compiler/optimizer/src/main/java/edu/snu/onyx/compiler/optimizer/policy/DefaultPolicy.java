@@ -27,6 +27,9 @@ import java.util.List;
 public final class DefaultPolicy implements Policy {
   private final Policy policy;
 
+  /**
+   * Default constructor.
+   */
   public DefaultPolicy() {
     this.policy = new PolicyBuilder(true)
         .registerCompileTimePass(new PrimitiveCompositePass())

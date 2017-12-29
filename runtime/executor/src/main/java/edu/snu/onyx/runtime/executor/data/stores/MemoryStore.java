@@ -16,9 +16,8 @@
 package edu.snu.onyx.runtime.executor.data.stores;
 
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
-import edu.snu.onyx.runtime.executor.data.partition.NonSerializedMemoryPartition;
-import org.apache.reef.tang.InjectionFuture;
+import edu.snu.onyx.runtime.executor.data.CoderManager;
+import edu.snu.onyx.runtime.executor.data.block.NonSerializedMemoryBlock;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -27,24 +26,24 @@ import javax.inject.Inject;
  * Store data in local memory.
  */
 @ThreadSafe
-public final class MemoryStore extends LocalPartitionStore {
+public final class MemoryStore extends LocalBlockStore {
 
   @Inject
-  private MemoryStore(final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
-    super(partitionManagerWorker);
+  private MemoryStore(final CoderManager coderManager) {
+    super(coderManager);
   }
 
   @Override
-  public void createPartition(final String partitionId) {
-    final Coder coder = getCoderFromWorker(partitionId);
-    getPartitionMap().put(partitionId, new NonSerializedMemoryPartition(coder));
+  public void createBlock(final String blockId) {
+    final Coder coder = getCoderFromWorker(blockId);
+    getBlockMap().put(blockId, new NonSerializedMemoryBlock(coder));
   }
 
   /**
-   * @see PartitionStore#removePartition(String).
+   * @see BlockStore#removeBlock(String)
    */
   @Override
-  public Boolean removePartition(final String partitionId) {
-    return getPartitionMap().remove(partitionId) != null;
+  public Boolean removeBlock(final String blockId) {
+    return getBlockMap().remove(blockId) != null;
   }
 }

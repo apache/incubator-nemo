@@ -20,7 +20,7 @@ import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.common.ir.OutputCollector;
 import edu.snu.onyx.common.ir.Reader;
-import edu.snu.onyx.common.ir.Transform;
+import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
@@ -30,7 +30,6 @@ import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.TaskState;
 import edu.snu.onyx.runtime.executor.TaskGroupExecutor;
 import edu.snu.onyx.runtime.executor.TaskGroupStateManager;
-import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.onyx.runtime.executor.datatransfer.InputReader;
 import edu.snu.onyx.runtime.executor.datatransfer.OutputWriter;
@@ -60,12 +59,11 @@ import static org.mockito.Mockito.when;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({InputReader.class, OutputWriter.class, DataTransferFactory.class,
-    TaskGroupStateManager.class, PartitionManagerWorker.class, PhysicalStageEdge.class})
+    TaskGroupStateManager.class, PhysicalStageEdge.class})
 public final class TaskGroupExecutorTest {
   private static final int DATA_SIZE = 100;
   private static final String CONTAINER_TYPE = "CONTAINER_TYPE";
   private static final int SOURCE_PARALLELISM = 5;
-  private PartitionManagerWorker partitionManagerWorker;
   private List elements;
   private Map<String, List<Iterable>> taskIdToOutputData;
   private DataTransferFactory dataTransferFactory;
@@ -77,7 +75,6 @@ public final class TaskGroupExecutorTest {
   public void setUp() throws Exception {
     elements = getRangedNumList(0, DATA_SIZE);
     taskIdToStateList = new HashMap<>();
-    partitionManagerWorker = mock(PartitionManagerWorker.class);
     expectedTaskStateList = new ArrayList<>();
     expectedTaskStateList.add(TaskState.State.EXECUTING);
     expectedTaskStateList.add(TaskState.State.COMPLETE);
@@ -136,7 +133,7 @@ public final class TaskGroupExecutorTest {
     // Execute the task group.
     final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
         sourceTaskGroup, taskGroupStateManager, Collections.emptyList(), Collections.singletonList(stageOutEdge),
-        dataTransferFactory, partitionManagerWorker);
+        dataTransferFactory);
     taskGroupExecutor.execute();
 
     // Check the output.
@@ -194,7 +191,7 @@ public final class TaskGroupExecutorTest {
     // Execute the task group.
     final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
         operatorTaskGroup, taskGroupStateManager, Collections.singletonList(stageInEdge),
-        Collections.singletonList(stageOutEdge), dataTransferFactory, partitionManagerWorker);
+        Collections.singletonList(stageOutEdge), dataTransferFactory);
     taskGroupExecutor.execute();
 
     // Check the output.

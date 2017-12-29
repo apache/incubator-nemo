@@ -35,6 +35,12 @@ final class GrpcMessageClient {
   private MessageServiceGrpc.MessageServiceBlockingStub blockingStub;
   private MessageServiceGrpc.MessageServiceStub asyncStub;
 
+  /**
+   * Constructor.
+   * @param nameResolver name resolver.
+   * @param idFactory identifier factory.
+   * @param receiverId id of the receiver.
+   */
   GrpcMessageClient(final NameResolver nameResolver,
                     final IdentifierFactory idFactory,
                     final String receiverId) {
@@ -57,6 +63,11 @@ final class GrpcMessageClient {
     setupChannel(ipAddress);
   }
 
+  /**
+   * Method for setting up a channel.
+   * @param ipAddress ipAddress of the socket.
+   * @throws Exception exception while setting up.
+   */
   private void setupChannel(final InetSocketAddress ipAddress) throws Exception {
       this.managedChannel = ManagedChannelBuilder.forAddress(ipAddress.getHostName(), ipAddress.getPort())
           .usePlaintext(true)
@@ -117,6 +128,10 @@ final class GrpcMessageClient {
     return completableFuture;
   }
 
+  /**
+   * Closes the channel.
+   * @throws Exception exception while closing.
+   */
   void close() throws Exception {
     managedChannel.shutdown();
   }

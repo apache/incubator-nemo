@@ -30,6 +30,9 @@ import java.util.List;
  * This pass handles the DataFlowModel ExecutionProperty.
  */
 public final class SailfishEdgeDataFlowModelPass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public SailfishEdgeDataFlowModelPass() {
     super(ExecutionProperty.Key.DataFlowModel, Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }

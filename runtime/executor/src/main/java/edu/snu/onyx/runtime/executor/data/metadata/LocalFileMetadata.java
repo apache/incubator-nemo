@@ -17,78 +17,80 @@ package edu.snu.onyx.runtime.executor.data.metadata;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
 
 /**
- * This class represents a metadata for a local file partition.
+ * This class represents a metadata for a local file {@link edu.snu.onyx.runtime.executor.data.block.Block}.
  * It resides in local only, and does not synchronize with master.
+ * @param <K> the key type of its partitions.
  */
 @ThreadSafe
-public final class LocalFileMetadata extends FileMetadata {
+public final class LocalFileMetadata<K extends Serializable> extends FileMetadata<K> {
 
-  // When a writer reserves a file region for a block to write, the metadata of the block is stored in this queue.
-  // When a block in this queue is committed, the committed blocks are polled and go into the committed iterable.
-  private final Queue<BlockMetadata> reserveBlockMetadataQue;
-  // TODO #463: Support incremental read. Change this iterable to "ClosableBlockingIterable".
-  private final List<BlockMetadata> commitBlockMetadataIterable; // The list of committed block metadata.
+  // When a writer reserves a file region for a partition to write,
+  // the metadata of the partition is stored in this queue.
+  // When a partition in this queue is committed, the committed partition is polled and go into the committed iterable.
+  private final Queue<PartitionMetadata> reservePartitionMetadataQue;
+  private final List<PartitionMetadata<K>> commitPartitionMetadataIterable; // The list of committed partition metadata.
   private volatile long writtenBytesCursor; // Indicates how many bytes are (at least, logically) written in the file.
-  private volatile int blockCount;
+  private volatile int partitionCount;
   private volatile boolean committed;
 
-  public LocalFileMetadata(final boolean commitPerBlock) {
-    super(commitPerBlock);
-    this.reserveBlockMetadataQue = new ArrayDeque<>();
-    this.commitBlockMetadataIterable = new ArrayList<>();
-    this.blockCount = 0;
+  public LocalFileMetadata(final boolean commitPerPartition) {
+    super(commitPerPartition);
+    this.reservePartitionMetadataQue = new ArrayDeque<>();
+    this.commitPartitionMetadataIterable = new ArrayList<>();
+    this.partitionCount = 0;
     this.writtenBytesCursor = 0;
     this.committed = false;
   }
 
   /**
-   * Reserves the region for a block and get the metadata for the block.
-   * @see FileMetadata#reserveBlock(int, int, long).
+   * Reserves the region for a partition and get the metadata for the partition.
+   * @see FileMetadata#reservePartition(Serializable, int, long)
    */
   @Override
-  public synchronized BlockMetadata reserveBlock(final int hashValue,
-                                                 final int blockSize,
-                                                 final long elementsTotal) throws IOException {
+  public synchronized PartitionMetadata reservePartition(final K key,
+                                                         final int partitionSize,
+                                                         final long elementsTotal) throws IOException {
     if (committed) {
       throw new IOException("Cannot write a new block to a closed partition.");
     }
 
-    final BlockMetadata blockMetadata =
-        new BlockMetadata(blockCount, hashValue, blockSize, writtenBytesCursor, elementsTotal);
-    reserveBlockMetadataQue.add(blockMetadata);
-    blockCount++;
-    writtenBytesCursor += blockSize;
-    return blockMetadata;
+    final PartitionMetadata partitionMetadata =
+        new PartitionMetadata(partitionCount, key, partitionSize, writtenBytesCursor, elementsTotal);
+    reservePartitionMetadataQue.add(partitionMetadata);
+    partitionCount++;
+    writtenBytesCursor += partitionSize;
+    return partitionMetadata;
   }
 
   /**
-   * Notifies that some blocks are written.
-   * @see FileMetadata#commitBlocks(Iterable).
+   * Notifies that some partitions are written.
+   * @see FileMetadata#commitPartitions(Iterable)
    */
   @Override
-  public synchronized void commitBlocks(final Iterable<BlockMetadata> blockMetadataToCommit) {
-    blockMetadataToCommit.forEach(BlockMetadata::setCommitted);
+  public synchronized void commitPartitions(final Iterable<PartitionMetadata> partitionMetadataToCommit) {
+    partitionMetadataToCommit.forEach(PartitionMetadata::setCommitted);
 
-    while (!reserveBlockMetadataQue.isEmpty() && reserveBlockMetadataQue.peek().isCommitted()) {
+    while (!reservePartitionMetadataQue.isEmpty() && reservePartitionMetadataQue.peek().isCommitted()) {
       // If the metadata in the top of the reserved queue is committed, move it to the committed metadata iterable.
-      commitBlockMetadataIterable.add(reserveBlockMetadataQue.poll());
+      commitPartitionMetadataIterable.add(reservePartitionMetadataQue.poll());
     }
   }
 
   /**
-   * Gets a iterable containing the block metadata of corresponding partition.
-   * @see FileMetadata#getBlockMetadataIterable().
+   * Gets a iterable containing the partition metadata of corresponding block.
+   * @see FileMetadata#getPartitionMetadataIterable()
    */
   @Override
-  public Iterable<BlockMetadata> getBlockMetadataIterable() {
-    return Collections.unmodifiableCollection(commitBlockMetadataIterable);
+  public Iterable<PartitionMetadata<K>> getPartitionMetadataIterable() {
+    return Collections.unmodifiableCollection(commitPartitionMetadataIterable);
   }
 
   /**
-   * @see FileMetadata#deleteMetadata().
+   * @see FileMetadata#deleteMetadata()
    */
   @Override
   public void deleteMetadata() {
@@ -96,12 +98,10 @@ public final class LocalFileMetadata extends FileMetadata {
   }
 
   /**
-   * Notifies that all writes are finished for the partition corresponding to this metadata.
-   * Subscribers waiting for the data of the target partition are notified when the partition is committed.
-   * Also, further subscription about a committed partition will not blocked but get the data in it and finished.
+   * Notifies that all writes are finished for the block corresponding to this metadata.
    */
   @Override
-  public synchronized void commitPartition() {
+  public synchronized void commitBlock() {
     committed = true;
   }
 }

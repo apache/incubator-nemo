@@ -23,12 +23,18 @@ import edu.snu.onyx.common.dag.Vertex;
 /**
  * Represents a stage in Runtime's execution of a job.
  * Each stage contains a part of a whole execution plan.
- * Stage partitioning is determined by {@link edu.snu.onyx.compiler.backend.onyx.OnyxBackend}.
+ * Stage partitioning is determined by {edu.snu.onyx.compiler.backend.onyx.OnyxBackend}.
  */
 public final class Stage extends Vertex {
   private final DAG<IRVertex, IREdge> stageInternalDAG;
   private final int scheduleGroupIndex;
 
+  /**
+   * Constructor.
+   * @param stageId id of the stage.
+   * @param stageInternalDAG the internal DAG of the stage.
+   * @param scheduleGroupIndex the schedule group index.
+   */
   public Stage(final String stageId,
                final DAG<IRVertex, IREdge> stageInternalDAG,
                final int scheduleGroupIndex) {
@@ -37,10 +43,16 @@ public final class Stage extends Vertex {
     this.scheduleGroupIndex = scheduleGroupIndex;
   }
 
+  /**
+   * @return the internal DAG of the stage.
+   */
   public DAG<IRVertex, IREdge> getStageInternalDAG() {
     return stageInternalDAG;
   }
 
+  /**
+   * @return the schedule group index.
+   */
   public int getScheduleGroupIndex() {
     return scheduleGroupIndex;
   }

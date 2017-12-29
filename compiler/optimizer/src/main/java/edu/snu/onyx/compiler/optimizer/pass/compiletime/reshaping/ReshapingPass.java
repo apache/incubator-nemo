@@ -28,10 +28,17 @@ import java.util.Set;
 public abstract class ReshapingPass implements CompileTimePass {
   private final Set<ExecutionProperty.Key> prerequisiteExecutionProperties;
 
+  /**
+   * Default constructor.
+   */
   public ReshapingPass() {
     this.prerequisiteExecutionProperties = new HashSet<>();
   }
 
+  /**
+   * Constructor.
+   * @param prerequisiteExecutionProperties prerequisite of execution properties.
+   */
   public ReshapingPass(final Set<ExecutionProperty.Key> prerequisiteExecutionProperties) {
     this.prerequisiteExecutionProperties = prerequisiteExecutionProperties;
   }

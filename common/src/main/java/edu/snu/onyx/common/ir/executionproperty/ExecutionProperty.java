@@ -49,6 +49,11 @@ public abstract class ExecutionProperty<T> implements Serializable {
     return key;
   }
 
+  /**
+   * Static method to get an empty execution property.
+   * @param <T> type of the value of the execution property.
+   * @return an empty execution property.
+   */
   static <T> ExecutionProperty<T> emptyExecutionProperty() {
     return new ExecutionProperty<T>(null, null) {
     };
@@ -74,6 +79,5 @@ public abstract class ExecutionProperty<T> implements Serializable {
     ScheduleGroupIndex,
     StageId,
 
-    // TODO #586: Job-wide execution properties
   }
 }

@@ -35,6 +35,10 @@ import javax.inject.Inject;
 public final class DynamicOptimizationEventHandler implements RuntimeEventHandler<DynamicOptimizationEvent> {
   private final PubSubEventHandler pubSubEventHandler;
 
+  /**
+   * Constructor.
+   * @param pubSubEventHandlerWrapper the wrapper of the global pubSubEventHandler.
+   */
   @Inject
   private DynamicOptimizationEventHandler(final PubSubEventHandlerWrapper pubSubEventHandlerWrapper) {
     this.pubSubEventHandler = pubSubEventHandlerWrapper.getPubSubEventHandler();

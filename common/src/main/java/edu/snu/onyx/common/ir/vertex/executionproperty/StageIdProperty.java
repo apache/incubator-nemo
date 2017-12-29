@@ -21,10 +21,19 @@ import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
  * StageId ExecutionProperty.
  */
 public final class StageIdProperty extends ExecutionProperty<Integer> {
+  /**
+   * Constructor.
+   * @param value value of the execution property.
+   */
   private StageIdProperty(final Integer value) {
     super(Key.StageId, value);
   }
 
+  /**
+   * Static method exposing the constructor.
+   * @param value value of the new execution property.
+   * @return the newly created execution property.
+   */
   public static StageIdProperty of(final Integer value) {
     return new StageIdProperty(value);
   }

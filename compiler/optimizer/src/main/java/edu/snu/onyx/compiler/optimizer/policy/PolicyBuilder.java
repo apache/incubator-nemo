@@ -37,10 +37,17 @@ public final class PolicyBuilder {
   private final Set<ExecutionProperty.Key> annotatedExecutionProperties;
   private final Boolean strictPrerequisiteCheckMode;
 
+  /**
+   * Default constructor.
+   */
   public PolicyBuilder() {
     this(false);
   }
 
+  /**
+   * Constructor.
+   * @param strictPrerequisiteCheckMode whether to use strict prerequisite check mode or not.
+   */
   public PolicyBuilder(final Boolean strictPrerequisiteCheckMode) {
     this.compileTimePasses = new ArrayList<>();
     this.runtimePasses = new ArrayList<>();
@@ -57,6 +64,11 @@ public final class PolicyBuilder {
     annotatedExecutionProperties.add(ExecutionProperty.Key.Partitioner);
   }
 
+  /**
+   * Register compile time pass.
+   * @param compileTimePass the compile time pass to register.
+   * @return the PolicyBuilder which registers compileTimePass.
+   */
   public PolicyBuilder registerCompileTimePass(final CompileTimePass compileTimePass) {
     // We decompose CompositePasses.
     if (compileTimePass instanceof CompositePass) {
@@ -88,6 +100,13 @@ public final class PolicyBuilder {
     return this;
   }
 
+  // TODO #119: fill the below document.
+  /**
+   * Register run time pass.
+   * @param runtimePass the run time pass to register.
+   * @param runtimePassRegistrator runtime pass register.
+   * @return the PolicyBuilder which registers runtimePass and runtimePassRegistrator.
+   */
   public PolicyBuilder registerRuntimePass(final RuntimePass<?> runtimePass,
                                            final CompileTimePass runtimePassRegistrator) {
     registerCompileTimePass(runtimePassRegistrator);
@@ -95,6 +114,10 @@ public final class PolicyBuilder {
     return this;
   }
 
+  /**
+   * Build a policy using compileTimePasses and runtimePasses in this object.
+   * @return the built Policy.
+   */
   public Policy build() {
     return new Policy() {
       @Override

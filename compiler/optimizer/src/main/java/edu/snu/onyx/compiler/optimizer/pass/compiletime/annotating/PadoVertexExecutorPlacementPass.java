@@ -30,6 +30,9 @@ import java.util.stream.Stream;
  * Pado pass for tagging vertices.
  */
 public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public PadoVertexExecutorPlacementPass() {
     super(ExecutionProperty.Key.ExecutorPlacement, Stream.of(
         ExecutionProperty.Key.DataCommunicationPattern

@@ -25,12 +25,15 @@ import java.util.Arrays;
  * A series of passes to perform LoopOptimization.
  */
 public final class LoopOptimizationCompositePass extends CompositePass {
+  /**
+   * Default constructor.
+   */
   public LoopOptimizationCompositePass() {
     super(Arrays.asList(
         new LoopExtractionPass(),
         LoopOptimizations.getLoopFusionPass(),
         LoopOptimizations.getLoopInvariantCodeMotionPass(),
-        new LoopUnrollingPass() // Groups then unrolls loops. TODO #162: remove unrolling pt.,
+        new LoopUnrollingPass() // Groups then unrolls loops.
     ));
   }
 }

@@ -31,6 +31,9 @@ import java.util.stream.Stream;
  * Pado pass for tagging edges with DataStore ExecutionProperty.
  */
 public final class PadoEdgeDataStorePass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public PadoEdgeDataStorePass() {
     super(ExecutionProperty.Key.DataStore, Stream.of(
         ExecutionProperty.Key.ExecutorPlacement

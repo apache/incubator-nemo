@@ -25,10 +25,12 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Beam result.
- * TODO #32: Implement Beam BeamResult
  */
 public final class OnyxPipelineResult extends ClientEndpoint implements PipelineResult {
 
+  /**
+   * Default constructor.
+   */
   public OnyxPipelineResult() {
     super(new BeamStateTranslator());
   }

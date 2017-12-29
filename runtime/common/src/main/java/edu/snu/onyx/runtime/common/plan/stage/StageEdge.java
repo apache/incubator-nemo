@@ -53,10 +53,16 @@ public final class StageEdge extends RuntimeEdge<Stage> {
     this.dstVertex = dstVertex;
   }
 
+  /**
+   * @return the source vertex.
+   */
   public IRVertex getSrcVertex() {
     return srcVertex;
   }
 
+  /**
+   * @return the destination vertex.
+   */
   public IRVertex getDstVertex() {
     return dstVertex;
   }

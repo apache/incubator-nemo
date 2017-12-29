@@ -18,7 +18,7 @@ package edu.snu.onyx.runtime.executor.data.stores;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 /**
- * Interface for remote partition stores (e.g., GlusterFS, ...).
+ * Interface for remote block stores (e.g., GlusterFS, ...).
  */
 @DefaultImplementation(GlusterFileStore.class)
 public interface RemoteFileStore extends FileStore {

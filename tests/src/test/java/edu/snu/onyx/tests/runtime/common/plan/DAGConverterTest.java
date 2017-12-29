@@ -16,7 +16,8 @@
 package edu.snu.onyx.tests.runtime.common.plan;
 
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.common.ir.Transform;
+import edu.snu.onyx.common.dag.DAG;
+import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataFlowModelProperty;
@@ -24,18 +25,20 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.common.ir.vertex.BoundedSourceVertex;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
+import edu.snu.onyx.common.ir.vertex.Source;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ParallelismProperty;
+import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.onyx.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.onyx.conf.JobConf;
+import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlanGenerator;
+import edu.snu.onyx.runtime.common.plan.physical.PhysicalStage;
+import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
+import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.common.plan.stage.Stage;
 import edu.snu.onyx.runtime.common.plan.stage.StageEdge;
-import edu.snu.onyx.runtime.common.plan.physical.*;
-import edu.snu.onyx.common.dag.DAG;
-import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.tests.compiler.optimizer.TestPolicy;
-import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
@@ -112,15 +115,15 @@ public final class DAGConverterTest {
   @Test
   public void testComplexPlan() throws Exception {
     // Tests a plan of 4 stages.
-    final BoundedSource s = mock(BoundedSource.class);
-    final BoundedSource.BoundedReader r = mock(BoundedSource.BoundedReader.class);
-    final List<BoundedSource.BoundedReader> dummyReaderList = new ArrayList<>(3);
+    final Source s = mock(Source.class);
+    final Source.Reader r = mock(Source.Reader.class);
+    final List<Source.Reader> dummyReaderList = new ArrayList<>(3);
     dummyReaderList.add(r);
     dummyReaderList.add(r);
     dummyReaderList.add(r);
-    when(s.getEstimatedSizeBytes(null)).thenReturn(9L);
-    when(s.createReader(null)).thenReturn(r);
-    when(s.split(3L, null)).thenReturn(dummyReaderList);
+    when(s.getEstimatedSizeBytes()).thenReturn(9L);
+    when(s.createReader()).thenReturn(r);
+    when(s.split(3L)).thenReturn(dummyReaderList);
 
     final IRVertex v1 = new BoundedSourceVertex<>(s);
     v1.setProperty(ParallelismProperty.of(3));
@@ -148,7 +151,6 @@ public final class DAGConverterTest {
     v6.setProperty(ParallelismProperty.of(2));
     v6.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.RESERVED));
 
-    // TODO #13: Implement Join Node
 //    final IRVertex v7 = new OperatorVertex(t);
 //    v7.setProperty(Parallelism.of(2));
 //    v7.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
@@ -192,7 +194,6 @@ public final class DAGConverterTest {
     e6.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
     e6.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
 
-    // TODO #13: Implement Join Node
 //    final IREdge e7 = new IREdge(OneToOne, v7, v5);
 //    e7.setProperty(DataStoreProperty.of(MemoryStore));
 //    e7.setProperty(Attribute.Key.PullOrPush, DataFlowModelProperty.Value.Push));
@@ -210,7 +211,6 @@ public final class DAGConverterTest {
 
     // Stage 3 = {v7}
     // Commented out since SimpleRuntime does not yet support multi-input.
-    // TODO #13: Implement Join Node
 //    physicalDAGBuilder.createNewStage();
 //    physicalDAGBuilder.addVertex(v7);
 
@@ -219,7 +219,6 @@ public final class DAGConverterTest {
     irDAGBuilder.connectVertices(e6);
 
     // Commented out since SimpleRuntime does not yet support multi-input.
-    // TODO #13: Implement Join Node
 //    irDAGBuilder.connectVertices(e7);
 //    irDAGBuilder.connectVertices(e8);
 

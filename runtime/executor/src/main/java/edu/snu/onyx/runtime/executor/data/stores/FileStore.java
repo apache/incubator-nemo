@@ -15,22 +15,22 @@
  */
 package edu.snu.onyx.runtime.executor.data.stores;
 
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.FileArea;
-import edu.snu.onyx.runtime.common.data.HashRange;
 
 import java.util.List;
 
 /**
- * Stores partitions in (local or remote) files.
+ * Stores blocks in (local or remote) files.
  */
-public interface FileStore extends PartitionStore {
+public interface FileStore extends BlockStore {
 
   /**
-   * Gets the list of {@link FileArea}s for the specified partition.
+   * Gets the list of {@link FileArea}s for the specified block.
    *
-   * @param partitionId the partition id
-   * @param hashRange   the hash range
+   * @param blockId   the partition id
+   * @param keyRange the key range
    * @return the list of file areas
    */
-  List<FileArea> getFileAreas(final String partitionId, final HashRange hashRange);
+  List<FileArea> getFileAreas(final String blockId, final KeyRange keyRange);
 }
