@@ -55,6 +55,9 @@ public final class MapReduceSkew {
     options.setJobName("MapReduceSkew");
 
     final Pipeline p = Pipeline.create(options);
+
+    long start = System.currentTimeMillis();
+
     final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
         .apply(MapElements.<String, KV<String, Integer>>via(new SimpleFunction<String, KV<String, Integer>>() {
           @Override
@@ -70,13 +73,16 @@ public final class MapReduceSkew {
         .apply(MapElements.<KV<String, Integer>, String>via(new SimpleFunction<KV<String, Integer>, String>() {
           @Override
           public String apply(final KV<String, Integer> kv) {
-            LOG.info("Map#2 : key {} value {}", kv.getKey(), kv.getValue());
+            //LOG.info("Map#2 : key {} value {}", kv.getKey(), kv.getValue());
             return kv.getKey() + ": " + kv.getValue();
           }
         }));
     GenericSourceSink.write(result, outputFilePath);
 
     p.run();
+
+    LOG.info("*******END*******");
+    LOG.info("JCT(ms): " + (System.currentTimeMillis()-start));
   }
 
   /**
