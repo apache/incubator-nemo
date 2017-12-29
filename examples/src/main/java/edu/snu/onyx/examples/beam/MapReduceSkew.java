@@ -82,7 +82,7 @@ public final class MapReduceSkew {
     p.run();
 
     LOG.info("*******END*******");
-    LOG.info("JCT(ms): " + (System.currentTimeMillis()-start));
+    LOG.info("JCT(ms): " + (System.currentTimeMillis() - start));
   }
 
   /**
