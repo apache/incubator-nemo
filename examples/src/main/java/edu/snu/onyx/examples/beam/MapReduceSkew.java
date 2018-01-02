@@ -128,12 +128,12 @@ public final class MapReduceSkew {
     if (ipparts.length == 1) {
       String[] ipv6 = ip.split(":");
       if (ipv6.length == 1) {
-        network = "192.168";
+        network = String.join("", Collections.nCopies(20, "192.168"));
       } else {
-        network = ipv6[0] + ":" + ipv6[1];
+        network = String.join("", Collections.nCopies(20, ipv6[0] + ":" + ipv6[1]));
       }
     } else {
-      network = ipparts[0] + "." + ipparts[1];
+      network = String.join("", Collections.nCopies(20, ipparts[0] + "." + ipparts[1]));
     }
     return network;
   }
