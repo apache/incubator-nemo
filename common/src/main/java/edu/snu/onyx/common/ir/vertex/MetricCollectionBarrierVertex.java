@@ -35,7 +35,6 @@ public final class MetricCollectionBarrierVertex<T> extends IRVertex {
   // This DAG snapshot is taken at the end of the DataSkewCompositePass, for the vertex to know the state of the DAG at
   // its optimization, and to be able to figure out exactly where in the DAG the vertex exists.
   private DAG<IRVertex, IREdge> dagSnapshot;
-
   private static final Logger LOG = LoggerFactory.getLogger(MetricCollectionBarrierVertex.class.getName());
 
   /**

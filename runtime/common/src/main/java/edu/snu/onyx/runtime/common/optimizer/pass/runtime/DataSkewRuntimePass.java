@@ -29,6 +29,8 @@ import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.common.data.HashRange;
 import edu.snu.onyx.runtime.common.eventhandler.DynamicOptimizationEventHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +45,7 @@ import java.util.stream.Stream;
  */
 public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<Long>>> {
   private final Set<Class<? extends CommonEventHandler<?>>> eventHandlers;
+  private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
 
   /**
    * Constructor.
@@ -75,10 +78,12 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
 
     // Get number of evaluators of the next stage (number of blocks).
     final Integer taskGroupListSize = optimizationEdges.stream().findFirst().orElseThrow(() ->
-        new RuntimeException("optimization edges is empty")).getDst().getTaskGroupList().size();
+        new RuntimeException("optimization edges are empty")).getDst().getTaskGroupList().size();
+    LOG.info("Skew: taskGroupListSize {}", taskGroupListSize);
 
     // Calculate keyRanges.
     final List<KeyRange> keyRanges = calculateHashRanges(metricData, taskGroupListSize);
+    LOG.info("Skew: calculated key ranges {}", keyRanges);
 
     // Overwrite the previously assigned hash value range in the physical DAG with the new range.
     optimizationEdges.forEach(optimizationEdge -> {
@@ -89,6 +94,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
         // Update the information.
         final String taskGroupId = taskGroups.get(i).getTaskGroupId();
         taskGroupIdToHashRangeMap.put(taskGroupId, keyRanges.get(i));
+        LOG.info("Skew: newly assigned keyrange: {} {}", taskGroupId, keyRanges.get(i));
       });
     });
 
@@ -108,6 +114,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     // Count the hash range (number of blocks for each block).
     final int hashRangeCount = metricData.values().stream().findFirst().orElseThrow(() ->
         new DynamicOptimizationException("no valid metric data.")).size();
+
 
     // Aggregate metric data.
     final List<Long> aggregatedMetricData = new ArrayList<>(hashRangeCount);
