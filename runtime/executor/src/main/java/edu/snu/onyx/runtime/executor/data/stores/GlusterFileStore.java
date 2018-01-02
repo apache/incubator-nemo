@@ -24,7 +24,6 @@ import edu.snu.onyx.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.onyx.runtime.executor.data.*;
 import edu.snu.onyx.runtime.executor.data.metadata.RemoteFileMetadata;
 import edu.snu.onyx.runtime.executor.data.block.FileBlock;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -40,8 +39,6 @@ import java.util.Optional;
  * Because the data is stored in remote files and globally accessed by multiple nodes,
  * each access (write, read, or deletion) for a file needs one instance of {@link FileBlock}.
  * These accesses are judiciously synchronized by the metadata server in master.
- * TODO #485: Merge LocalFileStore and GlusterFileStore.
- * TODO #410: Implement metadata caching for the RemoteFileMetadata.
  */
 @ThreadSafe
 public final class GlusterFileStore extends AbstractBlockStore implements RemoteFileStore {
@@ -53,9 +50,9 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   private GlusterFileStore(@Parameter(JobConf.GlusterVolumeDirectory.class) final String volumeDirectory,
                            @Parameter(JobConf.JobId.class) final String jobId,
                            @Parameter(JobConf.ExecutorId.class) final String executorId,
-                           final InjectionFuture<BlockManagerWorker> blockManagerWorker,
+                           final CoderManager coderManager,
                            final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
-    super(blockManagerWorker);
+    super(coderManager);
     this.fileDirectory = volumeDirectory + "/" + jobId;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.executorId = executorId;
@@ -66,7 +63,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    * Creates a new block.
    *
    * @param blockId the ID of the block to create.
-   * @see BlockStore#createBlock(String).
+   * @see BlockStore#createBlock(String)
    */
   @Override
   public void createBlock(final String blockId) {
@@ -76,7 +73,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   /**
    * Saves an iterable of data partitions to a block.
    *
-   * @see BlockStore#putPartitions(String, Iterable, boolean).
+   * @see BlockStore#putPartitions(String, Iterable, boolean)
    */
   @Override
   public <K extends Serializable> Optional<List<Long>> putPartitions(final String blockId,
@@ -92,7 +89,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   }
 
   /**
-   * @see BlockStore#putSerializedPartitions(String, Iterable, boolean).
+   * @see BlockStore#putSerializedPartitions(String, Iterable, boolean)
    */
   @Override
   public <K extends Serializable> List<Long> putSerializedPartitions(final String blockId,
@@ -110,7 +107,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   /**
    * Retrieves {@link NonSerializedPartition}s in a specific {@link KeyRange} from a block.
    *
-   * @see BlockStore#getPartitions(String, KeyRange).
+   * @see BlockStore#getPartitions(String, KeyRange)
    */
   @Override
   public <K extends Serializable> Optional<Iterable<NonSerializedPartition<K>>> getPartitions(final String blockId,
@@ -132,7 +129,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   }
 
   /**
-   * @see BlockStore#getSerializedPartitions(String, KeyRange).
+   * @see BlockStore#getSerializedPartitions(String, KeyRange)
    */
   @Override
   public <K extends Serializable>
@@ -152,7 +149,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   }
 
   /**
-   * @see BlockStore#commitBlock(String).
+   * @see BlockStore#commitBlock(String)
    */
   @Override
   public void commitBlock(final String blockId) throws BlockWriteException {
@@ -188,7 +185,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   }
 
   /**
-   * @see FileStore#getFileAreas(String, KeyRange).
+   * @see FileStore#getFileAreas(String, KeyRange)
    */
   @Override
   public List<FileArea> getFileAreas(final String blockId,

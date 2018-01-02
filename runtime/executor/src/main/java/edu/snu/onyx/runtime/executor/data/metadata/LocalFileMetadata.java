@@ -48,7 +48,7 @@ public final class LocalFileMetadata<K extends Serializable> extends FileMetadat
 
   /**
    * Reserves the region for a partition and get the metadata for the partition.
-   * @see FileMetadata#reservePartition(Serializable, int, long) .
+   * @see FileMetadata#reservePartition(Serializable, int, long)
    */
   @Override
   public synchronized PartitionMetadata reservePartition(final K key,
@@ -68,7 +68,7 @@ public final class LocalFileMetadata<K extends Serializable> extends FileMetadat
 
   /**
    * Notifies that some partitions are written.
-   * @see FileMetadata#commitPartitions(Iterable).
+   * @see FileMetadata#commitPartitions(Iterable)
    */
   @Override
   public synchronized void commitPartitions(final Iterable<PartitionMetadata> partitionMetadataToCommit) {
@@ -82,7 +82,7 @@ public final class LocalFileMetadata<K extends Serializable> extends FileMetadat
 
   /**
    * Gets a iterable containing the partition metadata of corresponding block.
-   * @see FileMetadata#getPartitionMetadataIterable().
+   * @see FileMetadata#getPartitionMetadataIterable()
    */
   @Override
   public Iterable<PartitionMetadata<K>> getPartitionMetadataIterable() {
@@ -90,7 +90,7 @@ public final class LocalFileMetadata<K extends Serializable> extends FileMetadat
   }
 
   /**
-   * @see FileMetadata#deleteMetadata().
+   * @see FileMetadata#deleteMetadata()
    */
   @Override
   public void deleteMetadata() {

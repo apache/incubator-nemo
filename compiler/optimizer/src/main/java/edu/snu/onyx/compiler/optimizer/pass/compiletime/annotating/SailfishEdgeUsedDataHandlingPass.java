@@ -30,6 +30,9 @@ import java.util.Collections;
  */
 public final class SailfishEdgeUsedDataHandlingPass extends AnnotatingPass {
 
+  /**
+   * Default constructor.
+   */
   public SailfishEdgeUsedDataHandlingPass() {
     super(ExecutionProperty.Key.UsedDataHandling, Collections.singleton(ExecutionProperty.Key.DataFlowModel));
   }

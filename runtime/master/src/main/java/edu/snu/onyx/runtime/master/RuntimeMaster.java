@@ -69,6 +69,8 @@ public final class RuntimeMaster {
   private static final Logger LOG = LoggerFactory.getLogger(RuntimeMaster.class.getName());
   private static final int DAG_LOGGING_PERIOD = 3000;
 
+  private final ExecutorService masterControlEventExecutor;
+
   private final Scheduler scheduler;
   private final SchedulerRunner schedulerRunner;
   private final PendingTaskGroupQueue pendingTaskGroupQueue;
@@ -78,11 +80,11 @@ public final class RuntimeMaster {
   private final MessageEnvironment masterMessageEnvironment;
 
   // For converting json data. This is a thread safe.
-  // TODO #420: Create a Singleton ObjectMapper
   private final ObjectMapper objectMapper;
 
   private final String dagDirectory;
   private final Set<IRVertex> irVertices;
+
 
   @Inject
   public RuntimeMaster(final Scheduler scheduler,
@@ -93,6 +95,11 @@ public final class RuntimeMaster {
                        final MetricMessageHandler metricMessageHandler,
                        final MessageEnvironment masterMessageEnvironment,
                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
+    // We would like to keep the master event thread pool single threaded
+    // since the processing logic in master takes a very short amount of time
+    // compared to the job completion times of executed jobs
+    // and keeping it single threaded removes the complexity of multi-thread synchronization.
+    this.masterControlEventExecutor = Executors.newSingleThreadExecutor();
     this.scheduler = scheduler;
     this.schedulerRunner = schedulerRunner;
     this.pendingTaskGroupQueue = pendingTaskGroupQueue;
@@ -137,13 +144,15 @@ public final class RuntimeMaster {
 
   public void terminate() {
     try {
+      masterControlEventExecutor.shutdown();
+
       scheduler.terminate();
       schedulerRunner.terminate();
       pendingTaskGroupQueue.close();
       blockManagerMaster.terminate();
       masterMessageEnvironment.close();
-      final Future<Boolean> allExecutorsClosed = containerManager.terminate();
 
+      final Future<Boolean> allExecutorsClosed = containerManager.terminate();
       if (allExecutorsClosed.get()) {
         LOG.info("All executors were closed successfully!");
       } else {
@@ -181,9 +190,10 @@ public final class RuntimeMaster {
    * @param executorConfiguration to use for the executor to be launched on this container.
    */
   public void onContainerAllocated(final String executorId,
-                                  final AllocatedEvaluator allocatedEvaluator,
-                                  final Configuration executorConfiguration) {
-    containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration);
+                                   final AllocatedEvaluator allocatedEvaluator,
+                                   final Configuration executorConfiguration) {
+    masterControlEventExecutor.execute(() ->
+        containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration));
   }
 
   /**
@@ -191,8 +201,10 @@ public final class RuntimeMaster {
    * @param activeContext of the launched executor.
    */
   public void onExecutorLaunched(final ActiveContext activeContext) {
-    containerManager.onExecutorLaunched(activeContext);
-    scheduler.onExecutorAdded(activeContext.getId());
+    masterControlEventExecutor.execute(() -> {
+      containerManager.onExecutorLaunched(activeContext);
+      scheduler.onExecutorAdded(activeContext.getId());
+    });
   }
 
   /**
@@ -200,9 +212,72 @@ public final class RuntimeMaster {
    * @param failedExecutorId of the failed executor.
    */
   public void onExecutorFailed(final String failedExecutorId) {
-    containerManager.onExecutorRemoved(failedExecutorId);
-    scheduler.onExecutorRemoved(failedExecutorId);
+    masterControlEventExecutor.execute(() -> {
+      containerManager.onExecutorRemoved(failedExecutorId);
+      scheduler.onExecutorRemoved(failedExecutorId);
+    });
   }
+
+  /**
+   * Handler for control messages received by Master.
+   */
+  public final class MasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
+    @Override
+    public void onMessage(final ControlMessage.Message message) {
+      masterControlEventExecutor.execute(() -> handleControlMessage(message));
+    }
+
+    @Override
+    public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
+      switch (message.getType()) {
+      default:
+        throw new IllegalMessageException(
+            new Exception("This message should not be requested to Master :" + message.getType()));
+      }
+    }
+  }
+
+  private void handleControlMessage(final ControlMessage.Message message) {
+    switch (message.getType()) {
+    case TaskGroupStateChanged:
+      final ControlMessage.TaskGroupStateChangedMsg taskGroupStateChangedMsg
+          = message.getTaskGroupStateChangedMsg();
+
+      scheduler.onTaskGroupStateChanged(taskGroupStateChangedMsg.getExecutorId(),
+          taskGroupStateChangedMsg.getTaskGroupId(),
+          convertTaskGroupState(taskGroupStateChangedMsg.getState()),
+          taskGroupStateChangedMsg.getAttemptIdx(),
+          taskGroupStateChangedMsg.getTasksPutOnHoldIdsList(),
+          convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
+      break;
+    case ExecutorFailed:
+      final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
+      final String failedExecutorId = executorFailedMsg.getExecutorId();
+      final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
+      LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
+      containerManager.onExecutorRemoved(failedExecutorId);
+      throw new RuntimeException(exception);
+    case ContainerFailed:
+      final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
+      LOG.error(containerFailedMsg.getExecutorId() + " failed");
+      break;
+    case DataSizeMetric:
+      final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
+      // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
+      accumulateBarrierMetric(dataSizeMetricMsg.getPartitionSizeInfoList(),
+          dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getBlockId());
+      break;
+    case MetricMessageReceived:
+      final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
+      metricList.forEach(metric ->
+          metricMessageHandler.onMetricMessageReceived(metric.getMetricKey(), metric.getMetricValue()));
+      break;
+    default:
+      throw new IllegalMessageException(
+          new Exception("This message should not be received by Master :" + message.getType()));
+    }
+  }
+
 
   /**
    * Accumulates the metric data for a barrier vertex.
@@ -229,66 +304,6 @@ public final class RuntimeMaster {
     }
   }
 
-  /**
-   * Handler for control messages received by Master.
-   */
-  public final class MasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
-    @Override
-    public void onMessage(final ControlMessage.Message message) {
-      try {
-        switch (message.getType()) {
-          case TaskGroupStateChanged:
-            final ControlMessage.TaskGroupStateChangedMsg taskGroupStateChangedMsg
-                = message.getTaskGroupStateChangedMsg();
-
-            scheduler.onTaskGroupStateChanged(taskGroupStateChangedMsg.getExecutorId(),
-                taskGroupStateChangedMsg.getTaskGroupId(),
-                convertTaskGroupState(taskGroupStateChangedMsg.getState()),
-                taskGroupStateChangedMsg.getAttemptIdx(),
-                taskGroupStateChangedMsg.getTasksPutOnHoldIdsList(),
-                convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
-            break;
-          case ExecutorFailed:
-            final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
-            final String failedExecutorId = executorFailedMsg.getExecutorId();
-            final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
-            LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
-            containerManager.onExecutorRemoved(failedExecutorId);
-            throw new RuntimeException(exception);
-          case ContainerFailed:
-            final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
-            LOG.error(containerFailedMsg.getExecutorId() + " failed");
-            break;
-          case DataSizeMetric:
-            final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
-            // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-            accumulateBarrierMetric(dataSizeMetricMsg.getPartitionSizeInfoList(),
-                dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getBlockId());
-            break;
-          case MetricMessageReceived:
-            final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
-            metricList.forEach(metric ->
-                metricMessageHandler.onMetricMessageReceived(metric.getMetricKey(), metric.getMetricValue()));
-            break;
-          default:
-            throw new IllegalMessageException(
-                new Exception("This message should not be received by Master :" + message.getType()));
-        }
-      } catch (final Exception e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    @Override
-    public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
-      switch (message.getType()) {
-      default:
-        throw new IllegalMessageException(
-            new Exception("This message should not be requested to Master :" + message.getType()));
-      }
-    }
-  }
-
   // TODO #164: Cleanup Protobuf Usage
   private static TaskGroupState.State convertTaskGroupState(final ControlMessage.TaskGroupStateFromExecutor state) {
     switch (state) {
@@ -309,7 +324,6 @@ public final class RuntimeMaster {
     }
   }
 
-  // TODO #164: Cleanup Protobuf Usage
   public static BlockState.State convertBlockState(final ControlMessage.BlockStateFromExecutor state) {
     switch (state) {
     case BLOCK_READY:
@@ -329,7 +343,6 @@ public final class RuntimeMaster {
     }
   }
 
-  // TODO #164: Cleanup Protobuf Usage
   public static ControlMessage.BlockStateFromExecutor convertBlockState(final BlockState.State state) {
     switch (state) {
       case READY:
@@ -349,7 +362,6 @@ public final class RuntimeMaster {
     }
   }
 
-  // TODO #164: Cleanup Protobuf Usage
   private TaskGroupState.RecoverableFailureCause convertFailureCause(
       final ControlMessage.RecoverableFailureCause cause) {
     switch (cause) {

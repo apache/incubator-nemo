@@ -31,5 +31,8 @@ public interface Policy extends Serializable {
    */
   List<CompileTimePass> getCompileTimePasses();
 
+  /**
+   * @return the content of the policy: the list of runtime passses of the policy.
+   */
   List<RuntimePass<?>> getRuntimePasses();
 }

@@ -28,6 +28,9 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
  * as its DataStore ExecutionProperty.
  */
 public final class DataSkewEdgeDataStorePass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public DataSkewEdgeDataStorePass() {
     super(ExecutionProperty.Key.DataStore);
   }

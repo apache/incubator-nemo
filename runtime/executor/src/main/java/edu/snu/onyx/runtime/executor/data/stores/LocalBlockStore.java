@@ -18,11 +18,10 @@ package edu.snu.onyx.runtime.executor.data.stores;
 import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.common.exception.BlockWriteException;
 import edu.snu.onyx.runtime.common.data.KeyRange;
-import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
+import edu.snu.onyx.runtime.executor.data.CoderManager;
 import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
 import edu.snu.onyx.runtime.executor.data.SerializedPartition;
 import edu.snu.onyx.runtime.executor.data.block.Block;
-import org.apache.reef.tang.InjectionFuture;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -39,13 +38,13 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   // A map between block id and data blocks.
   private final ConcurrentHashMap<String, Block> blockMap;
 
-  protected LocalBlockStore(final InjectionFuture<BlockManagerWorker> blockManagerWorker) {
-    super(blockManagerWorker);
+  protected LocalBlockStore(final CoderManager coderManager) {
+    super(coderManager);
     this.blockMap = new ConcurrentHashMap<>();
   }
 
   /**
-   * @see BlockStore#putPartitions(String, Iterable, boolean).
+   * @see BlockStore#putPartitions(String, Iterable, boolean)
    */
   @Override
   public final <K extends Serializable> Optional<List<Long>> putPartitions(final String blockId,
@@ -63,7 +62,7 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   }
 
   /**
-   * @see BlockStore#putSerializedPartitions(String, Iterable, boolean).
+   * @see BlockStore#putSerializedPartitions(String, Iterable, boolean)
    */
   @Override
   public final <K extends Serializable> List<Long> putSerializedPartitions(final String blockId,
@@ -81,7 +80,7 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   }
 
   /**
-   * @see BlockStore#getPartitions(String, KeyRange).
+   * @see BlockStore#getPartitions(String, KeyRange)
    */
   @Override
   public final <K extends Serializable>
@@ -101,7 +100,7 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   }
 
   /**
-   * @see BlockStore#getSerializedPartitions(String, edu.snu.onyx.runtime.common.data.KeyRange).
+   * @see BlockStore#getSerializedPartitions(String, edu.snu.onyx.runtime.common.data.KeyRange)
    */
   @Override
   public final <K extends Serializable>
@@ -121,7 +120,7 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   }
 
   /**
-   * @see BlockStore#commitBlock(String).
+   * @see BlockStore#commitBlock(String)
    */
   @Override
   public final void commitBlock(final String blockId) {

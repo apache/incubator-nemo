@@ -21,7 +21,6 @@ import edu.snu.onyx.common.exception.UnsupportedExecutionPropertyException;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.UsedDataHandlingProperty;
 import edu.snu.onyx.conf.JobConf;
-import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.blocktransfer.BlockTransfer;
 import edu.snu.onyx.runtime.executor.data.stores.BlockStore;
@@ -59,7 +58,6 @@ public final class BlockManagerWorker {
   private final LocalFileStore localFileStore;
   private final RemoteFileStore remoteFileStore;
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
-  private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder;
   private final BlockTransfer blockTransfer;
   // Executor service to schedule I/O Runnable which can be done in background.
   private final ExecutorService backgroundExecutorService;
@@ -80,34 +78,9 @@ public final class BlockManagerWorker {
     this.localFileStore = localFileStore;
     this.remoteFileStore = remoteFileStore;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
-    this.runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
     this.blockTransfer = blockTransfer;
     this.backgroundExecutorService = Executors.newFixedThreadPool(numThreads);
     this.blockToRemainingRead = new ConcurrentHashMap<>();
-  }
-
-  /**
-   * Return the coder for the specified runtime edge.
-   *
-   * @param runtimeEdgeId id of the runtime edge.
-   * @return the corresponding coder.
-   */
-  public Coder getCoder(final String runtimeEdgeId) {
-    final Coder coder = runtimeEdgeIdToCoder.get(runtimeEdgeId);
-    if (coder == null) {
-      throw new RuntimeException("No coder is registered for " + runtimeEdgeId);
-    }
-    return coder;
-  }
-
-  /**
-   * Register a coder for runtime edge.
-   *
-   * @param runtimeEdgeId id of the runtime edge.
-   * @param coder         the corresponding coder.
-   */
-  public void registerCoder(final String runtimeEdgeId, final Coder coder) {
-    runtimeEdgeIdToCoder.putIfAbsent(runtimeEdgeId, coder);
   }
 
   /**
@@ -380,7 +353,7 @@ public final class BlockManagerWorker {
   /**
    * Respond to a pull request by another executor.
    * <p>
-   * This method is executed by {@link edu.snu.onyx.runtime.executor.data.blocktransfer.BlockTransport} thread. \
+   * This method is executed by {edu.snu.onyx.runtime.executor.data.blocktransfer.BlockTransport} thread. \
    * Never execute a blocking call in this method!
    *
    * @param outputStream {@link BlockOutputStream}
@@ -399,11 +372,13 @@ public final class BlockManagerWorker {
             final FileStore fileStore = (FileStore) getBlockStore(blockStore);
             outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getBlockId(),
                 outputStream.getKeyRange())).close();
+            handleUsedData(blockStore, outputStream.getBlockId());
           } else if (DataStoreProperty.Value.SerializedMemoryStore.equals(blockStore)) {
             final SerializedMemoryStore serMemoryStore = (SerializedMemoryStore) getBlockStore(blockStore);
             final Optional<Iterable<SerializedPartition>> optionalResult = serMemoryStore.getSerializedPartitions(
                 outputStream.getBlockId(), outputStream.getKeyRange());
             outputStream.writeSerializedPartitions(optionalResult.get()).close();
+            handleUsedData(blockStore, outputStream.getBlockId());
           } else {
             final Iterable block =
                 retrieveDataFromBlock(outputStream.getBlockId(), outputStream.getRuntimeEdgeId(),
@@ -425,7 +400,7 @@ public final class BlockManagerWorker {
    * .blocktransfer.BlockTransfer#initiatePush(String, boolean, String, String, HashRange)} to transfer
    * a block to another executor.
    * <p>
-   * This method is executed by {@link edu.snu.onyx.runtime.executor.data.blocktransfer.BlockTransport}
+   * This method is executed by {edu.snu.onyx.runtime.executor.data.blocktransfer.BlockTransport}
    * thread. Never execute a blocking call in this method!
    *
    * @param inputStream {@link BlockInputStream}

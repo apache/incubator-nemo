@@ -29,6 +29,9 @@ import java.util.List;
 public final class DisaggregationPolicy implements Policy {
   private final Policy policy;
 
+  /**
+   * Default constructor.
+   */
   public DisaggregationPolicy() {
     this.policy = new PolicyBuilder(false)
         .registerCompileTimePass(new LoopOptimizationCompositePass())

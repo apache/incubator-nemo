@@ -29,6 +29,9 @@ import java.util.Collections;
  */
 public final class DefaultEdgeUsedDataHandlingPass extends AnnotatingPass {
 
+  /**
+   * Default constructor.
+   */
   public DefaultEdgeUsedDataHandlingPass() {
     super(ExecutionProperty.Key.UsedDataHandling, Collections.singleton(ExecutionProperty.Key.DataStore));
   }

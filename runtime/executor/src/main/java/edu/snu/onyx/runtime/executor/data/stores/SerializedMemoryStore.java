@@ -16,9 +16,8 @@
 package edu.snu.onyx.runtime.executor.data.stores;
 
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
+import edu.snu.onyx.runtime.executor.data.CoderManager;
 import edu.snu.onyx.runtime.executor.data.block.SerializedMemoryBlock;
-import org.apache.reef.tang.InjectionFuture;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -30,8 +29,8 @@ import javax.inject.Inject;
 public final class SerializedMemoryStore extends LocalBlockStore {
 
   @Inject
-  private SerializedMemoryStore(final InjectionFuture<BlockManagerWorker> blockManagerWorker) {
-    super(blockManagerWorker);
+  private SerializedMemoryStore(final CoderManager coderManager) {
+    super(coderManager);
   }
 
   @Override
@@ -41,7 +40,7 @@ public final class SerializedMemoryStore extends LocalBlockStore {
   }
 
   /**
-   * @see BlockStore#removeBlock(String).
+   * @see BlockStore#removeBlock(String)
    */
   @Override
   public Boolean removeBlock(final String blockId) {

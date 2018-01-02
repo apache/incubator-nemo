@@ -117,7 +117,6 @@ public final class BlockManagerMaster {
 
   /**
    * Returns a {@link CompletableFuture} of block location, which is not yet resolved in {@code SCHEDULED} state.
-   * TODO #446: Control the Point of Partition Fetch in Executor.
    *
    * @param blockId id of the specified block.
    * @return {@link CompletableFuture} of block location, which completes exceptionally when the block
