@@ -28,6 +28,13 @@ limitations under the License.
     <artifactId>onyx-compiler-backend</artifactId>
     <name>Onyx Compiler Backend</name>
 
+    <repositories>
+        <repository>
+            <id>Bundled Maven Repository</id>
+            <url>file://${basedir}/../../common/src/main/resources/repository</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>edu.snu.onyx</groupId>
