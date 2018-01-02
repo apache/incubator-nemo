@@ -17,6 +17,10 @@ package edu.snu.onyx.compiler.frontend.onyx.transform.transform;
 
 import edu.snu.onyx.common.ir.OutputCollector;
 import edu.snu.onyx.common.ir.Transform;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A {@link Transform} relays input data from upstream vertex to downstream vertex promptly.
@@ -24,7 +28,9 @@ import edu.snu.onyx.common.ir.Transform;
  * @param <T> input/output type.
  */
 public final class RelayTransform<T> implements Transform<T, T> {
+  private static final Logger LOG = LoggerFactory.getLogger(RelayTransform.class.getName());
   private OutputCollector<T> outputCollector;
+  private AtomicInteger emitCount;
 
   /**
    * Default constructor.
@@ -36,11 +42,13 @@ public final class RelayTransform<T> implements Transform<T, T> {
   @Override
   public void prepare(final Context context, final OutputCollector<T> oc) {
     this.outputCollector = oc;
+    this.emitCount = new AtomicInteger();
   }
 
   @Override
   public void onData(final Iterable<T> elements, final String srcVertexId) {
     elements.forEach(element -> outputCollector.emit(element));
+    LOG.info("@@@@ emit count: " + emitCount.getAndIncrement());
   }
 
   @Override
