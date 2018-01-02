@@ -83,20 +83,22 @@ public final class SchedulerRunner {
             nextTaskGroupToSchedule = pendingTaskGroupQueue.dequeue();
           } while (!nextTaskGroupToSchedule.isPresent());
 
-          final Optional<String> executorId = schedulingPolicy.attemptSchedule(nextTaskGroupToSchedule.get());
-          if (!executorId.isPresent()) {
-            LOG.info("Failed to assign an executor for {} before the timeout: {}",
-                new Object[] {nextTaskGroupToSchedule.get().getTaskGroup().getTaskGroupId(),
-                    schedulingPolicy.getScheduleTimeoutMs()});
+          synchronized (schedulingPolicy) {
+            final Optional<String> executorId = schedulingPolicy.attemptSchedule(nextTaskGroupToSchedule.get());
+            if (!executorId.isPresent()) {
+              LOG.info("Failed to assign an executor for {} before the timeout: {}",
+                  new Object[] {nextTaskGroupToSchedule.get().getTaskGroup().getTaskGroupId(),
+                      schedulingPolicy.getScheduleTimeoutMs()});
 
-            // Put this TaskGroup back to the queue since we failed to schedule it.
-            pendingTaskGroupQueue.enqueue(nextTaskGroupToSchedule.get());
-          } else {
-            // Must send this scheduledTaskGroup to the destination executor.
-            final JobStateManager jobStateManager = jobStateManagers.get(nextTaskGroupToSchedule.get().getJobId());
-            jobStateManager.onTaskGroupStateChanged(nextTaskGroupToSchedule.get().getTaskGroup(),
-                TaskGroupState.State.EXECUTING);
-            schedulingPolicy.onTaskGroupScheduled(executorId.get(), nextTaskGroupToSchedule.get());
+              // Put this TaskGroup back to the queue since we failed to schedule it.
+              pendingTaskGroupQueue.enqueue(nextTaskGroupToSchedule.get());
+            } else {
+              // Must send this scheduledTaskGroup to the destination executor.
+              final JobStateManager jobStateManager = jobStateManagers.get(nextTaskGroupToSchedule.get().getJobId());
+              jobStateManager.onTaskGroupStateChanged(nextTaskGroupToSchedule.get().getTaskGroup(),
+                  TaskGroupState.State.EXECUTING);
+              schedulingPolicy.onTaskGroupScheduled(executorId.get(), nextTaskGroupToSchedule.get());
+            }
           }
         } catch (final Exception e) {
           e.printStackTrace(System.err);
