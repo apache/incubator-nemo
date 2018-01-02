@@ -28,6 +28,13 @@ limitations under the License.
     <artifactId>onyx-conf</artifactId>
     <name>Onyx Job Configuration</name>
 
+    <repositories>
+        <repository>
+            <id>Bundled Maven Repository</id>
+            <url>file://${basedir}/../common/src/main/resources/repository</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.reef</groupId>
