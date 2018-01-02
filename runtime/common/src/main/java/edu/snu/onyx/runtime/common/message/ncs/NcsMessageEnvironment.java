@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Message environment for NCS.
- * TODO #206: Rethink/Refactor NCS as our RPC stack
  */
 public final class NcsMessageEnvironment implements MessageEnvironment {
   private static final Logger LOG = LoggerFactory.getLogger(NcsMessageEnvironment.class.getName());
@@ -185,20 +184,20 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     switch (controlMessage.getType()) {
       case TaskGroupStateChanged:
       case ScheduleTaskGroup:
-      case PartitionStateChanged:
+      case BlockStateChanged:
       case ExecutorFailed:
-      case CommitBlock:
-      case RemoveBlockMetadata:
+      case CommitPartition:
+      case RemovePartitionMetadata:
       case DataSizeMetric:
       case ContainerFailed:
         return MessageType.Send;
-      case RequestPartitionLocation:
-      case RequestBlockMetadata:
-      case ReserveBlock:
+      case RequestBlockLocation:
+      case RequestPartitionMetadata:
+      case ReservePartition:
         return MessageType.Request;
-      case PartitionLocationInfo:
+      case BlockLocationInfo:
       case MetadataResponse:
-      case ReserveBlockResponse:
+      case ReservePartitionResponse:
         return MessageType.Reply;
       default:
         throw new IllegalArgumentException(controlMessage.toString());
@@ -207,12 +206,12 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
   private String getExecutorId(final ControlMessage.Message controlMessage) {
     switch (controlMessage.getType()) {
-      case RequestPartitionLocation:
-        return controlMessage.getRequestPartitionLocationMsg().getExecutorId();
-      case RequestBlockMetadata:
-        return controlMessage.getRequestBlockMetadataMsg().getExecutorId();
-      case ReserveBlock:
-        return controlMessage.getReserveBlockMsg().getExecutorId();
+      case RequestBlockLocation:
+        return controlMessage.getRequestBlockLocationMsg().getExecutorId();
+      case RequestPartitionMetadata:
+        return controlMessage.getRequestPartitionMetadataMsg().getExecutorId();
+      case ReservePartition:
+        return controlMessage.getReservePartitionMsg().getExecutorId();
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }
@@ -220,12 +219,12 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
   private long getRequestId(final ControlMessage.Message controlMessage) {
     switch (controlMessage.getType()) {
-      case PartitionLocationInfo:
-        return controlMessage.getPartitionLocationInfoMsg().getRequestId();
+      case BlockLocationInfo:
+        return controlMessage.getBlockLocationInfoMsg().getRequestId();
       case MetadataResponse:
         return controlMessage.getMetadataResponseMsg().getRequestId();
-      case ReserveBlockResponse:
-        return controlMessage.getReserveBlockResponseMsg().getRequestId();
+      case ReservePartitionResponse:
+        return controlMessage.getReservePartitionResponseMsg().getRequestId();
       default:
         throw new IllegalArgumentException(controlMessage.toString());
     }

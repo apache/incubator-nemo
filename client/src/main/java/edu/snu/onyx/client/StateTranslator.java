@@ -19,7 +19,7 @@ import edu.snu.onyx.runtime.common.state.JobState;
 
 /**
  * A class provides the translation between the state of job and corresponding
- * {@link edu.snu.onyx.client.ClientEndpoint}.
+ * {@link ClientEndpoint}.
  */
 public abstract class StateTranslator {
 

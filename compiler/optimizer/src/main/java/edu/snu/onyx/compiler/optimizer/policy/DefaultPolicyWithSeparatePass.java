@@ -34,6 +34,9 @@ import java.util.List;
 public final class DefaultPolicyWithSeparatePass implements Policy {
   private final Policy policy;
 
+  /**
+   * Default constructor.
+   */
   public DefaultPolicyWithSeparatePass() {
     this.policy = new PolicyBuilder(true)
         .registerCompileTimePass(new DefaultParallelismPass())
@@ -55,6 +58,9 @@ public final class DefaultPolicyWithSeparatePass implements Policy {
    * A simple custom pass consisted of the two passes at the end of the default pass.
    */
   public final class RefactoredPass extends CompositePass {
+    /**
+     * Default constructor.
+     */
     RefactoredPass() {
       super(Arrays.asList(
           new DefaultStagePartitioningPass(),

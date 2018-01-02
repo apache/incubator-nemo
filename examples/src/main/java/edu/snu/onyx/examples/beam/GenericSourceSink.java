@@ -32,15 +32,26 @@ import java.util.*;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Helper class for handling source/sink in a generic way.
  * Assumes String-type PCollections.
  */
 final class GenericSourceSink {
+  /**
+   * Default Constructor.
+   */
   private GenericSourceSink() {
   }
 
+  /**
+   * Read data.
+   * @param pipeline  beam pipeline
+   * @param path      path to read
+   * @return          returns the read value
+   */
   public static PCollection<String> read(final Pipeline pipeline,
                                          final String path) {
     if (isHDFSPath(path)) {
@@ -72,6 +83,13 @@ final class GenericSourceSink {
   }
 
 
+
+  /**
+   * Write data.
+   * @param dataToWrite data to write
+   * @param path        path to write data
+   * @return            returns {@link PDone}
+   */
   public static PDone write(final PCollection<String> dataToWrite,
                             final String path) {
     if (isHDFSPath(path)) {
@@ -82,6 +100,11 @@ final class GenericSourceSink {
     }
   }
 
+  /**
+   * Check if given path is HDFS path.
+   * @param path path to check
+   * @return     boolean value indicating whether the path is HDFS path or not
+   */
   private static boolean isHDFSPath(final String path) {
     return path.startsWith("hdfs://") || path.startsWith("s3a://") || path.startsWith("file://");
   }
@@ -91,18 +114,29 @@ final class GenericSourceSink {
  * Write output to HDFS according to the parallelism.
  */
 final class HDFSWrite extends DoFn<String, Void> {
+  private static final Logger LOG = LoggerFactory.getLogger(HDFSWrite.class.getName());
+
   private final String path;
   private Path fileName;
   private FileSystem fileSystem;
   private FSDataOutputStream outputStream;
 
+  /**
+   * Constructor.
+   *
+   * @param path    HDFS path
+   */
   HDFSWrite(final String path) {
     this.path = path;
   }
 
-  // The number of output files are determined according to the parallelism.
-  // i.e. if parallelism is 2, then there are total 2 output files.
-  // Each output file is written as a bundle.
+  /**
+   * Start bundle.
+   * The number of output files are determined according to the parallelism.
+   * i.e. if parallelism is 2, then there are total 2 output files.
+   * Each output file is written as a bundle.
+   * @param c      bundle context {@link StartBundleContext}
+   */
   @StartBundle
   public void startBundle(final StartBundleContext c) {
     fileName = new Path(path + UUID.randomUUID().toString());
@@ -114,21 +148,29 @@ final class HDFSWrite extends DoFn<String, Void> {
     }
   }
 
+  /**
+   * process element.
+   * @param c          context {@link ProcessContext}
+   * @throws Exception
+   */
   @ProcessElement
   public void processElement(final ProcessContext c) throws Exception {
     try {
       outputStream.writeBytes(c.element() + "\n");
     } catch (Exception e) {
-        outputStream.close();
-        fileSystem.delete(fileName, true);
-        fileSystem.close();
-        throw new RuntimeException(e);
+      outputStream.close();
+      fileSystem.delete(fileName, true);
+      throw new RuntimeException(e);
     }
   }
 
+  /**
+   * finish bundle.
+   * @param c             context
+   * @throws IOException  output stream exception
+   */
   @FinishBundle
-  public void finishBundle(final FinishBundleContext c) throws Exception {
+  public void finishBundle(final FinishBundleContext c) throws IOException {
     outputStream.close();
-    fileSystem.close();
   }
 }

@@ -23,6 +23,15 @@ import edu.snu.onyx.common.ir.Reader;
  */
 public final class BoundedSourceTask<O> extends Task {
   private final Reader<O> reader;
+
+  /**
+   * Constructor.
+   * @param taskId id of the task.
+   * @param runtimeVertexId id of the runtime vertex.
+   * @param index index in its taskGroup.
+   * @param reader reader for the source data.
+   * @param taskGroupId id of the taskGroup.
+   */
   public BoundedSourceTask(final String taskId,
                            final String runtimeVertexId,
                            final int index,
@@ -32,6 +41,9 @@ public final class BoundedSourceTask<O> extends Task {
     this.reader = reader;
   }
 
+  /**
+   * @return the reader of source data.
+   */
   public Reader getReader() {
     return reader;
   }

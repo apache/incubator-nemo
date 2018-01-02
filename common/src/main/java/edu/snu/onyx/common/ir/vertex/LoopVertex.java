@@ -314,6 +314,11 @@ public final class LoopVertex extends IRVertex {
     return sb.toString();
   }
 
+  /**
+   * Convert the crossing edges to JSON.
+   * @param map map of the crossing edges.
+   * @return a string of JSON showing the crossing edges.
+   */
   private static String crossingEdgesToJSON(final Map<IRVertex, Set<IREdge>> map) {
     final ArrayList<String> vertices = new ArrayList<>();
     map.forEach(((irVertex, irEdges) -> {

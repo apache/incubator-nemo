@@ -25,6 +25,9 @@ import java.util.Arrays;
  * and annotating passes after that and before this pass.
  */
 public final class PrimitiveCompositePass extends CompositePass {
+  /**
+   * Default constructor.
+   */
   public PrimitiveCompositePass() {
     super(Arrays.asList(
         new DefaultParallelismPass(), // annotating after reshaping passes, before stage partitioning

@@ -21,10 +21,19 @@ import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
  * DataFlowModel ExecutionProperty.
  */
 public final class DataFlowModelProperty extends ExecutionProperty<DataFlowModelProperty.Value> {
+  /**
+   * Constructor.
+   * @param value value of the execution property.
+   */
   private DataFlowModelProperty(final Value value) {
     super(Key.DataFlowModel, value);
   }
 
+  /**
+   * Static method exposing the constructor.
+   * @param value value of the new execution property.
+   * @return the newly created execution property.
+   */
   public static DataFlowModelProperty of(final Value value) {
     return new DataFlowModelProperty(value);
   }

@@ -30,6 +30,9 @@ import java.util.List;
 public final class PadoPolicy implements Policy {
   private final Policy policy;
 
+  /**
+   * Default constructor.
+   */
   public PadoPolicy() {
     this.policy = new PolicyBuilder(true)
         .registerCompileTimePass(new PadoCompositePass())

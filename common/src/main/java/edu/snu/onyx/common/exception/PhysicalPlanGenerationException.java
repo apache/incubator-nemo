@@ -19,7 +19,7 @@ package edu.snu.onyx.common.exception;
  * PhysicalPlanGenerationException.
  * Thrown when any exception occurs during the conversion
  * from {@link edu.snu.onyx.common.dag.DAG}
- * to {@link edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan}
+ * to {edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan}
  */
 public final class PhysicalPlanGenerationException extends RuntimeException {
   /**
@@ -30,6 +30,10 @@ public final class PhysicalPlanGenerationException extends RuntimeException {
     super(message);
   }
 
+  /**
+   * PhysicalPlanGenerationException.
+   * @param e throwable cause of the exception.
+   */
   public PhysicalPlanGenerationException(final Throwable e) {
     super(e);
   }

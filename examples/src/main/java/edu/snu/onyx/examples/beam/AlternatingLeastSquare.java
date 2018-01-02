@@ -16,7 +16,7 @@
 package edu.snu.onyx.examples.beam;
 
 import edu.snu.onyx.compiler.frontend.beam.transform.LoopCompositeTransform;
-import edu.snu.onyx.common.coder.PairCoder;
+import edu.snu.onyx.compiler.frontend.beam.coder.PairCoder;
 import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.client.beam.OnyxPipelineRunner;
 import org.apache.beam.sdk.Pipeline;

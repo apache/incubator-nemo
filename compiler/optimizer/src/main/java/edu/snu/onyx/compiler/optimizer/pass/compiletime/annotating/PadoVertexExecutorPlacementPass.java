@@ -30,6 +30,9 @@ import java.util.stream.Stream;
  * Pado pass for tagging vertices.
  */
 public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public PadoVertexExecutorPlacementPass() {
     super(ExecutionProperty.Key.ExecutorPlacement, Stream.of(
         ExecutionProperty.Key.DataCommunicationPattern
@@ -61,7 +64,7 @@ public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
   private boolean hasM2M(final List<IREdge> irEdges) {
     return irEdges.stream().anyMatch(edge ->
         edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-          .equals(DataCommunicationPatternProperty.Value.ScatterGather));
+          .equals(DataCommunicationPatternProperty.Value.Shuffle));
   }
 
   /**

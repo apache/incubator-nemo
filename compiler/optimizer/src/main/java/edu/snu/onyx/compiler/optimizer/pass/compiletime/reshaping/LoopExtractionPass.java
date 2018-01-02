@@ -33,6 +33,9 @@ import java.util.*;
  * other iterative computations.
  */
 public final class LoopExtractionPass extends ReshapingPass {
+  /**
+   * Default constructor.
+   */
   public LoopExtractionPass() {
     super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }

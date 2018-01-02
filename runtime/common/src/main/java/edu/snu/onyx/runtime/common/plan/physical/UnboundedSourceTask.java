@@ -19,6 +19,13 @@ package edu.snu.onyx.runtime.common.plan.physical;
  * UnboundedSourceTask.
  */
 public final class UnboundedSourceTask extends Task {
+  /**
+   * Constructor.
+   * @param taskId the id of the task.
+   * @param runtimeVertexId id of the runtime vertex.
+   * @param index index in the taskGroup.
+   * @param taskGroupId id of the taskGroup.
+   */
   public UnboundedSourceTask(final String taskId,
                              final String runtimeVertexId,
                              final int index,

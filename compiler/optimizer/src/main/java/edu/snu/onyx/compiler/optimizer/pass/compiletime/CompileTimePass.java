@@ -29,5 +29,9 @@ import java.util.function.Function;
  * It is a function that takes an original DAG to produce a processed DAG, after an optimization.
  */
 public interface CompileTimePass extends Function<DAG<IRVertex, IREdge>, DAG<IRVertex, IREdge>>, Serializable {
+  /**
+   * Getter for prerequisite execution properties.
+   * @return set of prerequisite execution properties.
+   */
   Set<ExecutionProperty.Key> getPrerequisiteExecutionProperties();
 }

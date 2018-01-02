@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.common;
 
-import edu.snu.onyx.common.ir.Transform;
+import edu.snu.onyx.common.ir.vertex.transform.Transform;
 
 import java.util.Map;
 
@@ -25,6 +25,10 @@ import java.util.Map;
 public final class ContextImpl implements Transform.Context {
   private final Map<Transform, Object> sideInputs;
 
+  /**
+   * Constructor of Context Implementation.
+   * @param sideInputs side inputs.
+   */
   public ContextImpl(final Map<Transform, Object> sideInputs) {
     this.sideInputs = sideInputs;
   }

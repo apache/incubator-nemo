@@ -15,14 +15,13 @@
  */
 package edu.snu.onyx.runtime.executor.data.stores;
 
+import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.common.exception.PartitionFetchException;
-import edu.snu.onyx.runtime.common.data.HashRange;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.*;
 import edu.snu.onyx.runtime.executor.data.metadata.LocalFileMetadata;
-import edu.snu.onyx.runtime.executor.data.partition.FilePartition;
-import org.apache.reef.tang.InjectionFuture;
+import edu.snu.onyx.runtime.executor.data.block.FileBlock;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -31,74 +30,72 @@ import java.io.*;
 import java.util.List;
 
 /**
- * Stores partitions in local files.
+ * Stores blocks in local files.
  */
 @ThreadSafe
-public final class LocalFileStore extends LocalPartitionStore implements FileStore {
+public final class LocalFileStore extends LocalBlockStore implements FileStore {
   private final String fileDirectory;
-  private final InjectionFuture<PartitionManagerWorker> partitionManagerWorker;
 
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
-                         final InjectionFuture<PartitionManagerWorker> partitionManagerWorker) {
-    super(partitionManagerWorker);
+                         final CoderManager coderManager) {
+    super(coderManager);
     this.fileDirectory = fileDirectory;
-    this.partitionManagerWorker = partitionManagerWorker;
     new File(fileDirectory).mkdirs();
   }
 
   /**
-   * Creates a new partition.
+   * Creates a new block.
    *
-   * @param partitionId the ID of the partition to create.
-   * @see PartitionStore#createPartition(String).
+   * @param blockId the ID of the block to create.
+   * @see BlockStore#createBlock(String)
    */
   @Override
-  public void createPartition(final String partitionId) {
-    removePartition(partitionId);
+  public void createBlock(final String blockId) {
+    removeBlock(blockId);
 
-    final Coder coder = getCoderFromWorker(partitionId);
+    final Coder coder = getCoderFromWorker(blockId);
     final LocalFileMetadata metadata = new LocalFileMetadata(false);
 
-    final FilePartition partition =
-        new FilePartition(coder, DataUtil.partitionIdToFilePath(partitionId, fileDirectory), metadata);
-    getPartitionMap().put(partitionId, partition);
+    final FileBlock block =
+        new FileBlock(coder, DataUtil.blockIdToFilePath(blockId, fileDirectory), metadata);
+    getBlockMap().put(blockId, block);
   }
 
   /**
-   * Removes the file that the target partition is stored.
+   * Removes the file that the target block is stored.
    *
-   * @param partitionId of the partition.
-   * @return whether the partition exists or not.
+   * @param blockId of the block.
+   * @return whether the block exists or not.
    */
   @Override
-  public Boolean removePartition(final String partitionId) throws PartitionFetchException {
-    final FilePartition filePartition = (FilePartition) getPartitionMap().remove(partitionId);
-    if (filePartition == null) {
+  public Boolean removeBlock(final String blockId) throws BlockFetchException {
+    final FileBlock fileBlock = (FileBlock) getBlockMap().remove(blockId);
+    if (fileBlock == null) {
       return false;
     }
     try {
-      filePartition.deleteFile();
+      fileBlock.deleteFile();
     } catch (final IOException e) {
-      throw new PartitionFetchException(e);
+      throw new BlockFetchException(e);
     }
     return true;
   }
 
   /**
-   * @see FileStore#getFileAreas(String, HashRange).
+   * @see FileStore#getFileAreas(String, KeyRange)
    */
   @Override
-  public List<FileArea> getFileAreas(final String partitionId,
-                                     final HashRange hashRange) {
+  public List<FileArea> getFileAreas(final String blockId,
+                                     final KeyRange keyRange) {
     try {
-      final FilePartition partition = (FilePartition) getPartitionMap().get(partitionId);
-      if (partition == null) {
-        throw new IOException(String.format("%s does not exists", partitionId));
+      final FileBlock block = (FileBlock) getBlockMap().get(blockId);
+      if (block == null) {
+        throw new IOException(String.format("%s does not exists", blockId));
       }
-      return partition.asFileAreas(hashRange);
+      return block.asFileAreas(keyRange);
     } catch (final IOException retrievalException) {
-      throw new PartitionFetchException(retrievalException);
+      throw new BlockFetchException(retrievalException);
     }
   }
 }

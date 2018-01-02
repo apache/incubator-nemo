@@ -7,9 +7,8 @@
   docs:
   - ir
   - passes_and_policies
-  
-- title: Detailed Explanations
+
+- title: System Designs
   docs:
-  - extending_onyx
   - compiler_design
   - runtime_design

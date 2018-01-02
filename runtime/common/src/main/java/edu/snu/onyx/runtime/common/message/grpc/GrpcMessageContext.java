@@ -15,6 +15,10 @@ final class GrpcMessageContext implements MessageContext {
 
   private final StreamObserver<ControlMessage.Message> responseObserver;
 
+  /**
+   * Constructor.
+   * @param responseObserver observer for the message.
+   */
   GrpcMessageContext(final StreamObserver<ControlMessage.Message> responseObserver) {
     this.responseObserver = responseObserver;
   }

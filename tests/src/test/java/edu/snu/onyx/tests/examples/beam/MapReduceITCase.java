@@ -55,10 +55,18 @@ public final class MapReduceITCase {
   }
 
   @Test (timeout = TIMEOUT)
-  public void testSailfishDisagg() throws Exception {
+  public void testSailfish() throws Exception {
     JobLauncher.main(builder
-        .addJobId(MapReduceITCase.class.getSimpleName() + "_sailfish_disagg")
-        .addOptimizationPolicy(CompilerTestUtil.sailfishDisaggPolicy)
+        .addJobId(MapReduceITCase.class.getSimpleName() + "_sailfish")
+        .addOptimizationPolicy(CompilerTestUtil.sailfishPolicy)
+        .build());
+  }
+
+  @Test (timeout = TIMEOUT)
+  public void testDisagg() throws Exception {
+    JobLauncher.main(builder
+        .addJobId(MapReduceITCase.class.getSimpleName() + "_disagg")
+        .addOptimizationPolicy(CompilerTestUtil.disaggPolicy)
         .build());
   }
 

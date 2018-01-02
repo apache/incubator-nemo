@@ -54,7 +54,6 @@ public final class OnyxBackend implements Backend<PhysicalPlan> {
    * @param irDAG to compile.
    * @param physicalPlanGenerator with custom DAG directory.
    * @return the execution plan to be submitted to Runtime.
-   * @throws Exception any exception occurred during the compilation.
    */
   public PhysicalPlan compile(final DAG<IRVertex, IREdge> irDAG,
                               final PhysicalPlanGenerator physicalPlanGenerator) {

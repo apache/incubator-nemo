@@ -32,6 +32,14 @@ public final class ScheduledTaskGroup implements Serializable {
   private final List<PhysicalStageEdge> taskGroupOutgoingEdges;
   private final int attemptIdx;
 
+  /**
+   * Constructor.
+   * @param jobId id of the job.
+   * @param taskGroup taskGroup.
+   * @param taskGroupIncomingEdges incoming edges of the taskGroup.
+   * @param taskGroupOutgoingEdges outgoing edges of the taskGroup.
+   * @param attemptIdx attempt index.
+   */
   public ScheduledTaskGroup(final String jobId,
                             final TaskGroup taskGroup,
                             final List<PhysicalStageEdge> taskGroupIncomingEdges,
@@ -44,22 +52,37 @@ public final class ScheduledTaskGroup implements Serializable {
     this.attemptIdx = attemptIdx;
   }
 
+  /**
+   * @return the id of the job.
+   */
   public String getJobId() {
     return jobId;
   }
 
+  /**
+   * @return the taskGroup
+   */
   public TaskGroup getTaskGroup() {
     return taskGroup;
   }
 
+  /**
+   * @return the incoming edges of the taskGroup.
+   */
   public List<PhysicalStageEdge> getTaskGroupIncomingEdges() {
     return taskGroupIncomingEdges;
   }
 
+  /**
+   * @return the outgoing edges of the taskGroup.
+   */
   public List<PhysicalStageEdge> getTaskGroupOutgoingEdges() {
     return taskGroupOutgoingEdges;
   }
 
+  /**
+   * @return the attempt index.
+   */
   public int getAttemptIdx() {
     return attemptIdx;
   }

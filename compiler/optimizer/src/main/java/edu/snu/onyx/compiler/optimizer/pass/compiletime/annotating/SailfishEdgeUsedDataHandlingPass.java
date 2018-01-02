@@ -18,13 +18,11 @@ package edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataFlowModelProperty;
-import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.UsedDataHandlingProperty;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.Collections;
 
 /**
  * A pass to support Sailfish-like shuffle by tagging edges.
@@ -32,11 +30,11 @@ import java.util.stream.Stream;
  */
 public final class SailfishEdgeUsedDataHandlingPass extends AnnotatingPass {
 
+  /**
+   * Default constructor.
+   */
   public SailfishEdgeUsedDataHandlingPass() {
-    super(ExecutionProperty.Key.UsedDataHandling, Stream.of(
-        ExecutionProperty.Key.DataStore,
-        ExecutionProperty.Key.DataFlowModel
-    ).collect(Collectors.toSet()));
+    super(ExecutionProperty.Key.UsedDataHandling, Collections.singleton(ExecutionProperty.Key.DataFlowModel));
   }
 
   @Override
@@ -44,12 +42,8 @@ public final class SailfishEdgeUsedDataHandlingPass extends AnnotatingPass {
     dag.topologicalDo(irVertex ->
         dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
           final DataFlowModelProperty.Value dataFlowModel = irEdge.getProperty(ExecutionProperty.Key.DataFlowModel);
-          final DataStoreProperty.Value dataStore = irEdge.getProperty(ExecutionProperty.Key.DataStore);
           if (DataFlowModelProperty.Value.Push.equals(dataFlowModel)) {
             irEdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Discard));
-          //} else if (DataStoreProperty.Value.LocalFileStore.equals(dataStore)
-           //   || DataStoreProperty.Value.GlusterFileStore.equals(dataStore)) {
-           // irEdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
           }
         }));
     return dag;

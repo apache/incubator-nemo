@@ -32,6 +32,12 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
   private final MetricCollectionBarrierVertex metricCollectionBarrierVertex;
   private final Pair<String, TaskGroup> taskInfo;
 
+  /**
+   * Default constructor.
+   * @param physicalPlan physical plan to be optimized.
+   * @param metricCollectionBarrierVertex metric collection barrier vertex to retrieve metric data from.
+   * @param taskInfo information of the task.
+   */
   public DynamicOptimizationEvent(final PhysicalPlan physicalPlan,
                                   final MetricCollectionBarrierVertex metricCollectionBarrierVertex,
                                   final Pair<String, TaskGroup> taskInfo) {
@@ -40,14 +46,23 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
     this.taskInfo = taskInfo;
   }
 
+  /**
+   * @return the physical plan to be optimized.
+   */
   public PhysicalPlan getPhysicalPlan() {
     return this.physicalPlan;
   }
 
+  /**
+   * @return the metric collection barrier vertex for the dynamic optimization.
+   */
   public MetricCollectionBarrierVertex getMetricCollectionBarrierVertex() {
     return this.metricCollectionBarrierVertex;
   }
 
+  /**
+   * @return the information of the task at which this optimization occurs: its name and its taskGroup.
+   */
   public Pair<String, TaskGroup> getTaskInfo() {
     return this.taskInfo;
   }

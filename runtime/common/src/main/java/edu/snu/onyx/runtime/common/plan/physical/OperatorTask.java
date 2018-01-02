@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.runtime.common.plan.physical;
 
-import edu.snu.onyx.common.ir.Transform;
+import edu.snu.onyx.common.ir.vertex.transform.Transform;
 
 /**
  * OperatorTask.
@@ -23,6 +23,14 @@ import edu.snu.onyx.common.ir.Transform;
 public final class OperatorTask extends Task {
   private final Transform transform;
 
+  /**
+   * Constructor.
+   * @param taskId id of the task.
+   * @param runtimeVertexId id of the runtime vertex.
+   * @param index index in the taskGroup.
+   * @param transform transform to perform.
+   * @param taskGroupId id of the taskGroup.
+   */
   public OperatorTask(final String taskId,
                       final String runtimeVertexId,
                       final int index,
@@ -32,6 +40,9 @@ public final class OperatorTask extends Task {
     this.transform = transform;
   }
 
+  /**
+   * @return the transform to perform.
+   */
   public Transform getTransform() {
     return transform;
   }

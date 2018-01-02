@@ -1,6 +1,6 @@
 package edu.snu.onyx.runtime.common.message;
 
-import edu.snu.onyx.runtime.common.message.grpc.GrpcMessageEnvironment;
+import edu.snu.onyx.runtime.common.message.ncs.NcsMessageEnvironment;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.concurrent.Future;
@@ -9,14 +9,14 @@ import java.util.concurrent.Future;
  * Set up {@link MessageListener}s to handle incoming messages on this node, and connect to remote nodes and return
  * {@link MessageSender}s to send message to them.
  */
-@DefaultImplementation(GrpcMessageEnvironment.class)
+@DefaultImplementation(NcsMessageEnvironment.class)
 public interface MessageEnvironment {
 
   // The ID of the master used for distinguish the sender or receiver.
   String MASTER_COMMUNICATION_ID = "MASTER";
   // The globally known message listener IDs.
   String RUNTIME_MASTER_MESSAGE_LISTENER_ID = "RUNTIME_MASTER_MESSAGE_LISTENER_ID";
-  String PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID = "PARTITION_MANAGER_MASTER_MESSAGE_LISTENER_ID";
+  String BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID = "BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID";
   String EXECUTOR_MESSAGE_LISTENER_ID = "EXECUTOR_MESSAGE_LISTENER_ID";
 
   /**

@@ -17,16 +17,15 @@ package edu.snu.onyx.runtime.executor;
 
 import edu.snu.onyx.common.ContextImpl;
 import edu.snu.onyx.common.Pair;
-import edu.snu.onyx.common.exception.PartitionFetchException;
-import edu.snu.onyx.common.exception.PartitionWriteException;
+import edu.snu.onyx.common.exception.BlockFetchException;
+import edu.snu.onyx.common.exception.BlockWriteException;
 import edu.snu.onyx.common.ir.Reader;
-import edu.snu.onyx.common.ir.Transform;
+import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.runtime.common.state.TaskState;
-import edu.snu.onyx.runtime.executor.data.PartitionManagerWorker;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.onyx.runtime.executor.datatransfer.InputReader;
 import edu.snu.onyx.runtime.executor.datatransfer.OutputCollectorImpl;
@@ -64,14 +63,11 @@ public final class TaskGroupExecutor {
 
   private boolean isExecutionRequested;
 
-  private final PartitionManagerWorker partitionManagerWorker;
-
   public TaskGroupExecutor(final TaskGroup taskGroup,
                            final TaskGroupStateManager taskGroupStateManager,
                            final List<PhysicalStageEdge> stageIncomingEdges,
                            final List<PhysicalStageEdge> stageOutgoingEdges,
-                           final DataTransferFactory channelFactory,
-                           final PartitionManagerWorker partitionManagerWorker) {
+                           final DataTransferFactory channelFactory) {
     this.taskGroup = taskGroup;
     this.taskGroupStateManager = taskGroupStateManager;
     this.stageIncomingEdges = stageIncomingEdges;
@@ -82,8 +78,6 @@ public final class TaskGroupExecutor {
     this.taskIdToOutputWriterMap = new HashMap<>();
 
     this.isExecutionRequested = false;
-
-    this.partitionManagerWorker = partitionManagerWorker;
 
     initializeDataTransfer();
   }
@@ -183,12 +177,12 @@ public final class TaskGroupExecutor {
         } else {
           throw new UnsupportedOperationException(task.toString());
         }
-      } catch (final PartitionFetchException ex) {
+      } catch (final BlockFetchException ex) {
         taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.FAILED_RECOVERABLE,
             Optional.of(TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
         LOG.warn("{} Execution Failed (Recoverable)! Exception: {}",
             new Object[] {taskGroup.getTaskGroupId(), ex.toString()});
-      } catch (final PartitionWriteException ex2) {
+      } catch (final BlockWriteException ex2) {
         taskGroupStateManager.onTaskStateChanged(task.getId(), TaskState.State.FAILED_RECOVERABLE,
             Optional.of(TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
         LOG.warn("{} Execution Failed (Recoverable)! Exception: {}",
@@ -237,7 +231,7 @@ public final class TaskGroupExecutor {
             }
             sideInputMap.put(srcTransform, sideInput);
           } catch (final InterruptedException | ExecutionException e) {
-            throw new PartitionFetchException(e);
+            throw new BlockFetchException(e);
           }
         });
 
@@ -259,7 +253,7 @@ public final class TaskGroupExecutor {
           // Add consumers which will push the data to the data queue when it ready to the futures.
           futures.forEach(compFuture -> compFuture.whenComplete((data, exception) -> {
             if (exception != null) {
-              throw new PartitionFetchException(exception);
+              throw new BlockFetchException(exception);
             }
             dataQueue.add(Pair.of(data, srcVtxId));
           }));
@@ -272,7 +266,7 @@ public final class TaskGroupExecutor {
         final Pair<Iterable, String> availableData = dataQueue.take();
         transform.onData(availableData.left(), availableData.right());
       } catch (final InterruptedException e) {
-        throw new PartitionFetchException(e);
+        throw new BlockFetchException(e);
       }
 
       // Check whether there is any output data from the transform and write the output of this task to the writer.
@@ -316,7 +310,7 @@ public final class TaskGroupExecutor {
         final Iterable availableData = dataQueue.take();
         availableData.forEach(data::add);
       } catch (final InterruptedException e) {
-        throw new PartitionFetchException(e);
+        throw new BlockFetchException(e);
       }
     });
     taskIdToOutputWriterMap.get(task.getId()).forEach(outputWriter -> {

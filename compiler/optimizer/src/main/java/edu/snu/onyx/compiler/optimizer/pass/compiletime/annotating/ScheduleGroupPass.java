@@ -35,6 +35,9 @@ import static edu.snu.onyx.common.ir.executionproperty.ExecutionProperty.Key.Sta
  * to give correct order or schedule groups.
  */
 public final class ScheduleGroupPass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public ScheduleGroupPass() {
     super(ExecutionProperty.Key.ScheduleGroupIndex, Stream.of(
         ExecutionProperty.Key.StageId,

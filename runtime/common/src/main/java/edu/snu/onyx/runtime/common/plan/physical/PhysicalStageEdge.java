@@ -19,6 +19,7 @@ package edu.snu.onyx.runtime.common.plan.physical;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionPropertyMap;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.data.HashRange;
 
@@ -43,10 +44,21 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
   private final IRVertex dstVertex;
 
   /**
-   * The map between the task group id and hash range to read.
+   * The map between the task group id and key range to read.
    */
-  private final Map<String, HashRange> taskGroupIdToHashRangeMap;
+  private final Map<String, KeyRange> taskGroupIdToKeyRangeMap;
 
+  /**
+   * Constructor.
+   * @param runtimeEdgeId id of the runtime edge.
+   * @param edgeProperties edge execution properties.
+   * @param srcVertex source vertex.
+   * @param dstVertex destination vertex.
+   * @param srcStage source stage.
+   * @param dstStage destination stage.
+   * @param coder the coder for enconding and deconding.
+   * @param isSideInput whether or not the edge is a sideInput edge.
+   */
   public PhysicalStageEdge(final String runtimeEdgeId,
                            final ExecutionPropertyMap edgeProperties,
                            final IRVertex srcVertex,
@@ -59,17 +71,23 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
     // Initialize the key range of each dst task.
-    this.taskGroupIdToHashRangeMap = new HashMap<>();
+    this.taskGroupIdToKeyRangeMap = new HashMap<>();
     final List<TaskGroup> taskGroups = dstStage.getTaskGroupList();
     for (int taskIdx = 0; taskIdx < taskGroups.size(); taskIdx++) {
-      taskGroupIdToHashRangeMap.put(taskGroups.get(taskIdx).getTaskGroupId(), HashRange.of(taskIdx, taskIdx + 1));
+      taskGroupIdToKeyRangeMap.put(taskGroups.get(taskIdx).getTaskGroupId(), HashRange.of(taskIdx, taskIdx + 1));
     }
   }
 
+  /**
+   * @return the source vertex of the edge.
+   */
   public IRVertex getSrcVertex() {
     return srcVertex;
   }
 
+  /**
+   * @return the destination vertex of the edge.
+   */
   public IRVertex getDstVertex() {
     return dstVertex;
   }
@@ -86,7 +104,7 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     return sb.toString();
   }
 
-  public Map<String, HashRange> getTaskGroupIdToHashRangeMap() {
-    return taskGroupIdToHashRangeMap;
+  public Map<String, KeyRange> getTaskGroupIdToKeyRangeMap() {
+    return taskGroupIdToKeyRangeMap;
   }
 }

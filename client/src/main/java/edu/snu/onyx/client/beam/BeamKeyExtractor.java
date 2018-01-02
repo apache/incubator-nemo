@@ -23,6 +23,11 @@ import org.apache.beam.sdk.values.KV;
  * For non-KV elements, the elements themselves become the key.
  */
 final class BeamKeyExtractor implements KeyExtractor {
+  /**
+   * Extracts key.
+   * @param element element to get the key from.
+   * @return the extracted key of the element.
+   */
   public Object extractKey(final Object element) {
     if (element instanceof KV) {
       return ((KV) element).getKey();

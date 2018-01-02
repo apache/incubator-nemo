@@ -28,10 +28,13 @@ import java.util.stream.Stream;
 
 /**
  * Pass to annotate the DAG for a job to perform data skew.
- * It specifies the outgoing ScatterGather edges from MetricCollectionVertices with a MetricCollection ExecutionProperty
+ * It specifies the outgoing Shuffle edges from MetricCollectionVertices with a MetricCollection ExecutionProperty
  * which lets the edge to know what metric collection it should perform.
  */
 public final class DataSkewEdgeMetricCollectionPass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public DataSkewEdgeMetricCollectionPass() {
     super(ExecutionProperty.Key.MetricCollection, Stream.of(
         ExecutionProperty.Key.DataCommunicationPattern
@@ -46,7 +49,7 @@ public final class DataSkewEdgeMetricCollectionPass extends AnnotatingPass {
         dag.getOutgoingEdgesOf(v).forEach(edge -> {
           // double checking.
           if (edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-              .equals(DataCommunicationPatternProperty.Value.ScatterGather)) {
+              .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
             edge.setProperty(MetricCollectionProperty.of(MetricCollectionProperty.Value.DataSkewRuntimePass));
           }
         });

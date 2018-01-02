@@ -22,10 +22,19 @@ import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
  */
 public final class DataCommunicationPatternProperty
     extends ExecutionProperty<DataCommunicationPatternProperty.Value>  {
+  /**
+   * Constructor.
+   * @param value value of the execution property.
+   */
   private DataCommunicationPatternProperty(final Value value) {
     super(Key.DataCommunicationPattern, value);
   }
 
+  /**
+   * Static method exposing the constructor.
+   * @param value value of the new execution property.
+   * @return the newly created execution property.
+   */
   public static DataCommunicationPatternProperty of(final Value value) {
     return new DataCommunicationPatternProperty(value);
   }
@@ -36,6 +45,6 @@ public final class DataCommunicationPatternProperty
   public enum Value {
     OneToOne,
     BroadCast,
-    ScatterGather
+    Shuffle
   }
 }

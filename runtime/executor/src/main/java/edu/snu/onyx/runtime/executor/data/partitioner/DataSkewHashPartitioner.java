@@ -16,8 +16,8 @@
 package edu.snu.onyx.runtime.executor.data.partitioner;
 
 import edu.snu.onyx.common.KeyExtractor;
-import edu.snu.onyx.runtime.executor.data.Block;
-import edu.snu.onyx.runtime.executor.data.NonSerializedBlock;
+import edu.snu.onyx.runtime.executor.data.Partition;
+import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,13 +41,13 @@ public final class DataSkewHashPartitioner implements Partitioner {
   }
 
   @Override
-  public List<Block> partition(final Iterable elements,
-                               final int dstParallelism,
-                               final KeyExtractor keyExtractor) {
+  public List<Partition> partition(final Iterable elements,
+                                   final int dstParallelism,
+                                   final KeyExtractor keyExtractor) {
     // For this hash range, please check the description of HashRangeMultiplier in JobConf.
     final int hashRange = hashRangeMultiplier * dstParallelism;
 
-    // Separate the data into blocks according to the hash value of their key.
+    // Separate the data into partitions according to the hash value of their key.
     final List<List> elementsByKey = new ArrayList<>(hashRange);
     IntStream.range(0, hashRange).forEach(hashVal -> elementsByKey.add(new ArrayList<>()));
     elements.forEach(element -> {
@@ -56,10 +56,10 @@ public final class DataSkewHashPartitioner implements Partitioner {
       elementsByKey.get(hashVal).add(element);
     });
 
-    final List<Block> blocks = new ArrayList<>(hashRange);
+    final List<Partition> partitions = new ArrayList<>(hashRange);
     for (int hashIdx = 0; hashIdx < hashRange; hashIdx++) {
-      blocks.add(new NonSerializedBlock(hashIdx, elementsByKey.get(hashIdx)));
+      partitions.add(new NonSerializedPartition(hashIdx, elementsByKey.get(hashIdx)));
     }
-    return blocks;
+    return partitions;
   }
 }

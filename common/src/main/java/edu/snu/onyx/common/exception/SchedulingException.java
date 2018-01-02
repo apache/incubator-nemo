@@ -18,7 +18,7 @@ package edu.snu.onyx.common.exception;
 /**
  * SchedulingException.
  * Thrown when any exception occurs while trying to schedule
- * a {@link edu.snu.onyx.runtime.common.plan.physical.TaskGroup} to an executor.
+ * a {edu.snu.onyx.runtime.common.plan.physical.TaskGroup} to an executor.
  */
 public final class SchedulingException extends RuntimeException {
   /**

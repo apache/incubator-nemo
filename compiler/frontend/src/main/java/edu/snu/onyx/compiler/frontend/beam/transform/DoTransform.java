@@ -17,7 +17,7 @@ package edu.snu.onyx.compiler.frontend.beam.transform;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.onyx.common.ir.OutputCollector;
-import edu.snu.onyx.common.ir.Transform;
+import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.state.State;
 import org.apache.beam.sdk.state.Timer;
@@ -108,6 +108,11 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     private final ObjectMapper mapper;
     private final PipelineOptions options;
 
+    /**
+     * StartBundleContext.
+     * @param fn DoFn.
+     * @param serializedOptions serialized options of the DoTransform.
+     */
     StartBundleContext(final DoFn<I, O> fn,
                        final String serializedOptions) {
       fn.super();
@@ -135,6 +140,12 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     private final ObjectMapper mapper;
     private final PipelineOptions options;
 
+    /**
+     * Constructor.
+     * @param fn DoFn.
+     * @param outputCollector output collector of the DoTransform.
+     * @param serializedOptions serialized options of the DoTransform.
+     */
     FinishBundleContext(final DoFn<I, O> fn,
                         final OutputCollector<O> outputCollector,
                         final String serializedOptions) {

@@ -31,6 +31,11 @@ public class MetricData {
   private final ObjectMapper objectMapper;
   private final Map<String, Object> metrics;
 
+  /**
+   * Constructor.
+   * @param computationUnitId the id of the computation unit.
+   * @param metrics the metric data.
+   */
   public MetricData(final String computationUnitId,
                     final Map<String, Object> metrics) {
     this.computationUnitId = computationUnitId;
@@ -38,13 +43,23 @@ public class MetricData {
     this.metrics = metrics;
   }
 
+  /**
+   * @return the computation unit id.
+   */
   public final String getComputationUnitId() {
     return computationUnitId;
   }
+
+  /**
+   * @return the metric data.
+   */
   public final Map<String, Object> getMetrics() {
     return metrics;
   }
 
+  /**
+   * @return a JSON expression of the metric data.
+   */
   public final String toJson() {
     try {
       final String jsonStr = objectMapper.writeValueAsString(this);

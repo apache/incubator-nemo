@@ -15,10 +15,10 @@
  */
 package edu.snu.onyx.compiler.optimizer.examples;
 
+import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.ir.OutputCollector;
-import edu.snu.onyx.common.ir.Transform;
-import org.apache.beam.sdk.io.BoundedSource;
-import org.apache.beam.sdk.options.PipelineOptions;
+import edu.snu.onyx.common.ir.vertex.Source;
+import edu.snu.onyx.common.ir.vertex.transform.Transform;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -71,9 +71,13 @@ public class EmptyComponents {
   /**
    * An empty bounded source.
    */
-  public static final class EmptyBoundedSource extends BoundedSource {
+  public static final class EmptyBoundedSource implements Source {
     private final String name;
 
+    /**
+     * Constructor.
+     * @param name the name of bounded source.
+     */
     public EmptyBoundedSource(final String name) {
       this.name = name;
     }
@@ -87,32 +91,59 @@ public class EmptyComponents {
       return sb.toString();
     }
 
-    public boolean producesSortedKeys(final PipelineOptions options) throws Exception {
+    /**
+     * Do nothing.
+     * @return throws exception.
+     * @throws Exception throws UnsupportedOperationException
+     */
+    public boolean producesSortedKeys() throws Exception {
       throw new UnsupportedOperationException("Empty bounded source");
     }
 
-    public BoundedReader createReader(final PipelineOptions options) throws IOException {
-      throw new UnsupportedOperationException("Empty bounded source");
-    }
-
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public List<? extends BoundedSource> split(final long l, final PipelineOptions pipelineOptions) throws Exception {
+    public Reader createReader() throws IOException {
+      throw new UnsupportedOperationException("Empty bounded source");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public List<? extends Source> split(final long l) throws Exception {
       return Arrays.asList(this);
     }
 
-    public long getEstimatedSizeBytes(final PipelineOptions options) throws Exception {
-      return 1;
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long getEstimatedSizeBytes() throws Exception {
+      return 0;
     }
 
-    public List<? extends BoundedSource> splitIntoBundles(
-        final long desiredBundleSizeBytes, final PipelineOptions options) throws Exception {
+    /**
+     * Do nothing.
+     * @param desiredBundleSizeBytes the bundle size to split the source.
+     * @return an empty list
+     */
+    public List<? extends Source> splitIntoBundles(final long desiredBundleSizeBytes) {
       return new ArrayList<>();
     }
 
+    /**
+     * Do nothing.
+     */
     public void validate() {
     }
 
-    public org.apache.beam.sdk.coders.Coder getDefaultOutputCoder() {
+    /**
+     * Do nothing.
+     * @return throw UnsupportedOperationException
+     */
+    public Coder getDefaultOutputCoder() {
       throw new UnsupportedOperationException("Empty bounded source");
     }
   }
