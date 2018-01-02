@@ -61,7 +61,7 @@ public class ClientEndpointTest {
   public void testState() throws Exception {
     // Create a simple client endpoint that returns given job state.
     final StateTranslator stateTranslator = mock(StateTranslator.class);
-    when(stateTranslator.translateState(any())).then(state -> state.getArgumentAt(0, JobState.State.class));
+    when(stateTranslator.translateState(any())).then(state -> state.getArgument(0));
     final ClientEndpoint clientEndpoint = new TestClientEndpoint(stateTranslator);
     assertEquals(clientEndpoint.getJobState(), JobState.State.READY);
 
