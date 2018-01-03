@@ -16,6 +16,7 @@
 package edu.snu.onyx.runtime.master.scheduler;
 
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.onyx.runtime.master.JobStateManager;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -40,10 +41,11 @@ public interface SchedulingPolicy {
    * If there is no executor available for the taskGroup, it waits for an executor to be assigned before it times out.
    * (Depending on the executor's resource type)
    *
-   * @param scheduledTaskGroup to schedule
-   * @return the ID of the executor on which the taskGroup is scheduled if successful, an empty Optional otherwise.
+   * @param scheduledTaskGroup to schedule.
+   * @param jobStateManager jobStateManager which the TaskGroup belongs to.
+   * @return true if the task group is successfully scheduled, false otherwise.
    */
-  Optional<String> attemptSchedule(final ScheduledTaskGroup scheduledTaskGroup);
+  boolean scheduleTaskGroup(final ScheduledTaskGroup scheduledTaskGroup, final JobStateManager jobStateManager);
 
   /**
    * Adds the executorId to the pool of available executors.
@@ -63,16 +65,6 @@ public interface SchedulingPolicy {
    * @return the ids of the set of task groups that were running on the executor.
    */
   Set<String> onExecutorRemoved(String executorId);
-
-  /**
-   * Marks the executorId scheduled for the taskGroup.
-   * Locks this policy from scheduling if there is no more executor currently available for the next taskGroup.
-   * (Depending on the executor's resource type)
-   *
-   * @param executorId of the executor assigned for the taskGroup.
-   * @param scheduledTaskGroup scheduled to the executorId.
-   */
-  void onTaskGroupScheduled(final String executorId, final ScheduledTaskGroup scheduledTaskGroup);
 
   /**
    * Marks the taskGroup's completion in the executor.

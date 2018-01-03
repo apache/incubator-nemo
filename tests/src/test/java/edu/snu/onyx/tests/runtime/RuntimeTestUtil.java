@@ -20,6 +20,7 @@ import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.BlockState;
+import edu.snu.onyx.runtime.common.state.JobState;
 import edu.snu.onyx.runtime.common.state.StageState;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.runtime.master.JobStateManager;
@@ -128,12 +129,12 @@ public final class RuntimeTestUtil {
 
   public static void mockSchedulerRunner(final PendingTaskGroupQueue pendingTaskGroupQueue,
                                          final SchedulingPolicy schedulingPolicy,
+                                         final JobStateManager jobStateManager,
                                          final boolean isPartialSchedule) {
     while (!pendingTaskGroupQueue.isEmpty()) {
       final ScheduledTaskGroup taskGroupToSchedule = pendingTaskGroupQueue.dequeue().get();
 
-      final String executorId = schedulingPolicy.attemptSchedule(taskGroupToSchedule).get();
-      schedulingPolicy.onTaskGroupScheduled(executorId, taskGroupToSchedule);
+      schedulingPolicy.scheduleTaskGroup(taskGroupToSchedule, jobStateManager);
 
       // Schedule only the first task group.
       if (isPartialSchedule) {

@@ -20,6 +20,7 @@ import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.message.MessageSender;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
+import edu.snu.onyx.runtime.master.JobStateManager;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.onyx.runtime.master.resource.ResourceSpecification;
@@ -45,13 +46,14 @@ import static org.mockito.Mockito.*;
  * Tests {@link RoundRobinSchedulingPolicy}
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(ContainerManager.class)
+@PrepareForTest({ContainerManager.class, JobStateManager.class})
 public final class RoundRobinSchedulingPolicyTest {
   private static final int TIMEOUT_MS = 1000;
 
   private SchedulingPolicy schedulingPolicy;
   private ContainerManager containerManager = mock(ContainerManager.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
+  private JobStateManager jobStateManager = mock(JobStateManager.class);
 
   // This schedule index will make sure that task group events are not ignored
   private static final int MAGIC_SCHEDULE_ATTEMPT_INDEX = Integer.MAX_VALUE;
@@ -113,29 +115,24 @@ public final class RoundRobinSchedulingPolicyTest {
     final ScheduledTaskGroup a5Wrapper = wrap(A5);
     final ScheduledTaskGroup a6Wrapper = wrap(A6);
 
-    Optional<String> a1 = schedulingPolicy.attemptSchedule(a1Wrapper);
-    assertTrue(a1.isPresent());
-    schedulingPolicy.onTaskGroupScheduled(a1.get(), a1Wrapper);
+    boolean isScheduled = schedulingPolicy.scheduleTaskGroup(a1Wrapper, jobStateManager);
+    assertTrue(isScheduled);
 
-    Optional<String> a2 = schedulingPolicy.attemptSchedule(a2Wrapper);
-    assertTrue(a2.isPresent());
-    schedulingPolicy.onTaskGroupScheduled(a2.get(), a2Wrapper);
+    isScheduled= schedulingPolicy.scheduleTaskGroup(a2Wrapper, jobStateManager);
+    assertTrue(isScheduled);
 
-    Optional<String> a3 = schedulingPolicy.attemptSchedule(a3Wrapper);
-    assertTrue(a3.isPresent());
-    schedulingPolicy.onTaskGroupScheduled(a3.get(), a3Wrapper);
+    isScheduled = schedulingPolicy.scheduleTaskGroup(a3Wrapper, jobStateManager);
+    assertTrue(isScheduled);
 
-    Optional<String> a4 = schedulingPolicy.attemptSchedule(a4Wrapper);
-    assertTrue(a4.isPresent());
-    schedulingPolicy.onTaskGroupScheduled(a4.get(), a4Wrapper);
+    isScheduled = schedulingPolicy.scheduleTaskGroup(a4Wrapper, jobStateManager);
+    assertTrue(isScheduled);
 
-    Optional<String> a5 = schedulingPolicy.attemptSchedule(a5Wrapper);
-    assertTrue(a5.isPresent());
-    schedulingPolicy.onTaskGroupScheduled(a5.get(), a5Wrapper);
+    isScheduled = schedulingPolicy.scheduleTaskGroup(a5Wrapper, jobStateManager);
+    assertTrue(isScheduled);
 
     // No more slot
-    Optional<String> a6 = schedulingPolicy.attemptSchedule(a6Wrapper);
-    assertFalse(a6.isPresent());
+    isScheduled = schedulingPolicy.scheduleTaskGroup(a6Wrapper, jobStateManager);
+    assertFalse(isScheduled);
   }
 
   @Test
@@ -158,63 +155,47 @@ public final class RoundRobinSchedulingPolicyTest {
     final ScheduledTaskGroup b2Wrapper = wrap(B2);
     final ScheduledTaskGroup b3Wrapper = wrap(B3);
 
-    Optional<String> a1 = schedulingPolicy.attemptSchedule(a1Wrapper);
-    assertTrue(a1.isPresent());
-    assertEquals("a1", a1.get());
-    schedulingPolicy.onTaskGroupScheduled(a1.get(), a1Wrapper);
+    boolean a1 = schedulingPolicy.scheduleTaskGroup(a1Wrapper, jobStateManager);
+    assertTrue(a1);
 
-    Optional<String> a2 = schedulingPolicy.attemptSchedule(a2Wrapper);
-    assertTrue(a2.isPresent());
-    assertEquals("a2", a2.get());
-    schedulingPolicy.onTaskGroupScheduled(a2.get(), a2Wrapper);
+    boolean a2 = schedulingPolicy.scheduleTaskGroup(a2Wrapper, jobStateManager);
+    assertTrue(a2);
 
-    Optional<String> a3 = schedulingPolicy.attemptSchedule(a3Wrapper);
-    assertTrue(a3.isPresent());
-    assertEquals("a3", a3.get());
-    schedulingPolicy.onTaskGroupScheduled(a3.get(), a3Wrapper);
+    boolean a3 = schedulingPolicy.scheduleTaskGroup(a3Wrapper, jobStateManager);
+    assertTrue(a3);
 
-    Optional<String> a4 = schedulingPolicy.attemptSchedule(a4Wrapper);
+    boolean a4 = schedulingPolicy.scheduleTaskGroup(a4Wrapper, jobStateManager);
     // After 2000 ms
-    assertFalse(a4.isPresent());
+    assertFalse(a4);
 
     schedulingPolicy.onTaskGroupExecutionComplete(a1.get(), "A1");
 
-    a4 = schedulingPolicy.attemptSchedule(a4Wrapper);
-    assertTrue(a4.isPresent());
-    assertEquals("a1", a4.get());
-    schedulingPolicy.onTaskGroupScheduled(a1.get(), a4Wrapper);
+    a4 = schedulingPolicy.scheduleTaskGroup(a4Wrapper, jobStateManager);
+    assertTrue(a4);
 
-    Optional<String> a5 = schedulingPolicy.attemptSchedule(a5Wrapper);
+    boolean a5 = schedulingPolicy.scheduleTaskGroup(a5Wrapper, jobStateManager);
     // After 2000 ms
-    assertFalse(a5.isPresent());
+    assertFalse(a5);
 
     schedulingPolicy.onTaskGroupExecutionComplete(a3.get(), "A3");
 
-    a5 = schedulingPolicy.attemptSchedule(a5Wrapper);
-    assertTrue(a5.isPresent());
-    assertEquals("a3", a5.get());
-    schedulingPolicy.onTaskGroupScheduled(a5.get(), a5Wrapper);
+    a5 = schedulingPolicy.scheduleTaskGroup(a5Wrapper, jobStateManager);
+    assertTrue(a5);
 
-    Optional<String> b1 = schedulingPolicy.attemptSchedule(b1Wrapper);
-    assertTrue(b1.isPresent());
-    assertEquals("b1", b1.get());
-    schedulingPolicy.onTaskGroupScheduled(b1.get(), b1Wrapper);
+    boolean b1 = schedulingPolicy.scheduleTaskGroup(b1Wrapper, jobStateManager);
+    assertTrue(b1);
 
-    Optional<String> b2 = schedulingPolicy.attemptSchedule(b2Wrapper);
-    assertTrue(b2.isPresent());
-    assertEquals("b2", b2.get());
-    schedulingPolicy.onTaskGroupScheduled(b2.get(), b2Wrapper);
+    boolean b2 = schedulingPolicy.scheduleTaskGroup(b2Wrapper, jobStateManager);
+    assertTrue(b2);
 
-    Optional<String> b3 = schedulingPolicy.attemptSchedule(b3Wrapper);
+    boolean b3 = schedulingPolicy.scheduleTaskGroup(b3Wrapper, jobStateManager);
     // After 2000 ms
-    assertFalse(b3.isPresent());
+    assertFalse(b3);
 
     schedulingPolicy.onTaskGroupExecutionComplete(b1.get(), "B1");
 
-    b3 = schedulingPolicy.attemptSchedule(b3Wrapper);
-    assertTrue(b3.isPresent());
-    assertEquals("b1", b3.get());
-    schedulingPolicy.onTaskGroupScheduled(b3.get(), b3Wrapper);
+    b3 = schedulingPolicy.scheduleTaskGroup(b3Wrapper, jobStateManager);
+    assertTrue(b3);
 
     containerManager.onExecutorRemoved(b1.get());
     Set<String> executingTaskGroups = schedulingPolicy.onExecutorRemoved(b1.get());
