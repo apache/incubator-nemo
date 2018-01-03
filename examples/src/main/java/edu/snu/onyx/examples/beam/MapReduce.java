@@ -23,11 +23,15 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Sample MapReduce application.
  */
 public final class MapReduce {
+  private static final Logger LOG = LoggerFactory.getLogger(MapReduce.class.getName());
+
   /**
    * Private Constructor.
    */
@@ -44,6 +48,8 @@ public final class MapReduce {
     final PipelineOptions options = PipelineOptionsFactory.create().as(OnyxPipelineOptions.class);
     options.setRunner(OnyxPipelineRunner.class);
     options.setJobName("MapReduce");
+
+    long start = System.currentTimeMillis();
 
     final Pipeline p = Pipeline.create(options);
     final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
@@ -66,5 +72,9 @@ public final class MapReduce {
         }));
     GenericSourceSink.write(result, outputFilePath);
     p.run();
+
+    LOG.info("*******END*******");
+    LOG.info("JCT(ms): " + (System.currentTimeMillis() - start));
+
   }
 }
