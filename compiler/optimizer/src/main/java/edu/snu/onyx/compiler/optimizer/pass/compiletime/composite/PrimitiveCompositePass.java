@@ -30,7 +30,7 @@ public final class PrimitiveCompositePass extends CompositePass {
    */
   public PrimitiveCompositePass() {
     super(Arrays.asList(
-        new DefaultParallelismPass(), // annotating after reshaping passes, before stage partitioning
+        //new DefaultParallelismPass(), // annotating after reshaping passes, before stage partitioning
         new DefaultStagePartitioningPass(),
         new ReviseInterStageEdgeDataStorePass(), // after stage partitioning
         new DefaultEdgeUsedDataHandlingPass(),

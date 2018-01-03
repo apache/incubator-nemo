@@ -16,6 +16,7 @@
 package edu.snu.onyx.compiler.optimizer.policy;
 
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.HalfShuffleParallelismPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.DataSkewCompositePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.LoopOptimizationCompositePass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.PrimitiveCompositePass;
@@ -38,6 +39,7 @@ public final class DataSkewPolicy implements Policy {
         .registerRuntimePass(new DataSkewRuntimePass(), new DataSkewCompositePass())
         .registerCompileTimePass(new LoopOptimizationCompositePass())
         .registerCompileTimePass(new PrimitiveCompositePass())
+        .registerCompileTimePass(new HalfShuffleParallelismPass())
         .build();
   }
 
