@@ -216,6 +216,7 @@ public final class JobStateManager {
     final Map<String, Object> metric = new HashMap<>();
 
     if (newState == StageState.State.EXECUTING) {
+      long start = System.currentTimeMillis();
       if (scheduleAttemptIdxByStage.containsKey(stageId)) {
         final int numAttempts = scheduleAttemptIdxByStage.get(stageId);
 
@@ -247,6 +248,7 @@ public final class JobStateManager {
           }
         }
       }
+      LOG.info("Skew: {} time {} (ms): ", stageId, (System.currentTimeMillis() - start));
     } else if (newState == StageState.State.COMPLETE) {
       metric.put("ToState", newState);
       endMeasurement(stageId, metric);
