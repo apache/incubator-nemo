@@ -47,6 +47,7 @@ public final class TaskGroupStateManager {
   private final String executorId;
   private final MetricMessageSender metricMessageSender;
   private final Map<String, MetricDataBuilder> metricDataBuilderMap;
+  private final Map<String, Long> taskGroupIdToStarttimeMap;
 
   /**
    * Used to track all task states of this task group, by keeping a map of task ids to their states.
@@ -77,6 +78,7 @@ public final class TaskGroupStateManager {
     metricDataBuilderMap = new HashMap<>();
     idToTaskStates = new HashMap<>();
     currentTaskGroupTaskIds = new HashSet<>();
+    taskGroupIdToStarttimeMap = new HashMap<>();
     initializeStates(taskGroup);
   }
 
@@ -105,16 +107,23 @@ public final class TaskGroupStateManager {
     switch (newState) {
     case EXECUTING:
       LOG.debug("Executing TaskGroup ID {}...", this.taskGroupId);
+      /*
       metric.put("ExecutorId", executorId);
       metric.put("ScheduleAttempt", attemptIdx);
       metric.put("FromState", newState);
       beginMeasurement(taskGroupId, metric);
+      */
+      taskGroupIdToStarttimeMap.put(taskGroupId, System.currentTimeMillis());
       idToTaskStates.forEach((taskId, state) -> state.getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR));
       break;
     case COMPLETE:
       LOG.debug("TaskGroup ID {} complete!", this.taskGroupId);
+      /*
       metric.put("ToState", newState);
       endMeasurement(taskGroupId, metric);
+      */
+      LOG.info("Skew: Completion time of {} {} (ms): ",
+          taskGroupId, (System.currentTimeMillis() - taskGroupIdToStarttimeMap.get(taskGroupId)));
       notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case FAILED_RECOVERABLE:

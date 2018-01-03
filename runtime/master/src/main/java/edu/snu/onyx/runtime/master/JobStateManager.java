@@ -258,7 +258,7 @@ public final class JobStateManager {
       if (currentJobStageIds.isEmpty()) {
         onJobStateChanged(JobState.State.COMPLETE);
       }
-      LOG.info("Skew: {} time {} (ms): ",
+      LOG.info("Skew: Completion time of {} {} (ms): ",
           stageId, (System.currentTimeMillis() - stageIdToStarttimeMap.get(stageId)));
     } else if (newState == StageState.State.FAILED_RECOVERABLE) {
       metric.put("ToState", newState);
