@@ -66,6 +66,7 @@ public final class JobStateManager {
   private final Map<String, StageState> idToStageStates;
   private final Map<String, TaskGroupState> idToTaskGroupStates;
   private final Map<String, TaskState> idToTaskStates;
+  private final Map<String, Long> stageIdToStarttimeMap;
 
   /**
    * Keeps track of the number of schedule attempts for each stage.
@@ -120,6 +121,7 @@ public final class JobStateManager {
     this.finishLock = new ReentrantLock();
     this.jobFinishedCondition = finishLock.newCondition();
     this.metricDataBuilderMap = new HashMap<>();
+    this.stageIdToStarttimeMap = new HashMap<>();
     initializeComputationStates();
     initializePartitionStates(blockManagerMaster);
   }
@@ -216,7 +218,7 @@ public final class JobStateManager {
     final Map<String, Object> metric = new HashMap<>();
 
     if (newState == StageState.State.EXECUTING) {
-      long start = System.currentTimeMillis();
+      stageIdToStarttimeMap.put(stageId, System.currentTimeMillis());
       if (scheduleAttemptIdxByStage.containsKey(stageId)) {
         final int numAttempts = scheduleAttemptIdxByStage.get(stageId);
 
@@ -248,7 +250,6 @@ public final class JobStateManager {
           }
         }
       }
-      LOG.info("Skew: {} time {} (ms): ", stageId, (System.currentTimeMillis() - start));
     } else if (newState == StageState.State.COMPLETE) {
       metric.put("ToState", newState);
       endMeasurement(stageId, metric);
@@ -257,6 +258,8 @@ public final class JobStateManager {
       if (currentJobStageIds.isEmpty()) {
         onJobStateChanged(JobState.State.COMPLETE);
       }
+      LOG.info("Skew: {} time {} (ms): ",
+          stageId, (System.currentTimeMillis() - stageIdToStarttimeMap.get(stageId)));
     } else if (newState == StageState.State.FAILED_RECOVERABLE) {
       metric.put("ToState", newState);
       endMeasurement(stageId, metric);
