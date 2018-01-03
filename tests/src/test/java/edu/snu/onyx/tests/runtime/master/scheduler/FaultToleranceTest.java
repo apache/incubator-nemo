@@ -30,7 +30,6 @@ import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.onyx.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.onyx.conf.JobConf;
-import edu.snu.onyx.runtime.common.state.JobState;
 import edu.snu.onyx.tests.runtime.RuntimeTestUtil;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.message.MessageSender;
@@ -71,7 +70,7 @@ import static org.mockito.Mockito.when;
  * Tests fault tolerance.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ContainerManager.class, BlockManagerMaster.class, SchedulerRunner.class, JobStateManager.class,
+@PrepareForTest({ContainerManager.class, BlockManagerMaster.class, SchedulerRunner.class,
     PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
 public final class FaultToleranceTest {
   private static final Logger LOG = LoggerFactory.getLogger(FaultToleranceTest.class.getName());
@@ -79,8 +78,6 @@ public final class FaultToleranceTest {
   private Scheduler scheduler;
   private SchedulingPolicy schedulingPolicy;
   private SchedulerRunner schedulerRunner;
-  private JobStateManager jobStateManager;
-
   private ContainerManager containerManager;
 
   private MetricMessageHandler metricMessageHandler;
@@ -102,7 +99,6 @@ public final class FaultToleranceTest {
     metricMessageHandler = mock(MetricMessageHandler.class);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
-    jobStateManager = mock(JobStateManager.class);
 
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
@@ -220,16 +216,12 @@ public final class FaultToleranceTest {
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
-        stage.getTaskGroupList().forEach(taskGroup -> {
-          jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
+        stage.getTaskGroupList().forEach(taskGroup ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
-              taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1, null);
-            });
+              taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1, null));
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
-        stage.getTaskGroupList().forEach(taskGroup ->
-            jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING));
 
         // Due to round robin scheduling, "a2" is assured to have a running TaskGroup.
         scheduler.onExecutorRemoved("a2");
@@ -242,11 +234,11 @@ public final class FaultToleranceTest {
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
         stage.getTaskGroupList().forEach(taskGroup -> {
-          final Enum taskGroupState =
-              jobStateManager.getTaskGroupState(taskGroup.getTaskGroupId()).getStateMachine().getCurrentState();
-          if (taskGroupState == TaskGroupState.State.READY) {
-            jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
-          }
+//          final Enum taskGroupState =
+//              jobStateManager.getTaskGroupState(taskGroup.getTaskGroupId()).getStateMachine().getCurrentState();
+//          if (taskGroupState == TaskGroupState.State.READY) {
+//            jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
+//          }
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
               taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1, null);
         });
@@ -259,8 +251,6 @@ public final class FaultToleranceTest {
         for (final TaskGroup taskGroup : stage.getTaskGroupList()) {
           // When a TaskGroup fails while the siblings are still in the queue,
           if (isFirstTaskGroup) {
-            jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
-
             // Due to round robin scheduling, "a3" is assured to have a running TaskGroup.
             scheduler.onExecutorRemoved("a3");
             isFirstTaskGroup = false;
@@ -309,21 +299,17 @@ public final class FaultToleranceTest {
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
-        stage.getTaskGroupList().forEach(taskGroup -> {
-          jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
+        stage.getTaskGroupList().forEach(taskGroup ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
-              taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1, null);
-        });
+              taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1, null));
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
-        stage.getTaskGroupList().forEach(taskGroup -> {
-          jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
+        stage.getTaskGroupList().forEach(taskGroup ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
               taskGroup.getTaskGroupId(), TaskGroupState.State.FAILED_RECOVERABLE, 1,
-              TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE);
-        });
+              TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
 
         while (jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState() != EXECUTING) {
 
@@ -372,16 +358,12 @@ public final class FaultToleranceTest {
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
-        stage.getTaskGroupList().forEach(taskGroup -> {
-          jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
+        stage.getTaskGroupList().forEach(taskGroup ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
-              taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1, null);
-        });
+              taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1, null));
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
-        stage.getTaskGroupList().forEach(taskGroup ->
-            jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING));
 
         stage.getTaskGroupList().forEach(taskGroup ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,

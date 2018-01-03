@@ -20,7 +20,6 @@ import edu.snu.onyx.runtime.master.JobStateManager;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
-import java.util.Optional;
 import java.util.Set;
 
 /**

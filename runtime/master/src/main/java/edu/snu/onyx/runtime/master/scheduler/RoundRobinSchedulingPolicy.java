@@ -19,7 +19,6 @@ import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.exception.SchedulingException;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
-import edu.snu.onyx.runtime.common.state.JobState;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.runtime.master.JobStateManager;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
@@ -176,7 +175,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
 
     jobStateManager.onTaskGroupStateChanged(scheduledTaskGroup.getTaskGroup(), TaskGroupState.State.EXECUTING);
 
-    final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
+    final ExecutorRepresenter executor = executorRepresenterMap.get(executorId.get());
     LOG.info("Scheduling {} to {}",
         new Object[]{scheduledTaskGroup.getTaskGroup().getTaskGroupId(), executorId});
     executor.onTaskGroupScheduled(scheduledTaskGroup);

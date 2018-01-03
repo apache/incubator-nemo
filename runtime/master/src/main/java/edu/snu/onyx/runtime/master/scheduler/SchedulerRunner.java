@@ -17,7 +17,6 @@ package edu.snu.onyx.runtime.master.scheduler;
 
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.onyx.runtime.common.state.JobState;
-import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.runtime.master.JobStateManager;
 import org.apache.reef.annotations.audience.DriverSide;
 
