@@ -32,7 +32,7 @@ public final class DefaultPolicy implements Policy {
    * Default constructor.
    */
   public DefaultPolicy() {
-    this.policy = new PolicyBuilder(true)
+    this.policy = new PolicyBuilder(false)
         .registerCompileTimePass(new PrimitiveCompositePass())
         .registerCompileTimePass(new HalfShuffleParallelismPass())
         .build();
