@@ -64,7 +64,7 @@ public final class MapReduceSkew {
           public KV<String, Integer> apply(final String line) {
             final String[] words = line.split(" +");
             String key = parseIPtoNetwork(words[1]);
-            Integer value = assignValue(words[5]);
+            Integer value = 1; //assignValue(words[5]);
             return KV.of(key, value);
           }
         }))
@@ -88,7 +88,7 @@ public final class MapReduceSkew {
   /**
    * Assign synthetic skewed keys.
    */
-  private String assignSkewedKey() {
+  private static String assignSkewedKey() {
     Random r = new Random();
     int p = r.nextInt(10);
     if (p == 0) {
