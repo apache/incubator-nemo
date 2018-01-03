@@ -30,6 +30,7 @@ import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.onyx.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.onyx.conf.JobConf;
+import edu.snu.onyx.runtime.common.state.JobState;
 import edu.snu.onyx.tests.runtime.RuntimeTestUtil;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.message.MessageSender;
@@ -70,7 +71,7 @@ import static org.mockito.Mockito.when;
  * Tests fault tolerance.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ContainerManager.class, BlockManagerMaster.class, SchedulerRunner.class,
+@PrepareForTest({ContainerManager.class, BlockManagerMaster.class, SchedulerRunner.class, JobStateManager.class,
     PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
 public final class FaultToleranceTest {
   private static final Logger LOG = LoggerFactory.getLogger(FaultToleranceTest.class.getName());
@@ -78,6 +79,7 @@ public final class FaultToleranceTest {
   private Scheduler scheduler;
   private SchedulingPolicy schedulingPolicy;
   private SchedulerRunner schedulerRunner;
+  private JobStateManager jobStateManager;
 
   private ContainerManager containerManager;
 
@@ -100,6 +102,7 @@ public final class FaultToleranceTest {
     metricMessageHandler = mock(MetricMessageHandler.class);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
+    jobStateManager = mock(JobStateManager.class);
 
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
@@ -215,7 +218,7 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, false);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
         stage.getTaskGroupList().forEach(taskGroup -> {
           jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
@@ -224,7 +227,7 @@ public final class FaultToleranceTest {
             });
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, false);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         stage.getTaskGroupList().forEach(taskGroup ->
             jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING));
 
@@ -236,7 +239,7 @@ public final class FaultToleranceTest {
         }
         assertEquals(jobStateManager.getAttemptCountForStage(stage.getId()), 2);
 
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, false);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
         stage.getTaskGroupList().forEach(taskGroup -> {
           final Enum taskGroupState =
@@ -250,7 +253,7 @@ public final class FaultToleranceTest {
       } else {
         // There are 2 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 2.
         // Schedule only the first TaskGroup
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, true);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, true);
 
         boolean isFirstTaskGroup = true;
         for (final TaskGroup taskGroup : stage.getTaskGroupList()) {
@@ -304,7 +307,7 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, false);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
         stage.getTaskGroupList().forEach(taskGroup -> {
           jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
@@ -313,7 +316,7 @@ public final class FaultToleranceTest {
         });
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, false);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
         stage.getTaskGroupList().forEach(taskGroup -> {
           jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
@@ -367,7 +370,7 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, false);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
         stage.getTaskGroupList().forEach(taskGroup -> {
           jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
@@ -376,7 +379,7 @@ public final class FaultToleranceTest {
         });
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, false);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         stage.getTaskGroupList().forEach(taskGroup ->
             jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING));
 

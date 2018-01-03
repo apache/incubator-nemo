@@ -168,7 +168,7 @@ public final class RoundRobinSchedulingPolicyTest {
     // After 2000 ms
     assertFalse(a4);
 
-    schedulingPolicy.onTaskGroupExecutionComplete(a1.get(), "A1");
+    schedulingPolicy.onTaskGroupExecutionComplete("a1", "A1");
 
     a4 = schedulingPolicy.scheduleTaskGroup(a4Wrapper, jobStateManager);
     assertTrue(a4);
@@ -177,7 +177,7 @@ public final class RoundRobinSchedulingPolicyTest {
     // After 2000 ms
     assertFalse(a5);
 
-    schedulingPolicy.onTaskGroupExecutionComplete(a3.get(), "A3");
+    schedulingPolicy.onTaskGroupExecutionComplete("a3", "A3");
 
     a5 = schedulingPolicy.scheduleTaskGroup(a5Wrapper, jobStateManager);
     assertTrue(a5);
@@ -192,18 +192,18 @@ public final class RoundRobinSchedulingPolicyTest {
     // After 2000 ms
     assertFalse(b3);
 
-    schedulingPolicy.onTaskGroupExecutionComplete(b1.get(), "B1");
+    schedulingPolicy.onTaskGroupExecutionComplete("b1", "B1");
 
     b3 = schedulingPolicy.scheduleTaskGroup(b3Wrapper, jobStateManager);
     assertTrue(b3);
 
-    containerManager.onExecutorRemoved(b1.get());
-    Set<String> executingTaskGroups = schedulingPolicy.onExecutorRemoved(b1.get());
+    containerManager.onExecutorRemoved("b1");
+    Set<String> executingTaskGroups = schedulingPolicy.onExecutorRemoved("b1");
     assertEquals(1, executingTaskGroups.size());
     assertEquals("B3", executingTaskGroups.iterator().next());
 
-    containerManager.onExecutorRemoved(a1.get());
-    executingTaskGroups = schedulingPolicy.onExecutorRemoved(a1.get());
+    containerManager.onExecutorRemoved("a1");
+    executingTaskGroups = schedulingPolicy.onExecutorRemoved("a1");
     assertEquals(1, executingTaskGroups.size());
     assertEquals("A4", executingTaskGroups.iterator().next());
 
