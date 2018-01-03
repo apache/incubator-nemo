@@ -79,7 +79,6 @@ public final class MetricCollectionBarrierVertex<T> extends IRVertex {
    */
   public void accumulateMetric(final String key, final List<T> values) {
     metricData.putIfAbsent(key, values);
-    LOG.info("Skew Metric Data {} {}", key, values);
   }
 
   /**

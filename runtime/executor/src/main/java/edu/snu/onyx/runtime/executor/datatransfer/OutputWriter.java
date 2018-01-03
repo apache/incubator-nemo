@@ -167,7 +167,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
         blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue, false);
     if (partitionSizeInfo.isPresent()) {
       this.accumulatedPartitionSizeInfo.addAll(partitionSizeInfo.get());
-      LOG.info("Skew Write: sizes {}", partitionSizeInfo.get());
+      //LOG.info("Skew Write: sizes {}", partitionSizeInfo.get());
     }
   }
 

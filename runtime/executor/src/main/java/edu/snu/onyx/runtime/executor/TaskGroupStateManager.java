@@ -113,7 +113,7 @@ public final class TaskGroupStateManager {
       metric.put("FromState", newState);
       beginMeasurement(taskGroupId, metric);
       */
-      taskGroupIdToStarttimeMap.put(taskGroupId, System.currentTimeMillis());
+      //taskGroupIdToStarttimeMap.put(taskGroupId, System.currentTimeMillis());
       idToTaskStates.forEach((taskId, state) -> state.getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR));
       break;
     case COMPLETE:
@@ -122,8 +122,8 @@ public final class TaskGroupStateManager {
       metric.put("ToState", newState);
       endMeasurement(taskGroupId, metric);
       */
-      LOG.info("Skew: Completion time of {} {} (ms): ",
-          taskGroupId, (System.currentTimeMillis() - taskGroupIdToStarttimeMap.get(taskGroupId)));
+      //LOG.info("Skew: Completion time of {} {} (ms): ",
+      //    taskGroupId, (System.currentTimeMillis() - taskGroupIdToStarttimeMap.get(taskGroupId)));
       notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case FAILED_RECOVERABLE:
