@@ -22,6 +22,7 @@ import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.common.exception.DynamicOptimizationException;
 
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
@@ -76,18 +77,18 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     final Integer taskGroupListSize = optimizationEdges.stream().findFirst().orElseThrow(() ->
         new RuntimeException("optimization edges is empty")).getDst().getTaskGroupList().size();
 
-    // Calculate hashRanges.
-    final List<HashRange> hashRanges = calculateHashRanges(metricData, taskGroupListSize);
+    // Calculate keyRanges.
+    final List<KeyRange> keyRanges = calculateHashRanges(metricData, taskGroupListSize);
 
     // Overwrite the previously assigned hash value range in the physical DAG with the new range.
     optimizationEdges.forEach(optimizationEdge -> {
       final List<TaskGroup> taskGroups = optimizationEdge.getDst().getTaskGroupList();
-      final Map<String, HashRange> taskGroupIdToHashRangeMap = optimizationEdge.getTaskGroupIdToHashRangeMap();
+      final Map<String, KeyRange> taskGroupIdToHashRangeMap = optimizationEdge.getTaskGroupIdToKeyRangeMap();
       taskGroupIdToHashRangeMap.clear();
       IntStream.range(0, taskGroupListSize).forEach(i -> {
         // Update the information.
         final String taskGroupId = taskGroups.get(i).getTaskGroupId();
-        taskGroupIdToHashRangeMap.put(taskGroupId, hashRanges.get(i));
+        taskGroupIdToHashRangeMap.put(taskGroupId, keyRanges.get(i));
       });
     });
 
@@ -95,20 +96,20 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
   }
 
   /**
-   * Method for calculating hash ranges to evenly distribute the skewed metric data.
+   * Method for calculating key ranges to evenly distribute the skewed metric data.
    * @param metricData the metric data.
    * @param taskGroupListSize the size of the task group list.
-   * @return  the list of hash ranges calculated.
+   * @return  the list of key ranges calculated.
    */
   @VisibleForTesting
-  public List<HashRange> calculateHashRanges(final Map<String, List<Long>> metricData,
-                                             final Integer taskGroupListSize) {
+  public List<KeyRange> calculateHashRanges(final Map<String, List<Long>> metricData,
+                                            final Integer taskGroupListSize) {
     // NOTE: metricData is made up of a map of blockId to blockSizes.
     // Count the hash range (number of blocks for each block).
     final int hashRangeCount = metricData.values().stream().findFirst().orElseThrow(() ->
         new DynamicOptimizationException("no valid metric data.")).size();
 
-    // Aggregate metric data. TODO #458: aggregate metric data beforehand.
+    // Aggregate metric data.
     final List<Long> aggregatedMetricData = new ArrayList<>(hashRangeCount);
     // for each hash range index, we aggregate the metric data.
     IntStream.range(0, hashRangeCount).forEach(i ->
@@ -119,7 +120,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     final Long idealSizePerTaskGroup = totalSize / taskGroupListSize; // and derive the ideal size per task group
 
     // find HashRanges to apply (for each blocks of each block).
-    final List<HashRange> hashRanges = new ArrayList<>(taskGroupListSize);
+    final List<KeyRange> keyRanges = new ArrayList<>(taskGroupListSize);
     int startingHashValue = 0;
     int finishingHashValue = 1; // initial values
     Long currentAccumulatedSize = aggregatedMetricData.get(0); // what we have up to now
@@ -138,12 +139,12 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
           currentAccumulatedSize -= aggregatedMetricData.get(finishingHashValue);
         }
         // assign appropriately
-        hashRanges.add(i - 1, HashRange.of(startingHashValue, finishingHashValue));
+        keyRanges.add(i - 1, HashRange.of(startingHashValue, finishingHashValue));
         startingHashValue = finishingHashValue;
       } else { // last one: we put the range of the rest.
-        hashRanges.add(i - 1, HashRange.of(startingHashValue, hashRangeCount));
+        keyRanges.add(i - 1, HashRange.of(startingHashValue, hashRangeCount));
       }
     }
-    return hashRanges;
+    return keyRanges;
   }
 }

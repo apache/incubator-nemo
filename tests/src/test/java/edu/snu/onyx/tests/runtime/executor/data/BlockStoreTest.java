@@ -16,10 +16,11 @@
 package edu.snu.onyx.tests.runtime.executor.data;
 
 import edu.snu.onyx.conf.JobConf;
-import edu.snu.onyx.common.coder.BeamCoder;
+import edu.snu.onyx.compiler.frontend.beam.coder.BeamCoder;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.data.HashRange;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.onyx.runtime.common.message.local.LocalMessageEnvironment;
@@ -30,6 +31,7 @@ import edu.snu.onyx.runtime.master.BlockManagerMaster;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.values.KV;
 import org.apache.commons.io.FileUtils;
 import org.apache.reef.tang.Injector;
@@ -64,11 +66,11 @@ import static org.mockito.Mockito.when;
  * Tests write and read for {@link BlockStore}s.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({BlockManagerWorker.class, BlockManagerMaster.class, RuntimeMaster.class})
+@PrepareForTest({BlockManagerMaster.class, RuntimeMaster.class, CoderManager.class})
 public final class BlockStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
-  private static final BlockManagerWorker worker = mock(BlockManagerWorker.class);
+  private static final CoderManager coderManager = mock(CoderManager.class);
   private BlockManagerMaster blockManagerMaster;
   private LocalMessageDispatcher messageDispatcher;
   // Variables for shuffle test
@@ -76,20 +78,20 @@ public final class BlockStoreTest {
   private static final int NUM_READ_TASKS = 3;
   private static final int DATA_SIZE = 1000;
   private List<String> blockIdList;
-  private List<List<NonSerializedPartition>> partitionsPerBlock;
+  private List<List<NonSerializedPartition<Integer>>> partitionsPerBlock;
   // Variables for concurrent read test
   private static final int NUM_CONC_READ_TASKS = 10;
   private static final int CONC_READ_DATA_SIZE = 1000;
   private String concBlockId;
-  private NonSerializedPartition concBlockPartition;
+  private NonSerializedPartition<Integer> concBlockPartition;
   // Variables for shuffle in range test
   private static final int NUM_WRITE_HASH_TASKS = 2;
   private static final int NUM_READ_HASH_TASKS = 3;
   private static final int HASH_DATA_SIZE = 1000;
   private static final int HASH_RANGE = 4;
   private List<String> hashedBlockIdList;
-  private List<List<NonSerializedPartition>> hashedBlockPartitionList;
-  private List<HashRange> readHashRangeList;
+  private List<List<NonSerializedPartition<Integer>>> hashedBlockPartitionList;
+  private List<KeyRange> readKeyRangeList;
   private List<List<Iterable>> expectedDataInRange;
 
   /**
@@ -103,7 +105,7 @@ public final class BlockStoreTest {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
     blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
-    when(worker.getCoder(any())).thenReturn(CODER);
+    when(coderManager.getCoder(any())).thenReturn(CODER);
 
     // Following part is for for the shuffle test.
     final List<String> writeTaskIdList = new ArrayList<>(NUM_WRITE_TASKS);
@@ -128,7 +130,7 @@ public final class BlockStoreTest {
           blockId, BlockState.State.SCHEDULED, null);
 
       // Create blocks for this block.
-      final List<NonSerializedPartition> partitionsForBlock = new ArrayList<>(NUM_READ_TASKS);
+      final List<NonSerializedPartition<Integer>> partitionsForBlock = new ArrayList<>(NUM_READ_TASKS);
       partitionsPerBlock.add(partitionsForBlock);
       IntStream.range(0, NUM_READ_TASKS).forEach(readTaskIdx -> {
         final int partitionsCount = writeTaskIdx * NUM_READ_TASKS + readTaskIdx;
@@ -155,7 +157,7 @@ public final class BlockStoreTest {
     final int numHashedBlocks = NUM_WRITE_HASH_TASKS;
     final List<String> writeHashTaskIdList = new ArrayList<>(NUM_WRITE_HASH_TASKS);
     final List<String> readHashTaskIdList = new ArrayList<>(NUM_READ_HASH_TASKS);
-    readHashRangeList = new ArrayList<>(NUM_READ_HASH_TASKS);
+    readKeyRangeList = new ArrayList<>(NUM_READ_HASH_TASKS);
     hashedBlockIdList = new ArrayList<>(numHashedBlocks);
     hashedBlockPartitionList = new ArrayList<>(numHashedBlocks);
     expectedDataInRange = new ArrayList<>(NUM_READ_HASH_TASKS);
@@ -175,7 +177,7 @@ public final class BlockStoreTest {
       blockManagerMaster.initializeState(blockId, "Unused");
       blockManagerMaster.onBlockStateChanged(
           blockId, BlockState.State.SCHEDULED, null);
-      final List<NonSerializedPartition> hashedBlock = new ArrayList<>(HASH_RANGE);
+      final List<NonSerializedPartition<Integer>> hashedBlock = new ArrayList<>(HASH_RANGE);
       // Generates the data having each hash value.
       IntStream.range(0, HASH_RANGE).forEach(hashValue ->
           hashedBlock.add(new NonSerializedPartition(hashValue, getFixedKeyRangedNumList(
@@ -187,18 +189,18 @@ public final class BlockStoreTest {
 
     // Generates the range of hash value to read for each read task.
     final int smallDataRangeEnd = 1 + NUM_READ_HASH_TASKS - NUM_WRITE_HASH_TASKS;
-    readHashRangeList.add(HashRange.of(0, smallDataRangeEnd));
+    readKeyRangeList.add(HashRange.of(0, smallDataRangeEnd));
     IntStream.range(0, NUM_READ_HASH_TASKS - 1).forEach(readTaskIdx -> {
-      readHashRangeList.add(HashRange.of(smallDataRangeEnd + readTaskIdx, smallDataRangeEnd + readTaskIdx + 1));
+      readKeyRangeList.add(HashRange.of(smallDataRangeEnd + readTaskIdx, smallDataRangeEnd + readTaskIdx + 1));
     });
 
     // Generates the expected result of hash range retrieval for each read task.
     for (int readTaskIdx = 0; readTaskIdx < NUM_READ_HASH_TASKS; readTaskIdx++) {
-      final HashRange hashRange = readHashRangeList.get(readTaskIdx);
+      final KeyRange<Integer> hashRange = readKeyRangeList.get(readTaskIdx);
       final List<Iterable> expectedRangePartitions = new ArrayList<>(NUM_WRITE_HASH_TASKS);
       for (int writeTaskIdx = 0; writeTaskIdx < NUM_WRITE_HASH_TASKS; writeTaskIdx++) {
         final List<Iterable> appendingList = new ArrayList<>();
-        for (int hashVal = hashRange.rangeStartInclusive(); hashVal < hashRange.rangeEndExclusive(); hashVal++) {
+        for (int hashVal = hashRange.rangeBeginInclusive(); hashVal < hashRange.rangeEndExclusive(); hashVal++) {
           appendingList.add(hashedBlockPartitionList.get(writeTaskIdx).get(hashVal).getData());
         }
         final List concatStreamBase = new ArrayList<>();
@@ -218,7 +220,7 @@ public final class BlockStoreTest {
   @Test(timeout = 10000)
   public void testMemoryStore() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(BlockManagerWorker.class, worker);
+    injector.bindVolatileInstance(CoderManager.class, coderManager);
     final BlockStore memoryStore = injector.getInstance(MemoryStore.class);
     shuffle(memoryStore, memoryStore);
     concurrentRead(memoryStore, memoryStore);
@@ -231,7 +233,7 @@ public final class BlockStoreTest {
   @Test(timeout = 10000)
   public void testSerMemoryStore() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(BlockManagerWorker.class, worker);
+    injector.bindVolatileInstance(CoderManager.class, coderManager);
     final BlockStore serMemoryStore = injector.getInstance(SerializedMemoryStore.class);
     shuffle(serMemoryStore, serMemoryStore);
     concurrentRead(serMemoryStore, serMemoryStore);
@@ -245,7 +247,7 @@ public final class BlockStoreTest {
   public void testLocalFileStore() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(JobConf.FileDirectory.class, TMP_FILE_DIRECTORY);
-    injector.bindVolatileInstance(BlockManagerWorker.class, worker);
+    injector.bindVolatileInstance(CoderManager.class, coderManager);
 
     final BlockStore localFileStore = injector.getInstance(LocalFileStore.class);
     shuffle(localFileStore, localFileStore);
@@ -280,7 +282,7 @@ public final class BlockStoreTest {
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_FILE_DIRECTORY);
     injector.bindVolatileParameter(JobConf.JobId.class, "GFS test");
     injector.bindVolatileParameter(JobConf.ExecutorId.class, executorId);
-    injector.bindVolatileInstance(BlockManagerWorker.class, worker);
+    injector.bindVolatileInstance(CoderManager.class, coderManager);
     injector.bindVolatileInstance(MessageEnvironment.class, localMessageEnvironment);
     return injector.getInstance(GlusterFileStore.class);
   }
@@ -518,7 +520,7 @@ public final class BlockStoreTest {
           public Boolean call() {
             try {
               for (int writeTaskIdx = 0; writeTaskIdx < NUM_WRITE_HASH_TASKS; writeTaskIdx++) {
-                final HashRange hashRangeToRetrieve = readHashRangeList.get(readTaskIdx);
+                final KeyRange<Integer> hashRangeToRetrieve = readKeyRangeList.get(readTaskIdx);
                 readResultCheck(hashedBlockIdList.get(writeTaskIdx), hashRangeToRetrieve,
                     readerSideStore, expectedDataInRange.get(readTaskIdx).get(writeTaskIdx));
               }
@@ -571,16 +573,16 @@ public final class BlockStoreTest {
    * Compares the expected iterable with the data read from a {@link BlockStore}.
    */
   private void readResultCheck(final String blockId,
-                               final HashRange hashRange,
+                               final KeyRange hashRange,
                                final BlockStore blockStore,
                                final Iterable expectedResult) throws IOException {
-    final Optional<Iterable<SerializedPartition>> optionalSerResult =
+    final Optional<Iterable<SerializedPartition<Integer>>> optionalSerResult =
         blockStore.getSerializedPartitions(blockId, hashRange);
     if (!optionalSerResult.isPresent()) {
       throw new IOException("The (serialized) result of get block" + blockId + " in range " +
           hashRange + " is empty.");
     }
-    final Iterable<SerializedPartition> serializedResult = optionalSerResult.get();
+    final Iterable<SerializedPartition<Integer>> serializedResult = optionalSerResult.get();
     final Optional<Iterable<NonSerializedPartition>> optionalNonSerResult =
         blockStore.getPartitions(blockId, hashRange);
     if (!optionalSerResult.isPresent()) {
@@ -588,8 +590,9 @@ public final class BlockStoreTest {
           hashRange + " is empty.");
     }
     final Iterable<NonSerializedPartition> nonSerializedResult = optionalNonSerResult.get();
+    final Iterable serToNonSerialized = DataUtil.convertToNonSerPartitions(CODER, serializedResult);
 
     assertEquals(expectedResult, DataUtil.concatNonSerPartitions(nonSerializedResult));
-    assertEquals(expectedResult, DataUtil.concatNonSerPartitions(DataUtil.convertToNonSerPartitions(CODER, serializedResult)));
+    assertEquals(expectedResult, DataUtil.concatNonSerPartitions(serToNonSerialized));
   }
 }

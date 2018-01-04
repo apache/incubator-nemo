@@ -40,9 +40,18 @@ import org.slf4j.LoggerFactory;
  * Assumes String-type PCollections.
  */
 final class GenericSourceSink {
+  /**
+   * Default Constructor.
+   */
   private GenericSourceSink() {
   }
 
+  /**
+   * Read data.
+   * @param pipeline  beam pipeline
+   * @param path      path to read
+   * @return          returns the read value
+   */
   public static PCollection<String> read(final Pipeline pipeline,
                                          final String path) {
     if (isHDFSPath(path)) {
@@ -74,6 +83,13 @@ final class GenericSourceSink {
   }
 
 
+
+  /**
+   * Write data.
+   * @param dataToWrite data to write
+   * @param path        path to write data
+   * @return            returns {@link PDone}
+   */
   public static PDone write(final PCollection<String> dataToWrite,
                             final String path) {
     if (isHDFSPath(path)) {
@@ -84,6 +100,11 @@ final class GenericSourceSink {
     }
   }
 
+  /**
+   * Check if given path is HDFS path.
+   * @param path path to check
+   * @return     boolean value indicating whether the path is HDFS path or not
+   */
   private static boolean isHDFSPath(final String path) {
     return path.startsWith("hdfs://") || path.startsWith("s3a://") || path.startsWith("file://");
   }
@@ -100,13 +121,22 @@ final class HDFSWrite extends DoFn<String, Void> {
   private FileSystem fileSystem;
   private FSDataOutputStream outputStream;
 
+  /**
+   * Constructor.
+   *
+   * @param path    HDFS path
+   */
   HDFSWrite(final String path) {
     this.path = path;
   }
 
-  // The number of output files are determined according to the parallelism.
-  // i.e. if parallelism is 2, then there are total 2 output files.
-  // Each output file is written as a bundle.
+  /**
+   * Start bundle.
+   * The number of output files are determined according to the parallelism.
+   * i.e. if parallelism is 2, then there are total 2 output files.
+   * Each output file is written as a bundle.
+   * @param c      bundle context {@link StartBundleContext}
+   */
   @StartBundle
   public void startBundle(final StartBundleContext c) {
     fileName = new Path(path + UUID.randomUUID().toString());
@@ -118,6 +148,11 @@ final class HDFSWrite extends DoFn<String, Void> {
     }
   }
 
+  /**
+   * process element.
+   * @param c          context {@link ProcessContext}
+   * @throws Exception
+   */
   @ProcessElement
   public void processElement(final ProcessContext c) throws Exception {
     try {
@@ -129,8 +164,13 @@ final class HDFSWrite extends DoFn<String, Void> {
     }
   }
 
+  /**
+   * finish bundle.
+   * @param c             context
+   * @throws IOException  output stream exception
+   */
   @FinishBundle
-  public void finishBundle(final FinishBundleContext c) throws Exception {
+  public void finishBundle(final FinishBundleContext c) throws IOException {
     outputStream.close();
   }
 }

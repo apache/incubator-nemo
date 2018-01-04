@@ -15,10 +15,12 @@
  */
 package edu.snu.onyx.runtime.executor.data.metadata;
 
+import com.google.protobuf.ByteString;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.*;
@@ -32,14 +34,15 @@ import java.util.concurrent.ExecutionException;
  * Because the data is stored in a remote file and globally accessed by multiple nodes,
  * each access (create - write - close, read, or deletion) for a block needs one instance of this metadata.
  * These accesses are judiciously synchronized by the metadata server in master.
+ * @param <K> the key type of its partitions.
  */
 @ThreadSafe
-public final class RemoteFileMetadata extends FileMetadata {
+public final class RemoteFileMetadata<K extends Serializable> extends FileMetadata<K> {
 
   private final String blockId;
   private final String executorId;
   private final PersistentConnectionToMasterMap connectionToMaster;
-  private volatile Iterable<PartitionMetadata> partitionMetadataIterable;
+  private volatile Iterable<PartitionMetadata<K>> partitionMetadataIterable;
 
   /**
    * Opens a block metadata.
@@ -62,16 +65,16 @@ public final class RemoteFileMetadata extends FileMetadata {
   /**
    * Reserves the region for a partition and get the metadata for the partition.
    *
-   * @see FileMetadata#reservePartition(int, int, long).
+   * @see  FileMetadata#reservePartition(Serializable, int, long)
    */
   @Override
-  public synchronized PartitionMetadata reservePartition(final int hashValue,
+  public synchronized PartitionMetadata reservePartition(final K key,
                                                          final int partitionSize,
                                                          final long elementsTotal) throws IOException {
     // Convert the block metadata to a block metadata message (without offset).
     final ControlMessage.PartitionMetadataMsg partitionMetadataMsg =
         ControlMessage.PartitionMetadataMsg.newBuilder()
-            .setHashValue(hashValue)
+            .setKey(ByteString.copyFrom(SerializationUtils.serialize(key)))
             .setPartitionSize(partitionSize)
             .setNumElements(elementsTotal)
             .build();
@@ -106,13 +109,13 @@ public final class RemoteFileMetadata extends FileMetadata {
     }
     final int partitionIdx = reservePartitionResponseMsg.getPartitionIdx();
     final long positionToWrite = reservePartitionResponseMsg.getPositionToWrite();
-    return new PartitionMetadata(partitionIdx, hashValue, partitionSize, positionToWrite, elementsTotal);
+    return new PartitionMetadata(partitionIdx, key, partitionSize, positionToWrite, elementsTotal);
   }
 
   /**
    * Notifies that some partitions are written.
    *
-   * @see FileMetadata#commitPartitions(Iterable).
+   * @see FileMetadata#commitPartitions(Iterable)
    */
   @Override
   public synchronized void commitPartitions(final Iterable<PartitionMetadata> partitionMetadataToCommit) {
@@ -138,10 +141,10 @@ public final class RemoteFileMetadata extends FileMetadata {
   /**
    * Gets a iterable containing the partition metadata of corresponding blocks.
    *
-   * @see FileMetadata#getPartitionMetadataIterable().
+   * @see FileMetadata#getPartitionMetadataIterable()
    */
   @Override
-  public synchronized Iterable<PartitionMetadata> getPartitionMetadataIterable() throws IOException {
+  public synchronized Iterable<PartitionMetadata<K>> getPartitionMetadataIterable() throws IOException {
     if (partitionMetadataIterable == null) {
       partitionMetadataIterable = getPartitionMetadataFromServer();
     }
@@ -149,7 +152,7 @@ public final class RemoteFileMetadata extends FileMetadata {
   }
 
   /**
-   * @see FileMetadata#deleteMetadata().
+   * @see FileMetadata#deleteMetadata()
    */
   @Override
   public void deleteMetadata() throws IOException {
@@ -178,8 +181,8 @@ public final class RemoteFileMetadata extends FileMetadata {
    * @return the received file metadata.
    * @throws IOException if fail to get the metadata.
    */
-  private Iterable<PartitionMetadata> getPartitionMetadataFromServer() throws IOException {
-    final List<PartitionMetadata> partitionMetadataList = new ArrayList<>();
+  private Iterable<PartitionMetadata<K>> getPartitionMetadataFromServer() throws IOException {
+    final List<PartitionMetadata<K>> partitionMetadataList = new ArrayList<>();
 
     // Ask the metadata server in the master for the metadata
     final CompletableFuture<ControlMessage.Message> metadataResponseFuture =
@@ -222,7 +225,7 @@ public final class RemoteFileMetadata extends FileMetadata {
       }
       partitionMetadataList.add(new PartitionMetadata(
           partitionIdx,
-          partitionMetadataMsg.getHashValue(),
+          SerializationUtils.deserialize(partitionMetadataMsg.getKey().toByteArray()),
           partitionMetadataMsg.getPartitionSize(),
           partitionMetadataMsg.getOffset(),
           partitionMetadataMsg.getNumElements()

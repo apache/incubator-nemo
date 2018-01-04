@@ -18,7 +18,7 @@ package edu.snu.onyx.compiler.optimizer.pass.compiletime.reshaping;
 import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
-import edu.snu.onyx.common.ir.Transform;
+import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
@@ -33,6 +33,9 @@ import java.util.stream.Collectors;
  * Refer to CommonSubexpressionEliminationPassTest for such cases.
  */
 public final class CommonSubexpressionEliminationPass extends ReshapingPass {
+  /**
+   * Default constructor.
+   */
   public CommonSubexpressionEliminationPass() {
     super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }

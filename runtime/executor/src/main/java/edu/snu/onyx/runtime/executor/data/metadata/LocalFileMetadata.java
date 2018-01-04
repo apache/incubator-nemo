@@ -17,20 +17,22 @@ package edu.snu.onyx.runtime.executor.data.metadata;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
 
 /**
  * This class represents a metadata for a local file {@link edu.snu.onyx.runtime.executor.data.block.Block}.
  * It resides in local only, and does not synchronize with master.
+ * @param <K> the key type of its partitions.
  */
 @ThreadSafe
-public final class LocalFileMetadata extends FileMetadata {
+public final class LocalFileMetadata<K extends Serializable> extends FileMetadata<K> {
 
   // When a writer reserves a file region for a partition to write,
   // the metadata of the partition is stored in this queue.
   // When a partition in this queue is committed, the committed partition is polled and go into the committed iterable.
   private final Queue<PartitionMetadata> reservePartitionMetadataQue;
-  private final List<PartitionMetadata> commitPartitionMetadataIterable; // The list of committed partition metadata.
+  private final List<PartitionMetadata<K>> commitPartitionMetadataIterable; // The list of committed partition metadata.
   private volatile long writtenBytesCursor; // Indicates how many bytes are (at least, logically) written in the file.
   private volatile int partitionCount;
   private volatile boolean committed;
@@ -45,11 +47,11 @@ public final class LocalFileMetadata extends FileMetadata {
   }
 
   /**
-   * Reserves the region for a partition and get the metadata for the block.
-   * @see FileMetadata#reservePartition(int, int, long).
+   * Reserves the region for a partition and get the metadata for the partition.
+   * @see FileMetadata#reservePartition(Serializable, int, long)
    */
   @Override
-  public synchronized PartitionMetadata reservePartition(final int hashValue,
+  public synchronized PartitionMetadata reservePartition(final K key,
                                                          final int partitionSize,
                                                          final long elementsTotal) throws IOException {
     if (committed) {
@@ -57,7 +59,7 @@ public final class LocalFileMetadata extends FileMetadata {
     }
 
     final PartitionMetadata partitionMetadata =
-        new PartitionMetadata(partitionCount, hashValue, partitionSize, writtenBytesCursor, elementsTotal);
+        new PartitionMetadata(partitionCount, key, partitionSize, writtenBytesCursor, elementsTotal);
     reservePartitionMetadataQue.add(partitionMetadata);
     partitionCount++;
     writtenBytesCursor += partitionSize;
@@ -66,7 +68,7 @@ public final class LocalFileMetadata extends FileMetadata {
 
   /**
    * Notifies that some partitions are written.
-   * @see FileMetadata#commitPartitions(Iterable).
+   * @see FileMetadata#commitPartitions(Iterable)
    */
   @Override
   public synchronized void commitPartitions(final Iterable<PartitionMetadata> partitionMetadataToCommit) {
@@ -80,15 +82,15 @@ public final class LocalFileMetadata extends FileMetadata {
 
   /**
    * Gets a iterable containing the partition metadata of corresponding block.
-   * @see FileMetadata#getPartitionMetadataIterable().
+   * @see FileMetadata#getPartitionMetadataIterable()
    */
   @Override
-  public Iterable<PartitionMetadata> getPartitionMetadataIterable() {
+  public Iterable<PartitionMetadata<K>> getPartitionMetadataIterable() {
     return Collections.unmodifiableCollection(commitPartitionMetadataIterable);
   }
 
   /**
-   * @see FileMetadata#deleteMetadata().
+   * @see FileMetadata#deleteMetadata()
    */
   @Override
   public void deleteMetadata() {

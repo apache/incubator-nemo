@@ -21,6 +21,7 @@ import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.message.MessageParameters;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.context.ContextConfiguration;
 import org.apache.reef.driver.context.FailedContext;
@@ -46,6 +47,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.LogManager;
 
 /**
  * REEF Driver for Onyx.
@@ -66,11 +68,16 @@ public final class OnyxDriver {
   private final String localDirectory;
   private final String glusterDirectory;
 
+  // Client for sending log messages
+  private final JobMessageObserver client;
+  private final RemoteClientMessageLoggingHandler handler;
+
   @Inject
   private OnyxDriver(final UserApplicationRunner userApplicationRunner,
                      final RuntimeMaster runtimeMaster,
                      final NameServer nameServer,
                      final LocalAddressProvider localAddressProvider,
+                     final JobMessageObserver client,
                      @Parameter(JobConf.ExecutorJsonContents.class) final String resourceSpecificationString,
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
@@ -84,6 +91,16 @@ public final class OnyxDriver {
     this.jobId = jobId;
     this.localDirectory = localDirectory;
     this.glusterDirectory = glusterDirectory;
+    this.client = client;
+    this.handler = new RemoteClientMessageLoggingHandler(client);
+  }
+
+  /**
+   * Setup the logger that forwards logging messages to the client.
+   */
+  private void setUpLogger() {
+    final java.util.logging.Logger rootLogger = LogManager.getLogManager().getLogger("");
+    rootLogger.addHandler(handler);
   }
 
   /**
@@ -92,6 +109,8 @@ public final class OnyxDriver {
   public final class StartHandler implements EventHandler<StartTime> {
     @Override
     public void onNext(final StartTime startTime) {
+      setUpLogger();
+
       runtimeMaster.requestContainer(resourceSpecificationString);
 
       // Launch user application (with a new thread)
@@ -157,6 +176,7 @@ public final class OnyxDriver {
   public final class DriverStopHandler implements EventHandler<StopTime> {
     @Override
     public void onNext(final StopTime stopTime) {
+      handler.close();
     }
   }
 
@@ -190,7 +210,6 @@ public final class OnyxDriver {
 
   private Configuration getExecutorMessageConfiguration(final String executorId) {
     return Tang.Factory.getTang().newConfigurationBuilder()
-        //.bindImplementation(MessageEnvironment.class, GrpcMessageEnvironment.class)
         .bindNamedParameter(MessageParameters.SenderId.class, executorId)
         .build();
   }

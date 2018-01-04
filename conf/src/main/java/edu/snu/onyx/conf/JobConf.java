@@ -232,7 +232,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Serialized {@link edu.snu.onyx.common.dag.DAG} from user main method.
+   * Serialized {edu.snu.onyx.common.dag.DAG} from user main method.
    */
   @NamedParameter(doc = "String serialized DAG")
   public final class SerializedDAG implements Name<String> {

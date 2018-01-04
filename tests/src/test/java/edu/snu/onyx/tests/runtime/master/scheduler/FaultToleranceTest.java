@@ -25,8 +25,7 @@ import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.onyx.compiler.frontend.beam.transform.DoTransform;
-import edu.snu.onyx.common.ir.Transform;
+import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.onyx.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.onyx.conf.JobConf;
@@ -58,6 +57,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
+import static edu.snu.onyx.runtime.common.state.StageState.State.COMPLETE;
 import static edu.snu.onyx.runtime.common.state.StageState.State.EXECUTING;
 import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertEquals;
@@ -77,7 +77,6 @@ public final class FaultToleranceTest {
   private Scheduler scheduler;
   private SchedulingPolicy schedulingPolicy;
   private SchedulerRunner schedulerRunner;
-
   private ContainerManager containerManager;
 
   private MetricMessageHandler metricMessageHandler;
@@ -91,9 +90,6 @@ public final class FaultToleranceTest {
   private static final int TEST_TIMEOUT_MS = 500;
   private static final int MAX_SCHEDULE_ATTEMPT = 3;
 
-  // This schedule index will make sure that task group events are not ignored
-  private static final int MAGIC_SCHEDULE_ATTEMPT_INDEX = Integer.MAX_VALUE;
-
   @Before
   public void setUp() throws Exception {
     RuntimeTestUtil.initialize();
@@ -103,45 +99,35 @@ public final class FaultToleranceTest {
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
 
-    final ActiveContext activeContext = mock(ActiveContext.class);
-    Mockito.doThrow(new RuntimeException()).when(activeContext).close();
-
-    final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
-    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
-
-    final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();
-    executorRepresenterMap.put(a1.getExecutorId(), a1);
-    executorRepresenterMap.put(a2.getExecutorId(), a2);
-    executorRepresenterMap.put(a3.getExecutorId(), a3);
-
-    containerManager = mock(ContainerManager.class);
-    when(containerManager.getExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
-    when(containerManager.getFailedExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
-
-    pendingTaskGroupQueue = new SingleJobTaskGroupQueue();
-    schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TEST_TIMEOUT_MS);
-    schedulerRunner = mock(SchedulerRunner.class);//new SchedulerRunner(schedulingPolicy, pendingTaskGroupQueue);
-    scheduler =
-        new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, pendingTaskGroupQueue,
-            blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler);
-
-    // Add nodes
-    scheduler.onExecutorAdded(a1.getExecutorId());
-    scheduler.onExecutorAdded(a2.getExecutorId());
-    scheduler.onExecutorAdded(a3.getExecutorId());
-
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
     physicalPlanGenerator = injector.getInstance(PhysicalPlanGenerator.class);
   }
 
-  /**
-   * Tests fault tolerance after a container removal.
-   */
-  @Test(timeout=10000)
-  public void testContainerRemoval() throws Exception {
+  private void setUpExecutors(final Map<String, ExecutorRepresenter> executorRepresenterMap,
+                              final Map<String, ExecutorRepresenter> failedexecutorRepresenterMap,
+                              final boolean useMockSchedulerRunner) {
+    containerManager = mock(ContainerManager.class);
+    when(containerManager.getExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
+    when(containerManager.getFailedExecutorRepresenterMap()).thenReturn(failedexecutorRepresenterMap);
+
+    pendingTaskGroupQueue = new SingleJobTaskGroupQueue();
+    schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TEST_TIMEOUT_MS);
+
+    if (useMockSchedulerRunner) {
+      schedulerRunner = mock(SchedulerRunner.class);
+    } else {
+      schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskGroupQueue);
+    }
+    scheduler =
+        new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, pendingTaskGroupQueue,
+            blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler);
+
+    // Add nodes
+    executorRepresenterMap.keySet().forEach(executorId -> scheduler.onExecutorAdded(executorId));
+  }
+
+  private PhysicalPlan buildPlan() throws Exception {
     // Build DAG
     final Transform t = new EmptyComponents.EmptyTransform("empty");
     final IRVertex v1 = new OperatorVertex(t);
@@ -164,7 +150,7 @@ public final class FaultToleranceTest {
     v4.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     irDAGBuilder.addVertex(v4);
 
-    final IRVertex v5 = new OperatorVertex(new DoTransform(null, null));
+    final IRVertex v5 = new OperatorVertex(t);
     v5.setProperty(ParallelismProperty.of(2));
     v5.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     irDAGBuilder.addVertex(v5);
@@ -181,11 +167,37 @@ public final class FaultToleranceTest {
     final IREdge e4 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v4, v5, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e4);
 
-    final DAG<IRVertex, IREdge> irDAG = CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
-        new TestPolicy(), "");
+    final DAG<IRVertex, IREdge> irDAG =
+        CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(), new TestPolicy(), "");
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
-    final PhysicalPlan plan = new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap());
+    return new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap());
+  }
+
+  /**
+   * Tests fault tolerance after a container removal.
+   */
+  @Test(timeout=10000)
+  public void testContainerRemoval() throws Exception {
+    final ActiveContext activeContext = mock(ActiveContext.class);
+    Mockito.doThrow(new RuntimeException()).when(activeContext).close();
+
+    final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
+    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
+
+    final Map<String, ExecutorRepresenter> executorMap = new HashMap<>();
+    executorMap.put("a1", a1);
+    executorMap.put("a2", a2);
+    executorMap.put("a3", a3);
+
+    final Map<String, ExecutorRepresenter> failedExecutorMap = new HashMap<>();
+    failedExecutorMap.put("a2", a2);
+    failedExecutorMap.put("a3", a2);
+
+    setUpExecutors(executorMap, failedExecutorMap, true);
+    final PhysicalPlan plan = buildPlan();
     final JobStateManager jobStateManager =
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
@@ -196,18 +208,14 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, false);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
-        stage.getTaskGroupList().forEach(taskGroup -> {
-          jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
+        stage.getTaskGroupList().forEach(taskGroup ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
-              taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1, null);
-            });
+              taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, false);
-        stage.getTaskGroupList().forEach(taskGroup ->
-            jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING));
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
 
         // Due to round robin scheduling, "a2" is assured to have a running TaskGroup.
         scheduler.onExecutorRemoved("a2");
@@ -217,28 +225,20 @@ public final class FaultToleranceTest {
         }
         assertEquals(jobStateManager.getAttemptCountForStage(stage.getId()), 2);
 
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, false);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
-        stage.getTaskGroupList().forEach(taskGroup -> {
-          final Enum taskGroupState =
-              jobStateManager.getTaskGroupState(taskGroup.getTaskGroupId()).getStateMachine().getCurrentState();
-          if (taskGroupState == TaskGroupState.State.READY) {
-            jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
-          }
+        stage.getTaskGroupList().forEach(taskGroup ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
-              taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1, null);
-        });
+              taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1));
       } else {
         // There are 2 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 2.
         // Schedule only the first TaskGroup
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, true);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, true);
 
         boolean isFirstTaskGroup = true;
         for (final TaskGroup taskGroup : stage.getTaskGroupList()) {
           // When a TaskGroup fails while the siblings are still in the queue,
           if (isFirstTaskGroup) {
-            jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
-
             // Due to round robin scheduling, "a3" is assured to have a running TaskGroup.
             scheduler.onExecutorRemoved("a3");
             isFirstTaskGroup = false;
@@ -260,50 +260,21 @@ public final class FaultToleranceTest {
    */
   @Test(timeout=10000)
   public void testOutputFailure() throws Exception {
-    // Build DAG
-    final Transform t = new EmptyComponents.EmptyTransform("empty");
-    final IRVertex v1 = new OperatorVertex(t);
-    v1.setProperty(ParallelismProperty.of(3));
-    v1.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v1);
+    final ActiveContext activeContext = mock(ActiveContext.class);
+    Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
-    final IRVertex v2 = new OperatorVertex(t);
-    v2.setProperty(ParallelismProperty.of(2));
-    v2.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v2);
+    final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
+    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
 
-    final IRVertex v3 = new OperatorVertex(t);
-    v3.setProperty(ParallelismProperty.of(3));
-    v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v3);
+    final Map<String, ExecutorRepresenter> executorMap = new HashMap<>();
+    executorMap.put("a1", a1);
+    executorMap.put("a2", a2);
+    executorMap.put("a3", a3);
+    setUpExecutors(executorMap, Collections.emptyMap(), true);
 
-    final IRVertex v4 = new OperatorVertex(t);
-    v4.setProperty(ParallelismProperty.of(2));
-    v4.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v4);
-
-    final IRVertex v5 = new OperatorVertex(new DoTransform(null, null));
-    v5.setProperty(ParallelismProperty.of(2));
-    v5.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v5);
-
-    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2, Coder.DUMMY_CODER);
-    irDAGBuilder.connectVertices(e1);
-
-    final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v3, v2, Coder.DUMMY_CODER);
-    irDAGBuilder.connectVertices(e2);
-
-    final IREdge e3 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v2, v4, Coder.DUMMY_CODER);
-    irDAGBuilder.connectVertices(e3);
-
-    final IREdge e4 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v4, v5, Coder.DUMMY_CODER);
-    irDAGBuilder.connectVertices(e4);
-
-    final DAG<IRVertex, IREdge> irDAG = CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
-        new TestPolicy(), "");
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
-
-    final PhysicalPlan plan = new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap());
+    final PhysicalPlan plan = buildPlan();
     final JobStateManager jobStateManager =
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
@@ -314,23 +285,19 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, false);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
-        stage.getTaskGroupList().forEach(taskGroup -> {
-          jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
+        stage.getTaskGroupList().forEach(taskGroup ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
-              taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1, null);
-        });
+              taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, false);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
-        stage.getTaskGroupList().forEach(taskGroup -> {
-          jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
+        stage.getTaskGroupList().forEach(taskGroup ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
               taskGroup.getTaskGroupId(), TaskGroupState.State.FAILED_RECOVERABLE, 1,
-              TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE);
-        });
+              TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
 
         while (jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState() != EXECUTING) {
 
@@ -352,50 +319,21 @@ public final class FaultToleranceTest {
    */
   @Test(timeout=10000)
   public void testInputReadFailure() throws Exception {
-    // Build DAG
-    final Transform t = new EmptyComponents.EmptyTransform("empty");
-    final IRVertex v1 = new OperatorVertex(t);
-    v1.setProperty(ParallelismProperty.of(3));
-    v1.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v1);
+    final ActiveContext activeContext = mock(ActiveContext.class);
+    Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
-    final IRVertex v2 = new OperatorVertex(t);
-    v2.setProperty(ParallelismProperty.of(2));
-    v2.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v2);
+    final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
+    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
 
-    final IRVertex v3 = new OperatorVertex(t);
-    v3.setProperty(ParallelismProperty.of(3));
-    v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v3);
+    final Map<String, ExecutorRepresenter> executorMap = new HashMap<>();
+    executorMap.put("a1", a1);
+    executorMap.put("a2", a2);
+    executorMap.put("a3", a3);
+    setUpExecutors(executorMap, Collections.emptyMap(), true);
 
-    final IRVertex v4 = new OperatorVertex(t);
-    v4.setProperty(ParallelismProperty.of(2));
-    v4.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v4);
-
-    final IRVertex v5 = new OperatorVertex(new DoTransform(null, null));
-    v5.setProperty(ParallelismProperty.of(2));
-    v5.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v5);
-
-    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2, Coder.DUMMY_CODER);
-    irDAGBuilder.connectVertices(e1);
-
-    final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v3, v2, Coder.DUMMY_CODER);
-    irDAGBuilder.connectVertices(e2);
-
-    final IREdge e4 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v2, v4, Coder.DUMMY_CODER);
-    irDAGBuilder.connectVertices(e4);
-
-    final IREdge e5 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v4, v5, Coder.DUMMY_CODER);
-    irDAGBuilder.connectVertices(e5);
-
-    final DAG<IRVertex, IREdge> irDAG = CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
-        new TestPolicy(), "");
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
-
-    final PhysicalPlan plan = new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap());
+    final PhysicalPlan plan = buildPlan();
     final JobStateManager jobStateManager =
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
@@ -406,18 +344,14 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, false);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
-        stage.getTaskGroupList().forEach(taskGroup -> {
-          jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
+        stage.getTaskGroupList().forEach(taskGroup ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
-              taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1, null);
-        });
+              taskGroup.getTaskGroupId(), TaskGroupState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, false);
-        stage.getTaskGroupList().forEach(taskGroup ->
-            jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING));
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
 
         stage.getTaskGroupList().forEach(taskGroup ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
@@ -434,6 +368,57 @@ public final class FaultToleranceTest {
             TaskGroupState.State.READY));
       }
     }
+
+    RuntimeTestUtil.cleanup();
+  }
+
+  /**
+   * Tests the rescheduling of TaskGroups upon a failure.
+   */
+  @Test(timeout=10000)
+  public void testTaskGroupReexecutionForFailure() throws Exception {
+  final ActiveContext activeContext = mock(ActiveContext.class);
+    Mockito.doThrow(new RuntimeException()).when(activeContext).close();
+
+    final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
+    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
+
+    final Map<String, ExecutorRepresenter> executorMap = new HashMap<>();
+    executorMap.put("a1", a1);
+    executorMap.put("a2", a2);
+    executorMap.put("a3", a3);
+
+    final Map<String, ExecutorRepresenter> failedExecutorMap = new HashMap<>();
+    failedExecutorMap.put("a2", a2);
+    failedExecutorMap.put("a3", a2);
+
+    setUpExecutors(executorMap, failedExecutorMap, false);
+    final PhysicalPlan plan = buildPlan();
+    final JobStateManager jobStateManager =
+        new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+
+    scheduler.scheduleJob(plan, jobStateManager);
+    scheduler.onExecutorRemoved("a2");
+
+    final List<PhysicalStage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
+
+    for (final PhysicalStage stage : dagOf4Stages) {
+      while (jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState() != COMPLETE) {
+        final Set<String> a1RunningTaskGroups = new HashSet<>(a1.getRunningTaskGroups());
+        final Set<String> a3RunningTaskGroups = new HashSet<>(a3.getRunningTaskGroups());
+
+        a1RunningTaskGroups.forEach(taskGroupId ->
+            RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+                taskGroupId, TaskGroupState.State.COMPLETE, 1));
+
+        a3RunningTaskGroups.forEach(taskGroupId ->
+            RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+                taskGroupId, TaskGroupState.State.COMPLETE, 1));
+      }
+    }
+    assertTrue(jobStateManager.checkJobTermination());
 
     RuntimeTestUtil.cleanup();
   }

@@ -30,6 +30,9 @@ import java.util.List;
  * It sets DataFlowModel ExecutionProperty as "push".
  */
 public final class ShuffleEdgePushPass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public ShuffleEdgePushPass() {
     super(ExecutionProperty.Key.DataFlowModel, Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }

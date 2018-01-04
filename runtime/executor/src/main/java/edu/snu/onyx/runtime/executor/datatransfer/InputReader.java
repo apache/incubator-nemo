@@ -21,6 +21,7 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.onyx.runtime.common.plan.physical.Task;
@@ -124,8 +125,8 @@ public final class InputReader extends DataTransfer {
    */
   private List<CompletableFuture<Iterable>> readDataInRange() {
     assert (runtimeEdge instanceof PhysicalStageEdge);
-    final HashRange hashRangeToRead =
-        ((PhysicalStageEdge) runtimeEdge).getTaskGroupIdToHashRangeMap().get(taskGroupId);
+    final KeyRange hashRangeToRead =
+        ((PhysicalStageEdge) runtimeEdge).getTaskGroupIdToKeyRangeMap().get(taskGroupId);
     if (hashRangeToRead == null) {
       throw new BlockFetchException(new Throwable("The hash range to read is not assigned to " + taskGroupId));
     }

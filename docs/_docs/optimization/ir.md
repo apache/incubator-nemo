@@ -1,5 +1,5 @@
 ---
-title: Onyx IR
+title: Onyx Intermediate Representation (IR)
 permalink: /docs/ir/
 ---
 

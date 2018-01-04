@@ -97,6 +97,9 @@ public final class LoopOptimizations {
    * Pass for Loop Fusion optimization.
    */
   public static final class LoopFusionPass extends ReshapingPass {
+    /**
+     * Default constructor.
+     */
     public LoopFusionPass() {
       super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
     }
@@ -242,6 +245,9 @@ public final class LoopOptimizations {
    * Pass for Loop Invariant Code Motion optimization.
    */
   public static final class LoopInvariantCodeMotionPass extends ReshapingPass {
+    /**
+     * Default constructor.
+     */
     public LoopInvariantCodeMotionPass() {
       super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
     }

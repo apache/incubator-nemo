@@ -30,6 +30,9 @@ import java.util.List;
 public final class DataSkewPolicy implements Policy {
   private final Policy policy;
 
+  /**
+   * Default constructor.
+   */
   public DataSkewPolicy() {
     this.policy = new PolicyBuilder(true)
         .registerRuntimePass(new DataSkewRuntimePass(), new DataSkewCompositePass())

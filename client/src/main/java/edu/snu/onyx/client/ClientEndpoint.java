@@ -45,6 +45,10 @@ public abstract class ClientEndpoint {
    */
   private final StateTranslator stateTranslator;
 
+  /**
+   * Constructor.
+   * @param stateTranslator translator to translate between the state of job and corresponding.
+   */
   public ClientEndpoint(final StateTranslator stateTranslator) {
     this.driverEndpoint = new AtomicReference<>();
     this.connectionLock = new ReentrantLock();

@@ -38,7 +38,7 @@ public final class ExecutorPlacementProperty extends ExecutionProperty<String> {
     return new ExecutorPlacementProperty(value);
   }
 
-  // List of default pre-configured values. TODO #479: Remove static values.
+  // List of default pre-configured values.
   public static final String NONE = "None";
   public static final String TRANSIENT = "Transient";
   public static final String RESERVED = "Reserved";

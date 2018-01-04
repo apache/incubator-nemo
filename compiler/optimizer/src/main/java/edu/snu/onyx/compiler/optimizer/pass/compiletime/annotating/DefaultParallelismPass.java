@@ -32,6 +32,9 @@ import java.util.stream.Collectors;
  * Optimization pass for tagging parallelism execution property.
  */
 public final class DefaultParallelismPass extends AnnotatingPass {
+  /**
+   * Default constructor.
+   */
   public DefaultParallelismPass() {
     super(ExecutionProperty.Key.Parallelism);
   }

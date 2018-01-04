@@ -21,12 +21,13 @@ import edu.snu.onyx.common.ir.edge.executionproperty.*;
 import edu.snu.onyx.common.ir.vertex.BoundedSourceVertex;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ParallelismProperty;
+import edu.snu.onyx.compiler.frontend.beam.source.BeamBoundedSource;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
-import edu.snu.onyx.common.coder.BeamCoder;
+import edu.snu.onyx.compiler.frontend.beam.coder.BeamCoder;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
@@ -42,6 +43,7 @@ import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.executor.Executor;
 import edu.snu.onyx.runtime.executor.MetricManagerWorker;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
+import edu.snu.onyx.runtime.executor.data.CoderManager;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.onyx.runtime.executor.datatransfer.InputReader;
 import edu.snu.onyx.runtime.executor.datatransfer.OutputWriter;
@@ -53,7 +55,6 @@ import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.scheduler.*;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
-import org.apache.beam.sdk.io.BoundedSource;
 import org.apache.commons.io.FileUtils;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServer;
@@ -91,7 +92,8 @@ import static org.mockito.Mockito.mock;
  * to run the test with leakage reports for netty {@link io.netty.util.ReferenceCounted} objects.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
+@PrepareForTest({PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class,
+    BeamBoundedSource.class})
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final int EXECUTOR_CAPACITY = 1;
@@ -114,6 +116,7 @@ public final class DataTransferTest {
   private BlockManagerMaster master;
   private BlockManagerWorker worker1;
   private BlockManagerWorker worker2;
+  private HashMap<BlockManagerWorker, CoderManager> coderManagers = new HashMap<>();
 
   @Before
   public void setUp() throws InjectionException {
@@ -173,9 +176,12 @@ public final class DataTransferTest {
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_REMOTE_FILE_DIRECTORY);
     final BlockManagerWorker blockManagerWorker;
     final MetricManagerWorker metricManagerWorker;
+    final CoderManager coderManager;
     try {
       blockManagerWorker = injector.getInstance(BlockManagerWorker.class);
       metricManagerWorker =  injector.getInstance(MetricManagerWorker.class);
+      coderManager = injector.getInstance(CoderManager.class);
+      coderManagers.put(blockManagerWorker, coderManager);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
@@ -186,7 +192,7 @@ public final class DataTransferTest {
         EXECUTOR_CAPACITY,
         conToMaster,
         messageEnvironment,
-        blockManagerWorker,
+        coderManager,
         new DataTransferFactory(HASH_RANGE_MULTIPLIER, blockManagerWorker),
         metricManagerWorker);
     injector.bindVolatileInstance(Executor.class, executor);
@@ -340,11 +346,11 @@ public final class DataTransferTest {
   private Pair<IRVertex, IRVertex> setupVertices(final String edgeId,
                                                  final BlockManagerWorker sender,
                                                  final BlockManagerWorker receiver) {
-    sender.registerCoder(edgeId, CODER);
-    receiver.registerCoder(edgeId, CODER);
+    coderManagers.get(sender).registerCoder(edgeId, CODER);
+    coderManagers.get(receiver).registerCoder(edgeId, CODER);
 
     // Src setup
-    final BoundedSource s = mock(BoundedSource.class);
+    final BeamBoundedSource s = mock(BeamBoundedSource.class);
     final BoundedSourceVertex srcVertex = new BoundedSourceVertex<>(s);
     final ExecutionPropertyMap srcVertexProperties = srcVertex.getExecutionProperties();
     srcVertexProperties.put(ParallelismProperty.of(PARALLELISM_TEN));

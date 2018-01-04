@@ -24,15 +24,15 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternPro
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
-import edu.snu.onyx.compiler.frontend.onyx.transform.transform.SailfishDecodingTransform;
-import edu.snu.onyx.compiler.frontend.onyx.transform.transform.SailfishEncodingTransform;
+import edu.snu.onyx.common.ir.vertex.transform.SailfishDecodingTransform;
+import edu.snu.onyx.common.ir.vertex.transform.SailfishEncodingTransform;
 
 import java.util.Collections;
 
 /**
  * Pass to modify the DAG for a job to batch the disk seek.
  * It adds two {@link OperatorVertex}s with {@link SailfishEncodingTransform}
- * and {@link SailfishDecodingTransform} before & after the shuffle edges,
+ * and {@link SailfishDecodingTransform} before and after the shuffle edges,
  * to enable the relaying vertex to receive and send data in arrays of bytes.
  *
  * If the DAG before this pass like below:
@@ -42,6 +42,9 @@ import java.util.Collections;
  */
 public final class SailfishCodecReshapingPass extends ReshapingPass {
 
+  /**
+   * Default constructor.
+   */
   public SailfishCodecReshapingPass() {
     super(Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
   }

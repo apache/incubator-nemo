@@ -16,7 +16,7 @@
 package edu.snu.onyx.compiler.frontend.beam.transform;
 
 import edu.snu.onyx.common.ir.OutputCollector;
-import edu.snu.onyx.common.ir.Transform;
+import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.transforms.windowing.WindowFn;
 
 /**

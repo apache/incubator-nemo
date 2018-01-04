@@ -133,5 +133,15 @@ public final class ExecutorRepresenter {
   public void shutDown() {
     activeContext.close();
   }
+
+  @Override
+  public String toString() {
+    final StringBuffer sb = new StringBuffer("ExecutorRepresenter{");
+    sb.append("executorId='").append(executorId).append('\'');
+    sb.append(", runningTaskGroups=").append(runningTaskGroups);
+    sb.append(", failedTaskGroups=").append(failedTaskGroups);
+    sb.append('}');
+    return sb.toString();
+  }
 }
 

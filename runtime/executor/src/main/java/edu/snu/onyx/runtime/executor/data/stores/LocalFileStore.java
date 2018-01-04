@@ -18,11 +18,10 @@ package edu.snu.onyx.runtime.executor.data.stores;
 import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.runtime.common.data.HashRange;
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.*;
 import edu.snu.onyx.runtime.executor.data.metadata.LocalFileMetadata;
 import edu.snu.onyx.runtime.executor.data.block.FileBlock;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -39,8 +38,8 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
 
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
-                         final InjectionFuture<BlockManagerWorker> blockManagerWorker) {
-    super(blockManagerWorker);
+                         final CoderManager coderManager) {
+    super(coderManager);
     this.fileDirectory = fileDirectory;
     new File(fileDirectory).mkdirs();
   }
@@ -49,7 +48,7 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
    * Creates a new block.
    *
    * @param blockId the ID of the block to create.
-   * @see BlockStore#createBlock(String).
+   * @see BlockStore#createBlock(String)
    */
   @Override
   public void createBlock(final String blockId) {
@@ -84,17 +83,17 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
   }
 
   /**
-   * @see FileStore#getFileAreas(String, HashRange).
+   * @see FileStore#getFileAreas(String, KeyRange)
    */
   @Override
   public List<FileArea> getFileAreas(final String blockId,
-                                     final HashRange hashRange) {
+                                     final KeyRange keyRange) {
     try {
       final FileBlock block = (FileBlock) getBlockMap().get(blockId);
       if (block == null) {
         throw new IOException(String.format("%s does not exists", blockId));
       }
-      return block.asFileAreas(hashRange);
+      return block.asFileAreas(keyRange);
     } catch (final IOException retrievalException) {
       throw new BlockFetchException(retrievalException);
     }

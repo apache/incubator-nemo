@@ -1,7 +1,5 @@
 # Onyx-Hadoop(YARN/HDFS) Cluster Deployment Guide
 
-TODO #252: AWS Setup Guide and Scripts
-
 ## Install the operating system
 * Ubuntu 14.04.4 LTS
 * Other OS/versions not tested

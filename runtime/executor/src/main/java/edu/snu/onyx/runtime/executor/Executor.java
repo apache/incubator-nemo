@@ -29,7 +29,7 @@ import edu.snu.onyx.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.onyx.runtime.common.plan.physical.Task;
-import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
+import edu.snu.onyx.runtime.executor.data.CoderManager;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
@@ -56,7 +56,7 @@ public final class Executor {
   /**
    * In charge of this executor's intermediate data transfer.
    */
-  private final BlockManagerWorker blockManagerWorker;
+  private final CoderManager coderManager;
 
   /**
    * Factory of InputReader/OutputWriter for executing tasks groups.
@@ -74,14 +74,14 @@ public final class Executor {
                   @Parameter(JobConf.ExecutorCapacity.class) final int executorCapacity,
                   final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                   final MessageEnvironment messageEnvironment,
-                  final BlockManagerWorker blockManagerWorker,
+                  final CoderManager coderManager,
                   final DataTransferFactory dataTransferFactory,
                   final MetricManagerWorker metricMessageSender) {
     this.executorId = executorId;
     //this.executorService = Executors.newFixedThreadPool(executorCapacity);
     this.executorService = Executors.newCachedThreadPool();
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
-    this.blockManagerWorker = blockManagerWorker;
+    this.coderManager = coderManager;
     this.dataTransferFactory = dataTransferFactory;
     this.metricMessageSender = metricMessageSender;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
@@ -110,21 +110,20 @@ public final class Executor {
               metricMessageSender);
 
       scheduledTaskGroup.getTaskGroupIncomingEdges()
-          .forEach(e -> blockManagerWorker.registerCoder(e.getId(), e.getCoder()));
+          .forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
       scheduledTaskGroup.getTaskGroupOutgoingEdges()
-          .forEach(e -> blockManagerWorker.registerCoder(e.getId(), e.getCoder()));
+          .forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
       // TODO #432: remove these coders when we "streamize" task execution within a TaskGroup.
       final DAG<Task, RuntimeEdge<Task>> taskDag = scheduledTaskGroup.getTaskGroup().getTaskDAG();
       taskDag.getVertices().forEach(v -> {
-        taskDag.getOutgoingEdgesOf(v).forEach(e -> blockManagerWorker.registerCoder(e.getId(), e.getCoder()));
+        taskDag.getOutgoingEdgesOf(v).forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
       });
 
       new TaskGroupExecutor(scheduledTaskGroup.getTaskGroup(),
           taskGroupStateManager,
           scheduledTaskGroup.getTaskGroupIncomingEdges(),
           scheduledTaskGroup.getTaskGroupOutgoingEdges(),
-          dataTransferFactory,
-          blockManagerWorker).execute();
+          dataTransferFactory).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()

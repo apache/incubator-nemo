@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * MessageSender for NCS.
- * TODO #206: Rethink/Refactor NCS as our RPC stack
  */
 final class NcsMessageSender implements MessageSender<ControlMessage.Message> {
   private static final Logger LOG = LoggerFactory.getLogger(NcsMessageSender.class.getName());

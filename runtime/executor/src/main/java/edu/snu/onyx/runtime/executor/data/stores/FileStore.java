@@ -15,8 +15,8 @@
  */
 package edu.snu.onyx.runtime.executor.data.stores;
 
+import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.FileArea;
-import edu.snu.onyx.runtime.common.data.HashRange;
 
 import java.util.List;
 
@@ -29,8 +29,8 @@ public interface FileStore extends BlockStore {
    * Gets the list of {@link FileArea}s for the specified block.
    *
    * @param blockId   the partition id
-   * @param hashRange the hash range
+   * @param keyRange the key range
    * @return the list of file areas
    */
-  List<FileArea> getFileAreas(final String blockId, final HashRange hashRange);
+  List<FileArea> getFileAreas(final String blockId, final KeyRange keyRange);
 }
