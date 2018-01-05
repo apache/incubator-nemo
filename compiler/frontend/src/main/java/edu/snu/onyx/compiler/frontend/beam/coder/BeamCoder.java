@@ -16,6 +16,7 @@
 package edu.snu.onyx.compiler.frontend.beam.coder;
 
 import edu.snu.onyx.common.coder.Coder;
+import org.apache.beam.sdk.coders.CoderException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,12 +39,20 @@ public final class BeamCoder<T> implements Coder<T> {
 
   @Override
   public void encode(final T value, final OutputStream outStream) throws IOException {
-    beamCoder.encode(value, outStream);
+    try {
+      beamCoder.encode(value, outStream);
+    } catch (final CoderException e) {
+      throw new IOException(e);
+    }
   }
 
   @Override
   public T decode(final InputStream inStream) throws IOException {
-    return beamCoder.decode(inStream);
+    try {
+      return beamCoder.decode(inStream);
+    } catch (final CoderException e) {
+      throw new IOException(e);
+    }
   }
 
   @Override
