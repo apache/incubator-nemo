@@ -15,8 +15,8 @@
  */
 package edu.snu.onyx.runtime.common.metric;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.onyx.common.exception.JsonParseException;
+import org.codehaus.jackson.map.ObjectMapper;
 
 import java.util.Map;
 
