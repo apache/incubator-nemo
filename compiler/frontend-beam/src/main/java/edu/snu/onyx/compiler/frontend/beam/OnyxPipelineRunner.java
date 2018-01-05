@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.client.beam;
+package edu.snu.onyx.compiler.frontend.beam;
 
 import edu.snu.onyx.client.JobLauncher;
 import edu.snu.onyx.common.dag.DAG;

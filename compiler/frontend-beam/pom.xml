@@ -25,8 +25,8 @@ limitations under the License.
         <relativePath>../../</relativePath>
     </parent>
 
-    <artifactId>onyx-compiler-frontend</artifactId>
-    <name>Onyx Compiler Frontend</name>
+    <artifactId>onyx-compiler-frontend-beam</artifactId>
+    <name>Onyx Compiler Frontend: Beam</name>
 
     <repositories>
         <repository>
@@ -39,6 +39,11 @@ limitations under the License.
 	    <dependency>
             <groupId>edu.snu.onyx</groupId>
             <artifactId>onyx-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edu.snu.onyx</groupId>
+            <artifactId>onyx-client</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
