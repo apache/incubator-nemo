@@ -144,7 +144,7 @@ public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
             elementQueue.add(coder.decode(byteBufInputStream));
             // In this case, exception raised in coder can be ignored
           } catch (final IOException e) {
-            LOG.warn("CoderException was thrown when invoke decode() on end of stream, but can be ignored");
+            LOG.warn("IOException was thrown when invoke decode() on end of stream, but can be ignored");
           }
         }
         while (!byteBufInputStream.isEnded()) {
