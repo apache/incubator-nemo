@@ -20,7 +20,7 @@ import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.PersistentConnectionToMasterMap;
-import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.SerializationUtils;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.*;

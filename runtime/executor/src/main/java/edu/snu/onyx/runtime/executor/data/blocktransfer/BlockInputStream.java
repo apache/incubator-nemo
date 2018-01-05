@@ -19,7 +19,6 @@ import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.runtime.common.data.KeyRange;
 import io.netty.buffer.ByteBuf;
-import org.apache.beam.sdk.coders.CoderException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -144,7 +143,7 @@ public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
           try {
             elementQueue.add(coder.decode(byteBufInputStream));
             // In this case, exception raised in coder can be ignored
-          } catch (final CoderException e) {
+          } catch (final IOException e) {
             LOG.warn("CoderException was thrown when invoke decode() on end of stream, but can be ignored");
           }
         }

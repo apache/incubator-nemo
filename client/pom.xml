@@ -61,5 +61,10 @@ limitations under the License.
             <artifactId>reef-runtime-yarn</artifactId>
             <version>${reef.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.beam</groupId>
+            <artifactId>beam-sdks-java-core</artifactId>
+            <version>${beam.version}</version>
+        </dependency>
     </dependencies>
 </project>
