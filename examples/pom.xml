@@ -38,7 +38,7 @@ limitations under the License.
     <dependencies>
         <dependency>
             <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-client</artifactId>
+            <artifactId>onyx-compiler-frontend-beam</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

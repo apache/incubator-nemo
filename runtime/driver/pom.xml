@@ -42,11 +42,6 @@ limitations under the License.
         </dependency>
         <dependency>
             <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-compiler-frontend</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>edu.snu.onyx</groupId>
             <artifactId>onyx-compiler-backend</artifactId>
             <version>${project.version}</version>
         </dependency>

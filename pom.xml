@@ -46,7 +46,7 @@ limitations under the License.
         <module>client</module>
         <module>common</module>
         <module>compiler/backend</module>
-        <module>compiler/frontend</module>
+        <module>compiler/frontend-beam</module>
         <module>compiler/optimizer</module>
         <module>examples</module>
         <module>runtime/common</module>

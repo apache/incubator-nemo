@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.examples.beam;
 
-import edu.snu.onyx.client.beam.OnyxPipelineRunner;
+import edu.snu.onyx.compiler.frontend.beam.OnyxPipelineRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
