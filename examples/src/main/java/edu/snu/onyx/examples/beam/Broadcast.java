@@ -52,7 +52,7 @@ public final class Broadcast {
     final PCollection<String> elemCollection = GenericSourceSink.read(p, inputFilePath);
     final PCollectionView<Iterable<String>> allCollection = elemCollection.apply(View.<String>asIterable());
 
-    elemCollection.apply(ParDo.of(new DoFn<String, String>() {
+    final PCollection<String> result = elemCollection.apply(ParDo.of(new DoFn<String, String>() {
           @ProcessElement
           public void processElement(final ProcessContext c) {
             final String line = c.element();
@@ -68,6 +68,7 @@ public final class Broadcast {
         }).withSideInputs(allCollection)
     );
 
+    GenericSourceSink.write(result, outputFilePath);
     p.run();
   }
 }
