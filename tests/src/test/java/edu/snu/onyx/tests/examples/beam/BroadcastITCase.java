@@ -18,6 +18,7 @@ package edu.snu.onyx.tests.examples.beam;
 import edu.snu.onyx.client.JobLauncher;
 import edu.snu.onyx.examples.beam.Broadcast;
 import edu.snu.onyx.tests.compiler.CompilerTestUtil;
+import edu.snu.onyx.tests.examples.ExampleTestUtil;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -31,19 +32,23 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class BroadcastITCase {
   private static final int TIMEOUT = 120000;
-  private static final String input = CompilerTestUtil.rootDir + "/../examples/src/main/resources/sample_input_mr";
-  private static final String output = CompilerTestUtil.rootDir + "/../examples/src/main/resources/sample_output";
+  private static final String inputFileName = "sample_input_mr";
+  private static final String outputFileName = "sample_output_broadcast";
+  private static final String testResourceFileName = "test_output_broadcast_test";
+  private static final String fileBasePath = CompilerTestUtil.rootDir + "/../examples/src/main/resources/";
+  private static final String inputFilePath =  fileBasePath + inputFileName;
+  private static final String outputFilePath =  fileBasePath + outputFileName;
 
   private static ArgBuilder builder = new ArgBuilder()
       .addJobId(BroadcastITCase.class.getSimpleName())
       .addUserMain(Broadcast.class.getCanonicalName())
-      .addUserArgs(input, output);
+      .addUserArgs(inputFilePath, outputFilePath);
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
         .addUserMain(Broadcast.class.getCanonicalName())
-        .addUserArgs(input, output);
+        .addUserArgs(inputFilePath, outputFilePath);
   }
 
   @Test (timeout = TIMEOUT)
@@ -52,6 +57,8 @@ public final class BroadcastITCase {
         .addJobId(BroadcastITCase.class.getSimpleName())
         .addOptimizationPolicy(CompilerTestUtil.defaultPolicy)
         .build());
+
+    ExampleTestUtil.ensureOutputValid(fileBasePath, outputFileName, testResourceFileName);
   }
 
   @Test (timeout = TIMEOUT)
@@ -60,5 +67,7 @@ public final class BroadcastITCase {
         .addJobId(BroadcastITCase.class.getSimpleName() + "_pado")
         .addOptimizationPolicy(CompilerTestUtil.padoPolicy)
         .build());
+
+    ExampleTestUtil.ensureOutputValid(fileBasePath, outputFileName, testResourceFileName);
   }
 }
