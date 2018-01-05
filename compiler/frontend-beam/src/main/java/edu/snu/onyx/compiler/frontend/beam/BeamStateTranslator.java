@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.client.beam;
+package edu.snu.onyx.compiler.frontend.beam;
 
 import edu.snu.onyx.client.StateTranslator;
 import edu.snu.onyx.runtime.common.state.JobState;
@@ -24,7 +24,7 @@ import static org.apache.beam.sdk.PipelineResult.State.*;
  * A {@link edu.snu.onyx.client.StateTranslator} for Beam.
  * It provides the translation between the state of job and Beam pipeline.
  */
-public final class BeamStateTranslator extends StateTranslator {
+public final class BeamStateTranslator implements StateTranslator {
 
   /**
    * Translate a job state of onyx to a corresponding Beam state.
