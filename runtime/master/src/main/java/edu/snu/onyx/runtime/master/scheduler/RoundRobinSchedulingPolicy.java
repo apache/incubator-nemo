@@ -187,8 +187,8 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   private boolean hasFreeSlot(final ExecutorRepresenter executor) {
-    LOG.info("Has Free Slot: " + executor.getExecutorId());
-    LOG.info("Running TaskGroups: " + executor.getRunningTaskGroups());
+    //LOG.info("Has Free Slot: " + executor.getExecutorId());
+    //LOG.info("Running TaskGroups: " + executor.getRunningTaskGroups());
     return executor.getRunningTaskGroups().size() - executor.getSmallTaskGroups().size()
         < executor.getExecutorCapacity(); // Scheduling hack
   }
