@@ -23,6 +23,7 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Group Beam KVs.
@@ -52,22 +53,34 @@ public final class GroupByKeyTransform<I> implements Transform<WindowedValue<I>,
     final Map<Object, List> keyToValues = kwToDataMap.get(window);
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
     keyToValues.get(kv.getKey()).add(kv.getValue());
+
+    kwToDataMap.entrySet().stream().forEach(entry -> {
+      final BoundedWindow boundedwindow = entry.getKey();
+      System.out.println(String.format("log_gbk: window: %s", boundedwindow));
+      final  Map<Object, List> keyToValues2 = entry.getValue();
+      keyToValues2.entrySet().stream().map(entry2 -> KV.of(entry2.getKey(), entry2.getValue()))
+          .forEach(wv -> System.out.println(String.format("log_gbk: keyToValues: %s %s", wv.getKey(), wv.getValue())));
+      });
   }
 
   @Override
   public void close() {
+    AtomicInteger entryNum = new AtomicInteger(0);
     kwToDataMap.entrySet().stream().forEach(windowEntry -> {
+      System.out.println(String.format("log_gbk: close() entry %d", entryNum.getAndIncrement()));
       final BoundedWindow window = windowEntry.getKey();
       final  Map<Object, List> keyToValues = windowEntry.getValue();
 
       keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
-          .forEach(wv ->
+          .forEach(wv -> {
+            System.out.println(String.format("log_gbk: close() emitting %s", wv));
               outputCollector
               .emit(WindowedValue.of(wv,
                   window.maxTimestamp(),
                   window,
-                  PaneInfo.ON_TIME_AND_ONLY_FIRING)
-          ));
+                  PaneInfo.ON_TIME_AND_ONLY_FIRING));
+              }
+          );
       keyToValues.clear();
     });
   }

@@ -437,8 +437,8 @@ public final class TaskGroupExecutor {
         } else {
           data = dataQueue.take();
         }
-        System.out.println(String.format("log: %s %s: processing data %s...", taskGroup.getTaskGroupId(),
-            operatorTask.getId(), data.toString()));
+        //System.out.println(String.format("log: %s %s: processing data %s...", taskGroup.getTaskGroupId(),
+        //    operatorTask.getId(), data.toString()));
 
         // Because the data queue is a blocking queue, we may need to wait some available data to be pushed.
         transform.onData(data);

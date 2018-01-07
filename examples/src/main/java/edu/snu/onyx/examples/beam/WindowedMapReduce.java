@@ -35,7 +35,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * Sample MapReduce application.
  */
 public final class WindowedMapReduce {
-  static final int WINDOW_SIZE = 10;  // Default window duration in minutes
+  static final int WINDOW_SIZE = 1000;  // Default window duration in minutes
 
   /**
    * Private Constructor.
