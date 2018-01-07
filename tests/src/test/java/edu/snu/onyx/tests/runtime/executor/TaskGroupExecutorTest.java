@@ -300,7 +300,7 @@ public final class TaskGroupExecutorTest {
     }
 
     @Override
-    public void close() {
+    public void close(final boolean trigger) {
       // Do nothing.
     }
   }

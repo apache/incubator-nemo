@@ -45,7 +45,7 @@ public final class RelayTransform<T> implements Transform<WindowedValue<T>, Wind
   }
 
   @Override
-  public void close() {
+  public void close(final boolean trigger) {
     // Do nothing.
   }
 

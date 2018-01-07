@@ -89,7 +89,7 @@ public final class DoTransform<I, O> implements Transform<WindowedValue<I>, Wind
   }
 
   @Override
-  public void close() {
+  public void close(final boolean trigger) {
     // do nothing
   }
 

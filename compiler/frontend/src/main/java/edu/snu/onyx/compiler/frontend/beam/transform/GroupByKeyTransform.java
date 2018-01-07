@@ -63,26 +63,28 @@ public final class GroupByKeyTransform<I> implements Transform<WindowedValue<I>,
       });
   }
 
-  @Override
-  public void close() {
-    AtomicInteger entryNum = new AtomicInteger(0);
-    kwToDataMap.entrySet().stream().forEach(windowEntry -> {
-      System.out.println(String.format("log_gbk: close() entry %d", entryNum.getAndIncrement()));
-      final BoundedWindow window = windowEntry.getKey();
-      final  Map<Object, List> keyToValues = windowEntry.getValue();
+  public void close(final boolean trigger) {
+    System.out.println("log_gbk: close() do nothing");
+    if (trigger) {
+      AtomicInteger entryNum = new AtomicInteger(0);
+      kwToDataMap.entrySet().stream().forEach(windowEntry -> {
+        System.out.println(String.format("log_gbk: close() entry %d", entryNum.getAndIncrement()));
+        final BoundedWindow window = windowEntry.getKey();
+        final Map<Object, List> keyToValues = windowEntry.getValue();
 
-      keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
-          .forEach(wv -> {
-            System.out.println(String.format("log_gbk: close() emitting %s", wv));
-              outputCollector
-              .emit(WindowedValue.of(wv,
-                  window.maxTimestamp(),
-                  window,
-                  PaneInfo.ON_TIME_AND_ONLY_FIRING));
-              }
-          );
-      keyToValues.clear();
-    });
+        keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
+            .forEach(wv -> {
+                  System.out.println(String.format("log_gbk: close() emitting %s", wv));
+                  outputCollector
+                      .emit(WindowedValue.of(wv,
+                          window.maxTimestamp(),
+                          window,
+                          PaneInfo.ON_TIME_AND_ONLY_FIRING));
+                }
+            );
+        keyToValues.clear();
+      });
+    }
   }
 
   @Override

@@ -82,7 +82,7 @@ public final class WindowTransform<T> implements Transform<WindowedValue<T>, Win
   }
 
   @Override
-  public void close() {
+  public void close(final boolean trigger) {
   }
 
   @Override

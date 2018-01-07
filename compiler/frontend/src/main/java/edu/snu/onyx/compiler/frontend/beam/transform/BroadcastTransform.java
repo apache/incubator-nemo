@@ -58,7 +58,7 @@ public final class BroadcastTransform<I, O> implements Transform<WindowedValue<I
   }
 
   @Override
-  public void close() {
+  public void close(final boolean trigger) {
   }
 
   @Override

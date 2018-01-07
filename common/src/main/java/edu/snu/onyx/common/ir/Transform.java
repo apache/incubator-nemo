@@ -42,7 +42,7 @@ public interface Transform<I, O> extends Serializable {
   /**
    * Close the transform.
    */
-  void close();
+  void close(final boolean trigger);
 
   /**
    * Context of the transform.

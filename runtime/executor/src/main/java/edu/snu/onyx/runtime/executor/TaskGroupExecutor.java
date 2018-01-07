@@ -218,6 +218,34 @@ public final class TaskGroupExecutor {
     return taskIdToOutputWriterMap.containsKey(task.getId());
   }
 
+  private boolean allLocalReadersEmpty() {
+    AtomicInteger nonEmptyLocalReader = new AtomicInteger(0);
+    taskIdToLocalReaderMap.entrySet().stream().forEach(entry -> {
+      final List<OutputCollectorImpl> localReaders = entry.getValue();
+      localReaders.forEach(localReader -> {
+        if (!localReader.isEmpty()) {
+          nonEmptyLocalReader.getAndIncrement();
+        }
+      });
+    });
+
+    return nonEmptyLocalReader.get() == 0;
+  }
+
+  private boolean allLocalReadersEmpty(final Task task) {
+    if (!hasInputReader(task)) {
+      AtomicInteger nonEmptyLocalReader = new AtomicInteger(0);
+      taskIdToLocalReaderMap.get(task.getId()).forEach(localReader -> {
+        if (!localReader.isEmpty()) {
+          nonEmptyLocalReader.getAndIncrement();
+        }
+      });
+      return nonEmptyLocalReader.get() == 0;
+    } else {
+      return true;
+    }
+  }
+
   private boolean allLocalWritersEmpty(final String taskId) {
     AtomicInteger nonEmptyLocalWriters = new AtomicInteger(0);
 
@@ -250,19 +278,18 @@ public final class TaskGroupExecutor {
     while (!isTaskGroupComplete()) {
       taskGroup.getTaskDAG().topologicalDo(task -> {
         try {
-          if (pendingTaskList.contains(task.getId())) {
+          if (pendingTaskList.contains(task.getId()) && !bypassTask(task)) {
             if (task instanceof SourceTask) {
               launchBoundedSourceTask((SourceTask) task);
             } else if (task instanceof OperatorTask) {
               launchOperatorTask((OperatorTask) task);
+              checkTaskCompletion(task);
             } else if (task instanceof MetricCollectionBarrierTask) {
               launchMetricCollectionBarrierTask((MetricCollectionBarrierTask) task);
             } else {
               throw new UnsupportedOperationException(task.toString());
             }
           }
-          checkTaskCompletion(task);
-
         } catch (final BlockFetchException ex) {
           taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
               Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
@@ -289,17 +316,46 @@ public final class TaskGroupExecutor {
     System.out.println(String.format("%s Complete!", taskGroup.getTaskGroupId()));
   }
 
+  private boolean bypassTask(final Task task) {
+    // If inter-TG data aren't all consumed but local readers are empty,
+    // the previous task is a per-key/window-aggregation task
+    // and currently we need to bypass the following tasks until all the elements are aggregated.
+    boolean bypassThisTask = false;
+
+    if (!hasInputReader(task)) {
+      bypassThisTask = !interTGDataToProcess.isEmpty() && allLocalReadersEmpty(task);
+    }
+
+    return bypassThisTask;
+  }
+
   // A Task can be marked as 'Complete' when all data from previous TaskGroup are consumed.
   private void checkTaskCompletion(final Task task) {
-    // Has BoundedSourceData and all of its OutputCollectors are empty
+    // Has BoundedSourceTask and all of the BoundedSourceTask's OutputCollectors are empty
     // Or Has OperatorTask that accepts inter-TG data and all the inter-TG data are consumed.
     if ((boundedSourceTaskId != null && allLocalWritersEmpty(boundedSourceTaskId))
-        || (boundedSourceTaskId == null && interTGDataToProcess.isEmpty())) {
-      if (pendingTaskList.contains(task.getId())) {
-        pendingTaskList.remove(task.getId());
-        System.out.println(String.format("log: %s %s Complete!", taskGroup.getTaskGroupId(),
-            task.getId()));
-        System.out.println(String.format("log: pendingTasks: %s", pendingTaskList));
+        || (boundedSourceTaskId == null && interTGDataToProcess.isEmpty()
+        && allLocalReadersEmpty(task))) {
+//    if ((hasInputReader(task) && interTGDataToProcess.isEmpty())
+//        || (!hasInputReader(task) && allLocalReadersEmpty(task))) {
+
+      // If there is a parent task that hasn't yet completed,
+      // then this task isn't complete.
+      List<Task> parentTasks = taskGroup.getTaskDAG().getParents(task.getId());
+      AtomicInteger parentTasksNotYetComplete = new AtomicInteger(0);
+      parentTasks.forEach(parentTask -> {
+        if (pendingTaskList.contains(parentTask.getId())) {
+          parentTasksNotYetComplete.getAndIncrement();
+        }
+      });
+
+      if (parentTasksNotYetComplete.get() == 0) {
+        if (pendingTaskList.contains(task.getId())) {
+          pendingTaskList.remove(task.getId());
+          System.out.println(String.format("log: %s %s Complete!", taskGroup.getTaskGroupId(),
+              task.getId()));
+          System.out.println(String.format("log: pendingTasks: %s", pendingTaskList));
+        }
       }
     }
   }
@@ -437,8 +493,6 @@ public final class TaskGroupExecutor {
         } else {
           data = dataQueue.take();
         }
-        //System.out.println(String.format("log: %s %s: processing data %s...", taskGroup.getTaskGroupId(),
-        //    operatorTask.getId(), data.toString()));
 
         // Because the data queue is a blocking queue, we may need to wait some available data to be pushed.
         transform.onData(data);
@@ -446,12 +500,26 @@ public final class TaskGroupExecutor {
         throw new BlockFetchException(e);
       }
       // Check whether there is any output data from the transform and write the output of this task to the writer.
-      writeToOutputWriter(outputCollector, operatorTask);
+      //writeToOutputWriter(outputCollector, operatorTask);
     });
-    transform.close();
 
-    // Check whether there is any output data from the transform and write the output of this task to the writer.
-    writeToOutputWriter(outputCollector, operatorTask);
+    if (!hasInputReader(operatorTask)) {
+      if (allLocalReadersEmpty(operatorTask)) {
+        transform.close(true);
+        // Check whether there is any output data from the transform and write the output of this task to the writer.
+        writeToOutputWriter(outputCollector, operatorTask);
+      } else {
+        transform.close(false);
+      }
+    } else {
+      if (interTGDataToProcess.isEmpty()) {
+        transform.close(true);
+        // Check whether there is any output data from the transform and write the output of this task to the writer.
+        writeToOutputWriter(outputCollector, operatorTask);
+      } else {
+        transform.close(false);
+      }
+    }
   }
 
   private void writeToOutputWriter(final OutputCollectorImpl localWriter, final Task operatorTask) {

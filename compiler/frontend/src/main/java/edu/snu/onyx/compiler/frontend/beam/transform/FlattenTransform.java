@@ -47,7 +47,7 @@ public final class FlattenTransform<T> implements Transform<WindowedValue<T>, Wi
   }
 
   @Override
-  public void close() {
+  public void close(final boolean trigger) {
     collectedElements.forEach(outputCollector::emit);
     collectedElements.clear();
   }
