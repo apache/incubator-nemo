@@ -294,18 +294,18 @@ public final class BlockManagerMaster {
   void onRequestBlockLocation(final ControlMessage.Message message,
                               final MessageContext messageContext) {
     assert (message.getType() == ControlMessage.MessageType.RequestBlockLocation);
-    final ControlMessage.RequestBlockLocationMsg requestPartitionLocationMsg =
-        message.getRequestBlockLocationMsg();
+    final String blockId = message.getRequestBlockLocationMsg().getBlockId();
+    final long requestId = message.getId();
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
       final CompletableFuture<String> locationFuture
-          = getBlockLocationFuture(requestPartitionLocationMsg.getBlockId());
+          = getBlockLocationFuture(blockId);
       locationFuture.whenComplete((location, throwable) -> {
         final ControlMessage.BlockLocationInfoMsg.Builder infoMsgBuilder =
             ControlMessage.BlockLocationInfoMsg.newBuilder()
-                .setRequestId(message.getId())
-                .setBlockId(requestPartitionLocationMsg.getBlockId());
+                .setRequestId(requestId)
+                .setBlockId(blockId);
         if (throwable == null) {
           infoMsgBuilder.setOwnerExecutorId(location);
         } else {
