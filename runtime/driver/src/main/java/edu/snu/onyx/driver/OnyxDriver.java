@@ -110,13 +110,7 @@ public final class OnyxDriver {
     @Override
     public void onNext(final StartTime startTime) {
       setUpLogger();
-
       runtimeMaster.requestContainer(resourceSpecificationString);
-
-      // Launch user application (with a new thread)
-      final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor();
-      userApplicationRunnerThread.execute(userApplicationRunner);
-      userApplicationRunnerThread.shutdown();
     }
   }
 
@@ -139,8 +133,19 @@ public final class OnyxDriver {
   public final class ActiveContextHandler implements EventHandler<ActiveContext> {
     @Override
     public void onNext(final ActiveContext activeContext) {
-      runtimeMaster.onExecutorLaunched(activeContext);
+      final boolean finalExecutorLaunched = runtimeMaster.onExecutorLaunched(activeContext);
+
+      if (finalExecutorLaunched) {
+        startSchedulingUserApplication();
+      }
     }
+  }
+
+  private void startSchedulingUserApplication() {
+    // Launch user application (with a new thread)
+    final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor();
+    userApplicationRunnerThread.execute(userApplicationRunner);
+    userApplicationRunnerThread.shutdown();
   }
 
   /**
