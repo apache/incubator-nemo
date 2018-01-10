@@ -63,8 +63,8 @@ public final class MapReduceSkew {
           @Override
           public KV<String, Integer> apply(final String line) {
             final String[] words = line.split(" +");
-            String key = parseIPtoNetwork(words[1]);
-            Integer value = 1; //assignValue(words[5]);
+            String key = String.join("", Collections.nCopies(10, words[1]));
+            Integer value = 1;
             return KV.of(key, value);
           }
         }))
