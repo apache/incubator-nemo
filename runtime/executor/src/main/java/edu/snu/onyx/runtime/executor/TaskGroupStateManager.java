@@ -27,7 +27,6 @@ import edu.snu.onyx.runtime.common.state.TaskState;
 
 import java.util.*;
 
-import edu.snu.onyx.runtime.common.metric.MetricDataBuilder;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

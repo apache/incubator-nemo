@@ -81,17 +81,6 @@ public final class TaskGroupExecutorTest {
 
     // Mock a TaskGroupStateManager. It accumulates the state change into a list.
     taskGroupStateManager = mock(TaskGroupStateManager.class);
-    doAnswer(new Answer() {
-      @Override
-      public Object answer(final InvocationOnMock invocationOnMock) throws Throwable {
-        final Object[] args = invocationOnMock.getArguments();
-        final String taskId = (String) args[0];
-        final TaskState.State taskState = (TaskState.State) args[1];
-        taskIdToStateList.computeIfAbsent(taskId, absentTaskId -> new ArrayList<>());
-        taskIdToStateList.get(taskId).add(taskState);
-        return null;
-      }
-    }).when(taskGroupStateManager).onTaskStateChanged(any(), any(), any());
 
     // Mock a DataTransferFactory.
     taskIdToOutputData = new HashMap<>();
