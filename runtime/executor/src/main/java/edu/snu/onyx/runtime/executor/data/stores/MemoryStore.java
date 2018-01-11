@@ -28,11 +28,19 @@ import javax.inject.Inject;
 @ThreadSafe
 public final class MemoryStore extends LocalBlockStore {
 
+  /**
+   * Constructor.
+   *
+   * @param coderManager the coder manager.
+   */
   @Inject
   private MemoryStore(final CoderManager coderManager) {
     super(coderManager);
   }
 
+  /**
+   * @see BlockStore#createBlock(String)
+   */
   @Override
   public void createBlock(final String blockId) {
     final Coder coder = getCoderFromWorker(blockId);

@@ -26,6 +26,10 @@ import edu.snu.onyx.runtime.executor.data.CoderManager;
 public abstract class AbstractBlockStore implements BlockStore {
   private final CoderManager coderManager;
 
+  /**
+   * Constructor.
+   * @param coderManager the coder manager.
+   */
   protected AbstractBlockStore(final CoderManager coderManager) {
     this.coderManager = coderManager;
   }

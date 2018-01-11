@@ -39,6 +39,11 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
   private final Coder coder;
   private volatile boolean committed;
 
+  /**
+   * Constructor.
+   *
+   * @param coder the {@link Coder}.
+   */
   public SerializedMemoryBlock(final Coder coder) {
     this.coder = coder;
     serializedPartitions = new ArrayList<>();
