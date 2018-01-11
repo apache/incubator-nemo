@@ -124,7 +124,8 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
       }
     }
 
-    print("#" + requestId + "deq2 (" + ((taskGroupToSchedule == null) ? "null" : taskGroupToSchedule.getTaskGroup().getTaskGroupId()) + ")");
+    print("#" + requestId + "deq2 (" + ((taskGroupToSchedule == null) ? "null"
+        : taskGroupToSchedule.getTaskGroup().getTaskGroupId()) + ")");
     return (taskGroupToSchedule == null) ? Optional.empty()
         : Optional.of(taskGroupToSchedule);
   }
