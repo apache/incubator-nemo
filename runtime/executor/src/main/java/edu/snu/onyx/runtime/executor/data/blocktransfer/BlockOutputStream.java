@@ -34,6 +34,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 /**
  * Output stream for block transfer. {@link #close()} must be called after finishing write.
@@ -70,6 +71,7 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
   private volatile boolean closed = false;
   private volatile Throwable channelException = null;
   private volatile boolean started = false;
+  private volatile Future encodingThread;
 
   @Override
   public String toString() {
@@ -170,7 +172,7 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
     assert (channel != null);
     assert (coder != null);
     final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream();
-    executorService.submit(() -> {
+    encodingThread = executorService.submit(() -> {
       try {
         final long startTime = System.currentTimeMillis();
         while (true) {
@@ -437,6 +439,11 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
       if (future.isSuccess()) {
         return;
       }
+      if (encodingThread != null) {
+        encodingThread.cancel(true);
+      }
+      closed = true;
+      elementQueue.close();
       channel.close();
       if (future.cause() == null) {
         LOG.error("Failed to write a data frame");

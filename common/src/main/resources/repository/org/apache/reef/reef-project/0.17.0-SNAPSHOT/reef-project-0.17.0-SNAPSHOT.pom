@@ -220,6 +220,9 @@ under the License.
 
                             </manifest>
                         </archive>
+                        <excludes>
+                            <exclude>**/log4j.properties</exclude>
+                        </excludes>
                     </configuration>
                 </plugin>
                 <plugin>
