@@ -45,13 +45,13 @@ public final class WindowTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void onData(final Iterator<T> elements, final String srcVertexId) {
+  public void onData(final Object element) {
     // TODO #36: Actually assign windows
-    elements.forEachRemaining(element -> outputCollector.emit(element));
+    outputCollector.emit((T)element);
   }
 
   @Override
-  public void close() {
+  public void close(boolean trigger) {
   }
 
   @Override

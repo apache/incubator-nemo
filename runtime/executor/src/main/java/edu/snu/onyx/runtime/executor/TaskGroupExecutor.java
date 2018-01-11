@@ -419,7 +419,6 @@ public final class TaskGroupExecutor {
     transform.prepare(transformContext, outputCollector);
 
     // Check for non-side inputs.
-    final BlockingQueue<Iterator> dataQueue = new LinkedBlockingQueue<>();
     if (hasInputReader(operatorTask)) {
       // Reads inter-TaskGroup data.
       if (interTaskGroupData.isEmpty()) {

@@ -42,12 +42,12 @@ public final class FlattenTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void onData(final Iterator<T> elements, final String srcVertexId) {
-    elements.forEachRemaining(collectedElements::add);
+  public void onData(final Object element) {
+    collectedElements.add((T)element);
   }
 
   @Override
-  public void close() {
+  public void close(boolean trigger) {
     collectedElements.forEach(outputCollector::emit);
     collectedElements.clear();
   }

@@ -42,19 +42,19 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
   }
 
   @Override
-  public void onData(final Iterator<I> elements, final String srcVertexId) {
-    elements.forEachRemaining(element -> {
-      final KV kv = (KV) element;
-      keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
-      keyToValues.get(kv.getKey()).add(kv.getValue());
-    });
+  public void onData(final Object element) {
+    final KV kv = (KV) element;
+    keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
+    keyToValues.get(kv.getKey()).add(kv.getValue());
   }
 
   @Override
-  public void close() {
-    keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
-        .forEach(wv -> outputCollector.emit(wv));
-    keyToValues.clear();
+  public void close(boolean trigger) {
+    if (trigger) {
+      keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
+          .forEach(wv -> outputCollector.emit(wv));
+      keyToValues.clear();
+    }
   }
 
   @Override

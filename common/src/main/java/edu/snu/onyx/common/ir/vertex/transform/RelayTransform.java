@@ -40,12 +40,12 @@ public final class RelayTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void onData(final Iterator<T> elements, final String srcVertexId) {
-    elements.forEachRemaining(element -> outputCollector.emit(element));
+  public void onData(final Object element) {
+    outputCollector.emit((T)element);
   }
 
   @Override
-  public void close() {
+  public void close(boolean trigger) {
     // Do nothing.
   }
 

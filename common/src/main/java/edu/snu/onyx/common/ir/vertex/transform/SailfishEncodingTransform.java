@@ -45,19 +45,17 @@ public final class SailfishEncodingTransform<T> implements Transform<T, byte[]> 
   }
 
   @Override
-  public void onData(final Iterator<T> elements, final String srcVertexId) {
-    elements.forEachRemaining(element -> {
+  public void onData(final Object element) {
       try (final ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-        coder.encode(element, outputStream);
+        coder.encode((T)element, outputStream);
         outputCollector.emit(outputStream.toByteArray());
       } catch (final IOException e) {
         throw new RuntimeException(e);
       }
-    });
   }
 
   @Override
-  public void close() {
+  public void close(boolean trigger) {
     // Do nothing.
   }
 

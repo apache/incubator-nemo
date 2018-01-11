@@ -72,23 +72,21 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void onData(final Iterator<I> elements, final String srcVertexId) {
+  public void onData(final Object element) {
     final StartBundleContext startBundleContext = new StartBundleContext(doFn, serializedOptions);
     final FinishBundleContext finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
     final ProcessContext processContext = new ProcessContext(doFn, outputCollector, sideInputs, serializedOptions);
     final DoFnInvoker invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
-    elements.forEachRemaining(element -> { // No need to check for input index, since it is always 0 for DoTransform
-      processContext.setElement(element);
-      invoker.invokeProcessElement(processContext);
-    });
+    processContext.setElement(element);
+    invoker.invokeProcessElement(processContext);
     invoker.invokeFinishBundle(finishBundleContext);
     invoker.invokeTeardown();
   }
 
   @Override
-  public void close() {
+  public void close(boolean trigger) {
     // do nothing
   }
 

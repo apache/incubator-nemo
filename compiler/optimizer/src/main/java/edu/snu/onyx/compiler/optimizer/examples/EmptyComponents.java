@@ -61,11 +61,11 @@ public class EmptyComponents {
     }
 
     @Override
-    public void onData(final Iterator<I> elements, final String srcVertexId) {
+    public void onData(final Object element) {
     }
 
     @Override
-    public void close() {
+    public void close(boolean trigger) {
     }
   }
 
