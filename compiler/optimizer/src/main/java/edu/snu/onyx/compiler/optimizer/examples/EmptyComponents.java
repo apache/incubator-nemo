@@ -23,7 +23,6 @@ import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -65,7 +64,7 @@ public class EmptyComponents {
     }
 
     @Override
-    public void close(boolean trigger) {
+    public void close(final boolean trigger) {
     }
   }
 

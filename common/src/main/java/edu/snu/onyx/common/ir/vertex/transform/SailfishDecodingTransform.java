@@ -20,7 +20,6 @@ import edu.snu.onyx.common.ir.OutputCollector;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.util.Iterator;
 
 /**
  * A {@link Transform} decodes input values into bytes and emits.
@@ -46,7 +45,7 @@ public final class SailfishDecodingTransform<T> implements Transform<byte[], T> 
 
   @Override
   public void onData(final Object element) {
-      try (final ByteArrayInputStream inputStream = new ByteArrayInputStream((byte[])element)) {
+      try (final ByteArrayInputStream inputStream = new ByteArrayInputStream((byte[]) element)) {
         outputCollector.emit(coder.decode(inputStream));
       } catch (final IOException e) {
         throw new RuntimeException(e);
@@ -54,7 +53,7 @@ public final class SailfishDecodingTransform<T> implements Transform<byte[], T> 
   }
 
   @Override
-  public void close(boolean trigger) {
+  public void close(final boolean trigger) {
     // Do nothing.
   }
 

@@ -18,7 +18,6 @@ package edu.snu.onyx.common.ir.vertex.transform;
 import edu.snu.onyx.common.ir.OutputCollector;
 
 import java.io.Serializable;
-import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -45,7 +44,7 @@ public interface Transform<I, O> extends Serializable {
   /**
    * Close the transform.
    */
-  void close(boolean trigger);
+  void close(final boolean trigger);
 
   /**
    * Context of the transform.

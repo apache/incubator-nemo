@@ -34,7 +34,6 @@ import org.joda.time.Instant;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -86,7 +85,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void close(boolean trigger) {
+  public void close(final boolean trigger) {
     // do nothing
   }
 

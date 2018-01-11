@@ -19,8 +19,6 @@ import edu.snu.onyx.common.ir.OutputCollector;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.transforms.windowing.WindowFn;
 
-import java.util.Iterator;
-
 /**
  * Windowing transform implementation.
  * This transform simply windows the given elements into finite windows according to a user-specified WindowTransform.
@@ -47,11 +45,11 @@ public final class WindowTransform<T> implements Transform<T, T> {
   @Override
   public void onData(final Object element) {
     // TODO #36: Actually assign windows
-    outputCollector.emit((T)element);
+    outputCollector.emit((T) element);
   }
 
   @Override
-  public void close(boolean trigger) {
+  public void close(final boolean trigger) {
   }
 
   @Override

@@ -296,11 +296,11 @@ public final class TaskGroupExecutorTest {
 
     @Override
     public void onData(final Object element) {
-      outputCollector.emit((T)element);
+      outputCollector.emit((T) element);
     }
 
     @Override
-    public void close(boolean trigger) {
+    public void close(final boolean trigger) {
       // Do nothing.
     }
   }

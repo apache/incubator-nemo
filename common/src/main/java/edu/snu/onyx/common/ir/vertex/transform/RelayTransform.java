@@ -17,8 +17,6 @@ package edu.snu.onyx.common.ir.vertex.transform;
 
 import edu.snu.onyx.common.ir.OutputCollector;
 
-import java.util.Iterator;
-
 /**
  * A {@link Transform} relays input data from upstream vertex to downstream vertex promptly.
  * This transform can be used for merging input data into the {@link OutputCollector}.
@@ -41,11 +39,11 @@ public final class RelayTransform<T> implements Transform<T, T> {
 
   @Override
   public void onData(final Object element) {
-    outputCollector.emit((T)element);
+    outputCollector.emit((T) element);
   }
 
   @Override
-  public void close(boolean trigger) {
+  public void close(final boolean trigger) {
     // Do nothing.
   }
 

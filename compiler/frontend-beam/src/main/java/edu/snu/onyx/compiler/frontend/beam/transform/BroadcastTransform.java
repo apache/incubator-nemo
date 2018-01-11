@@ -22,10 +22,7 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * Broadcast transform implementation.
@@ -52,7 +49,7 @@ public final class BroadcastTransform<I, O> implements Transform<I, O> {
   @Override
   public void onData(final Object element) {
     final List<WindowedValue<I>> windowed = new ArrayList<>();
-    windowed.add(WindowedValue.valueInGlobalWindow((I)element));
+    windowed.add(WindowedValue.valueInGlobalWindow((I) element));
 
     final ViewFn<Iterable<WindowedValue<I>>, O> viewFn = this.pCollectionView.getViewFn();
     outputCollector.emit(viewFn.apply(windowed));
@@ -67,7 +64,7 @@ public final class BroadcastTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void close(boolean trigger) {
+  public void close(final boolean trigger) {
   }
 
   @Override

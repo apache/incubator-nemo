@@ -107,15 +107,15 @@ public final class TaskGroupExecutor {
         final InputReader inputReader = channelFactory.createReader(
             task, physicalStageEdge.getSrcVertex(), physicalStageEdge);
         addInputReader(task, inputReader);
-        System.out.println(String.format("log: Added InputReader, %s %s %s\n", taskGroup.getTaskGroupId(),
-            task.getId(), task.getRuntimeVertexId()));
+        LOG.info("log: Added InputReader, %s %s %s\n", taskGroup.getTaskGroupId(),
+            task.getId(), task.getRuntimeVertexId());
         sourceParallelism.getAndAdd(physicalStageEdge.getSrcVertex().getProperty(ExecutionProperty.Key.Parallelism));
       });
 
       // Add OutputWriters for inter-stage data transfer
       outEdgesToOtherStages.forEach(physicalStageEdge -> {
-        System.out.println(String.format("log: Added OutputWriter, %s %s %s", taskGroup.getTaskGroupId(),
-            task.getId(), task.getRuntimeVertexId()));
+        LOG.info("log: Added OutputWriter, %s %s %s", taskGroup.getTaskGroupId(),
+            task.getId(), task.getRuntimeVertexId());
 
         final OutputWriter outputWriter = channelFactory.createWriter(
             task, physicalStageEdge.getDstVertex(), physicalStageEdge);
@@ -133,7 +133,7 @@ public final class TaskGroupExecutor {
       taskList.add(task.getId());
     }));
 
-    System.out.println(String.format("log: pendingTasks: %d", taskList.size()));
+    LOG.info("log: taskList: %d", taskList.size());
 
     if (sourceParallelism.get() == 0) {
       sourceParallelism.getAndAdd(1);
@@ -174,8 +174,8 @@ public final class TaskGroupExecutor {
       final List<OutputWriter> outputWriters = entry.getValue();
       outputWriters.forEach(outputWriter -> {
         outputWriter.close();
-        System.out.println(String.format("log: %s %s Closed OutputWriter(commited block!) %s",
-            taskGroup.getTaskGroupId(), taskId, outputWriter.getId()));
+        LOG.info("log: %s %s Closed OutputWriter(commited block!) %s",
+            taskGroup.getTaskGroupId(), taskId, outputWriter.getId());
       });
     }
   }
@@ -185,19 +185,13 @@ public final class TaskGroupExecutor {
     List<Task> parentTasks = taskGroup.getTaskDAG().getParents(task.getId());
 
     if (parentTasks != null) {
-
-      System.out.println(String.format("log: Added InputPipe, %s %s %s", taskGroup.getTaskGroupId(),
-          task.getId(), task.getRuntimeVertexId()));
-
+      LOG.info("log: Added InputPipe, %s %s %s", taskGroup.getTaskGroupId(), task.getId(), task.getRuntimeVertexId());
       parentTasks.forEach(parent -> {
-        System.out.println(String.format("log: Parents of %s %s: %s",
-            taskGroup.getTaskGroupId(), task.getRuntimeVertexId(), parent.getRuntimeVertexId()));
+        LOG.info("log: Parents of %s %s: %s",
+            taskGroup.getTaskGroupId(), task.getRuntimeVertexId(), parent.getRuntimeVertexId());
         localPipes.add(taskIdToOutputPipeMap.get(parent.getId()));
       });
-
       taskIdToInputPipeMap.put(task.getId(), localPipes);
-    } else {
-      taskIdToInputPipeMap.put(task.getId(), null);
     }
   }
 
@@ -213,23 +207,9 @@ public final class TaskGroupExecutor {
     return taskIdToOutputWriterMap.containsKey(task.getId());
   }
 
-  private boolean allInputPipesEmpty() {
-    AtomicInteger nonEmptyInputPipe = new AtomicInteger(0);
-    taskIdToInputPipeMap.entrySet().stream().forEach(entry -> {
-      final List<OutputCollectorImpl> localReaders = entry.getValue();
-      localReaders.forEach(localReader -> {
-        if (!localReader.isEmpty()) {
-          nonEmptyInputPipe.getAndIncrement();
-        }
-      });
-    });
-
-    return nonEmptyInputPipe.get() == 0;
-  }
-
   // Check whether this task has no intra-TaskGroup input left to process.
   private boolean allInputPipesEmpty(final Task task) {
-    if (!hasInputReader(task)) {
+    if (taskIdToInputPipeMap.containsKey(task.getId())) {
       AtomicInteger nonEmptyInputPipes = new AtomicInteger(0);
       taskIdToInputPipeMap.get(task.getId()).forEach(localReader -> {
         if (!localReader.isEmpty()) {
@@ -246,8 +226,6 @@ public final class TaskGroupExecutor {
    * Executes the task group.
    */
   public void execute() {
-    System.out.println(String.format("%s Execution Started!", taskGroup.getTaskGroupId()));
-
     if (isExecutionRequested) {
       throw new RuntimeException("TaskGroup {" + taskGroup.getTaskGroupId() + "} execution called again!");
     } else {
@@ -259,7 +237,7 @@ public final class TaskGroupExecutor {
     while (!isTaskGroupComplete()) {
       taskGroup.getTaskDAG().topologicalDo(task -> {
         try {
-          if (taskList.contains(task.getId()) && !bypassTask(task)) {
+          if (taskList.contains(task.getId())) { //&& !bypassTask(task)) {
             if (task instanceof BoundedSourceTask) {
               launchBoundedSourceTask((BoundedSourceTask) task);
             } else if (task instanceof OperatorTask) {
@@ -274,18 +252,18 @@ public final class TaskGroupExecutor {
         } catch (final BlockFetchException ex) {
           taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
               Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
-          System.out.println(String.format("%s Execution Failed (Recoverable: input read failure)! Exception: %s",
-              taskGroup.getTaskGroupId(), ex.toString()));
+          LOG.info("%s Execution Failed (Recoverable: input read failure)! Exception: %s",
+              taskGroup.getTaskGroupId(), ex.toString());
         } catch (final BlockWriteException ex2) {
           taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
               Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
-          System.out.println(String.format("%s Execution Failed (Recoverable: output write failure)! Exception: %s",
-              taskGroup.getTaskGroupId(), ex2.toString()));
+          LOG.info("%s Execution Failed (Recoverable: output write failure)! Exception: %s",
+              taskGroup.getTaskGroupId(), ex2.toString());
         } catch (final Exception e) {
           taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE,
               Optional.empty(), Optional.empty());
-          System.out.println(String.format("%s Execution Failed! Exception: %s",
-              taskGroup.getTaskGroupId(), e.toString()));
+          LOG.info("%s Execution Failed! Exception: %s",
+              taskGroup.getTaskGroupId(), e.toString());
           throw new RuntimeException(e);
         }
       });
@@ -294,7 +272,7 @@ public final class TaskGroupExecutor {
     closeOutputWriters();
 
     taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), Optional.empty());
-    System.out.println(String.format("%s Complete!", taskGroup.getTaskGroupId()));
+    LOG.info("%s Complete!", taskGroup.getTaskGroupId());
   }
 
   private boolean bypassTask(final Task task) {
@@ -330,13 +308,13 @@ public final class TaskGroupExecutor {
   private void checkTaskCompletion(final OperatorTask task) {
     if ((hasInputReader(task) && interTaskGroupData.isEmpty()
         || !hasInputReader(task) && allInputPipesEmpty(task))
-        && allParentTasksComplete(task)){
+        && allParentTasksComplete(task)) {
 
       if (taskList.contains(task.getId())) {
         taskList.remove(task.getId());
-        System.out.println(String.format("log: %s %s Complete!", taskGroup.getTaskGroupId(),
-            task.getId()));
-        System.out.println(String.format("log: pendingTasks: %s", taskList));
+        LOG.info("log: %s %s Complete!", taskGroup.getTaskGroupId(),
+            task.getId());
+        LOG.info("log: pendingTasks: %s", taskList);
       }
     }
   }
@@ -360,8 +338,8 @@ public final class TaskGroupExecutor {
     if (hasOutputWriter(sourceTask)) {
       taskIdToOutputWriterMap.get(sourceTask.getId()).forEach(outputWriter -> {
         iterable.forEach(data -> {
-          System.out.println(String.format("log: %s %s %s From InputReader read %s", taskGroup.getTaskGroupId(),
-              sourceTask.getId(), sourceTask.getRuntimeVertexId(), data));
+          LOG.info("log: %s %s %s From InputReader read %s", taskGroup.getTaskGroupId(),
+              sourceTask.getId(), sourceTask.getRuntimeVertexId(), data);
 
           List<Object> iterable1 = Collections.singletonList(data);
           outputWriter.write(iterable1);
@@ -373,8 +351,8 @@ public final class TaskGroupExecutor {
       try {
         iterable.forEach(data -> {
           outputPipe.emit(data);
-          System.out.println(String.format("log: %s %s %s From OutputPipe wrote %s", taskGroup.getTaskGroupId(),
-              sourceTask.getId(), sourceTask.getRuntimeVertexId(), data));
+          LOG.info("log: %s %s %s From OutputPipe wrote %s", taskGroup.getTaskGroupId(),
+              sourceTask.getId(), sourceTask.getRuntimeVertexId(), data);
         });
       } catch (final Exception e) {
         throw new RuntimeException();
@@ -382,7 +360,7 @@ public final class TaskGroupExecutor {
     }
 
     taskList.remove(sourceTask.getId());
-    System.out.println(String.format("log: %s %s Complete!", taskGroup.getTaskGroupId(), sourceTask.getId()));
+    LOG.info("log: %s %s Complete!", taskGroup.getTaskGroupId(), sourceTask.getId());
   }
 
   /**
@@ -429,8 +407,8 @@ public final class TaskGroupExecutor {
             try {
               Iterator iterator = compFuture.get();
               iterator.forEachRemaining(data -> {
-                System.out.println(String.format("log: %s %s Read from InputReader(Inter-TG): %s",
-                    taskGroup.getTaskGroupId(), operatorTask.getId(), data));
+                LOG.info("log: %s %s Read from InputReader(Inter-TG): %s",
+                    taskGroup.getTaskGroupId(), operatorTask.getId(), data);
                 interTaskGroupData.add(data);
               });
             } catch (InterruptedException e) {
@@ -454,8 +432,8 @@ public final class TaskGroupExecutor {
           for (OutputCollectorImpl localReader : taskIdToInputPipeMap.get(operatorTask.getId())) {
             if (!localReader.isEmpty()) {
               data = localReader.remove();
-              System.out.println(String.format("log: %s %s: Reading from InputPipe(Intra-TG) %s",
-                taskGroup.getTaskGroupId(), operatorTask.getId(), data.toString()));
+              LOG.info("log: %s %s: Reading from InputPipe(Intra-TG) %s",
+                taskGroup.getTaskGroupId(), operatorTask.getId(), data.toString());
             }
           }
         }
@@ -467,7 +445,7 @@ public final class TaskGroupExecutor {
       }
     });
 
-    // TODO: For GroupByKeyTransform, trigger closing of transform per window.
+    // TODO #XXX: For GroupByKeyTransform, trigger closing of transform per window.
     if (!hasInputReader(operatorTask)) {
       if (allInputPipesEmpty(operatorTask)) {
         transform.close(true);
@@ -494,9 +472,9 @@ public final class TaskGroupExecutor {
         if (!output.isEmpty()) {
 
           output.forEach(data -> {
-            System.out.println(String.format("log: %s %s: output from transform(after close): %s",
+            LOG.info("log: %s %s: output from transform(after close): %s",
                 taskGroup.getTaskGroupId(),
-                operatorTask.getId(), data.toString()));
+                operatorTask.getId(), data.toString());
 
             List<Object> iterable = Collections.singletonList(data);
             outputWriter.write(iterable);
@@ -511,7 +489,7 @@ public final class TaskGroupExecutor {
    * @param task the task to carry on the data.
    */
   private void launchMetricCollectionBarrierTask(final MetricCollectionBarrierTask task) {
-    final BlockingQueue<Iterable> dataQueue = new LinkedBlockingQueue<>();
+    final BlockingQueue<Iterator> dataQueue = new LinkedBlockingQueue<>();
     taskIdToInputReaderMap.get(task.getId()).stream().filter(inputReader -> !inputReader.isSideInputReader())
         .forEach(inputReader -> {
           inputReader.read().forEach(compFuture -> compFuture.thenAccept(dataQueue::add));
@@ -520,8 +498,8 @@ public final class TaskGroupExecutor {
     final List data = new ArrayList<>();
     IntStream.range(0, sourceParallelism.get()).forEach(srcTaskNum -> {
       try {
-        final Iterable availableData = dataQueue.take();
-        availableData.forEach(data::add);
+        final Iterator availableData = dataQueue.take();
+        availableData.forEachRemaining(data::add);
       } catch (final InterruptedException e) {
         throw new BlockFetchException(e);
       }
