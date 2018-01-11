@@ -39,6 +39,11 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
   private final Coder coder;
   private volatile boolean committed;
 
+  /**
+   * Constructor.
+   *
+   * @param coder the {@link Coder}.
+   */
   public NonSerializedMemoryBlock(final Coder coder) {
     this.nonSerializedPartitions = new ArrayList<>();
     this.coder = coder;

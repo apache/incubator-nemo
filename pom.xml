@@ -32,13 +32,14 @@ limitations under the License.
         <reef.version>0.17.0-SNAPSHOT</reef.version>
         <protobuf.version>2.5.0</protobuf.version>
         <hadoop.version>2.7.2</hadoop.version>
-        <log4j.configuration>file://config/log4j.properties</log4j.configuration> <!-- TODO: issue#645 -->
+        <log4j.configuration>file://log4j.properties</log4j.configuration> <!-- TODO: issue#645 -->
         <netty.version>4.1.16.Final</netty.version>
         <guava.version>19.0</guava.version>
         <grpc.version>1.7.0</grpc.version>
         <jackson.version>2.8.8</jackson.version>
         <netlib.version>1.1.2</netlib.version>
         <netty.version>4.1.16.Final</netty.version>
+        <slf4j.version>1.7.20</slf4j.version>
     </properties>
 
     <modules>
@@ -46,7 +47,7 @@ limitations under the License.
         <module>client</module>
         <module>common</module>
         <module>compiler/backend</module>
-        <module>compiler/frontend</module>
+        <module>compiler/frontend-beam</module>
         <module>compiler/optimizer</module>
         <module>examples</module>
         <module>runtime/common</module>
@@ -82,6 +83,16 @@ limitations under the License.
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>${guava.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-log4j12</artifactId>
+                <version>${slf4j.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

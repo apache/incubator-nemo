@@ -49,6 +49,7 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import static edu.snu.onyx.runtime.common.state.TaskGroupState.State.COMPLETE;
@@ -85,6 +86,8 @@ public final class RuntimeMaster {
   private final String dagDirectory;
   private final Set<IRVertex> irVertices;
 
+  private final AtomicInteger resourceRequestCount;
+
 
   @Inject
   public RuntimeMaster(final Scheduler scheduler,
@@ -111,6 +114,7 @@ public final class RuntimeMaster {
         .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.dagDirectory = dagDirectory;
     this.irVertices = new HashSet<>();
+    this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
   }
 
@@ -149,7 +153,6 @@ public final class RuntimeMaster {
       scheduler.terminate();
       schedulerRunner.terminate();
       pendingTaskGroupQueue.close();
-      blockManagerMaster.terminate();
       masterMessageEnvironment.close();
 
       final Future<Boolean> allExecutorsClosed = containerManager.terminate();
@@ -165,20 +168,29 @@ public final class RuntimeMaster {
   }
 
   public void requestContainer(final String resourceSpecificationString) {
-    try {
-      final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
+    final Future<?> containerRequestEventResult = masterControlEventExecutor.submit(() -> {
+      try {
+        final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
 
-      for (int i = 0; i < jsonRootNode.size(); i++) {
-        final TreeNode resourceNode = jsonRootNode.get(i);
-        final ResourceSpecification.Builder builder = ResourceSpecification.newBuilder();
-        builder.setContainerType(resourceNode.get("type").traverse().nextTextValue());
-        builder.setMemory(resourceNode.get("memory_mb").traverse().getIntValue());
-        builder.setCapacity(resourceNode.get("capacity").traverse().getIntValue());
-        final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
-        containerManager.requestContainer(executorNum, builder.build());
+        for (int i = 0; i < jsonRootNode.size(); i++) {
+          final TreeNode resourceNode = jsonRootNode.get(i);
+          final ResourceSpecification.Builder builder = ResourceSpecification.newBuilder();
+          builder.setContainerType(resourceNode.get("type").traverse().nextTextValue());
+          builder.setMemory(resourceNode.get("memory_mb").traverse().getIntValue());
+          builder.setCapacity(resourceNode.get("capacity").traverse().getIntValue());
+          final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
+          resourceRequestCount.getAndAdd(executorNum);
+          containerManager.requestContainer(executorNum, builder.build());
+        }
+      } catch (final Exception e) {
+        throw new ContainerException(e);
       }
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
+    });
+    try {
+      containerRequestEventResult.get();
+    } catch (final Exception e) {
+      LOG.error("Exception while requesting for a container: ", e);
+      throw new ContainerException(e);
     }
   }
 
@@ -193,18 +205,28 @@ public final class RuntimeMaster {
                                    final AllocatedEvaluator allocatedEvaluator,
                                    final Configuration executorConfiguration) {
     masterControlEventExecutor.execute(() ->
-        containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration));
+      containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration));
   }
 
   /**
    * Called when an executor is launched on a container for this runtime.
    * @param activeContext of the launched executor.
+   * @return true if all requested executors have been launched, false otherwise.
    */
-  public void onExecutorLaunched(final ActiveContext activeContext) {
-    masterControlEventExecutor.execute(() -> {
+  public boolean onExecutorLaunched(final ActiveContext activeContext) {
+    final Callable<Boolean> processExecutorLaunchedEvent = () -> {
       containerManager.onExecutorLaunched(activeContext);
       scheduler.onExecutorAdded(activeContext.getId());
-    });
+      return (resourceRequestCount.decrementAndGet() == 0);
+    };
+
+    final boolean eventResult;
+    try {
+      eventResult = masterControlEventExecutor.submit(processExecutorLaunchedEvent).get();
+    } catch (final Exception e) {
+      throw new ContainerException(e);
+    }
+    return eventResult;
   }
 
   /**

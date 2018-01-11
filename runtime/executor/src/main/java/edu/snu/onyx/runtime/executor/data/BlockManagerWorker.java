@@ -191,18 +191,16 @@ public final class BlockManagerWorker {
    * @param blockId            of the block.
    * @param partitions         to save to a block.
    * @param blockStore         to store the block.
-   * @param commitPerPartition whether commit every partition write or not.
    * @return a {@link Optional} of the size of each written block.
    */
   public Optional<List<Long>> putPartitions(final String blockId,
                                             final Iterable<Partition> partitions,
-                                            final DataStoreProperty.Value blockStore,
-                                            final boolean commitPerPartition) {
+                                            final DataStoreProperty.Value blockStore) {
     LOG.info("PutPartitions: {}", blockId);
     final BlockStore store = getBlockStore(blockStore);
 
     try {
-      return store.putPartitions(blockId, (Iterable) partitions, commitPerPartition);
+      return store.putPartitions(blockId, (Iterable) partitions);
     } catch (final Exception e) {
       throw new BlockWriteException(e);
     }

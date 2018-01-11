@@ -21,7 +21,7 @@ import edu.snu.onyx.driver.OnyxDriver;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.MessageParameters;
 
-import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
 import org.apache.reef.client.LauncherStatus;
