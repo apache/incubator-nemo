@@ -19,6 +19,7 @@ import edu.snu.onyx.common.ir.OutputCollector;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  * Flatten transform implementation.
@@ -41,8 +42,8 @@ public final class FlattenTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void onData(final Iterable<T> elements, final String srcVertexId) {
-    elements.forEach(collectedElements::add);
+  public void onData(final Iterator<T> elements, final String srcVertexId) {
+    elements.forEachRemaining(collectedElements::add);
   }
 
   @Override

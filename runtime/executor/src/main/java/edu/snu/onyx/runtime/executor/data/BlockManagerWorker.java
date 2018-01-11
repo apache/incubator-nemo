@@ -107,7 +107,7 @@ public final class BlockManagerWorker {
    * @param keyRange     the key range descriptor.
    * @return the result data in the block.
    */
-  public CompletableFuture<Iterable> retrieveDataFromBlock(
+  public CompletableFuture<Iterator> retrieveDataFromBlock(
       final String blockId,
       final String runtimeEdgeId,
       final DataStoreProperty.Value blockStore,
@@ -124,7 +124,8 @@ public final class BlockManagerWorker {
 
       // Block resides in this evaluator!
       try {
-        return CompletableFuture.completedFuture(DataUtil.concatNonSerPartitions(optionalResultPartitions.get()));
+        return CompletableFuture.completedFuture(DataUtil.concatNonSerPartitions(optionalResultPartitions.get())
+            .iterator());
       } catch (final IOException e) {
         throw new BlockFetchException(e);
       }
@@ -146,7 +147,7 @@ public final class BlockManagerWorker {
    * @param keyRange     the key range descriptor
    * @return the {@link CompletableFuture} of the block.
    */
-  private CompletableFuture<Iterable> requestBlockInRemoteWorker(
+  private CompletableFuture<Iterator> requestBlockInRemoteWorker(
       final String blockId,
       final String runtimeEdgeId,
       final DataStoreProperty.Value blockStore,
@@ -378,7 +379,7 @@ public final class BlockManagerWorker {
             outputStream.writeSerializedPartitions(optionalResult.get()).close();
             handleUsedData(blockStore, outputStream.getBlockId());
           } else {
-            final Iterable block =
+            final Iterator block =
                 retrieveDataFromBlock(outputStream.getBlockId(), outputStream.getRuntimeEdgeId(),
                     blockStore, outputStream.getKeyRange()).get();
             outputStream.writeElements(block).close();

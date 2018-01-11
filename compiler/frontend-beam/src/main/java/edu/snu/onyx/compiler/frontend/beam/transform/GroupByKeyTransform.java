@@ -19,10 +19,7 @@ import edu.snu.onyx.common.ir.OutputCollector;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.values.KV;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Group Beam KVs.
@@ -45,8 +42,8 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
   }
 
   @Override
-  public void onData(final Iterable<I> elements, final String srcVertexId) {
-    elements.forEach(element -> {
+  public void onData(final Iterator<I> elements, final String srcVertexId) {
+    elements.forEachRemaining(element -> {
       final KV kv = (KV) element;
       keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
       keyToValues.get(kv.getKey()).add(kv.getValue());

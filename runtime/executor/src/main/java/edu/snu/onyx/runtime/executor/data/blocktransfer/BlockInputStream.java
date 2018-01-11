@@ -56,7 +56,7 @@ public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
   private Coder<T> coder;
   private ExecutorService executorService;
 
-  private final CompletableFuture<BlockInputStream<T>> completeFuture = new CompletableFuture<>();
+  private final CompletableFuture<Iterator<T>> completeFuture = new CompletableFuture<>();
   private final ByteBufInputStream byteBufInputStream = new ByteBufInputStream();
   private final ClosableBlockingIterable<T> elementQueue = new ClosableBlockingIterable<>();
   private volatile boolean started = false;
@@ -153,7 +153,7 @@ public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
         final long endTime = System.currentTimeMillis();
         elementQueue.close();
         if (!completeFuture.isCompletedExceptionally()) {
-          completeFuture.complete(this);
+          completeFuture.complete(iterator());
           // If encodePartialBlock option is on, the elapsed time is not only determined by the speed of decoder
           // but also by the rate of byte stream through the network.
           // Before investigating on low rate of decoding, check the rate of the byte stream.
@@ -239,7 +239,7 @@ public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
    *
    * @return a {@link CompletableFuture} that completes with the block transfer being done
    */
-  public CompletableFuture<BlockInputStream<T>> getCompleteFuture() {
+  public CompletableFuture<Iterator<T>> getCompleteFuture() {
     return completeFuture;
   }
 

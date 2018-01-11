@@ -20,6 +20,7 @@ import edu.snu.onyx.common.ir.OutputCollector;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Iterator;
 
 /**
  * A {@link Transform} encodes input values into bytes and emits.
@@ -44,8 +45,8 @@ public final class SailfishEncodingTransform<T> implements Transform<T, byte[]> 
   }
 
   @Override
-  public void onData(final Iterable<T> elements, final String srcVertexId) {
-    elements.forEach(element -> {
+  public void onData(final Iterator<T> elements, final String srcVertexId) {
+    elements.forEachRemaining(element -> {
       try (final ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
         coder.encode(element, outputStream);
         outputCollector.emit(outputStream.toByteArray());

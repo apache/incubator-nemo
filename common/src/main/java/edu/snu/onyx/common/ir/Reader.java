@@ -16,6 +16,7 @@
 package edu.snu.onyx.common.ir;
 
 import java.io.Serializable;
+import java.util.Iterator;
 
 /**
  * Interface for reader.
@@ -24,9 +25,9 @@ import java.io.Serializable;
 public interface Reader<O> extends Serializable {
   /**
    * Method to read data from the source.
-   * @return an Iterable of the data read by the reader.
+   * @return an {@link Iterator} of the data read by the reader.
    * @throws Exception exception while reading data.
    */
-  Iterable<O> read() throws Exception;
+  Iterator<O> read() throws Exception;
 }
 
