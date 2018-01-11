@@ -153,7 +153,6 @@ public final class RuntimeMaster {
       scheduler.terminate();
       schedulerRunner.terminate();
       pendingTaskGroupQueue.close();
-      blockManagerMaster.terminate();
       masterMessageEnvironment.close();
 
       final Future<Boolean> allExecutorsClosed = containerManager.terminate();

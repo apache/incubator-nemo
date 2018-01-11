@@ -73,6 +73,8 @@ public interface Block<K extends Serializable> {
 
   /**
    * Commits this block to prevent further write.
+   *
+   * @throws IOException if failed to commit.
    */
-  void commit();
+  void commit() throws IOException;
 }

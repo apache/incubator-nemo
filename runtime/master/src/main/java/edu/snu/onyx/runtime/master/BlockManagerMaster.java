@@ -15,7 +15,6 @@
  */
 package edu.snu.onyx.runtime.master;
 
-import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.exception.IllegalMessageException;
 import edu.snu.onyx.runtime.common.exception.AbsentBlockException;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
@@ -59,6 +58,11 @@ public final class BlockManagerMaster {
   // modifies global variables in this class have to acquire an (exclusive) write lock.
   private final ReadWriteLock lock;
 
+  /**
+   * Constructor.
+   *
+   * @param masterMessageEnvironment the message environment.
+   */
   @Inject
   private BlockManagerMaster(final MessageEnvironment masterMessageEnvironment) {
     masterMessageEnvironment.setupListener(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID,
@@ -326,148 +330,6 @@ public final class BlockManagerMaster {
   }
 
   /**
-   * Reserves the region for a partition in a block, appends the partition metadata,
-   * and replies with the starting point of the block in the file.
-   *
-   * @param message        the message having the partition metadata to append.
-   * @param messageContext the context which will be used for response.
-   */
-  @VisibleForTesting
-  public void onReservePartition(final ControlMessage.Message message,
-                                 final MessageContext messageContext) {
-    assert (message.getType() == ControlMessage.MessageType.ReservePartition);
-    final ControlMessage.ReservePartitionMsg reservePartitionMsg = message.getReservePartitionMsg();
-    final String blockId = reservePartitionMsg.getBlockId();
-    final ControlMessage.ReservePartitionResponseMsg.Builder responseBuilder =
-        ControlMessage.ReservePartitionResponseMsg.newBuilder()
-            .setRequestId(message.getId());
-
-    final Lock readLock = lock.readLock();
-    readLock.lock();
-    try {
-      final BlockMetadata metadata = blockIdToMetadata.get(blockId);
-
-      // Reserve a region for this partition and append the metadata.
-      final Pair<Integer, Long> reserveResult = metadata.reservePartition(reservePartitionMsg.getPartitionMetadata());
-      final int partitionIndex = reserveResult.left();
-      final long positionToWrite = reserveResult.right();
-      responseBuilder.setPartitionIdx(partitionIndex);
-      responseBuilder.setPositionToWrite(positionToWrite);
-
-      // Reply with the position to write in the file.
-      messageContext.reply(
-          ControlMessage.Message.newBuilder()
-              .setId(RuntimeIdGenerator.generateMessageId())
-              .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-              .setType(ControlMessage.MessageType.ReservePartitionResponse)
-              .setReservePartitionResponseMsg(responseBuilder.build())
-              .build());
-    } finally {
-      readLock.unlock();
-    }
-  }
-
-  /**
-   * Commits the partitions for a remote block.
-   *
-   * @param message the message having metadata to commit.
-   */
-  @VisibleForTesting
-  public void onCommitPartitions(final ControlMessage.Message message) {
-    assert (message.getType() == ControlMessage.MessageType.CommitPartition);
-    final ControlMessage.CommitPartitionMsg commitMsg = message.getCommitPartitionMsg();
-    final String blockId = commitMsg.getBlockId();
-    final List<Integer> partitionIndices = commitMsg.getPartitionIdxList();
-
-    final Lock readLock = lock.readLock();
-    readLock.lock();
-    try {
-      final BlockMetadata metadata = blockIdToMetadata.get(blockId);
-      if (metadata != null) {
-        metadata.commitPartitions(partitionIndices);
-      } else {
-        LOG.error("Metadata for {} already exists. It will be replaced.", blockId);
-      }
-    } finally {
-      readLock.unlock();
-    }
-  }
-
-  /**
-   * Accepts a request for the partition metadata and replies with the metadata for a remote block.
-   *
-   * @param message        the message having metadata to store.
-   * @param messageContext the context to reply.
-   */
-  @VisibleForTesting
-  public void onRequestPartitionMetadata(final ControlMessage.Message message,
-                                         final MessageContext messageContext) {
-    assert (message.getType() == ControlMessage.MessageType.RequestPartitionMetadata);
-    final ControlMessage.RequestPartitionMetadataMsg requestMsg = message.getRequestPartitionMetadataMsg();
-    final long requestId = message.getId();
-    final String blockId = requestMsg.getBlockId();
-
-    final Lock readLock = lock.readLock();
-    readLock.lock();
-    try {
-      // Check whether the block is committed. The actual location is not important.
-      final CompletableFuture<String> locationFuture = getBlockLocationFuture(blockId);
-
-      locationFuture.whenComplete((location, throwable) -> {
-        final ControlMessage.MetadataResponseMsg.Builder responseBuilder =
-            ControlMessage.MetadataResponseMsg.newBuilder()
-                .setRequestId(requestId);
-        if (throwable == null) {
-          // Well committed.
-          final BlockMetadata metadata = blockIdToMetadata.get(blockId);
-          if (metadata != null) {
-            metadata.getPartitionMetadataList().forEach(partitionMetadataInServer ->
-                responseBuilder.addPartitionMetadata(partitionMetadataInServer.getPartitionMetadataMsg()));
-          } else {
-            LOG.error("Metadata for {} dose not exist. Failed to get it.", blockId);
-          }
-        } else {
-          responseBuilder.setState(
-              convertBlockState(((AbsentBlockException) throwable).getState()));
-        }
-        messageContext.reply(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.MetadataResponse)
-                .setMetadataResponseMsg(responseBuilder.build())
-                .build());
-      });
-    } finally {
-      readLock.unlock();
-    }
-  }
-
-  /**
-   * Removes the partition metadata for a remote block.
-   * If the target block was not previously created, ignores this message.
-   *
-   * @param message the message pointing the metadata to remove.
-   */
-  @VisibleForTesting
-  public void onRemovePartitionMetadata(final ControlMessage.Message message) {
-    assert (message.getType() == ControlMessage.MessageType.RemovePartitionMetadata);
-    final ControlMessage.RemovePartitionMetadataMsg removeMsg = message.getRemovePartitionMetadataMsg();
-    final String blockId = removeMsg.getBlockId();
-
-    final Lock readLock = lock.readLock();
-    readLock.lock();
-    try {
-      final BlockMetadata metadata = blockIdToMetadata.get(blockId);
-      if (metadata != null) {
-        metadata.removePartitionMetadata();
-      } // if else, the block was not previously created. Ignore it.
-    } finally {
-      readLock.unlock();
-    }
-  }
-
-  /**
    * Handler for control messages received.
    */
   public final class PartitionManagerMasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
@@ -482,12 +344,6 @@ public final class BlockManagerMaster {
             final String blockId = blockStateChangedMsg.getBlockId();
             onBlockStateChanged(blockId, RuntimeMaster.convertBlockState(blockStateChangedMsg.getState()),
                 blockStateChangedMsg.getLocation());
-            break;
-          case CommitPartition:
-            onCommitPartitions(message);
-            break;
-          case RemovePartitionMetadata:
-            onRemovePartitionMetadata(message);
             break;
           default:
             throw new IllegalMessageException(
@@ -505,21 +361,11 @@ public final class BlockManagerMaster {
         case RequestBlockLocation:
           onRequestBlockLocation(message, messageContext);
           break;
-        case RequestPartitionMetadata:
-          onRequestPartitionMetadata(message, messageContext);
-          break;
-        case ReservePartition:
-          onReservePartition(message, messageContext);
-          break;
         default:
           throw new IllegalMessageException(
               new Exception("This message should not be received by "
                   + BlockManagerMaster.class.getName() + ":" + message.getType()));
       }
     }
-  }
-
-  public void terminate() {
-    // do nothing
   }
 }

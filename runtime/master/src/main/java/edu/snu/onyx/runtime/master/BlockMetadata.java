@@ -15,9 +15,7 @@
  */
 package edu.snu.onyx.runtime.master;
 
-import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.StateMachine;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.state.BlockState;
 import edu.snu.onyx.runtime.common.exception.AbsentBlockException;
 import org.slf4j.Logger;
@@ -25,7 +23,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -39,11 +36,6 @@ final class BlockMetadata {
   private final BlockState blockState;
   private volatile CompletableFuture<String> locationFuture; // the future of the location of this block.
 
-  // Partition level metadata. These information will be managed only for remote blocks.
-  private volatile List<PartitionMetadataInServer> partitionMetadataList;
-  private volatile long writtenBytesCursor; // How many bytes are (at least, logically) written in the file.
-  private volatile int publishedPartitionCursor; // Cursor dividing the published blocks and un-published partitions.
-
   /**
    * Constructs the metadata for a block.
    *
@@ -54,10 +46,6 @@ final class BlockMetadata {
     this.blockId = blockId;
     this.blockState = new BlockState();
     this.locationFuture = new CompletableFuture<>();
-    // Initialize block level metadata.
-    this.partitionMetadataList = new ArrayList<>();
-    this.writtenBytesCursor = 0;
-    this.publishedPartitionCursor = 0;
   }
 
   /**
@@ -124,88 +112,5 @@ final class BlockMetadata {
    */
   synchronized CompletableFuture<String> getLocationFuture() {
     return locationFuture;
-  }
-
-  /**
-   * Reserves the region for a partition and get the metadata for the partition.
-   *
-   * @param partitionMetadata the partition metadata to append.
-   * @return the pair of the index of reserved block and starting position of the block in the file.
-   */
-  synchronized Pair<Integer, Long> reservePartition(final ControlMessage.PartitionMetadataMsg partitionMetadata) {
-    final int partitionSize = partitionMetadata.getPartitionSize();
-    final long currentPosition = writtenBytesCursor;
-    final int partitionIdx = partitionMetadataList.size();
-    final ControlMessage.PartitionMetadataMsg partitionMetadataToStore =
-        ControlMessage.PartitionMetadataMsg.newBuilder()
-            .setKey(partitionMetadata.getKey())
-            .setPartitionSize(partitionSize)
-            .setOffset(currentPosition)
-            .setNumElements(partitionMetadata.getNumElements())
-            .build();
-
-    writtenBytesCursor += partitionSize;
-    partitionMetadataList.add(new PartitionMetadataInServer(partitionMetadataToStore));
-    return Pair.of(partitionIdx, currentPosition);
-  }
-
-  /**
-   * Notifies that some partitions are written.
-   *
-   * @param partitionIndicesToCommit the indices of the partitions to commit.
-   */
-  synchronized void commitPartitions(final Iterable<Integer> partitionIndicesToCommit) {
-    // Mark the partitions committed.
-    partitionIndicesToCommit.forEach(idx -> partitionMetadataList.get(idx).setCommitted());
-
-    while (publishedPartitionCursor < partitionMetadataList.size()
-        && partitionMetadataList.get(publishedPartitionCursor).isCommitted()) {
-      // If the first partition in the un-published section is committed, publish it.
-      publishedPartitionCursor++;
-    }
-  }
-
-  /**
-   * Removes the partition metadata for the corresponding block.
-   */
-  synchronized void removePartitionMetadata() {
-    this.partitionMetadataList = new ArrayList<>();
-    this.writtenBytesCursor = 0;
-    this.publishedPartitionCursor = 0;
-  }
-
-  /**
-   * Gets the list of the partition metadata.
-   *
-   * @return the list of partition metadata.
-   */
-  synchronized List<PartitionMetadataInServer> getPartitionMetadataList() {
-    return Collections.unmodifiableList(partitionMetadataList.subList(0, publishedPartitionCursor));
-  }
-
-  /**
-   * The partition metadata in server side.
-   * These information will be managed only for remote blocks.
-   */
-  final class PartitionMetadataInServer {
-    private final ControlMessage.PartitionMetadataMsg partitionMetadataMsg;
-    private volatile boolean committed;
-
-    private PartitionMetadataInServer(final ControlMessage.PartitionMetadataMsg partitionMetadataMsg) {
-      this.partitionMetadataMsg = partitionMetadataMsg;
-      this.committed = false;
-    }
-
-    private boolean isCommitted() {
-      return committed;
-    }
-
-    private void setCommitted() {
-      committed = true;
-    }
-
-    ControlMessage.PartitionMetadataMsg getPartitionMetadataMsg() {
-      return partitionMetadataMsg;
-    }
   }
 }

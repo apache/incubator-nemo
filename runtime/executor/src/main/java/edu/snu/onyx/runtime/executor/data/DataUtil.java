@@ -14,6 +14,9 @@ import java.util.stream.StreamSupport;
  * Utility methods for data handling (e.g., (de)serialization).
  */
 public final class DataUtil {
+  /**
+   * Empty constructor.
+   */
   private DataUtil() {
     // Private constructor.
   }
@@ -44,8 +47,9 @@ public final class DataUtil {
    *
    * @param elementsInPartition the number of elements in this partition.
    * @param coder               the coder to decode the bytes.
-   * @param key           the key value of the result partition.
+   * @param key                 the key value of the result partition.
    * @param inputStream         the input stream which will return the data in the partition as bytes.
+   * @param <K>                 the key type of the partitions.
    * @return the list of deserialized elements.
    * @throws IOException if fail to deserialize.
    */
@@ -57,7 +61,7 @@ public final class DataUtil {
     for (int i = 0; i < elementsInPartition; i++) {
       deserializedData.add(coder.decode(inputStream));
     }
-    return new NonSerializedPartition(key, deserializedData);
+    return new NonSerializedPartition<>(key, deserializedData);
   }
 
   /**
@@ -65,6 +69,7 @@ public final class DataUtil {
    *
    * @param coder               the coder for serialization.
    * @param partitionsToConvert the partitions to convert.
+   * @param <K>                 the key type of the partitions.
    * @return the converted {@link SerializedPartition}s.
    * @throws IOException if fail to convert.
    */
@@ -72,13 +77,13 @@ public final class DataUtil {
       final Coder coder,
       final Iterable<NonSerializedPartition<K>> partitionsToConvert) throws IOException {
     final List<SerializedPartition<K>> serializedPartitions = new ArrayList<>();
-    for (final NonSerializedPartition partitionToConvert : partitionsToConvert) {
+    for (final NonSerializedPartition<K> partitionToConvert : partitionsToConvert) {
       try (final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream()) {
         final long elementsTotal = serializePartition(coder, partitionToConvert, bytesOutputStream);
         final byte[] serializedBytes = bytesOutputStream.getBufDirectly();
         final int actualLength = bytesOutputStream.getCount();
         serializedPartitions.add(
-            new SerializedPartition(partitionToConvert.getKey(), elementsTotal, serializedBytes, actualLength));
+            new SerializedPartition<>(partitionToConvert.getKey(), elementsTotal, serializedBytes, actualLength));
       }
     }
     return serializedPartitions;
@@ -89,6 +94,7 @@ public final class DataUtil {
    *
    * @param coder               the coder for deserialization.
    * @param partitionsToConvert the partitions to convert.
+   * @param <K>                 the key type of the partitions.
    * @return the converted {@link NonSerializedPartition}s.
    * @throws IOException if fail to convert.
    */
@@ -100,7 +106,7 @@ public final class DataUtil {
       final K key = partitionToConvert.getKey();
       try (final ByteArrayInputStream byteArrayInputStream =
                new ByteArrayInputStream(partitionToConvert.getData())) {
-        final NonSerializedPartition deserializePartition = deserializePartition(
+        final NonSerializedPartition<K> deserializePartition = deserializePartition(
             partitionToConvert.getElementsTotal(), coder, key, byteArrayInputStream);
         nonSerializedPartitions.add(deserializePartition);
       }
@@ -118,6 +124,18 @@ public final class DataUtil {
   public static String blockIdToFilePath(final String blockId,
                                          final String fileDirectory) {
     return fileDirectory + "/" + blockId;
+  }
+
+  /**
+   * Converts a block id to the corresponding metadata file path.
+   *
+   * @param blockId       the ID of the block.
+   * @param fileDirectory the directory of the target block file.
+   * @return the metadata file path of the partition.
+   */
+  public static String blockIdToMetaFilePath(final String blockId,
+                                             final String fileDirectory) {
+    return fileDirectory + "/" + blockId + "_meta";
   }
 
   /**
