@@ -237,7 +237,7 @@ public final class TaskGroupExecutor {
     while (!isTaskGroupComplete()) {
       taskGroup.getTaskDAG().topologicalDo(task -> {
         try {
-          if (taskList.contains(task.getId())) { //&& !bypassTask(task)) {
+          if (taskList.contains(task.getId()) && !bypassTask(task)) {
             if (task instanceof BoundedSourceTask) {
               launchBoundedSourceTask((BoundedSourceTask) task);
             } else if (task instanceof OperatorTask) {
@@ -351,7 +351,7 @@ public final class TaskGroupExecutor {
       try {
         iterable.forEach(data -> {
           outputPipe.emit(data);
-          LOG.info("log: {} {} {} From OutputPipe wrote {}", taskGroup.getTaskGroupId(),
+          LOG.info("log: {} {} {} To OutputPipe wrote {}", taskGroup.getTaskGroupId(),
               sourceTask.getId(), sourceTask.getRuntimeVertexId(), data);
         });
       } catch (final Exception e) {
