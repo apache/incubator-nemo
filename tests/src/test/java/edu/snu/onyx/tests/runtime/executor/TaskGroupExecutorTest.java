@@ -117,8 +117,8 @@ public final class TaskGroupExecutorTest {
 
     final Reader sourceReader = new Reader() {
       @Override
-      public Iterable read() throws Exception {
-        return elements;
+      public Iterator read() throws Exception {
+        return elements.iterator();
       }
     };
     final BoundedSourceTask<Integer> boundedSourceTask =
@@ -217,8 +217,8 @@ public final class TaskGroupExecutorTest {
     @Override
     public InputReader answer(final InvocationOnMock invocationOnMock) throws Throwable {
       // Read the data.
-      final List<CompletableFuture<Iterable>> inputFutures = new ArrayList<>();
-      inputFutures.add(CompletableFuture.completedFuture(elements));
+      final List<CompletableFuture<Iterator>> inputFutures = new ArrayList<>();
+      inputFutures.add(CompletableFuture.completedFuture(elements.iterator()));
       final InputReader inputReader = mock(InputReader.class);
       when(inputReader.read()).thenReturn(inputFutures);
       when(inputReader.isSideInputReader()).thenReturn(false);
@@ -234,11 +234,11 @@ public final class TaskGroupExecutorTest {
   private class InterStageReaderAnswer implements Answer<InputReader> {
     @Override
     public InputReader answer(final InvocationOnMock invocationOnMock) throws Throwable {
-      final List<CompletableFuture<Iterable>> inputFutures = new ArrayList<>(SOURCE_PARALLELISM);
+      final List<CompletableFuture<Iterator>> inputFutures = new ArrayList<>(SOURCE_PARALLELISM);
       final int elementsPerSource = DATA_SIZE / SOURCE_PARALLELISM;
       for (int i = 0; i < SOURCE_PARALLELISM; i++) {
         inputFutures.add(CompletableFuture.completedFuture(
-            elements.subList(i * elementsPerSource, (i + 1) * elementsPerSource)));
+            elements.subList(i * elementsPerSource, (i + 1) * elementsPerSource).iterator()));
       }
       final InputReader inputReader = mock(InputReader.class);
       when(inputReader.read()).thenReturn(inputFutures);
@@ -295,8 +295,8 @@ public final class TaskGroupExecutorTest {
     }
 
     @Override
-    public void onData(final Iterable<T> elements, final String srcVertexId) {
-      elements.forEach(element -> outputCollector.emit(element));
+    public void onData(final Iterator<T> elements, final String srcVertexId) {
+      elements.forEachRemaining(element -> outputCollector.emit(element));
     }
 
     @Override

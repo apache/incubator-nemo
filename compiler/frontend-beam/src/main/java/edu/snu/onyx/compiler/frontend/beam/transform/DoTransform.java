@@ -34,6 +34,7 @@ import org.joda.time.Instant;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -71,14 +72,14 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void onData(final Iterable<I> elements, final String srcVertexId) {
+  public void onData(final Iterator<I> elements, final String srcVertexId) {
     final StartBundleContext startBundleContext = new StartBundleContext(doFn, serializedOptions);
     final FinishBundleContext finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
     final ProcessContext processContext = new ProcessContext(doFn, outputCollector, sideInputs, serializedOptions);
     final DoFnInvoker invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
-    elements.forEach(element -> { // No need to check for input index, since it is always 0 for DoTransform
+    elements.forEachRemaining(element -> { // No need to check for input index, since it is always 0 for DoTransform
       processContext.setElement(element);
       invoker.invokeProcessElement(processContext);
     });

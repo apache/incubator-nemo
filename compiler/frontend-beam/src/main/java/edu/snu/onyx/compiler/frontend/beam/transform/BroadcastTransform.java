@@ -21,6 +21,7 @@ import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -48,9 +49,10 @@ public final class BroadcastTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void onData(final Iterable<I> elements, final String srcVertexId) {
+  public void onData(final Iterator<I> elements, final String srcVertexId) {
+    final Iterable<I> iterable = () -> elements;
     final List<WindowedValue<I>> windowed = StreamSupport
-        .stream((elements).spliterator(), false)
+        .stream(iterable.spliterator(), false)
         .map(element -> WindowedValue.valueInGlobalWindow(element))
         .collect(Collectors.toList());
     final ViewFn<Iterable<WindowedValue<I>>, O> viewFn = this.pCollectionView.getViewFn();

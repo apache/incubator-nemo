@@ -18,6 +18,7 @@ package edu.snu.onyx.common.ir.vertex.transform;
 import edu.snu.onyx.common.ir.OutputCollector;
 
 import java.io.Serializable;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -40,7 +41,7 @@ public interface Transform<I, O> extends Serializable {
    * @param elements data received.
    * @param srcVertexId sender of the data.
    */
-  void onData(Iterable<I> elements, String srcVertexId);
+  void onData(Iterator<I> elements, String srcVertexId);
 
   /**
    * Close the transform.
