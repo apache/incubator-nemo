@@ -15,17 +15,14 @@
  */
 package edu.snu.onyx.runtime.common.plan.physical;
 
+import edu.snu.onyx.common.ir.vertex.*;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.common.ir.Reader;
 import edu.snu.onyx.common.ir.edge.IREdge;
-import edu.snu.onyx.common.ir.vertex.BoundedSourceVertex;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
-import edu.snu.onyx.common.ir.vertex.IRVertex;
-import edu.snu.onyx.common.ir.vertex.MetricCollectionBarrierVertex;
-import edu.snu.onyx.common.ir.vertex.OperatorVertex;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.plan.stage.*;
@@ -205,8 +202,8 @@ public final class PhysicalPlanGenerator
         // Iterate over the vertices contained in this stage to convert to tasks.
         stageVertices.forEach(irVertex -> {
           final Task newTaskToAdd;
-          if (irVertex instanceof BoundedSourceVertex) {
-            final BoundedSourceVertex sourceVertex = (BoundedSourceVertex) irVertex;
+          if (irVertex instanceof SourceVertex) {
+            final SourceVertex sourceVertex = (SourceVertex) irVertex;
 
             try {
               final List<Reader> readers = sourceVertex.getReaders(stageParallelism);

@@ -23,7 +23,6 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternPro
 import edu.snu.onyx.common.ir.vertex.BoundedSourceVertex;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
-import edu.snu.onyx.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.reshaping.CommonSubexpressionEliminationPass;
@@ -45,12 +44,12 @@ public class CommonSubexpressionEliminationPassTest {
   private final IRVertex map1 = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
   private final IRVertex groupByKey = new OperatorVertex(new EmptyComponents.EmptyTransform("GroupByKey"));
   private final IRVertex combine = new OperatorVertex(new EmptyComponents.EmptyTransform("Combine"));
-  private final IRVertex map2 = new OperatorVertex(new DoTransform(null, null));
+  private final IRVertex map2 = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements2"));
 
   private final IRVertex map1clone = map1.getClone();
   private final IRVertex groupByKey2 = new OperatorVertex(new EmptyComponents.EmptyTransform("GroupByKey2"));
   private final IRVertex combine2 = new OperatorVertex(new EmptyComponents.EmptyTransform("Combine2"));
-  private final IRVertex map22 = new OperatorVertex(new DoTransform(null, null));
+  private final IRVertex map22 = new OperatorVertex(new EmptyComponents.EmptyTransform("Map2"));
 
   private DAG<IRVertex, IREdge> dagNotToOptimize;
   private DAG<IRVertex, IREdge> dagToOptimize;

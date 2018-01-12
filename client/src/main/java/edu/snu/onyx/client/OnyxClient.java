@@ -30,6 +30,9 @@ import java.nio.charset.StandardCharsets;
 @ClientSide
 public final class OnyxClient {
 
+  /**
+   * Empty Constructor.
+   */
   @Inject
   private OnyxClient() {
     // empty

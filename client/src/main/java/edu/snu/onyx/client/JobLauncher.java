@@ -137,6 +137,9 @@ public final class JobLauncher {
     method.invoke(null, (Object) args);
   }
 
+  /**
+   * @return client configuration.
+   */
   private static Configuration getClientConf() {
     final JavaConfigurationBuilder jcb = Tang.Factory.getTang().newConfigurationBuilder();
     jcb.bindNamedParameter(JobMessageHandler.class, OnyxClient.JobMessageHandler.class);

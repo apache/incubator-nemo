@@ -48,7 +48,7 @@ public class LoopVertexTest {
   private final IRVertex map1 = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
   private final IRVertex groupByKey = new OperatorVertex(new EmptyComponents.EmptyTransform("GroupByKey"));
   private final IRVertex combine = new OperatorVertex(new EmptyComponents.EmptyTransform("Combine"));
-  private final IRVertex map2 = new OperatorVertex(new DoTransform(null, null));
+  private final IRVertex map2 = new OperatorVertex(new EmptyComponents.EmptyTransform("map2"));
 
   @Before
   public void setUp() {
