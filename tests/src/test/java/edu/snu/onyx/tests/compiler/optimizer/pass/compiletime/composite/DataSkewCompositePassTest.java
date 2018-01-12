@@ -23,8 +23,6 @@ import edu.snu.onyx.common.ir.edge.executionproperty.MetricCollectionProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.MetricCollectionBarrierVertex;
-import edu.snu.onyx.common.ir.vertex.OperatorVertex;
-import edu.snu.onyx.compiler.frontend.beam.transform.GroupByKeyTransform;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.CompositePass;
@@ -37,6 +35,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -76,7 +75,7 @@ public class DataSkewCompositePassTest {
 
   /**
    * Test for {@link DataSkewCompositePass} with MR workload. It must insert a {@link MetricCollectionBarrierVertex}
-   * before each {@link OperatorVertex} with {@link GroupByKeyTransform}.
+   * before each shuffle edge.
    * @throws Exception exception on the way.
    */
   @Test
@@ -91,10 +90,12 @@ public class DataSkewCompositePassTest {
     final DAG<IRVertex, IREdge> processedDAG = new DataSkewCompositePass().apply(mrDAG);
 
     assertEquals(originalVerticesNum + numOfShuffleGatherEdges, processedDAG.getVertices().size());
-    processedDAG.getVertices().stream().filter(irVertex -> irVertex instanceof OperatorVertex
-        && ((OperatorVertex) irVertex).getTransform() instanceof GroupByKeyTransform).forEach(irVertex ->
-          processedDAG.getIncomingEdgesOf(irVertex).stream().map(IREdge::getSrc).forEach(irVertex1 ->
-            assertTrue(irVertex1 instanceof MetricCollectionBarrierVertex)));
+    processedDAG.getVertices().stream().map(processedDAG::getIncomingEdgesOf)
+        .flatMap(List::stream)
+        .filter(irEdge -> DataCommunicationPatternProperty.Value.Shuffle
+            .equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
+        .map(IREdge::getSrc)
+        .forEach(irVertex -> assertTrue(irVertex instanceof MetricCollectionBarrierVertex));
 
     processedDAG.getVertices().forEach(v -> processedDAG.getOutgoingEdgesOf(v).stream()
         .filter(e -> MetricCollectionProperty.Value.DataSkewRuntimePass

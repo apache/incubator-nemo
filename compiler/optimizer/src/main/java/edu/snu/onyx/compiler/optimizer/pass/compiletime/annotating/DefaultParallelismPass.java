@@ -62,9 +62,10 @@ public final class DefaultParallelismPass extends AnnotatingPass {
           if (parallelism.isPresent()) {
             vertex.setProperty(ParallelismProperty.of(parallelism.getAsInt()));
           }
-        } else {
-          throw new RuntimeException("There is a non-source vertex that doesn't have any inEdges other than SideInput");
-        }
+        } else if (vertex.getProperty(ExecutionProperty.Key.Parallelism) == null) {
+          throw new RuntimeException("There is a non-source vertex that doesn't have any inEdges "
+              + "(excluding SideInput edges)");
+        } // No problem otherwise.
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
