@@ -25,13 +25,14 @@ import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import java.util.List;
-import java.util.OptionalInt;
-import java.util.stream.Collectors;
 
 /**
  * Optimization pass for tagging parallelism execution property.
  */
 public final class DefaultParallelismPass extends AnnotatingPass {
+  // we decrease the number of parallelism by this number on each shuffle boundary.
+  private final Integer shuffleDecreaseFactor = 2;
+
   /**
    * Default constructor.
    */
@@ -44,24 +45,30 @@ public final class DefaultParallelismPass extends AnnotatingPass {
     // Propagate forward source parallelism
     dag.topologicalDo(vertex -> {
       try {
-        final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex).stream()
-            .filter(edge -> !Boolean.TRUE.equals(edge.isSideInput()))
-            .collect(Collectors.toList());
+        final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
         // We manipulate them if it is set as default value of 1.
         if (inEdges.isEmpty() && vertex instanceof SourceVertex) {
           final SourceVertex sourceVertex = (SourceVertex) vertex;
           vertex.setProperty(ParallelismProperty.of(sourceVertex.getReaders(1).size()));
         } else if (!inEdges.isEmpty()) {
-          final OptionalInt parallelism = inEdges.stream()
-              // No reason to propagate via Broadcast edges, as the data streams that will use the broadcasted data
-              // as a sideInput will have their own number of parallelism
-              .filter(edge -> !edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-                                .equals(DataCommunicationPatternProperty.Value.BroadCast))
+          // No reason to propagate via Broadcast edges, as the data streams that will use the broadcasted data
+          // as a sideInput will have their own number of parallelism
+          final Integer o2oParallelism = inEdges.stream()
+             .filter(edge -> DataCommunicationPatternProperty.Value.OneToOne
+                  .equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
               .mapToInt(edge -> edge.getSrc().getProperty(ExecutionProperty.Key.Parallelism))
-              .max();
-          if (parallelism.isPresent()) {
-            vertex.setProperty(ParallelismProperty.of(parallelism.getAsInt()));
-          }
+              .max().orElse(1);
+          final Integer shuffleParallelism = inEdges.stream()
+              .filter(edge -> DataCommunicationPatternProperty.Value.Shuffle
+                  .equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
+              .mapToInt(edge -> edge.getSrc().getProperty(ExecutionProperty.Key.Parallelism))
+              .map(i -> i / shuffleDecreaseFactor)
+              .max().orElse(1);
+          // We set the greater value as the parallelism.
+          final Integer parallelism = o2oParallelism > shuffleParallelism ? o2oParallelism : shuffleParallelism;
+          vertex.setProperty(ParallelismProperty.of(parallelism));
+          // synchronize one-to-one edges parallelism
+          recursivelySynchronizeO2OParallelism(dag, vertex, parallelism);
         } else if (vertex.getProperty(ExecutionProperty.Key.Parallelism) == null) {
           throw new RuntimeException("There is a non-source vertex that doesn't have any inEdges "
               + "(excluding SideInput edges)");
@@ -72,5 +79,32 @@ public final class DefaultParallelismPass extends AnnotatingPass {
     });
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
     return builder.build();
+  }
+
+  /**
+   * Recursively synchronize parallelism for vertices connected by one-to-one edges.
+   * @param dag the original DAG.
+   * @param vertex vertex to observe and update.
+   * @param parallelism the parallelism of the most recently updated descendant.
+   * @return the max value of parallelism among those observed.
+   */
+  static Integer recursivelySynchronizeO2OParallelism(final DAG<IRVertex, IREdge> dag, final IRVertex vertex,
+                                                      final Integer parallelism) {
+    final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
+    final Integer ancestorParallelism = inEdges.stream()
+        .filter(edge -> DataCommunicationPatternProperty.Value.OneToOne
+            .equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
+        .map(IREdge::getSrc)
+        .mapToInt(inVertex -> recursivelySynchronizeO2OParallelism(dag, inVertex, parallelism))
+        .max().orElse(1);
+    final Integer maxParallelism = ancestorParallelism > parallelism ? ancestorParallelism : parallelism;
+    final Integer myParallelism = vertex.getProperty(ExecutionProperty.Key.Parallelism);
+
+    // update the vertex with the max value.
+    if (maxParallelism > myParallelism) {
+      vertex.setProperty(ParallelismProperty.of(maxParallelism));
+      return maxParallelism;
+    }
+    return myParallelism;
   }
 }
