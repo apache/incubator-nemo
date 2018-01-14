@@ -62,6 +62,10 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     return outputQueue.get().isEmpty();
   }
 
+  public int size() {
+    return outputQueue.get().size();
+  }
+
   /**
    * Collects the accumulated output and replace the output list.
    *

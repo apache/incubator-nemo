@@ -19,7 +19,6 @@ import edu.snu.onyx.common.ContextImpl;
 import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.common.exception.BlockWriteException;
 import edu.snu.onyx.common.ir.Reader;
-import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
@@ -64,9 +63,8 @@ public final class TaskGroupExecutor {
 
   private final Map<String, OutputCollectorImpl> taskIdToOutputPipeMap;
   private final Map<String, List<OutputCollectorImpl>> taskIdToInputPipeMap;
-  private final AtomicInteger sourceParallelism;
   private final List<String> taskList;
-  private final BlockingQueue<Object> interTaskGroupData;
+  private final ArrayDeque<Object> interTaskGroupData;
   private boolean isExecutionRequested;
 
   public TaskGroupExecutor(final TaskGroup taskGroup,
@@ -84,9 +82,8 @@ public final class TaskGroupExecutor {
     this.taskIdToOutputWriterMap = new HashMap<>();
     this.taskIdToInputPipeMap = new HashMap<>();
     this.taskIdToOutputPipeMap = new HashMap<>();
-    this.sourceParallelism = new AtomicInteger(0);
     this.taskList = new ArrayList<>();
-    this.interTaskGroupData = new LinkedBlockingQueue<>();
+    this.interTaskGroupData = new ArrayDeque<>();
 
     this.isExecutionRequested = false;
 
@@ -109,7 +106,6 @@ public final class TaskGroupExecutor {
         addInputReader(task, inputReader);
         LOG.info("log: Added InputReader, {} {} {}\n", taskGroup.getTaskGroupId(),
             task.getId(), task.getRuntimeVertexId());
-        sourceParallelism.getAndAdd(physicalStageEdge.getSrcVertex().getProperty(ExecutionProperty.Key.Parallelism));
       });
 
       // Add OutputWriters for inter-stage data transfer
@@ -126,18 +122,14 @@ public final class TaskGroupExecutor {
       addOutputPipe(task);
 
       // Add InputPipes for intra-stage data transfer
-      if (needsInputPipe(task)) {
+      //if (needsInputPipe(task)) {
         addInputPipe(task);
-      }
+      //}
 
       taskList.add(task.getId());
     }));
 
     LOG.info("log: taskList: {}", taskList.size());
-
-    if (sourceParallelism.get() == 0) {
-      sourceParallelism.getAndAdd(1);
-    }
   }
 
   // Helper functions to initializes cross-stage edges.
@@ -237,7 +229,7 @@ public final class TaskGroupExecutor {
     while (!isTaskGroupComplete()) {
       taskGroup.getTaskDAG().topologicalDo(task -> {
         try {
-          if (taskList.contains(task.getId()) && !bypassTask(task)) {
+          if (taskList.contains(task.getId()) /*&& !bypassTask(task)*/) {
             if (task instanceof BoundedSourceTask) {
               launchBoundedSourceTask((BoundedSourceTask) task);
             } else if (task instanceof OperatorTask) {
@@ -385,6 +377,8 @@ public final class TaskGroupExecutor {
                 srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
               }
               sideInputMap.put(srcTransform, sideInput);
+              LOG.info("log: {} {} sideInput {}", taskGroup.getTaskGroupId(), operatorTask.getId(),
+                  sideInput);
             } catch (final InterruptedException | ExecutionException e) {
               throw new BlockFetchException(e);
             }
@@ -397,19 +391,23 @@ public final class TaskGroupExecutor {
     transform.prepare(transformContext, outputCollector);
 
     // Check for non-side inputs.
+    final AtomicInteger sourceParallelism = new AtomicInteger(0);
     if (hasInputReader(operatorTask)) {
       // Reads inter-TaskGroup data.
       if (interTaskGroupData.isEmpty()) {
         taskIdToInputReaderMap.get(operatorTask.getId()).stream()
             .filter(inputReader -> !inputReader.isSideInputReader()).forEach(inputReader -> {
           List<CompletableFuture<Iterator>> futures = inputReader.read();
+          sourceParallelism.getAndAdd(inputReader.getSourceParallelism());
           futures.forEach(compFuture -> {
             try {
               Iterator iterator = compFuture.get();
               iterator.forEachRemaining(data -> {
-                LOG.info("log: {} {} Read from InputReader(Inter-TG): {}",
-                    taskGroup.getTaskGroupId(), operatorTask.getId(), data);
-                interTaskGroupData.add(data);
+                if (data != null) {
+                  LOG.info("log: {} {} Read from InputReader(Inter-TG): {}",
+                      taskGroup.getTaskGroupId(), operatorTask.getId(), data);
+                  interTaskGroupData.add(data);
+                }
               });
             } catch (InterruptedException e) {
               throw new RuntimeException("Interrupted while waiting for InputReader.readElement()", e);
@@ -422,11 +420,26 @@ public final class TaskGroupExecutor {
     }
 
     // Consumes the received element from incoming edges.
-    IntStream.range(0, sourceParallelism.get()).forEach(srcTaskNum -> {
-      try {
+    int numElements = 0;
+    // Add inter-TaskGroup data number
+    numElements += interTaskGroupData.size();
+    if (taskIdToInputPipeMap.containsKey(operatorTask.getId())) {
+      for (OutputCollectorImpl localReader : taskIdToInputPipeMap.get(operatorTask.getId())) {
+        if (!localReader.isEmpty()) {
+          numElements += localReader.size();
+        }
+      }
+    }
+
+    LOG.info("log: {} {}: numElements {}",
+        taskGroup.getTaskGroupId(), operatorTask.getId(), numElements);
+
+    IntStream.range(0, numElements).forEach(srcTaskNum -> {
         Object data = null;
         if (hasInputReader(operatorTask)) {
-          data = interTaskGroupData.take();
+          if (!interTaskGroupData.isEmpty()) {
+            data = interTaskGroupData.pop();
+          }
         } else {
           // Reads intra-TaskGroup data.
           for (OutputCollectorImpl localReader : taskIdToInputPipeMap.get(operatorTask.getId())) {
@@ -438,31 +451,15 @@ public final class TaskGroupExecutor {
           }
         }
 
+        LOG.info("log: {} {}: onData {}", taskGroup.getTaskGroupId(), operatorTask.getId(), data);
         // Because the data queue is a blocking queue, we may need to wait some available data to be pushed.
-        transform.onData(data);
-      } catch (final InterruptedException e) {
-        throw new BlockFetchException(e);
-      }
+        if (data != null) {
+          transform.onData(data);
+        }
     });
 
-    // TODO #XXX: For GroupByKeyTransform, trigger closing of transform per window.
-    if (!hasInputReader(operatorTask)) {
-      if (allInputPipesEmpty(operatorTask)) {
-        transform.close(true);
-        // Check whether there is any output data from the transform and write the output of this task to the writer.
-        writeToOutputWriter(outputCollector, operatorTask);
-      } else {
-        transform.close(false);
-      }
-    } else {
-      if (interTaskGroupData.isEmpty()) {
-        transform.close(true);
-        // Check whether there is any output data from the transform and write the output of this task to the writer.
-        writeToOutputWriter(outputCollector, operatorTask);
-      } else {
-        transform.close(false);
-      }
-    }
+    transform.close(true);
+    writeToOutputWriter(outputCollector, operatorTask);
   }
 
   private void writeToOutputWriter(final OutputCollectorImpl localWriter, final Task operatorTask) {
@@ -490,8 +487,10 @@ public final class TaskGroupExecutor {
    */
   private void launchMetricCollectionBarrierTask(final MetricCollectionBarrierTask task) {
     final BlockingQueue<Iterator> dataQueue = new LinkedBlockingQueue<>();
+    final AtomicInteger sourceParallelism = new AtomicInteger(0);
     taskIdToInputReaderMap.get(task.getId()).stream().filter(inputReader -> !inputReader.isSideInputReader())
         .forEach(inputReader -> {
+          sourceParallelism.getAndAdd(inputReader.getSourceParallelism());
           inputReader.read().forEach(compFuture -> compFuture.thenAccept(dataQueue::add));
         });
 

@@ -18,6 +18,8 @@ package edu.snu.onyx.compiler.frontend.beam.transform;
 import edu.snu.onyx.common.ir.OutputCollector;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.values.KV;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -26,6 +28,8 @@ import java.util.*;
  * @param <I> input type.
  */
 public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, List>> {
+  private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyTransform.class.getName());
+
   private final Map<Object, List> keyToValues;
   private OutputCollector<KV<Object, List>> outputCollector;
 
@@ -46,13 +50,20 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
     final KV kv = (KV) element;
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
     keyToValues.get(kv.getKey()).add(kv.getValue());
+
+    //keyToValues.entrySet().stream().map(entry2 -> KV.of(entry2.getKey(), entry2.getValue()))
+    //    .forEach(wv -> System.out.println(String.format("log_gbk: onData(): keyToValues: %s %s",
+    //        wv.getKey(), wv.getValue())));
   }
 
   @Override
   public void close(final boolean trigger) {
     if (trigger) {
       keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
-          .forEach(wv -> outputCollector.emit(wv));
+          .forEach(wv -> {
+            //LOG.info("log_gbk: close() emitting {}", wv);
+            outputCollector.emit(wv);
+          });
       keyToValues.clear();
     }
   }
