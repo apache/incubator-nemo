@@ -15,55 +15,60 @@
  */
 package edu.snu.onyx.runtime.executor.data.metadata;
 
+import java.io.Serializable;
+
 /**
  * This class represents a metadata for a partition.
  * @param <K> the key type of its partitions.
  */
-public final class PartitionMetadata<K> {
-  private final int partitionIdx;
+public final class PartitionMetadata<K extends Serializable> {
   private final K key;
   private final int partitionSize;
   private final long offset;
   private final long elementsTotal;
-  private volatile boolean committed;
 
-  public PartitionMetadata(final int partitionIdx,
-                           final K key,
+  /**
+   * Constructor.
+   *
+   * @param key           the key of this partition.
+   * @param partitionSize the size of this partition.
+   * @param offset        the offset of this partition.
+   * @param elementsTotal the total number of elements in this partition.
+   */
+  public PartitionMetadata(final K key,
                            final int partitionSize,
                            final long offset,
                            final long elementsTotal) {
-    this.partitionIdx = partitionIdx;
     this.key = key;
     this.partitionSize = partitionSize;
     this.offset = offset;
     this.elementsTotal = elementsTotal;
-    this.committed = false;
   }
 
-  boolean isCommitted() {
-    return committed;
-  }
-
-  void setCommitted() {
-    this.committed = true;
-  }
-
-  int getPartitionIdx() {
-    return partitionIdx;
-  }
-
+  /**
+   * @return the key of this partition.
+   */
   public K getKey() {
     return key;
   }
 
+  /**
+   * @return the size of this partition.
+   */
   public int getPartitionSize() {
     return partitionSize;
   }
 
+  /**
+   * @return the offset of this partition.
+   */
   public long getOffset() {
     return offset;
   }
 
+  /**
+   * @return the total number of elements in this partition.
+   */
   public long getElementsTotal() {
     return elementsTotal;
   }

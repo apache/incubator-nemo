@@ -27,6 +27,9 @@ import java.util.concurrent.ConcurrentMap;
 public final class CoderManager {
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
 
+  /**
+   * Constructor.
+   */
   @Inject
   public CoderManager() {
   }

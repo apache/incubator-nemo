@@ -322,7 +322,7 @@ public final class DataTransferTest {
 
       final List dataRead = new ArrayList<>();
       try {
-        InputReader.combineFutures(reader.read()).forEach(dataRead::add);
+        InputReader.combineFutures(reader.read()).forEachRemaining(dataRead::add);
       } catch (final Exception e) {
         throw new RuntimeException(e);
       }

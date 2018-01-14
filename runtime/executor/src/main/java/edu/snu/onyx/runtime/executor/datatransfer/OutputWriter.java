@@ -125,8 +125,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
 
   private void writeOneToOne(final List<Partition> partitionsToWrite) {
     // Write data.
-    blockManagerWorker.putPartitions(
-        blockId, partitionsToWrite, blockStoreValue, false);
+    blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
   }
 
   private void writeBroadcast(final List<Partition> partitionsToWrite) {
@@ -141,8 +140,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     }
 
     // Write data.
-    blockManagerWorker.putPartitions(
-        blockId, partitionsToWrite, blockStoreValue, false);
+    blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
   }
 
   /**
@@ -162,7 +160,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
 
     // Write data.
     final Optional<List<Long>> partitionSizeInfo =
-        blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue, false);
+        blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
     if (partitionSizeInfo.isPresent()) {
       this.accumulatedPartitionSizeInfo.addAll(partitionSizeInfo.get());
     }

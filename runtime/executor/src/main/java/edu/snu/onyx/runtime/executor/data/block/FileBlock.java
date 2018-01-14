@@ -25,7 +25,6 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * This class represents a block which is stored in (local or remote) file.
@@ -36,17 +35,20 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   private final Coder coder;
   private final String filePath;
   private final FileMetadata<K> metadata;
-  private final Queue<PartitionMetadata<K>> partitionMetadataToCommit;
-  private final boolean commitPerBlock;
 
+  /**
+   * Constructor.
+   *
+   * @param coder    the {@link Coder}.
+   * @param filePath the path of the file that this block will be stored.
+   * @param metadata the metadata for this block.
+   */
   public FileBlock(final Coder coder,
                    final String filePath,
-                   final FileMetadata metadata) {
+                   final FileMetadata<K> metadata) {
     this.coder = coder;
     this.filePath = filePath;
     this.metadata = metadata;
-    this.partitionMetadataToCommit = new ConcurrentLinkedQueue<>();
-    this.commitPerBlock = metadata.isPartitionCommitPerWrite();
   }
 
   /**
@@ -63,16 +65,9 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
     try (final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true)) {
       for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
         // Reserve a partition write and get the metadata.
-        final PartitionMetadata partitionMetadata = metadata.reservePartition(
+        metadata.writePartitionMetadata(
             serializedPartition.getKey(), serializedPartition.getLength(), serializedPartition.getElementsTotal());
         fileOutputStream.write(serializedPartition.getData(), 0, serializedPartition.getLength());
-
-        // Commit if needed.
-        if (commitPerBlock) {
-          metadata.commitPartitions(Collections.singleton(partitionMetadata));
-        } else {
-          partitionMetadataToCommit.add(partitionMetadata);
-        }
       }
     }
   }
@@ -104,23 +99,8 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       partitionSizeList.add((long) serializedPartition.getLength());
     }
     writeSerializedPartitions(partitions);
-    commitRemainderMetadata();
 
     return partitionSizeList;
-  }
-
-  /**
-   * Commits the un-committed partition metadata.
-   */
-  private void commitRemainderMetadata() {
-    final List<PartitionMetadata> metadataToCommit = new ArrayList<>();
-    while (!partitionMetadataToCommit.isEmpty()) {
-      final PartitionMetadata partitionMetadata = partitionMetadataToCommit.poll();
-      if (partitionMetadata != null) {
-        metadataToCommit.add(partitionMetadata);
-      }
-    }
-    metadata.commitPartitions(metadataToCommit);
   }
 
   /**
@@ -139,7 +119,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         final K key = partitionMetadata.getKey();
         if (keyRange.includes(key)) {
           // The key value of this partition is in the range.
-          final NonSerializedPartition deserializePartition =
+          final NonSerializedPartition<K> deserializePartition =
               DataUtil.deserializePartition(partitionMetadata.getElementsTotal(), coder, key, fileStream);
           deserializedPartitions.add(deserializePartition);
         } else {
@@ -161,9 +141,9 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @throws IOException if failed to retrieve.
    */
   @Override
-  public Iterable<SerializedPartition> getSerializedPartitions(final KeyRange keyRange) throws IOException {
+  public Iterable<SerializedPartition<K>> getSerializedPartitions(final KeyRange keyRange) throws IOException {
     // Deserialize the data
-    final List<SerializedPartition> partitionsInRange = new ArrayList<>();
+    final List<SerializedPartition<K>> partitionsInRange = new ArrayList<>();
     try (final FileInputStream fileStream = new FileInputStream(filePath)) {
       for (final PartitionMetadata<K> partitionmetadata : metadata.getPartitionMetadataIterable()) {
         final K key = partitionmetadata.getKey();
@@ -174,7 +154,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
           if (readBytes != serializedData.length) {
             throw new IOException("The read data size does not match with the partition size.");
           }
-          partitionsInRange.add(new SerializedPartition(
+          partitionsInRange.add(new SerializedPartition<>(
               key, partitionmetadata.getElementsTotal(), serializedData, serializedData.length));
         } else {
           // Have to skip this partition.
@@ -237,8 +217,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * Commits this block to prevent further write.
    */
   @Override
-  public void commit() {
-    commitRemainderMetadata();
+  public void commit() throws IOException {
     metadata.commitBlock();
   }
 }

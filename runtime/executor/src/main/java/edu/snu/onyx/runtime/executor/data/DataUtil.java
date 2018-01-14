@@ -2,6 +2,7 @@ package edu.snu.onyx.runtime.executor.data;
 
 import edu.snu.onyx.common.DirectByteArrayOutputStream;
 import edu.snu.onyx.common.coder.Coder;
+import edu.snu.onyx.common.ir.vertex.executionproperty.CompressionProperty.Compressor;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -9,11 +10,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * Utility methods for data handling (e.g., (de)serialization).
  */
 public final class DataUtil {
+  /**
+   * Empty constructor.
+   */
   private DataUtil() {
     // Private constructor.
   }
@@ -44,8 +50,9 @@ public final class DataUtil {
    *
    * @param elementsInPartition the number of elements in this partition.
    * @param coder               the coder to decode the bytes.
-   * @param key           the key value of the result partition.
+   * @param key                 the key value of the result partition.
    * @param inputStream         the input stream which will return the data in the partition as bytes.
+   * @param <K>                 the key type of the partitions.
    * @return the list of deserialized elements.
    * @throws IOException if fail to deserialize.
    */
@@ -57,7 +64,7 @@ public final class DataUtil {
     for (int i = 0; i < elementsInPartition; i++) {
       deserializedData.add(coder.decode(inputStream));
     }
-    return new NonSerializedPartition(key, deserializedData);
+    return new NonSerializedPartition<>(key, deserializedData);
   }
 
   /**
@@ -65,6 +72,7 @@ public final class DataUtil {
    *
    * @param coder               the coder for serialization.
    * @param partitionsToConvert the partitions to convert.
+   * @param <K>                 the key type of the partitions.
    * @return the converted {@link SerializedPartition}s.
    * @throws IOException if fail to convert.
    */
@@ -72,13 +80,13 @@ public final class DataUtil {
       final Coder coder,
       final Iterable<NonSerializedPartition<K>> partitionsToConvert) throws IOException {
     final List<SerializedPartition<K>> serializedPartitions = new ArrayList<>();
-    for (final NonSerializedPartition partitionToConvert : partitionsToConvert) {
+    for (final NonSerializedPartition<K> partitionToConvert : partitionsToConvert) {
       try (final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream()) {
         final long elementsTotal = serializePartition(coder, partitionToConvert, bytesOutputStream);
         final byte[] serializedBytes = bytesOutputStream.getBufDirectly();
         final int actualLength = bytesOutputStream.getCount();
         serializedPartitions.add(
-            new SerializedPartition(partitionToConvert.getKey(), elementsTotal, serializedBytes, actualLength));
+            new SerializedPartition<>(partitionToConvert.getKey(), elementsTotal, serializedBytes, actualLength));
       }
     }
     return serializedPartitions;
@@ -89,6 +97,7 @@ public final class DataUtil {
    *
    * @param coder               the coder for deserialization.
    * @param partitionsToConvert the partitions to convert.
+   * @param <K>                 the key type of the partitions.
    * @return the converted {@link NonSerializedPartition}s.
    * @throws IOException if fail to convert.
    */
@@ -100,7 +109,7 @@ public final class DataUtil {
       final K key = partitionToConvert.getKey();
       try (final ByteArrayInputStream byteArrayInputStream =
                new ByteArrayInputStream(partitionToConvert.getData())) {
-        final NonSerializedPartition deserializePartition = deserializePartition(
+        final NonSerializedPartition<K> deserializePartition = deserializePartition(
             partitionToConvert.getElementsTotal(), coder, key, byteArrayInputStream);
         nonSerializedPartitions.add(deserializePartition);
       }
@@ -121,6 +130,18 @@ public final class DataUtil {
   }
 
   /**
+   * Converts a block id to the corresponding metadata file path.
+   *
+   * @param blockId       the ID of the block.
+   * @param fileDirectory the directory of the target block file.
+   * @return the metadata file path of the partition.
+   */
+  public static String blockIdToMetaFilePath(final String blockId,
+                                             final String fileDirectory) {
+    return fileDirectory + "/" + blockId + "_meta";
+  }
+
+  /**
    * Concatenates an iterable of non-serialized {@link Partition}s into a single iterable of elements.
    *
    * @param partitionsToConcat the partitions to concatenate.
@@ -136,5 +157,49 @@ public final class DataUtil {
       concatStream = Stream.concat(concatStream, StreamSupport.stream(elementsInPartition.spliterator(), false));
     }
     return concatStream.collect(Collectors.toList());
+  }
+
+  /**
+   * Creates new OutputStream which writes compressed data onto the stream.
+   *
+   * @param out the original {@link OutputStream}.
+   * @param compressor compress strategy for compressing stream data.
+   * @return {@link OutputStream} which writes compressed data.
+   * @throws IOException if fail to compress data.
+   */
+  OutputStream createOutputStream(final OutputStream out, final Compressor compressor)
+      throws IOException, UnsupportedOperationException {
+    switch (compressor) {
+      case Raw:
+        return out;
+      case Gzip:
+        return new GZIPOutputStream(out);
+      case LZ4:
+      default:
+        throw new UnsupportedOperationException("Not supported compressor");
+        // TODO #567: add later (maybe adding dependency?)
+    }
+  }
+
+  /**
+   * Creates new InputStream which reads compressed data from the stream.
+   *
+   * @param in the original {@link InputStream}.
+   * @param compressor compress strategy used to compress stream data.
+   * @return {@link InputStream} which reads compressed data.
+   * @throws IOException if fail to decompress data.
+   */
+  InputStream createInputStream(final InputStream in, final Compressor compressor)
+      throws IOException, UnsupportedOperationException {
+    switch (compressor) {
+      case Raw:
+        return in;
+      case Gzip:
+        return new GZIPInputStream(in);
+      case LZ4:
+      default:
+        throw new UnsupportedOperationException("Not supported compressor");
+        // TODO #567: add later (maybe adding dependency?)
+    }
   }
 }
