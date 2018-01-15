@@ -5,8 +5,7 @@ import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.ir.vertex.executionproperty.CompressionProperty.Compressor;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -61,10 +60,8 @@ public final class DataUtil {
                                                             final K key,
                                                             final InputStream inputStream) throws IOException {
     final List deserializedData = new ArrayList();
-    for (int i = 0; i < elementsInPartition; i++) {
-      deserializedData.add(coder.decode(inputStream));
-    }
-    return new NonSerializedPartition<>(key, deserializedData);
+    (new InputStreamIterator(inputStream, coder, elementsInPartition)).forEachRemaining(deserializedData::add);
+    return new NonSerializedPartition(key, deserializedData);
   }
 
   /**
@@ -157,6 +154,86 @@ public final class DataUtil {
       concatStream = Stream.concat(concatStream, StreamSupport.stream(elementsInPartition.spliterator(), false));
     }
     return concatStream.collect(Collectors.toList());
+  }
+
+  /**
+   * An iterator that emits objects from {@link InputStream} using the corresponding {@link Coder}.
+   * @param <T> The type of elements.
+   */
+  public static final class InputStreamIterator<T> implements Iterator<T> {
+
+    private final InputStream inputStream;
+    private final Coder<T> coder;
+    private final long limit;
+
+    private volatile boolean hasNext = false;
+    private volatile T next;
+    private volatile boolean cannotContinueDecoding = false;
+    private volatile long elementsDecoded = 0;
+
+    /**
+     * Construct {@link Iterator} from {@link InputStream} and {@link Coder}.
+     *
+     * @param inputStream The stream to read data from.
+     * @param coder       The coder to decode bytes into {@code T}.
+     */
+    public InputStreamIterator(final InputStream inputStream, final Coder<T> coder) {
+      this.inputStream = inputStream;
+      this.coder = coder;
+      // -1 means no limit.
+      this.limit = -1;
+    }
+
+    /**
+     * Construct {@link Iterator} from {@link InputStream} and {@link Coder}.
+     *
+     * @param inputStream The stream to read data from.
+     * @param coder       The coder to decode bytes into {@code T}.
+     * @param limit       The number of elements from the {@link InputStream}.
+     */
+    public InputStreamIterator(final InputStream inputStream, final Coder<T> coder, final long limit) {
+      if (limit < 0) {
+        throw new IllegalArgumentException("Negative limit not allowed.");
+      }
+      this.inputStream = inputStream;
+      this.coder = coder;
+      this.limit = limit;
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (hasNext) {
+        return true;
+      }
+      if (cannotContinueDecoding) {
+        return false;
+      }
+      if (limit != -1 && limit == elementsDecoded) {
+        cannotContinueDecoding = true;
+        return false;
+      }
+      try {
+        next = coder.decode(inputStream);
+        hasNext = true;
+        elementsDecoded++;
+        return true;
+      } catch (final IOException e) {
+        cannotContinueDecoding = true;
+        return false;
+      }
+    }
+
+    @Override
+    public T next() {
+      if (hasNext()) {
+        final T element = next;
+        next = null;
+        hasNext = false;
+        return element;
+      } else {
+        throw new NoSuchElementException();
+      }
+    }
   }
 
   /**
