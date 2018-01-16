@@ -16,7 +16,7 @@
 package edu.snu.onyx.common.ir.vertex.transform;
 
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.common.ir.OutputCollector;
+import edu.snu.onyx.common.ir.Pipe;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -27,7 +27,7 @@ import java.io.IOException;
  * @param <T> output type.
  */
 public final class SailfishDecodingTransform<T> implements Transform<byte[], T> {
-  private OutputCollector<T> outputCollector;
+  private Pipe<T> outputCollector;
   private final Coder<T> coder;
 
   /**
@@ -39,7 +39,7 @@ public final class SailfishDecodingTransform<T> implements Transform<byte[], T> 
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<T> oc) {
+  public void prepare(final Context context, final Pipe<T> oc) {
     this.outputCollector = oc;
   }
 

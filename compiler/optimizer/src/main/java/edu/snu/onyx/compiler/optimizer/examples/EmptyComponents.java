@@ -16,7 +16,7 @@
 package edu.snu.onyx.compiler.optimizer.examples;
 
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.common.ir.OutputCollector;
+import edu.snu.onyx.common.ir.Pipe;
 import edu.snu.onyx.common.ir.vertex.Source;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 
@@ -56,7 +56,7 @@ public class EmptyComponents {
     }
 
     @Override
-    public void prepare(final Context context, final OutputCollector<O> outputCollector) {
+    public void prepare(final Context context, final Pipe<O> outputCollector) {
     }
 
     @Override

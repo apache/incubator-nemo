@@ -15,7 +15,8 @@
  */
 package edu.snu.onyx.runtime.executor.datatransfer;
 
-import edu.snu.onyx.common.ir.OutputCollector;
+import edu.snu.onyx.common.ir.Pipe;
+import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,14 +27,18 @@ import java.util.concurrent.atomic.AtomicReference;
  * Output Collector Implementation.
  * @param <O> output type.
  */
-public final class OutputCollectorImpl<O> implements OutputCollector<O> {
+public final class PipeImpl<O> implements Pipe<O> {
   private AtomicReference<LinkedBlockingQueue<O>> outputQueue;
+  private boolean isSideInput;
+  private RuntimeEdge runtimeEdge;
 
   /**
-   * Constructor of a new OutputCollector.
+   * Constructor of a new Pipe.
    */
-  public OutputCollectorImpl() {
+  public PipeImpl() {
     outputQueue = new AtomicReference<>(new LinkedBlockingQueue<>());
+    isSideInput = false;
+    runtimeEdge = null;
   }
 
   @Override
@@ -41,17 +46,17 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     try {
       outputQueue.get().put(output);
     } catch (InterruptedException e) {
-      throw new RuntimeException("Interrupted while OutputCollectorImpl#emit", e);
+      throw new RuntimeException("Interrupted while PipeImpl#emit", e);
     }
   }
 
   @Override
   public void emit(final String dstVertexId, final Object output) {
-    throw new UnsupportedOperationException("emit(dstVertexId, output) in OutputCollectorImpl.");
+    throw new UnsupportedOperationException("emit(dstVertexId, output) in PipeImpl.");
   }
 
   /**
-   * Inter-Task data is transferred from sender-side Task's OutputCollectorImpl to receiver-side Task.
+   * Inter-Task data is transferred from sender-side Task's PipeImpl to receiver-side Task.
    * @return the output element that is transferred to the next Task of TaskGroup.
    */
   public O remove() {
@@ -64,6 +69,21 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
 
   public int size() {
     return outputQueue.get().size();
+  }
+
+  public void markAsSideInput() {
+    isSideInput = true;
+  }
+
+  public boolean isSideInput() {
+    return isSideInput;
+  }
+
+  public void setRuntimeEdge(final RuntimeEdge edge) {
+    runtimeEdge = edge;
+  }
+  public RuntimeEdge getRuntimeEdge() {
+    return runtimeEdge;
   }
 
   /**

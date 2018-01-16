@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.compiler.frontend.beam.transform;
 
-import edu.snu.onyx.common.ir.OutputCollector;
+import edu.snu.onyx.common.ir.Pipe;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.transforms.windowing.WindowFn;
 
@@ -27,7 +27,7 @@ import org.apache.beam.sdk.transforms.windowing.WindowFn;
  */
 public final class WindowTransform<T> implements Transform<T, T> {
   private final WindowFn windowFn;
-  private OutputCollector<T> outputCollector;
+  private Pipe<T> outputCollector;
 
   /**
    * Default Constructor.
@@ -38,7 +38,7 @@ public final class WindowTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<T> oc) {
+  public void prepare(final Context context, final Pipe<T> oc) {
     this.outputCollector = oc;
   }
 

@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.compiler.frontend.beam.transform;
 
-import edu.snu.onyx.common.ir.OutputCollector;
+import edu.snu.onyx.common.ir.Pipe;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -35,7 +35,7 @@ public final class BroadcastTransform<I, O> implements Transform<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(BroadcastTransform.class.getName());
 
   private final PCollectionView pCollectionView;
-  private OutputCollector<O> outputCollector;
+  private Pipe<O> outputCollector;
 
   /**
    * Constructor of BroadcastTransform.
@@ -46,7 +46,7 @@ public final class BroadcastTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> oc) {
+  public void prepare(final Context context, final Pipe<O> oc) {
     this.outputCollector = oc;
   }
 

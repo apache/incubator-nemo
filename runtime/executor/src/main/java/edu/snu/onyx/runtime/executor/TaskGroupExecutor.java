@@ -26,7 +26,7 @@ import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.onyx.runtime.executor.datatransfer.InputReader;
-import edu.snu.onyx.runtime.executor.datatransfer.OutputCollectorImpl;
+import edu.snu.onyx.runtime.executor.datatransfer.PipeImpl;
 import edu.snu.onyx.runtime.executor.datatransfer.OutputWriter;
 
 import java.util.*;
@@ -62,11 +62,11 @@ public final class TaskGroupExecutor {
   private final Map<String, List<OutputWriter>> taskIdToOutputWriterMap;
 
   // For inter-TaskGroup data transfer, each task fetches intra-TaskGroup input
-  // from its parents' OutputCollectors. Here, we call the OutputCollectors as following:
-  // InputPipe: Parent tasks' OutputCollectors
-  // OutputPipe: This task's OutputCollectors
-  private final Map<String, List<OutputCollectorImpl>> taskIdToInputPipeMap;
-  private final Map<String, OutputCollectorImpl> taskIdToOutputPipeMap;
+  // from its parents' Pipes. Here, we call the Pipes as following:
+  // InputPipe: Parent tasks' Pipes and whether the data in it are side inputs
+  // OutputPipe: This task's Pipes
+  private final Map<String, List<PipeImpl>> taskIdToInputPipeMap;
+  private final Map<String, PipeImpl> taskIdToOutputPipeMap;
   private final List<String> taskList;
   private boolean isExecutionRequested;
 
@@ -115,11 +115,11 @@ public final class TaskGroupExecutor {
         addOutputWriter(task, outputWriter);
       });
 
-      // Add OutputPipe for intra-stage data transfer'
-      addOutputPipe(task);
-
       // Add InputPipes for intra-stage data transfer
       addInputPipe(task);
+
+      // Add OutputPipe for intra-stage data transfer'
+      addOutputPipe(task);
 
       taskList.add(task.getId());
     }));
@@ -163,7 +163,7 @@ public final class TaskGroupExecutor {
   }
 
   private void addInputPipe(final Task task) {
-    List<OutputCollectorImpl> localPipes = new ArrayList<>();
+    List<PipeImpl> localPipes = new ArrayList<>();
     List<Task> parentTasks = taskGroup.getTaskDAG().getParents(task.getId());
 
     if (parentTasks != null) {
@@ -177,7 +177,19 @@ public final class TaskGroupExecutor {
   }
 
   private void addOutputPipe(final Task task) {
-    taskIdToOutputPipeMap.put(task.getId(), new OutputCollectorImpl());
+    final PipeImpl outputPipe = new PipeImpl();
+
+    final List<RuntimeEdge<Task>> outEdges = taskGroup.getTaskDAG().getOutgoingEdgesOf(task);
+    outEdges.forEach(outEdge -> {
+      outputPipe.setRuntimeEdge(outEdge);
+      if (outEdge.isSideInput()) {
+        outputPipe.markAsSideInput();
+        LOG.info("log: {} {} Adding OutputPipe which will be a sideInput, edge {}",
+            taskGroup.getTaskGroupId(), task.getRuntimeVertexId(), outEdge);
+      }
+    });
+
+    taskIdToOutputPipeMap.put(task.getId(), outputPipe);
   }
 
   private boolean hasInputReader(final Task task) {
@@ -201,7 +213,7 @@ public final class TaskGroupExecutor {
   private boolean allInputPipesEmpty(final Task task) {
     if (taskIdToInputPipeMap.containsKey(task.getId())) {
       int nonEmptyInputPipes = 0;
-      for (OutputCollectorImpl localReader : taskIdToInputPipeMap.get(task.getId())) {
+      for (PipeImpl localReader : taskIdToInputPipeMap.get(task.getId())) {
         if (!localReader.isEmpty()) {
           nonEmptyInputPipes++;
         }
@@ -316,7 +328,7 @@ public final class TaskGroupExecutor {
       });
     } else {
       // Writes intra-TaskGroup data
-      OutputCollectorImpl outputPipe = taskIdToOutputPipeMap.get(sourceTask.getId());
+      PipeImpl outputPipe = taskIdToOutputPipeMap.get(sourceTask.getId());
       try {
         iterable.forEach(data -> {
           outputPipe.emit(data);
@@ -355,7 +367,7 @@ public final class TaskGroupExecutor {
                 srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
               }
               sideInputMap.put(srcTransform, sideInput);
-              LOG.info("log: {} {} sideInput {}", taskGroup.getTaskGroupId(), operatorTask.getId(),
+              LOG.info("log: {} {} sideInput from InputReader {}", taskGroup.getTaskGroupId(), operatorTask.getId(),
                   sideInput);
             } catch (final InterruptedException | ExecutionException e) {
               throw new BlockFetchException(e);
@@ -363,9 +375,27 @@ public final class TaskGroupExecutor {
           });
     }
 
+    if (hasInputPipe(operatorTask)) {
+      taskIdToInputPipeMap.get(operatorTask.getId()).stream().filter(PipeImpl::isSideInput)
+          .forEach(sideInputPipe -> {
+            final Object sideInput = sideInputPipe.remove();
+            final RuntimeEdge inEdge = sideInputPipe.getRuntimeEdge();
+            final Transform srcTransform;
+            if (inEdge instanceof PhysicalStageEdge) {
+              srcTransform = ((OperatorVertex) ((PhysicalStageEdge) inEdge).getSrcVertex())
+                  .getTransform();
+            } else {
+              srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
+            }
+            sideInputMap.put(srcTransform, sideInput);
+            LOG.info("log: {} {} sideInput from InputPipe {}", taskGroup.getTaskGroupId(), operatorTask.getId(),
+                sideInput);
+          });
+    }
+
     final Transform.Context transformContext = new ContextImpl(sideInputMap);
     final Transform transform = operatorTask.getTransform();
-    final OutputCollectorImpl outputPipe = taskIdToOutputPipeMap.get(operatorTask.getId());
+    final PipeImpl outputPipe = taskIdToOutputPipeMap.get(operatorTask.getId());
     transform.prepare(transformContext, outputPipe);
 
     // Check for non-side inputs.
@@ -395,8 +425,8 @@ public final class TaskGroupExecutor {
 
     if (hasInputPipe(operatorTask)) {
       // Reads intra-TaskGroup data.
-      for (OutputCollectorImpl localReader : taskIdToInputPipeMap.get(operatorTask.getId())) {
-        if (!localReader.isEmpty()) {
+      for (PipeImpl localReader : taskIdToInputPipeMap.get(operatorTask.getId())) {
+        if (!localReader.isEmpty() && !localReader.isSideInput()) {
           Object data = localReader.remove();
           if (data != null) {
             dataQueue.add(data);
@@ -434,7 +464,7 @@ public final class TaskGroupExecutor {
     }
   }
 
-  private void writeToOutputWriter(final OutputCollectorImpl localWriter, final Task operatorTask) {
+  private void writeToOutputWriter(final PipeImpl localWriter, final Task operatorTask) {
     final List output = localWriter.collectOutputList();
     if (!output.isEmpty()) {
       taskIdToOutputWriterMap.get(operatorTask.getId()).forEach(outputWriter -> {

@@ -16,7 +16,7 @@
 package edu.snu.onyx.compiler.frontend.beam.transform;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.snu.onyx.common.ir.OutputCollector;
+import edu.snu.onyx.common.ir.Pipe;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.state.State;
@@ -50,7 +50,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   private final ObjectMapper mapper;
   private final String serializedOptions;
   private Map<PCollectionView, Object> sideInputs;
-  private OutputCollector<O> outputCollector;
+  private Pipe<O> outputCollector;
 
   /**
    * DoTransform Constructor.
@@ -68,7 +68,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> oc) {
+  public void prepare(final Context context, final Pipe<O> oc) {
     this.outputCollector = oc;
     this.sideInputs = new HashMap<>();
     context.getSideInputs().forEach((k, v) -> this.sideInputs.put(((BroadcastTransform) k).getTag(), v));
@@ -138,7 +138,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
    * @param <O> output type.
    */
   private static final class FinishBundleContext<I, O> extends DoFn<I, O>.FinishBundleContext {
-    private final OutputCollector<O> outputCollector;
+    private final Pipe<O> outputCollector;
     private final ObjectMapper mapper;
     private final PipelineOptions options;
 
@@ -149,7 +149,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
      * @param serializedOptions serialized options of the DoTransform.
      */
     FinishBundleContext(final DoFn<I, O> fn,
-                        final OutputCollector<O> outputCollector,
+                        final Pipe<O> outputCollector,
                         final String serializedOptions) {
       fn.super();
       this.outputCollector = outputCollector;
@@ -189,7 +189,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   private static final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext
       implements DoFnInvoker.ArgumentProvider<I, O> {
     private I input;
-    private final OutputCollector<O> outputCollector;
+    private final Pipe<O> outputCollector;
     private final Map<PCollectionView, Object> sideInputs;
     private final ObjectMapper mapper;
     private final PipelineOptions options;
@@ -197,12 +197,12 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     /**
      * ProcessContext Constructor.
      * @param fn Dofn.
-     * @param outputCollector OutputCollector.
+     * @param outputCollector Pipe.
      * @param sideInputs Map for SideInputs.
      * @param serializedOptions Options, serialized.
      */
     ProcessContext(final DoFn<I, O> fn,
-                   final OutputCollector<O> outputCollector,
+                   final Pipe<O> outputCollector,
                    final Map<PCollectionView, Object> sideInputs,
                    final String serializedOptions) {
       fn.super();

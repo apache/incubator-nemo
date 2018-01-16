@@ -18,7 +18,7 @@ package edu.snu.onyx.tests.runtime.executor;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
-import edu.snu.onyx.common.ir.OutputCollector;
+import edu.snu.onyx.common.ir.Pipe;
 import edu.snu.onyx.common.ir.Reader;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
@@ -276,10 +276,10 @@ public final class TaskGroupExecutorTest {
    * @param <T> input/output type.
    */
   private class SimpleTransform<T> implements Transform<T, T> {
-    private OutputCollector<T> outputCollector;
+    private Pipe<T> outputCollector;
 
     @Override
-    public void prepare(final Context context, final OutputCollector<T> outputCollector) {
+    public void prepare(final Context context, final Pipe<T> outputCollector) {
       this.outputCollector = outputCollector;
     }
 

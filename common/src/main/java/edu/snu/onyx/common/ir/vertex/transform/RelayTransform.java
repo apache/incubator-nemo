@@ -15,15 +15,15 @@
  */
 package edu.snu.onyx.common.ir.vertex.transform;
 
-import edu.snu.onyx.common.ir.OutputCollector;
+import edu.snu.onyx.common.ir.Pipe;
 
 /**
  * A {@link Transform} relays input data from upstream vertex to downstream vertex promptly.
- * This transform can be used for merging input data into the {@link OutputCollector}.
+ * This transform can be used for merging input data into the {@link Pipe}.
  * @param <T> input/output type.
  */
 public final class RelayTransform<T> implements Transform<T, T> {
-  private OutputCollector<T> outputCollector;
+  private Pipe<T> outputCollector;
 
   /**
    * Default constructor.
@@ -33,7 +33,7 @@ public final class RelayTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<T> oc) {
+  public void prepare(final Context context, final Pipe<T> oc) {
     this.outputCollector = oc;
   }
 

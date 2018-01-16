@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.common.ir.vertex.transform;
 
-import edu.snu.onyx.common.ir.OutputCollector;
+import edu.snu.onyx.common.ir.Pipe;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -33,7 +33,7 @@ public interface Transform<I, O> extends Serializable {
    * @param context of the transform.
    * @param outputCollector that collects outputs.
    */
-  void prepare(Context context, OutputCollector<O> outputCollector);
+  void prepare(Context context, Pipe<O> outputCollector);
 
   /**
    * On data received.

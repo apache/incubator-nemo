@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.compiler.frontend.beam.transform;
 
-import edu.snu.onyx.common.ir.OutputCollector;
+import edu.snu.onyx.common.ir.Pipe;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
@@ -31,7 +31,7 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyTransform.class.getName());
 
   private final Map<Object, List> keyToValues;
-  private OutputCollector<KV<Object, List>> outputCollector;
+  private Pipe<KV<Object, List>> outputCollector;
 
   /**
    * GroupByKey constructor.
@@ -41,7 +41,7 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<KV<Object, List>> oc) {
+  public void prepare(final Context context, final Pipe<KV<Object, List>> oc) {
     this.outputCollector = oc;
   }
 
