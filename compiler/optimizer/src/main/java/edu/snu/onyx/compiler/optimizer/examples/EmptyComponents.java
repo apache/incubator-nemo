@@ -64,7 +64,7 @@ public class EmptyComponents {
     }
 
     @Override
-    public void close(final boolean trigger) {
+    public void close() {
     }
   }
 

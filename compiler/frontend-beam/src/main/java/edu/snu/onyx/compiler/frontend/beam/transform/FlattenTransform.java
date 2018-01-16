@@ -46,7 +46,7 @@ public final class FlattenTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void close(final boolean trigger) {
+  public void close() {
     collectedElements.forEach(outputCollector::emit);
     collectedElements.clear();
   }

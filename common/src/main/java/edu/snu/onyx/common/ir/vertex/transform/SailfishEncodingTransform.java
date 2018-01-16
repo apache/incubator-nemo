@@ -54,7 +54,7 @@ public final class SailfishEncodingTransform<T> implements Transform<T, byte[]> 
   }
 
   @Override
-  public void close(final boolean trigger) {
+  public void close() {
     // Do nothing.
   }
 

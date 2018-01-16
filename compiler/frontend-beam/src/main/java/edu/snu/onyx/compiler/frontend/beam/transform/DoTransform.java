@@ -89,7 +89,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void close(final boolean trigger) {
+  public void close() {
     // do nothing
   }
 

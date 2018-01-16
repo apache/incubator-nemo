@@ -57,15 +57,12 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
   }
 
   @Override
-  public void close(final boolean trigger) {
-    if (trigger) {
-      keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
-          .forEach(wv -> {
-            //LOG.info("log_gbk: close() emitting {}", wv);
-            outputCollector.emit(wv);
-          });
-      keyToValues.clear();
-    }
+  public void close() {
+    keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
+        .forEach(wv -> {
+          outputCollector.emit(wv);
+        });
+    keyToValues.clear();
   }
 
   @Override

@@ -49,7 +49,7 @@ public final class WindowTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void close(final boolean trigger) {
+  public void close() {
   }
 
   @Override
