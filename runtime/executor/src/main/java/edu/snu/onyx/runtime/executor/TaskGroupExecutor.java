@@ -378,7 +378,7 @@ public final class TaskGroupExecutor {
     if (hasInputPipe(operatorTask)) {
       taskIdToInputPipeMap.get(operatorTask.getId()).stream().filter(PipeImpl::isSideInput)
           .forEach(sideInputPipe -> {
-            final Object sideInput = sideInputPipe.remove();
+            Object sideInput = sideInputPipe.collectOutputList(); //sideInputPipe.remove();
             final RuntimeEdge inEdge = sideInputPipe.getRuntimeEdge();
             final Transform srcTransform;
             if (inEdge instanceof PhysicalStageEdge) {
@@ -409,11 +409,14 @@ public final class TaskGroupExecutor {
           try {
             Iterator iterator = compFuture.get();
             iterator.forEachRemaining(data -> {
-              //if (data != null) {
+              if (data != null) {
                 dataQueue.add(data);
                 LOG.info("log: {} {} Read from InputReader : {}",
                     taskGroup.getTaskGroupId(), operatorTask.getId(), data);
-              //}
+              } else {
+                List<Object> iterable = Collections.singletonList(data);
+                dataQueue.add(iterable);
+              }
             });
           } catch (InterruptedException e) {
             throw new RuntimeException("Interrupted while waiting for InputReader.readElement()", e);
@@ -429,11 +432,14 @@ public final class TaskGroupExecutor {
           .filter(localReader -> !localReader.isEmpty() && !localReader.isSideInput())
           .forEach(localReader -> {
         Object data = localReader.remove();
-        //if (data != null) {
+        if (data != null) {
           dataQueue.add(data);
           LOG.info("log: {} {} Read from InputPipe : {}",
               taskGroup.getTaskGroupId(), operatorTask.getId(), data);
-        //}
+        } else {
+          List<Object> iterable = Collections.singletonList(data);
+          dataQueue.add(iterable);
+        }
       });
     }
 
@@ -444,12 +450,9 @@ public final class TaskGroupExecutor {
 
     IntStream.range(0, numElements).forEach(dataNum -> {
       Object data = dataQueue.pop();
-      LOG.info("log: {} {} Input to onData : {}",
-          taskGroup.getTaskGroupId(), operatorTask.getId(), data);
+      LOG.info("log: {} {} Input to onData : {}", taskGroup.getTaskGroupId(), operatorTask.getId(), data);
 
-      if (data != null) {
-        transform.onData(data);
-      }
+      transform.onData(data);
 
       // If there is any output, write to OutputWriter.
       //if (hasOutputWriter(operatorTask)) {

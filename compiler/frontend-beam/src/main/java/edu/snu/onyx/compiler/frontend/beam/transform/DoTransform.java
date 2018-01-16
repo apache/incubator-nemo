@@ -82,10 +82,8 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     final DoFnInvoker invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
-    if (element != null) {
-      processContext.setElement(element);
-      invoker.invokeProcessElement(processContext);
-    }
+    processContext.setElement(element);
+    invoker.invokeProcessElement(processContext);
     invoker.invokeFinishBundle(finishBundleContext);
     invoker.invokeTeardown();
   }
