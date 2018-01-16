@@ -15,17 +15,12 @@
  */
 package edu.snu.onyx.tests.compiler;
 
-import edu.snu.onyx.compiler.optimizer.policy.*;
+import edu.snu.onyx.common.ArgBuilder;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.client.JobLauncher;
-import edu.snu.onyx.examples.beam.*;
 import edu.snu.onyx.common.dag.DAG;
-import edu.snu.onyx.tests.examples.beam.AlternatingLeastSquareITCase;
-import edu.snu.onyx.tests.examples.beam.ArgBuilder;
-import edu.snu.onyx.tests.examples.beam.MapReduceITCase;
-import edu.snu.onyx.tests.examples.beam.MultinomialLogisticRegressionITCase;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -38,12 +33,7 @@ import java.lang.reflect.Method;
  * Utility methods for tests.
  */
 public final class CompilerTestUtil {
-  public static final String rootDir = System.getProperty("user.dir");
-  public static final String padoPolicy = PadoPolicy.class.getCanonicalName();
-  public static final String sailfishPolicy = SailfishPolicy.class.getCanonicalName();
-  public static final String disaggPolicy = DisaggregationPolicy.class.getCanonicalName();
-  public static final String defaultPolicy = DefaultPolicy.class.getCanonicalName();
-  public static final String dataSkewPolicy = DataSkewPolicy.class.getCanonicalName();
+  private static final String rootDir = System.getProperty("user.dir");
 
   private static DAG<IRVertex, IREdge> compileDAG(final String[] args) throws Exception {
     final String userMainClassName;
@@ -70,30 +60,54 @@ public final class CompilerTestUtil {
   }
 
   public static DAG<IRVertex, IREdge> compileMRDAG() throws Exception {
-    final ArgBuilder mrArgBuilder = MapReduceITCase.builder;
+    final String input = rootDir + "/../examples/resources/sample_input_mr";
+    final String output = rootDir + "/../examples-beam/src/main/resources/sample_output";
+    final String main = "edu.snu.onyx.examples.beam.MapReduce";
+
+    final ArgBuilder mrArgBuilder = new ArgBuilder()
+        .addJobId("MapReduce")
+        .addUserMain(main)
+        .addUserArgs(input, output);
     return compileDAG(mrArgBuilder.build());
   }
 
   public static DAG<IRVertex, IREdge> compileALSDAG() throws Exception {
-    final ArgBuilder alsArgBuilder = AlternatingLeastSquareITCase.builder;
+    final String input = rootDir + "/../examples/resources/sample_input_als";
+    final String numFeatures = "10";
+    final String numIteration = "3";
+    final String main = "edu.snu.onyx.examples.beam.AlternatingLeastSquare";
+
+    final ArgBuilder alsArgBuilder = new ArgBuilder()
+        .addJobId("AlternatingLeastSquare")
+        .addUserMain(main)
+        .addUserArgs(input, numFeatures, numIteration);
     return compileDAG(alsArgBuilder.build());
   }
 
   public static DAG<IRVertex, IREdge> compileALSInefficientDAG() throws Exception {
-    final String alsInefficient = "edu.snu.onyx.examples.beam.AlternatingLeastSquareInefficient";
-    final String input = rootDir + "/../examples/src/main/resources/sample_input_als";
+    final String input = rootDir + "/../examples/resources/sample_input_als";
     final String numFeatures = "10";
     final String numIteration = "3";
+    final String main = "edu.snu.onyx.examples.beam.AlternatingLeastSquareInefficient";
 
     final ArgBuilder alsArgBuilder = new ArgBuilder()
-        .addJobId(AlternatingLeastSquareInefficient.class.getSimpleName())
-        .addUserMain(alsInefficient)
+        .addJobId("AlternatingLeastSquareInefficient")
+        .addUserMain(main)
         .addUserArgs(input, numFeatures, numIteration);
     return compileDAG(alsArgBuilder.build());
   }
 
   public static DAG<IRVertex, IREdge> compileMLRDAG() throws Exception {
-    final ArgBuilder mlrArgBuilder = MultinomialLogisticRegressionITCase.builder;
+    final String input = rootDir + "/../examples/resources/sample_input_mlr";
+    final String numFeatures = "100";
+    final String numClasses = "5";
+    final String numIteration = "3";
+    final String main = "edu.snu.onyx.examples.beam.MultinomialLogisticRegression";
+
+    final ArgBuilder mlrArgBuilder = new ArgBuilder()
+        .addJobId("MultinomialLogisticRegression")
+        .addUserMain(main)
+        .addUserArgs(input, numFeatures, numClasses, numIteration);
     return compileDAG(mlrArgBuilder.build());
   }
 }

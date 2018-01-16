@@ -59,7 +59,7 @@
 	-executor_json `pwd`/tests/src/main/resources/sample_executor_resources.json \
 	-optimization_policy edu.snu.onyx.compiler.optimizer.policy.DefaultPolicy \
 	-user_main edu.snu.onyx.examples.beam.MapReduce \
-	-user_args "`pwd`/examples/src/main/resources/sample_input_mr `pwd`/examples/src/main/resources/sample_output_mr"
+	-user_args "`pwd`/examples/resources/sample_input_mr `pwd`/examples/resources/sample_output_mr"
 
 ## YARN cluster example
 ./bin/run.sh \
@@ -116,5 +116,5 @@ Using our [online visualizer](https://service.jangho.io/onyx-dag/), you can easi
   	-user_main edu.snu.onyx.examples.beam.AlternatingLeastSquare \
   	-optimization_policy edu.snu.onyx.compiler.optimizer.policy.PadoPolicy \
   	-dag_dir "./dag/als" \
-  	-user_args "`pwd`/examples/src/main/resources/sample_input_als 10 3"
+  	-user_args "`pwd`/examples/resources/sample_input_als 10 3"
 ```

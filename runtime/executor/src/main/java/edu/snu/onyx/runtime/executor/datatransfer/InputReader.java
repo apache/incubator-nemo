@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -77,7 +78,7 @@ public final class InputReader extends DataTransfer {
    *
    * @return the read data.
    */
-  public List<CompletableFuture<Iterable>> read() {
+  public List<CompletableFuture<Iterator>> read() {
     DataCommunicationPatternProperty.Value comValue =
         (DataCommunicationPatternProperty.Value)
             runtimeEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern);
@@ -95,20 +96,20 @@ public final class InputReader extends DataTransfer {
     }
   }
 
-  private CompletableFuture<Iterable> readOneToOne() {
+  private CompletableFuture<Iterator> readOneToOne() {
     final String blockId = RuntimeIdGenerator.generateBlockId(getId(), dstTaskIndex);
-    return blockManagerWorker.retrieveDataFromBlock(blockId, getId(),
+    return blockManagerWorker.queryBlock(blockId, getId(),
         (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
         HashRange.all());
   }
 
-  private List<CompletableFuture<Iterable>> readBroadcast() {
+  private List<CompletableFuture<Iterator>> readBroadcast() {
     final int numSrcTasks = this.getSourceParallelism();
 
-    final List<CompletableFuture<Iterable>> futures = new ArrayList<>();
+    final List<CompletableFuture<Iterator>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
-      futures.add(blockManagerWorker.retrieveDataFromBlock(blockId, getId(),
+      futures.add(blockManagerWorker.queryBlock(blockId, getId(),
           (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
           HashRange.all()));
     }
@@ -123,7 +124,7 @@ public final class InputReader extends DataTransfer {
    *
    * @return the list of the completable future of the data.
    */
-  private List<CompletableFuture<Iterable>> readDataInRange() {
+  private List<CompletableFuture<Iterator>> readDataInRange() {
     assert (runtimeEdge instanceof PhysicalStageEdge);
     final KeyRange hashRangeToRead =
         ((PhysicalStageEdge) runtimeEdge).getTaskGroupIdToKeyRangeMap().get(taskGroupId);
@@ -132,16 +133,13 @@ public final class InputReader extends DataTransfer {
     }
 
     final int numSrcTasks = this.getSourceParallelism();
-    final List<CompletableFuture<Iterable>> futures = new ArrayList<>();
+    final List<CompletableFuture<Iterator>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
-      final CompletableFuture<Iterable> future = blockManagerWorker.retrieveDataFromBlock(blockId, getId(),
-          (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
-          hashRangeToRead);
-      future.whenComplete((itr, exp) -> {
-        LOG.info("Resolved read future for " + blockId);
-      });
-      futures.add(future);
+      futures.add(
+          blockManagerWorker.queryBlock(blockId, getId(),
+              (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
+              hashRangeToRead));
     }
 
     return futures;
@@ -168,8 +166,8 @@ public final class InputReader extends DataTransfer {
     if (!isSideInputReader()) {
       throw new RuntimeException();
     }
-    final CompletableFuture<Iterable> future = this.read().get(0);
-    return future.thenApply(f -> f.iterator().next());
+    final CompletableFuture<Iterator> future = this.read().get(0);
+    return future.thenApply(f -> f.next());
   }
 
   /**
@@ -201,14 +199,15 @@ public final class InputReader extends DataTransfer {
    * @throws InterruptedException when interrupted during getting results from futures.
    */
   @VisibleForTesting
-  public static Iterable combineFutures(final List<CompletableFuture<Iterable>> futures)
+  public static Iterator combineFutures(final List<CompletableFuture<Iterator>> futures)
       throws ExecutionException, InterruptedException {
     final List concatStreamBase = new ArrayList<>();
     Stream<Object> concatStream = concatStreamBase.stream();
     for (int srcTaskIdx = 0; srcTaskIdx < futures.size(); srcTaskIdx++) {
-      final Iterable dataFromATask = futures.get(srcTaskIdx).get();
-      concatStream = Stream.concat(concatStream, StreamSupport.stream(dataFromATask.spliterator(), false));
+      final Iterator dataFromATask = futures.get(srcTaskIdx).get();
+      final Iterable iterable = () -> dataFromATask;
+      concatStream = Stream.concat(concatStream, StreamSupport.stream(iterable.spliterator(), false));
     }
-    return concatStream.collect(Collectors.toList());
+    return concatStream.collect(Collectors.toList()).iterator();
   }
 }
