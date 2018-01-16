@@ -402,17 +402,18 @@ public final class TaskGroupExecutor {
     final ArrayDeque<Object> dataQueue = new ArrayDeque<>();
     if (hasInputReader(operatorTask)) {
       taskIdToInputReaderMap.get(operatorTask.getId()).stream()
-          .filter(inputReader -> !inputReader.isSideInputReader()).forEach(inputReader -> {
+          .filter(inputReader -> !inputReader.isSideInputReader())
+          .forEach(inputReader -> {
         List<CompletableFuture<Iterator>> futures = inputReader.read();
         futures.forEach(compFuture -> {
           try {
             Iterator iterator = compFuture.get();
             iterator.forEachRemaining(data -> {
-              if (data != null) {
+              //if (data != null) {
                 dataQueue.add(data);
                 LOG.info("log: {} {} Read from InputReader : {}",
                     taskGroup.getTaskGroupId(), operatorTask.getId(), data);
-              }
+              //}
             });
           } catch (InterruptedException e) {
             throw new RuntimeException("Interrupted while waiting for InputReader.readElement()", e);
@@ -424,17 +425,16 @@ public final class TaskGroupExecutor {
     }
 
     if (hasInputPipe(operatorTask)) {
-      // Reads intra-TaskGroup data.
-      for (PipeImpl localReader : taskIdToInputPipeMap.get(operatorTask.getId())) {
-        if (!localReader.isEmpty() && !localReader.isSideInput()) {
-          Object data = localReader.remove();
-          if (data != null) {
-            dataQueue.add(data);
-            LOG.info("log: {} {} Read from InputPipe : {}",
-                taskGroup.getTaskGroupId(), operatorTask.getId(), data);
-          }
-        }
-      }
+      taskIdToInputPipeMap.get(operatorTask.getId()).stream()
+          .filter(localReader -> !localReader.isEmpty() && !localReader.isSideInput())
+          .forEach(localReader -> {
+        Object data = localReader.remove();
+        //if (data != null) {
+          dataQueue.add(data);
+          LOG.info("log: {} {} Read from InputPipe : {}",
+              taskGroup.getTaskGroupId(), operatorTask.getId(), data);
+        //}
+      });
     }
 
     // Consumes the received element from incoming edges.
