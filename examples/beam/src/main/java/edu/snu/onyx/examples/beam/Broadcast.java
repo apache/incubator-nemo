@@ -58,9 +58,9 @@ public final class Broadcast {
             final String line = c.element();
             final Iterable<String> all = c.sideInput(allCollection);
             final Optional<String> appended = StreamSupport.stream(all.spliterator(), false)
-                .reduce((l, r) -> l + '%' + r);
+                .reduce((l, r) -> l + '\n' + r);
             if (appended.isPresent()) {
-              c.output("line: " + line + ", all: " + appended.get());
+              c.output("line: " + line + "\n" + appended.get());
             } else {
               c.output("error");
             }

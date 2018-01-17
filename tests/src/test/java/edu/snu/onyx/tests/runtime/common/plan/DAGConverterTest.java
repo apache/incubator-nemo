@@ -38,7 +38,7 @@ import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.common.plan.stage.Stage;
 import edu.snu.onyx.runtime.common.plan.stage.StageEdge;
-import edu.snu.onyx.tests.compiler.optimizer.TestPolicy;
+import edu.snu.onyx.tests.compiler.optimizer.policy.TestPolicy;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;

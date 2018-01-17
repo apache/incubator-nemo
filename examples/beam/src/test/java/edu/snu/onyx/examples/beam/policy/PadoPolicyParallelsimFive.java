@@ -13,45 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.tests.compiler.optimizer;
+package edu.snu.onyx.examples.beam.policy;
 
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.*;
+import edu.snu.onyx.compiler.optimizer.policy.PadoPolicy;
 import edu.snu.onyx.compiler.optimizer.policy.Policy;
+import edu.snu.onyx.examples.beam.ExampleTestUtil;
 import edu.snu.onyx.runtime.common.optimizer.pass.runtime.RuntimePass;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A policy for tests.
+ * A pado policy with fixed parallelism 5 for tests.
  */
-public final class TestPolicy implements Policy {
-  private final boolean testPushPolicy;
+public final class PadoPolicyParallelsimFive implements Policy {
+  private final Policy policy;
 
-  public TestPolicy() {
-    this(false);
-  }
-
-  public TestPolicy(final boolean testPushPolicy) {
-    this.testPushPolicy = testPushPolicy;
+  public PadoPolicyParallelsimFive() {
+    this.policy = ExampleTestUtil.overwriteParallelism(5, PadoPolicy.class.getCanonicalName());
   }
 
   @Override
   public List<CompileTimePass> getCompileTimePasses() {
-    List<CompileTimePass> policy = new ArrayList<>();
-    policy.add(new DefaultStagePartitioningPass());
-
-    if (testPushPolicy) {
-      policy.add(new ShuffleEdgePushPass());
-    }
-
-    policy.add(new ScheduleGroupPass());
-    return policy;
+    return this.policy.getCompileTimePasses();
   }
 
   @Override
   public List<RuntimePass<?>> getRuntimePasses() {
-    return new ArrayList<>();
+    return this.policy.getRuntimePasses();
   }
 }

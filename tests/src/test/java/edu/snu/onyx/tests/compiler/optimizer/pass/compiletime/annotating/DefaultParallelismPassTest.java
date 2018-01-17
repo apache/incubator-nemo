@@ -20,6 +20,7 @@ import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
+import edu.snu.onyx.common.ir.vertex.SourceVertex;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import edu.snu.onyx.tests.compiler.CompilerTestUtil;
@@ -37,8 +38,11 @@ import static org.junit.Assert.assertEquals;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public class DefaultParallelismPassTest {
+  DAG<IRVertex, IREdge> compiledDAG;
+
   @Before
   public void setUp() throws Exception {
+    compiledDAG = CompilerTestUtil.compileALSDAG();
   }
 
   @Test
@@ -48,11 +52,21 @@ public class DefaultParallelismPassTest {
   }
 
   @Test
-  public void testParallelism() throws Exception {
-    final DAG<IRVertex, IREdge> compiledDAG = CompilerTestUtil.compileALSDAG();
+  public void testParallelismOne() throws Exception {
     final DAG<IRVertex, IREdge> processedDAG = new DefaultParallelismPass().apply(compiledDAG);
 
     processedDAG.getTopologicalSort().forEach(irVertex ->
         assertEquals(1, irVertex.<Integer>getProperty(ExecutionProperty.Key.Parallelism).longValue()));
+  }
+
+  @Test
+  public void testParallelismTen() throws Exception {
+    final int desiredSourceParallelism = 10;
+    final DAG<IRVertex, IREdge> processedDAG = new DefaultParallelismPass(desiredSourceParallelism, 2).apply(compiledDAG);
+
+    processedDAG.getTopologicalSort().stream()
+        .filter(irVertex -> irVertex instanceof SourceVertex)
+        .forEach(irVertex -> assertEquals(desiredSourceParallelism,
+            irVertex.<Integer>getProperty(ExecutionProperty.Key.Parallelism).longValue()));
   }
 }

@@ -17,7 +17,7 @@ package edu.snu.onyx.examples.beam;
 
 import edu.snu.onyx.client.JobLauncher;
 import edu.snu.onyx.common.ArgBuilder;
-import edu.snu.onyx.compiler.optimizer.policy.PadoPolicy;
+import edu.snu.onyx.examples.beam.policy.PadoPolicyParallelsimFive;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -51,6 +51,7 @@ public final class AlternatingLeastSquareITCase {
 //  public void test() throws Exception {
 //    JobLauncher.main(builder
 //        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
+//        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
 //        .build());
 //  }
 
@@ -58,7 +59,7 @@ public final class AlternatingLeastSquareITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(PadoPolicyParallelsimFive.class.getCanonicalName())
         .build());
   }
 }
