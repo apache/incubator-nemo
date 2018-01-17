@@ -98,8 +98,6 @@ public final class BlockManagerWorker {
 
   /**
    * Retrieves data from the stored block. A specific hash value range can be designated.
-   * This can be invoked multiple times per blockId (maybe due to failures).
-   * Here, we first check if we have the block here, and then try to fetch the block from a remote worker.
    *
    * @param blockId       of the block.
    * @param runtimeEdgeId id of the runtime edge that corresponds to the block.
@@ -107,7 +105,7 @@ public final class BlockManagerWorker {
    * @param keyRange     the key range descriptor.
    * @return the result data in the block.
    */
-  public CompletableFuture<Iterator> retrieveDataFromBlock(
+  private CompletableFuture<Iterator> retrieveDataFromBlock(
       final String blockId,
       final String runtimeEdgeId,
       final DataStoreProperty.Value blockStore,
@@ -129,17 +127,16 @@ public final class BlockManagerWorker {
       } catch (final IOException e) {
         throw new BlockFetchException(e);
       }
-    } else if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
-      throw new BlockFetchException(new Throwable("Cannot find a block in remote store."));
     } else {
       // We don't have the block here...
-      return requestBlockInRemoteWorker(blockId, runtimeEdgeId, blockStore, keyRange);
+      throw new RuntimeException(String.format("Block %s not found in local BlockManagerWorker", blockId));
     }
   }
 
   /**
-   * Requests data in a specific hash value range from a block which resides in a remote worker asynchronously.
-   * If the hash value range is [0, int.max), it will retrieve the whole data from the block.
+   * Inquiries the location of the specific block and routes the request to the local block manager worker
+   * or to the lower data plane.
+   * This can be invoked multiple times per blockId (maybe due to failures).
    *
    * @param blockId       of the block.
    * @param runtimeEdgeId id of the runtime edge that corresponds to the block.
@@ -147,7 +144,7 @@ public final class BlockManagerWorker {
    * @param keyRange     the key range descriptor
    * @return the {@link CompletableFuture} of the block.
    */
-  private CompletableFuture<Iterator> requestBlockInRemoteWorker(
+  public CompletableFuture<Iterator> queryBlock(
       final String blockId,
       final String runtimeEdgeId,
       final DataStoreProperty.Value blockStore,
@@ -177,9 +174,14 @@ public final class BlockManagerWorker {
                 + "block state is " + blockLocationInfoMsg.getState()));
       }
       // This is the executor id that we wanted to know
-      final String remoteWorkerId = blockLocationInfoMsg.getOwnerExecutorId();
-      return blockTransfer.initiatePull(remoteWorkerId, false, blockStore, blockId,
-          runtimeEdgeId, keyRange).getCompleteFuture();
+      final String targetExecutorId = blockLocationInfoMsg.getOwnerExecutorId();
+      if (targetExecutorId.equals(executorId) || targetExecutorId.equals(REMOTE_FILE_STORE)) {
+        // Block resides in the evaluator
+        return retrieveDataFromBlock(blockId, runtimeEdgeId, blockStore, keyRange);
+      } else {
+        return blockTransfer.initiatePull(targetExecutorId, false, blockStore, blockId,
+            runtimeEdgeId, keyRange).getCompleteFuture();
+      }
     });
   }
 

@@ -29,6 +29,8 @@ limitations under the License.
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <beam.version>2.0.0</beam.version>
+        <spark.version>2.2.0</spark.version>
+        <kryo.version>4.0.1</kryo.version>
         <reef.version>0.17.0-SNAPSHOT</reef.version>
         <protobuf.version>2.5.0</protobuf.version>
         <hadoop.version>2.7.2</hadoop.version>
@@ -40,6 +42,10 @@ limitations under the License.
         <netlib.version>1.1.2</netlib.version>
         <netty.version>4.1.16.Final</netty.version>
         <slf4j.version>1.7.20</slf4j.version>
+        <!-- Tests -->
+        <mockito.version>2.13.0</mockito.version>
+        <powermock.version>2.0.0-beta.5</powermock.version>
+        <junit.version>4.12</junit.version>
     </properties>
 
     <modules>
@@ -47,9 +53,11 @@ limitations under the License.
         <module>client</module>
         <module>common</module>
         <module>compiler/backend</module>
-        <module>compiler/frontend-beam</module>
+        <module>compiler/frontend/beam</module>
+        <module>compiler/frontend/spark</module>
         <module>compiler/optimizer</module>
-        <module>examples</module>
+        <module>examples/beam</module>
+        <module>examples/spark</module>
         <module>runtime/common</module>
     	<module>runtime/executor</module>
 	    <module>runtime/master</module>
@@ -67,6 +75,31 @@ limitations under the License.
             <groupId>org.xerial.snappy</groupId>
             <artifactId>snappy-java</artifactId>
             <version>1.1.1.3</version>
+        </dependency>
+        <!--tests-->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-module-junit4</artifactId>
+            <version>${powermock.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-api-mockito2</artifactId>
+            <version>${powermock.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

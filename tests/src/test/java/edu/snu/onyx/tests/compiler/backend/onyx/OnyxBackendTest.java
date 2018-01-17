@@ -23,7 +23,6 @@ import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.compiler.backend.onyx.OnyxBackend;
-import edu.snu.onyx.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.onyx.compiler.optimizer.examples.EmptyComponents;
@@ -47,7 +46,7 @@ public final class OnyxBackendTest<I, O> {
   private final IRVertex map1 = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
   private final IRVertex groupByKey = new OperatorVertex(new EmptyComponents.EmptyTransform("GroupByKey"));
   private final IRVertex combine = new OperatorVertex(new EmptyComponents.EmptyTransform("Combine"));
-  private final IRVertex map2 = new OperatorVertex(new DoTransform(null, null));
+  private final IRVertex map2 = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements2"));
   private PhysicalPlanGenerator physicalPlanGenerator;
 
   private final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();

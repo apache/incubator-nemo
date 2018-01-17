@@ -42,7 +42,7 @@ import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.onyx.runtime.master.resource.ResourceSpecification;
 import edu.snu.onyx.runtime.master.scheduler.*;
-import edu.snu.onyx.tests.compiler.optimizer.TestPolicy;
+import edu.snu.onyx.tests.compiler.optimizer.policy.TestPolicy;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;

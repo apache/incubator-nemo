@@ -29,7 +29,7 @@ import edu.snu.onyx.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.master.scheduler.SingleJobTaskGroupQueue;
-import edu.snu.onyx.tests.compiler.optimizer.TestPolicy;
+import edu.snu.onyx.tests.compiler.optimizer.policy.TestPolicy;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
