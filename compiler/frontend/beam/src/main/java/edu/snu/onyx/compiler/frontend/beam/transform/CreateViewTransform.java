@@ -21,26 +21,29 @@ import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
- * Broadcast transform implementation.
+ * CreateView transform implementation.
  * @param <I> input type.
  * @param <O> output type.
  */
-public final class BroadcastTransform<I, O> implements Transform<I, O> {
+public final class CreateViewTransform<I, O> implements Transform<I, O> {
   private final PCollectionView pCollectionView;
   private OutputCollector<O> outputCollector;
+  private List<WindowedValue<I>> windowed;
+  private final ViewFn<Iterable<WindowedValue<I>>, O> viewFn;
 
   /**
-   * Constructor of BroadcastTransform.
-   * @param pCollectionView the pCollectionView to broadcast.
+   * Constructor of CreateViewTransform.
+   * @param pCollectionView the pCollectionView to create.
    */
-  public BroadcastTransform(final PCollectionView<O> pCollectionView) {
+  public CreateViewTransform(final PCollectionView<O> pCollectionView) {
     this.pCollectionView = pCollectionView;
+    this.windowed = new ArrayList<>();
+    this.viewFn = this.pCollectionView.getViewFn();
   }
 
   @Override
@@ -50,13 +53,7 @@ public final class BroadcastTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void onData(final Iterator<I> elements, final String srcVertexId) {
-    final Iterable<I> iterable = () -> elements;
-    final List<WindowedValue<I>> windowed = StreamSupport
-        .stream(iterable.spliterator(), false)
-        .map(element -> WindowedValue.valueInGlobalWindow(element))
-        .collect(Collectors.toList());
-    final ViewFn<Iterable<WindowedValue<I>>, O> viewFn = this.pCollectionView.getViewFn();
-    outputCollector.emit(viewFn.apply(windowed));
+    elements.forEachRemaining(element -> windowed.add(WindowedValue.valueInGlobalWindow(element)));
   }
 
   /**
@@ -69,12 +66,13 @@ public final class BroadcastTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void close() {
+    outputCollector.emit(viewFn.apply(windowed));
   }
 
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("BroadcastTransform:" + pCollectionView);
+    sb.append("CreateViewTransform:" + pCollectionView);
     return sb.toString();
   }
 }

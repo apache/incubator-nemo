@@ -142,12 +142,12 @@ public final class OnyxPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
       builder.addVertex(irVertex, loopVertexStack);
     } else if (beamTransform instanceof View.CreatePCollectionView) {
       final View.CreatePCollectionView view = (View.CreatePCollectionView) beamTransform;
-      final BroadcastTransform transform = new BroadcastTransform(view.getView());
+      final CreateViewTransform transform = new CreateViewTransform(view.getView());
       irVertex = new OperatorVertex(transform);
       pValueToVertex.put(view.getView(), irVertex);
       builder.addVertex(irVertex, loopVertexStack);
-      // Coders for outgoing edges in BroadcastTransform.
-      // Since outgoing PValues for BroadcastTransform is PCollectionView, we cannot use PCollection::getCoder to
+      // Coders for outgoing edges in CreateViewTransform.
+      // Since outgoing PValues for CreateViewTransform is PCollectionView, we cannot use PCollection::getCoder to
       // obtain coders.
       final Coder beamInputCoder = beamNode.getInputs().values().stream()
           .filter(v -> v instanceof PCollection).findFirst().map(v -> (PCollection) v).get().getCoder();
@@ -246,7 +246,7 @@ public final class OnyxPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
                                                                                     final IRVertex dst) {
     if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof GroupByKeyTransform) {
       return DataCommunicationPatternProperty.Value.Shuffle;
-    } else if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof BroadcastTransform) {
+    } else if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof CreateViewTransform) {
       return DataCommunicationPatternProperty.Value.BroadCast;
     } else {
       return DataCommunicationPatternProperty.Value.OneToOne;
