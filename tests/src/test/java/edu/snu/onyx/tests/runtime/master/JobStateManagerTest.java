@@ -37,7 +37,7 @@ import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.runtime.master.JobStateManager;
 import edu.snu.onyx.runtime.master.MetricMessageHandler;
 import edu.snu.onyx.runtime.master.BlockManagerMaster;
-import edu.snu.onyx.tests.compiler.optimizer.TestPolicy;
+import edu.snu.onyx.tests.compiler.optimizer.policy.TestPolicy;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
