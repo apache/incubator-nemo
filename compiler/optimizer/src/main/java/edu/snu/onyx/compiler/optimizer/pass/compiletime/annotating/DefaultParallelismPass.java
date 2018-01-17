@@ -24,20 +24,37 @@ import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ParallelismProperty;
 
+import java.util.Collections;
 import java.util.List;
+
+import static edu.snu.onyx.common.ir.executionproperty.ExecutionProperty.Key.DataCommunicationPattern;
 
 /**
  * Optimization pass for tagging parallelism execution property.
  */
 public final class DefaultParallelismPass extends AnnotatingPass {
+  private final int desiredSourceParallelism;
   // we decrease the number of parallelism by this number on each shuffle boundary.
-  private final Integer shuffleDecreaseFactor = 2;
+  private final int shuffleDecreaseFactor;
+
+  /**
+   * Default constructor with desired number of source parallelism 1, shuffle decreasing factor 2.
+   */
+  public DefaultParallelismPass() {
+    this(1, 2);
+  }
 
   /**
    * Default constructor.
+   *
+   * @param desiredSourceParallelism the desired number of source parallelism.
+   * @param shuffleDecreaseFactor    the parallelism decrease factor for shuffle edge.
    */
-  public DefaultParallelismPass() {
-    super(ExecutionProperty.Key.Parallelism);
+  public DefaultParallelismPass(final int desiredSourceParallelism,
+                                final int shuffleDecreaseFactor) {
+    super(ExecutionProperty.Key.Parallelism, Collections.singleton(DataCommunicationPattern));
+    this.desiredSourceParallelism = desiredSourceParallelism;
+    this.shuffleDecreaseFactor = shuffleDecreaseFactor;
   }
 
   @Override
@@ -48,8 +65,11 @@ public final class DefaultParallelismPass extends AnnotatingPass {
         final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
         // We manipulate them if it is set as default value of 1.
         if (inEdges.isEmpty() && vertex instanceof SourceVertex) {
+          // For source vertices, we try to split the source reader by the desired source parallelism.
+          // After that, we set the parallelism as the number of split readers.
+          // (It can be more/less than the desired value.)
           final SourceVertex sourceVertex = (SourceVertex) vertex;
-          vertex.setProperty(ParallelismProperty.of(sourceVertex.getReaders(1).size()));
+          vertex.setProperty(ParallelismProperty.of(sourceVertex.getReaders(desiredSourceParallelism).size()));
         } else if (!inEdges.isEmpty()) {
           // No reason to propagate via Broadcast edges, as the data streams that will use the broadcasted data
           // as a sideInput will have their own number of parallelism
@@ -106,5 +126,29 @@ public final class DefaultParallelismPass extends AnnotatingPass {
       return maxParallelism;
     }
     return myParallelism;
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    final DefaultParallelismPass that = (DefaultParallelismPass) o;
+
+    if (desiredSourceParallelism != that.desiredSourceParallelism) {
+      return false;
+    }
+    return shuffleDecreaseFactor == that.shuffleDecreaseFactor;
+  }
+
+  @Override
+  public int hashCode() {
+    int result = desiredSourceParallelism;
+    result = 31 * result + shuffleDecreaseFactor;
+    return result;
   }
 }

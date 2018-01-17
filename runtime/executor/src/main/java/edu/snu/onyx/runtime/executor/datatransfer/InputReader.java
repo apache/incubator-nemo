@@ -33,10 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -166,8 +163,29 @@ public final class InputReader extends DataTransfer {
     if (!isSideInputReader()) {
       throw new RuntimeException();
     }
-    final CompletableFuture<Iterator> future = this.read().get(0);
-    return future.thenApply(f -> f.next());
+    final List<CompletableFuture<Iterator>> futures = this.read();
+    return futures.get(0).thenApply(f -> {
+      final List copy = new ArrayList();
+      f.forEachRemaining(copy::add);
+      if (copy.size() == 1) {
+        return copy.get(0);
+      } else {
+        if (copy.get(0) instanceof Iterable) {
+          final List collect = new ArrayList();
+          copy.forEach(element -> ((Iterable) element).iterator().forEachRemaining(collect::add));
+          return collect;
+        } else if (copy.get(0) instanceof Map) {
+          final Map collect = new HashMap();
+          copy.forEach(element -> {
+            final Set keySet = ((Map) element).keySet();
+            keySet.forEach(key -> collect.put(key, ((Map) element).get(key)));
+          });
+          return collect;
+        } else {
+          return copy;
+        }
+      }
+    });
   }
 
   /**

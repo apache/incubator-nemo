@@ -46,6 +46,7 @@ public final class PolicyBuilder {
 
   /**
    * Constructor.
+   *
    * @param strictPrerequisiteCheckMode whether to use strict prerequisite check mode or not.
    */
   public PolicyBuilder(final Boolean strictPrerequisiteCheckMode) {
