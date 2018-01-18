@@ -15,8 +15,8 @@
  */
 package edu.snu.onyx.examples.beam;
 
-import edu.snu.onyx.client.beam.OnyxPipelineOptions;
-import edu.snu.onyx.client.beam.OnyxPipelineRunner;
+import edu.snu.onyx.compiler.frontend.beam.OnyxPipelineOptions;
+import edu.snu.onyx.compiler.frontend.beam.OnyxPipelineRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -74,7 +74,7 @@ public final class MapReduceSkew {
           @Override
           public String apply(final KV<String, Integer> kv) {
             //LOG.info("Map#2 : key {} value {}", kv.getKey(), kv.getValue());
-            return kv.getKey() + ": " + kv.getValue();
+            return kv.getKey() + "- " + kv.getValue();
           }
         }));
     GenericSourceSink.write(result, outputFilePath);
