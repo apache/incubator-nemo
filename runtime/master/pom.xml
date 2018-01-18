@@ -28,6 +28,13 @@ limitations under the License.
     <artifactId>onyx-runtime-master</artifactId>
     <name>Onyx Runtime Master</name>
 
+    <repositories>
+        <repository>
+            <id>Bundled Maven Repository</id>
+            <url>file://${basedir}/../../common/src/main/resources/repository</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>edu.snu.onyx</groupId>
@@ -40,9 +47,14 @@ limitations under the License.
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-conf</artifactId>
-            <version>${project.version}</version>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
     </dependencies>
 </project>

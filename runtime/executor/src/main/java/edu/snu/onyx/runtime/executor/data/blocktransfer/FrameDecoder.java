@@ -263,7 +263,6 @@ final class FrameDecoder extends ByteToMessageDecoder {
     assert (length <= Integer.MAX_VALUE);
     final ByteBuf body = in.readSlice((int) length).retain();
     inputStream.append(body);
-    inputStream.startDecodingThreadIfNeeded();
 
     dataBodyBytesToRead -= length;
     if (dataBodyBytesToRead == 0) {
@@ -278,7 +277,6 @@ final class FrameDecoder extends ByteToMessageDecoder {
    * @throws InterruptedException when interrupted while marking the end of stream
    */
   private void onDataFrameEnd(final ChannelHandlerContext ctx) {
-    inputStream.startDecodingThreadIfNeeded();
     if (isLastFrame) {
       LOG.debug("Transport {}:{}, where the block sender is {} and the receiver is {}, is now closed",
           new Object[]{isPullTransfer ? "pull" : "push", transferId, ctx.channel().remoteAddress(),

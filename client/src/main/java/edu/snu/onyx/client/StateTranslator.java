@@ -21,7 +21,7 @@ import edu.snu.onyx.runtime.common.state.JobState;
  * A class provides the translation between the state of job and corresponding
  * {@link ClientEndpoint}.
  */
-public abstract class StateTranslator {
+public interface StateTranslator {
 
   /**
    * Translate a job state of onyx to a corresponding client endpoint state.
@@ -29,5 +29,5 @@ public abstract class StateTranslator {
    * @param jobState to translate.
    * @return the translated state.
    */
-  public abstract Enum translateState(final JobState.State jobState);
+  Enum translateState(final JobState.State jobState);
 }

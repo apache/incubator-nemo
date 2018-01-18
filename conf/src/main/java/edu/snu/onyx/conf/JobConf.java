@@ -88,7 +88,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * Path to the JSON file that specifies resource layout.
    */
   @NamedParameter(doc = "Path to the JSON file that specifies resources for executors", short_name = "executor_json",
-  default_value = "src/main/resources/sample_executor_resources.json")
+  default_value = "../resources/sample_executor_resources.json")
   public final class ExecutorJsonPath implements Name<String> {
   }
 
@@ -151,16 +151,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
    */
   @NamedParameter(doc = "Hash range multiplier", short_name = "hash_range_multiplier", default_value = "10")
   public final class HashRangeMultiplier implements Name<Integer> {
-  }
-
-  /**
-   * The number of threads in thread pool for inbound block transfer.
-   *
-   * These threads are responsible for de-serializing bytes into block.
-   */
-  @NamedParameter(doc = "Number of threads for inbound block transfer", short_name = "block_threads_inbound",
-      default_value = "5")
-  public final class PartitionTransferInboundNumThreads implements Name<Integer> {
   }
 
   /**

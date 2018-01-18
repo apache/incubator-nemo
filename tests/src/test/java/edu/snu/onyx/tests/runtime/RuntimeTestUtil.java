@@ -126,14 +126,22 @@ public final class RuntimeTestUtil {
         newState, attemptIdx, Collections.emptyList(), cause);
   }
 
+  public static void sendTaskGroupStateEventToScheduler(final Scheduler scheduler,
+                                                        final ContainerManager containerManager,
+                                                        final String taskGroupId,
+                                                        final TaskGroupState.State newState,
+                                                        final int attemptIdx) {
+    sendTaskGroupStateEventToScheduler(scheduler, containerManager, taskGroupId, newState, attemptIdx, null);
+  }
+
   public static void mockSchedulerRunner(final PendingTaskGroupQueue pendingTaskGroupQueue,
                                          final SchedulingPolicy schedulingPolicy,
+                                         final JobStateManager jobStateManager,
                                          final boolean isPartialSchedule) {
     while (!pendingTaskGroupQueue.isEmpty()) {
       final ScheduledTaskGroup taskGroupToSchedule = pendingTaskGroupQueue.dequeue().get();
 
-      final String executorId = schedulingPolicy.attemptSchedule(taskGroupToSchedule).get();
-      schedulingPolicy.onTaskGroupScheduled(executorId, taskGroupToSchedule);
+      schedulingPolicy.scheduleTaskGroup(taskGroupToSchedule, jobStateManager);
 
       // Schedule only the first task group.
       if (isPartialSchedule) {

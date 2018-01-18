@@ -201,10 +201,12 @@ public final class TaskGroupExecutor {
    */
   private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask) throws Exception {
     final Reader reader = boundedSourceTask.getReader();
-    final Iterable readData = reader.read();
+    final Iterator readData = reader.read();
+    final List iterable = new ArrayList<>();
+    readData.forEachRemaining(iterable::add);
 
     taskIdToOutputWriterMap.get(boundedSourceTask.getId()).forEach(outputWriter -> {
-      outputWriter.write(readData);
+      outputWriter.write(iterable);
       outputWriter.close();
     });
   }
@@ -243,11 +245,11 @@ public final class TaskGroupExecutor {
 
     // Check for non-side inputs
     // This blocking queue contains the pairs having data and source vertex ids.
-    final BlockingQueue<Pair<Iterable, String>> dataQueue = new LinkedBlockingQueue<>();
+    final BlockingQueue<Pair<Iterator, String>> dataQueue = new LinkedBlockingQueue<>();
     final AtomicInteger sourceParallelism = new AtomicInteger(0);
     taskIdToInputReaderMap.get(operatorTask.getId()).stream().filter(inputReader -> !inputReader.isSideInputReader())
         .forEach(inputReader -> {
-          final List<CompletableFuture<Iterable>> futures = inputReader.read();
+          final List<CompletableFuture<Iterator>> futures = inputReader.read();
           final String srcVtxId = inputReader.getSrcVertexId();
           sourceParallelism.getAndAdd(inputReader.getSourceParallelism());
           // Add consumers which will push the data to the data queue when it ready to the futures.
@@ -263,7 +265,7 @@ public final class TaskGroupExecutor {
     IntStream.range(0, sourceParallelism.get()).forEach(srcTaskNum -> {
       try {
         // Because the data queue is a blocking queue, we may need to wait some available data to be pushed.
-        final Pair<Iterable, String> availableData = dataQueue.take();
+        final Pair<Iterator, String> availableData = dataQueue.take();
         transform.onData(availableData.left(), availableData.right());
       } catch (final InterruptedException e) {
         throw new BlockFetchException(e);
@@ -296,7 +298,7 @@ public final class TaskGroupExecutor {
    * @param task the task to carry on the data.
    */
   private void launchMetricCollectionBarrierTask(final MetricCollectionBarrierTask task) {
-    final BlockingQueue<Iterable> dataQueue = new LinkedBlockingQueue<>();
+    final BlockingQueue<Iterator> dataQueue = new LinkedBlockingQueue<>();
     final AtomicInteger sourceParallelism = new AtomicInteger(0);
     taskIdToInputReaderMap.get(task.getId()).stream().filter(inputReader -> !inputReader.isSideInputReader())
         .forEach(inputReader -> {
@@ -307,8 +309,8 @@ public final class TaskGroupExecutor {
     final List data = new ArrayList<>();
     IntStream.range(0, sourceParallelism.get()).forEach(srcTaskNum -> {
       try {
-        final Iterable availableData = dataQueue.take();
-        availableData.forEach(data::add);
+        final Iterator availableData = dataQueue.take();
+        availableData.forEachRemaining(data::add);
       } catch (final InterruptedException e) {
         throw new BlockFetchException(e);
       }

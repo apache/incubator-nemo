@@ -26,7 +26,7 @@
         * `sudo make install`
     3. To check for a successful installation of version 2.5.0, run `protoc --version`
 
-### Installing Onyx 
+### Installing Onyx
 * Run all tests and install: `mvn clean install -T 2C`
 * Run only unit tests and install: `mvn clean install -DskipITs -T 2C`
 
@@ -39,7 +39,7 @@
 ./bin/run_external_app.sh \
     `pwd`/onyx_app/target/bd17f-1.0-SNAPSHOT.jar \
     -job_id mapreduce \
-    -executor_json `pwd`/tests/src/main/resources/sample_executor_resources.json \
+    -executor_json `pwd`/examples/resources/sample_executor_resources.json \
     -user_main MapReduce \
     -user_args "`pwd`/mr_input_data `pwd`/onyx_output/output_data"
 ```
@@ -56,16 +56,16 @@
 ## MapReduce example
 ./bin/run.sh \
 	-job_id mr_default \
-	-executor_json `pwd`/tests/src/main/resources/sample_executor_resources.json \
+	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
 	-optimization_policy edu.snu.onyx.compiler.optimizer.policy.DefaultPolicy \
 	-user_main edu.snu.onyx.examples.beam.MapReduce \
-	-user_args "`pwd`/examples/src/main/resources/sample_input_mr `pwd`/examples/src/main/resources/sample_output_mr"
+	-user_args "`pwd`/examples/resources/sample_input_mr `pwd`/examples/resources/sample_output_mr"
 
 ## YARN cluster example
 ./bin/run.sh \
 	-deploy_mode yarn \
   	-job_id mr_pado \
-	-executor_json `pwd`/tests/src/main/resources/sample_executor_resources.json \
+	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
   	-user_main edu.snu.onyx.examples.beam.MapReduce \
   	-optimization_policy edu.snu.onyx.compiler.optimizer.policy.PadoPolicy \
   	-user_args "hdfs://v-m:9000/sample_input_mr hdfs://v-m:9000/sample_output_mr"
@@ -112,9 +112,9 @@ Using our [online visualizer](https://service.jangho.io/onyx-dag/), you can easi
 ```bash
 ./bin/run.sh \
 	-job_id als \
-	-executor_json `pwd`/tests/src/main/resources/sample_executor_resources.json \
+	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
   	-user_main edu.snu.onyx.examples.beam.AlternatingLeastSquare \
   	-optimization_policy edu.snu.onyx.compiler.optimizer.policy.PadoPolicy \
   	-dag_dir "./dag/als" \
-  	-user_args "`pwd`/examples/src/main/resources/sample_input_als 10 3"
+  	-user_args "`pwd`/examples/resources/sample_input_als 10 3"
 ```

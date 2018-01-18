@@ -29,7 +29,7 @@ import edu.snu.onyx.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.master.scheduler.SingleJobTaskGroupQueue;
-import edu.snu.onyx.tests.compiler.optimizer.TestPolicy;
+import edu.snu.onyx.tests.compiler.optimizer.policy.TestPolicy;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
@@ -39,8 +39,10 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -110,6 +112,8 @@ public final class SingleTaskGroupQueueTest {
 
     final CountDownLatch countDownLatch = new CountDownLatch(2);
 
+    final AtomicBoolean passed = new AtomicBoolean(true);
+
     // This mimics Batch Scheduler's behavior
     executorService.execute(() -> {
       // First schedule the children TaskGroups (since it is push).
@@ -144,12 +148,14 @@ public final class SingleTaskGroupQueueTest {
             dagOf2Stages.get(0).getId());
       } catch (Exception e) {
         e.printStackTrace();
+        passed.getAndSet(false);
       } finally {
         countDownLatch.countDown();
       }
     });
 
     countDownLatch.await();
+    assertTrue(passed.get());
   }
 
   /**

@@ -15,140 +15,47 @@
  */
 package edu.snu.onyx.runtime.executor.data.metadata;
 
-import com.google.protobuf.ByteString;
-import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
-import edu.snu.onyx.runtime.common.comm.ControlMessage;
-import edu.snu.onyx.runtime.common.message.MessageEnvironment;
-import edu.snu.onyx.runtime.common.message.PersistentConnectionToMasterMap;
-import org.apache.beam.sdk.repackaged.org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.SerializationUtils;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 /**
  * This class represents a metadata for a remote file block.
  * Because the data is stored in a remote file and globally accessed by multiple nodes,
- * each access (create - write - close, read, or deletion) for a block needs one instance of this metadata.
- * These accesses are judiciously synchronized by the metadata server in master.
+ * each read, or deletion for a block needs one instance of this metadata.
+ * The metadata is store in and read from a file (after a remote file block is committed).
  * @param <K> the key type of its partitions.
  */
 @ThreadSafe
 public final class RemoteFileMetadata<K extends Serializable> extends FileMetadata<K> {
 
-  private final String blockId;
-  private final String executorId;
-  private final PersistentConnectionToMasterMap connectionToMaster;
-  private volatile Iterable<PartitionMetadata<K>> partitionMetadataIterable;
+  private final String metaFilePath;
 
   /**
-   * Opens a block metadata.
+   * Constructor for creating a non-committed new file metadata.
    *
-   * @param commitPerBlock     whether commit every block write or not.
-   * @param blockId            the id of the block.
-   * @param executorId         the id of the executor.
-   * @param connectionToMaster the connection for sending messages to master.
+   * @param metaFilePath the metadata file path.
    */
-  public RemoteFileMetadata(final boolean commitPerBlock,
-                            final String blockId,
-                            final String executorId,
-                            final PersistentConnectionToMasterMap connectionToMaster) {
-    super(commitPerBlock);
-    this.blockId = blockId;
-    this.executorId = executorId;
-    this.connectionToMaster = connectionToMaster;
+  private RemoteFileMetadata(final String metaFilePath) {
+    super();
+    this.metaFilePath = metaFilePath;
   }
 
   /**
-   * Reserves the region for a partition and get the metadata for the partition.
+   * Constructor for opening a existing file metadata.
    *
-   * @see  FileMetadata#reservePartition(Serializable, int, long)
+   * @param metaFilePath          the metadata file path.
+   * @param partitionMetadataList the partition metadata list.
    */
-  @Override
-  public synchronized PartitionMetadata reservePartition(final K key,
-                                                         final int partitionSize,
-                                                         final long elementsTotal) throws IOException {
-    // Convert the block metadata to a block metadata message (without offset).
-    final ControlMessage.PartitionMetadataMsg partitionMetadataMsg =
-        ControlMessage.PartitionMetadataMsg.newBuilder()
-            .setKey(ByteString.copyFrom(SerializationUtils.serialize(key)))
-            .setPartitionSize(partitionSize)
-            .setNumElements(elementsTotal)
-            .build();
-
-    // Send the partition metadata to the metadata server in the master and ask where to store the partition.
-    final CompletableFuture<ControlMessage.Message> reservePartitionResponseFuture =
-        connectionToMaster.getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.ReservePartition)
-                .setReservePartitionMsg(
-                    ControlMessage.ReservePartitionMsg.newBuilder()
-                        .setExecutorId(executorId)
-                        .setBlockId(blockId)
-                        .setPartitionMetadata(partitionMetadataMsg))
-                .build());
-
-    // Get the response from the metadata server.
-    final ControlMessage.Message responseFromMaster;
-    try {
-      responseFromMaster = reservePartitionResponseFuture.get();
-    } catch (final InterruptedException | ExecutionException e) {
-      throw new IOException(e);
-    }
-
-    assert (responseFromMaster.getType() == ControlMessage.MessageType.ReservePartitionResponse);
-    final ControlMessage.ReservePartitionResponseMsg reservePartitionResponseMsg =
-        responseFromMaster.getReservePartitionResponseMsg();
-    if (!reservePartitionResponseMsg.hasPositionToWrite()) {
-      throw new IOException("Cannot append the block metadata.");
-    }
-    final int partitionIdx = reservePartitionResponseMsg.getPartitionIdx();
-    final long positionToWrite = reservePartitionResponseMsg.getPositionToWrite();
-    return new PartitionMetadata(partitionIdx, key, partitionSize, positionToWrite, elementsTotal);
-  }
-
-  /**
-   * Notifies that some partitions are written.
-   *
-   * @see FileMetadata#commitPartitions(Iterable)
-   */
-  @Override
-  public synchronized void commitPartitions(final Iterable<PartitionMetadata> partitionMetadataToCommit) {
-    final List<Integer> partitionIndices = new ArrayList<>();
-    partitionMetadataToCommit.forEach(partitionMetadata -> {
-      partitionMetadata.setCommitted();
-      partitionIndices.add(partitionMetadata.getPartitionIdx());
-    });
-
-    // Notify that these partitions are committed to the metadata server.
-    connectionToMaster.getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).send(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.CommitPartition)
-            .setCommitPartitionMsg(
-                ControlMessage.CommitPartitionMsg.newBuilder()
-                    .setBlockId(blockId)
-                    .addAllPartitionIdx(partitionIndices))
-            .build());
-  }
-
-  /**
-   * Gets a iterable containing the partition metadata of corresponding blocks.
-   *
-   * @see FileMetadata#getPartitionMetadataIterable()
-   */
-  @Override
-  public synchronized Iterable<PartitionMetadata<K>> getPartitionMetadataIterable() throws IOException {
-    if (partitionMetadataIterable == null) {
-      partitionMetadataIterable = getPartitionMetadataFromServer();
-    }
-    return partitionMetadataIterable;
+  private RemoteFileMetadata(final String metaFilePath,
+                             final List<PartitionMetadata<K>> partitionMetadataList) {
+    super(partitionMetadataList);
+    this.metaFilePath = metaFilePath;
   }
 
   /**
@@ -156,82 +63,76 @@ public final class RemoteFileMetadata<K extends Serializable> extends FileMetada
    */
   @Override
   public void deleteMetadata() throws IOException {
-    connectionToMaster.getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).send(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.RemovePartitionMetadata)
-            .setRemovePartitionMetadataMsg(
-                ControlMessage.RemovePartitionMetadataMsg.newBuilder()
-                    .setBlockId(blockId))
-            .build());
+    Files.delete(Paths.get(metaFilePath));
   }
 
   /**
+   * Write the collected {@link PartitionMetadata}s to the metadata file.
    * Notifies that all writes are finished for the block corresponding to this metadata.
    */
   @Override
-  public synchronized void commitBlock() {
-    // Handled by block manager master (via block commit message).
+  public synchronized void commitBlock() throws IOException {
+    final Iterable<PartitionMetadata<K>> partitionMetadataItr = getPartitionMetadataIterable();
+    try (
+        final FileOutputStream metafileOutputStream = new FileOutputStream(metaFilePath, false);
+        final DataOutputStream dataOutputStream = new DataOutputStream(metafileOutputStream)
+    ) {
+      for (PartitionMetadata<K> partitionMetadata : partitionMetadataItr) {
+        final byte[] key = SerializationUtils.serialize(partitionMetadata.getKey());
+        dataOutputStream.writeInt(key.length);
+        dataOutputStream.write(key);
+        dataOutputStream.writeInt(partitionMetadata.getPartitionSize());
+        dataOutputStream.writeLong(partitionMetadata.getOffset());
+        dataOutputStream.writeLong(partitionMetadata.getElementsTotal());
+      }
+    }
+    setCommitted(true);
   }
 
   /**
-   * Gets the iterable of partition metadata from the metadata server.
+   * Creates a new block metadata.
    *
-   * @return the received file metadata.
-   * @throws IOException if fail to get the metadata.
+   * @param metaFilePath the path of the file to write metadata.
+   * @param <T>          the key type of the block's partitions.
+   * @return the created block metadata.
    */
-  private Iterable<PartitionMetadata<K>> getPartitionMetadataFromServer() throws IOException {
-    final List<PartitionMetadata<K>> partitionMetadataList = new ArrayList<>();
+  public static <T extends Serializable> RemoteFileMetadata<T> create(final String metaFilePath) {
+    return new RemoteFileMetadata<>(metaFilePath);
+  }
 
-    // Ask the metadata server in the master for the metadata
-    final CompletableFuture<ControlMessage.Message> metadataResponseFuture =
-        connectionToMaster.getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.RequestPartitionMetadata)
-                .setRequestPartitionMetadataMsg(
-                    ControlMessage.RequestPartitionMetadataMsg.newBuilder()
-                        .setExecutorId(executorId)
-                        .setBlockId(blockId)
-                        .build())
-                .build());
-
-    final ControlMessage.Message responseFromMaster;
-    try {
-      responseFromMaster = metadataResponseFuture.get();
-    } catch (final InterruptedException | ExecutionException e) {
-      throw new IOException(e);
+  /**
+   * Opens a existing block metadata in file.
+   *
+   * @param metaFilePath the path of the file to write metadata.
+   * @param <T>          the key type of the block's partitions.
+   * @return the created block metadata.
+   * @throws IOException if fail to open.
+   */
+  public static <T extends Serializable> RemoteFileMetadata<T> open(final String metaFilePath) throws IOException {
+    if (!new File(metaFilePath).isFile()) {
+      throw new IOException("File " + metaFilePath + " does not exist!");
     }
+    final List<PartitionMetadata<T>> partitionMetadataList = new ArrayList<>();
+    try (
+        final FileInputStream metafileInputStream = new FileInputStream(metaFilePath);
+        final DataInputStream dataInputStream = new DataInputStream(metafileInputStream)
+    ) {
+      while (dataInputStream.available() > 0) {
+        final int keyLength = dataInputStream.readInt();
+        final byte[] desKey = new byte[keyLength];
+        if (keyLength != dataInputStream.read(desKey)) {
+          throw new IOException("Invalid key length!");
+        }
 
-    assert (responseFromMaster.getType() == ControlMessage.MessageType.MetadataResponse);
-    final ControlMessage.MetadataResponseMsg metadataResponseMsg = responseFromMaster.getMetadataResponseMsg();
-    if (metadataResponseMsg.hasState()) {
-      // Response has an exception state.
-      throw new IOException(new Throwable(
-          "Cannot get the metadata of block " + blockId + " from the metadata server: "
-              + "The block state is " + metadataResponseMsg.getState()));
-    }
-
-    // Construct the metadata from the response.
-    final List<ControlMessage.PartitionMetadataMsg> partitionMetadataMsgList =
-        metadataResponseMsg.getPartitionMetadataList();
-    for (int partitionIdx = 0; partitionIdx < partitionMetadataMsgList.size(); partitionIdx++) {
-      final ControlMessage.PartitionMetadataMsg partitionMetadataMsg = partitionMetadataMsgList.get(partitionIdx);
-      if (!partitionMetadataMsg.hasOffset()) {
-        throw new IOException(new Throwable(
-            "The metadata of a partition in the " + blockId + " does not have offset value."));
+        final PartitionMetadata<T> partitionMetadata = new PartitionMetadata<>(
+            SerializationUtils.deserialize(desKey),
+            dataInputStream.readInt(),
+            dataInputStream.readLong(),
+            dataInputStream.readLong()
+        );
+        partitionMetadataList.add(partitionMetadata);
       }
-      partitionMetadataList.add(new PartitionMetadata(
-          partitionIdx,
-          SerializationUtils.deserialize(partitionMetadataMsg.getKey().toByteArray()),
-          partitionMetadataMsg.getPartitionSize(),
-          partitionMetadataMsg.getOffset(),
-          partitionMetadataMsg.getNumElements()
-      ));
     }
-
-    return partitionMetadataList;
+    return new RemoteFileMetadata<>(metaFilePath, partitionMetadataList);
   }
 }

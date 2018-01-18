@@ -18,6 +18,7 @@ package edu.snu.onyx.runtime.executor.data.blocktransfer;
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.runtime.common.data.KeyRange;
+import edu.snu.onyx.runtime.executor.data.DataUtil;
 import io.netty.buffer.ByteBuf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,24 +27,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.Optional;
-import java.util.Spliterator;
 import java.util.concurrent.*;
-import java.util.function.Consumer;
 
 /**
  * Input stream for block transfer.
  *
- * Decodes and stores inbound data elements from other executors. Three threads are involved.
- * <ul>
- *   <li>Netty {@link io.netty.channel.EventLoopGroup} receives data from other executors and adds them
- *   by {@link #append(ByteBuf)}</li>
- *   <li>{@link BlockTransfer#inboundExecutorService} decodes {@link ByteBuf}s into elements</li>
- *   <li>User thread may use {@link java.util.Iterator} to iterate over this object for their own work.</li>
- * </ul>
- *
  * @param <T> the type of element
  */
-public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
+public final class BlockInputStream<T> implements BlockStream {
 
   private static final Logger LOG = LoggerFactory.getLogger(BlockInputStream.class);
 
@@ -53,13 +44,12 @@ public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
   private final String blockId;
   private final String runtimeEdgeId;
   private final KeyRange keyRange;
-  private Coder<T> coder;
-  private ExecutorService executorService;
 
-  private final CompletableFuture<BlockInputStream<T>> completeFuture = new CompletableFuture<>();
+  private final CompletableFuture<Iterator<T>> completeFuture = new CompletableFuture<>();
   private final ByteBufInputStream byteBufInputStream = new ByteBufInputStream();
-  private final ClosableBlockingIterable<T> elementQueue = new ClosableBlockingIterable<>();
-  private volatile boolean started = false;
+
+  private Coder<T> coder;
+  private DataUtil.InputStreamIterator<T> inputStreamIterator;
 
   @Override
   public String toString() {
@@ -94,14 +84,13 @@ public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
   }
 
   /**
-   * Sets {@link Coder} and {@link ExecutorService} to de-serialize bytes into block.
+   * Sets {@link Coder} to de-serialize bytes into block.
    *
    * @param cdr     the coder
-   * @param service the executor service
    */
-  void setCoderAndExecutorService(final Coder<T> cdr, final ExecutorService service) {
+  void setCoder(final Coder<T> cdr) {
     this.coder = cdr;
-    this.executorService = service;
+    inputStreamIterator = new DataUtil.InputStreamIterator<>(byteBufInputStream, coder);
   }
 
   /**
@@ -123,36 +112,7 @@ public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
    */
   void markAsEnded() {
     byteBufInputStream.byteBufQueue.close();
-  }
-
-  /**
-   * Start decoding {@link ByteBuf}s into elements, if it has not been started.
-   */
-  void startDecodingThreadIfNeeded() {
-    if (started) {
-      return;
-    }
-    started = true;
-    executorService.submit(() -> {
-      try {
-        final long startTime = System.currentTimeMillis();
-        while (!byteBufInputStream.isEnded()) {
-          elementQueue.add(coder.decode(byteBufInputStream));
-        }
-        final long endTime = System.currentTimeMillis();
-        elementQueue.close();
-        if (!completeFuture.isCompletedExceptionally()) {
-          completeFuture.complete(this);
-          // If encodePartialBlock option is on, the elapsed time is not only determined by the speed of decoder
-          // but also by the rate of byte stream through the network.
-          // Before investigating on low rate of decoding, check the rate of the byte stream.
-          LOG.debug("Decoding task took {} ms to complete for {}", endTime - startTime, toString());
-        }
-      } catch (final Exception e) {
-        LOG.error(String.format("An exception in decoding thread for %s", toString()), e);
-        throw new RuntimeException(e);
-      }
-    });
+    completeFuture.complete(inputStreamIterator);
   }
 
   /**
@@ -162,11 +122,7 @@ public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
    */
   void onExceptionCaught(final Throwable cause) {
     LOG.error(String.format("A channel exception closes %s", toString()), cause);
-    markAsEnded();
-    if (!started) {
-      // There's no decoding thread to close the element queue.
-      elementQueue.close();
-    }
+    byteBufInputStream.byteBufQueue.close();
     completeFuture.completeExceptionally(cause);
   }
 
@@ -200,35 +156,13 @@ public final class BlockInputStream<T> implements Iterable<T>, BlockStream {
   }
 
   /**
-   * Returns an {@link Iterator} for this {@link Iterable}.
-   * The end of this {@link Iterable} can possibly mean an error during the block transfer.
-   * Consider using {@link #completeFuture} and {@link CompletableFuture#isCompletedExceptionally()} to check it.
-   *
-   * @return an {@link Iterator} for this {@link Iterable}
-   */
-  @Override
-  public Iterator<T> iterator() {
-    return elementQueue.iterator();
-  }
-
-  @Override
-  public void forEach(final Consumer<? super T> consumer) {
-    elementQueue.forEach(consumer);
-  }
-
-  @Override
-  public Spliterator<T> spliterator() {
-    return elementQueue.spliterator();
-  }
-
-  /**
    * Gets a {@link CompletableFuture} that completes with the block transfer being done.
    * This future is completed by one of the decoding thread. Consider using separate {@link ExecutorService} when
    * chaining a task to this future.
    *
    * @return a {@link CompletableFuture} that completes with the block transfer being done
    */
-  public CompletableFuture<BlockInputStream<T>> getCompleteFuture() {
+  public CompletableFuture<Iterator<T>> getCompleteFuture() {
     return completeFuture;
   }
 

@@ -28,11 +28,12 @@ limitations under the License.
     <artifactId>onyx-tests</artifactId>
     <name>Onyx Unit Tests and Integration Tests</name>
 
-    <properties>
-        <mockito.version>1.10.19</mockito.version>
-        <powermock.version>1.6.6</powermock.version>
-        <junit.version>4.12</junit.version>
-    </properties>
+    <repositories>
+        <repository>
+            <id>Bundled Maven Repository</id>
+            <url>file://${basedir}/../common/src/main/resources/repository</url>
+        </repository>
+    </repositories>
 
     <dependencies>
         <dependency>
@@ -47,31 +48,8 @@ limitations under the License.
         </dependency>
         <dependency>
             <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-examples</artifactId>
+            <artifactId>onyx-examples-beam</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-all</artifactId>
-            <version>${mockito.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.powermock</groupId>
-            <artifactId>powermock-module-junit4</artifactId>
-            <version>${powermock.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.powermock</groupId>
-            <artifactId>powermock-api-mockito</artifactId>
-            <version>${powermock.version}</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

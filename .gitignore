@@ -18,6 +18,7 @@ build
 .sample_output*
 sample_output*
 dag/*
+*.log
 #
 # ----------------------------------------------------------------------
 # IDE settings

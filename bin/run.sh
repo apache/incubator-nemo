@@ -14,4 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-java -cp examples/target/onyx-examples-0.1-SNAPSHOT-shaded.jar:`yarn classpath` edu.snu.onyx.client.JobLauncher "$@"
+java -Dlog4j.configuration=file://`pwd`/log4j.properties -cp examples/beam/target/onyx-examples-beam-0.1-SNAPSHOT-shaded.jar:`yarn classpath` edu.snu.onyx.client.JobLauncher "$@"

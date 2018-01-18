@@ -32,8 +32,10 @@ import java.io.OutputStream;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Iterator;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 /**
  * Output stream for block transfer. {@link #close()} must be called after finishing write.
@@ -70,6 +72,7 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
   private volatile boolean closed = false;
   private volatile Throwable channelException = null;
   private volatile boolean started = false;
+  private volatile Future encodingThread;
 
   @Override
   public String toString() {
@@ -170,7 +173,7 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
     assert (channel != null);
     assert (coder != null);
     final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream();
-    executorService.submit(() -> {
+    encodingThread = executorService.submit(() -> {
       try {
         final long startTime = System.currentTimeMillis();
         while (true) {
@@ -179,9 +182,10 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
             // end of output stream
             byteBufOutputStream.close();
             break;
-          } else if (thing instanceof Iterable) {
-            for (final T element : (Iterable<T>) thing) {
-              coder.encode(element, byteBufOutputStream);
+          } else if (thing instanceof Iterator) {
+            final Iterator<T> iterator = (Iterator<T>) thing;
+            while (iterator.hasNext()) {
+              coder.encode(iterator.next(), byteBufOutputStream);
             }
           } else if (thing instanceof FileArea) {
             byteBufOutputStream.writeFileArea((FileArea) thing);
@@ -218,14 +222,14 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
   /**
    * Writes a {@link Iterable} of elements.
    *
-   * @param iterable the {@link Iterable} to write
+   * @param iterator the {@link Iterator} to write
    * @return {@link BlockOutputStream} (i.e. {@code this})
    * @throws IOException           if an exception was set
    * @throws IllegalStateException if this stream is closed already
    */
-  public BlockOutputStream writeElements(final Iterable iterable) throws IOException {
+  public BlockOutputStream writeElements(final Iterator iterator) throws IOException {
     checkWritableCondition();
-    elementQueue.put(iterable);
+    elementQueue.put(iterator);
     if (encodePartialBlock) {
       startEncodingThreadIfNeeded();
     }
@@ -437,6 +441,11 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
       if (future.isSuccess()) {
         return;
       }
+      if (encodingThread != null) {
+        encodingThread.cancel(true);
+      }
+      closed = true;
+      elementQueue.close();
       channel.close();
       if (future.cause() == null) {
         LOG.error("Failed to write a data frame");

@@ -126,13 +126,12 @@ public final class ClosableBlockingIterable<T> implements Iterable<T>, AutoClose
           while (iterable.list.size() <= index && !iterable.closed) {
             iterable.wait();
           }
+          if (iterable.list.size() <= index) {
+            throw new NoSuchElementException();
+          }
           final T element = iterable.list.get(index);
           index++;
-          if (element == null) {
-            throw new NoSuchElementException();
-          } else {
-            return element;
-          }
+          return element;
         }
       } catch (final InterruptedException e) {
         throw new RuntimeException(e);
