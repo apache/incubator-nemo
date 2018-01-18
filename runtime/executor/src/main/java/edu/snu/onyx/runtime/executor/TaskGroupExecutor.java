@@ -378,7 +378,7 @@ public final class TaskGroupExecutor {
     if (hasInputPipe(operatorTask)) {
       taskIdToInputPipeMap.get(operatorTask.getId()).stream().filter(PipeImpl::isSideInput)
           .forEach(sideInputPipe -> {
-            Object sideInput = sideInputPipe.collectOutputList(); //sideInputPipe.remove();
+            Object sideInput = sideInputPipe.remove();
             final RuntimeEdge inEdge = sideInputPipe.getRuntimeEdge();
             final Transform srcTransform;
             if (inEdge instanceof PhysicalStageEdge) {

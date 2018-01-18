@@ -50,7 +50,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   private final ObjectMapper mapper;
   private final String serializedOptions;
   private Map<PCollectionView, Object> sideInputs;
-  private Pipe<O> outputCollector;
+  private Pipe<O> pipe;
 
   /**
    * DoTransform Constructor.
@@ -68,8 +68,8 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final Pipe<O> oc) {
-    this.outputCollector = oc;
+  public void prepare(final Context context, final Pipe<O> p) {
+    this.pipe = p;
     this.sideInputs = new HashMap<>();
     context.getSideInputs().forEach((k, v) -> this.sideInputs.put(((CreateViewTransform) k).getTag(), v));
   }
@@ -77,8 +77,8 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   @Override
   public void onData(final Object element) {
     final StartBundleContext startBundleContext = new StartBundleContext(doFn, serializedOptions);
-    final FinishBundleContext finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
-    final ProcessContext processContext = new ProcessContext(doFn, outputCollector, sideInputs, serializedOptions);
+    final FinishBundleContext finishBundleContext = new FinishBundleContext(doFn, pipe, serializedOptions);
+    final ProcessContext processContext = new ProcessContext(doFn, pipe, sideInputs, serializedOptions);
     final DoFnInvoker invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
@@ -138,21 +138,21 @@ public final class DoTransform<I, O> implements Transform<I, O> {
    * @param <O> output type.
    */
   private static final class FinishBundleContext<I, O> extends DoFn<I, O>.FinishBundleContext {
-    private final Pipe<O> outputCollector;
+    private final Pipe<O> pipe;
     private final ObjectMapper mapper;
     private final PipelineOptions options;
 
     /**
      * Constructor.
      * @param fn DoFn.
-     * @param outputCollector output collector of the DoTransform.
+     * @param pipe pipe of the DoTransform.
      * @param serializedOptions serialized options of the DoTransform.
      */
     FinishBundleContext(final DoFn<I, O> fn,
-                        final Pipe<O> outputCollector,
+                        final Pipe<O> pipe,
                         final String serializedOptions) {
       fn.super();
-      this.outputCollector = outputCollector;
+      this.pipe = pipe;
       this.mapper = new ObjectMapper();
       try {
         this.options = mapper.readValue(serializedOptions, PipelineOptions.class);
@@ -168,7 +168,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public void output(final O output, final Instant instant, final BoundedWindow boundedWindow) {
-      outputCollector.emit(output);
+      pipe.emit(output);
     }
 
     @Override
@@ -189,7 +189,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   private static final class ProcessContext<I, O> extends DoFn<I, O>.ProcessContext
       implements DoFnInvoker.ArgumentProvider<I, O> {
     private I input;
-    private final Pipe<O> outputCollector;
+    private final Pipe<O> pipe;
     private final Map<PCollectionView, Object> sideInputs;
     private final ObjectMapper mapper;
     private final PipelineOptions options;
@@ -197,16 +197,16 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     /**
      * ProcessContext Constructor.
      * @param fn Dofn.
-     * @param outputCollector Pipe.
+     * @param pipe Pipe.
      * @param sideInputs Map for SideInputs.
      * @param serializedOptions Options, serialized.
      */
     ProcessContext(final DoFn<I, O> fn,
-                   final Pipe<O> outputCollector,
+                   final Pipe<O> pipe,
                    final Map<PCollectionView, Object> sideInputs,
                    final String serializedOptions) {
       fn.super();
-      this.outputCollector = outputCollector;
+      this.pipe = pipe;
       this.sideInputs = sideInputs;
       this.mapper = new ObjectMapper();
       try {
@@ -256,7 +256,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public void output(final O output) {
-      outputCollector.emit(output);
+      pipe.emit(output);
     }
 
     @Override

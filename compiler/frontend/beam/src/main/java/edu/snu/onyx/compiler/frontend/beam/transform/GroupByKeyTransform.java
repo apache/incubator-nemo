@@ -31,7 +31,7 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyTransform.class.getName());
 
   private final Map<Object, List> keyToValues;
-  private Pipe<KV<Object, List>> outputCollector;
+  private Pipe<KV<Object, List>> pipe;
 
   /**
    * GroupByKey constructor.
@@ -41,8 +41,8 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
   }
 
   @Override
-  public void prepare(final Context context, final Pipe<KV<Object, List>> oc) {
-    this.outputCollector = oc;
+  public void prepare(final Context context, final Pipe<KV<Object, List>> p) {
+    this.pipe = p;
   }
 
   @Override
@@ -60,7 +60,7 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
   public void close() {
     keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
         .forEach(wv -> {
-          outputCollector.emit(wv);
+          pipe.emit(wv);
         });
     keyToValues.clear();
   }

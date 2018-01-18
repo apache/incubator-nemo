@@ -15,7 +15,7 @@
  */
 package edu.snu.onyx.compiler.frontend.spark.transform;
 
-import edu.snu.onyx.common.ir.OutputCollector;
+import edu.snu.onyx.common.ir.Pipe;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import org.apache.spark.api.java.function.Function;
 
@@ -28,7 +28,7 @@ import java.util.Iterator;
  */
 public final class MapTransform<I, O> implements Transform<I, O> {
   private final Function<I, O> func;
-  private OutputCollector<O> oc;
+  private Pipe<O> pipe;
 
   /**
    * Constructor.
@@ -39,15 +39,19 @@ public final class MapTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> outputCollector) {
-    this.oc = outputCollector;
+  public void prepare(final Context context, final Pipe<O> p) {
+    this.pipe = p;
   }
 
   @Override
-  public void onData(final Iterator<I> elements, final String srcVertexId) {
+  public void onData(final Object element) {
+
+  }
+
+  public void onData(final Iterator<I> elements) {
     elements.forEachRemaining(element -> {
       try {
-        oc.emit(func.call(element));
+        pipe.emit(func.call(element));
       } catch (Exception e) {
         throw new RuntimeException(e);
       }

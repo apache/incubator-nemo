@@ -31,9 +31,9 @@ public interface Transform<I, O> extends Serializable {
   /**
    * Prepare the transform.
    * @param context of the transform.
-   * @param outputCollector that collects outputs.
+   * @param pipe that collects outputs.
    */
-  void prepare(Context context, Pipe<O> outputCollector);
+  void prepare(Context context, Pipe<O> pipe);
 
   /**
    * On data received.

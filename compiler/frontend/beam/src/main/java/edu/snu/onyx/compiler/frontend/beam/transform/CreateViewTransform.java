@@ -22,7 +22,6 @@ import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -47,17 +46,13 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final Pipe<O> pipe) {
-    this.pipe = pipe;
+  public void prepare(final Context context, final Pipe<O> p) {
+    this.pipe = p;
   }
 
   @Override
-  public void onData(final Object object) {
-
-  }
-
-  public void onData(final Iterator<I> elements) {
-    elements.forEachRemaining(element -> windowed.add(WindowedValue.valueInGlobalWindow(element)));
+  public void onData(final Object element) {
+    windowed.add(WindowedValue.valueInGlobalWindow((I) element));
   }
 
   /**

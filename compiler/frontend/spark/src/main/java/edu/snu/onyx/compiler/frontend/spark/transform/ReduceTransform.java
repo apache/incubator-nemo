@@ -17,7 +17,7 @@ package edu.snu.onyx.compiler.frontend.spark.transform;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
-import edu.snu.onyx.common.ir.OutputCollector;
+import edu.snu.onyx.common.ir.Pipe;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.compiler.frontend.spark.JavaRDD;
 import org.apache.spark.api.java.function.Function2;
@@ -33,7 +33,7 @@ import java.util.Iterator;
  */
 public final class ReduceTransform<T> implements Transform<T, T> {
   private final Function2<T, T, T> func;
-  private OutputCollector<T> oc;
+  private Pipe<T> pipe;
   private String filename;
 
   /**
@@ -47,19 +47,23 @@ public final class ReduceTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<T> outputCollector) {
-    this.oc = outputCollector;
+  public void prepare(final Context context, final Pipe<T> p) {
+    this.pipe = p;
     this.filename = filename + JavaRDD.getResultId();
   }
 
   @Override
+  public void onData(final Object element) {
+
+  }
+
   public void onData(final Iterator<T> elements, final String srcVertexId) {
     final T res = reduceIterator(elements, func);
     if (res == null) { // nothing to be done.
       return;
     }
 
-    oc.emit(res);
+    pipe.emit(res);
 
     // Write result to a temporary file.
     // TODO #711: remove this part, and make it properly write to sink.

@@ -276,16 +276,16 @@ public final class TaskGroupExecutorTest {
    * @param <T> input/output type.
    */
   private class SimpleTransform<T> implements Transform<T, T> {
-    private Pipe<T> outputCollector;
+    private Pipe<T> pipe;
 
     @Override
-    public void prepare(final Context context, final Pipe<T> outputCollector) {
-      this.outputCollector = outputCollector;
+    public void prepare(final Context context, final Pipe<T> pipe) {
+      this.pipe = pipe;
     }
 
     @Override
     public void onData(final Object element) {
-      outputCollector.emit((T) element);
+      pipe.emit((T) element);
     }
 
     @Override

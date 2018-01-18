@@ -56,7 +56,7 @@ public class EmptyComponents {
     }
 
     @Override
-    public void prepare(final Context context, final Pipe<O> outputCollector) {
+    public void prepare(final Context context, final Pipe<O> pipe) {
     }
 
     @Override

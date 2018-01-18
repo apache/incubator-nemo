@@ -26,7 +26,7 @@ import java.util.ArrayList;
  */
 public final class FlattenTransform<T> implements Transform<T, T> {
   private final ArrayList<T> collectedElements;
-  private Pipe<T> outputCollector;
+  private Pipe<T> pipe;
 
   /**
    * FlattenTransform Constructor.
@@ -36,8 +36,8 @@ public final class FlattenTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final Pipe<T> oc) {
-    this.outputCollector = oc;
+  public void prepare(final Context context, final Pipe<T> p) {
+    this.pipe = p;
   }
 
   @Override
@@ -47,7 +47,7 @@ public final class FlattenTransform<T> implements Transform<T, T> {
 
   @Override
   public void close() {
-    collectedElements.forEach(outputCollector::emit);
+    collectedElements.forEach(pipe::emit);
     collectedElements.clear();
   }
 

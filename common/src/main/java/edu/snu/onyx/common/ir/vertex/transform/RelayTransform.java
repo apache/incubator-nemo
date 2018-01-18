@@ -23,7 +23,7 @@ import edu.snu.onyx.common.ir.Pipe;
  * @param <T> input/output type.
  */
 public final class RelayTransform<T> implements Transform<T, T> {
-  private Pipe<T> outputCollector;
+  private Pipe<T> pipe;
 
   /**
    * Default constructor.
@@ -33,13 +33,13 @@ public final class RelayTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final Pipe<T> oc) {
-    this.outputCollector = oc;
+  public void prepare(final Context context, final Pipe<T> p) {
+    this.pipe = p;
   }
 
   @Override
   public void onData(final Object element) {
-    outputCollector.emit((T) element);
+    pipe.emit((T) element);
   }
 
   @Override

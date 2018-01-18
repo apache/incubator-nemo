@@ -27,7 +27,7 @@ import org.apache.beam.sdk.transforms.windowing.WindowFn;
  */
 public final class WindowTransform<T> implements Transform<T, T> {
   private final WindowFn windowFn;
-  private Pipe<T> outputCollector;
+  private Pipe<T> pipe;
 
   /**
    * Default Constructor.
@@ -38,14 +38,14 @@ public final class WindowTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final Pipe<T> oc) {
-    this.outputCollector = oc;
+  public void prepare(final Context context, final Pipe<T> p) {
+    this.pipe = p;
   }
 
   @Override
   public void onData(final Object element) {
     // TODO #36: Actually assign windows
-    outputCollector.emit((T) element);
+    pipe.emit((T) element);
   }
 
   @Override
