@@ -19,6 +19,8 @@ import edu.snu.onyx.common.ContextImpl;
 import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.common.exception.BlockWriteException;
 import edu.snu.onyx.common.ir.Reader;
+import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
@@ -162,6 +164,19 @@ public final class TaskGroupExecutor {
     }
   }
 
+  // TODO #737: Make AggregationTransform ReshapingPass to do this work at Complier side.
+  private boolean aggregationNeeded(final Task task) {
+    // If this task's outEdge is annotated as Broadcast,
+    // this task should work on all input data and process an Iterable.
+    for (RuntimeEdge outEdge : getOutEdgesToOtherStages(task)) {
+      if (outEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
+          .equals(DataCommunicationPatternProperty.Value.BroadCast)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private void addInputPipe(final Task task) {
     List<PipeImpl> localPipes = new ArrayList<>();
     List<Task> parentTasks = taskGroup.getTaskDAG().getParents(task.getId());
@@ -243,8 +258,11 @@ public final class TaskGroupExecutor {
             if (task instanceof BoundedSourceTask) {
               launchBoundedSourceTask((BoundedSourceTask) task);
             } else if (task instanceof OperatorTask) {
-              launchOperatorTask((OperatorTask) task);
-              checkTaskCompletion((OperatorTask) task);
+              if (!aggregationNeeded(task)
+                  || (aggregationNeeded(task) && allParentTasksComplete(task))) {
+                launchOperatorTask((OperatorTask) task);
+                checkTaskCompletion((OperatorTask) task);
+              }
             } else if (task instanceof MetricCollectionBarrierTask) {
               launchMetricCollectionBarrierTask((MetricCollectionBarrierTask) task);
             } else {
@@ -404,43 +422,50 @@ public final class TaskGroupExecutor {
       taskIdToInputReaderMap.get(operatorTask.getId()).stream()
           .filter(inputReader -> !inputReader.isSideInputReader())
           .forEach(inputReader -> {
-        List<CompletableFuture<Iterator>> futures = inputReader.read();
-        futures.forEach(compFuture -> {
-          try {
-            Iterator iterator = compFuture.get();
-            iterator.forEachRemaining(data -> {
-              if (data != null) {
-                dataQueue.add(data);
-                LOG.info("log: {} {} Read from InputReader : {}",
-                    taskGroup.getTaskGroupId(), operatorTask.getId(), data);
-              } else {
-                List<Object> iterable = Collections.singletonList(data);
-                dataQueue.add(iterable);
+            List<CompletableFuture<Iterator>> futures = inputReader.read();
+            futures.forEach(compFuture -> {
+              try {
+                Iterator iterator = compFuture.get();
+                iterator.forEachRemaining(data -> {
+                  if (data != null) {
+                    dataQueue.add(data);
+                    LOG.info("log: {} {} Read from InputReader : {}",
+                        taskGroup.getTaskGroupId(), operatorTask.getId(), data);
+                  } else {
+                    List<Object> iterable = Collections.singletonList(data);
+                    dataQueue.add(iterable);
+                  }
+                });
+              } catch (InterruptedException e) {
+                throw new RuntimeException("Interrupted while waiting for InputReader.readElement()", e);
+              } catch (ExecutionException e1) {
+                throw new RuntimeException("ExecutionException while waiting for InputReader.readElement()", e1);
               }
             });
-          } catch (InterruptedException e) {
-            throw new RuntimeException("Interrupted while waiting for InputReader.readElement()", e);
-          } catch (ExecutionException e1) {
-            throw new RuntimeException("ExecutionException while waiting for InputReader.readElement()", e1);
-          }
-        });
-      });
+          });
     }
 
     if (hasInputPipe(operatorTask)) {
       taskIdToInputPipeMap.get(operatorTask.getId()).stream()
           .filter(localReader -> !localReader.isEmpty() && !localReader.isSideInput())
           .forEach(localReader -> {
-        Object data = localReader.remove();
-        if (data != null) {
-          dataQueue.add(data);
-          LOG.info("log: {} {} Read from InputPipe : {}",
-              taskGroup.getTaskGroupId(), operatorTask.getId(), data);
-        } else {
-          List<Object> iterable = Collections.singletonList(data);
-          dataQueue.add(iterable);
-        }
-      });
+            if (aggregationNeeded(operatorTask)) {
+              List<Object> iterable = localReader.collectOutputList();
+              dataQueue.add(iterable);
+              LOG.info("log: {} {} Read from InputPipe : {}",
+                  taskGroup.getTaskGroupId(), operatorTask.getId(), iterable);
+            } else {
+              Object data = localReader.remove();
+              if (data != null) {
+                dataQueue.add(data);
+                LOG.info("log: {} {} Read from InputPipe : {}",
+                    taskGroup.getTaskGroupId(), operatorTask.getId(), data);
+              } else {
+                List<Object> iterable = Collections.singletonList(data);
+                dataQueue.add(iterable);
+              }
+            }
+          });
     }
 
     // Consumes the received element from incoming edges.
@@ -451,13 +476,7 @@ public final class TaskGroupExecutor {
     IntStream.range(0, numElements).forEach(dataNum -> {
       Object data = dataQueue.pop();
       LOG.info("log: {} {} Input to onData : {}", taskGroup.getTaskGroupId(), operatorTask.getId(), data);
-
       transform.onData(data);
-
-      // If there is any output, write to OutputWriter.
-      //if (hasOutputWriter(operatorTask)) {
-      //  writeToOutputWriter(outputPipe, operatorTask);
-      //}
     });
 
     transform.close();

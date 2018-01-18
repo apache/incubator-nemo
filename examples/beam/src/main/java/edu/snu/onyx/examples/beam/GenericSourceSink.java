@@ -82,8 +82,6 @@ final class GenericSourceSink {
     }
   }
 
-
-
   /**
    * Write data.
    * @param dataToWrite data to write

@@ -75,15 +75,22 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void onData(final Object element) {
+  public void onData(final Object data) {
     final StartBundleContext startBundleContext = new StartBundleContext(doFn, serializedOptions);
     final FinishBundleContext finishBundleContext = new FinishBundleContext(doFn, pipe, serializedOptions);
     final ProcessContext processContext = new ProcessContext(doFn, pipe, sideInputs, serializedOptions);
     final DoFnInvoker invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
-    processContext.setElement(element);
-    invoker.invokeProcessElement(processContext);
+    if (data instanceof Iterable) {
+      ((Iterable) data).forEach(element -> {
+        processContext.setElement(element);
+        invoker.invokeProcessElement(processContext);
+      });
+    } else {
+      processContext.setElement(data);
+      invoker.invokeProcessElement(processContext);
+    }
     invoker.invokeFinishBundle(finishBundleContext);
     invoker.invokeTeardown();
   }
