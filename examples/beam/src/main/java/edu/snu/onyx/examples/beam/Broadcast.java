@@ -29,7 +29,7 @@ import java.util.Optional;
 import java.util.stream.StreamSupport;
 
 /**
- * Sample broadcast application.
+ * Sample Broadcast application.
  */
 public final class Broadcast {
   /**
