@@ -16,8 +16,14 @@
 package edu.snu.onyx.runtime.executor.data;
 
 import edu.snu.onyx.common.coder.Coder;
+import edu.snu.onyx.common.ir.edge.IREdge;
+import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.onyx.runtime.executor.data.filter.CompressionFilter;
+import edu.snu.onyx.runtime.executor.data.filter.Filter;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -26,6 +32,7 @@ import java.util.concurrent.ConcurrentMap;
  */
 public final class CoderManager {
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, List<Filter>> runtimeEdgeIdToFilter = new ConcurrentHashMap<>();
 
   /**
    * Constructor.
@@ -45,6 +52,20 @@ public final class CoderManager {
   }
 
   /**
+   * Generate filter list and register for a runtime edge.
+   *
+   * @param edge the runtime edge.
+   */
+  public void registerFilterList(final IREdge edge) {
+    final List<Filter> filterList = new ArrayList<>();
+
+    // Compression filter
+    filterList.add(new CompressionFilter(edge.getProperty(ExecutionProperty.Key.Compression)));
+
+    runtimeEdgeIdToFilter.putIfAbsent(edge.getId(), filterList);
+  }
+
+  /**
    * Return the coder for the specified runtime edge.
    *
    * @param runtimeEdgeId id of the runtime edge.
@@ -56,5 +77,19 @@ public final class CoderManager {
       throw new RuntimeException("No coder is registered for " + runtimeEdgeId);
     }
     return coder;
+  }
+
+  /**
+   * Return the list of filters for the specified runtime edge.
+   *
+   * @param runtimeEdgeId id of the runtime edge.
+   * @return the corresponding list of filters.
+   */
+  public List<Filter> getFilterList(final String runtimeEdgeId) {
+    final List<Filter> filters = runtimeEdgeIdToFilter.get(runtimeEdgeId);
+    if (filters == null) {
+      throw new RuntimeException("No list of filters is registered for " + runtimeEdgeId);
+    }
+    return filters;
   }
 }
