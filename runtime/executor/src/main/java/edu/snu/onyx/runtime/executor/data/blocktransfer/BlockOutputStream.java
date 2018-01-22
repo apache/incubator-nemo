@@ -112,15 +112,6 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
     this.coder = cdr;
   }
 
-  /**
-   * Gets {@link Coder}.
-   *
-   * @return {@link Coder}
-   */
-  public Coder getCoder() {
-    return this.coder;
-  }
-
   @Override
   public String getRemoteExecutorId() {
     return receiverExecutorId;

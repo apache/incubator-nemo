@@ -17,9 +17,9 @@ package edu.snu.onyx.runtime.executor.data.stores;
 
 import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.conf.JobConf;
-import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.*;
+import edu.snu.onyx.runtime.executor.data.filter.Serializer;
 import edu.snu.onyx.runtime.executor.data.metadata.LocalFileMetadata;
 import edu.snu.onyx.runtime.executor.data.block.FileBlock;
 import org.apache.reef.tang.annotations.Parameter;
@@ -44,7 +44,7 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
    */
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
-                         final CoderManager coderManager) {
+                         final SerializerManager coderManager) {
     super(coderManager);
     this.fileDirectory = fileDirectory;
     new File(fileDirectory).mkdirs();
@@ -60,11 +60,11 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
   public void createBlock(final String blockId) {
     removeBlock(blockId);
 
-    final Coder coder = getCoderFromWorker(blockId);
+    final Serializer serializer = getSerializerFromWorker(blockId);
     final LocalFileMetadata metadata = new LocalFileMetadata();
 
     final FileBlock block =
-        new FileBlock(coder, DataUtil.blockIdToFilePath(blockId, fileDirectory), metadata);
+        new FileBlock(serializer, DataUtil.blockIdToFilePath(blockId, fileDirectory), metadata);
     getBlockMap().put(blockId, block);
   }
 

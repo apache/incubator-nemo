@@ -19,7 +19,7 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
-import edu.snu.onyx.runtime.executor.data.CoderManager;
+import edu.snu.onyx.runtime.executor.data.SerializerManager;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
@@ -44,7 +44,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
   private static final Logger LOG = LoggerFactory.getLogger(BlockTransfer.class);
 
   private final InjectionFuture<BlockManagerWorker> blockManagerWorker;
-  private final CoderManager coderManager;
+  private final SerializerManager serializerManager;
   private final BlockTransport blockTransport;
   private final String localExecutorId;
 
@@ -56,19 +56,19 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
    * Creates a block transfer and registers this transfer to the name server.
    *
    * @param blockManagerWorker respond to the new push/pulls
-   * @param coderManager       provides {@link edu.snu.onyx.common.coder.Coder}s
+   * @param serializerManager       provides {@link edu.snu.onyx.common.coder.Coder}s
    * @param blockTransport     provides {@link io.netty.channel.Channel}
    * @param localExecutorId    the id of this executor
    */
   @Inject
   private BlockTransfer(
       final InjectionFuture<BlockManagerWorker> blockManagerWorker,
-      final CoderManager coderManager,
+      final SerializerManager serializerManager,
       final BlockTransport blockTransport,
       @Parameter(JobConf.ExecutorId.class) final String localExecutorId) {
 
     this.blockManagerWorker = blockManagerWorker;
-    this.coderManager = coderManager;
+    this.serializerManager = serializerManager;
     this.blockTransport = blockTransport;
     this.localExecutorId = localExecutorId;
   }
@@ -93,7 +93,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
                                        final KeyRange keyRange) {
     final BlockInputStream stream = new BlockInputStream(executorId, encodePartialBlock,
         Optional.of(blockStoreValue), blockId, runtimeEdgeId, keyRange);
-    stream.setCoder(coderManager.getCoder(runtimeEdgeId));
+    stream.setCoder(serializerManager.getCoder(runtimeEdgeId));
     write(executorId, stream, stream::onExceptionCaught);
     return stream;
   }
@@ -115,7 +115,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
                                         final KeyRange keyRange) {
     final BlockOutputStream stream = new BlockOutputStream(executorId, encodePartialBlock, Optional.empty(),
         blockId, runtimeEdgeId, keyRange);
-    stream.setCoder(coderManager.getCoder(runtimeEdgeId));
+    stream.setCoder(serializerManager.getCoder(runtimeEdgeId));
     write(executorId, stream, stream::onExceptionCaught);
     return stream;
   }
@@ -194,7 +194,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
    * @param stream {@link BlockOutputStream}
    */
   private void onPullRequest(final BlockOutputStream stream) {
-    stream.setCoder(coderManager.getCoder(stream.getRuntimeEdgeId()));
+    stream.setCoder(serializerManager.getCoder(stream.getRuntimeEdgeId()));
     blockManagerWorker.get().onPullRequest(stream);
   }
 
@@ -204,7 +204,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
    * @param stream {@link BlockInputStream}
    */
   private void onPushNotification(final BlockInputStream stream) {
-    stream.setCoder(coderManager.getCoder(stream.getRuntimeEdgeId()));
+    stream.setCoder(serializerManager.getCoder(stream.getRuntimeEdgeId()));
     blockManagerWorker.get().onPushNotification(stream);
   }
 

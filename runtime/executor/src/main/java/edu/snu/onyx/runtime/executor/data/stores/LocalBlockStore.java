@@ -18,7 +18,7 @@ package edu.snu.onyx.runtime.executor.data.stores;
 import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.common.exception.BlockWriteException;
 import edu.snu.onyx.runtime.common.data.KeyRange;
-import edu.snu.onyx.runtime.executor.data.CoderManager;
+import edu.snu.onyx.runtime.executor.data.SerializerManager;
 import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
 import edu.snu.onyx.runtime.executor.data.SerializedPartition;
 import edu.snu.onyx.runtime.executor.data.block.Block;
@@ -44,7 +44,7 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
    *
    * @param coderManager the coder manager.
    */
-  protected LocalBlockStore(final CoderManager coderManager) {
+  protected LocalBlockStore(final SerializerManager coderManager) {
     super(coderManager);
     this.blockMap = new ConcurrentHashMap<>();
   }

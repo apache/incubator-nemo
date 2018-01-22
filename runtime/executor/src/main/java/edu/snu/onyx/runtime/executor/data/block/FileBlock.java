@@ -15,9 +15,9 @@
  */
 package edu.snu.onyx.runtime.executor.data.block;
 
-import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.*;
+import edu.snu.onyx.runtime.executor.data.filter.Serializer;
 import edu.snu.onyx.runtime.executor.data.metadata.PartitionMetadata;
 import edu.snu.onyx.runtime.executor.data.metadata.FileMetadata;
 
@@ -32,21 +32,21 @@ import java.util.*;
  */
 public final class FileBlock<K extends Serializable> implements Block<K> {
 
-  private final Coder coder;
+  private final Serializer serializer;
   private final String filePath;
   private final FileMetadata<K> metadata;
 
   /**
    * Constructor.
    *
-   * @param coder    the {@link Coder}.
+   * @param serializer    the {@link Serializer}.
    * @param filePath the path of the file that this block will be stored.
    * @param metadata the metadata for this block.
    */
-  public FileBlock(final Coder coder,
+  public FileBlock(final Serializer serializer,
                    final String filePath,
                    final FileMetadata<K> metadata) {
-    this.coder = coder;
+    this.serializer = serializer;
     this.filePath = filePath;
     this.metadata = metadata;
   }
@@ -80,7 +80,8 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   @Override
   public Optional<List<Long>> putPartitions(final Iterable<NonSerializedPartition<K>> partitions) throws IOException {
-    final Iterable<SerializedPartition<K>> convertedPartitions = DataUtil.convertToSerPartitions(coder, partitions);
+    final Iterable<SerializedPartition<K>> convertedPartitions =
+        DataUtil.convertToSerPartitions(serializer, partitions);
 
     return Optional.of(putSerializedPartitions(convertedPartitions));
   }
@@ -120,7 +121,8 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         if (keyRange.includes(key)) {
           // The key value of this partition is in the range.
           final NonSerializedPartition<K> deserializePartition =
-              DataUtil.deserializePartition(partitionMetadata.getElementsTotal(), coder, key, fileStream);
+              DataUtil.deserializePartition(
+                  partitionMetadata.getElementsTotal(), serializer, key, fileStream);
           deserializedPartitions.add(deserializePartition);
         } else {
           // Have to skip this partition.

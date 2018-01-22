@@ -16,8 +16,8 @@
 package edu.snu.onyx.runtime.executor.data;
 
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.onyx.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.onyx.runtime.executor.data.filter.CompressionFilter;
 import edu.snu.onyx.runtime.executor.data.filter.Filter;
 
@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentMap;
 /**
  * Mapping from RuntimeEdgeId to Coder.
  */
-public final class CoderManager {
+public final class SerializerManager {
   private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
   private final ConcurrentMap<String, List<Filter>> runtimeEdgeIdToFilter = new ConcurrentHashMap<>();
 
@@ -38,7 +38,7 @@ public final class CoderManager {
    * Constructor.
    */
   @Inject
-  public CoderManager() {
+  public SerializerManager() {
   }
 
   /**
@@ -46,23 +46,19 @@ public final class CoderManager {
    *
    * @param runtimeEdgeId id of the runtime edge.
    * @param coder         the corresponding coder.
+   * @param propertyMap   ExecutionPropertyMap of
    */
-  public void registerCoder(final String runtimeEdgeId, final Coder coder) {
+  public void register(final String runtimeEdgeId,
+                       final Coder coder,
+                       final ExecutionPropertyMap propertyMap) {
     runtimeEdgeIdToCoder.putIfAbsent(runtimeEdgeId, coder);
-  }
 
-  /**
-   * Generate filter list and register for a runtime edge.
-   *
-   * @param edge the runtime edge.
-   */
-  public void registerFilterList(final IREdge edge) {
     final List<Filter> filterList = new ArrayList<>();
 
     // Compression filter
-    filterList.add(new CompressionFilter(edge.getProperty(ExecutionProperty.Key.Compression)));
+    filterList.add(new CompressionFilter(propertyMap.get(ExecutionProperty.Key.Compression)));
 
-    runtimeEdgeIdToFilter.putIfAbsent(edge.getId(), filterList);
+    runtimeEdgeIdToFilter.putIfAbsent(runtimeEdgeId, filterList);
   }
 
   /**
@@ -85,7 +81,7 @@ public final class CoderManager {
    * @param runtimeEdgeId id of the runtime edge.
    * @return the corresponding list of filters.
    */
-  public List<Filter> getFilterList(final String runtimeEdgeId) {
+  public List<Filter> getFilters(final String runtimeEdgeId) {
     final List<Filter> filters = runtimeEdgeIdToFilter.get(runtimeEdgeId);
     if (filters == null) {
       throw new RuntimeException("No list of filters is registered for " + runtimeEdgeId);

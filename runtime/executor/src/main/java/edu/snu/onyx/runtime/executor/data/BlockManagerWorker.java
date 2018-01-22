@@ -374,21 +374,14 @@ public final class BlockManagerWorker {
             outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getBlockId(),
                 outputStream.getKeyRange())).close();
             handleUsedData(blockStore, outputStream.getBlockId());
-          } else if (DataStoreProperty.Value.SerializedMemoryStore.equals(blockStore)) {
-            final SerializedMemoryStore serMemoryStore = (SerializedMemoryStore) getBlockStore(blockStore);
-            final Optional<Iterable<SerializedPartition>> optionalResult = serMemoryStore.getSerializedPartitions(
+          } else {
+            final BlockStore store = getBlockStore(blockStore);
+            final Optional<Iterable<SerializedPartition>> optionalResult = store.getSerializedPartitions(
                 outputStream.getBlockId(), outputStream.getKeyRange());
             outputStream.writeSerializedPartitions(optionalResult.get()).close();
             handleUsedData(blockStore, outputStream.getBlockId());
-          } else {
-            final Iterator block =
-                retrieveDataFromBlock(outputStream.getBlockId(), outputStream.getRuntimeEdgeId(),
-                    blockStore, outputStream.getKeyRange()).get();
-            // I don't know this will works...
-            outputStream.writeSerializedPartitions(
-                DataUtil.convertToSerPartitions(outputStream.getCoder(), (Iterable) block)).close();
           }
-        } catch (final IOException | ExecutionException | InterruptedException | BlockFetchException e) {
+        } catch (final IOException | BlockFetchException e) {
           LOG.error("Closing a pull request exceptionally", e);
           outputStream.closeExceptionally(e);
         }

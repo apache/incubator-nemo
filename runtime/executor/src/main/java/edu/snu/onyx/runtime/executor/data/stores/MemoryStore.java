@@ -16,8 +16,9 @@
 package edu.snu.onyx.runtime.executor.data.stores;
 
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.runtime.executor.data.CoderManager;
+import edu.snu.onyx.runtime.executor.data.SerializerManager;
 import edu.snu.onyx.runtime.executor.data.block.NonSerializedMemoryBlock;
+import edu.snu.onyx.runtime.executor.data.filter.Serializer;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -34,7 +35,7 @@ public final class MemoryStore extends LocalBlockStore {
    * @param coderManager the coder manager.
    */
   @Inject
-  private MemoryStore(final CoderManager coderManager) {
+  private MemoryStore(final SerializerManager coderManager) {
     super(coderManager);
   }
 
@@ -43,8 +44,8 @@ public final class MemoryStore extends LocalBlockStore {
    */
   @Override
   public void createBlock(final String blockId) {
-    final Coder coder = getCoderFromWorker(blockId);
-    getBlockMap().put(blockId, new NonSerializedMemoryBlock(coder));
+    final Serializer serializer = getSerializerFromWorker(blockId);
+    getBlockMap().put(blockId, new NonSerializedMemoryBlock(serializer));
   }
 
   /**

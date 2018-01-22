@@ -2,6 +2,7 @@ package edu.snu.onyx.runtime.executor.data;
 
 import edu.snu.onyx.common.DirectByteArrayOutputStream;
 import edu.snu.onyx.common.coder.Coder;
+import edu.snu.onyx.runtime.executor.data.filter.Serializer;
 
 import java.io.*;
 import java.util.*;
@@ -23,16 +24,17 @@ public final class DataUtil {
   /**
    * Serializes the elements in a non-serialized partition into an output stream.
    *
-   * @param coder                  the coder to encode the elements.
+   * @param serializer             the serializer to encode the elements.
    * @param nonSerializedPartition the non-serialized partition to serialize.
    * @param bytesOutputStream      the output stream to write.
    * @return total number of elements in the partition.
    * @throws IOException if fail to serialize.
    */
-  public static long serializePartition(final Coder coder,
+  public static long serializePartition(final Serializer serializer,
                                         final NonSerializedPartition nonSerializedPartition,
                                         final ByteArrayOutputStream bytesOutputStream) throws IOException {
     long elementsCount = 0;
+    final Coder coder = serializer.getCoder();
     for (final Object element : nonSerializedPartition.getData()) {
       coder.encode(element, bytesOutputStream);
       elementsCount++;
@@ -45,7 +47,7 @@ public final class DataUtil {
    * Reads the data of a partition from an input stream and deserializes it.
    *
    * @param elementsInPartition the number of elements in this partition.
-   * @param coder               the coder to decode the bytes.
+   * @param serializer          the serializer to decode the bytes.
    * @param key                 the key value of the result partition.
    * @param inputStream         the input stream which will return the data in the partition as bytes.
    * @param <K>                 the key type of the partitions.
@@ -53,30 +55,30 @@ public final class DataUtil {
    * @throws IOException if fail to deserialize.
    */
   public static <K extends Serializable> NonSerializedPartition deserializePartition(final long elementsInPartition,
-                                                            final Coder coder,
+                                                            final Serializer serializer,
                                                             final K key,
                                                             final InputStream inputStream) throws IOException {
     final List deserializedData = new ArrayList();
-    (new InputStreamIterator(inputStream, coder, elementsInPartition)).forEachRemaining(deserializedData::add);
+    (new InputStreamIterator(inputStream, serializer.getCoder(), elementsInPartition)).forEachRemaining(deserializedData::add);
     return new NonSerializedPartition(key, deserializedData);
   }
 
   /**
    * Converts the non-serialized {@link Partition}s in an iterable to serialized {@link Partition}s.
    *
-   * @param coder               the coder for serialization.
+   * @param serializer               the serializer for serialization.
    * @param partitionsToConvert the partitions to convert.
    * @param <K>                 the key type of the partitions.
    * @return the converted {@link SerializedPartition}s.
    * @throws IOException if fail to convert.
    */
   public static <K extends Serializable> Iterable<SerializedPartition<K>> convertToSerPartitions(
-      final Coder coder,
+      final Serializer serializer,
       final Iterable<NonSerializedPartition<K>> partitionsToConvert) throws IOException {
     final List<SerializedPartition<K>> serializedPartitions = new ArrayList<>();
     for (final NonSerializedPartition<K> partitionToConvert : partitionsToConvert) {
       try (final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream()) {
-        final long elementsTotal = serializePartition(coder, partitionToConvert, bytesOutputStream);
+        final long elementsTotal = serializePartition(serializer, partitionToConvert, bytesOutputStream);
         final byte[] serializedBytes = bytesOutputStream.getBufDirectly();
         final int actualLength = bytesOutputStream.getCount();
         serializedPartitions.add(
@@ -89,14 +91,14 @@ public final class DataUtil {
   /**
    * Converts the serialized {@link Partition}s in an iterable to non-serialized {@link Partition}s.
    *
-   * @param coder               the coder for deserialization.
+   * @param serializer               the serializer for deserialization.
    * @param partitionsToConvert the partitions to convert.
    * @param <K>                 the key type of the partitions.
    * @return the converted {@link NonSerializedPartition}s.
    * @throws IOException if fail to convert.
    */
   public static <K extends Serializable> Iterable<NonSerializedPartition<K>> convertToNonSerPartitions(
-      final Coder coder,
+      final Serializer serializer,
       final Iterable<SerializedPartition<K>> partitionsToConvert) throws IOException {
     final List<NonSerializedPartition<K>> nonSerializedPartitions = new ArrayList<>();
     for (final SerializedPartition<K> partitionToConvert : partitionsToConvert) {
@@ -104,7 +106,7 @@ public final class DataUtil {
       try (final ByteArrayInputStream byteArrayInputStream =
                new ByteArrayInputStream(partitionToConvert.getData())) {
         final NonSerializedPartition<K> deserializePartition = deserializePartition(
-            partitionToConvert.getElementsTotal(), coder, key, byteArrayInputStream);
+            partitionToConvert.getElementsTotal(), serializer, key, byteArrayInputStream);
         nonSerializedPartitions.add(deserializePartition);
       }
     }

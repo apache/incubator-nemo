@@ -42,7 +42,7 @@ import edu.snu.onyx.runtime.common.plan.physical.Task;
 import edu.snu.onyx.runtime.executor.Executor;
 import edu.snu.onyx.runtime.executor.MetricManagerWorker;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
-import edu.snu.onyx.runtime.executor.data.CoderManager;
+import edu.snu.onyx.runtime.executor.data.SerializerManager;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.onyx.runtime.executor.datatransfer.InputReader;
 import edu.snu.onyx.runtime.executor.datatransfer.OutputWriter;
@@ -114,7 +114,7 @@ public final class DataTransferTest {
   private BlockManagerMaster master;
   private BlockManagerWorker worker1;
   private BlockManagerWorker worker2;
-  private HashMap<BlockManagerWorker, CoderManager> coderManagers = new HashMap<>();
+  private HashMap<BlockManagerWorker, SerializerManager> serializerManagers = new HashMap<>();
 
   @Before
   public void setUp() throws InjectionException {
@@ -174,12 +174,12 @@ public final class DataTransferTest {
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_REMOTE_FILE_DIRECTORY);
     final BlockManagerWorker blockManagerWorker;
     final MetricManagerWorker metricManagerWorker;
-    final CoderManager coderManager;
+    final SerializerManager coderManager;
     try {
       blockManagerWorker = injector.getInstance(BlockManagerWorker.class);
       metricManagerWorker =  injector.getInstance(MetricManagerWorker.class);
-      coderManager = injector.getInstance(CoderManager.class);
-      coderManagers.put(blockManagerWorker, coderManager);
+      coderManager = injector.getInstance(SerializerManager.class);
+      serializerManagers.put(blockManagerWorker, coderManager);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
@@ -339,8 +339,8 @@ public final class DataTransferTest {
   private Pair<IRVertex, IRVertex> setupVertices(final String edgeId,
                                                  final BlockManagerWorker sender,
                                                  final BlockManagerWorker receiver) {
-    coderManagers.get(sender).registerCoder(edgeId, CODER);
-    coderManagers.get(receiver).registerCoder(edgeId, CODER);
+    serializerManagers.get(sender).register(edgeId, CODER, new ExecutionPropertyMap(""));
+    serializerManagers.get(receiver).register(edgeId, CODER, new ExecutionPropertyMap(""));
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");

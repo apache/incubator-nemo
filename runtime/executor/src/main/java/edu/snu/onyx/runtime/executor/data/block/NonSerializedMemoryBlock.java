@@ -20,6 +20,7 @@ import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.DataUtil;
 import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
 import edu.snu.onyx.runtime.executor.data.SerializedPartition;
+import edu.snu.onyx.runtime.executor.data.filter.Serializer;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
@@ -36,17 +37,17 @@ import java.util.Optional;
 public final class NonSerializedMemoryBlock<K extends Serializable> implements Block<K> {
 
   private final List<NonSerializedPartition<K>> nonSerializedPartitions;
-  private final Coder coder;
+  private final Serializer serializer;
   private volatile boolean committed;
 
   /**
    * Constructor.
    *
-   * @param coder the {@link Coder}.
+   * @param serializer the {@link Serializer}.
    */
-  public NonSerializedMemoryBlock(final Coder coder) {
+  public NonSerializedMemoryBlock(final Serializer serializer) {
     this.nonSerializedPartitions = new ArrayList<>();
-    this.coder = coder;
+    this.serializer = serializer;
     this.committed = false;
   }
 
@@ -83,7 +84,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
       throws IOException {
     if (!committed) {
       final Iterable<NonSerializedPartition<K>> convertedPartitions =
-          DataUtil.convertToNonSerPartitions(coder, partitions);
+          DataUtil.convertToNonSerPartitions(serializer, partitions);
       final List<Long> dataSizePerPartition = new ArrayList<>();
       partitions.forEach(serializedPartition -> dataSizePerPartition.add((long) serializedPartition.getData().length));
       putPartitions(convertedPartitions);
@@ -131,7 +132,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
    */
   @Override
   public Iterable<SerializedPartition<K>> getSerializedPartitions(final KeyRange keyRange) throws IOException {
-    return DataUtil.convertToSerPartitions(coder, getPartitions(keyRange));
+    return DataUtil.convertToSerPartitions(serializer, getPartitions(keyRange));
   }
 
   /**
