@@ -112,6 +112,15 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
     this.coder = cdr;
   }
 
+  /**
+   * Gets {@link Coder}.
+   *
+   * @return {@link Coder}
+   */
+  public Coder getCoder() {
+    return this.coder;
+  }
+
   @Override
   public String getRemoteExecutorId() {
     return receiverExecutorId;
@@ -149,22 +158,6 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
   void onExceptionCaught(final Throwable cause) {
     LOG.error(String.format("A channel exception was set on %s", toString()), cause);
     this.channelException = cause;
-  }
-
-  /**
-   * Writes a {@link Iterable} of elements.
-   *
-   * @param iterator the {@link Iterator} to write
-   * @return {@link BlockOutputStream} (i.e. {@code this})
-   * @throws IOException           if an exception was set
-   * @throws IllegalStateException if this stream is closed already
-   */
-  public BlockOutputStream writeElements(final Iterator<T> iterator) throws IOException {
-    checkWritableCondition();
-    while (iterator.hasNext()) {
-      coder.encode(iterator.next(), byteBufOutputStream);
-    }
-    return this;
   }
 
   /**

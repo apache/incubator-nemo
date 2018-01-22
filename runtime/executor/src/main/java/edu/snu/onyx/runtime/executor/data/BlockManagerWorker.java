@@ -384,7 +384,9 @@ public final class BlockManagerWorker {
             final Iterator block =
                 retrieveDataFromBlock(outputStream.getBlockId(), outputStream.getRuntimeEdgeId(),
                     blockStore, outputStream.getKeyRange()).get();
-            outputStream.writeElements(block).close();
+            // I don't know this will works...
+            outputStream.writeSerializedPartitions(
+                DataUtil.convertToSerPartitions(outputStream.getCoder(), (Iterable) block)).close();
           }
         } catch (final IOException | ExecutionException | InterruptedException | BlockFetchException e) {
           LOG.error("Closing a pull request exceptionally", e);
