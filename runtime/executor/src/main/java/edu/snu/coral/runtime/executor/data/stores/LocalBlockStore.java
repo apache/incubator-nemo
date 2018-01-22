@@ -18,7 +18,7 @@ package edu.snu.coral.runtime.executor.data.stores;
 import edu.snu.coral.common.exception.BlockFetchException;
 import edu.snu.coral.common.exception.BlockWriteException;
 import edu.snu.coral.runtime.common.data.KeyRange;
-import edu.snu.coral.runtime.executor.data.CoderManager;
+import edu.snu.coral.runtime.executor.data.SerializerManager;
 import edu.snu.coral.runtime.executor.data.NonSerializedPartition;
 import edu.snu.coral.runtime.executor.data.SerializedPartition;
 import edu.snu.coral.runtime.executor.data.block.Block;
@@ -44,7 +44,7 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
    *
    * @param coderManager the coder manager.
    */
-  protected LocalBlockStore(final CoderManager coderManager) {
+  protected LocalBlockStore(final SerializerManager coderManager) {
     super(coderManager);
     this.blockMap = new ConcurrentHashMap<>();
   }

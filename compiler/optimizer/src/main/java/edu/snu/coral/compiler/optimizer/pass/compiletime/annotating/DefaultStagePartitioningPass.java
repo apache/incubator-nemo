@@ -34,7 +34,7 @@ import java.util.stream.Stream;
 /**
  * Default method of partitioning an IR DAG into stages.
  * We traverse the DAG topologically to observe each vertex if it can be added to a stage or if it should be assigned
- * to a new stage. We filter out the candidate incoming edges to connect to an existing stage, and if it exists, we
+ * to a new stage. We chainable out the candidate incoming edges to connect to an existing stage, and if it exists, we
  * connect it to the stage, and otherwise we don't.
  */
 public final class DefaultStagePartitioningPass extends AnnotatingPass {

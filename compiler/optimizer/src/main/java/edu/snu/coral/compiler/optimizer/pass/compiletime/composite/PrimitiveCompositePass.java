@@ -15,6 +15,7 @@
  */
 package edu.snu.coral.compiler.optimizer.pass.compiletime.composite;
 
+import edu.snu.coral.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.coral.compiler.optimizer.pass.compiletime.annotating.*;
 
 import java.util.Arrays;
@@ -34,7 +35,8 @@ public final class PrimitiveCompositePass extends CompositePass {
         new DefaultStagePartitioningPass(),
         new ReviseInterStageEdgeDataStorePass(), // after stage partitioning
         new DefaultEdgeUsedDataHandlingPass(),
-        new ScheduleGroupPass()
+        new ScheduleGroupPass(),
+        new CompressionPass(CompressionProperty.Compression.LZ4)
     ));
   }
 }

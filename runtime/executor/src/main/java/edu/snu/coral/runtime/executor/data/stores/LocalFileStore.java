@@ -17,9 +17,9 @@ package edu.snu.coral.runtime.executor.data.stores;
 
 import edu.snu.coral.common.exception.BlockFetchException;
 import edu.snu.coral.conf.JobConf;
-import edu.snu.coral.common.coder.Coder;
 import edu.snu.coral.runtime.common.data.KeyRange;
 import edu.snu.coral.runtime.executor.data.*;
+import edu.snu.coral.runtime.executor.data.chainable.Serializer;
 import edu.snu.coral.runtime.executor.data.metadata.LocalFileMetadata;
 import edu.snu.coral.runtime.executor.data.block.FileBlock;
 import org.apache.reef.tang.annotations.Parameter;
@@ -40,12 +40,12 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
    * Constructor.
    *
    * @param fileDirectory the directory which will contain the files.
-   * @param coderManager  the coder manager.
+   * @param serializerManager  the serializer manager.
    */
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
-                         final CoderManager coderManager) {
-    super(coderManager);
+                         final SerializerManager serializerManager) {
+    super(serializerManager);
     this.fileDirectory = fileDirectory;
     new File(fileDirectory).mkdirs();
   }
@@ -60,11 +60,11 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
   public void createBlock(final String blockId) {
     removeBlock(blockId);
 
-    final Coder coder = getCoderFromWorker(blockId);
+    final Serializer serializer = getSerializerFromWorker(blockId);
     final LocalFileMetadata metadata = new LocalFileMetadata();
 
     final FileBlock block =
-        new FileBlock(coder, DataUtil.blockIdToFilePath(blockId, fileDirectory), metadata);
+        new FileBlock(serializer, DataUtil.blockIdToFilePath(blockId, fileDirectory), metadata);
     getBlockMap().put(blockId, block);
   }
 

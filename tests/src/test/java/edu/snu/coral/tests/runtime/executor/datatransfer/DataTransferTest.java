@@ -42,7 +42,7 @@ import edu.snu.coral.runtime.common.plan.physical.Task;
 import edu.snu.coral.runtime.executor.Executor;
 import edu.snu.coral.runtime.executor.MetricManagerWorker;
 import edu.snu.coral.runtime.executor.data.BlockManagerWorker;
-import edu.snu.coral.runtime.executor.data.CoderManager;
+import edu.snu.coral.runtime.executor.data.SerializerManager;
 import edu.snu.coral.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.coral.runtime.executor.datatransfer.InputReader;
 import edu.snu.coral.runtime.executor.datatransfer.OutputWriter;
@@ -114,7 +114,7 @@ public final class DataTransferTest {
   private BlockManagerMaster master;
   private BlockManagerWorker worker1;
   private BlockManagerWorker worker2;
-  private HashMap<BlockManagerWorker, CoderManager> coderManagers = new HashMap<>();
+  private HashMap<BlockManagerWorker, SerializerManager> serializerManagers = new HashMap<>();
 
   @Before
   public void setUp() throws InjectionException {
@@ -174,12 +174,12 @@ public final class DataTransferTest {
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_REMOTE_FILE_DIRECTORY);
     final BlockManagerWorker blockManagerWorker;
     final MetricManagerWorker metricManagerWorker;
-    final CoderManager coderManager;
+    final SerializerManager serializerManager;
     try {
       blockManagerWorker = injector.getInstance(BlockManagerWorker.class);
       metricManagerWorker =  injector.getInstance(MetricManagerWorker.class);
-      coderManager = injector.getInstance(CoderManager.class);
-      coderManagers.put(blockManagerWorker, coderManager);
+      serializerManager = injector.getInstance(SerializerManager.class);
+      serializerManagers.put(blockManagerWorker, serializerManager);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
@@ -190,7 +190,7 @@ public final class DataTransferTest {
         EXECUTOR_CAPACITY,
         conToMaster,
         messageEnvironment,
-        coderManager,
+        serializerManager,
         new DataTransferFactory(HASH_RANGE_MULTIPLIER, blockManagerWorker),
         metricManagerWorker);
     injector.bindVolatileInstance(Executor.class, executor);
@@ -339,8 +339,8 @@ public final class DataTransferTest {
   private Pair<IRVertex, IRVertex> setupVertices(final String edgeId,
                                                  final BlockManagerWorker sender,
                                                  final BlockManagerWorker receiver) {
-    coderManagers.get(sender).registerCoder(edgeId, CODER);
-    coderManagers.get(receiver).registerCoder(edgeId, CODER);
+    serializerManagers.get(sender).register(edgeId, CODER, new ExecutionPropertyMap(""));
+    serializerManagers.get(receiver).register(edgeId, CODER, new ExecutionPropertyMap(""));
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
