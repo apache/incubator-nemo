@@ -29,21 +29,25 @@ import java.util.Iterator;
 
 /**
  * Reduce Transform for Spark.
+ *
  * @param <T> element type.
  */
 public final class ReduceTransform<T> implements Transform<T, T> {
   private final Function2<T, T, T> func;
   private Pipe<T> pipe;
+  private T result;
   private String filename;
 
   /**
    * Constructor.
-   * @param func function to run for the reduce transform.
+   *
+   * @param func     function to run for the reduce transform.
    * @param filename file to keep the result in.
    */
   public ReduceTransform(final Function2<T, T, T> func, final String filename) {
     this.func = func;
     this.filename = filename;
+    this.result = null;
   }
 
   @Override
@@ -54,23 +58,28 @@ public final class ReduceTransform<T> implements Transform<T, T> {
 
   @Override
   public void onData(final Object element) {
-
-  }
-
-  public void onData(final Iterator<T> elements, final String srcVertexId) {
-    final T res = reduceIterator(elements, func);
-    if (res == null) { // nothing to be done.
+    if (element == null) { // nothing to be done.
       return;
     }
 
-    pipe.emit(res);
+    if (result == null) {
+      result = (T) element;
+    }
+
+    try {
+      result = func.call(result, (T) element);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+
+    pipe.emit(result);
 
     // Write result to a temporary file.
     // TODO #711: remove this part, and make it properly write to sink.
     try {
       final Kryo kryo = new Kryo();
       final Output output = new Output(new FileOutputStream(filename));
-      kryo.writeClassAndObject(output, res);
+      kryo.writeClassAndObject(output, result);
       output.close();
     } catch (FileNotFoundException e) {
       throw new RuntimeException(e);

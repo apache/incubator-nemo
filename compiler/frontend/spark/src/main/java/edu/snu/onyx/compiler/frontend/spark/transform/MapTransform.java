@@ -19,8 +19,6 @@ import edu.snu.onyx.common.ir.Pipe;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import org.apache.spark.api.java.function.Function;
 
-import java.util.Iterator;
-
 /**
  * Map Transform for Spark.
  * @param <I> input type.
@@ -43,19 +41,12 @@ public final class MapTransform<I, O> implements Transform<I, O> {
     this.pipe = p;
   }
 
-  @Override
   public void onData(final Object element) {
-
-  }
-
-  public void onData(final Iterator<I> elements) {
-    elements.forEachRemaining(element -> {
       try {
-        pipe.emit(func.call(element));
+        pipe.emit(func.call((I) element));
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
-    });
   }
 
   @Override
