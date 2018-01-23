@@ -315,6 +315,11 @@ public final class TaskGroupExecutor {
   private void checkTaskCompletion(final OperatorTask task) {
     if (allInputPipesEmpty(task) && allParentTasksComplete(task)) {
       if (taskList.contains(task.getId())) {
+        task.getTransform().close();
+        if (hasOutputWriter(task)) {
+          writeToOutputWriter(taskIdToOutputPipeMap.get(task.getId()), task);
+        }
+
         taskList.remove(task.getId());
         LOG.info("log: {} {} Complete!", taskGroup.getTaskGroupId(), task.getId());
         LOG.info("log: pendingTasks: {}", taskList);
@@ -479,11 +484,13 @@ public final class TaskGroupExecutor {
       transform.onData(data);
     });
 
+    /*
     transform.close();
     // If there is any output, write to OutputWriter.
     if (hasOutputWriter(operatorTask)) {
       writeToOutputWriter(outputPipe, operatorTask);
     }
+    */
   }
 
   private void writeToOutputWriter(final PipeImpl localWriter, final Task operatorTask) {

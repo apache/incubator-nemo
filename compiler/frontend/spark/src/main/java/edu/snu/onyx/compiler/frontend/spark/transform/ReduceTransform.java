@@ -21,11 +21,14 @@ import edu.snu.onyx.common.ir.Pipe;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.compiler.frontend.spark.JavaRDD;
 import org.apache.spark.api.java.function.Function2;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.util.Iterator;
+
 
 /**
  * Reduce Transform for Spark.
@@ -33,6 +36,7 @@ import java.util.Iterator;
  * @param <T> element type.
  */
 public final class ReduceTransform<T> implements Transform<T, T> {
+  private static final Logger LOG = LoggerFactory.getLogger(ReduceTransform.class.getName());
   private final Function2<T, T, T> func;
   private Pipe<T> pipe;
   private T result;
@@ -48,12 +52,12 @@ public final class ReduceTransform<T> implements Transform<T, T> {
     this.func = func;
     this.filename = filename;
     this.result = null;
+    this.filename = filename + JavaRDD.getResultId();
   }
 
   @Override
   public void prepare(final Context context, final Pipe<T> p) {
     this.pipe = p;
-    this.filename = filename + JavaRDD.getResultId();
   }
 
   @Override
@@ -73,17 +77,7 @@ public final class ReduceTransform<T> implements Transform<T, T> {
     }
 
     pipe.emit(result);
-
-    // Write result to a temporary file.
-    // TODO #711: remove this part, and make it properly write to sink.
-    try {
-      final Kryo kryo = new Kryo();
-      final Output output = new Output(new FileOutputStream(filename));
-      kryo.writeClassAndObject(output, result);
-      output.close();
-    } catch (FileNotFoundException e) {
-      throw new RuntimeException(e);
-    }
+    LOG.info("log_spark: after onData {}", result);
   }
 
   /**
@@ -112,5 +106,16 @@ public final class ReduceTransform<T> implements Transform<T, T> {
 
   @Override
   public void close() {
+    // Write result to a temporary file.
+    // TODO #711: remove this part, and make it properly write to sink.
+    try {
+      final Kryo kryo = new Kryo();
+      final Output output = new Output(new FileOutputStream(filename));
+      kryo.writeClassAndObject(output, result);
+      output.close();
+      LOG.info("log_spark: after close: temp file {} result {}", filename, result);
+    } catch (FileNotFoundException e) {
+      throw new RuntimeException(e);
+    }
   }
 }
