@@ -105,11 +105,15 @@ public final class TaskGroupStateManager {
     switch (newState) {
     case EXECUTING:
       LOG.debug("Executing TaskGroup ID {}...", this.taskGroupId);
-      metric.put("ExecutorId", executorId);
+      metric.put("ContainerId", executorId);
       metric.put("ScheduleAttempt", attemptIdx);
       metric.put("FromState", newState);
       beginMeasurement(taskGroupId, metric);
-      idToTaskStates.forEach((taskId, state) -> state.getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR));
+      idToTaskStates.forEach((taskId, state) -> {
+        LOG.debug("Task State Transition: id {} from {} to {}",
+            taskId, state.getStateMachine().getCurrentState(), TaskState.State.PENDING_IN_EXECUTOR);
+        state.getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR);
+      });
       break;
     case COMPLETE:
       LOG.debug("TaskGroup ID {} complete!", this.taskGroupId);
@@ -157,7 +161,7 @@ public final class TaskGroupStateManager {
     switch (newState) {
     case READY:
     case EXECUTING:
-      metric.put("ExecutorId", executorId);
+      metric.put("ContainerId", executorId);
       metric.put("ScheduleAttempt", attemptIdx);
       metric.put("FromState", newState);
       beginMeasurement(taskId, metric);
@@ -281,7 +285,7 @@ public final class TaskGroupStateManager {
   private void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {
     final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(compUnitId);
     metricDataBuilder.endMeasurement(finalMetric);
-    //metricMessageSender.send(compUnitId, metricDataBuilder.build().toJson());
+    metricMessageSender.send(compUnitId, metricDataBuilder.build().toJson());
     metricDataBuilderMap.remove(compUnitId);
   }
 

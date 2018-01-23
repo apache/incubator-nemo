@@ -22,12 +22,12 @@ import java.util.concurrent.atomic.AtomicLong;
  * ID Generator.
  */
 public final class RuntimeIdGenerator {
-  private static AtomicInteger physicalPlanIdGenerator = new AtomicInteger(1);
-  private static AtomicInteger taskIdGenerator = new AtomicInteger(1);
-  private static AtomicInteger taskGroupIdGenerator = new AtomicInteger(1);
-  private static AtomicInteger executorIdGenerator = new AtomicInteger(1);
+  private static AtomicInteger physicalPlanIdGenerator = new AtomicInteger(0);
+  private static AtomicInteger taskIdGenerator = new AtomicInteger(0);
+  private static AtomicInteger taskGroupIdGenerator = new AtomicInteger(0);
+  private static AtomicInteger executorIdGenerator = new AtomicInteger(0);
   private static AtomicLong messageIdGenerator = new AtomicLong(1L);
-  private static AtomicLong resourceSpecIdGenerator = new AtomicLong(1);
+  private static AtomicLong resourceSpecIdGenerator = new AtomicLong(0);
   private static String blockPrefix = "Block-";
   private static String blockIdSplitter = "_";
 
