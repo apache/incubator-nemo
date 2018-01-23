@@ -2,6 +2,7 @@ package edu.snu.onyx.runtime.executor.data;
 
 import edu.snu.onyx.common.DirectByteArrayOutputStream;
 import edu.snu.onyx.common.coder.Coder;
+import edu.snu.onyx.runtime.executor.data.filter.Filter;
 import edu.snu.onyx.runtime.executor.data.filter.Serializer;
 
 import java.io.*;
@@ -35,8 +36,9 @@ public final class DataUtil {
                                         final ByteArrayOutputStream bytesOutputStream) throws IOException {
     long elementsCount = 0;
     final Coder coder = serializer.getCoder();
+    final OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getFilters());
     for (final Object element : nonSerializedPartition.getData()) {
-      coder.encode(element, bytesOutputStream);
+      coder.encode(element, wrappedStream);
       elementsCount++;
     }
 
@@ -59,14 +61,16 @@ public final class DataUtil {
                                                             final K key,
                                                             final InputStream inputStream) throws IOException {
     final List deserializedData = new ArrayList();
-    (new InputStreamIterator(inputStream, serializer.getCoder(), elementsInPartition)).forEachRemaining(deserializedData::add);
+    final InputStream wrappedStream = buildInputStream(inputStream, serializer.getFilters());
+    (new InputStreamIterator(wrappedStream, serializer.getCoder(),elementsInPartition))
+        .forEachRemaining(deserializedData::add);
     return new NonSerializedPartition(key, deserializedData);
   }
 
   /**
    * Converts the non-serialized {@link Partition}s in an iterable to serialized {@link Partition}s.
    *
-   * @param serializer               the serializer for serialization.
+   * @param serializer          the serializer for serialization.
    * @param partitionsToConvert the partitions to convert.
    * @param <K>                 the key type of the partitions.
    * @return the converted {@link SerializedPartition}s.
@@ -91,7 +95,7 @@ public final class DataUtil {
   /**
    * Converts the serialized {@link Partition}s in an iterable to non-serialized {@link Partition}s.
    *
-   * @param serializer               the serializer for deserialization.
+   * @param serializer          the serializer for deserialization.
    * @param partitionsToConvert the partitions to convert.
    * @param <K>                 the key type of the partitions.
    * @return the converted {@link NonSerializedPartition}s.
@@ -233,5 +237,23 @@ public final class DataUtil {
         throw new NoSuchElementException();
       }
     }
+  }
+
+  public static InputStream buildInputStream(final InputStream in, final List<Filter> filters) throws IOException {
+    InputStream wrapped = in;
+    for (final Filter filter: filters) {
+      wrapped = filter.wrapInput(wrapped);
+    }
+    return wrapped;
+  }
+
+  public static OutputStream buildOutputStream(final OutputStream out, final List<Filter> filters) throws IOException {
+    OutputStream wrapped = out;
+    final List<Filter> temporaryFilterList = new ArrayList<>(filters);
+    Collections.reverse(temporaryFilterList);
+    for (final Filter filter: temporaryFilterList) {
+      wrapped = filter.wrapOutput(wrapped);
+    }
+    return wrapped;
   }
 }

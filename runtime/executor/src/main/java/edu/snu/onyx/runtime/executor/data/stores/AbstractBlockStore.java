@@ -42,6 +42,6 @@ public abstract class AbstractBlockStore implements BlockStore {
    */
   public final Serializer getSerializerFromWorker(final String blockId) {
     final String runtimeEdgeId = RuntimeIdGenerator.getRuntimeEdgeIdFromBlockId(blockId);
-    return new Serializer(serializerManager.getCoder(runtimeEdgeId), serializerManager.getFilters(runtimeEdgeId));
+    return serializerManager.getSerializer(runtimeEdgeId);
   }
 }

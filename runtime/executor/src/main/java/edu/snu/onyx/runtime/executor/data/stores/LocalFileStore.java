@@ -40,12 +40,12 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
    * Constructor.
    *
    * @param fileDirectory the directory which will contain the files.
-   * @param coderManager  the coder manager.
+   * @param serializerManager  the serializer manager.
    */
   @Inject
   private LocalFileStore(@Parameter(JobConf.FileDirectory.class) final String fileDirectory,
-                         final SerializerManager coderManager) {
-    super(coderManager);
+                         final SerializerManager serializerManager) {
+    super(serializerManager);
     this.fileDirectory = fileDirectory;
     new File(fileDirectory).mkdirs();
   }

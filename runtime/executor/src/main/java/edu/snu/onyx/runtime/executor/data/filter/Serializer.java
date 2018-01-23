@@ -5,8 +5,8 @@ import edu.snu.onyx.common.coder.Coder;
 import java.util.List;
 
 public final class Serializer {
-  private final Coder coder;
-  private final List<Filter> filters;
+  private Coder coder;
+  private List<Filter> filters;
 
   public Serializer(final Coder coder, final List<Filter> filters) {
     this.coder = coder;
@@ -17,7 +17,15 @@ public final class Serializer {
     return coder;
   }
 
+  public void setCoder(final Coder coder) {
+    this.coder = coder;
+  }
+
   public List<Filter> getFilters() {
     return filters;
+  }
+
+  public void setFilters(final List<Filter> filters) {
+    this.filters = filters;
   }
 }

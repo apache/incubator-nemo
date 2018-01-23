@@ -15,7 +15,9 @@
  */
 package edu.snu.onyx.compiler.optimizer.policy;
 
+import edu.snu.onyx.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.CompressionPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.PrimitiveCompositePass;
 import edu.snu.onyx.runtime.common.optimizer.pass.runtime.RuntimePass;
 
@@ -33,6 +35,8 @@ public final class DefaultPolicy implements Policy {
   public DefaultPolicy() {
     this.policy = new PolicyBuilder(true)
         .registerCompileTimePass(new PrimitiveCompositePass())
+        // only for test!
+        .registerCompileTimePass(new CompressionPass(CompressionProperty.Compression.Gzip))
         .build();
   }
 

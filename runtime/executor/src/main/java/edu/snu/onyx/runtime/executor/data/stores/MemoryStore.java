@@ -15,7 +15,6 @@
  */
 package edu.snu.onyx.runtime.executor.data.stores;
 
-import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.executor.data.SerializerManager;
 import edu.snu.onyx.runtime.executor.data.block.NonSerializedMemoryBlock;
 import edu.snu.onyx.runtime.executor.data.filter.Serializer;
@@ -32,11 +31,11 @@ public final class MemoryStore extends LocalBlockStore {
   /**
    * Constructor.
    *
-   * @param coderManager the coder manager.
+   * @param serializerManager the serializer manager.
    */
   @Inject
-  private MemoryStore(final SerializerManager coderManager) {
-    super(coderManager);
+  private MemoryStore(final SerializerManager serializerManager) {
+    super(serializerManager);
   }
 
   /**

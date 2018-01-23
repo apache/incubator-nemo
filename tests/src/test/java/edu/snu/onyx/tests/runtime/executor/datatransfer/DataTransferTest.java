@@ -174,12 +174,12 @@ public final class DataTransferTest {
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_REMOTE_FILE_DIRECTORY);
     final BlockManagerWorker blockManagerWorker;
     final MetricManagerWorker metricManagerWorker;
-    final SerializerManager coderManager;
+    final SerializerManager serializerManager;
     try {
       blockManagerWorker = injector.getInstance(BlockManagerWorker.class);
       metricManagerWorker =  injector.getInstance(MetricManagerWorker.class);
-      coderManager = injector.getInstance(SerializerManager.class);
-      serializerManagers.put(blockManagerWorker, coderManager);
+      serializerManager = injector.getInstance(SerializerManager.class);
+      serializerManagers.put(blockManagerWorker, serializerManager);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
@@ -190,7 +190,7 @@ public final class DataTransferTest {
         EXECUTOR_CAPACITY,
         conToMaster,
         messageEnvironment,
-        coderManager,
+        serializerManager,
         new DataTransferFactory(HASH_RANGE_MULTIPLIER, blockManagerWorker),
         metricManagerWorker);
     injector.bindVolatileInstance(Executor.class, executor);

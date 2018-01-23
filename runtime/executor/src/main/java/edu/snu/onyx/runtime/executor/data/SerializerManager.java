@@ -16,13 +16,18 @@
 package edu.snu.onyx.runtime.executor.data;
 
 import edu.snu.onyx.common.coder.Coder;
+import edu.snu.onyx.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.onyx.runtime.executor.data.filter.CompressionFilter;
 import edu.snu.onyx.runtime.executor.data.filter.Filter;
+import edu.snu.onyx.runtime.executor.data.filter.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -31,8 +36,8 @@ import java.util.concurrent.ConcurrentMap;
  * Mapping from RuntimeEdgeId to Coder.
  */
 public final class SerializerManager {
-  private final ConcurrentMap<String, Coder> runtimeEdgeIdToCoder = new ConcurrentHashMap<>();
-  private final ConcurrentMap<String, List<Filter>> runtimeEdgeIdToFilter = new ConcurrentHashMap<>();
+  private static final Logger LOG = LoggerFactory.getLogger(SerializerManager.class.getName());
+  private final ConcurrentMap<String, Serializer> runtimeEdgeIdToSerializer = new ConcurrentHashMap<>();
 
   /**
    * Constructor.
@@ -46,19 +51,39 @@ public final class SerializerManager {
    *
    * @param runtimeEdgeId id of the runtime edge.
    * @param coder         the corresponding coder.
-   * @param propertyMap   ExecutionPropertyMap of
+   * @param propertyMap   ExecutionPropertyMap of runtime edge
    */
   public void register(final String runtimeEdgeId,
                        final Coder coder,
                        final ExecutionPropertyMap propertyMap) {
-    runtimeEdgeIdToCoder.putIfAbsent(runtimeEdgeId, coder);
+    LOG.debug("{} edge id registering to SerializerManager", runtimeEdgeId);
+    Serializer serializer = new Serializer(coder, Collections.emptyList());
+    runtimeEdgeIdToSerializer.putIfAbsent(runtimeEdgeId, serializer);
 
     final List<Filter> filterList = new ArrayList<>();
 
     // Compression filter
-    filterList.add(new CompressionFilter(propertyMap.get(ExecutionProperty.Key.Compression)));
+    LOG.debug("Adding {} compression filter", (Object) propertyMap.get(ExecutionProperty.Key.Compression));
+    CompressionProperty.Compression compressionProperty = propertyMap.get(ExecutionProperty.Key.Compression);
+    if (compressionProperty != null) {
+      filterList.add(new CompressionFilter(compressionProperty));
+    }
 
-    runtimeEdgeIdToFilter.putIfAbsent(runtimeEdgeId, filterList);
+    serializer.setFilters(filterList);
+  }
+
+  /**
+   * Return the serializer for the specified runtime edge.
+   *
+   * @param runtimeEdgeId id of the runtime edge.
+   * @return the corresponding serializer.
+   */
+  public Serializer getSerializer(final String runtimeEdgeId) {
+    final Serializer serializer = runtimeEdgeIdToSerializer.get(runtimeEdgeId);
+    if (serializer == null) {
+      throw new RuntimeException("No serializer is registered for " + runtimeEdgeId);
+    }
+    return serializer;
   }
 
   /**
@@ -68,7 +93,7 @@ public final class SerializerManager {
    * @return the corresponding coder.
    */
   public Coder getCoder(final String runtimeEdgeId) {
-    final Coder coder = runtimeEdgeIdToCoder.get(runtimeEdgeId);
+    final Coder coder = runtimeEdgeIdToSerializer.get(runtimeEdgeId).getCoder();
     if (coder == null) {
       throw new RuntimeException("No coder is registered for " + runtimeEdgeId);
     }
@@ -82,7 +107,7 @@ public final class SerializerManager {
    * @return the corresponding list of filters.
    */
   public List<Filter> getFilters(final String runtimeEdgeId) {
-    final List<Filter> filters = runtimeEdgeIdToFilter.get(runtimeEdgeId);
+    final List<Filter> filters = runtimeEdgeIdToSerializer.get(runtimeEdgeId).getFilters();
     if (filters == null) {
       throw new RuntimeException("No list of filters is registered for " + runtimeEdgeId);
     }
