@@ -31,7 +31,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class SparkPiITCase {
   private static final int TIMEOUT = 60000;
-  private static final String numParallelism = "10";
+  private static final String numParallelism = "3";
 
   private static ArgBuilder builder = new ArgBuilder()
       .addJobId(SparkPiITCase.class.getSimpleName())

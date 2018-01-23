@@ -15,11 +15,11 @@
  */
 package edu.snu.onyx.runtime.common.plan.physical;
 
+import edu.snu.onyx.common.ir.ReadablesWrapper;
 import edu.snu.onyx.common.ir.vertex.*;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
-import edu.snu.onyx.common.ir.Reader;
 import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
@@ -206,13 +206,9 @@ public final class PhysicalPlanGenerator
             final SourceVertex sourceVertex = (SourceVertex) irVertex;
 
             try {
-              final List<Reader> readers = sourceVertex.getReaders(stageParallelism);
-              if (readers.size() != stageParallelism) {
-                throw new RuntimeException("Actual parallelism differs from the one specified by IR: "
-                    + readers.size() + " and " + stageParallelism);
-              }
+              final ReadablesWrapper readables = sourceVertex.getReadableWrapper(stageParallelism);
               newTaskToAdd = new BoundedSourceTask<>(RuntimeIdGenerator.generateTaskId(), sourceVertex.getId(),
-                  taskGroupIndex, readers.get(taskGroupIndex), taskGroupId);
+                  taskGroupIndex, readables, taskGroupId);
             } catch (Exception e) {
               throw new PhysicalPlanGenerationException(e);
             }

@@ -15,36 +15,38 @@
  */
 package edu.snu.onyx.runtime.common.plan.physical;
 
-import edu.snu.onyx.common.ir.Reader;
+import edu.snu.onyx.common.ir.Readable;
+import edu.snu.onyx.common.ir.ReadablesWrapper;
 
 /**
  * BoundedSourceTask.
  * @param <O> the output type.
  */
 public final class BoundedSourceTask<O> extends Task {
-  private final Reader<O> reader;
+  private final ReadablesWrapper<O> readableWrapper;
 
   /**
    * Constructor.
    * @param taskId id of the task.
    * @param runtimeVertexId id of the runtime vertex.
    * @param index index in its taskGroup.
-   * @param reader reader for the source data.
+   * @param readablesWrapper the wrapper of the readables for the source data.
    * @param taskGroupId id of the taskGroup.
    */
   public BoundedSourceTask(final String taskId,
                            final String runtimeVertexId,
                            final int index,
-                           final Reader<O> reader,
+                           final ReadablesWrapper<O> readablesWrapper,
                            final String taskGroupId) {
     super(taskId, runtimeVertexId, index, taskGroupId);
-    this.reader = reader;
+    this.readableWrapper = readablesWrapper;
   }
 
   /**
-   * @return the reader of source data.
+   * @return the readable of source data.
+   * @throws Exception if fail to get.
    */
-  public Reader getReader() {
-    return reader;
+  public Readable<O> getReadable() throws Exception {
+    return readableWrapper.getReadables().get(getIndex());
   }
 }

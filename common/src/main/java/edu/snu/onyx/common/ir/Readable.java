@@ -13,22 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.common.ir.vertex;
+package edu.snu.onyx.common.ir;
 
-import edu.snu.onyx.common.ir.ReadablesWrapper;
+import java.io.Serializable;
 
 /**
- * IRVertex that reads data from an external source.
- * It is to be implemented in the compiler frontend with source-specific data fetching logic.
+ * Interface for readable.
  * @param <O> output type.
  */
-public abstract class SourceVertex<O> extends IRVertex {
-
+public interface Readable<O> extends Serializable {
   /**
-   * Gets parallel readable wrapper.
-   * @param desiredNumOfSplits number of splits desired.
-   * @return the wrapper for a list of readers.
-   * @throws Exception if fail to get.
+   * Method to read data from the source.
+   * @return an {@link Iterable} of the data read by the readable.
+   * @throws Exception exception while reading data.
    */
-  public abstract ReadablesWrapper<O> getReadableWrapper(int desiredNumOfSplits) throws Exception;
+  Iterable<O> read() throws Exception;
 }
+
