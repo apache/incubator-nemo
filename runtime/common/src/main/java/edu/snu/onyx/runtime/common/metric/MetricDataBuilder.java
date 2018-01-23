@@ -71,7 +71,7 @@ public final class MetricDataBuilder {
    * @param metricMap map on which to collect metrics.
    */
   public void beginMeasurement(final Map<String, Object> metricMap) {
-    startTime = System.nanoTime();
+    startTime = System.currentTimeMillis();
     metricMap.put("StartTime", startTime);
     this.metrics = metricMap;
   }
@@ -81,9 +81,9 @@ public final class MetricDataBuilder {
    * @param metricMap map on which to collect metrics.
    */
   public void endMeasurement(final Map<String, Object> metricMap) {
-    endTime = System.nanoTime();
+    endTime = System.currentTimeMillis();
     metricMap.put("EndTime", endTime);
-    metricMap.put("ElapsedTime(s)", (endTime - startTime) / 1000000000);
+    metricMap.put("ElapsedTime(ms)", endTime - startTime);
     this.metrics.putAll(metricMap);
   }
 

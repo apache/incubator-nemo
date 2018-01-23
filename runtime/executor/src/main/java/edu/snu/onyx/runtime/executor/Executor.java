@@ -134,8 +134,6 @@ public final class Executor {
                   .build())
               .build());
       throw e;
-    } finally {
-      terminate();
     }
   }
 

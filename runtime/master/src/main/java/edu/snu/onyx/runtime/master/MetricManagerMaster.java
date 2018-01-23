@@ -47,7 +47,7 @@ public final class MetricManagerMaster implements MetricMessageHandler {
     if (!isTerminated) {
       compUnitIdToMetricInJson.putIfAbsent(metricKey, new LinkedList<>());
       compUnitIdToMetricInJson.get(metricKey).add(metricValue);
-      LOG.debug("{}", metricValue);
+//      LOG.debug("{}", metricValue);
     }
   }
 
@@ -58,6 +58,8 @@ public final class MetricManagerMaster implements MetricMessageHandler {
 
   @Override
   public synchronized void terminate() {
+    compUnitIdToMetricInJson.forEach((compUnitId, metricList) ->
+        LOG.info("{\"computationUnitId\":\"{}\", \"metricList\":{}}", compUnitId, metricList));
     compUnitIdToMetricInJson.clear();
     isTerminated = true;
   }
