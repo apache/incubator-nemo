@@ -31,6 +31,9 @@ public final class RuntimeIdGenerator {
   private static String blockPrefix = "Block-";
   private static String blockIdSplitter = "_";
 
+  /**
+   * Private constructor which will not be used.
+   */
   private RuntimeIdGenerator() {
   }
 

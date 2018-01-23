@@ -69,7 +69,8 @@ public final class DefaultParallelismPass extends AnnotatingPass {
           // After that, we set the parallelism as the number of split readers.
           // (It can be more/less than the desired value.)
           final SourceVertex sourceVertex = (SourceVertex) vertex;
-          vertex.setProperty(ParallelismProperty.of(sourceVertex.getReaders(desiredSourceParallelism).size()));
+          vertex.setProperty(ParallelismProperty.of(
+              sourceVertex.getReadableWrapper(desiredSourceParallelism).getReadables().size()));
         } else if (!inEdges.isEmpty()) {
           // No reason to propagate via Broadcast edges, as the data streams that will use the broadcasted data
           // as a sideInput will have their own number of parallelism

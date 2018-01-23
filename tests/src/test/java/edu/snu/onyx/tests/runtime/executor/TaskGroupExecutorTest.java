@@ -19,7 +19,8 @@ import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.common.ir.OutputCollector;
-import edu.snu.onyx.common.ir.Reader;
+import edu.snu.onyx.common.ir.Readable;
+import edu.snu.onyx.common.ir.ReadablesWrapper;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionPropertyMap;
@@ -115,14 +116,21 @@ public final class TaskGroupExecutorTest {
     final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId();
     final String stageId = RuntimeIdGenerator.generateStageId(0);
 
-    final Reader sourceReader = new Reader() {
+    final ReadablesWrapper readablesWrapper = new ReadablesWrapper() {
       @Override
-      public Iterator read() throws Exception {
-        return elements.iterator();
+      public List<Readable> getReadables() throws Exception {
+        return Collections.singletonList(
+            new Readable() {
+              @Override
+              public Iterable read() throws Exception {
+                return elements;
+              }
+            });
       }
     };
+
     final BoundedSourceTask<Integer> boundedSourceTask =
-        new BoundedSourceTask<>(sourceTaskId, sourceIrVertexId, 0, sourceReader, taskGroupId);
+        new BoundedSourceTask<>(sourceTaskId, sourceIrVertexId, 0, readablesWrapper, taskGroupId);
 
     final DAG<Task, RuntimeEdge<Task>> taskDag =
         new DAGBuilder<Task, RuntimeEdge<Task>>().addVertex(boundedSourceTask).build();

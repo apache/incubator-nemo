@@ -19,7 +19,7 @@ import edu.snu.onyx.common.ContextImpl;
 import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.common.exception.BlockWriteException;
-import edu.snu.onyx.common.ir.Reader;
+import edu.snu.onyx.common.ir.Readable;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
@@ -200,13 +200,11 @@ public final class TaskGroupExecutor {
    * @throws Exception occurred during input read.
    */
   private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask) throws Exception {
-    final Reader reader = boundedSourceTask.getReader();
-    final Iterator readData = reader.read();
-    final List iterable = new ArrayList<>();
-    readData.forEachRemaining(iterable::add);
+    final Readable readable = boundedSourceTask.getReadable();
+    final Iterable readData = readable.read();
 
     taskIdToOutputWriterMap.get(boundedSourceTask.getId()).forEach(outputWriter -> {
-      outputWriter.write(iterable);
+      outputWriter.write(readData);
       outputWriter.close();
     });
   }
