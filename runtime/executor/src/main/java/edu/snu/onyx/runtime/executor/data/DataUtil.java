@@ -179,8 +179,9 @@ public final class DataUtil {
      * @param inputStream The stream to read data from.
      * @param serializer  The serializer.
      */
-    public InputStreamIterator(final InputStream inputStream, final Serializer<T> serializer) {
-      this.inputStream = inputStream;
+    public InputStreamIterator(final InputStream inputStream, final Serializer<T> serializer)
+        throws IOException {
+      this.inputStream = buildInputStream(inputStream, serializer.getFilters());
       this.serializer = serializer;
       // -1 means no limit.
       this.limit = -1;
