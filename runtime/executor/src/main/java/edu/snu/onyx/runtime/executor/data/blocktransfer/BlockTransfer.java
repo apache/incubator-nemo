@@ -93,7 +93,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
                                        final KeyRange keyRange) {
     final BlockInputStream stream = new BlockInputStream(executorId, encodePartialBlock,
         Optional.of(blockStoreValue), blockId, runtimeEdgeId, keyRange);
-    stream.setCoder(serializerManager.getCoder(runtimeEdgeId));
+    stream.setSerializer(serializerManager.getSerializer(runtimeEdgeId));
     write(executorId, stream, stream::onExceptionCaught);
     return stream;
   }
@@ -115,7 +115,6 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
                                         final KeyRange keyRange) {
     final BlockOutputStream stream = new BlockOutputStream(executorId, encodePartialBlock, Optional.empty(),
         blockId, runtimeEdgeId, keyRange);
-    stream.setCoder(serializerManager.getCoder(runtimeEdgeId));
     write(executorId, stream, stream::onExceptionCaught);
     return stream;
   }
@@ -194,7 +193,6 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
    * @param stream {@link BlockOutputStream}
    */
   private void onPullRequest(final BlockOutputStream stream) {
-    stream.setCoder(serializerManager.getCoder(stream.getRuntimeEdgeId()));
     blockManagerWorker.get().onPullRequest(stream);
   }
 
@@ -204,7 +202,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
    * @param stream {@link BlockInputStream}
    */
   private void onPushNotification(final BlockInputStream stream) {
-    stream.setCoder(serializerManager.getCoder(stream.getRuntimeEdgeId()));
+    stream.setSerializer(serializerManager.getSerializer(stream.getRuntimeEdgeId()));
     blockManagerWorker.get().onPushNotification(stream);
   }
 

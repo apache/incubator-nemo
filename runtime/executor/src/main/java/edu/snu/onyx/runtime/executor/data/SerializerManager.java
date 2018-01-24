@@ -85,32 +85,4 @@ public final class SerializerManager {
     }
     return serializer;
   }
-
-  /**
-   * Return the coder for the specified runtime edge.
-   *
-   * @param runtimeEdgeId id of the runtime edge.
-   * @return the corresponding coder.
-   */
-  public Coder getCoder(final String runtimeEdgeId) {
-    final Coder coder = runtimeEdgeIdToSerializer.get(runtimeEdgeId).getCoder();
-    if (coder == null) {
-      throw new RuntimeException("No coder is registered for " + runtimeEdgeId);
-    }
-    return coder;
-  }
-
-  /**
-   * Return the list of filters for the specified runtime edge.
-   *
-   * @param runtimeEdgeId id of the runtime edge.
-   * @return the corresponding list of filters.
-   */
-  public List<Filter> getFilters(final String runtimeEdgeId) {
-    final List<Filter> filters = runtimeEdgeIdToSerializer.get(runtimeEdgeId).getFilters();
-    if (filters == null) {
-      throw new RuntimeException("No list of filters is registered for " + runtimeEdgeId);
-    }
-    return filters;
-  }
 }

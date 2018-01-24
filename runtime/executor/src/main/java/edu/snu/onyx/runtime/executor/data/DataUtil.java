@@ -61,8 +61,7 @@ public final class DataUtil {
                                                             final K key,
                                                             final InputStream inputStream) throws IOException {
     final List deserializedData = new ArrayList();
-    final InputStream wrappedStream = buildInputStream(inputStream, serializer.getFilters());
-    (new InputStreamIterator(wrappedStream, serializer.getCoder(),elementsInPartition))
+    (new InputStreamIterator(inputStream, serializer, elementsInPartition))
         .forEachRemaining(deserializedData::add);
     return new NonSerializedPartition(key, deserializedData);
   }
@@ -166,7 +165,7 @@ public final class DataUtil {
   public static final class InputStreamIterator<T> implements Iterator<T> {
 
     private final InputStream inputStream;
-    private final Coder<T> coder;
+    private final Serializer<T> serializer;
     private final long limit;
 
     private volatile boolean hasNext = false;
@@ -178,11 +177,11 @@ public final class DataUtil {
      * Construct {@link Iterator} from {@link InputStream} and {@link Coder}.
      *
      * @param inputStream The stream to read data from.
-     * @param coder       The coder to decode bytes into {@code T}.
+     * @param serializer  The serializer.
      */
-    public InputStreamIterator(final InputStream inputStream, final Coder<T> coder) {
+    public InputStreamIterator(final InputStream inputStream, final Serializer<T> serializer) {
       this.inputStream = inputStream;
-      this.coder = coder;
+      this.serializer = serializer;
       // -1 means no limit.
       this.limit = -1;
     }
@@ -191,15 +190,16 @@ public final class DataUtil {
      * Construct {@link Iterator} from {@link InputStream} and {@link Coder}.
      *
      * @param inputStream The stream to read data from.
-     * @param coder       The coder to decode bytes into {@code T}.
+     * @param serializer  The serializer.
      * @param limit       The number of elements from the {@link InputStream}.
      */
-    public InputStreamIterator(final InputStream inputStream, final Coder<T> coder, final long limit) {
+    public InputStreamIterator(final InputStream inputStream, final Serializer<T> serializer, final long limit)
+        throws IOException {
       if (limit < 0) {
         throw new IllegalArgumentException("Negative limit not allowed.");
       }
-      this.inputStream = inputStream;
-      this.coder = coder;
+      this.inputStream = buildInputStream(inputStream, serializer.getFilters());
+      this.serializer = serializer;
       this.limit = limit;
     }
 
@@ -216,7 +216,7 @@ public final class DataUtil {
         return false;
       }
       try {
-        next = coder.decode(inputStream);
+        next = serializer.getCoder().decode(inputStream);
         hasNext = true;
         elementsDecoded++;
         return true;

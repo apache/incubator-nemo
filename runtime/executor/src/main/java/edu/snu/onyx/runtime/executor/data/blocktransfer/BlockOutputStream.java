@@ -52,7 +52,6 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
   private ControlMessage.BlockTransferType transferType;
   private short transferId;
   private Channel channel;
-  private Coder<T> coder;
 
   private final DataFrameWriteFutureListener writeFutureListener = new DataFrameWriteFutureListener();
   private final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream();
@@ -101,15 +100,6 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
     this.transferType = type;
     this.transferId = id;
     this.channel = ch;
-  }
-
-  /**
-   * Sets {@link Coder}.
-   *
-   * @param cdr     the coder
-   */
-  void setCoder(final Coder<T> cdr) {
-    this.coder = cdr;
   }
 
   @Override

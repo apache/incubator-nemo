@@ -70,6 +70,7 @@ import static org.mockito.Mockito.when;
 public final class BlockStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
+  private static final Serializer SERIALIZER = new Serializer(CODER, Collections.emptyList());
   private static final SerializerManager serializerManager = mock(SerializerManager.class);
   private BlockManagerMaster blockManagerMaster;
   private LocalMessageDispatcher messageDispatcher;
@@ -105,7 +106,7 @@ public final class BlockStoreTest {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
     blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
-    when(serializerManager.getCoder(any())).thenReturn(CODER);
+    when(serializerManager.getSerializer(any())).thenReturn(SERIALIZER);
 
     // Following part is for for the shuffle test.
     final List<String> writeTaskIdList = new ArrayList<>(NUM_WRITE_TASKS);

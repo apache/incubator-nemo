@@ -15,10 +15,10 @@
  */
 package edu.snu.onyx.runtime.executor.data.blocktransfer;
 
-import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.DataUtil;
+import edu.snu.onyx.runtime.executor.data.filter.Serializer;
 import io.netty.buffer.ByteBuf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +48,7 @@ public final class BlockInputStream<T> implements BlockStream {
   private final CompletableFuture<Iterator<T>> completeFuture = new CompletableFuture<>();
   private final ByteBufInputStream byteBufInputStream = new ByteBufInputStream();
 
-  private Coder<T> coder;
+  private Serializer serializer;
   private DataUtil.InputStreamIterator<T> inputStreamIterator;
 
   @Override
@@ -84,13 +84,13 @@ public final class BlockInputStream<T> implements BlockStream {
   }
 
   /**
-   * Sets {@link Coder} to de-serialize bytes into block.
+   * Sets {@link Serializer} to de-serialize bytes into block.
    *
-   * @param cdr     the coder
+   * @param serializer The serializer.
    */
-  void setCoder(final Coder<T> cdr) {
-    this.coder = cdr;
-    inputStreamIterator = new DataUtil.InputStreamIterator<>(byteBufInputStream, coder);
+  void setSerializer(final Serializer serializer) {
+    this.serializer = serializer;
+    inputStreamIterator = new DataUtil.InputStreamIterator<>(byteBufInputStream, serializer);
   }
 
   /**
