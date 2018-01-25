@@ -22,53 +22,31 @@ import edu.snu.onyx.common.dag.Vertex;
  * The index value is identical to the TaskGroup's index it belongs to.
  */
 public abstract class Task extends Vertex {
-  private final String runtimeVertexId;
-  private final int index;
-  private final String taskGroupId;
+  private final String irVertexId;
 
   /**
    * Constructor.
-   * @param taskId id of the task.
-   * @param runtimeVertexId id fo the runtime vertex.
-   * @param index index in the taskGroup.
-   * @param taskGroupId id of the taskGroup.
+   *
+   * @param taskId      id of the task.
+   * @param irVertexId  id for the IR vertex.
    */
   public Task(final String taskId,
-              final String runtimeVertexId,
-              final int index,
-              final String taskGroupId) {
+              final String irVertexId) {
     super(taskId);
-    this.runtimeVertexId = runtimeVertexId;
-    this.index = index;
-    this.taskGroupId = taskGroupId;
+    this.irVertexId = irVertexId;
   }
 
   /**
    * @return the id of the runtime vertex.
    */
-  public final String getRuntimeVertexId() {
-    return runtimeVertexId;
-  }
-
-  /**
-   * @return the index in the taskGroup.
-   */
-  public final int getIndex() {
-    return index;
-  }
-
-  /**
-   * @return the id of the taskGroup.
-   */
-  public final String getTaskGroupId() {
-    return taskGroupId;
+  public final String getIrVertexId() {
+    return irVertexId;
   }
 
   @Override
   public final String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("{\"runtimeVertexId\": \"").append(runtimeVertexId).append("\", ");
-    sb.append("\"index\": ").append(index).append("}");
+    sb.append("{\"taskId\": \"").append(getId()).append("\"");
     return sb.toString();
   }
 }

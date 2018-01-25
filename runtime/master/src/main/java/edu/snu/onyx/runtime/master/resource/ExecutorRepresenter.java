@@ -64,8 +64,8 @@ public final class ExecutorRepresenter {
   }
 
   public void onTaskGroupScheduled(final ScheduledTaskGroup scheduledTaskGroup) {
-    runningTaskGroups.add(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
-    failedTaskGroups.remove(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
+    runningTaskGroups.add(scheduledTaskGroup.getTaskGroupId());
+    failedTaskGroups.remove(scheduledTaskGroup.getTaskGroupId());
 
     sendControlMessage(
         ControlMessage.Message.newBuilder()

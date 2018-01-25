@@ -50,6 +50,7 @@ import java.util.stream.StreamSupport;
 
 import static edu.snu.onyx.tests.runtime.RuntimeTestUtil.getRangedNumList;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -97,10 +98,10 @@ public final class TaskGroupExecutorTest {
     // Mock a DataTransferFactory.
     taskIdToOutputData = new HashMap<>();
     dataTransferFactory = mock(DataTransferFactory.class);
-    when(dataTransferFactory.createLocalReader(any(), any())).then(new IntraStageReaderAnswer());
-    when(dataTransferFactory.createReader(any(), any(), any())).then(new InterStageReaderAnswer());
-    when(dataTransferFactory.createLocalWriter(any(), any())).then(new WriterAnswer());
-    when(dataTransferFactory.createWriter(any(), any(), any())).then(new WriterAnswer());
+    when(dataTransferFactory.createLocalReader(anyInt(), any())).then(new IntraStageReaderAnswer());
+    when(dataTransferFactory.createReader(anyInt(), any(), any())).then(new InterStageReaderAnswer());
+    when(dataTransferFactory.createLocalWriter(any(), anyInt(), any())).then(new WriterAnswer());
+    when(dataTransferFactory.createWriter(any(), anyInt(), any(), any())).then(new WriterAnswer());
   }
 
   /**
@@ -112,8 +113,7 @@ public final class TaskGroupExecutorTest {
     final IRVertex sourceIRVertex = new SimpleIRVertex();
     final String sourceIrVertexId = sourceIRVertex.getId();
 
-    final String sourceTaskId = RuntimeIdGenerator.generateTaskId();
-    final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId();
+    final String sourceTaskId = RuntimeIdGenerator.generateLogicalTaskId("Source_IR_Vertex");
     final String stageId = RuntimeIdGenerator.generateStageId(0);
 
     final ReadablesWrapper readablesWrapper = new ReadablesWrapper() {
@@ -130,18 +130,20 @@ public final class TaskGroupExecutorTest {
     };
 
     final BoundedSourceTask<Integer> boundedSourceTask =
-        new BoundedSourceTask<>(sourceTaskId, sourceIrVertexId, 0, readablesWrapper, taskGroupId);
+        new BoundedSourceTask<>(sourceTaskId, sourceIrVertexId, readablesWrapper);
 
     final DAG<Task, RuntimeEdge<Task>> taskDag =
         new DAGBuilder<Task, RuntimeEdge<Task>>().addVertex(boundedSourceTask).build();
-    final TaskGroup sourceTaskGroup = new TaskGroup(taskGroupId, stageId, 0, taskDag, CONTAINER_TYPE);
     final PhysicalStageEdge stageOutEdge = mock(PhysicalStageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(sourceIRVertex);
+    final TaskGroup sourceTaskGroup = new TaskGroup(stageId, taskDag, CONTAINER_TYPE);
+    final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId(0, stageId);
+    final ScheduledTaskGroup scheduledTaskGroup = new ScheduledTaskGroup(
+        "testSourceTask", sourceTaskGroup, taskGroupId, Collections.emptyList(), Collections.singletonList(stageOutEdge), 0);
 
     // Execute the task group.
     final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
-        sourceTaskGroup, taskGroupStateManager, Collections.emptyList(), Collections.singletonList(stageOutEdge),
-        dataTransferFactory);
+        scheduledTaskGroup, taskGroupStateManager, dataTransferFactory);
     taskGroupExecutor.execute();
 
     // Check the output.
@@ -171,16 +173,14 @@ public final class TaskGroupExecutorTest {
     final String operatorIRVertexId2 = operatorIRVertex2.getId();
     final String runtimeIREdgeId = "Runtime edge between operator tasks";
 
-    final String operatorTaskId1 = RuntimeIdGenerator.generateTaskId();
-    final String operatorTaskId2 = RuntimeIdGenerator.generateTaskId();
-    final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId();
+    final String operatorTaskId1 = RuntimeIdGenerator.generateLogicalTaskId("Operator_vertex_1");
+    final String operatorTaskId2 = RuntimeIdGenerator.generateLogicalTaskId("Operator_vertex_2");
     final String stageId = RuntimeIdGenerator.generateStageId(1);
 
     final OperatorTask operatorTask1 =
-        new OperatorTask(operatorTaskId1, operatorIRVertexId1, 0, new SimpleTransform(), taskGroupId);
+        new OperatorTask(operatorTaskId1, operatorIRVertexId1, new SimpleTransform());
     final OperatorTask operatorTask2 =
-        new OperatorTask(operatorTaskId2, operatorIRVertexId2, 0, new SimpleTransform(), taskGroupId);
-
+        new OperatorTask(operatorTaskId2, operatorIRVertexId2, new SimpleTransform());
     final Coder coder = mock(Coder.class);
     ExecutionPropertyMap edgeProperties = new ExecutionPropertyMap(runtimeIREdgeId);
     edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
@@ -190,16 +190,18 @@ public final class TaskGroupExecutorTest {
         .connectVertices(new RuntimeEdge<Task>(
             runtimeIREdgeId, edgeProperties, operatorTask1, operatorTask2, coder))
         .build();
-    final TaskGroup operatorTaskGroup = new TaskGroup(taskGroupId, stageId, 0, taskDag, CONTAINER_TYPE);
+    final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId(0, stageId);
+    final TaskGroup operatorTaskGroup = new TaskGroup(stageId, taskDag, CONTAINER_TYPE);
     final PhysicalStageEdge stageInEdge = mock(PhysicalStageEdge.class);
     when(stageInEdge.getDstVertex()).thenReturn(operatorIRVertex1);
     final PhysicalStageEdge stageOutEdge = mock(PhysicalStageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(operatorIRVertex2);
+    final ScheduledTaskGroup scheduledTaskGroup = new ScheduledTaskGroup(
+        "testSourceTask", operatorTaskGroup, taskGroupId, Collections.singletonList(stageInEdge), Collections.singletonList(stageOutEdge), 0);
 
     // Execute the task group.
     final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
-        operatorTaskGroup, taskGroupStateManager, Collections.singletonList(stageInEdge),
-        Collections.singletonList(stageOutEdge), dataTransferFactory);
+        scheduledTaskGroup, taskGroupStateManager, dataTransferFactory);
     taskGroupExecutor.execute();
 
     // Check the output.

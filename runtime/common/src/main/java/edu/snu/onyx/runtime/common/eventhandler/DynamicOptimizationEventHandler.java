@@ -24,7 +24,6 @@ import edu.snu.onyx.common.eventhandler.RuntimeEventHandler;
 import edu.snu.onyx.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.onyx.runtime.common.optimizer.RuntimeOptimizer;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import org.apache.reef.wake.impl.PubSubEventHandler;
 
 import javax.inject.Inject;
@@ -55,7 +54,7 @@ public final class DynamicOptimizationEventHandler implements RuntimeEventHandle
     final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
             dynamicOptimizationEvent.getMetricCollectionBarrierVertex();
 
-    final Pair<String, TaskGroup> taskInfo = dynamicOptimizationEvent.getTaskInfo();
+    final Pair<String, String> taskInfo = dynamicOptimizationEvent.getTaskInfo();
 
     final PhysicalPlan newPlan = RuntimeOptimizer.dynamicOptimization(physicalPlan,
         metricCollectionBarrierVertex);

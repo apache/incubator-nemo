@@ -17,13 +17,12 @@ package edu.snu.onyx.runtime.master.scheduler;
 
 import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.runtime.master.JobStateManager;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
-import java.util.List;
+import javax.annotation.Nullable;
 
 /**
  * Receives jobs to execute and schedules {@link edu.snu.onyx.runtime.common.plan.physical.TaskGroup} to executors.
@@ -44,10 +43,10 @@ public interface Scheduler {
    * Receives and updates the scheduler with a new physical plan for a job.
    * @param jobId the ID of the job to change the physical plan.
    * @param newPhysicalPlan new physical plan for the job.
-   * @param taskInfo pair containing the information of the executor id and task group to mark as complete after the
+   * @param taskInfo pair containing the information of the executor id and task group id to mark as complete after the
    *                 update.
    */
-  void updateJob(String jobId, PhysicalPlan newPhysicalPlan, Pair<String, TaskGroup> taskInfo);
+  void updateJob(String jobId, PhysicalPlan newPhysicalPlan, Pair<String, String> taskInfo);
 
   /**
    * Called when an executor is added to Runtime, so that the extra resource can be used to execute the job.
@@ -68,14 +67,14 @@ public interface Scheduler {
    * @param newState for the TaskGroup.
    * @param attemptIdx the number of times this TaskGroup has executed.
    *************** the below parameters are only valid for failures *****************
-   * @param tasksPutOnHold the IDs of tasks that are put on hold. It is null otherwise.
+   * @param taskPutOnHold the ID of task that are put on hold. It is null otherwise.
    * @param failureCause for which the TaskGroup failed in the case of a recoverable failure.
    */
   void onTaskGroupStateChanged(String executorId,
                                String taskGroupId,
                                TaskGroupState.State newState,
                                int attemptIdx,
-                               List<String> tasksPutOnHold,
+                               @Nullable String taskPutOnHold,
                                TaskGroupState.RecoverableFailureCause failureCause);
 
   /**

@@ -22,14 +22,10 @@ public final class MetricCollectionBarrierTask extends Task {
   /**
    * Constructor.
    * @param taskId id of the task.
-   * @param runtimeVertexId id of the runtime vertex.
-   * @param index index in the taskGroup.
-   * @param taskGroupId id of the taskGroup.
+   * @param irVertexId id of the IR vertex.
    */
   MetricCollectionBarrierTask(final String taskId,
-                              final String runtimeVertexId,
-                              final int index,
-                              final String taskGroupId) {
-    super(taskId, runtimeVertexId, index, taskGroupId);
+                              final String irVertexId) {
+    super(taskId, irVertexId);
   }
 }
