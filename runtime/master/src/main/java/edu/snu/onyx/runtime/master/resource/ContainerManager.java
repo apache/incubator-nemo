@@ -16,6 +16,7 @@
 package edu.snu.onyx.runtime.master.resource;
 
 import edu.snu.onyx.common.exception.ContainerException;
+import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
@@ -31,9 +32,11 @@ import org.apache.reef.tang.Configuration;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +53,7 @@ public final class ContainerManager {
 
   private final EvaluatorRequestor evaluatorRequestor;
   private final MessageEnvironment messageEnvironment;
+  private final ExecutorService serializationExecutorService; // Executor service for scheduling message serialization.
 
   /**
    * A map containing a latch for the container requests for each resource spec ID.
@@ -80,7 +84,8 @@ public final class ContainerManager {
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
   @Inject
-  public ContainerManager(final EvaluatorRequestor evaluatorRequestor,
+  public ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
+                          final EvaluatorRequestor evaluatorRequestor,
                           final MessageEnvironment messageEnvironment) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.messageEnvironment = messageEnvironment;
@@ -91,6 +96,7 @@ public final class ContainerManager {
     this.pendingContextIdToResourceSpec = new HashMap<>();
     this.pendingContainerRequestsByContainerType = new HashMap<>();
     this.requestLatchByResourceSpecId = new HashMap<>();
+    this.serializationExecutorService = Executors.newFixedThreadPool(scheduleSerThread);
   }
 
   /**
@@ -204,7 +210,7 @@ public final class ContainerManager {
 
     // Create the executor representation.
     final ExecutorRepresenter executorRepresenter =
-        new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext);
+        new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext, serializationExecutorService);
 
     executorsByContainerType.putIfAbsent(resourceSpec.getContainerType(), new ArrayList<>());
     executorsByContainerType.get(resourceSpec.getContainerType()).add(executorRepresenter);

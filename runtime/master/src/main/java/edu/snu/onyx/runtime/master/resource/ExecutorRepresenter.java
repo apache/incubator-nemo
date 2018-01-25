@@ -26,6 +26,7 @@ import org.apache.reef.driver.context.ActiveContext;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Contains information/state regarding an executor.
@@ -44,11 +45,13 @@ public final class ExecutorRepresenter {
   private final Set<String> failedTaskGroups;
   private final MessageSender<ControlMessage.Message> messageSender;
   private final ActiveContext activeContext;
+  private final ExecutorService serializationExecutorService;
 
   public ExecutorRepresenter(final String executorId,
                              final ResourceSpecification resourceSpecification,
                              final MessageSender<ControlMessage.Message> messageSender,
-                             final ActiveContext activeContext) {
+                             final ActiveContext activeContext,
+                             final ExecutorService serializationExecutorService) {
     this.executorId = executorId;
     this.resourceSpecification = resourceSpecification;
     this.messageSender = messageSender;
@@ -56,6 +59,7 @@ public final class ExecutorRepresenter {
     this.completeTaskGroups = new HashSet<>();
     this.failedTaskGroups = new HashSet<>();
     this.activeContext = activeContext;
+    this.serializationExecutorService = serializationExecutorService;
   }
 
   public void onExecutorFailed() {
@@ -67,16 +71,22 @@ public final class ExecutorRepresenter {
     runningTaskGroups.add(scheduledTaskGroup.getTaskGroupId());
     failedTaskGroups.remove(scheduledTaskGroup.getTaskGroupId());
 
-    sendControlMessage(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.ScheduleTaskGroup)
-            .setScheduleTaskGroupMsg(
-                ControlMessage.ScheduleTaskGroupMsg.newBuilder()
-                    .setTaskGroup(ByteString.copyFrom(SerializationUtils.serialize(scheduledTaskGroup)))
-                    .build())
-            .build());
+    serializationExecutorService.submit(new Runnable() {
+      @Override
+      public void run() {
+        final byte[] serialized = SerializationUtils.serialize(scheduledTaskGroup);
+        sendControlMessage(
+            ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdGenerator.generateMessageId())
+                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+                .setType(ControlMessage.MessageType.ScheduleTaskGroup)
+                .setScheduleTaskGroupMsg(
+                    ControlMessage.ScheduleTaskGroupMsg.newBuilder()
+                        .setTaskGroup(ByteString.copyFrom(serialized))
+                        .build())
+                .build());
+      }
+    });
   }
 
   public void sendControlMessage(final ControlMessage.Message message) {
