@@ -122,8 +122,8 @@ public final class TaskGroupExecutorTest {
         return Collections.singletonList(
             new Readable() {
               @Override
-              public Iterable read() throws Exception {
-                return elements;
+              public Iterator read() throws Exception {
+                return elements.iterator();
               }
             });
       }

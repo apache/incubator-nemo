@@ -248,7 +248,7 @@ public final class RuntimeTestUtil {
    * @return the list of elements.
    */
   public static List getRangedNumList(final int start,
-                                               final int end) {
+                                      final int end) {
     final List numList = new ArrayList<>(end - start);
     IntStream.range(start, end).forEach(number -> numList.add(KV.of(number, number)));
     return numList;

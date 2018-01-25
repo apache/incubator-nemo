@@ -18,6 +18,7 @@ package edu.snu.onyx.runtime.executor.data.partitioner;
 import edu.snu.onyx.common.KeyExtractor;
 import edu.snu.onyx.runtime.executor.data.Partition;
 
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -35,5 +36,5 @@ public interface Partitioner {
    * @param keyExtractor   extracts keys from elements.
    * @return the list of partitioned blocks.
    */
-  List<Partition> partition(Iterable elements, int dstParallelism, KeyExtractor keyExtractor);
+  List<Partition> partition(Iterator elements, int dstParallelism, KeyExtractor keyExtractor);
 }

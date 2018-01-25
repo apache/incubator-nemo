@@ -1,12 +1,11 @@
 package edu.snu.onyx.runtime.executor.data;
 
+import com.google.common.collect.Iterators;
 import edu.snu.onyx.common.DirectByteArrayOutputStream;
 import edu.snu.onyx.common.coder.Coder;
 
 import java.io.*;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
@@ -33,7 +32,9 @@ public final class DataUtil {
                                         final NonSerializedPartition nonSerializedPartition,
                                         final ByteArrayOutputStream bytesOutputStream) throws IOException {
     long elementsCount = 0;
-    for (final Object element : nonSerializedPartition.getData()) {
+    final Iterator data = nonSerializedPartition.getData();
+    while (data.hasNext()) {
+      final Object element = data.next();
       coder.encode(element, bytesOutputStream);
       elementsCount++;
     }
@@ -56,9 +57,7 @@ public final class DataUtil {
                                                             final Coder coder,
                                                             final K key,
                                                             final InputStream inputStream) throws IOException {
-    final List deserializedData = new ArrayList();
-    (new InputStreamIterator(inputStream, coder, elementsInPartition)).forEachRemaining(deserializedData::add);
-    return new NonSerializedPartition(key, deserializedData);
+    return new NonSerializedPartition(key, new InputStreamIterator(inputStream, coder, elementsInPartition));
   }
 
   /**
@@ -142,15 +141,12 @@ public final class DataUtil {
    * @return the concatenated iterable of all elements.
    * @throws IOException if fail to concatenate.
    */
-  public static Iterable concatNonSerPartitions(final Iterable<NonSerializedPartition> partitionsToConcat)
+  public static Iterator concatNonSerPartitions(final Iterable<NonSerializedPartition> partitionsToConcat)
       throws IOException {
-    final List concatStreamBase = new ArrayList<>();
-    Stream<Object> concatStream = concatStreamBase.stream();
-    for (final NonSerializedPartition nonSerializedPartition : partitionsToConcat) {
-      final Iterable elementsInPartition = nonSerializedPartition.getData();
-      concatStream = Stream.concat(concatStream, StreamSupport.stream(elementsInPartition.spliterator(), false));
-    }
-    return concatStream.collect(Collectors.toList());
+    final Iterator[] iterators = StreamSupport.stream(partitionsToConcat.spliterator(), false)
+        .map(NonSerializedPartition::getData)
+        .toArray(Iterator[]::new);
+    return Iterators.concat(iterators);
   }
 
   /**

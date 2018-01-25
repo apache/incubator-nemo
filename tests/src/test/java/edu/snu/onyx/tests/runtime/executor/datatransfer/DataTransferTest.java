@@ -297,7 +297,7 @@ public final class DataTransferTest {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
       final OutputWriter writer = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, srcVertex.getId(), dstVertex,
           dummyEdge, sender);
-      writer.write(dataWritten);
+      writer.write(dataWritten.iterator());
       writer.close();
       dataWrittenList.add(dataWritten);
     });

@@ -19,8 +19,7 @@ import edu.snu.onyx.common.KeyExtractor;
 import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
 import edu.snu.onyx.runtime.executor.data.Partition;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.IntStream;
 
 /**
@@ -31,21 +30,20 @@ import java.util.stream.IntStream;
 public final class HashPartitioner implements Partitioner {
 
   @Override
-  public List<Partition> partition(final Iterable elements,
+  public List<Partition> partition(final Iterator elements,
                                    final int dstParallelism,
                                    final KeyExtractor keyExtractor) {
-    final List<List> elementsByKey = new ArrayList<>(dstParallelism);
-    IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> elementsByKey.add(new ArrayList<>()));
-    elements.forEach(element -> {
+    final Map<Integer, List> elementsByKey = new HashMap<>(dstParallelism);
+    IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> elementsByKey.put(dstTaskIdx, new ArrayList<>()));
+    elements.forEachRemaining(element -> {
       // Hash the data by its key, and "modulo" by the number of destination tasks.
       final int dstIdx = Math.abs(keyExtractor.extractKey(element).hashCode() % dstParallelism);
       elementsByKey.get(dstIdx).add(element);
     });
 
     final List<Partition> partitions = new ArrayList<>(dstParallelism);
-    for (int hashIdx = 0; hashIdx < dstParallelism; hashIdx++) {
-      partitions.add(new NonSerializedPartition(hashIdx, elementsByKey.get(hashIdx)));
-    }
+    IntStream.range(0, dstParallelism)
+        .forEach(hashIdx -> partitions.add(new NonSerializedPartition(hashIdx, elementsByKey.get(hashIdx).iterator())));
     return partitions;
   }
 }

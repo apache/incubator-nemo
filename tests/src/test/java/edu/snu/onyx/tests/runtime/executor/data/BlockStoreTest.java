@@ -31,6 +31,7 @@ import edu.snu.onyx.runtime.master.BlockManagerMaster;
 import edu.snu.onyx.runtime.master.RuntimeMaster;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
+import org.apache.beam.sdk.repackaged.com.google.common.collect.Iterators;
 import org.apache.beam.sdk.values.KV;
 import org.apache.commons.io.FileUtils;
 import org.apache.reef.tang.Injector;
@@ -44,15 +45,9 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import static edu.snu.onyx.tests.runtime.RuntimeTestUtil.getRangedNumList;
 import static org.junit.Assert.assertEquals;
@@ -91,7 +86,7 @@ public final class BlockStoreTest {
   private List<String> hashedBlockIdList;
   private List<List<NonSerializedPartition<Integer>>> hashedBlockPartitionList;
   private List<KeyRange> readKeyRangeList;
-  private List<List<Iterable>> expectedDataInRange;
+  private List<List<Iterator>> expectedDataInRange;
 
   /**
    * Generates the ids and the data which will be used for the block store tests.
@@ -134,7 +129,7 @@ public final class BlockStoreTest {
       IntStream.range(0, NUM_READ_TASKS).forEach(readTaskIdx -> {
         final int partitionsCount = writeTaskIdx * NUM_READ_TASKS + readTaskIdx;
         partitionsForBlock.add(new NonSerializedPartition(
-            readTaskIdx, getRangedNumList(partitionsCount * DATA_SIZE, (partitionsCount + 1) * DATA_SIZE)));
+            readTaskIdx, getRangedNumList(partitionsCount * DATA_SIZE, (partitionsCount + 1) * DATA_SIZE).iterator()));
       });
     });
 
@@ -150,7 +145,7 @@ public final class BlockStoreTest {
         concBlockId, BlockState.State.SCHEDULED, null);
     IntStream.range(0, NUM_CONC_READ_TASKS).forEach(
         number -> concReadTaskIdList.add(RuntimeIdGenerator.generateLogicalTaskId("Conc_read_IR_vertex")));
-    concBlockPartition = new NonSerializedPartition(0, getRangedNumList(0, CONC_READ_DATA_SIZE));
+    concBlockPartition = new NonSerializedPartition(0, getRangedNumList(0, CONC_READ_DATA_SIZE).iterator());
 
     // Following part is for the shuffle in hash range test
     final int numHashedBlocks = NUM_WRITE_HASH_TASKS;
@@ -182,7 +177,7 @@ public final class BlockStoreTest {
           hashedBlock.add(new NonSerializedPartition(hashValue, getFixedKeyRangedNumList(
               hashValue,
               writeTaskIdx * HASH_DATA_SIZE * HASH_RANGE + hashValue * HASH_DATA_SIZE,
-              writeTaskIdx * HASH_DATA_SIZE * HASH_RANGE + (hashValue + 1) * HASH_DATA_SIZE))));
+              writeTaskIdx * HASH_DATA_SIZE * HASH_RANGE + (hashValue + 1) * HASH_DATA_SIZE).iterator())));
       hashedBlockPartitionList.add(hashedBlock);
     });
 
@@ -196,18 +191,14 @@ public final class BlockStoreTest {
     // Generates the expected result of hash range retrieval for each read task.
     for (int readTaskIdx = 0; readTaskIdx < NUM_READ_HASH_TASKS; readTaskIdx++) {
       final KeyRange<Integer> hashRange = readKeyRangeList.get(readTaskIdx);
-      final List<Iterable> expectedRangePartitions = new ArrayList<>(NUM_WRITE_HASH_TASKS);
+      final List<Iterator> expectedRangePartitions = new ArrayList<>(NUM_WRITE_HASH_TASKS);
       for (int writeTaskIdx = 0; writeTaskIdx < NUM_WRITE_HASH_TASKS; writeTaskIdx++) {
-        final List<Iterable> appendingList = new ArrayList<>();
+        final List<Iterator> appendingList = new ArrayList<>();
         for (int hashVal = hashRange.rangeBeginInclusive(); hashVal < hashRange.rangeEndExclusive(); hashVal++) {
           appendingList.add(hashedBlockPartitionList.get(writeTaskIdx).get(hashVal).getData());
         }
-        final List concatStreamBase = new ArrayList<>();
-        Stream<Object> concatStream = concatStreamBase.stream();
-        for (final Iterable data : appendingList) {
-          concatStream = Stream.concat(concatStream, StreamSupport.stream(data.spliterator(), false));
-        }
-        expectedRangePartitions.add(concatStream.collect(Collectors.toList()));
+        final Iterator concatenatedData = Iterators.concat(appendingList.toArray(new Iterator[appendingList.size()]));
+        expectedRangePartitions.add(concatenatedData);
       }
       expectedDataInRange.add(expectedRangePartitions);
     }
@@ -575,7 +566,7 @@ public final class BlockStoreTest {
   private void readResultCheck(final String blockId,
                                final KeyRange hashRange,
                                final BlockStore blockStore,
-                               final Iterable expectedResult) throws IOException {
+                               final Iterator expectedResult) throws IOException {
     final Optional<Iterable<SerializedPartition<Integer>>> optionalSerResult =
         blockStore.getSerializedPartitions(blockId, hashRange);
     if (!optionalSerResult.isPresent()) {

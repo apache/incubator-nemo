@@ -20,6 +20,7 @@ import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
 import edu.snu.onyx.runtime.executor.data.Partition;
 
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -29,7 +30,7 @@ import java.util.List;
 public final class IntactPartitioner implements Partitioner {
 
   @Override
-  public List<Partition> partition(final Iterable elements,
+  public List<Partition> partition(final Iterator elements,
                                    final int dstParallelism,
                                    final KeyExtractor keyExtractor) {
     return Collections.singletonList(new NonSerializedPartition(0, elements));

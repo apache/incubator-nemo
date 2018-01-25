@@ -15,6 +15,7 @@
  */
 package edu.snu.onyx.runtime.executor;
 
+import com.google.common.collect.Iterators;
 import edu.snu.onyx.common.ContextImpl;
 import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.dag.DAG;
@@ -212,7 +213,7 @@ public final class TaskGroupExecutor {
   private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask,
                                        final int boundedSourceIdx) throws Exception {
     final Readable readable = boundedSourceTask.getReadable(boundedSourceIdx);
-    final Iterable readData = readable.read();
+    final Iterator readData = readable.read();
 
     final String physicalTaskId = getPhysicalTaskId(boundedSourceTask.getId());
     physicalTaskIdToOutputWriterMap.get(physicalTaskId).forEach(outputWriter -> {
@@ -285,7 +286,8 @@ public final class TaskGroupExecutor {
       // Check whether there is any output data from the transform and write the output of this task to the writer.
       final List output = outputCollector.collectOutputList();
       if (!output.isEmpty() && physicalTaskIdToOutputWriterMap.containsKey(physicalTaskId)) {
-        physicalTaskIdToOutputWriterMap.get(physicalTaskId).forEach(outputWriter -> outputWriter.write(output));
+        physicalTaskIdToOutputWriterMap.get(physicalTaskId)
+            .forEach(outputWriter -> outputWriter.write(output.iterator()));
       } // If else, this is a sink task.
     });
     transform.close();
@@ -295,7 +297,7 @@ public final class TaskGroupExecutor {
     if (physicalTaskIdToOutputWriterMap.containsKey(physicalTaskId)) {
       physicalTaskIdToOutputWriterMap.get(physicalTaskId).forEach(outputWriter -> {
         if (!output.isEmpty()) {
-          outputWriter.write(output);
+          outputWriter.write(output.iterator());
         }
         outputWriter.close();
       });
@@ -318,17 +320,16 @@ public final class TaskGroupExecutor {
           inputReader.read().forEach(compFuture -> compFuture.thenAccept(dataQueue::add));
         });
 
-    final List data = new ArrayList<>();
+    final Iterator[] iterators = new Iterator[sourceParallelism.get()];
     IntStream.range(0, sourceParallelism.get()).forEach(srcTaskNum -> {
       try {
-        final Iterator availableData = dataQueue.take();
-        availableData.forEachRemaining(data::add);
+        iterators[srcTaskNum] = (dataQueue.take());
       } catch (final InterruptedException e) {
         throw new BlockFetchException(e);
       }
     });
     physicalTaskIdToOutputWriterMap.get(physicalTaskId).forEach(outputWriter -> {
-          outputWriter.write(data);
+          outputWriter.write(Iterators.concat(iterators));
           outputWriter.close();
         });
   }

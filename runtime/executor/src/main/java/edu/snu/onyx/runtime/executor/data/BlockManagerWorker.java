@@ -122,8 +122,7 @@ public final class BlockManagerWorker {
 
       // Block resides in this evaluator!
       try {
-        return CompletableFuture.completedFuture(DataUtil.concatNonSerPartitions(optionalResultPartitions.get())
-            .iterator());
+        return CompletableFuture.completedFuture(DataUtil.concatNonSerPartitions(optionalResultPartitions.get()));
       } catch (final IOException e) {
         throw new BlockFetchException(e);
       }

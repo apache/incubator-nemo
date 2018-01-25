@@ -71,7 +71,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    *
    * @param dataToWrite An iterable for the elements to be written.
    */
-  public void write(final Iterable dataToWrite) {
+  public void write(final Iterator dataToWrite) {
     final Boolean isDataSizeMetricCollectionEdge = MetricCollectionProperty.Value.DataSkewRuntimePass
         .equals(runtimeEdge.getProperty(ExecutionProperty.Key.MetricCollection));
 
