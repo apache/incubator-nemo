@@ -57,6 +57,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static edu.snu.onyx.runtime.common.state.StageState.State.COMPLETE;
 import static edu.snu.onyx.runtime.common.state.StageState.State.EXECUTING;
@@ -86,6 +88,7 @@ public final class FaultToleranceTest {
   private UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler;
   private BlockManagerMaster blockManagerMaster = mock(BlockManagerMaster.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
+  private final ExecutorService serExecutorService = Executors.newSingleThreadExecutor();
   private PhysicalPlanGenerator physicalPlanGenerator;
 
   private static final int TEST_TIMEOUT_MS = 500;
@@ -184,9 +187,12 @@ public final class FaultToleranceTest {
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
-    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a3 =
+        new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final ExecutorRepresenter a2 =
+        new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final ExecutorRepresenter a1 =
+        new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext, serExecutorService);
 
     final Map<String, ExecutorRepresenter> executorMap = new HashMap<>();
     executorMap.put("a1", a1);
@@ -265,9 +271,12 @@ public final class FaultToleranceTest {
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
-    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a3 =
+        new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final ExecutorRepresenter a2 =
+        new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final ExecutorRepresenter a1 =
+        new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext, serExecutorService);
 
     final Map<String, ExecutorRepresenter> executorMap = new HashMap<>();
     executorMap.put("a1", a1);
@@ -325,9 +334,12 @@ public final class FaultToleranceTest {
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
-    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a3 =
+        new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final ExecutorRepresenter a2 =
+        new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final ExecutorRepresenter a1 =
+        new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext, serExecutorService);
 
     final Map<String, ExecutorRepresenter> executorMap = new HashMap<>();
     executorMap.put("a1", a1);
@@ -384,9 +396,12 @@ public final class FaultToleranceTest {
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
-    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a3 =
+        new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final ExecutorRepresenter a2 =
+        new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final ExecutorRepresenter a1 =
+        new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext, serExecutorService);
 
     final Map<String, ExecutorRepresenter> executorMap = new HashMap<>();
     executorMap.put("a1", a1);
