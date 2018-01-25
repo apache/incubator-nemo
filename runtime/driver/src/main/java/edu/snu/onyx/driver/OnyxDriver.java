@@ -197,6 +197,7 @@ public final class OnyxDriver {
     final Configuration contextConfiguration = ContextConfiguration.CONF
         .set(ContextConfiguration.IDENTIFIER, executorId) // We set: contextId = executorId
         .set(ContextConfiguration.ON_CONTEXT_STARTED, OnyxContext.ContextStartHandler.class)
+        .set(ContextConfiguration.ON_CONTEXT_STOP, OnyxContext.ContextStopHandler.class)
         .build();
 
     final Configuration ncsConfiguration =  getExecutorNcsConfiguration();

@@ -28,25 +28,19 @@ public final class OperatorTask extends Task {
    * Constructor.
    * @param taskId id of the task.
    * @param runtimeVertexId id of the runtime vertex.
-   * @param index index in the taskGroup.
    * @param transform transform to perform.
-   * @param taskGroupId id of the taskGroup.
    */
   public OperatorTask(final String taskId,
                       final String runtimeVertexId,
-                      final int index,
-                      final Transform transform,
-                      final String taskGroupId) {
-    this(taskId, runtimeVertexId, index, transform, taskGroupId, false);
+                      final Transform transform) {
+    this(taskId, runtimeVertexId, transform, false);
   }
 
   public OperatorTask(final String taskId,
                       final String runtimeVertexId,
-                      final int index,
                       final Transform transform,
-                      final String taskGroupId,
                       final boolean isSmall) {
-    super(taskId, runtimeVertexId, index, taskGroupId);
+    super(taskId, runtimeVertexId);
     this.transform = transform;
     this.isSmall = isSmall;
   }

@@ -25,6 +25,7 @@ import edu.snu.onyx.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.onyx.conf.JobConf;
+import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.onyx.runtime.common.message.local.LocalMessageEnvironment;
@@ -134,17 +135,17 @@ public final class JobStateManagerTest {
     for (int stageIdx = 0; stageIdx < stageList.size(); stageIdx++) {
       final PhysicalStage physicalStage = stageList.get(stageIdx);
       jobStateManager.onStageStateChanged(physicalStage.getId(), StageState.State.EXECUTING);
-      final List<TaskGroup> taskGroupList = physicalStage.getTaskGroupList();
-      taskGroupList.forEach(taskGroup -> {
-        jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.EXECUTING);
-        jobStateManager.onTaskGroupStateChanged(taskGroup, TaskGroupState.State.COMPLETE);
-        if (taskGroup.getTaskGroupIdx() == taskGroupList.size() - 1) {
-          assertTrue(jobStateManager.checkStageCompletion(taskGroup.getStageId()));
+      final List<String> taskGroupIds = physicalStage.getTaskGroupIds();
+      taskGroupIds.forEach(taskGroupId -> {
+        jobStateManager.onTaskGroupStateChanged(taskGroupId, TaskGroupState.State.EXECUTING);
+        jobStateManager.onTaskGroupStateChanged(taskGroupId, TaskGroupState.State.COMPLETE);
+        if (RuntimeIdGenerator.getIndexFromTaskGroupId(taskGroupId) == taskGroupIds.size() - 1) {
+          assertTrue(jobStateManager.checkStageCompletion(physicalStage.getId()));
         }
       });
       final Map<String, TaskGroupState> taskGroupStateMap = jobStateManager.getIdToTaskGroupStates();
-      taskGroupList.forEach(taskGroup -> {
-        assertEquals(taskGroupStateMap.get(taskGroup.getTaskGroupId()).getStateMachine().getCurrentState(),
+      taskGroupIds.forEach(taskGroupId -> {
+        assertEquals(taskGroupStateMap.get(taskGroupId).getStateMachine().getCurrentState(),
             TaskGroupState.State.COMPLETE);
       });
 

@@ -62,7 +62,7 @@ public class MetricData {
    */
   public final String toJson() {
     try {
-      final String jsonStr = objectMapper.writeValueAsString(this);
+      final String jsonStr = objectMapper.writeValueAsString(metrics);
       return jsonStr;
     } catch (final Exception e) {
       throw new JsonParseException(e);

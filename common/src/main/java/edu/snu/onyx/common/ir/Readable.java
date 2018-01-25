@@ -13,19 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.runtime.common.plan.physical;
+package edu.snu.onyx.common.ir;
+
+import java.io.Serializable;
 
 /**
- * MetricCollectionBarrierTask.
+ * Interface for readable.
+ * @param <O> output type.
  */
-public final class MetricCollectionBarrierTask extends Task {
+public interface Readable<O> extends Serializable {
   /**
-   * Constructor.
-   * @param taskId id of the task.
-   * @param irVertexId id of the IR vertex.
+   * Method to read data from the source.
+   * @return an {@link Iterable} of the data read by the readable.
+   * @throws Exception exception while reading data.
    */
-  MetricCollectionBarrierTask(final String taskId,
-                              final String irVertexId) {
-    super(taskId, irVertexId);
-  }
+  Iterable<O> read() throws Exception;
 }
+

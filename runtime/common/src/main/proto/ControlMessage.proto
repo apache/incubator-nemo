@@ -49,7 +49,7 @@ message TaskGroupStateChangedMsg {
     required string executorId = 1;
     required string taskGroupId = 2;
     required TaskGroupStateFromExecutor state = 3;
-    repeated string tasksPutOnHoldIds = 4;
+    optional string taskPutOnHoldId = 4;
     optional RecoverableFailureCause failureCause = 5;
     required int32 attemptIdx = 6;
 }

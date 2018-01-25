@@ -69,13 +69,13 @@ public final class ExecutorRepresenter {
   }
 
   public void onTaskGroupScheduled(final ScheduledTaskGroup scheduledTaskGroup) {
-    runningTaskGroups.add(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
-    failedTaskGroups.remove(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
+    runningTaskGroups.add(scheduledTaskGroup.getTaskGroupId());
+    failedTaskGroups.remove(scheduledTaskGroup.getTaskGroupId());
     final DAG taskDag = scheduledTaskGroup.getTaskGroup().getTaskDAG(); // Scheduler hack
     if (taskDag != null && taskDag.getTopologicalSort().stream()
         .filter(task -> task instanceof OperatorTask)
         .anyMatch(opTask -> ((OperatorTask) opTask).isSmall())) {
-      smallTaskGroups.add(scheduledTaskGroup.getTaskGroup().getTaskGroupId());
+      smallTaskGroups.add(scheduledTaskGroup.getTaskGroupId());
     }
 
     sendControlMessage(

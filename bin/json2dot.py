@@ -167,7 +167,7 @@ class NormalVertex:
         except:
             pass
         try:
-            label += '\\n{}'.format(self.properties['runtimeVertexId'])
+            label += '\\n{}'.format(self.properties['irVertexId'])
         except:
             pass
         try:

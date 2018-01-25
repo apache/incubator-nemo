@@ -15,6 +15,8 @@
  */
 package edu.snu.onyx.runtime.common.plan.physical;
 
+import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
+
 import java.io.Serializable;
 import java.util.List;
 
@@ -28,25 +30,32 @@ import java.util.List;
 public final class ScheduledTaskGroup implements Serializable {
   private final String jobId;
   private final TaskGroup taskGroup;
+  private final String taskGroupId;
+  private final int taskGroupIdx;
   private final List<PhysicalStageEdge> taskGroupIncomingEdges;
   private final List<PhysicalStageEdge> taskGroupOutgoingEdges;
   private final int attemptIdx;
 
   /**
    * Constructor.
-   * @param jobId id of the job.
-   * @param taskGroup taskGroup.
-   * @param taskGroupIncomingEdges incoming edges of the taskGroup.
-   * @param taskGroupOutgoingEdges outgoing edges of the taskGroup.
-   * @param attemptIdx attempt index.
+   *
+   * @param jobId                  the id of the job.
+   * @param taskGroup              the scheduled task group.
+   * @param taskGroupId            the ID of the scheduled task group.
+   * @param taskGroupIncomingEdges the incoming edges of the task group.
+   * @param taskGroupOutgoingEdges the outgoing edges of the task group.
+   * @param attemptIdx             the attempt index.
    */
   public ScheduledTaskGroup(final String jobId,
                             final TaskGroup taskGroup,
+                            final String taskGroupId,
                             final List<PhysicalStageEdge> taskGroupIncomingEdges,
                             final List<PhysicalStageEdge> taskGroupOutgoingEdges,
                             final int attemptIdx) {
     this.jobId = jobId;
     this.taskGroup = taskGroup;
+    this.taskGroupId = taskGroupId;
+    this.taskGroupIdx = RuntimeIdGenerator.getIndexFromTaskGroupId(taskGroupId);
     this.taskGroupIncomingEdges = taskGroupIncomingEdges;
     this.taskGroupOutgoingEdges = taskGroupOutgoingEdges;
     this.attemptIdx = attemptIdx;
@@ -64,6 +73,21 @@ public final class ScheduledTaskGroup implements Serializable {
    */
   public TaskGroup getTaskGroup() {
     return taskGroup;
+  }
+
+  /**
+   * @return the ID of the scheduled task group.
+   */
+  public String getTaskGroupId() {
+    return taskGroupId;
+  }
+
+
+  /**
+   * @return the idx of the scheduled task group.
+   */
+  public int getTaskGroupIdx() {
+    return taskGroupIdx;
   }
 
   /**

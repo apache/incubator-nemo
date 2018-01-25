@@ -18,6 +18,7 @@ package edu.snu.onyx.driver;
 import edu.snu.onyx.runtime.executor.Executor;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.apache.reef.evaluator.context.events.ContextStart;
+import org.apache.reef.evaluator.context.events.ContextStop;
 import org.apache.reef.tang.annotations.Unit;
 import org.apache.reef.wake.EventHandler;
 import org.slf4j.Logger;
@@ -47,6 +48,17 @@ public final class OnyxContext {
     @Override
     public void onNext(final ContextStart contextStart) {
       LOG.info("Context Started: Executor is now ready and listening for messages");
+    }
+  }
+
+  /**
+   * Called when the context is stopped.
+   */
+  public final class ContextStopHandler implements EventHandler<ContextStop> {
+
+    @Override
+    public void onNext(final ContextStop contextStop) {
+      executor.terminate();
     }
   }
 }

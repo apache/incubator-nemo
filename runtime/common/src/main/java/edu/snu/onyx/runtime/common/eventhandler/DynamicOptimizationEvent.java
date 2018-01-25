@@ -22,7 +22,6 @@ import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.eventhandler.RuntimeEvent;
 import edu.snu.onyx.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 
 /**
  * An event for triggering dynamic optimization.
@@ -30,7 +29,7 @@ import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 public final class DynamicOptimizationEvent implements RuntimeEvent {
   private final PhysicalPlan physicalPlan;
   private final MetricCollectionBarrierVertex metricCollectionBarrierVertex;
-  private final Pair<String, TaskGroup> taskInfo;
+  private final Pair<String, String> taskInfo;
 
   /**
    * Default constructor.
@@ -40,7 +39,7 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
    */
   public DynamicOptimizationEvent(final PhysicalPlan physicalPlan,
                                   final MetricCollectionBarrierVertex metricCollectionBarrierVertex,
-                                  final Pair<String, TaskGroup> taskInfo) {
+                                  final Pair<String, String> taskInfo) {
     this.physicalPlan = physicalPlan;
     this.metricCollectionBarrierVertex = metricCollectionBarrierVertex;
     this.taskInfo = taskInfo;
@@ -61,9 +60,9 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
   }
 
   /**
-   * @return the information of the task at which this optimization occurs: its name and its taskGroup.
+   * @return the information of the task at which this optimization occurs: its name and its task group ID.
    */
-  public Pair<String, TaskGroup> getTaskInfo() {
+  public Pair<String, String> getTaskInfo() {
     return this.taskInfo;
   }
 }

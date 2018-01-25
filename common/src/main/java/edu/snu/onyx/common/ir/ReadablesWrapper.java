@@ -16,18 +16,18 @@
 package edu.snu.onyx.common.ir;
 
 import java.io.Serializable;
-import java.util.Iterator;
+import java.util.List;
 
 /**
- * Interface for reader.
+ * A wrapper interface for parallel {@link Readable}s.
  * @param <O> output type.
  */
-public interface Reader<O> extends Serializable {
+public interface ReadablesWrapper<O> extends Serializable {
+
   /**
-   * Method to read data from the source.
-   * @return an {@link Iterator} of the data read by the reader.
-   * @throws Exception exception while reading data.
+   * @return the parallel {@link Readable}s.
+   * @throws Exception if fail to get.
    */
-  Iterator<O> read() throws Exception;
+  List<Readable<O>> getReadables() throws Exception;
 }
 

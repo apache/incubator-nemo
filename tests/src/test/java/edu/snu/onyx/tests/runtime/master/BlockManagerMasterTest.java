@@ -86,7 +86,7 @@ public final class BlockManagerMasterTest {
   public void testLostAfterCommit() throws Exception {
     final String edgeId = RuntimeIdGenerator.generateRuntimeEdgeId("Edge-0");
     final int srcTaskIndex = 0;
-    final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId();
+    final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId(srcTaskIndex, "Stage-test");
     final String executorId = RuntimeIdGenerator.generateExecutorId();
     final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskIndex);
 
@@ -119,7 +119,7 @@ public final class BlockManagerMasterTest {
   public void testBeforeAfterCommit() throws Exception {
     final String edgeId = RuntimeIdGenerator.generateRuntimeEdgeId("Edge-1");
     final int srcTaskIndex = 0;
-    final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId();
+    final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId(srcTaskIndex, "Stage-Test");
     final String executorId = RuntimeIdGenerator.generateExecutorId();
     final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskIndex);
 

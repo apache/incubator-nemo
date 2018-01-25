@@ -106,10 +106,8 @@ public final class DAGConverterTest {
     assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage1).size(), 1);
     assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage2).size(), 0);
 
-    final List<TaskGroup> taskGroupList1 = physicalStage1.getTaskGroupList();
-    final List<TaskGroup> taskGroupList2 = physicalStage2.getTaskGroupList();
-    assertEquals(taskGroupList1.size(), 3);
-    assertEquals(taskGroupList2.size(), 2);
+    assertEquals(physicalStage1.getTaskGroupIds().size(), 3);
+    assertEquals(physicalStage2.getTaskGroupIds().size(), 2);
   }
 
   @Test
