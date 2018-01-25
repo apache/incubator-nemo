@@ -141,6 +141,14 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
+   * The number of serialization threads for scheduling.
+   */
+  @NamedParameter(doc = "Number of serialization thread for scheduling", short_name = "schedule_ser_thread",
+      default_value = "8")
+  public final class ScheduleSerThread implements Name<Integer> {
+  }
+
+  /**
    * Hash range multiplier.
    * If we need to split or recombine an output data from a task after it is stored,
    * we multiply the hash range with this factor in advance
