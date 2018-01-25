@@ -320,14 +320,14 @@ public final class TaskGroupExecutor {
           inputReader.read().forEach(compFuture -> compFuture.thenAccept(dataQueue::add));
         });
 
-    final Iterator[] iterators = new Iterator[sourceParallelism.get()];
-    IntStream.range(0, sourceParallelism.get()).forEach(srcTaskNum -> {
-      try {
-        iterators[srcTaskNum] = (dataQueue.take());
-      } catch (final InterruptedException e) {
-        throw new BlockFetchException(e);
-      }
-    });
+    final Iterator[] iterators = IntStream.range(0, sourceParallelism.get())
+        .mapToObj(srcTaskNum -> {
+          try {
+            return dataQueue.take();
+          } catch (InterruptedException e) {
+            throw new BlockFetchException(e);
+          }
+        }).toArray(Iterator[]::new);
     physicalTaskIdToOutputWriterMap.get(physicalTaskId).forEach(outputWriter -> {
           outputWriter.write(Iterators.concat(iterators));
           outputWriter.close();
