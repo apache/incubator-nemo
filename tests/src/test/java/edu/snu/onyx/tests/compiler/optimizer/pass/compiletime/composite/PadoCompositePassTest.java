@@ -77,17 +77,17 @@ public class PadoCompositePassTest {
     });
 
     final IRVertex vertex12 = processedDAG.getTopologicalSort().get(10);
-    assertEquals(ExecutorPlacementProperty.RESERVED, vertex12.getProperty(ExecutionProperty.Key.ExecutorPlacement));
+    assertEquals(ExecutorPlacementProperty.TRANSIENT, vertex12.getProperty(ExecutionProperty.Key.ExecutorPlacement));
     processedDAG.getIncomingEdgesOf(vertex12).forEach(irEdge -> {
       assertEquals(DataStoreProperty.Value.LocalFileStore, irEdge.getProperty(ExecutionProperty.Key.DataStore));
       assertEquals(DataFlowModelProperty.Value.Pull, irEdge.getProperty(ExecutionProperty.Key.DataFlowModel));
     });
 
-    final IRVertex vertex13 = processedDAG.getTopologicalSort().get(11);
+    final IRVertex vertex13 = processedDAG.getTopologicalSort().get(12);
     assertEquals(ExecutorPlacementProperty.RESERVED, vertex13.getProperty(ExecutionProperty.Key.ExecutorPlacement));
     processedDAG.getIncomingEdgesOf(vertex13).forEach(irEdge -> {
-      assertEquals(DataStoreProperty.Value.MemoryStore, irEdge.getProperty(ExecutionProperty.Key.DataStore));
-      assertEquals(DataFlowModelProperty.Value.Pull, irEdge.getProperty(ExecutionProperty.Key.DataFlowModel));
+      assertEquals(DataStoreProperty.Value.LocalFileStore, irEdge.getProperty(ExecutionProperty.Key.DataStore));
+      assertEquals(DataFlowModelProperty.Value.Push, irEdge.getProperty(ExecutionProperty.Key.DataFlowModel));
     });
   }
 }
