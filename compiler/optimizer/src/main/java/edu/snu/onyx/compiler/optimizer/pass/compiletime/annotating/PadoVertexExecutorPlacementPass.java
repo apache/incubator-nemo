@@ -46,7 +46,7 @@ public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
       if (inEdges.isEmpty()) {
         vertex.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.TRANSIENT));
       } else {
-        if (hasM2M(inEdges) || allFromReserved(inEdges)) {
+        if (hasM2M(inEdges) || allO2OFromReserved(inEdges)) {
           vertex.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.RESERVED));
         } else {
           vertex.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.TRANSIENT));
@@ -72,10 +72,11 @@ public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
    * @param irEdges irEdges to check.
    * @return whether of not they are from reserved containers.
    */
-  private boolean allFromReserved(final List<IREdge> irEdges) {
+  private boolean allO2OFromReserved(final List<IREdge> irEdges) {
     return irEdges.stream()
-        .allMatch(edge ->
-            edge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement)
-                .equals(ExecutorPlacementProperty.RESERVED));
+        .allMatch(edge -> DataCommunicationPatternProperty.Value.OneToOne.equals(
+            edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))
+            && edge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement).equals(
+                ExecutorPlacementProperty.RESERVED));
   }
 }
