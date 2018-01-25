@@ -157,7 +157,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
       jobDAG.getAncestors(candidateStageId).forEach(ancestorStage -> {
         if (schedulableStages.contains(ancestorStage.getId())) {
           // Remove the ancestor stage if it is of the same container type.
-          if (candidateStageContainerType.equals(ancestorStage.getTaskGroupList().get(0).getContainerType())) {
+          if (candidateStageContainerType.equals(ancestorStage.getTaskGroup().getContainerType())) {
             schedulableStages.remove(ancestorStage.getId());
           }
         }
@@ -178,7 +178,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
     final DAG<PhysicalStage, PhysicalStageEdge> jobDAG = physicalPlan.getStageDAG();
     for (final PhysicalStage descendantStage : jobDAG.getDescendants(candidateStageId)) {
       if (schedulableStages.contains(descendantStage.getId())) {
-        if (candidateStageContainerType.equals(descendantStage.getTaskGroupList().get(0).getContainerType())) {
+        if (candidateStageContainerType.equals(descendantStage.getTaskGroup().getContainerType())) {
           return false;
         }
       }

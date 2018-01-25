@@ -33,7 +33,6 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.function.Function;
-import java.util.stream.IntStream;
 
 /**
  * A function that converts an IR DAG to physical DAG.
@@ -45,6 +44,7 @@ public final class PhysicalPlanGenerator
 
   /**
    * Private constructor.
+   *
    * @param dagDirectory the directory in which to store DAG data.
    */
   @Inject
@@ -54,6 +54,7 @@ public final class PhysicalPlanGenerator
 
   /**
    * Generates the {@link PhysicalPlan} to be executed.
+   *
    * @param irDAG that should be converted to a physical execution plan
    * @return {@link PhysicalPlan} to execute.
    */
@@ -69,6 +70,7 @@ public final class PhysicalPlanGenerator
 
   /**
    * We take the stage-partitioned DAG and create actual stage and stage edge objects to create a DAG of stages.
+   *
    * @param irDAG stage-partitioned IR DAG.
    * @return the DAG composed of stages and stage edges.
    */
@@ -161,8 +163,10 @@ public final class PhysicalPlanGenerator
 
   // Map that keeps track of the IRVertex of each tasks
   private final Map<Task, IRVertex> taskIRVertexMap = new HashMap<>();
+
   /**
    * Getter for taskIRVertexMap.
+   *
    * @return the taskIRVertexMap.
    */
   public Map<Task, IRVertex> getTaskIRVertexMap() {
@@ -171,6 +175,7 @@ public final class PhysicalPlanGenerator
 
   /**
    * Converts the given DAG of stages to a physical DAG for execution.
+   *
    * @param dagOfStages IR DAG partitioned into stages.
    * @return the converted physical DAG to execute,
    * which consists of {@link PhysicalStage} and their relationship represented by {@link PhysicalStageEdge}.
@@ -179,92 +184,83 @@ public final class PhysicalPlanGenerator
     final Map<String, PhysicalStage> runtimeStageIdToPhysicalStageMap = new HashMap<>();
     final DAGBuilder<PhysicalStage, PhysicalStageEdge> physicalDAGBuilder = new DAGBuilder<>();
 
-    final Map<IRVertex, Task> irVertexTaskMap = new HashMap<>();
     for (final Stage stage : dagOfStages.getVertices()) {
-      final PhysicalStageBuilder physicalStageBuilder;
+      final Map<IRVertex, Task> irVertexTaskMap = new HashMap<>();
       final List<IRVertex> stageVertices = stage.getStageInternalDAG().getVertices();
 
       final ExecutionPropertyMap firstVertexProperties = stageVertices.iterator().next().getExecutionProperties();
-      final Integer stageParallelism =
-          (Integer) firstVertexProperties.get(ExecutionProperty.Key.Parallelism);
-      final String containerType =
-          (String) firstVertexProperties.get(ExecutionProperty.Key.ExecutorPlacement);
+      final int stageParallelism = firstVertexProperties.get(ExecutionProperty.Key.Parallelism);
+      final String containerType = firstVertexProperties.get(ExecutionProperty.Key.ExecutorPlacement);
 
-      // Begin building a new stage in the physical plan.
-      physicalStageBuilder = new PhysicalStageBuilder(stage.getId(), stageParallelism, stage.getScheduleGroupIndex());
+      // only one task group will be created and reused.
+      final DAGBuilder<Task, RuntimeEdge<Task>> stageInternalDAGBuilder = new DAGBuilder<>();
 
-      // (parallelism) number of task groups will be created.
-      IntStream.range(0, stageParallelism).forEach(taskGroupIndex -> {
+      // Iterate over the vertices contained in this stage to convert to tasks.
+      stageVertices.forEach(irVertex -> {
+        final Task newTaskToAdd;
+        if (irVertex instanceof SourceVertex) {
+          final SourceVertex sourceVertex = (SourceVertex) irVertex;
 
-        final DAGBuilder<Task, RuntimeEdge<Task>> stageInternalDAGBuilder = new DAGBuilder<>();
-        final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId();
-
-        // Iterate over the vertices contained in this stage to convert to tasks.
-        stageVertices.forEach(irVertex -> {
-          final Task newTaskToAdd;
-          if (irVertex instanceof SourceVertex) {
-            final SourceVertex sourceVertex = (SourceVertex) irVertex;
-
-            try {
-              final ReadablesWrapper readables = sourceVertex.getReadableWrapper(stageParallelism);
-              newTaskToAdd = new BoundedSourceTask<>(RuntimeIdGenerator.generateTaskId(), sourceVertex.getId(),
-                  taskGroupIndex, readables, taskGroupId);
-            } catch (Exception e) {
-              throw new PhysicalPlanGenerationException(e);
-            }
-          } else if (irVertex instanceof OperatorVertex) {
-            final OperatorVertex operatorVertex = (OperatorVertex) irVertex;
-            newTaskToAdd = new OperatorTask(RuntimeIdGenerator.generateTaskId(), operatorVertex.getId(),
-                taskGroupIndex, operatorVertex.getTransform(), taskGroupId);
-
-          } else if (irVertex instanceof MetricCollectionBarrierVertex) {
-            final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
-                (MetricCollectionBarrierVertex) irVertex;
-            newTaskToAdd = new MetricCollectionBarrierTask(RuntimeIdGenerator.generateTaskId(),
-                metricCollectionBarrierVertex.getId(), taskGroupIndex, taskGroupId);
-          } else {
-            throw new IllegalVertexOperationException("This vertex type is not supported");
+          try {
+            final ReadablesWrapper readables = sourceVertex.getReadableWrapper(stageParallelism);
+            final String sourceVertexId = sourceVertex.getId();
+            newTaskToAdd = new BoundedSourceTask<>(RuntimeIdGenerator.generateLogicalTaskId(sourceVertexId),
+                sourceVertexId, readables);
+          } catch (Exception e) {
+            throw new PhysicalPlanGenerationException(e);
           }
-          stageInternalDAGBuilder.addVertex(newTaskToAdd);
-          irVertexTaskMap.put(irVertex, newTaskToAdd);
-          taskIRVertexMap.put(newTaskToAdd, irVertex);
-        });
+        } else if (irVertex instanceof OperatorVertex) {
+          final OperatorVertex operatorVertex = (OperatorVertex) irVertex;
+          final String operatorVertexId = operatorVertex.getId();
+          newTaskToAdd = new OperatorTask(RuntimeIdGenerator.generateLogicalTaskId(operatorVertexId),
+              operatorVertexId, operatorVertex.getTransform());
 
-        // connect internal edges in the task group. It suffices to iterate over only the stage internal inEdges.
-        final DAG<IRVertex, IREdge> stageInternalDAG = stage.getStageInternalDAG();
-        stageInternalDAG.getVertices().forEach(irVertex -> {
-          final List<IREdge> inEdges = stageInternalDAG.getIncomingEdgesOf(irVertex);
-          inEdges.forEach(edge ->
-              stageInternalDAGBuilder.connectVertices(new RuntimeEdge<>(edge.getId(), edge.getExecutionProperties(),
-                  irVertexTaskMap.get(edge.getSrc()), irVertexTaskMap.get(edge.getDst()),
-                  edge.getCoder(), edge.isSideInput())));
-        });
-
-        // Create the task group to add for this stage.
-        final TaskGroup newTaskGroup = new TaskGroup(taskGroupId, stage.getId(),
-            taskGroupIndex, stageInternalDAGBuilder.build(), containerType);
-        physicalStageBuilder.addTaskGroup(newTaskGroup);
-        irVertexTaskMap.clear();
+        } else if (irVertex instanceof MetricCollectionBarrierVertex) {
+          final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
+              (MetricCollectionBarrierVertex) irVertex;
+          final String metricVertexId = metricCollectionBarrierVertex.getId();
+          newTaskToAdd = new MetricCollectionBarrierTask(RuntimeIdGenerator.generateLogicalTaskId(metricVertexId),
+              metricVertexId);
+        } else {
+          throw new IllegalVertexOperationException("This vertex type is not supported");
+        }
+        stageInternalDAGBuilder.addVertex(newTaskToAdd);
+        irVertexTaskMap.put(irVertex, newTaskToAdd);
+        taskIRVertexMap.put(newTaskToAdd, irVertex);
       });
-      final PhysicalStage physicalStage = physicalStageBuilder.build();
-      physicalDAGBuilder.addVertex(physicalStage);
 
+      // connect internal edges in the task group. It suffices to iterate over only the stage internal inEdges.
+      final DAG<IRVertex, IREdge> stageInternalDAG = stage.getStageInternalDAG();
+      stageInternalDAG.getVertices().forEach(irVertex -> {
+        final List<IREdge> inEdges = stageInternalDAG.getIncomingEdgesOf(irVertex);
+        inEdges.forEach(edge ->
+            stageInternalDAGBuilder.connectVertices(new RuntimeEdge<>(edge.getId(), edge.getExecutionProperties(),
+                irVertexTaskMap.get(edge.getSrc()), irVertexTaskMap.get(edge.getDst()),
+                edge.getCoder(), edge.isSideInput())));
+      });
+
+      // Create the task group to add for this stage.
+      final TaskGroup newTaskGroup = new TaskGroup(stage.getId(), stageInternalDAGBuilder.build(), containerType);
+      final PhysicalStage physicalStage =
+          new PhysicalStage(stage.getId(), newTaskGroup, stageParallelism, stage.getScheduleGroupIndex());
+
+      physicalDAGBuilder.addVertex(physicalStage);
       runtimeStageIdToPhysicalStageMap.put(stage.getId(), physicalStage);
     }
 
     // Connect Physical stages
     dagOfStages.getVertices().forEach(stage ->
-      dagOfStages.getIncomingEdgesOf(stage).forEach(stageEdge -> {
-        final PhysicalStage srcStage = runtimeStageIdToPhysicalStageMap.get(stageEdge.getSrc().getId());
-        final PhysicalStage dstStage = runtimeStageIdToPhysicalStageMap.get(stageEdge.getDst().getId());
+        dagOfStages.getIncomingEdgesOf(stage).forEach(stageEdge -> {
+          final PhysicalStage srcStage = runtimeStageIdToPhysicalStageMap.get(stageEdge.getSrc().getId());
+          final PhysicalStage dstStage = runtimeStageIdToPhysicalStageMap.get(stageEdge.getDst().getId());
 
-        physicalDAGBuilder.connectVertices(new PhysicalStageEdge(stageEdge.getId(),
-            stageEdge.getExecutionProperties(),
-            stageEdge.getSrcVertex(), stageEdge.getDstVertex(),
-            srcStage, dstStage,
-            stageEdge.getCoder(),
-            stageEdge.isSideInput()));
-      }));
+          physicalDAGBuilder.connectVertices(new PhysicalStageEdge(stageEdge.getId(),
+              stageEdge.getExecutionProperties(),
+              stageEdge.getSrcVertex(), stageEdge.getDstVertex(),
+              srcStage, dstStage,
+              stageEdge.getCoder(),
+              stageEdge.isSideInput()));
+        }));
 
     return physicalDAGBuilder.build();
   }

@@ -75,7 +75,7 @@ public final class BlockManagerMaster {
   /**
    * Initializes the states of a block which will be produced by producer task(s).
    *
-   * @param blockId         the id of the block to initialize.
+   * @param blockId             the id of the block to initialize.
    * @param producerTaskGroupId the id of the producer task group.
    */
   @VisibleForTesting

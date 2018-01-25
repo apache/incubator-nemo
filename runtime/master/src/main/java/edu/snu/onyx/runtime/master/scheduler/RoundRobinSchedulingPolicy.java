@@ -135,6 +135,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   /**
    * Sticks to the RR policy to select an executor for the next task group.
    * It checks the task groups running (as compared to each executor's capacity).
+   *
    * @param containerType to select an executor for.
    * @return (optionally) the selected executor.
    */
@@ -164,19 +165,19 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
 
   /**
    * Schedules and sends a TaskGroup to the given executor.
-   * @param executorId of the executor to execute the TaskGroup.
+   *
+   * @param executorId         of the executor to execute the TaskGroup.
    * @param scheduledTaskGroup to assign.
-   * @param jobStateManager which the TaskGroup belongs to.
-   * @return true if successfully scheduled, false otherwise.
+   * @param jobStateManager    which the TaskGroup belongs to.
    */
   private void scheduleTaskGroup(final String executorId,
                                  final ScheduledTaskGroup scheduledTaskGroup,
                                  final JobStateManager jobStateManager) {
-    jobStateManager.onTaskGroupStateChanged(scheduledTaskGroup.getTaskGroup(), TaskGroupState.State.EXECUTING);
+    jobStateManager.onTaskGroupStateChanged(scheduledTaskGroup.getTaskGroupId(), TaskGroupState.State.EXECUTING);
 
     final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
     LOG.info("Scheduling {} to {}",
-        new Object[]{scheduledTaskGroup.getTaskGroup().getTaskGroupId(), executorId});
+        new Object[]{scheduledTaskGroup.getTaskGroupId(), executorId});
     executor.onTaskGroupScheduled(scheduledTaskGroup);
   }
 

@@ -44,7 +44,6 @@ import java.util.stream.StreamSupport;
  */
 public final class InputReader extends DataTransfer {
   private final int dstTaskIndex;
-  private final String taskGroupId;
   private final BlockManagerWorker blockManagerWorker;
 
   /**
@@ -55,13 +54,13 @@ public final class InputReader extends DataTransfer {
   private final RuntimeEdge runtimeEdge;
 
   public InputReader(final int dstTaskIndex,
-                     final String taskGroupId,
-                     final IRVertex srcVertex,
+                     // TODO #717: Remove nullable.
+                     // (If the source is not an IR vertex, do not make InputReader.)
+                     @Nullable final IRVertex srcVertex, // null if the source vertex is not an IR vertex.
                      final RuntimeEdge runtimeEdge,
                      final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
     this.dstTaskIndex = dstTaskIndex;
-    this.taskGroupId = taskGroupId;
     this.srcVertex = srcVertex;
     this.runtimeEdge = runtimeEdge;
     this.blockManagerWorker = blockManagerWorker;
@@ -121,9 +120,10 @@ public final class InputReader extends DataTransfer {
   private List<CompletableFuture<Iterator>> readDataInRange() {
     assert (runtimeEdge instanceof PhysicalStageEdge);
     final KeyRange hashRangeToRead =
-        ((PhysicalStageEdge) runtimeEdge).getTaskGroupIdToKeyRangeMap().get(taskGroupId);
+        ((PhysicalStageEdge) runtimeEdge).getTaskGroupIdxToKeyRange().get(dstTaskIndex);
     if (hashRangeToRead == null) {
-      throw new BlockFetchException(new Throwable("The hash range to read is not assigned to " + taskGroupId));
+      throw new BlockFetchException(
+          new Throwable("The hash range to read is not assigned to " + dstTaskIndex + "'th task"));
     }
 
     final int numSrcTasks = this.getSourceParallelism();
@@ -143,13 +143,13 @@ public final class InputReader extends DataTransfer {
     return runtimeEdge;
   }
 
-  public String getSrcVertexId() {
+  public String getSrcIrVertexId() {
     // this src vertex can be either a real vertex or a task. we must check!
     if (srcVertex != null) {
       return srcVertex.getId();
     }
 
-    return ((Task) runtimeEdge.getSrc()).getRuntimeVertexId();
+    return ((Task) runtimeEdge.getSrc()).getIrVertexId();
   }
 
   public boolean isSideInputReader() {

@@ -92,7 +92,7 @@ public final class Executor {
 
   private synchronized void onTaskGroupReceived(final ScheduledTaskGroup scheduledTaskGroup) {
     LOG.debug("Executor [{}] received TaskGroup [{}] to execute.",
-        new Object[]{executorId, scheduledTaskGroup.getTaskGroup().getTaskGroupId()});
+        new Object[]{executorId, scheduledTaskGroup.getTaskGroupId()});
     executorService.execute(() -> launchTaskGroup(scheduledTaskGroup));
   }
 
@@ -103,9 +103,8 @@ public final class Executor {
   private void launchTaskGroup(final ScheduledTaskGroup scheduledTaskGroup) {
     try {
       taskGroupStateManager =
-          new TaskGroupStateManager(scheduledTaskGroup.getTaskGroup(), scheduledTaskGroup.getAttemptIdx(), executorId,
-              persistentConnectionToMasterMap,
-              metricMessageSender);
+          new TaskGroupStateManager(scheduledTaskGroup, executorId,
+              persistentConnectionToMasterMap, metricMessageSender);
 
       scheduledTaskGroup.getTaskGroupIncomingEdges()
           .forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
@@ -117,11 +116,7 @@ public final class Executor {
         taskDag.getOutgoingEdgesOf(v).forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
       });
 
-      new TaskGroupExecutor(scheduledTaskGroup.getTaskGroup(),
-          taskGroupStateManager,
-          scheduledTaskGroup.getTaskGroupIncomingEdges(),
-          scheduledTaskGroup.getTaskGroupOutgoingEdges(),
-          dataTransferFactory).execute();
+      new TaskGroupExecutor(scheduledTaskGroup, taskGroupStateManager, dataTransferFactory).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()

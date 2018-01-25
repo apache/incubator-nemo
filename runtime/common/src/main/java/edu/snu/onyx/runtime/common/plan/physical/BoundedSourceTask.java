@@ -28,25 +28,22 @@ public final class BoundedSourceTask<O> extends Task {
   /**
    * Constructor.
    * @param taskId id of the task.
-   * @param runtimeVertexId id of the runtime vertex.
-   * @param index index in its taskGroup.
+   * @param irVertexId id of the IR vertex.
    * @param readablesWrapper the wrapper of the readables for the source data.
-   * @param taskGroupId id of the taskGroup.
    */
   public BoundedSourceTask(final String taskId,
-                           final String runtimeVertexId,
-                           final int index,
-                           final ReadablesWrapper<O> readablesWrapper,
-                           final String taskGroupId) {
-    super(taskId, runtimeVertexId, index, taskGroupId);
+                           final String irVertexId,
+                           final ReadablesWrapper<O> readablesWrapper) {
+    super(taskId, irVertexId);
     this.readableWrapper = readablesWrapper;
   }
 
   /**
+   * @param readableIdx the index of the target readable.
    * @return the readable of source data.
    * @throws Exception if fail to get.
    */
-  public Readable<O> getReadable() throws Exception {
-    return readableWrapper.getReadables().get(getIndex());
+  public Readable<O> getReadable(final int readableIdx) throws Exception {
+    return readableWrapper.getReadables().get(readableIdx);
   }
 }

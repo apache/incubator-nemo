@@ -270,7 +270,7 @@ public final class RuntimeMaster {
           taskGroupStateChangedMsg.getTaskGroupId(),
           convertTaskGroupState(taskGroupStateChangedMsg.getState()),
           taskGroupStateChangedMsg.getAttemptIdx(),
-          taskGroupStateChangedMsg.getTasksPutOnHoldIdsList(),
+          taskGroupStateChangedMsg.getTaskPutOnHoldId(),
           convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
       break;
     case ExecutorFailed:
