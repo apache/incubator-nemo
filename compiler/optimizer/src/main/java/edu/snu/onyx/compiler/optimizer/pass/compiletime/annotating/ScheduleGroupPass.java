@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static edu.snu.onyx.common.ir.executionproperty.ExecutionProperty.Key.DataFlowModel;
 import static edu.snu.onyx.common.ir.executionproperty.ExecutionProperty.Key.StageId;
 
 /**
@@ -82,7 +83,7 @@ public final class ScheduleGroupPass extends AnnotatingPass {
       final Integer previousSize = stageIdToScheduleGroupIndexMap.size();
       dependentStagesMap.forEach((stageId, dependentStages) -> {
         if (!stageIdToScheduleGroupIndexMap.keySet().contains(stageId)
-            && dependentStages.size() == INITIAL_SCHEDULE_GROUP) { // initial source stages
+            && dependentStages.isEmpty()) { // initial source stages
           // initial source stages are indexed with schedule group 0.
           stageIdToScheduleGroupIndexMap.put(stageId, INITIAL_SCHEDULE_GROUP);
         } else if (!stageIdToScheduleGroupIndexMap.keySet().contains(stageId)
@@ -106,7 +107,7 @@ public final class ScheduleGroupPass extends AnnotatingPass {
     Lists.reverse(dag.getTopologicalSort()).forEach(v -> {
       // get the destination vertices of the edges that are marked as push
       final List<IRVertex> pushConnectedVertices = dag.getOutgoingEdgesOf(v).stream()
-          .filter(e -> DataFlowModelProperty.Value.Push.equals(e.getProperty(ExecutionProperty.Key.DataFlowModel)))
+          .filter(e -> DataFlowModelProperty.Value.Push.equals(e.getProperty(DataFlowModel)))
           .map(IREdge::getDst)
           .collect(Collectors.toList());
       if (!pushConnectedVertices.isEmpty()) { // if we need to do something,
@@ -119,8 +120,7 @@ public final class ScheduleGroupPass extends AnnotatingPass {
         stageIdToScheduleGroupIndexMap.replace(v.getProperty(StageId), newSchedulerGroupIndex);
         // shift those if it came too far
         if (stageIdToScheduleGroupIndexMap.values().stream()
-            .filter(stageIndex -> stageIndex.equals(originalScheduleGroupIndex))
-            .count() == 0) { // if it doesn't exist
+            .noneMatch(stageIndex -> stageIndex.equals(originalScheduleGroupIndex))) { // if it doesn't exist
           stageIdToScheduleGroupIndexMap.replaceAll((stageId, scheduleGroupIndex) -> {
             if (scheduleGroupIndex > originalScheduleGroupIndex) {
               return scheduleGroupIndex - 1; // we shift schedule group indexes by one.
