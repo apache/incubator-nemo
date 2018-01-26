@@ -33,7 +33,7 @@ final class NcsMessageContext implements MessageContext {
 
   @Override
   public <U> void reply(final U replyMessage) {
-    LOG.debug("reply: {}", replyMessage);
+    LOG.debug("[REPLY]: {}", replyMessage);
     final Connection connection = connectionFactory.newConnection(idFactory.getNewInstance(senderId));
     try {
       connection.open();
