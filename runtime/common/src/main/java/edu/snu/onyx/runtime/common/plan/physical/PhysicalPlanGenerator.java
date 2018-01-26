@@ -241,9 +241,9 @@ public final class PhysicalPlanGenerator
       });
 
       // Create the task group to add for this stage.
-      final TaskGroup newTaskGroup = new TaskGroup(stage.getId(), stageInternalDAGBuilder.build(), containerType);
       final PhysicalStage physicalStage =
-          new PhysicalStage(stage.getId(), newTaskGroup, stageParallelism, stage.getScheduleGroupIndex());
+          new PhysicalStage(stage.getId(), stageInternalDAGBuilder.build(),
+              stageParallelism, stage.getScheduleGroupIndex(), containerType);
 
       physicalDAGBuilder.addVertex(physicalStage);
       runtimeStageIdToPhysicalStageMap.put(stage.getId(), physicalStage);
