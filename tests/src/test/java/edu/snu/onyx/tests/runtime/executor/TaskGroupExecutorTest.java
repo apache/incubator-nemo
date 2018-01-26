@@ -34,6 +34,7 @@ import edu.snu.onyx.runtime.executor.TaskGroupStateManager;
 import edu.snu.onyx.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.onyx.runtime.executor.datatransfer.InputReader;
 import edu.snu.onyx.runtime.executor.datatransfer.OutputWriter;
+import org.apache.commons.lang3.SerializationUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -136,14 +137,14 @@ public final class TaskGroupExecutorTest {
         new DAGBuilder<Task, RuntimeEdge<Task>>().addVertex(boundedSourceTask).build();
     final PhysicalStageEdge stageOutEdge = mock(PhysicalStageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(sourceIRVertex);
-    final TaskGroup sourceTaskGroup = new TaskGroup(stageId, taskDag, CONTAINER_TYPE);
     final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId(0, stageId);
-    final ScheduledTaskGroup scheduledTaskGroup = new ScheduledTaskGroup(
-        "testSourceTask", sourceTaskGroup, taskGroupId, Collections.emptyList(), Collections.singletonList(stageOutEdge), 0);
+    final ScheduledTaskGroup scheduledTaskGroup =
+        new ScheduledTaskGroup("testSourceTask", new byte[0], taskGroupId,
+            Collections.emptyList(), Collections.singletonList(stageOutEdge), 0, CONTAINER_TYPE);
 
     // Execute the task group.
     final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
-        scheduledTaskGroup, taskGroupStateManager, dataTransferFactory);
+        scheduledTaskGroup, taskDag, taskGroupStateManager, dataTransferFactory);
     taskGroupExecutor.execute();
 
     // Check the output.
@@ -156,7 +157,7 @@ public final class TaskGroupExecutorTest {
   /**
    * Test the {@link OperatorTask} processing in {@link TaskGroupExecutor}.
    *
-   * The {@link TaskGroup} to test will looks like:
+   * The DAG of the task group to test will looks like:
    * operator task 1 -> operator task 2
    *
    * The output data from upstream stage will be split
@@ -181,7 +182,7 @@ public final class TaskGroupExecutorTest {
         new OperatorTask(operatorTaskId1, operatorIRVertexId1, new SimpleTransform());
     final OperatorTask operatorTask2 =
         new OperatorTask(operatorTaskId2, operatorIRVertexId2, new SimpleTransform());
-    final Coder coder = mock(Coder.class);
+    final Coder coder = Coder.DUMMY_CODER;
     ExecutionPropertyMap edgeProperties = new ExecutionPropertyMap(runtimeIREdgeId);
     edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
     final DAG<Task, RuntimeEdge<Task>> taskDag = new DAGBuilder<Task, RuntimeEdge<Task>>()
@@ -191,17 +192,17 @@ public final class TaskGroupExecutorTest {
             runtimeIREdgeId, edgeProperties, operatorTask1, operatorTask2, coder))
         .build();
     final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId(0, stageId);
-    final TaskGroup operatorTaskGroup = new TaskGroup(stageId, taskDag, CONTAINER_TYPE);
     final PhysicalStageEdge stageInEdge = mock(PhysicalStageEdge.class);
     when(stageInEdge.getDstVertex()).thenReturn(operatorIRVertex1);
     final PhysicalStageEdge stageOutEdge = mock(PhysicalStageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(operatorIRVertex2);
-    final ScheduledTaskGroup scheduledTaskGroup = new ScheduledTaskGroup(
-        "testSourceTask", operatorTaskGroup, taskGroupId, Collections.singletonList(stageInEdge), Collections.singletonList(stageOutEdge), 0);
+    final ScheduledTaskGroup scheduledTaskGroup =
+        new ScheduledTaskGroup("testSourceTask", new byte[0], taskGroupId,
+            Collections.singletonList(stageInEdge), Collections.singletonList(stageOutEdge), 0, CONTAINER_TYPE);
 
     // Execute the task group.
     final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
-        scheduledTaskGroup, taskGroupStateManager, dataTransferFactory);
+        scheduledTaskGroup, taskDag, taskGroupStateManager, dataTransferFactory);
     taskGroupExecutor.execute();
 
     // Check the output.

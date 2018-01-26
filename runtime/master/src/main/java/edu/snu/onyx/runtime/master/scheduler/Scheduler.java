@@ -25,7 +25,8 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import javax.annotation.Nullable;
 
 /**
- * Receives jobs to execute and schedules {@link edu.snu.onyx.runtime.common.plan.physical.TaskGroup} to executors.
+ * Receives jobs to execute and schedules
+ * {@link edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup} to executors.
  */
 @DriverSide
 @DefaultImplementation(BatchSingleJobScheduler.class)

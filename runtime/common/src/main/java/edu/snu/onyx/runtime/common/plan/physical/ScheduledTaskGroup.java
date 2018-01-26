@@ -21,44 +21,51 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * A wrapper for TaskGroup.
- * This class includes the incoming/outgoing edges to/from the stage the TaskGroup belongs to.
- * The information is required in Executors to resolve intermediate data dependencies.
+ * A ScheduledTaskGroup is a grouping of {@link Task} that belong to a stage.
+ * Executors receive units of ScheduledTaskGroups during job execution,
+ * and thus the resource type of all tasks of a ScheduledTaskGroup must be identical.
+ * A stage contains a list of IDs of TaskGroups whose length corresponds to stage/operator parallelism.
  *
- * Thus, this class is serialized and sent to executors by the scheduler (instead of TaskGroup).
+ * This class includes all information which will be required from the executor after scheduled,
+ * including the (serialized) DAG of {@link Task}s,
+ * the incoming/outgoing edges to/from the stage the TaskGroup belongs to, and so on.
  */
 public final class ScheduledTaskGroup implements Serializable {
   private final String jobId;
-  private final TaskGroup taskGroup;
   private final String taskGroupId;
   private final int taskGroupIdx;
   private final List<PhysicalStageEdge> taskGroupIncomingEdges;
   private final List<PhysicalStageEdge> taskGroupOutgoingEdges;
   private final int attemptIdx;
+  private final String containerType;
+  private final byte[] serializedTaskGroupDag;
 
   /**
    * Constructor.
    *
    * @param jobId                  the id of the job.
-   * @param taskGroup              the scheduled task group.
+   * @param serializedTaskGroupDag the serialized DAG of the task group.
    * @param taskGroupId            the ID of the scheduled task group.
    * @param taskGroupIncomingEdges the incoming edges of the task group.
    * @param taskGroupOutgoingEdges the outgoing edges of the task group.
    * @param attemptIdx             the attempt index.
+   * @param containerType          the type of container to execute the task group on.
    */
   public ScheduledTaskGroup(final String jobId,
-                            final TaskGroup taskGroup,
+                            final byte[] serializedTaskGroupDag,
                             final String taskGroupId,
                             final List<PhysicalStageEdge> taskGroupIncomingEdges,
                             final List<PhysicalStageEdge> taskGroupOutgoingEdges,
-                            final int attemptIdx) {
+                            final int attemptIdx,
+                            final String containerType) {
     this.jobId = jobId;
-    this.taskGroup = taskGroup;
     this.taskGroupId = taskGroupId;
     this.taskGroupIdx = RuntimeIdGenerator.getIndexFromTaskGroupId(taskGroupId);
     this.taskGroupIncomingEdges = taskGroupIncomingEdges;
     this.taskGroupOutgoingEdges = taskGroupOutgoingEdges;
     this.attemptIdx = attemptIdx;
+    this.containerType = containerType;
+    this.serializedTaskGroupDag = serializedTaskGroupDag;
   }
 
   /**
@@ -69,10 +76,10 @@ public final class ScheduledTaskGroup implements Serializable {
   }
 
   /**
-   * @return the taskGroup
+   * @return the serialized DAG of the task group.
    */
-  public TaskGroup getTaskGroup() {
-    return taskGroup;
+  public byte[] getSerializedTaskGroupDag() {
+    return serializedTaskGroupDag;
   }
 
   /**
@@ -81,7 +88,6 @@ public final class ScheduledTaskGroup implements Serializable {
   public String getTaskGroupId() {
     return taskGroupId;
   }
-
 
   /**
    * @return the idx of the scheduled task group.
@@ -109,5 +115,12 @@ public final class ScheduledTaskGroup implements Serializable {
    */
   public int getAttemptIdx() {
     return attemptIdx;
+  }
+
+  /**
+   * @return the type of container to execute the task group on.
+   */
+  public String getContainerType() {
+    return containerType;
   }
 }
