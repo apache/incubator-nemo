@@ -83,9 +83,9 @@ public class PadoCompositePassTest {
       assertEquals(DataFlowModelProperty.Value.Pull, irEdge.getProperty(ExecutionProperty.Key.DataFlowModel));
     });
 
-    final IRVertex vertex13 = processedDAG.getTopologicalSort().get(12);
-    assertEquals(ExecutorPlacementProperty.RESERVED, vertex13.getProperty(ExecutionProperty.Key.ExecutorPlacement));
-    processedDAG.getIncomingEdgesOf(vertex13).forEach(irEdge -> {
+    final IRVertex vertex14 = processedDAG.getTopologicalSort().get(12);
+    assertEquals(ExecutorPlacementProperty.RESERVED, vertex14.getProperty(ExecutionProperty.Key.ExecutorPlacement));
+    processedDAG.getIncomingEdgesOf(vertex14).forEach(irEdge -> {
       assertEquals(DataStoreProperty.Value.LocalFileStore, irEdge.getProperty(ExecutionProperty.Key.DataStore));
       assertEquals(DataFlowModelProperty.Value.Push, irEdge.getProperty(ExecutionProperty.Key.DataFlowModel));
     });
