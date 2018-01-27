@@ -77,7 +77,7 @@ public final class PhysicalPlanGenerator
   public DAG<Stage, StageEdge> stagePartitionIrDAG(final DAG<IRVertex, IREdge> irDAG) {
     final DAGBuilder<Stage, StageEdge> dagOfStagesBuilder = new DAGBuilder<>();
 
-    final SortedMap<Integer, List<IRVertex>> vertexListForEachStage = new TreeMap<>();
+    final Map<Integer, List<IRVertex>> vertexListForEachStage = new LinkedHashMap<>();
     irDAG.topologicalDo(irVertex -> {
       final Integer stageNum = irVertex.getProperty(ExecutionProperty.Key.StageId);
       if (!vertexListForEachStage.containsKey(stageNum)) {
@@ -126,7 +126,8 @@ public final class PhysicalPlanGenerator
             final Stage srcStage = vertexStageMap.get(srcVertex);
 
             if (srcStage == null) {
-              throw new IllegalVertexOperationException("srcVertex " + srcVertex + " not yet added to the builder");
+              throw new IllegalVertexOperationException("srcVertex " + srcVertex.getId()
+                  + " not yet added to the builder");
             }
 
             final StageEdgeBuilder newEdgeBuilder = new StageEdgeBuilder(irEdge.getId())
@@ -241,9 +242,9 @@ public final class PhysicalPlanGenerator
       });
 
       // Create the task group to add for this stage.
-      final TaskGroup newTaskGroup = new TaskGroup(stage.getId(), stageInternalDAGBuilder.build(), containerType);
       final PhysicalStage physicalStage =
-          new PhysicalStage(stage.getId(), newTaskGroup, stageParallelism, stage.getScheduleGroupIndex());
+          new PhysicalStage(stage.getId(), stageInternalDAGBuilder.build(),
+              stageParallelism, stage.getScheduleGroupIndex(), containerType);
 
       physicalDAGBuilder.addVertex(physicalStage);
       runtimeStageIdToPhysicalStageMap.put(stage.getId(), physicalStage);

@@ -18,7 +18,8 @@ package edu.snu.onyx.runtime.common.state;
 import edu.snu.onyx.common.StateMachine;
 
 /**
- * Represents the states and their transitions of a {@link edu.snu.onyx.runtime.common.plan.physical.TaskGroup}.
+ * Represents the states and their transitions of a
+ * {@link edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup}.
  */
 public final class TaskGroupState {
   private final StateMachine stateMachine;

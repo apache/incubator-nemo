@@ -39,7 +39,6 @@ import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.onyx.runtime.common.plan.physical.Task;
-import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.executor.Executor;
 import edu.snu.onyx.runtime.executor.MetricManagerWorker;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
@@ -359,8 +358,7 @@ public final class DataTransferTest {
 
   private PhysicalStage setupStages(final String stageId) {
     final DAG<Task, RuntimeEdge<Task>> emptyDag = new DAGBuilder<Task, RuntimeEdge<Task>>().build();
-    final TaskGroup taskGroup = new TaskGroup(stageId, emptyDag, "Not_used");
 
-    return new PhysicalStage(stageId, taskGroup, PARALLELISM_TEN, 0);
+    return new PhysicalStage(stageId, emptyDag, PARALLELISM_TEN, 0, "Not_used");
   }
 }

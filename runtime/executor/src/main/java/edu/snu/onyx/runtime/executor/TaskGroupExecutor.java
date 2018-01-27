@@ -51,7 +51,8 @@ public final class TaskGroupExecutor {
 
   private static final Logger LOG = LoggerFactory.getLogger(TaskGroupExecutor.class.getName());
 
-  private final ScheduledTaskGroup scheduledTaskGroup;
+  private final DAG<Task, RuntimeEdge<Task>> taskGroupDag;
+  private final String taskGroupId;
   private final int taskGroupIdx;
   private final TaskGroupStateManager taskGroupStateManager;
   private final List<PhysicalStageEdge> stageIncomingEdges;
@@ -67,9 +68,11 @@ public final class TaskGroupExecutor {
   private boolean isExecutionRequested;
 
   public TaskGroupExecutor(final ScheduledTaskGroup scheduledTaskGroup,
+                           final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
                            final TaskGroupStateManager taskGroupStateManager,
                            final DataTransferFactory channelFactory) {
-    this.scheduledTaskGroup = scheduledTaskGroup;
+    this.taskGroupDag = taskGroupDag;
+    this.taskGroupId = scheduledTaskGroup.getTaskGroupId();
     this.taskGroupIdx = scheduledTaskGroup.getTaskGroupIdx();
     this.taskGroupStateManager = taskGroupStateManager;
     this.stageIncomingEdges = scheduledTaskGroup.getTaskGroupIncomingEdges();
@@ -89,7 +92,6 @@ public final class TaskGroupExecutor {
    * Note that there are edges that are cross-stage and stage-internal.
    */
   private void initializeDataTransfer() {
-    final DAG<Task, RuntimeEdge<Task>> taskGroupDag = scheduledTaskGroup.getTaskGroup().getTaskDAG();
     taskGroupDag.topologicalDo((task -> {
       final Set<PhysicalStageEdge> inEdgesFromOtherStages = getInEdgesFromOtherStages(task);
       final Set<PhysicalStageEdge> outEdgesToOtherStages = getOutEdgesToOtherStages(task);
@@ -155,9 +157,9 @@ public final class TaskGroupExecutor {
    * Executes the task group.
    */
   public void execute() {
-    LOG.info("{} Execution Started!", scheduledTaskGroup.getTaskGroupId());
+    LOG.info("{} Execution Started!", taskGroupId);
     if (isExecutionRequested) {
-      throw new RuntimeException("TaskGroup {" + scheduledTaskGroup.getTaskGroupId() + "} execution called again!");
+      throw new RuntimeException("TaskGroup {" + taskGroupId + "} execution called again!");
     } else {
       isExecutionRequested = true;
     }
@@ -165,13 +167,12 @@ public final class TaskGroupExecutor {
     taskGroupStateManager.onTaskGroupStateChanged(
         TaskGroupState.State.EXECUTING, Optional.empty(), Optional.empty());
 
-    final String taskGroupId = scheduledTaskGroup.getTaskGroupId();
-    scheduledTaskGroup.getTaskGroup().getTaskDAG().topologicalDo(task -> {
+    taskGroupDag.topologicalDo(task -> {
       final String physicalTaskId = getPhysicalTaskId(task.getId());
       taskGroupStateManager.onTaskStateChanged(physicalTaskId, TaskState.State.EXECUTING, Optional.empty());
       try {
         if (task instanceof BoundedSourceTask) {
-          launchBoundedSourceTask((BoundedSourceTask) task, scheduledTaskGroup.getTaskGroupIdx());
+          launchBoundedSourceTask((BoundedSourceTask) task, taskGroupIdx);
           taskGroupStateManager.onTaskStateChanged(physicalTaskId, TaskState.State.COMPLETE, Optional.empty());
           LOG.info("{} Execution Complete!", taskGroupId);
         } else if (task instanceof OperatorTask) {
