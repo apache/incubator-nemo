@@ -16,12 +16,10 @@
 package edu.snu.onyx.runtime.master.resource;
 
 import com.google.protobuf.ByteString;
-import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.MessageSender;
-import edu.snu.onyx.runtime.common.plan.physical.OperatorTask;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
@@ -75,10 +73,7 @@ public final class ExecutorRepresenter {
   public void onTaskGroupScheduled(final ScheduledTaskGroup scheduledTaskGroup) {
     runningTaskGroups.add(scheduledTaskGroup.getTaskGroupId());
     failedTaskGroups.remove(scheduledTaskGroup.getTaskGroupId());
-    final DAG taskDag = scheduledTaskGroup.getTaskGroup().getTaskDAG(); // Scheduler hack
-    if (taskDag != null && taskDag.getTopologicalSort().stream()
-        .filter(task -> task instanceof OperatorTask)
-        .anyMatch(opTask -> ((OperatorTask) opTask).isSmall())) {
+    if (scheduledTaskGroup.isSmall()) {
       smallTaskGroups.add(scheduledTaskGroup.getTaskGroupId());
     }
 

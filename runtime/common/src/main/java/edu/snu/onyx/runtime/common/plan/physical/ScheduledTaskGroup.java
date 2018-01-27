@@ -39,6 +39,7 @@ public final class ScheduledTaskGroup implements Serializable {
   private final int attemptIdx;
   private final String containerType;
   private final byte[] serializedTaskGroupDag;
+  private final boolean isSmall;
 
   /**
    * Constructor.
@@ -50,6 +51,7 @@ public final class ScheduledTaskGroup implements Serializable {
    * @param taskGroupOutgoingEdges the outgoing edges of the task group.
    * @param attemptIdx             the attempt index.
    * @param containerType          the type of container to execute the task group on.
+   * @param isSmall                whether this task group is small or not (scheduler hack for sailfish exp).
    */
   public ScheduledTaskGroup(final String jobId,
                             final byte[] serializedTaskGroupDag,
@@ -57,7 +59,8 @@ public final class ScheduledTaskGroup implements Serializable {
                             final List<PhysicalStageEdge> taskGroupIncomingEdges,
                             final List<PhysicalStageEdge> taskGroupOutgoingEdges,
                             final int attemptIdx,
-                            final String containerType) {
+                            final String containerType,
+                            final boolean isSmall) {
     this.jobId = jobId;
     this.taskGroupId = taskGroupId;
     this.taskGroupIdx = RuntimeIdGenerator.getIndexFromTaskGroupId(taskGroupId);
@@ -66,6 +69,7 @@ public final class ScheduledTaskGroup implements Serializable {
     this.attemptIdx = attemptIdx;
     this.containerType = containerType;
     this.serializedTaskGroupDag = serializedTaskGroupDag;
+    this.isSmall = isSmall;
   }
 
   /**
@@ -122,5 +126,9 @@ public final class ScheduledTaskGroup implements Serializable {
    */
   public String getContainerType() {
     return containerType;
+  }
+
+  public boolean isSmall() {
+    return isSmall;
   }
 }

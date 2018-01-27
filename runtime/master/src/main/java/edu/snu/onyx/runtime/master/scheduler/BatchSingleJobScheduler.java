@@ -488,12 +488,15 @@ public final class BatchSingleJobScheduler implements Scheduler {
     final int attemptIdx = jobStateManager.getAttemptCountForStage(stageToSchedule.getId());
     LOG.info("Scheduling Stage {} with attemptIdx={}", new Object[]{stageToSchedule.getId(), attemptIdx});
 
+    final boolean isSmall = stageToSchedule.getTaskGroupDag().getTopologicalSort().stream()
+        .filter(task -> task instanceof OperatorTask)
+        .anyMatch(opTask -> ((OperatorTask) opTask).isSmall());
     taskGroupIdsToSchedule.forEach(taskGroupId -> {
       blockManagerMaster.onProducerTaskGroupScheduled(taskGroupId);
       LOG.debug("Enquing {}", taskGroupId);
       pendingTaskGroupQueue.enqueue(
           new ScheduledTaskGroup(physicalPlan.getId(), stageToSchedule.getSerializedTaskGroupDag(), taskGroupId,
-              stageIncomingEdges, stageOutgoingEdges, attemptIdx, stageToSchedule.getContainerType()));
+              stageIncomingEdges, stageOutgoingEdges, attemptIdx, stageToSchedule.getContainerType(), isSmall));
     });
   }
 

@@ -204,7 +204,7 @@ public final class RoundRobinSchedulingPolicyTest {
     for (int taskGroupIdx = 0; taskGroupIdx < parallelism; taskGroupIdx++) {
       final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId(taskGroupIdx, stageId);
       scheduledTaskGroups.add(new ScheduledTaskGroup("TestPlan", serializedTaskGroupDag, taskGroupId,
-          Collections.emptyList(), Collections.emptyList(), MAGIC_SCHEDULE_ATTEMPT_INDEX, containerType));
+          Collections.emptyList(), Collections.emptyList(), MAGIC_SCHEDULE_ATTEMPT_INDEX, containerType, false));
     }
     return scheduledTaskGroups;
   }
