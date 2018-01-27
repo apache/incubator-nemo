@@ -18,6 +18,7 @@ package edu.snu.onyx.runtime.master.scheduler;
 import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.eventhandler.PubSubEventHandlerWrapper;
+import edu.snu.onyx.common.ir.vertex.transform.RelayTransform;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
@@ -490,7 +491,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
     final boolean isSmall = stageToSchedule.getTaskGroupDag().getTopologicalSort().stream()
         .filter(task -> task instanceof OperatorTask)
-        .anyMatch(opTask -> ((OperatorTask) opTask).isSmall());
+        .anyMatch(opTask -> ((OperatorTask) opTask).getTransform() instanceof RelayTransform);
     taskGroupIdsToSchedule.forEach(taskGroupId -> {
       blockManagerMaster.onProducerTaskGroupScheduled(taskGroupId);
       LOG.debug("Enquing {}", taskGroupId);

@@ -56,7 +56,7 @@ public final class SailfishRelayReshapingPass extends ReshapingPass {
                 .equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
             // Insert a merger vertex having transform that write received data immediately
             // before the vertex receiving shuffled data.
-            final OperatorVertex iFileMergerVertex = new OperatorVertex(new RelayTransform(), true);
+            final OperatorVertex iFileMergerVertex = new OperatorVertex(new RelayTransform());
             builder.addVertex(iFileMergerVertex);
             final IREdge newEdgeToMerger = new IREdge(DataCommunicationPatternProperty.Value.Shuffle,
                 edge.getSrc(), iFileMergerVertex, edge.getCoder(), edge.isSideInput());

@@ -22,7 +22,6 @@ import edu.snu.onyx.common.ir.vertex.transform.Transform;
  */
 public final class OperatorTask extends Task {
   private final Transform transform;
-  private final boolean isSmall; // Scheduling hack
 
   /**
    * Constructor.
@@ -33,16 +32,8 @@ public final class OperatorTask extends Task {
   public OperatorTask(final String taskId,
                       final String runtimeVertexId,
                       final Transform transform) {
-    this(taskId, runtimeVertexId, transform, false);
-  }
-
-  public OperatorTask(final String taskId,
-                      final String runtimeVertexId,
-                      final Transform transform,
-                      final boolean isSmall) {
     super(taskId, runtimeVertexId);
     this.transform = transform;
-    this.isSmall = isSmall;
   }
 
   /**
@@ -50,9 +41,5 @@ public final class OperatorTask extends Task {
    */
   public Transform getTransform() {
     return transform;
-  }
-
-  public boolean isSmall() {
-    return isSmall;
   }
 }
