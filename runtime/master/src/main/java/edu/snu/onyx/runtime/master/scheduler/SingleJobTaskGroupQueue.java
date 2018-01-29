@@ -24,6 +24,8 @@ import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -41,6 +43,7 @@ import java.util.function.BiFunction;
 @ThreadSafe
 @DriverSide
 public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
+  private static final Logger LOG = LoggerFactory.getLogger(SingleJobTaskGroupQueue.class.getName());
   private PhysicalPlan physicalPlan;
 
   /**
@@ -218,7 +221,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
   }
 
   public void printLog() {
-    logs.forEach(log -> System.err.println(log));
+    logs.forEach(log -> LOG.info(log.toString()));
   }
 
   @Override
