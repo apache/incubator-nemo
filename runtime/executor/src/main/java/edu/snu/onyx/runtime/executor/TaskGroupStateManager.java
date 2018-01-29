@@ -163,6 +163,7 @@ public final class TaskGroupStateManager {
 
     switch (newState) {
     case READY:
+      break;
     case EXECUTING:
       metric.put("ContainerId", executorId);
       metric.put("ScheduleAttempt", attemptIdx);

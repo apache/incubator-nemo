@@ -104,7 +104,6 @@ public final class Executor {
     try {
       final DAG<Task, RuntimeEdge<Task>> taskGroupDag =
           SerializationUtils.deserialize(scheduledTaskGroup.getSerializedTaskGroupDag());
-
       final TaskGroupStateManager taskGroupStateManager =
           new TaskGroupStateManager(scheduledTaskGroup, taskGroupDag, executorId,
               persistentConnectionToMasterMap, metricMessageSender);
