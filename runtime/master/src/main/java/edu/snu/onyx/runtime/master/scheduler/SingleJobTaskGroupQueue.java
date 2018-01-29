@@ -110,9 +110,9 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
       throw new SchedulingException(new Throwable("An exception occurred while trying to dequeue the next TaskGroup"));
     }
 
-
+    print("#" + requestId + "deq1");
     synchronized (stageIdToPendingTaskGroups) {
-      print("#" + requestId + "deq1");
+
       final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = stageIdToPendingTaskGroups.get(stageId);
 
       if (pendingTaskGroupsForStage == null) {
@@ -210,11 +210,6 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
     synchronized (this) {
       result.append("\n").append(calledMethod).append("\n");
       schedulableStages.forEach(stageId -> result.append(stageId).append(", "));
-      stageIdToPendingTaskGroups.forEach((stageId, tgs) -> {
-        result.append(stageId).append(": ");
-        tgs.forEach(tg ->
-            result.append(tg.getTaskGroupId()).append(", "));
-      });
     }
 
     logs.add(result);
