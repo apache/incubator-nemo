@@ -212,7 +212,11 @@ public final class TaskGroupExecutor {
    */
   private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask,
                                        final int boundedSourceIdx) throws Exception {
+    final long startTime = System.currentTimeMillis();
     final Readable readable = boundedSourceTask.getReadable(boundedSourceIdx);
+    final long endTime = System.currentTimeMillis();
+    LOG.info("@@@@ getReadable time consumption: " + (endTime - startTime) + " ms.");
+
     final Iterable readData = readable.read();
 
     final String physicalTaskId = getPhysicalTaskId(boundedSourceTask.getId());
