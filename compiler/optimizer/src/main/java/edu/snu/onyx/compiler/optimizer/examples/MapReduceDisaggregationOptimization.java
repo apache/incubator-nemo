@@ -20,7 +20,6 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternPro
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.common.ir.edge.IREdge;
-import edu.snu.onyx.common.ir.vertex.BoundedSourceVertex;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
 import edu.snu.onyx.compiler.optimizer.policy.DisaggregationPolicy;
@@ -49,7 +48,7 @@ public final class MapReduceDisaggregationOptimization {
    * @throws Exception Exceptions on the way.
    */
   public static void main(final String[] args) throws Exception {
-    final IRVertex source = new BoundedSourceVertex<>(new EmptyComponents.EmptyBoundedSource("Source"));
+    final IRVertex source = new EmptyComponents.EmptySourceVertex<>("Source");
     final IRVertex map = new OperatorVertex(new EmptyComponents.EmptyTransform("MapVertex"));
     final IRVertex reduce = new OperatorVertex(new EmptyComponents.EmptyTransform("ReduceVertex"));
 

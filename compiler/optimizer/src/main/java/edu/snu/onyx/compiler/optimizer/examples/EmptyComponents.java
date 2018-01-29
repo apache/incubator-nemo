@@ -15,12 +15,12 @@
  */
 package edu.snu.onyx.compiler.optimizer.examples;
 
-import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.ir.OutputCollector;
-import edu.snu.onyx.common.ir.vertex.Source;
+import edu.snu.onyx.common.ir.Readable;
+import edu.snu.onyx.common.ir.ReadablesWrapper;
+import edu.snu.onyx.common.ir.vertex.SourceVertex;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -70,16 +70,17 @@ public class EmptyComponents {
   }
 
   /**
-   * An empty bounded source.
+   * An empty Source Vertex.
+   * @param <T> type of the data.
    */
-  public static final class EmptyBoundedSource implements Source {
+  public static final class EmptySourceVertex<T> extends SourceVertex<T> {
     private final String name;
 
     /**
      * Constructor.
-     * @param name the name of bounded source.
+     * @param name name for the vertex.
      */
-    public EmptyBoundedSource(final String name) {
+    public EmptySourceVertex(final String name) {
       this.name = name;
     }
 
@@ -92,60 +93,36 @@ public class EmptyComponents {
       return sb.toString();
     }
 
-    /**
-     * Do nothing.
-     * @return throws exception.
-     * @throws Exception throws UnsupportedOperationException
-     */
-    public boolean producesSortedKeys() throws Exception {
-      throw new UnsupportedOperationException("Empty bounded source");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public Reader createReader() throws IOException {
-      throw new UnsupportedOperationException("Empty bounded source");
+    public ReadablesWrapper<T> getReadableWrapper(final int desirednumOfSplits) {
+      return new EmptyReadablesWrapper<>();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public List<? extends Source> split(final long l) throws Exception {
-      return Arrays.asList(this);
+    public EmptySourceVertex<T> getClone() {
+      return new EmptySourceVertex<>(this.name);
     }
+  }
 
-    /**
-     * {@inheritDoc}
-     */
+  /**
+   * An empty ReadablesWrapper.
+   * @param <T> type of the data.
+   */
+  static final class EmptyReadablesWrapper<T> implements ReadablesWrapper<T> {
     @Override
-    public long getEstimatedSizeBytes() throws Exception {
-      return 0;
+    public List<Readable<T>> getReadables() {
+      return Arrays.asList(new EmptyReadable<>());
     }
+  }
 
-    /**
-     * Do nothing.
-     * @param desiredBundleSizeBytes the bundle size to split the source.
-     * @return an empty list
-     */
-    public List<? extends Source> splitIntoBundles(final long desiredBundleSizeBytes) {
+  /**
+   * An empty reader.
+   * @param <T> type of the data.
+   */
+  static final class EmptyReadable<T> implements Readable<T> {
+    @Override
+    public Iterable<T> read() {
       return new ArrayList<>();
-    }
-
-    /**
-     * Do nothing.
-     */
-    public void validate() {
-    }
-
-    /**
-     * Do nothing.
-     * @return throw UnsupportedOperationException
-     */
-    public Coder getDefaultOutputCoder() {
-      throw new UnsupportedOperationException("Empty bounded source");
     }
   }
 }

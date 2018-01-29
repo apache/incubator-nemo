@@ -16,7 +16,6 @@
 package edu.snu.onyx.tests.common;
 
 import edu.snu.onyx.common.Pair;
-import edu.snu.onyx.common.ir.vertex.BoundedSourceVertex;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.compiler.optimizer.examples.EmptyComponents;
 import org.junit.Test;
@@ -29,10 +28,8 @@ import static org.junit.Assert.assertEquals;
 public class PairTest {
   final Object leftObject = new Object();
   final Object rightObject = new Object();
-  private final IRVertex leftSource = new BoundedSourceVertex<>(
-      new EmptyComponents.EmptyBoundedSource("leftSource"));
-  private final IRVertex rightSource = new BoundedSourceVertex<>(
-      new EmptyComponents.EmptyBoundedSource("rightSource"));
+  private final IRVertex leftSource = new EmptyComponents.EmptySourceVertex<>("leftSource");
+  private final IRVertex rightSource = new EmptyComponents.EmptySourceVertex<>("rightSource");
 
   @Test
   public void testPair() {

@@ -18,7 +18,6 @@ package edu.snu.onyx.tests.compiler.backend.onyx;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.onyx.common.ir.vertex.BoundedSourceVertex;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
 import edu.snu.onyx.common.coder.Coder;
@@ -42,7 +41,7 @@ import static org.junit.Assert.assertEquals;
  * Test OnyxBackend.
  */
 public final class OnyxBackendTest<I, O> {
-  private final IRVertex source = new BoundedSourceVertex<>(new EmptyComponents.EmptyBoundedSource("Source"));
+  private final IRVertex source = new EmptyComponents.EmptySourceVertex<>("Source");
   private final IRVertex map1 = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
   private final IRVertex groupByKey = new OperatorVertex(new EmptyComponents.EmptyTransform("GroupByKey"));
   private final IRVertex combine = new OperatorVertex(new EmptyComponents.EmptyTransform("Combine"));

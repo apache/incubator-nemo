@@ -19,11 +19,9 @@ import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.onyx.common.ir.vertex.BoundedSourceVertex;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.LoopVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
-import edu.snu.onyx.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.compiler.optimizer.examples.EmptyComponents;
@@ -44,7 +42,7 @@ public class LoopVertexTest {
   private DAG<IRVertex, IREdge> originalDAG;
   private DAG<IRVertex, IREdge> newDAG;
 
-  private final IRVertex source = new BoundedSourceVertex<>(new EmptyComponents.EmptyBoundedSource("Source"));
+  private final IRVertex source = new EmptyComponents.EmptySourceVertex<>("Source");
   private final IRVertex map1 = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
   private final IRVertex groupByKey = new OperatorVertex(new EmptyComponents.EmptyTransform("GroupByKey"));
   private final IRVertex combine = new OperatorVertex(new EmptyComponents.EmptyTransform("Combine"));

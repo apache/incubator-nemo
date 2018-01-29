@@ -90,7 +90,7 @@ public final class InitializedSourceVertex<T> extends SourceVertex<T> {
    * Readable for initialized source vertex. It simply returns the initialized data.
    * @param <T> type of the initial data.
    */
-  private final class InitializedSourceReadable<T> implements Readable<T> {
+  private static final class InitializedSourceReadable<T> implements Readable<T> {
     private final Iterable<T> initializedSourceData;
 
     /**

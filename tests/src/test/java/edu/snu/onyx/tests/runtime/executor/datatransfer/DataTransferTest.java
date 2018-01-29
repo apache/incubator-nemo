@@ -18,10 +18,10 @@ package edu.snu.onyx.tests.runtime.executor.datatransfer;
 import edu.snu.onyx.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.edge.executionproperty.*;
-import edu.snu.onyx.common.ir.vertex.BoundedSourceVertex;
+import edu.snu.onyx.common.ir.vertex.SourceVertex;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.onyx.compiler.frontend.beam.source.BeamBoundedSource;
+import edu.snu.onyx.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.coder.Coder;
@@ -92,7 +92,7 @@ import static org.mockito.Mockito.mock;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class,
-    BeamBoundedSource.class})
+    SourceVertex.class})
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final int EXECUTOR_CAPACITY = 1;
@@ -343,13 +343,12 @@ public final class DataTransferTest {
     coderManagers.get(receiver).registerCoder(edgeId, CODER);
 
     // Src setup
-    final BeamBoundedSource s = mock(BeamBoundedSource.class);
-    final BoundedSourceVertex srcVertex = new BoundedSourceVertex<>(s);
+    final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
     final ExecutionPropertyMap srcVertexProperties = srcVertex.getExecutionProperties();
     srcVertexProperties.put(ParallelismProperty.of(PARALLELISM_TEN));
 
     // Dst setup
-    final BoundedSourceVertex dstVertex = new BoundedSourceVertex<>(s);
+    final SourceVertex dstVertex = new EmptyComponents.EmptySourceVertex("Destination");
     final ExecutionPropertyMap dstVertexProperties = dstVertex.getExecutionProperties();
     dstVertexProperties.put(ParallelismProperty.of(PARALLELISM_TEN));
 
