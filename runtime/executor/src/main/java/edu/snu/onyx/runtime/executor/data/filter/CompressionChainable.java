@@ -11,15 +11,23 @@ import java.io.OutputStream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-public class CompressionFilter implements Filter {
+/**
+ * {@link Chainable} for applying compression.
+ */
+public class CompressionChainable implements Chainable {
   private final CompressionProperty.Compression compression;
 
-  public CompressionFilter(CompressionProperty.Compression compression) {
+  /**
+   * Constructor.
+   *
+   * @param compression compression method.
+   */
+  public CompressionChainable(final CompressionProperty.Compression compression) {
     this.compression = compression;
   }
 
   @Override
-  public InputStream wrapInput(final InputStream in) throws IOException {
+  public final InputStream wrapInput(final InputStream in) throws IOException {
     switch (compression) {
       case Gzip:
         return new GZIPInputStream(in);
@@ -31,7 +39,7 @@ public class CompressionFilter implements Filter {
   }
 
   @Override
-  public OutputStream wrapOutput(final OutputStream out) throws IOException {
+  public final OutputStream wrapOutput(final OutputStream out) throws IOException {
     switch (compression) {
       case Gzip:
         return new GZIPOutputStream(out);

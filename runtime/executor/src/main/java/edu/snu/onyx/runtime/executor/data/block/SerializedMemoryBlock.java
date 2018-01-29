@@ -15,7 +15,6 @@
  */
 package edu.snu.onyx.runtime.executor.data.block;
 
-import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.DataUtil;
 import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;
@@ -63,8 +62,8 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
   public synchronized Optional<List<Long>> putPartitions(final Iterable<NonSerializedPartition<K>> partitions)
       throws IOException {
     if (!committed) {
-      final Iterable<SerializedPartition<K>> convertedPartitions = DataUtil.convertToSerPartitions(serializer, partitions);
-
+      final Iterable<SerializedPartition<K>> convertedPartitions = DataUtil.convertToSerPartitions(
+          serializer, partitions);
       return Optional.of(putSerializedPartitions(convertedPartitions));
     } else {
       throw new IOException("Cannot append partitions to the committed block");

@@ -15,7 +15,6 @@
  */
 package edu.snu.onyx.runtime.executor.data.blocktransfer;
 
-import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.data.KeyRange;
@@ -31,7 +30,6 @@ import java.io.OutputStream;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Iterator;
 import java.util.Optional;
 
 /**

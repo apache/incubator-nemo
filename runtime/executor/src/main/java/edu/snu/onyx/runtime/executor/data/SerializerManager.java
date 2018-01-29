@@ -19,8 +19,8 @@ import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionPropertyMap;
-import edu.snu.onyx.runtime.executor.data.filter.CompressionFilter;
-import edu.snu.onyx.runtime.executor.data.filter.Filter;
+import edu.snu.onyx.runtime.executor.data.filter.CompressionChainable;
+import edu.snu.onyx.runtime.executor.data.filter.Chainable;
 import edu.snu.onyx.runtime.executor.data.filter.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,16 +60,16 @@ public final class SerializerManager {
     Serializer serializer = new Serializer(coder, Collections.emptyList());
     runtimeEdgeIdToSerializer.putIfAbsent(runtimeEdgeId, serializer);
 
-    final List<Filter> filterList = new ArrayList<>();
+    final List<Chainable> chainableList = new ArrayList<>();
 
     // Compression filter
     LOG.debug("Adding {} compression filter", (Object) propertyMap.get(ExecutionProperty.Key.Compression));
     CompressionProperty.Compression compressionProperty = propertyMap.get(ExecutionProperty.Key.Compression);
     if (compressionProperty != null) {
-      filterList.add(new CompressionFilter(compressionProperty));
+      chainableList.add(new CompressionChainable(compressionProperty));
     }
 
-    serializer.setFilters(filterList);
+    serializer.setChainables(chainableList);
   }
 
   /**

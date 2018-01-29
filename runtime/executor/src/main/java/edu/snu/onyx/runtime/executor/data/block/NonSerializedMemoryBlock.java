@@ -15,7 +15,6 @@
  */
 package edu.snu.onyx.runtime.executor.data.block;
 
-import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.executor.data.DataUtil;
 import edu.snu.onyx.runtime.executor.data.NonSerializedPartition;

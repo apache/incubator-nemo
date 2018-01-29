@@ -2,7 +2,7 @@ package edu.snu.onyx.runtime.executor.data;
 
 import edu.snu.onyx.common.DirectByteArrayOutputStream;
 import edu.snu.onyx.common.coder.Coder;
-import edu.snu.onyx.runtime.executor.data.filter.Filter;
+import edu.snu.onyx.runtime.executor.data.filter.Chainable;
 import edu.snu.onyx.runtime.executor.data.filter.Serializer;
 
 import java.io.*;
@@ -36,7 +36,7 @@ public final class DataUtil {
                                         final ByteArrayOutputStream bytesOutputStream) throws IOException {
     long elementsCount = 0;
     final Coder coder = serializer.getCoder();
-    final OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getFilters());
+    final OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getChainables());
     for (final Object element : nonSerializedPartition.getData()) {
       coder.encode(element, wrappedStream);
       elementsCount++;
@@ -179,10 +179,11 @@ public final class DataUtil {
      *
      * @param inputStream The stream to read data from.
      * @param serializer  The serializer.
+     * @throws IOException if fail to build new stream.
      */
     public InputStreamIterator(final InputStream inputStream, final Serializer<T> serializer)
         throws IOException {
-      this.inputStream = buildInputStream(inputStream, serializer.getFilters());
+      this.inputStream = buildInputStream(inputStream, serializer.getChainables());
       this.serializer = serializer;
       // -1 means no limit.
       this.limit = -1;
@@ -194,13 +195,14 @@ public final class DataUtil {
      * @param inputStream The stream to read data from.
      * @param serializer  The serializer.
      * @param limit       The number of elements from the {@link InputStream}.
+     * @throws IOException if fail to build new stream.
      */
     public InputStreamIterator(final InputStream inputStream, final Serializer<T> serializer, final long limit)
         throws IOException {
       if (limit < 0) {
         throw new IllegalArgumentException("Negative limit not allowed.");
       }
-      this.inputStream = buildInputStream(inputStream, serializer.getFilters());
+      this.inputStream = buildInputStream(inputStream, serializer.getChainables());
       this.serializer = serializer;
       this.limit = limit;
     }
@@ -241,20 +243,38 @@ public final class DataUtil {
     }
   }
 
-  public static InputStream buildInputStream(final InputStream in, final List<Filter> filters) throws IOException {
+  /**
+   * Wrap {@link InputStream} with {@link Chainable}s.
+   *
+   * @param in         the {@link InputStream}.
+   * @param chainables the list of {@link Chainable} to be applied on the stream.
+   * @return wrapped {@link InputStream}.
+   * @throws IOException if fail to create new stream.
+   */
+  public static InputStream buildInputStream(final InputStream in, final List<Chainable> chainables)
+  throws IOException {
     InputStream wrapped = in;
-    for (final Filter filter: filters) {
-      wrapped = filter.wrapInput(wrapped);
+    for (final Chainable chainable : chainables) {
+      wrapped = chainable.wrapInput(wrapped);
     }
     return wrapped;
   }
 
-  public static OutputStream buildOutputStream(final OutputStream out, final List<Filter> filters) throws IOException {
+  /**
+   * Wrap {@link OutputStream} with {@link Chainable}s.
+   *
+   * @param out        the {@link OutputStream}.
+   * @param chainables the list of {@link Chainable} to be applied on the stream.
+   * @return wrapped {@link OutputStream}.
+   * @throws IOException if fail to create new stream.
+   */
+  public static OutputStream buildOutputStream(final OutputStream out, final List<Chainable> chainables)
+  throws IOException {
     OutputStream wrapped = out;
-    final List<Filter> temporaryFilterList = new ArrayList<>(filters);
-    Collections.reverse(temporaryFilterList);
-    for (final Filter filter: temporaryFilterList) {
-      wrapped = filter.wrapOutput(wrapped);
+    final List<Chainable> temporaryChainableList = new ArrayList<>(chainables);
+    Collections.reverse(temporaryChainableList);
+    for (final Chainable chainable : temporaryChainableList) {
+      wrapped = chainable.wrapOutput(wrapped);
     }
     return wrapped;
   }
