@@ -246,7 +246,8 @@ public final class OnyxPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
                                                                                     final IRVertex dst) {
     if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof GroupByKeyTransform) {
       return DataCommunicationPatternProperty.Value.Shuffle;
-    } else if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof CreateViewTransform) {
+    } else if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof CreateViewTransform
+        || src instanceof OperatorVertex && ((OperatorVertex) src).getTransform() instanceof CreateViewTransform) {
       return DataCommunicationPatternProperty.Value.BroadCast;
     } else {
       return DataCommunicationPatternProperty.Value.OneToOne;
