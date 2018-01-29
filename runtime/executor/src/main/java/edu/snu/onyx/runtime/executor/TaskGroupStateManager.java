@@ -66,7 +66,6 @@ public final class TaskGroupStateManager {
 
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
-
   public TaskGroupStateManager(final ScheduledTaskGroup scheduledTaskGroup,
                                final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
                                final String executorId,
