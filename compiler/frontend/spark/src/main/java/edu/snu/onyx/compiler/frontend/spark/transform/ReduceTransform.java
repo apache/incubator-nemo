@@ -15,16 +15,11 @@
  */
 package edu.snu.onyx.compiler.frontend.spark.transform;
 
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Output;
 import edu.snu.onyx.common.ir.OutputCollector;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
-import edu.snu.onyx.compiler.frontend.spark.JavaRDD;
 import org.apache.spark.api.java.function.Function2;
 
 import javax.annotation.Nullable;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.util.Iterator;
 
 /**
@@ -34,22 +29,18 @@ import java.util.Iterator;
 public final class ReduceTransform<T> implements Transform<T, T> {
   private final Function2<T, T, T> func;
   private OutputCollector<T> oc;
-  private String filename;
 
   /**
    * Constructor.
    * @param func function to run for the reduce transform.
-   * @param filename file to keep the result in.
    */
-  public ReduceTransform(final Function2<T, T, T> func, final String filename) {
+  public ReduceTransform(final Function2<T, T, T> func) {
     this.func = func;
-    this.filename = filename;
   }
 
   @Override
   public void prepare(final Context context, final OutputCollector<T> outputCollector) {
     this.oc = outputCollector;
-    this.filename = filename + JavaRDD.getResultId();
   }
 
   @Override
@@ -58,19 +49,7 @@ public final class ReduceTransform<T> implements Transform<T, T> {
     if (res == null) { // nothing to be done.
       return;
     }
-
     oc.emit(res);
-
-    // Write result to a temporary file.
-    // TODO #711: remove this part, and make it properly write to sink.
-    try {
-      final Kryo kryo = new Kryo();
-      final Output output = new Output(new FileOutputStream(filename));
-      kryo.writeClassAndObject(output, res);
-      output.close();
-    } catch (FileNotFoundException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   /**

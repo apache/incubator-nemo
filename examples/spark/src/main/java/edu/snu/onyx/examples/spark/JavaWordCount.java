@@ -16,23 +16,25 @@
  */
 package edu.snu.onyx.examples.spark;
 
+import edu.snu.onyx.compiler.frontend.spark.core.java.JavaPairRDD;
 import edu.snu.onyx.compiler.frontend.spark.core.java.JavaRDD;
-import edu.snu.onyx.compiler.frontend.spark.core.java.JavaSparkContext;
 import edu.snu.onyx.compiler.frontend.spark.sql.SparkSession;
+import scala.Tuple2;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
- * Computes an approximation to pi.
- * Usage: JavaSparkPi [partitions]
+ * Java Wordcount example.
  */
-public final class JavaSparkPi {
+public final class JavaWordCount {
+  private static final Pattern SPACE = Pattern.compile(" ");
 
   /**
    * Private constructor.
    */
-  private JavaSparkPi() {
+  private JavaWordCount() {
   }
 
   /**
@@ -41,30 +43,29 @@ public final class JavaSparkPi {
    * @throws Exception exceptions.
    */
   public static void main(final String[] args) throws Exception {
-    SparkSession spark = SparkSession
-        .builder()
-        .appName("JavaSparkPi")
-        .getOrCreate();
 
-    JavaSparkContext jsc = new JavaSparkContext(spark.sparkContext());
-
-    int slices = (args.length == 1) ? Integer.parseInt(args[0]) : 2;
-    int n = 100000 * slices;
-    List<Integer> l = new ArrayList<>(n);
-    for (int i = 0; i < n; i++) {
-      l.add(i);
+    if (args.length < 1) {
+      System.err.println("Usage: JavaWordCount <file>");
+      System.exit(1);
     }
 
-    JavaRDD<Integer> dataSet = jsc.parallelize(l, slices);
+    SparkSession spark = SparkSession
+        .builder()
+        .appName("JavaWordCount")
+        .getOrCreate();
 
-    int count = dataSet.map(integer -> {
-      double x = Math.random() * 2 - 1;
-      double y = Math.random() * 2 - 1;
-      return (x * x + y * y <= 1) ? 1 : 0;
-    }).reduce((integer, integer2) -> integer + integer2);
+    JavaRDD<String> lines = spark.read().textFile(args[0]).javaRDD();
 
-    System.out.println("Pi is roughly " + 4.0 * count / n);
+    JavaRDD<String> words = lines.flatMap(s -> Arrays.asList(SPACE.split(s)).iterator());
 
+    JavaPairRDD<String, Integer> ones = words.mapToPair(s -> new Tuple2<>(s, 1));
+
+    JavaPairRDD<String, Integer> counts = ones.reduceByKey((i1, i2) -> i1 + i2);
+
+    List<Tuple2<String, Integer>> output = counts.collect();
+    for (Tuple2<?, ?> tuple : output) {
+      System.out.println(tuple._1 + ": " + tuple._2);
+    }
     spark.stop();
   }
 }
