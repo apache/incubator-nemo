@@ -15,24 +15,27 @@
  */
 package edu.snu.onyx.compiler.optimizer.policy;
 
+import edu.snu.onyx.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.CompressionPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.composite.PrimitiveCompositePass;
 import edu.snu.onyx.runtime.common.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
 
 /**
- * A basic default policy, that performs the minimum amount of optimization to be done to a specific DAG.
+ * A basic default policy, that performs gzip compression on the top of DefaultPolicy.
  */
-public final class DefaultPolicy implements Policy {
+public final class CompressionGzipPolicy implements Policy {
   private final Policy policy;
 
   /**
    * Default constructor.
    */
-  public DefaultPolicy() {
+  public CompressionGzipPolicy() {
     this.policy = new PolicyBuilder(true)
         .registerCompileTimePass(new PrimitiveCompositePass())
+        .registerCompileTimePass(new CompressionPass(CompressionProperty.Compression.Gzip))
         .build();
   }
 
@@ -46,3 +49,4 @@ public final class DefaultPolicy implements Policy {
     return this.policy.getRuntimePasses();
   }
 }
+
