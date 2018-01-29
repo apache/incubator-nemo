@@ -21,34 +21,45 @@ import edu.snu.onyx.compiler.optimizer.policy.DefaultPolicy;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 /**
- * Test SparkPi program with JobLauncher.
+ * Test Spark programs with JobLauncher.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class SparkPiITCase {
+@PowerMockIgnore("javax.management.*")
+public final class SparkITCase {
   private static final int TIMEOUT = 60000;
-  private static final String numParallelism = "3";
-
-  private static ArgBuilder builder = new ArgBuilder()
-      .addJobId(SparkPiITCase.class.getSimpleName())
-      .addUserMain(JavaSparkPi.class.getCanonicalName())
-      .addUserArgs(numParallelism);
+  private static ArgBuilder builder = new ArgBuilder();
 
   @Before
-  public void setUp() throws Exception {
-    builder = new ArgBuilder()
-        .addUserMain(JavaSparkPi.class.getCanonicalName())
-        .addUserArgs(numParallelism);
+  public void setUp() {
+    builder = new ArgBuilder();
   }
 
   @Test(timeout = TIMEOUT)
-  public void test() throws Exception {
+  public void testSparkWordCount() throws Exception {
+    final String input = System.getProperty("user.dir") + "/../resources/sample_input_wordcount";
+
     JobLauncher.main(builder
-        .addJobId(SparkPiITCase.class.getSimpleName())
+        .addJobId(JavaWordCount.class.getSimpleName() + "_test")
+        .addUserMain(JavaWordCount.class.getCanonicalName())
+        .addUserArgs(input)
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .build());
+  }
+
+  @Test(timeout = TIMEOUT)
+  public void testSparkPi() throws Exception {
+    final String numParallelism = "3";
+
+    JobLauncher.main(builder
+        .addJobId(JavaSparkPi.class.getSimpleName() + "_test")
+        .addUserMain(JavaSparkPi.class.getCanonicalName())
+        .addUserArgs(numParallelism)
         .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
   }

@@ -59,9 +59,8 @@ public abstract class CompositePass implements CompileTimePass {
     return recursivelyApply(irVertexIREdgeDAG, getPassList().iterator());
   }
 
-   // TODO #119: fill the below document.
   /**
-   *
+   * Recursively apply the give list of passes.
    * @param dag dag.
    * @param passIterator pass iterator.
    * @return dag.

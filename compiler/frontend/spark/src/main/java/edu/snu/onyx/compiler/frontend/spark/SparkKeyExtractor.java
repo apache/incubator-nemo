@@ -16,15 +16,19 @@
 package edu.snu.onyx.compiler.frontend.spark;
 
 import edu.snu.onyx.common.KeyExtractor;
+import scala.Tuple2;
 
 /**
  * Extracts the key from a KV element.
  * For non-KV elements, the elements themselves become the key.
- * TODO #711: support KV elements with WordCount example.
  */
-final class SparkKeyExtractor implements KeyExtractor {
+public final class SparkKeyExtractor implements KeyExtractor {
   @Override
   public Object extractKey(final Object element) {
-    return element;
+    if (element instanceof Tuple2) {
+      return ((Tuple2) element)._1;
+    } else {
+      return element;
+    }
   }
 }
