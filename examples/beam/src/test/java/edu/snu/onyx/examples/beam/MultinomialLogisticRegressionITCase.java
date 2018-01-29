@@ -30,7 +30,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class MultinomialLogisticRegressionITCase {
-  private static final int TIMEOUT = 150000;
+  private static final int TIMEOUT = 180000;
   private static final String input = System.getProperty("user.dir") + "/../resources/sample_input_mlr";
   private static final String numFeatures = "100";
   private static final String numClasses = "5";

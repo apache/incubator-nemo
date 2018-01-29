@@ -32,7 +32,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 @PowerMockIgnore("javax.management.*")
 public final class SparkITCase {
-  private static final int TIMEOUT = 60000;
+  private static final int TIMEOUT = 120000;
   private static ArgBuilder builder = new ArgBuilder();
 
   @Before
