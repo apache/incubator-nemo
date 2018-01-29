@@ -63,8 +63,6 @@ public final class Executor {
    */
   private final DataTransferFactory dataTransferFactory;
 
-  private TaskGroupStateManager taskGroupStateManager;
-
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
   private final MetricMessageSender metricMessageSender;
@@ -104,7 +102,7 @@ public final class Executor {
     try {
       final DAG<Task, RuntimeEdge<Task>> taskGroupDag =
           SerializationUtils.deserialize(scheduledTaskGroup.getSerializedTaskGroupDag());
-      taskGroupStateManager =
+      final TaskGroupStateManager taskGroupStateManager =
           new TaskGroupStateManager(scheduledTaskGroup, taskGroupDag, executorId,
               persistentConnectionToMasterMap, metricMessageSender);
 
