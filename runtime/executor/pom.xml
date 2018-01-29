@@ -51,5 +51,11 @@ limitations under the License.
             <artifactId>onyx-conf</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!--Compression-->
+        <dependency>
+            <groupId>org.lz4</groupId>
+            <artifactId>lz4-java</artifactId>
+            <version>1.4.1</version>
+        </dependency>
     </dependencies>
 </project>
