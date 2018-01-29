@@ -41,6 +41,7 @@ public final class DataUtil {
       coder.encode(element, wrappedStream);
       elementsCount++;
     }
+    wrappedStream.close();
 
     return elementsCount;
   }

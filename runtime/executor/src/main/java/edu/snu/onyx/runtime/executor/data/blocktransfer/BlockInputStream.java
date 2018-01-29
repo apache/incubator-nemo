@@ -48,7 +48,7 @@ public final class BlockInputStream<T> implements BlockStream {
   private final CompletableFuture<Iterator<T>> completeFuture = new CompletableFuture<>();
   private final ByteBufInputStream byteBufInputStream = new ByteBufInputStream();
 
-  private DataUtil.InputStreamIterator<T> inputStreamIterator;
+  private Serializer serializer;
 
   @Override
   public String toString() {
@@ -88,11 +88,7 @@ public final class BlockInputStream<T> implements BlockStream {
    * @param serializer The serializer.
    */
   void setSerializer(final Serializer serializer) {
-    try {
-      inputStreamIterator = new DataUtil.InputStreamIterator<>(byteBufInputStream, serializer);
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
+    this.serializer = serializer;
   }
 
   /**
@@ -114,7 +110,11 @@ public final class BlockInputStream<T> implements BlockStream {
    */
   void markAsEnded() {
     byteBufInputStream.byteBufQueue.close();
-    completeFuture.complete(inputStreamIterator);
+    try {
+      completeFuture.complete(new DataUtil.InputStreamIterator<>(byteBufInputStream, serializer));
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**

@@ -2,6 +2,8 @@ package edu.snu.onyx.runtime.executor.data.filter;
 
 import edu.snu.onyx.common.exception.UnsupportedCompressionException;
 import edu.snu.onyx.common.ir.edge.executionproperty.CompressionProperty;
+import net.jpountz.lz4.LZ4BlockInputStream;
+import net.jpountz.lz4.LZ4BlockOutputStream;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,6 +24,7 @@ public class CompressionFilter implements Filter {
       case Gzip:
         return new GZIPInputStream(in);
       case LZ4:
+        return new LZ4BlockInputStream(in);
       default:
         throw new UnsupportedCompressionException("Not supported compression method");
     }
@@ -33,6 +36,7 @@ public class CompressionFilter implements Filter {
       case Gzip:
         return new GZIPOutputStream(out);
       case LZ4:
+        return new LZ4BlockOutputStream(out);
       default:
         throw new UnsupportedCompressionException("Not supported compression method");
     }
