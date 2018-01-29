@@ -29,8 +29,6 @@ import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.common.exception.UnsupportedCommPatternException;
 import edu.snu.onyx.runtime.common.data.HashRange;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -45,7 +43,6 @@ import java.util.stream.StreamSupport;
  * TODO #492: Modularize the data communication pattern.
  */
 public final class InputReader extends DataTransfer {
-  private static final Logger LOG = LoggerFactory.getLogger(InputReader.class.getName());
   private final int dstTaskIndex;
   private final BlockManagerWorker blockManagerWorker;
 

@@ -109,7 +109,8 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
           stageIdToPendingTaskGroups.forEach((scheduledStageId, taskGroupList) ->
               updateSchedulableStages(scheduledStageId, taskGroupList.getFirst().getContainerType()));
         } else {
-          schedulableStages.addLast(stageId);
+          //schedulableStages.addLast(stageId);
+          schedulableStages.addFirst(stageId);
         }
       }
     }
