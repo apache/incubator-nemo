@@ -22,7 +22,6 @@ import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.eventhandler.CompilerEventHandler;
 import edu.snu.onyx.runtime.common.eventhandler.UpdatePhysicalPlanEvent;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.master.scheduler.Scheduler;
 
 import javax.inject.Inject;
@@ -49,7 +48,7 @@ public final class UpdatePhysicalPlanEventHandler implements CompilerEventHandle
   @Override
   public void onNext(final UpdatePhysicalPlanEvent updatePhysicalPlanEvent) {
     final PhysicalPlan newPlan = updatePhysicalPlanEvent.getNewPhysicalPlan();
-    final Pair<String, TaskGroup> taskInfo = updatePhysicalPlanEvent.getTaskInfo();
+    final Pair<String, String> taskInfo = updatePhysicalPlanEvent.getTaskInfo();
 
     this.scheduler.updateJob(newPlan.getId(), newPlan, taskInfo);
   }

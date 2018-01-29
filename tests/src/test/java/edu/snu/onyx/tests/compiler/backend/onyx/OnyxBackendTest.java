@@ -80,7 +80,7 @@ public final class OnyxBackendTest<I, O> {
     final PhysicalPlan executionPlan = backend.compile(dag, physicalPlanGenerator);
 
     assertEquals(2, executionPlan.getStageDAG().getVertices().size());
-    assertEquals(1, executionPlan.getStageDAG().getTopologicalSort().get(0).getTaskGroupList().size());
-    assertEquals(1, executionPlan.getStageDAG().getTopologicalSort().get(1).getTaskGroupList().size());
+    assertEquals(1, executionPlan.getStageDAG().getTopologicalSort().get(0).getTaskGroupIds().size());
+    assertEquals(1, executionPlan.getStageDAG().getTopologicalSort().get(1).getTaskGroupIds().size());
   }
 }

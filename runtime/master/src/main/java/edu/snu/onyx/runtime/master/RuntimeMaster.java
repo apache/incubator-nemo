@@ -154,6 +154,7 @@ public final class RuntimeMaster {
       schedulerRunner.terminate();
       pendingTaskGroupQueue.close();
       masterMessageEnvironment.close();
+      metricMessageHandler.terminate();
 
       final Future<Boolean> allExecutorsClosed = containerManager.terminate();
       if (allExecutorsClosed.get()) {
@@ -269,7 +270,7 @@ public final class RuntimeMaster {
           taskGroupStateChangedMsg.getTaskGroupId(),
           convertTaskGroupState(taskGroupStateChangedMsg.getState()),
           taskGroupStateChangedMsg.getAttemptIdx(),
-          taskGroupStateChangedMsg.getTasksPutOnHoldIdsList(),
+          taskGroupStateChangedMsg.getTaskPutOnHoldId(),
           convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
       break;
     case ExecutorFailed:

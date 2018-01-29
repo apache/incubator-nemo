@@ -35,10 +35,9 @@ import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlanGenerator;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
-import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.common.plan.stage.Stage;
 import edu.snu.onyx.runtime.common.plan.stage.StageEdge;
-import edu.snu.onyx.tests.compiler.optimizer.TestPolicy;
+import edu.snu.onyx.tests.compiler.optimizer.policy.TestPolicy;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
@@ -106,10 +105,8 @@ public final class DAGConverterTest {
     assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage1).size(), 1);
     assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage2).size(), 0);
 
-    final List<TaskGroup> taskGroupList1 = physicalStage1.getTaskGroupList();
-    final List<TaskGroup> taskGroupList2 = physicalStage2.getTaskGroupList();
-    assertEquals(taskGroupList1.size(), 3);
-    assertEquals(taskGroupList2.size(), 2);
+    assertEquals(physicalStage1.getTaskGroupIds().size(), 3);
+    assertEquals(physicalStage2.getTaskGroupIds().size(), 2);
   }
 
   @Test

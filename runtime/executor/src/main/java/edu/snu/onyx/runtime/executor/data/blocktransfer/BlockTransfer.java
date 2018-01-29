@@ -23,7 +23,6 @@ import edu.snu.onyx.runtime.executor.data.CoderManager;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
-import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
@@ -34,8 +33,6 @@ import javax.inject.Inject;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 /**
@@ -45,20 +42,15 @@ import java.util.function.Consumer;
 public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BlockTransfer.class);
-  private static final String INBOUND = "block:inbound";
-  private static final String OUTBOUND = "block:outbound";
 
   private final InjectionFuture<BlockManagerWorker> blockManagerWorker;
   private final CoderManager coderManager;
   private final BlockTransport blockTransport;
   private final String localExecutorId;
-  private final int bufferSize;
 
   private final ConcurrentMap<String, ChannelFuture> executorIdToChannelFutureMap = new ConcurrentHashMap<>();
   private final ConcurrentMap<Channel, String> channelToExecutorIdMap = new ConcurrentHashMap<>();
   private final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
-  private final ExecutorService inboundExecutorService;
-  private final ExecutorService outboundExecutorService;
 
   /**
    * Creates a block transfer and registers this transfer to the name server.
@@ -67,30 +59,18 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
    * @param coderManager       provides {@link edu.snu.onyx.common.coder.Coder}s
    * @param blockTransport     provides {@link io.netty.channel.Channel}
    * @param localExecutorId    the id of this executor
-   * @param inboundThreads     the number of threads in thread pool for inbound block transfer
-   * @param outboundThreads    the number of threads in thread pool for outbound block transfer
-   * @param bufferSize         the size of outbound buffers
    */
   @Inject
   private BlockTransfer(
       final InjectionFuture<BlockManagerWorker> blockManagerWorker,
       final CoderManager coderManager,
       final BlockTransport blockTransport,
-      @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
-      @Parameter(JobConf.PartitionTransferInboundNumThreads.class) final int inboundThreads,
-      @Parameter(JobConf.PartitionTransferOutboundNumThreads.class) final int outboundThreads,
-      @Parameter(JobConf.PartitionTransferOutboundBufferSize.class) final int bufferSize) {
+      @Parameter(JobConf.ExecutorId.class) final String localExecutorId) {
 
     this.blockManagerWorker = blockManagerWorker;
     this.coderManager = coderManager;
     this.blockTransport = blockTransport;
     this.localExecutorId = localExecutorId;
-    this.bufferSize = bufferSize;
-
-    // Inbound thread pool can be easily saturated with multiple data transfers with the encodePartialBlock option
-    // enabled. We may consider other solutions than using fixed thread pool.
-    this.inboundExecutorService = Executors.newFixedThreadPool(inboundThreads, new DefaultThreadFactory(INBOUND));
-    this.outboundExecutorService = Executors.newFixedThreadPool(outboundThreads, new DefaultThreadFactory(OUTBOUND));
   }
 
   /**
@@ -113,7 +93,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
                                        final KeyRange keyRange) {
     final BlockInputStream stream = new BlockInputStream(executorId, encodePartialBlock,
         Optional.of(blockStoreValue), blockId, runtimeEdgeId, keyRange);
-    stream.setCoderAndExecutorService(coderManager.getCoder(runtimeEdgeId), inboundExecutorService);
+    stream.setCoder(coderManager.getCoder(runtimeEdgeId));
     write(executorId, stream, stream::onExceptionCaught);
     return stream;
   }
@@ -135,8 +115,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
                                         final KeyRange keyRange) {
     final BlockOutputStream stream = new BlockOutputStream(executorId, encodePartialBlock, Optional.empty(),
         blockId, runtimeEdgeId, keyRange);
-    stream.setCoderAndExecutorServiceAndBufferSize(coderManager.getCoder(runtimeEdgeId),
-        outboundExecutorService, bufferSize);
+    stream.setCoder(coderManager.getCoder(runtimeEdgeId));
     write(executorId, stream, stream::onExceptionCaught);
     return stream;
   }
@@ -215,8 +194,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
    * @param stream {@link BlockOutputStream}
    */
   private void onPullRequest(final BlockOutputStream stream) {
-    stream.setCoderAndExecutorServiceAndBufferSize(coderManager.getCoder(stream.getRuntimeEdgeId()),
-        outboundExecutorService, bufferSize);
+    stream.setCoder(coderManager.getCoder(stream.getRuntimeEdgeId()));
     blockManagerWorker.get().onPullRequest(stream);
   }
 
@@ -226,8 +204,7 @@ public final class BlockTransfer extends SimpleChannelInboundHandler<BlockStream
    * @param stream {@link BlockInputStream}
    */
   private void onPushNotification(final BlockInputStream stream) {
-    stream.setCoderAndExecutorService(coderManager.getCoder(stream.getRuntimeEdgeId()),
-        inboundExecutorService);
+    stream.setCoder(coderManager.getCoder(stream.getRuntimeEdgeId()));
     blockManagerWorker.get().onPushNotification(stream);
   }
 

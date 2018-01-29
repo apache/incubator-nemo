@@ -21,7 +21,7 @@ import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.compiler.optimizer.CompiletimeOptimizer;
-import edu.snu.onyx.tests.compiler.optimizer.TestPolicy;
+import edu.snu.onyx.tests.compiler.optimizer.policy.TestPolicy;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.onyx.compiler.optimizer.pass.compiletime.annotating.ScheduleGroupPass;
 import edu.snu.onyx.tests.compiler.CompilerTestUtil;
@@ -50,23 +50,22 @@ public final class ScheduleGroupPassTest {
     assertEquals(ExecutionProperty.Key.ScheduleGroupIndex, scheduleGroupPass.getExecutionPropertyToModify());
   }
 
-  @Test
   /**
    * This test ensures that a topologically sorted DAG has an increasing sequence of schedule group indexes.
    */
+  @Test
   public void testScheduleGroupPass() throws Exception {
     final DAG<IRVertex, IREdge> compiledDAG = CompilerTestUtil.compileALSDAG();
     final DAG<IRVertex, IREdge> processedDAG = CompiletimeOptimizer.optimize(compiledDAG,
         new TestPolicy(), "");
 
-    Integer previousScheduleGroupIndex = 0;
     for (final IRVertex irVertex : processedDAG.getTopologicalSort()) {
       assertTrue(irVertex.getProperty(ExecutionProperty.Key.ScheduleGroupIndex) != null);
       final Integer currentScheduleGroupIndex = irVertex.getProperty(ExecutionProperty.Key.ScheduleGroupIndex);
-      assertTrue(currentScheduleGroupIndex >= previousScheduleGroupIndex);
-      if (currentScheduleGroupIndex > previousScheduleGroupIndex) {
-        previousScheduleGroupIndex = currentScheduleGroupIndex;
-      }
+      final Integer largestScheduleGroupIndexOfParent = processedDAG.getParents(irVertex.getId()).stream()
+          .mapToInt(v -> v.getProperty(ExecutionProperty.Key.ScheduleGroupIndex))
+          .max().orElse(0);
+      assertTrue(currentScheduleGroupIndex >= largestScheduleGroupIndexOfParent);
     }
   }
 }

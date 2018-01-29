@@ -263,7 +263,6 @@ final class FrameDecoder extends ByteToMessageDecoder {
     assert (length <= Integer.MAX_VALUE);
     final ByteBuf body = in.readSlice((int) length).retain();
     inputStream.append(body);
-    inputStream.startDecodingThreadIfNeeded();
 
     dataBodyBytesToRead -= length;
     if (dataBodyBytesToRead == 0) {
@@ -285,7 +284,6 @@ final class FrameDecoder extends ByteToMessageDecoder {
       inputStream.markAsEnded();
       (isPullTransfer ? pullTransferIdToInputStream : pushTransferIdToInputStream).remove(transferId);
     }
-    inputStream.startDecodingThreadIfNeeded();
     inputStream = null;
   }
 }

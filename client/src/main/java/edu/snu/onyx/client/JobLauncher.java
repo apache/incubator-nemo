@@ -217,9 +217,6 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.MaxScheduleAttempt.class);
     cl.registerShortNameOfClass(JobConf.FileDirectory.class);
     cl.registerShortNameOfClass(JobConf.GlusterVolumeDirectory.class);
-    cl.registerShortNameOfClass(JobConf.PartitionTransferInboundNumThreads.class);
-    cl.registerShortNameOfClass(JobConf.PartitionTransferOutboundNumThreads.class);
-    cl.registerShortNameOfClass(JobConf.PartitionTransferOutboundBufferSize.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerPort.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerBacklog.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerNumListeningThreads.class);

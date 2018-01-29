@@ -38,8 +38,9 @@ public final class PhysicalPlan implements Serializable {
 
   /**
    * Constructor.
-   * @param id id of the plan.
-   * @param stageDAG the DAG of stages.
+   *
+   * @param id              ID of the plan.
+   * @param stageDAG        the DAG of stages.
    * @param taskIRVertexMap map from task to IR vertex.
    */
   public PhysicalPlan(final String id,
@@ -66,6 +67,7 @@ public final class PhysicalPlan implements Serializable {
 
   /**
    * Get an IR vertex of the given task.
+   *
    * @param task task to find the IR vertex of.
    * @return the corresponding IR vertex of the given task.
    */

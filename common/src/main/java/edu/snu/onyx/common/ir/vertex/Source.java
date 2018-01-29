@@ -44,7 +44,7 @@ public interface Source<T> extends Serializable {
   long getEstimatedSizeBytes() throws Exception;
 
   /**
-   * @return a new Reader that reads from this source.
+   * @return a new Readable that reads from this source.
    * @throws IOException exception while reading.
    */
   Source.Reader<T> createReader() throws IOException;
@@ -82,7 +82,7 @@ public interface Source<T> extends Serializable {
     T getCurrent() throws NoSuchElementException;
 
     /**
-     * @return a source describing the same input that this Reader reads.
+     * @return a source describing the same input that this Readable reads.
      */
     Source<T> getCurrentSource();
   }

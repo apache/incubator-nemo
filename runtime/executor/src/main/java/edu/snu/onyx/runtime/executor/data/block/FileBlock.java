@@ -210,7 +210,9 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    */
   public void deleteFile() throws IOException {
     metadata.deleteMetadata();
-    Files.delete(Paths.get(filePath));
+    if (new File(filePath).exists()) {
+      Files.delete(Paths.get(filePath));
+    }
   }
 
   /**

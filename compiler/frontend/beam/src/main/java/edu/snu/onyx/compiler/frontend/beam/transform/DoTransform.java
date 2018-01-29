@@ -33,9 +33,7 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.Instant;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 /**
  * DoFn transform implementation.
@@ -68,7 +66,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   public void prepare(final Context context, final OutputCollector<O> oc) {
     this.outputCollector = oc;
     this.sideInputs = new HashMap<>();
-    context.getSideInputs().forEach((k, v) -> this.sideInputs.put(((BroadcastTransform) k).getTag(), v));
+    context.getSideInputs().forEach((k, v) -> this.sideInputs.put(((CreateViewTransform) k).getTag(), v));
   }
 
   @Override

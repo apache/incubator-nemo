@@ -27,7 +27,6 @@ import edu.snu.onyx.runtime.common.plan.physical.*;
 import edu.snu.onyx.runtime.common.state.JobState;
 import edu.snu.onyx.runtime.common.state.StageState;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
-import edu.snu.onyx.runtime.common.state.TaskState;
 
 import java.io.File;
 import java.io.IOException;
@@ -65,7 +64,6 @@ public final class JobStateManager {
   private final JobState jobState;
   private final Map<String, StageState> idToStageStates;
   private final Map<String, TaskGroupState> idToTaskGroupStates;
-  private final Map<String, TaskState> idToTaskStates;
 
   /**
    * Keeps track of the number of schedule attempts for each stage.
@@ -113,7 +111,6 @@ public final class JobStateManager {
     this.jobState = new JobState();
     this.idToStageStates = new HashMap<>();
     this.idToTaskGroupStates = new HashMap<>();
-    this.idToTaskStates = new HashMap<>();
     this.scheduleAttemptIdxByStage = new HashMap<>();
     this.stageIdToRemainingTaskGroupSet = new HashMap<>();
     this.currentJobStageIds = new HashSet<>();
@@ -134,10 +131,8 @@ public final class JobStateManager {
     physicalPlan.getStageDAG().topologicalDo(physicalStage -> {
       currentJobStageIds.add(physicalStage.getId());
       idToStageStates.put(physicalStage.getId(), new StageState());
-      physicalStage.getTaskGroupList().forEach(taskGroup -> {
-        idToTaskGroupStates.put(taskGroup.getTaskGroupId(), new TaskGroupState());
-        taskGroup.getTaskDAG().getVertices().forEach(
-            task -> idToTaskStates.put(task.getId(), new TaskState()));
+      physicalStage.getTaskGroupIds().forEach(taskGroupId -> {
+        idToTaskGroupStates.put(taskGroupId, new TaskGroupState());
       });
     });
   }
@@ -145,27 +140,27 @@ public final class JobStateManager {
   private void initializePartitionStates(final BlockManagerMaster blockManagerMaster) {
     final DAG<PhysicalStage, PhysicalStageEdge> stageDAG = physicalPlan.getStageDAG();
     stageDAG.topologicalDo(physicalStage -> {
-      final List<TaskGroup> taskGroupsForStage = physicalStage.getTaskGroupList();
+      final List<String> taskGroupIdsForStage = physicalStage.getTaskGroupIds();
       final List<PhysicalStageEdge> stageOutgoingEdges = stageDAG.getOutgoingEdgesOf(physicalStage);
 
       // Initialize states for blocks of inter-stage edges
       stageOutgoingEdges.forEach(physicalStageEdge -> {
-        final int srcParallelism = taskGroupsForStage.size();
+        final int srcParallelism = taskGroupIdsForStage.size();
         IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
           final String blockId = RuntimeIdGenerator.generateBlockId(physicalStageEdge.getId(), srcTaskIdx);
-          blockManagerMaster.initializeState(blockId, taskGroupsForStage.get(srcTaskIdx).getTaskGroupId());
+          blockManagerMaster.initializeState(blockId, taskGroupIdsForStage.get(srcTaskIdx));
         });
       });
 
       // Initialize states for blocks of stage internal edges
-      taskGroupsForStage.forEach(taskGroup -> {
-        final DAG<Task, RuntimeEdge<Task>> taskGroupInternalDag = taskGroup.getTaskDAG();
+      taskGroupIdsForStage.forEach(taskGroupId -> {
+        final DAG<Task, RuntimeEdge<Task>> taskGroupInternalDag = physicalStage.getTaskGroupDag();
         taskGroupInternalDag.getVertices().forEach(task -> {
           final List<RuntimeEdge<Task>> internalOutgoingEdges = taskGroupInternalDag.getOutgoingEdgesOf(task);
           internalOutgoingEdges.forEach(taskRuntimeEdge -> {
-            final int srcTaskIdx = taskGroup.getTaskGroupIdx();
+            final int srcTaskIdx = RuntimeIdGenerator.getIndexFromTaskGroupId(taskGroupId);
             final String blockId = RuntimeIdGenerator.generateBlockId(taskRuntimeEdge.getId(), srcTaskIdx);
-            blockManagerMaster.initializeState(blockId, taskGroup.getTaskGroupId());
+            blockManagerMaster.initializeState(blockId, taskGroupId);
           });
         });
       });
@@ -240,8 +235,7 @@ public final class JobStateManager {
           if (stage.getId().equals(stageId)) {
             Set<String> remainingTaskGroupIds = new HashSet<>();
             remainingTaskGroupIds.addAll(
-                stage.getTaskGroupList().stream().map(TaskGroup::getTaskGroupId)
-                    .collect(Collectors.toSet()));
+                stage.getTaskGroupIds().stream().collect(Collectors.toSet()));
             stageIdToRemainingTaskGroupSet.put(stageId, remainingTaskGroupIds);
             break;
           }
@@ -274,14 +268,16 @@ public final class JobStateManager {
    * and the call to this method is initiated in {@link edu.snu.onyx.runtime.master.scheduler.BatchSingleJobScheduler}
    * when the message/event is received.
    * A task group completion implies completion of all its tasks.
-   * @param taskGroup the task group.
-   * @param newState of the task group.
+   *
+   * @param taskGroupId  the ID of the task group.
+   * @param newState     the new state of the task group.
    */
-  public synchronized void onTaskGroupStateChanged(final TaskGroup taskGroup, final TaskGroupState.State newState) {
-    final StateMachine taskGroupState = idToTaskGroupStates.get(taskGroup.getTaskGroupId()).getStateMachine();
-    LOG.debug("Task Group State Transition: id {} from {} to {}",
-        new Object[]{taskGroup.getTaskGroupId(), taskGroupState.getCurrentState(), newState});
-    final String stageId = taskGroup.getStageId();
+  public synchronized void onTaskGroupStateChanged(final String taskGroupId,
+                                                   final TaskGroupState.State newState) {
+    final StateMachine taskGroupState = idToTaskGroupStates.get(taskGroupId).getStateMachine();
+    final String stageId = RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId);
+    LOG.debug("Task Group State Transition: id {}, from {} to {}",
+        new Object[]{taskGroupId, taskGroupState.getCurrentState(), newState});
     final Map<String, Object> metric = new HashMap<>();
 
     switch (newState) {
@@ -289,12 +285,12 @@ public final class JobStateManager {
     case COMPLETE:
       taskGroupState.setState(newState);
       metric.put("ToState", newState);
-      endMeasurement(taskGroup.getTaskGroupId(), metric);
+      endMeasurement(taskGroupId, metric);
 
       if (stageIdToRemainingTaskGroupSet.containsKey(stageId)) {
         final Set<String> remainingTaskGroups = stageIdToRemainingTaskGroupSet.get(stageId);
         LOG.info("{}: {} TaskGroup(s) to go", stageId, remainingTaskGroups.size());
-        remainingTaskGroups.remove(taskGroup.getTaskGroupId());
+        remainingTaskGroups.remove(taskGroupId);
 
         if (remainingTaskGroups.isEmpty()) {
           onStageStateChanged(stageId, StageState.State.COMPLETE);
@@ -307,7 +303,7 @@ public final class JobStateManager {
     case EXECUTING:
       taskGroupState.setState(newState);
       metric.put("FromState", newState);
-      beginMeasurement(taskGroup.getTaskGroupId(), metric);
+      beginMeasurement(taskGroupId, metric);
       break;
     case FAILED_RECOVERABLE:
       // Multiple calls to set a task group's state to failed_recoverable can occur when
@@ -316,7 +312,7 @@ public final class JobStateManager {
       if (taskGroupState.getCurrentState() != TaskGroupState.State.FAILED_RECOVERABLE) {
         taskGroupState.setState(newState);
         metric.put("ToState", newState);
-        endMeasurement(taskGroup.getTaskGroupId(), metric);
+        endMeasurement(taskGroupId, metric);
 
         // Mark this stage as failed_recoverable as long as it contains at least one failed_recoverable task group
         if (idToStageStates.get(stageId).getStateMachine().getCurrentState() != StageState.State.FAILED_RECOVERABLE) {
@@ -324,14 +320,14 @@ public final class JobStateManager {
         }
 
         if (stageIdToRemainingTaskGroupSet.containsKey(stageId)) {
-          stageIdToRemainingTaskGroupSet.get(stageId).add(taskGroup.getTaskGroupId());
+          stageIdToRemainingTaskGroupSet.get(stageId).add(taskGroupId);
         } else {
           throw new IllegalStateTransitionException(
               new Throwable("The stage has not yet been submitted for execution"));
         }
       } else {
         LOG.info("{} state is already FAILED_RECOVERABLE. Skipping this event.",
-            taskGroup.getTaskGroupId());
+            taskGroupId);
       }
       break;
     case READY:
@@ -340,7 +336,7 @@ public final class JobStateManager {
     case FAILED_UNRECOVERABLE:
       taskGroupState.setState(newState);
       metric.put("ToState", newState);
-      endMeasurement(taskGroup.getTaskGroupId(), metric);
+      endMeasurement(taskGroupId, metric);
       break;
     default:
       throw new UnknownExecutionStateException(new Throwable("This task group state is unknown"));
@@ -428,10 +424,6 @@ public final class JobStateManager {
     return idToTaskGroupStates;
   }
 
-  public synchronized Map<String, TaskState> getIdToTaskStates() {
-    return idToTaskStates;
-  }
-
   /**
    * Begins recording the start time of this metric measurement, in addition to the metric given.
    * This method ensures thread-safety by synchronizing its callers.
@@ -455,6 +447,7 @@ public final class JobStateManager {
 
     // may be null when a TaskGroup fails without entering the executing state (due to an input read failure)
     if (metricDataBuilder != null) {
+      finalMetric.put("ContainerId", "Master");
       metricDataBuilder.endMeasurement(finalMetric);
       metricMessageHandler.onMetricMessageReceived(compUnitId, metricDataBuilder.build().toJson());
       metricDataBuilderMap.remove(compUnitId);
@@ -509,27 +502,14 @@ public final class JobStateManager {
       sb.append("\"taskGroups\": [");
 
       boolean isFirstTaskGroup = true;
-      for (final TaskGroup taskGroup : stage.getTaskGroupList()) {
+      for (final String taskGroupId : stage.getTaskGroupIds()) {
         if (!isFirstTaskGroup) {
           sb.append(", ");
         }
         isFirstTaskGroup = false;
-        final TaskGroupState taskGroupState = idToTaskGroupStates.get(taskGroup.getTaskGroupId());
-        sb.append("{\"id\": \"").append(taskGroup.getTaskGroupId()).append("\", ");
-        sb.append("\"state\": \"").append(taskGroupState.toString()).append("\", ");
-        sb.append("\"tasks\": [");
-
-        boolean isFirstTask = true;
-        for (final Task task : taskGroup.getTaskDAG().getVertices()) {
-          if (!isFirstTask) {
-            sb.append(", ");
-          }
-          isFirstTask = false;
-          final TaskState taskState = idToTaskStates.get(task.getId());
-          sb.append("{\"id\": \"").append(task.getId()).append("\", ");
-          sb.append("\"state\": \"").append(taskState.toString()).append("\"}");
-        }
-        sb.append("]}");
+        final TaskGroupState taskGroupState = idToTaskGroupStates.get(taskGroupId);
+        sb.append("{\"id\": \"").append(taskGroupId).append("\", ");
+        sb.append("\"state\": \"").append(taskGroupState.toString()).append("}");
       }
       sb.append("]}");
     }

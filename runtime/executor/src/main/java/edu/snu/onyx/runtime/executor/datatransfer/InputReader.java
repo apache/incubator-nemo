@@ -31,10 +31,7 @@ import edu.snu.onyx.runtime.common.data.HashRange;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -47,7 +44,6 @@ import java.util.stream.StreamSupport;
  */
 public final class InputReader extends DataTransfer {
   private final int dstTaskIndex;
-  private final String taskGroupId;
   private final BlockManagerWorker blockManagerWorker;
 
   /**
@@ -58,13 +54,13 @@ public final class InputReader extends DataTransfer {
   private final RuntimeEdge runtimeEdge;
 
   public InputReader(final int dstTaskIndex,
-                     final String taskGroupId,
-                     final IRVertex srcVertex,
+                     // TODO #717: Remove nullable.
+                     // (If the source is not an IR vertex, do not make InputReader.)
+                     @Nullable final IRVertex srcVertex, // null if the source vertex is not an IR vertex.
                      final RuntimeEdge runtimeEdge,
                      final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
     this.dstTaskIndex = dstTaskIndex;
-    this.taskGroupId = taskGroupId;
     this.srcVertex = srcVertex;
     this.runtimeEdge = runtimeEdge;
     this.blockManagerWorker = blockManagerWorker;
@@ -95,7 +91,7 @@ public final class InputReader extends DataTransfer {
 
   private CompletableFuture<Iterator> readOneToOne() {
     final String blockId = RuntimeIdGenerator.generateBlockId(getId(), dstTaskIndex);
-    return blockManagerWorker.retrieveDataFromBlock(blockId, getId(),
+    return blockManagerWorker.queryBlock(blockId, getId(),
         (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
         HashRange.all());
   }
@@ -106,7 +102,7 @@ public final class InputReader extends DataTransfer {
     final List<CompletableFuture<Iterator>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
-      futures.add(blockManagerWorker.retrieveDataFromBlock(blockId, getId(),
+      futures.add(blockManagerWorker.queryBlock(blockId, getId(),
           (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
           HashRange.all()));
     }
@@ -124,9 +120,10 @@ public final class InputReader extends DataTransfer {
   private List<CompletableFuture<Iterator>> readDataInRange() {
     assert (runtimeEdge instanceof PhysicalStageEdge);
     final KeyRange hashRangeToRead =
-        ((PhysicalStageEdge) runtimeEdge).getTaskGroupIdToKeyRangeMap().get(taskGroupId);
+        ((PhysicalStageEdge) runtimeEdge).getTaskGroupIdxToKeyRange().get(dstTaskIndex);
     if (hashRangeToRead == null) {
-      throw new BlockFetchException(new Throwable("The hash range to read is not assigned to " + taskGroupId));
+      throw new BlockFetchException(
+          new Throwable("The hash range to read is not assigned to " + dstTaskIndex + "'th task"));
     }
 
     final int numSrcTasks = this.getSourceParallelism();
@@ -134,7 +131,7 @@ public final class InputReader extends DataTransfer {
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
       futures.add(
-          blockManagerWorker.retrieveDataFromBlock(blockId, getId(),
+          blockManagerWorker.queryBlock(blockId, getId(),
               (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
               hashRangeToRead));
     }
@@ -146,13 +143,13 @@ public final class InputReader extends DataTransfer {
     return runtimeEdge;
   }
 
-  public String getSrcVertexId() {
+  public String getSrcIrVertexId() {
     // this src vertex can be either a real vertex or a task. we must check!
     if (srcVertex != null) {
       return srcVertex.getId();
     }
 
-    return ((Task) runtimeEdge.getSrc()).getRuntimeVertexId();
+    return ((Task) runtimeEdge.getSrc()).getIrVertexId();
   }
 
   public boolean isSideInputReader() {
@@ -163,8 +160,29 @@ public final class InputReader extends DataTransfer {
     if (!isSideInputReader()) {
       throw new RuntimeException();
     }
-    final CompletableFuture<Iterator> future = this.read().get(0);
-    return future.thenApply(f -> f.next());
+    final List<CompletableFuture<Iterator>> futures = this.read();
+    return futures.get(0).thenApply(f -> {
+      final List copy = new ArrayList();
+      f.forEachRemaining(copy::add);
+      if (copy.size() == 1) {
+        return copy.get(0);
+      } else {
+        if (copy.get(0) instanceof Iterable) {
+          final List collect = new ArrayList();
+          copy.forEach(element -> ((Iterable) element).iterator().forEachRemaining(collect::add));
+          return collect;
+        } else if (copy.get(0) instanceof Map) {
+          final Map collect = new HashMap();
+          copy.forEach(element -> {
+            final Set keySet = ((Map) element).keySet();
+            keySet.forEach(key -> collect.put(key, ((Map) element).get(key)));
+          });
+          return collect;
+        } else {
+          return copy;
+        }
+      }
+    });
   }
 
   /**

@@ -17,6 +17,7 @@ package edu.snu.onyx.runtime.master.scheduler;
 
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.exception.SchedulingException;
+import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
@@ -64,11 +65,11 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
 
   @Override
   public void enqueue(final ScheduledTaskGroup scheduledTaskGroup) {
-    final String stageId = scheduledTaskGroup.getTaskGroup().getStageId();
+    final String stageId = RuntimeIdGenerator.getStageIdFromTaskGroupId(scheduledTaskGroup.getTaskGroupId());
     final int requestId = index.getAndIncrement();
 
     synchronized (stageIdToPendingTaskGroups) {
-      print("#" + requestId + "enq1 (" + scheduledTaskGroup.getTaskGroup().getTaskGroupId() + ")");
+      print("#" + requestId + "enq1 (" + scheduledTaskGroup.getTaskGroupId() + ")");
       stageIdToPendingTaskGroups.compute(stageId,
           new BiFunction<String, Deque<ScheduledTaskGroup>, Deque<ScheduledTaskGroup>>() {
             @Override
@@ -77,7 +78,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
               if (scheduledTaskGroups == null) {
                 final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = new ArrayDeque<>();
                 pendingTaskGroupsForStage.add(scheduledTaskGroup);
-                updateSchedulableStages(stageId, scheduledTaskGroup.getTaskGroup().getContainerType());
+                updateSchedulableStages(stageId, scheduledTaskGroup.getContainerType());
                 return pendingTaskGroupsForStage;
               } else {
                 scheduledTaskGroups.add(scheduledTaskGroup);
@@ -85,7 +86,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
               }
             }
           });
-      print("#" + requestId + "enq2 (" + scheduledTaskGroup.getTaskGroup().getTaskGroupId() + ")");
+      print("#" + requestId + "enq2 (" + scheduledTaskGroup.getTaskGroupId() + ")");
     }
   }
 
@@ -117,7 +118,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
         if (pendingTaskGroupsForStage.isEmpty()) {
           stageIdToPendingTaskGroups.remove(stageId);
           stageIdToPendingTaskGroups.forEach((scheduledStageId, taskGroupList) ->
-              updateSchedulableStages(scheduledStageId, taskGroupList.getFirst().getTaskGroup().getContainerType()));
+              updateSchedulableStages(scheduledStageId, taskGroupList.getFirst().getContainerType()));
         } else {
           schedulableStages.addLast(stageId);
         }
@@ -125,7 +126,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
     }
 
     print("#" + requestId + "deq2 (" + ((taskGroupToSchedule == null) ? "null"
-        : taskGroupToSchedule.getTaskGroup().getTaskGroupId()) + ")");
+        : taskGroupToSchedule.getTaskGroupId()) + ")");
     return (taskGroupToSchedule == null) ? Optional.empty()
         : Optional.of(taskGroupToSchedule);
   }
@@ -170,7 +171,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
       jobDAG.getAncestors(candidateStageId).forEach(ancestorStage -> {
         if (schedulableStages.contains(ancestorStage.getId())) {
           // Remove the ancestor stage if it is of the same container type.
-          if (candidateStageContainerType.equals(ancestorStage.getTaskGroupList().get(0).getContainerType())) {
+          if (candidateStageContainerType.equals(ancestorStage.getContainerType())) {
             schedulableStages.remove(ancestorStage.getId());
           }
         }
@@ -191,7 +192,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
     final DAG<PhysicalStage, PhysicalStageEdge> jobDAG = physicalPlan.getStageDAG();
     for (final PhysicalStage descendantStage : jobDAG.getDescendants(candidateStageId)) {
       if (schedulableStages.contains(descendantStage.getId())) {
-        if (candidateStageContainerType.equals(descendantStage.getTaskGroupList().get(0).getContainerType())) {
+        if (candidateStageContainerType.equals(descendantStage.getContainerType())) {
           return false;
         }
       }
@@ -208,7 +209,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
       stageIdToPendingTaskGroups.forEach((stageId, tgs) -> {
         result.append(stageId).append(": ");
         tgs.forEach(tg ->
-            result.append(tg.getTaskGroup().getTaskGroupId()).append(", "));
+            result.append(tg.getTaskGroupId()).append(", "));
       });
     }
 

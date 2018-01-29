@@ -17,8 +17,9 @@ package edu.snu.onyx.examples.beam;
 
 import edu.snu.onyx.client.JobLauncher;
 import edu.snu.onyx.common.ArgBuilder;
-import edu.snu.onyx.compiler.optimizer.policy.DefaultPolicy;
-import edu.snu.onyx.compiler.optimizer.policy.PadoPolicy;
+import edu.snu.onyx.examples.beam.policy.DefaultPolicyParallelismFive;
+import edu.snu.onyx.examples.beam.policy.PadoPolicyParallelsimFive;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -31,7 +32,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class BroadcastITCase {
-  private static final int TIMEOUT = 120000;
+  private static final int TIMEOUT = 200000;
   private static final String inputFileName = "sample_input_mr";
   private static final String outputFileName = "sample_output_broadcast";
   private static final String testResourceFileName = "test_output_broadcast_test";
@@ -51,23 +52,25 @@ public final class BroadcastITCase {
         .addUserArgs(inputFilePath, outputFilePath);
   }
 
+  @After
+  public void tearDown() throws Exception {
+    ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+  }
+
   @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
         .addJobId(BroadcastITCase.class.getSimpleName())
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
-
-    ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
   }
 
   @Test (timeout = TIMEOUT)
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(BroadcastITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(PadoPolicyParallelsimFive.class.getCanonicalName())
         .build());
-
-    ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
   }
 }

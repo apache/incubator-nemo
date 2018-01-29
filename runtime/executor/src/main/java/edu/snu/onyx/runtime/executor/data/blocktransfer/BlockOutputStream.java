@@ -26,7 +26,6 @@ import io.netty.channel.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.channels.FileChannel;
@@ -34,19 +33,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 
 /**
  * Output stream for block transfer. {@link #close()} must be called after finishing write.
- *
- * Encodes and flushes outbound data elements to other executors. Three threads are involved.
- * <ul>
- *   <li>User thread writes elements or {@link FileArea}s to this object</li>
- *   <li>{@link BlockTransfer#outboundExecutorService} encodes elements into {@link ByteBuf}s</li>
- *   <li>Netty {@link io.netty.channel.EventLoopGroup} responds to {@link Channel#writeAndFlush(Object)}
- *   by sending {@link ByteBuf}s or {@link FileRegion}s to the remote executor.</li>
- * </ul>
  *
  * @param <T> the type of element
  */
@@ -64,15 +53,11 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
   private short transferId;
   private Channel channel;
   private Coder<T> coder;
-  private ExecutorService executorService;
-  private int bufferSize;
 
   private final DataFrameWriteFutureListener writeFutureListener = new DataFrameWriteFutureListener();
-  private final ClosableBlockingQueue<Object> elementQueue = new ClosableBlockingQueue<>();
+  private final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream();
   private volatile boolean closed = false;
   private volatile Throwable channelException = null;
-  private volatile boolean started = false;
-  private volatile Future encodingThread;
 
   @Override
   public String toString() {
@@ -119,18 +104,12 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
   }
 
   /**
-   * Sets {@link Coder}, {@link ExecutorService} and sizes to serialize bytes into block.
+   * Sets {@link Coder}.
    *
    * @param cdr     the coder
-   * @param service the executor service
-   * @param bSize   the outbound buffer size
    */
-  void setCoderAndExecutorServiceAndBufferSize(final Coder<T> cdr,
-                                               final ExecutorService service,
-                                               final int bSize) {
+  void setCoder(final Coder<T> cdr) {
     this.coder = cdr;
-    this.executorService = service;
-    this.bufferSize = bSize;
   }
 
   @Override
@@ -163,53 +142,6 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
   }
 
   /**
-   * Starts the encoding and writing to the channel.
-   */
-  private void startEncodingThreadIfNeeded() {
-    if (started) {
-      return;
-    }
-    started = true;
-    assert (channel != null);
-    assert (coder != null);
-    final ByteBufOutputStream byteBufOutputStream = new ByteBufOutputStream();
-    encodingThread = executorService.submit(() -> {
-      try {
-        final long startTime = System.currentTimeMillis();
-        while (true) {
-          final Object thing = elementQueue.take();
-          if (thing == null) {
-            // end of output stream
-            byteBufOutputStream.close();
-            break;
-          } else if (thing instanceof Iterator) {
-            final Iterator<T> iterator = (Iterator<T>) thing;
-            while (iterator.hasNext()) {
-              coder.encode(iterator.next(), byteBufOutputStream);
-            }
-          } else if (thing instanceof FileArea) {
-            byteBufOutputStream.writeFileArea((FileArea) thing);
-          } else if (thing instanceof SerializedPartition) {
-            byteBufOutputStream.write(
-                ((SerializedPartition) thing).getData(), 0, ((SerializedPartition) thing).getLength());
-          } else {
-            coder.encode((T) thing, byteBufOutputStream);
-          }
-        }
-        final long endTime = System.currentTimeMillis();
-        // If encodePartialBlock option is on, the elapsed time is not only determined by the speed of encoder
-        // but also by the rate the user writes objects to this stream.
-        // Before investigating on low rate of decoding, check the rate of the byte stream.
-        LOG.debug("Encoding task took {} ms to complete for {} ({} bytes, buffer size: {})",
-            new Object[]{endTime - startTime, toString(), byteBufOutputStream.streamLength, bufferSize});
-      } catch (final Exception e) {
-        LOG.error(String.format("An exception in encoding thread for %s", toString()), e);
-        throw new RuntimeException(e);
-      }
-    });
-  }
-
-  /**
    * Sets a channel exception.
    *
    * @param cause the cause of exception handling
@@ -227,11 +159,10 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
    * @throws IOException           if an exception was set
    * @throws IllegalStateException if this stream is closed already
    */
-  public BlockOutputStream writeElements(final Iterator iterator) throws IOException {
+  public BlockOutputStream writeElements(final Iterator<T> iterator) throws IOException {
     checkWritableCondition();
-    elementQueue.put(iterator);
-    if (encodePartialBlock) {
-      startEncodingThreadIfNeeded();
+    while (iterator.hasNext()) {
+      coder.encode(iterator.next(), byteBufOutputStream);
     }
     return this;
   }
@@ -247,10 +178,7 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
   public BlockOutputStream writeFileAreas(final Iterable<FileArea> fileAreas) throws IOException {
     checkWritableCondition();
     for (final FileArea fileArea : fileAreas) {
-      elementQueue.put(fileArea);
-    }
-    if (encodePartialBlock) {
-      startEncodingThreadIfNeeded();
+      byteBufOutputStream.writeFileArea(fileArea);
     }
     return this;
   }
@@ -266,10 +194,8 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
   public BlockOutputStream writeSerializedPartitions(final Iterable<SerializedPartition> serializedPartitions)
       throws IOException {
     checkWritableCondition();
-    serializedPartitions.forEach(elementQueue::put);
-    if (encodePartialBlock) {
-      startEncodingThreadIfNeeded();
-    }
+    serializedPartitions.forEach(serializedPartition -> byteBufOutputStream.write(serializedPartition.getData(),
+        0, serializedPartition.getLength()));
     return this;
   }
 
@@ -285,8 +211,7 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
       throw new IOException(channelException);
     }
     closed = true;
-    startEncodingThreadIfNeeded();
-    elementQueue.close();
+    byteBufOutputStream.close();
   }
 
   /**
@@ -301,7 +226,6 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
       throw new IllegalStateException(String.format("%s is closed already", toString()));
     }
     closed = true;
-    elementQueue.close();
     channelException = cause;
     channel.close();
   }
@@ -326,85 +250,48 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
    */
   private final class ByteBufOutputStream extends OutputStream {
 
-    @Nullable
-    private ByteBuf byteBuf = null;
-
-    private long streamLength = 0;
-
     @Override
     public void write(final int i) {
-      createByteBufIfNeeded();
+      final ByteBuf byteBuf = channel.alloc().ioBuffer(1, 1);
       byteBuf.writeByte(i);
-      flushIfFull();
-      streamLength++;
+      writeDataFrame(byteBuf, false);
     }
 
     @Override
     public void write(final byte[] bytes, final int offset, final int length) {
-      int cursor = offset;
-      int bytesToWrite = length;
-      while (bytesToWrite > 0) {
-        createByteBufIfNeeded();
-        final int toWrite = Math.min(bytesToWrite, byteBuf.writableBytes());
-        byteBuf.writeBytes(bytes, cursor, toWrite);
-        cursor += toWrite;
-        bytesToWrite -= toWrite;
-        flushIfFull();
-      }
-      streamLength += length;
-    }
-
-    /**
-     * Writes a data frame from {@link ByteBuf} and creates a new one.
-     */
-    @Override
-    public void flush() {
-      if (byteBuf != null && byteBuf.readableBytes() > 0) {
-        writeDataFrame(false);
-      }
+      final ByteBuf byteBuf = channel.alloc().ioBuffer(length, length);
+      byteBuf.writeBytes(bytes, offset, length);
+      writeDataFrame(byteBuf, false);
     }
 
     @Override
     public void close() {
       // should send a frame with "isLastFrame" on to indicate the end of the block stream
       writeDataFrame(true);
-      if (byteBuf != null) {
-        byteBuf.release();
-        byteBuf = null;
-      }
     }
 
     /**
-     * Flushes the buffer if the buffer is full.
+     * Writes a data frame with empty body.
+     *
+     * @param isLastFrame whether or not the frame is the last frame
      */
-    private void flushIfFull() {
-      if (byteBuf != null && byteBuf.writableBytes() == 0) {
-        writeDataFrame(false);
-      }
+    private void writeDataFrame(final boolean isLastFrame) {
+      channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(transferType, isLastFrame, transferId,
+          0, null)).addListener(writeFutureListener);
     }
 
     /**
      * Writes a data frame from {@link ByteBuf}.
      *
+     * @param byteBuf     {@link ByteBuf} to write.
      * @param isLastFrame whether or not the frame is the last frame
      */
-    private void writeDataFrame(final boolean isLastFrame) {
-      if (byteBuf != null && byteBuf.readableBytes() > 0) {
+    private void writeDataFrame(final ByteBuf byteBuf, final boolean isLastFrame) {
+      if (byteBuf.readableBytes() > 0) {
         channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(transferType, isLastFrame, transferId,
             byteBuf.readableBytes(), byteBuf)).addListener(writeFutureListener);
-        byteBuf = null;
       } else {
-        channel.writeAndFlush(DataFrameEncoder.DataFrame.newInstance(transferType, isLastFrame, transferId,
-            0, null)).addListener(writeFutureListener);
-      }
-    }
-
-    /**
-     * Creates {@link ByteBuf} if needed.
-     */
-    private void createByteBufIfNeeded() {
-      if (byteBuf == null) {
-        byteBuf = channel.alloc().ioBuffer(bufferSize, bufferSize);
+        writeDataFrame(isLastFrame);
       }
     }
 
@@ -415,7 +302,6 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
      * @throws IOException when failed to open the file
      */
     private void writeFileArea(final FileArea fileArea) throws IOException {
-      flush();
       final Path path = Paths.get(fileArea.getPath());
       long cursor = fileArea.getPosition();
       long bytesToSend = fileArea.getCount();
@@ -427,7 +313,6 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
         cursor += size;
         bytesToSend -= size;
       }
-      streamLength += fileArea.getCount();
     }
   }
 
@@ -441,11 +326,7 @@ public final class BlockOutputStream<T> implements AutoCloseable, BlockStream {
       if (future.isSuccess()) {
         return;
       }
-      if (encodingThread != null) {
-        encodingThread.cancel(true);
-      }
       closed = true;
-      elementQueue.close();
       channel.close();
       if (future.cause() == null) {
         LOG.error("Failed to write a data frame");

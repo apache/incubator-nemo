@@ -39,7 +39,6 @@ import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.onyx.runtime.common.plan.physical.Task;
-import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.executor.Executor;
 import edu.snu.onyx.runtime.executor.MetricManagerWorker;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
@@ -108,7 +107,6 @@ public final class DataTransferTest {
   private static final int PARALLELISM_TEN = 10;
   private static final String EDGE_PREFIX_TEMPLATE = "Dummy(%d)";
   private static final AtomicInteger TEST_INDEX = new AtomicInteger(0);
-  private static final String TASKGROUP_PREFIX_TEMPLATE = "DummyTG(%d)_";
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
   private static final Tang TANG = Tang.Factory.getTang();
   private static final int HASH_RANGE_MULTIPLIER = 10;
@@ -123,7 +121,7 @@ public final class DataTransferTest {
     final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
     final LocalMessageEnvironment messageEnvironment =
         new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
-    final ContainerManager containerManager = new ContainerManager(null, messageEnvironment);
+    final ContainerManager containerManager = new ContainerManager(1, null, messageEnvironment);
     final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
@@ -263,7 +261,6 @@ public final class DataTransferTest {
                             final DataStoreProperty.Value store) throws RuntimeException {
     final int testIndex = TEST_INDEX.getAndIncrement();
     final String edgeId = String.format(EDGE_PREFIX_TEMPLATE, testIndex);
-    final String taskGroupPrefix = String.format(TASKGROUP_PREFIX_TEMPLATE, testIndex);
     final Pair<IRVertex, IRVertex> verticesPair = setupVertices(edgeId, sender, receiver);
     final IRVertex srcVertex = verticesPair.left();
     final IRVertex dstVertex = verticesPair.right();
@@ -279,22 +276,18 @@ public final class DataTransferTest {
     edgeProperties.put(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
     final RuntimeEdge dummyEdge;
 
-    if (DataCommunicationPatternProperty.Value.Shuffle.equals(commPattern)) {
-      final IRVertex srcMockVertex = mock(IRVertex.class);
-      final IRVertex dstMockVertex = mock(IRVertex.class);
-      final PhysicalStage srcStage = setupStages("srcStage", taskGroupPrefix);
-      final PhysicalStage dstStage = setupStages("dstStage", taskGroupPrefix);
-      dummyEdge = new PhysicalStageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
-          srcStage, dstStage, CODER, false);
-    } else {
-      dummyEdge = new RuntimeEdge<>(edgeId, edgeProperties, srcVertex, dstVertex, CODER);
-    }
-
+    final IRVertex srcMockVertex = mock(IRVertex.class);
+    final IRVertex dstMockVertex = mock(IRVertex.class);
+    final PhysicalStage srcStage = setupStages("srcStage-" + testIndex);
+    final PhysicalStage dstStage = setupStages("dstStage-" + testIndex);
+    dummyEdge = new PhysicalStageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
+        srcStage, dstStage, CODER, false);
     // Initialize states in Master
-    IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
-      final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskIndex);
-      master.initializeState(blockId, taskGroupPrefix + srcTaskIndex);
-      master.onProducerTaskGroupScheduled(taskGroupPrefix + srcTaskIndex);
+    srcStage.getTaskGroupIds().forEach(srcTaskGroupId -> {
+      final String blockId = RuntimeIdGenerator.generateBlockId(
+          edgeId, RuntimeIdGenerator.getIndexFromTaskGroupId(srcTaskGroupId));
+      master.initializeState(blockId, srcTaskGroupId);
+      master.onProducerTaskGroupScheduled(srcTaskGroupId);
     });
 
     // Write
@@ -312,7 +305,7 @@ public final class DataTransferTest {
     final List<List> dataReadList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
       final InputReader reader =
-          new InputReader(dstTaskIndex, taskGroupPrefix + dstTaskIndex, srcVertex, dummyEdge, receiver);
+          new InputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
 
       if (DataCommunicationPatternProperty.Value.OneToOne.equals(commPattern)) {
         assertEquals(1, reader.getSourceParallelism());
@@ -363,14 +356,9 @@ public final class DataTransferTest {
     return Pair.of(srcVertex, dstVertex);
   }
 
-  private PhysicalStage setupStages(final String stageId,
-                                    final String taskGroupPrefix) {
-    final List<TaskGroup> taskGroupList = new ArrayList<>(PARALLELISM_TEN);
+  private PhysicalStage setupStages(final String stageId) {
     final DAG<Task, RuntimeEdge<Task>> emptyDag = new DAGBuilder<Task, RuntimeEdge<Task>>().build();
-    IntStream.range(0, PARALLELISM_TEN).forEach(taskGroupIdx -> {
-      taskGroupList.add(new TaskGroup(taskGroupPrefix + taskGroupIdx, stageId, taskGroupIdx, emptyDag, "Not_used"));
-    });
 
-    return new PhysicalStage(stageId, taskGroupList, 0);
+    return new PhysicalStage(stageId, emptyDag, PARALLELISM_TEN, 0, "Not_used");
   }
 }

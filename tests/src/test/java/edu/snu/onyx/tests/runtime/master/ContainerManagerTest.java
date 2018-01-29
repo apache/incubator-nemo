@@ -49,7 +49,7 @@ public final class ContainerManagerTest {
 
     final MessageEnvironment mockMsgEnv = mock(MessageEnvironment.class);
     when(mockMsgEnv.asyncConnect(anyString(), anyString())).thenReturn(mock(Future.class));
-    containerManager = new ContainerManager(mock(EvaluatorRequestor.class), mockMsgEnv);
+    containerManager = new ContainerManager(1, mock(EvaluatorRequestor.class), mockMsgEnv);
   }
 
   @Test(timeout=5000)

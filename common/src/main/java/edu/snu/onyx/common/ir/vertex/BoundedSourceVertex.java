@@ -15,11 +15,12 @@
  */
 package edu.snu.onyx.common.ir.vertex;
 
-import edu.snu.onyx.common.ir.Reader;
+import edu.snu.onyx.common.ir.Readable;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
+
+import edu.snu.onyx.common.ir.ReadablesWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,13 +48,8 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
   }
 
   @Override
-  public List<Reader<O>> getReaders(final int desiredNumOfSplits) throws Exception {
-    final List<Reader<O>> readers = new ArrayList<>();
-    LOG.info("estimate: {}", source.getEstimatedSizeBytes());
-    LOG.info("desired: {}", desiredNumOfSplits);
-    source.split(source.getEstimatedSizeBytes() / desiredNumOfSplits).forEach(boundedSource ->
-        readers.add(new BoundedSourceReader<>(boundedSource)));
-    return readers;
+  public ReadablesWrapper<O> getReadableWrapper(final int desiredNumOfSplits) throws Exception {
+    return new BoundedSourceReadablesWrapper(desiredNumOfSplits);
   }
 
   @Override
@@ -68,29 +64,54 @@ public final class BoundedSourceVertex<O> extends SourceVertex<O> {
   }
 
   /**
-   * BoundedSourceReader class.
+   * A ReadablesWrapper for BoundedSourceVertex.
+   */
+  private final class BoundedSourceReadablesWrapper implements ReadablesWrapper<O> {
+    final int desiredNumOfSplits;
+
+    /**
+     * Constructor of the BoundedSourceReadablesWrapper.
+     * @param desiredNumOfSplits the number of splits desired.
+     */
+    private BoundedSourceReadablesWrapper(final int desiredNumOfSplits) {
+      this.desiredNumOfSplits = desiredNumOfSplits;
+    }
+
+    @Override
+    public List<Readable<O>> getReadables() throws Exception {
+      final List<Readable<O>> readables = new ArrayList<>();
+      LOG.info("estimate: {}", source.getEstimatedSizeBytes());
+      LOG.info("desired: {}", desiredNumOfSplits);
+      source.split(source.getEstimatedSizeBytes() / desiredNumOfSplits).forEach(boundedSource ->
+          readables.add(new BoundedSourceReadable<>(boundedSource)));
+      return readables;
+    }
+  }
+
+  /**
+   * BoundedSourceReadable class.
    * @param <T> type.
    */
-  public class BoundedSourceReader<T> implements Reader<T> {
+  private final class BoundedSourceReadable<T> implements Readable<T> {
     private final Source<T> boundedSource;
 
     /**
-     * Constructor of the BoundedSourceReader.
+     * Constructor of the BoundedSourceReadable.
      * @param boundedSource the BoundedSource.
      */
-    BoundedSourceReader(final Source<T> boundedSource) {
+    BoundedSourceReadable(final Source<T> boundedSource) {
       this.boundedSource = boundedSource;
     }
 
     @Override
-    public final Iterator<T> read() throws Exception {
+    public Iterable<T> read() throws Exception {
       final ArrayList<T> elements = new ArrayList<>();
       try (Source.Reader<T> reader = boundedSource.createReader()) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
           elements.add(reader.getCurrent());
         }
       }
-      return elements.iterator();
+      return elements;
     }
   }
 }
