@@ -41,10 +41,9 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.Future;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -112,10 +111,6 @@ public final class SingleTaskGroupQueueTest {
     // Make sure that ScheduleGroups have been assigned to satisfy PendingPQ's requirements.
     assertEquals(dagOf2Stages.get(0).getScheduleGroupIndex(), dagOf2Stages.get(1).getScheduleGroupIndex());
 
-    final CountDownLatch countDownLatch = new CountDownLatch(2);
-
-    final AtomicBoolean passed = new AtomicBoolean(true);
-
     // This mimics Batch Scheduler's behavior
     executorService.execute(() -> {
       // First schedule the children TaskGroups (since it is push).
@@ -123,12 +118,10 @@ public final class SingleTaskGroupQueueTest {
       scheduleStage(dagOf2Stages.get(1));
       // Then, schedule the parent TaskGroups.
       scheduleStage(dagOf2Stages.get(0));
-
-      countDownLatch.countDown();
     });
 
     // This mimics SchedulerRunner's behavior
-    executorService.execute(() -> {
+    Future<?> testResult = executorService.submit(() -> {
       try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
         final ScheduledTaskGroup dequeuedTaskGroup = pendingTaskGroupPriorityQueue.dequeue().get();
@@ -144,14 +137,11 @@ public final class SingleTaskGroupQueueTest {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
       } catch (Exception e) {
         e.printStackTrace();
-        passed.getAndSet(false);
-      } finally {
-        countDownLatch.countDown();
+        throw e;
       }
     });
-
-    countDownLatch.await();
-    assertTrue(passed.get());
+    testResult.get();
+    pendingTaskGroupPriorityQueue.printLog();
   }
 
   /**
@@ -196,18 +186,15 @@ public final class SingleTaskGroupQueueTest {
     assertEquals(dagOf2Stages.get(0).getScheduleGroupIndex(), 0);
     assertEquals(dagOf2Stages.get(1).getScheduleGroupIndex(), 1);
 
-    final CountDownLatch countDownLatch = new CountDownLatch(2);
-
     // This mimics Batch Scheduler's behavior
     executorService.execute(() -> {
       // First schedule the parent TaskGroups (since it is pull).
       // BatchSingleJobScheduler will schedule TaskGroups in this order as well.
       scheduleStage(dagOf2Stages.get(0));
-      countDownLatch.countDown();
     });
 
     // This mimics SchedulerRunner's behavior
-    executorService.execute(() -> {
+    Future<?> testResult = executorService.submit(() -> {
       try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
         final ScheduledTaskGroup dequeuedTaskGroup = pendingTaskGroupPriorityQueue.dequeue().get();
@@ -225,12 +212,11 @@ public final class SingleTaskGroupQueueTest {
         scheduleStage(dagOf2Stages.get(1));
       } catch (Exception e) {
         e.printStackTrace();
-      } finally {
-        countDownLatch.countDown();
+        throw e;
       }
     });
 
-    countDownLatch.await();
+    testResult.get();
   }
 
   /**
@@ -274,11 +260,9 @@ public final class SingleTaskGroupQueueTest {
     // Make sure that ScheduleGroups have been assigned to satisfy PendingPQ's requirements.
     assertEquals(dagOf2Stages.get(0).getScheduleGroupIndex(), dagOf2Stages.get(1).getScheduleGroupIndex());
 
-    final CountDownLatch countDownLatch = new CountDownLatch(2);
-
     // This mimics SchedulerRunner's behavior, but let's schedule this thread first this time,
     // as opposed to testPushPriority.
-    executorService.execute(() -> {
+    Future<?> testResult = executorService.submit(() -> {
       try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
         final ScheduledTaskGroup dequeuedTaskGroup = pendingTaskGroupPriorityQueue.dequeue().get();
@@ -298,8 +282,7 @@ public final class SingleTaskGroupQueueTest {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
       } catch (Exception e) {
         e.printStackTrace();
-      } finally {
-        countDownLatch.countDown();
+        throw e;
       }
     });
 
@@ -310,11 +293,9 @@ public final class SingleTaskGroupQueueTest {
       scheduleStage(dagOf2Stages.get(1));
       // Then, schedule the parent TaskGroups.
       scheduleStage(dagOf2Stages.get(0));
-
-      countDownLatch.countDown();
     });
 
-    countDownLatch.await();
+    testResult.get();
   }
 
   /**
