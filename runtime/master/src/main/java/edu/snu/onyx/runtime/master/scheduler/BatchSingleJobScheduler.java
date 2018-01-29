@@ -16,9 +16,11 @@
 package edu.snu.onyx.runtime.master.scheduler;
 
 import edu.snu.onyx.common.Pair;
+import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.eventhandler.DynamicOptimizationEvent;
+import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.onyx.common.exception.*;
 import edu.snu.onyx.common.ir.vertex.MetricCollectionBarrierVertex;
@@ -213,7 +215,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     if (stageComplete) {
       // get optimization vertex from the task.
       final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
-          getTaskGroupById(taskGroupId).getTaskDAG().getVertices().stream() // get tasks list
+          getTaskGroupDagById(taskGroupId).getVertices().stream() // get tasks list
               .filter(task -> task.getId().equals(taskPutOnHold)) // find it
               .map(physicalPlan::getIRVertexOf) // get the corresponding IRVertex, the MetricCollectionBarrierVertex
               .filter(irVertex -> irVertex instanceof MetricCollectionBarrierVertex)
@@ -239,7 +241,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
     final String stageId = RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId);
     final int attemptIndexForStage =
-        jobStateManager.getAttemptCountForStage(getTaskGroupById(taskGroupId).getStageId());
+        jobStateManager.getAttemptCountForStage(RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId));
 
     switch (failureCause) {
     // Previous task group must be re-executed, and incomplete task groups of the belonging stage must be rescheduled.
@@ -314,7 +316,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
       // Schedule a stage after marking the necessary task groups to failed_recoverable.
       // The stage for one of the task groups that failed is a starting point to look
       // for the next stage to be scheduled.
-      scheduleNextStage(getTaskGroupById(taskGroupsToReExecute.iterator().next()).getStageId());
+      scheduleNextStage(RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupsToReExecute.iterator().next()));
     }
   }
 
@@ -489,15 +491,22 @@ public final class BatchSingleJobScheduler implements Scheduler {
     taskGroupIdsToSchedule.forEach(taskGroupId -> {
       blockManagerMaster.onProducerTaskGroupScheduled(taskGroupId);
       LOG.debug("Enquing {}", taskGroupId);
-      pendingTaskGroupQueue.enqueue(new ScheduledTaskGroup(physicalPlan.getId(), stageToSchedule.getTaskGroup(),
-          taskGroupId, stageIncomingEdges, stageOutgoingEdges, attemptIdx));
+      pendingTaskGroupQueue.enqueue(
+          new ScheduledTaskGroup(physicalPlan.getId(), stageToSchedule.getSerializedTaskGroupDag(), taskGroupId,
+              stageIncomingEdges, stageOutgoingEdges, attemptIdx, stageToSchedule.getContainerType()));
     });
   }
 
-  private TaskGroup getTaskGroupById(final String taskGroupId) {
+  /**
+   * Gets the DAG of a task group from it's ID.
+   *
+   * @param taskGroupId the ID of the task group to get.
+   * @return the DAG of the task group.
+   */
+  private DAG<Task, RuntimeEdge<Task>> getTaskGroupDagById(final String taskGroupId) {
     for (final PhysicalStage physicalStage : physicalPlan.getStageDAG().getVertices()) {
       if (physicalStage.getId().equals(RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId))) {
-        return physicalStage.getTaskGroup();
+        return physicalStage.getTaskGroupDag();
       }
     }
     throw new RuntimeException(new Throwable("This taskGroupId does not exist in the plan"));

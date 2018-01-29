@@ -98,7 +98,7 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for {@link edu.snu.onyx.runtime.common.plan.physical.TaskGroup}.
+   * Generates the ID for {@link edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup}.
    *
    * @param index   the index of this task group.
    * @param stageId the ID of the stage.

@@ -15,6 +15,7 @@
  */
 package edu.snu.onyx.runtime.executor;
 
+import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.exception.UnknownExecutionStateException;
 import edu.snu.onyx.common.exception.UnknownFailureCauseException;
 import edu.snu.onyx.common.StateMachine;
@@ -22,8 +23,9 @@ import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.PersistentConnectionToMasterMap;
+import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
-import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
+import edu.snu.onyx.runtime.common.plan.physical.Task;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.runtime.common.state.TaskState;
 
@@ -66,6 +68,7 @@ public final class TaskGroupStateManager {
 
 
   public TaskGroupStateManager(final ScheduledTaskGroup scheduledTaskGroup,
+                               final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
                                final String executorId,
                                final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                                final MetricMessageSender metricMessageSender) {
@@ -77,15 +80,15 @@ public final class TaskGroupStateManager {
     metricDataBuilderMap = new HashMap<>();
     logicalIdToTaskStates = new HashMap<>();
     currentTaskGroupTaskIds = new HashSet<>();
-    initializeStates(scheduledTaskGroup.getTaskGroup());
+    initializeStates(taskGroupDag);
   }
 
   /**
    * Receives and initializes the states for the task group to manage.
-   * @param taskGroup to manage.
+   * @param taskGroupDag to manage.
    */
-  private void initializeStates(final TaskGroup taskGroup) {
-    taskGroup.getTaskDAG().getVertices().forEach(task -> {
+  private void initializeStates(final DAG<Task, RuntimeEdge<Task>> taskGroupDag) {
+    taskGroupDag.getVertices().forEach(task -> {
       currentTaskGroupTaskIds.add(task.getId());
       logicalIdToTaskStates.put(task.getId(), new TaskState());
     });
@@ -161,6 +164,7 @@ public final class TaskGroupStateManager {
 
     switch (newState) {
     case READY:
+      break;
     case EXECUTING:
       metric.put("ContainerId", executorId);
       metric.put("ScheduleAttempt", attemptIdx);

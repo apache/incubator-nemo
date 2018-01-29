@@ -100,10 +100,11 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   @Override
-  public boolean scheduleTaskGroup(final ScheduledTaskGroup scheduledTaskGroup, final JobStateManager jobStateManager) {
+  public boolean scheduleTaskGroup(final ScheduledTaskGroup scheduledTaskGroup,
+                                   final JobStateManager jobStateManager) {
     lock.lock();
     try {
-      final String containerType = scheduledTaskGroup.getTaskGroup().getContainerType();
+      final String containerType = scheduledTaskGroup.getContainerType();
       initializeContainerTypeIfAbsent(containerType);
 
       Optional<String> executorId = selectExecutorByRR(containerType);

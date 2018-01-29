@@ -179,7 +179,7 @@ public final class RuntimeTestUtil {
 
         // Initialize states for blocks of stage internal edges
         physicalStage.getTaskGroupIds().forEach(taskGroupId -> {
-          final DAG<Task, RuntimeEdge<Task>> taskGroupInternalDag = physicalStage.getTaskGroup().getTaskDAG();
+          final DAG<Task, RuntimeEdge<Task>> taskGroupInternalDag = physicalStage.getTaskGroupDag();
           taskGroupInternalDag.getVertices().forEach(task -> {
             final List<RuntimeEdge<Task>> internalOutgoingEdges = taskGroupInternalDag.getOutgoingEdgesOf(task);
             internalOutgoingEdges.forEach(taskRuntimeEdge -> {

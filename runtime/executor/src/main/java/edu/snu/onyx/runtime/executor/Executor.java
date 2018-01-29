@@ -63,8 +63,6 @@ public final class Executor {
    */
   private final DataTransferFactory dataTransferFactory;
 
-  private TaskGroupStateManager taskGroupStateManager;
-
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
   private final MetricMessageSender metricMessageSender;
@@ -102,8 +100,10 @@ public final class Executor {
    */
   private void launchTaskGroup(final ScheduledTaskGroup scheduledTaskGroup) {
     try {
-      taskGroupStateManager =
-          new TaskGroupStateManager(scheduledTaskGroup, executorId,
+      final DAG<Task, RuntimeEdge<Task>> taskGroupDag =
+          SerializationUtils.deserialize(scheduledTaskGroup.getSerializedTaskGroupDag());
+      final TaskGroupStateManager taskGroupStateManager =
+          new TaskGroupStateManager(scheduledTaskGroup, taskGroupDag, executorId,
               persistentConnectionToMasterMap, metricMessageSender);
 
       scheduledTaskGroup.getTaskGroupIncomingEdges()
@@ -111,12 +111,11 @@ public final class Executor {
       scheduledTaskGroup.getTaskGroupOutgoingEdges()
           .forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
       // TODO #432: remove these coders when we "streamize" task execution within a TaskGroup.
-      final DAG<Task, RuntimeEdge<Task>> taskDag = scheduledTaskGroup.getTaskGroup().getTaskDAG();
-      taskDag.getVertices().forEach(v -> {
-        taskDag.getOutgoingEdgesOf(v).forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
+      taskGroupDag.getVertices().forEach(v -> {
+        taskGroupDag.getOutgoingEdgesOf(v).forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
       });
 
-      new TaskGroupExecutor(scheduledTaskGroup, taskGroupStateManager, dataTransferFactory).execute();
+      new TaskGroupExecutor(scheduledTaskGroup, taskGroupDag, taskGroupStateManager, dataTransferFactory).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()
