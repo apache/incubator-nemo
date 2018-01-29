@@ -32,7 +32,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class BroadcastITCase {
-  private static final int TIMEOUT = 200000;
+  private static final int TIMEOUT = 180000;
   private static final String inputFileName = "sample_input_mr";
   private static final String outputFileName = "sample_output_broadcast";
   private static final String testResourceFileName = "test_output_broadcast_test";
