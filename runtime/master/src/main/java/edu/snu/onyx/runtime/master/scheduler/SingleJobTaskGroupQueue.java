@@ -217,7 +217,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
   }
 
   public void printLog() {
-    logs.forEach(log -> LOG.info(log.toString());
+    logs.forEach(log -> LOG.info(log.toString()));
   }
 
   @Override
