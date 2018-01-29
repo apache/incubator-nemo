@@ -509,7 +509,7 @@ public final class JobStateManager {
         isFirstTaskGroup = false;
         final TaskGroupState taskGroupState = idToTaskGroupStates.get(taskGroupId);
         sb.append("{\"id\": \"").append(taskGroupId).append("\", ");
-        sb.append("\"state\": \"").append(taskGroupState.toString()).append("}");
+        sb.append("\"state\": \"").append(taskGroupState.toString()).append("\"}");
       }
       sb.append("]}");
     }
