@@ -46,7 +46,7 @@ public abstract class Task extends Vertex {
   @Override
   public final String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("{\"taskId\": \"").append(getId()).append("\"");
+    sb.append("{\"taskId\": \"").append(getId()).append("\"}");
     return sb.toString();
   }
 }

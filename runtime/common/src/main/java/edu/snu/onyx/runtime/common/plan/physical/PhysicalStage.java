@@ -101,7 +101,7 @@ public final class PhysicalStage extends Vertex {
     sb.append("{\"scheduleGroupIndex\": ").append(scheduleGroupIndex);
     sb.append(", \"taskGroupDag\": ").append(taskGroupDag);
     sb.append(", \"parallelism\": ").append(parallelism);
-    sb.append(", \"containerType\": ").append(containerType);
+    sb.append(", \"containerType\": \"").append(containerType).append("\"");
     sb.append('}');
     return sb.toString();
   }
