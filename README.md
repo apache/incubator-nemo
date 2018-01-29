@@ -1,4 +1,6 @@
 # Onyx
+
+[![Build Status](https://travis-ci.org/snuspl/onyx.svg?branch=master)](https://travis-ci.org/snuspl/onyx)
 [![Build Status](https://cmsbuild.snu.ac.kr/buildStatus/icon?job=Onyx-master)](https://cmsbuild.snu.ac.kr/job/Onyx-master/)
 
 ## Onyx prerequisites and setup
