@@ -38,7 +38,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -69,6 +68,7 @@ public final class TaskGroupExecutor {
   private final Map<String, PipeImpl> taskIdToOutputPipeMap;
   private final List<String> taskList;
   private boolean isExecutionRequested;
+  private boolean isTaskGroupOnHold;
 
   public TaskGroupExecutor(final TaskGroup taskGroup,
                            final TaskGroupStateManager taskGroupStateManager,
@@ -88,6 +88,7 @@ public final class TaskGroupExecutor {
     this.taskList = new ArrayList<>();
 
     this.isExecutionRequested = false;
+    this.isTaskGroupOnHold = false;
 
     initializeDataTransfer();
   }
@@ -265,35 +266,53 @@ public final class TaskGroupExecutor {
     return parentTasksNotYetComplete.get() == 0;
   }
 
-  // A Task can be marked as 'Complete' when the following two conditions are both met:
-  // - All of its LocalPipes are empty(if has any)
-  // - All of its parent Tasks are complete
-  private void checkTaskCompletion(final Task task) {
-    String completedTask = null;
+  private void checkBoundedSourceTaskCompletion(final BoundedSourceTask task) {
+    taskList.remove(task.getId());
+    LOG.info("log: {} {} Complete!", taskGroup.getTaskGroupId(), task.getId());
+  }
 
-    if (task instanceof BoundedSourceTask) {
-      completedTask = task.getId();
-    } else {
-      if (allInputPipesEmpty(task) && allParentTasksComplete(task)) {
-        if (task instanceof OperatorTask) {
-          ((OperatorTask) task).getTransform().close();
-        }
-
-        if (hasOutputWriter(task)) {
-          writeToOutputWriter(taskIdToOutputPipeMap.get(task.getId()), task);
-        }
-        completedTask = task.getId();
+  private void checkOperatorTaskCompletion(final OperatorTask task) {
+    if (allInputPipesEmpty(task) && allParentTasksComplete(task)) {
+      task.getTransform().close();
+      if (hasOutputWriter(task)) {
+        writeToOutputWriter(taskIdToOutputPipeMap.get(task.getId()), task);
       }
-    }
-
-    if (completedTask != null) {
-      taskList.remove(completedTask);
+      taskList.remove(task.getId());
       LOG.info("log: {} {} Complete!", taskGroup.getTaskGroupId(), task.getId());
       LOG.info("log: pendingTasks: {}", taskList);
     }
   }
 
-  private boolean isTaskGroupComplete() {
+  private void checkMetricCollectionBarrierTaskCompletion(final MetricCollectionBarrierTask task) {
+    if (allInputPipesEmpty(task) && allParentTasksComplete(task)) {
+      if (hasOutputWriter(task)) {
+        writeToOutputWriter(taskIdToOutputPipeMap.get(task.getId()), task);
+      }
+      taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.ON_HOLD,
+          Optional.of(Collections.singletonList(task.getId())),
+          Optional.empty());
+      isTaskGroupOnHold = true;
+      taskList.remove(task.getId());
+      LOG.info("log: {} {} Complete / ON_HOLD!", taskGroup.getTaskGroupId(), task.getId());
+      LOG.info("log: pendingTasks: {}", taskList);
+    }
+  }
+
+
+  // A Task can be marked as 'Complete' when the following two conditions are both met:
+  // - All of its LocalPipes are empty(if has any)
+  // - All of its parent Tasks are complete
+  private void checkTaskCompletion(final Task task) {
+    if (task instanceof BoundedSourceTask) {
+      checkBoundedSourceTaskCompletion((BoundedSourceTask) task);
+    } else if (task instanceof OperatorTask) {
+      checkOperatorTaskCompletion((OperatorTask) task);
+    } else if (task instanceof MetricCollectionBarrierTask) {
+      checkMetricCollectionBarrierTaskCompletion((MetricCollectionBarrierTask) task);
+    }
+  }
+
+  private boolean allTasksAreComplete() {
     return taskList.isEmpty();
   }
 
@@ -309,7 +328,7 @@ public final class TaskGroupExecutor {
 
     taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.EXECUTING, Optional.empty(), Optional.empty());
 
-    while (!isTaskGroupComplete()) {
+    while (!allTasksAreComplete()) {
       taskGroup.getTaskDAG().topologicalDo(task -> {
         try {
           if (taskList.contains(task.getId())) {
@@ -319,11 +338,9 @@ public final class TaskGroupExecutor {
               if (!aggregationNeeded(task)
                   || (aggregationNeeded(task) && allParentTasksComplete(task))) {
                 launchOperatorTask((OperatorTask) task);
-                //checkTaskCompletion(task);
               }
             } else if (task instanceof MetricCollectionBarrierTask) {
               launchMetricCollectionBarrierTask((MetricCollectionBarrierTask) task);
-              //checkTaskCompletion(task);
             } else {
               throw new UnsupportedOperationException(task.toString());
             }
@@ -352,7 +369,10 @@ public final class TaskGroupExecutor {
 
     closeOutputWriters();
 
-    taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), Optional.empty());
+    if (!isTaskGroupOnHold) {
+      taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), Optional.empty());
+    }
+
     LOG.info("{} Complete!", taskGroup.getTaskGroupId());
   }
 
@@ -384,9 +404,6 @@ public final class TaskGroupExecutor {
         throw new RuntimeException();
       }
     }
-
-    //taskList.remove(sourceTask.getId());
-    //LOG.info("log: {} {} Complete!", taskGroup.getTaskGroupId(), sourceTask.getId());
   }
 
   /**
@@ -520,7 +537,8 @@ public final class TaskGroupExecutor {
       taskIdToInputReaderMap.get(task.getId()).stream()
           .filter(inputReader -> !inputReader.isSideInputReader())
           .forEach(inputReader -> inputReader.read()
-              .forEach(compFuture -> { compFuture.thenAccept(iterator ->
+              .forEach(compFuture -> {
+                compFuture.thenAccept(iterator ->
                     iterator.forEachRemaining(data -> {
                       if (data != null) {
                         pipe.emit(data);

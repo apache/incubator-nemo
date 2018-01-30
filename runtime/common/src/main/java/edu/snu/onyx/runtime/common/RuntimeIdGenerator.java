@@ -30,6 +30,7 @@ public final class RuntimeIdGenerator {
   private static AtomicLong resourceSpecIdGenerator = new AtomicLong(1);
   private static String blockPrefix = "Block-";
   private static String blockIdSplitter = "_";
+  private static final String PHYSICAL_TASK_ID_SPLITTER = "_";
 
   private RuntimeIdGenerator() {
   }
@@ -159,5 +160,15 @@ public final class RuntimeIdGenerator {
   private static String[] parseBlockId(final String blockId) {
     final String woPrefix = blockId.split(blockPrefix)[1];
     return woPrefix.split(blockIdSplitter);
+  }
+
+  /**
+   * Extracts logical task ID from a physical task ID.
+   *
+   * @param physicalTaskId the physical task ID to extract.
+   * @return the logical task ID.
+   */
+  public static String getLogicalTaskIdIdFromPhysicalTaskId(final String physicalTaskId) {
+    return physicalTaskId.split(PHYSICAL_TASK_ID_SPLITTER)[0];
   }
 }

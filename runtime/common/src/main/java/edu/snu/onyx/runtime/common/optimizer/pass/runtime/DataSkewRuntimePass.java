@@ -71,6 +71,12 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     // get edges to optimize
     final List<String> optimizationEdgeIds = metricData.keySet().stream().map(blockId ->
         RuntimeIdGenerator.getRuntimeEdgeIdFromBlockId(blockId)).collect(Collectors.toList());
+
+    for (final Map.Entry<String, List<Long>> entry : metricData.entrySet()) {
+      LOG.info("metricData: blockId {}", entry.getKey());
+    }
+    LOG.info("optimizationEdgeIds {}", optimizationEdgeIds);
+
     final DAG<PhysicalStage, PhysicalStageEdge> stageDAG = originalPlan.getStageDAG();
     final List<PhysicalStageEdge> optimizationEdges = stageDAG.getVertices().stream()
         .flatMap(physicalStage -> stageDAG.getIncomingEdgesOf(physicalStage).stream())

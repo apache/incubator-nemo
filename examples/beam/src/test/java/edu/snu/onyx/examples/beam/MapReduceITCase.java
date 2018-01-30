@@ -17,6 +17,7 @@ package edu.snu.onyx.examples.beam;
 
 import edu.snu.onyx.client.JobLauncher;
 import edu.snu.onyx.common.ArgBuilder;
+import edu.snu.onyx.compiler.optimizer.policy.DataSkewPolicy;
 import edu.snu.onyx.examples.beam.policy.*;
 import org.junit.After;
 import org.junit.Before;
@@ -97,7 +98,7 @@ public final class MapReduceITCase {
   public void testDataSkew() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_dataskew")
-        .addOptimizationPolicy(DataSkewPolicyParallelsimFive.class.getCanonicalName())
+        .addOptimizationPolicy(DataSkewPolicy.class.getCanonicalName())
         .build());
   }
 }
