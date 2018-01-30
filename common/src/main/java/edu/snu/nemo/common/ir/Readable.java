@@ -16,6 +16,8 @@
 package edu.snu.nemo.common.ir;
 
 import java.io.Serializable;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Interface for readable.
@@ -28,5 +30,15 @@ public interface Readable<O> extends Serializable {
    * @throws Exception exception while reading data.
    */
   Iterable<O> read() throws Exception;
+
+  /**
+   * Returns the list of locations where this readable resides.
+   * Each location has a complete copy of the readable.
+   * @return List of locations where this readable resides, or an empty list if this operation is not supported
+   * @throws Exception exceptions on the way
+   */
+  default List<String> getLocations() throws Exception {
+    return Collections.emptyList();
+  }
 }
 

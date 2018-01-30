@@ -29,6 +29,7 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.nemo.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.nemo.conf.JobConf;
+import edu.snu.nemo.runtime.master.resource.ExecutorRegistry;
 import edu.snu.nemo.tests.runtime.RuntimeTestUtil;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageSender;
@@ -61,10 +62,10 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Tests {@link BatchSingleJobScheduler}.
@@ -78,7 +79,7 @@ public final class BatchSingleJobSchedulerTest {
   private Scheduler scheduler;
   private SchedulingPolicy schedulingPolicy;
   private SchedulerRunner schedulerRunner;
-  private ContainerManager containerManager;
+  private ExecutorRegistry executorRegistry;
   private MetricMessageHandler metricMessageHandler;
   private PendingTaskGroupQueue pendingTaskGroupQueue;
   private PubSubEventHandlerWrapper pubSubEventHandler;
@@ -95,11 +96,14 @@ public final class BatchSingleJobSchedulerTest {
   @Before
   public void setUp() throws Exception {
     RuntimeTestUtil.initialize();
+    final Injector injector = Tang.Factory.getTang().newInjector();
+    injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
+
     irDAGBuilder = new DAGBuilder<>();
-    containerManager = mock(ContainerManager.class);
+    executorRegistry = injector.getInstance(ExecutorRegistry.class);
     metricMessageHandler = mock(MetricMessageHandler.class);
     pendingTaskGroupQueue = new SingleJobTaskGroupQueue();
-    schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TEST_TIMEOUT_MS);
+    schedulingPolicy = new RoundRobinSchedulingPolicy(executorRegistry, TEST_TIMEOUT_MS);
     schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskGroupQueue);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
@@ -107,32 +111,30 @@ public final class BatchSingleJobSchedulerTest {
         new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, pendingTaskGroupQueue,
             blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler);
 
-    final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();
-    when(containerManager.getExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
-
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
     final ExecutorService serializationExecutorService = Executors.newSingleThreadExecutor();
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 1, 0);
-    final ExecutorRepresenter a3 =
-        new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext, serializationExecutorService);
-    final ExecutorRepresenter a2 =
-        new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext, serializationExecutorService);
-    final ExecutorRepresenter a1 =
-        new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext, serializationExecutorService);
+    final Function<String, ExecutorRepresenter> computeSpecExecutorRepresenterGenerator = executorId ->
+        new ExecutorRepresenter(executorId, computeSpec, mockMsgSender, activeContext, serializationExecutorService,
+            executorId);
+    final ExecutorRepresenter a3 = computeSpecExecutorRepresenterGenerator.apply("a3");
+    final ExecutorRepresenter a2 = computeSpecExecutorRepresenterGenerator.apply("a2");
+    final ExecutorRepresenter a1 = computeSpecExecutorRepresenterGenerator.apply("a1");
 
     final ResourceSpecification storageSpec = new ResourceSpecification(ExecutorPlacementProperty.TRANSIENT, 1, 0);
-    final ExecutorRepresenter b2 =
-        new ExecutorRepresenter("b2", storageSpec, mockMsgSender, activeContext, serializationExecutorService);
-    final ExecutorRepresenter b1 =
-        new ExecutorRepresenter("b1", storageSpec, mockMsgSender, activeContext, serializationExecutorService);
+    final Function<String, ExecutorRepresenter> storageSpecExecutorRepresenterGenerator = executorId ->
+        new ExecutorRepresenter(executorId, storageSpec, mockMsgSender, activeContext, serializationExecutorService,
+            executorId);
+    final ExecutorRepresenter b2 = storageSpecExecutorRepresenterGenerator.apply("b2");
+    final ExecutorRepresenter b1 = storageSpecExecutorRepresenterGenerator.apply("b1");
 
-    executorRepresenterMap.put(a1.getExecutorId(), a1);
-    executorRepresenterMap.put(a2.getExecutorId(), a2);
-    executorRepresenterMap.put(a3.getExecutorId(), a3);
-    executorRepresenterMap.put(b1.getExecutorId(), b1);
-    executorRepresenterMap.put(b2.getExecutorId(), b2);
+    executorRegistry.registerRepresenter(a1);
+    executorRegistry.registerRepresenter(a2);
+    executorRegistry.registerRepresenter(a3);
+    executorRegistry.registerRepresenter(b1);
+    executorRegistry.registerRepresenter(b2);
 
     // Add compute nodes
     scheduler.onExecutorAdded(a1.getExecutorId());
@@ -143,8 +145,6 @@ public final class BatchSingleJobSchedulerTest {
     scheduler.onExecutorAdded(b1.getExecutorId());
     scheduler.onExecutorAdded(b2.getExecutorId());
 
-    final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
     physicalPlanGenerator = injector.getInstance(PhysicalPlanGenerator.class);
   }
 
@@ -277,7 +277,7 @@ public final class BatchSingleJobSchedulerTest {
 
       scheduleGroupStages.forEach(physicalStage ->
           RuntimeTestUtil.sendStageCompletionEventToScheduler(
-              jobStateManager, scheduler, containerManager, physicalStage, MAGIC_SCHEDULE_ATTEMPT_INDEX));
+              jobStateManager, scheduler, executorRegistry, physicalStage, MAGIC_SCHEDULE_ATTEMPT_INDEX));
     }
 
     LOG.debug("Waiting for job termination after sending stage completion events");
