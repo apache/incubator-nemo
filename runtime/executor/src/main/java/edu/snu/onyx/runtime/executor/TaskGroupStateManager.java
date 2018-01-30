@@ -95,21 +95,25 @@ public final class TaskGroupStateManager {
                                                    final Optional<List<String>> tasksPutOnHold,
                                                    final Optional<TaskGroupState.RecoverableFailureCause> cause) {
     final Map<String, Object> metric = new HashMap<>();
+    long start = 0;
 
     switch (newState) {
       case EXECUTING:
         LOG.debug("Executing TaskGroup ID {}...", this.taskGroupId);
+        start = System.currentTimeMillis();
         break;
       case COMPLETE:
-        LOG.debug("TaskGroup ID {} complete!", this.taskGroupId);
+        LOG.debug("TaskGroup ID {} complete! {}(ms)", this.taskGroupId, System.currentTimeMillis() - start);
         notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
         break;
       case FAILED_RECOVERABLE:
-        LOG.debug("TaskGroup ID {} failed (recoverable).", this.taskGroupId);
+        LOG.debug("TaskGroup ID {} failed (recoverable) {}(ms)",
+            this.taskGroupId, System.currentTimeMillis() - start);
         notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
         break;
       case FAILED_UNRECOVERABLE:
-        LOG.debug("TaskGroup ID {} failed (unrecoverable).", this.taskGroupId);
+        LOG.debug("TaskGroup ID {} failed (unrecoverable) {}(ms)",
+            this.taskGroupId, System.currentTimeMillis() - start);
         notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
         break;
       case ON_HOLD:

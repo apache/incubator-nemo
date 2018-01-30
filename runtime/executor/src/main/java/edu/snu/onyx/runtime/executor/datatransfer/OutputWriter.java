@@ -25,6 +25,8 @@ import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
 import edu.snu.onyx.runtime.executor.data.Partition;
 import edu.snu.onyx.runtime.executor.data.partitioner.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -33,6 +35,8 @@ import java.util.*;
  * Represents the output data transfer from a task.
  */
 public final class OutputWriter extends DataTransfer implements AutoCloseable {
+  private static final Logger LOG = LoggerFactory.getLogger(OutputWriter.class.getName());
+
   private final String blockId;
   private final RuntimeEdge<?> runtimeEdge;
   private final String srcVertexId;
@@ -157,7 +161,6 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    * @param partitionsToWrite a list of the partitions to be written.
    */
   private void dataSkewWrite(final List<Partition> partitionsToWrite) {
-
     // Write data.
     final Optional<List<Long>> partitionSizeInfo =
         blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);

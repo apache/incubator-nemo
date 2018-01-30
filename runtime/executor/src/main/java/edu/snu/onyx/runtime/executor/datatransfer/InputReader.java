@@ -29,6 +29,8 @@ import edu.snu.onyx.common.exception.BlockFetchException;
 import edu.snu.onyx.common.exception.UnsupportedCommPatternException;
 import edu.snu.onyx.runtime.common.data.HashRange;
 import edu.snu.onyx.runtime.executor.data.BlockManagerWorker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -43,6 +45,8 @@ import java.util.stream.StreamSupport;
  * TODO #492: Modularize the data communication pattern.
  */
 public final class InputReader extends DataTransfer {
+  private static final Logger LOG = LoggerFactory.getLogger(InputReader.class.getName());
+
   private final int dstTaskIndex;
   private final String taskGroupId;
   private final BlockManagerWorker blockManagerWorker;
@@ -127,9 +131,11 @@ public final class InputReader extends DataTransfer {
     }
 
     final int numSrcTasks = this.getSourceParallelism();
+    LOG.info("log: {} hashRangeToRead {} numSrcTasks {}", taskGroupId, hashRangeToRead, numSrcTasks);
     final List<CompletableFuture<Iterator>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
+      LOG.info("log: {} add future to {} {} ", taskGroupId, blockId, getId());
       futures.add(
           blockManagerWorker.queryBlock(blockId, getId(),
               (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),

@@ -31,7 +31,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class MapReduceITCase {
-  private static final int TIMEOUT = 60000;
+  private static final int TIMEOUT = 120000;
   private static final String inputFileName = "sample_input_mr";
   private static final String outputFileName = "sample_output_mr";
   private static final String testResourceFileName = "test_output_mr_test";
@@ -54,7 +54,7 @@ public final class MapReduceITCase {
   @After
   public void tearDown() throws Exception {
     ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
-    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    //ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
   }
 
   @Test (timeout = TIMEOUT)

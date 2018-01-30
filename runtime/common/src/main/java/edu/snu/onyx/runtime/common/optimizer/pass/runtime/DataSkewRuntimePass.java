@@ -29,6 +29,8 @@ import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.common.data.HashRange;
 import edu.snu.onyx.runtime.common.eventhandler.DynamicOptimizationEventHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +44,8 @@ import java.util.stream.Stream;
  * Dynamic optimization pass for handling data skew.
  */
 public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<Long>>> {
+  private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
+
   private final Set<Class<? extends CommonEventHandler<?>>> eventHandlers;
 
   /**
@@ -78,8 +82,9 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
         new RuntimeException("optimization edges is empty")).getDst().getTaskGroupList().size();
 
     // Calculate keyRanges.
+    LOG.info("metricData before calculateHashRanges: {}", metricData);
     final List<KeyRange> keyRanges = calculateHashRanges(metricData, taskGroupListSize);
-
+    LOG.info("keyRanges after calculateHashRanges: {}", keyRanges);
     // Overwrite the previously assigned hash value range in the physical DAG with the new range.
     optimizationEdges.forEach(optimizationEdge -> {
       final List<TaskGroup> taskGroups = optimizationEdge.getDst().getTaskGroupList();
@@ -118,6 +123,9 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     // Do the optimization using the information derived above.
     final Long totalSize = aggregatedMetricData.stream().mapToLong(n -> n).sum(); // get total size
     final Long idealSizePerTaskGroup = totalSize / taskGroupListSize; // and derive the ideal size per task group
+
+    LOG.info("hashRangeCount {} totalSize {} idealSizePerTaskGroup {}",
+        hashRangeCount, totalSize, idealSizePerTaskGroup);
 
     // find HashRanges to apply (for each blocks of each block).
     final List<KeyRange> keyRanges = new ArrayList<>(taskGroupListSize);

@@ -113,12 +113,14 @@ public final class TaskGroupExecutor {
         final OutputWriter outputWriter = channelFactory.createWriter(
             task, physicalStageEdge.getDstVertex(), physicalStageEdge);
         addOutputWriter(task, outputWriter);
+        LOG.info("log: Adding OutputWriter {} {} {}",
+            taskGroup.getTaskGroupId(), task.getRuntimeVertexId(), outputWriter);
       });
 
       // Add InputPipes for intra-stage data transfer
       addInputPipe(task);
 
-      // Add OutputPipe for intra-stage data transfer'
+      // Add OutputPipe for intra-stage data transfer
       addOutputPipe(task);
 
       taskList.add(task.getId());
@@ -146,7 +148,7 @@ public final class TaskGroupExecutor {
   }
 
   private void addOutputWriter(final Task task, final OutputWriter outputWriter) {
-    taskIdToOutputWriterMap.computeIfAbsent(task.getId(), readerList -> new ArrayList<>());
+    taskIdToOutputWriterMap.computeIfAbsent(task.getId(), writerList -> new ArrayList<>());
     taskIdToOutputWriterMap.get(task.getId()).add(outputWriter);
   }
 
@@ -511,35 +513,27 @@ public final class TaskGroupExecutor {
    * @param task the task to carry on the data.
    */
   private void launchMetricCollectionBarrierTask(final MetricCollectionBarrierTask task) {
-    final List<Object> dataList = new ArrayList<>();
+    final PipeImpl<Object> pipe = taskIdToOutputPipeMap.get(task.getId());
 
     // Check for non-side inputs.
     if (hasInputReader(task)) {
       taskIdToInputReaderMap.get(task.getId()).stream()
           .filter(inputReader -> !inputReader.isSideInputReader())
-          .forEach(inputReader -> {
-            List<CompletableFuture<Iterator>> futures = inputReader.read();
-            futures.forEach(compFuture -> {
-              try {
-                //inputReader.read().forEach(compFuture -> compFuture.thenAccept(dataQueue::add));
-                Iterator iterator = compFuture.thenAccept();
-                iterator.forEachRemaining(data -> {
-                  if (data != null) {
-                    dataList.add(data);
-                    LOG.info("log: {} {} Read from InputReader : {}",
-                        taskGroup.getTaskGroupId(), task.getId(), data);
-                  } else {
-                    List<Object> iterable = Collections.singletonList(data);
-                    dataList.add(iterable);
-                  }
-                });
-              } catch (InterruptedException e) {
-                throw new RuntimeException("Interrupted while waiting for InputReader.read()", e);
-              } catch (ExecutionException e1) {
-                throw new RuntimeException("ExecutionException while waiting for InputReader.read()", e1);
-              }
-            });
-          });
+          .forEach(inputReader -> inputReader.read()
+              .forEach(compFuture -> { compFuture.thenAccept(iterator ->
+                    iterator.forEachRemaining(data -> {
+                      if (data != null) {
+                        pipe.emit(data);
+                        LOG.info("log: {} {} Read from InputReader : {}",
+                            taskGroup.getTaskGroupId(), task.getId(), data);
+                      } else {
+                        List<Object> iterable = Collections.singletonList(data);
+                        pipe.emit(iterable);
+                      }
+                    })
+                );
+              })
+          );
     }
 
     if (hasInputPipe(task)) {
@@ -548,21 +542,19 @@ public final class TaskGroupExecutor {
           .forEach(localReader -> {
             if (aggregationNeeded(task)) {
               List<Object> iterable = localReader.collectOutputList();
-              dataList.add(iterable);
+              pipe.emit(iterable);
             } else {
               Object data = localReader.remove();
               if (data != null) {
-                dataList.add(data);
+                pipe.emit(data);
                 LOG.info("log: {} {} Read from InputPipe : {}",
                     taskGroup.getTaskGroupId(), task.getId(), data);
               } else {
                 List<Object> iterable = Collections.singletonList(data);
-                dataList.add(iterable);
+                pipe.emit(iterable);
               }
             }
           });
     }
-
-
   }
 }
