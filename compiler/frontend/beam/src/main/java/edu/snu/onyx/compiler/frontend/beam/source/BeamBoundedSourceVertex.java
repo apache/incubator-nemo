@@ -17,12 +17,16 @@ package edu.snu.onyx.compiler.frontend.beam.source;
 
 import edu.snu.onyx.common.ir.Readable;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import edu.snu.onyx.common.ir.ReadablesWrapper;
 import edu.snu.onyx.common.ir.vertex.SourceVertex;
 import org.apache.beam.sdk.io.BoundedSource;
+import org.apache.beam.sdk.io.hadoop.inputformat.HadoopInputFormatIO;
+import org.apache.hadoop.mapreduce.InputSplit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,7 +98,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
    * BoundedSourceReadable class.
    * @param <T> type.
    */
-  private final class BoundedSourceReadable<T> implements Readable<T> {
+  private static final class BoundedSourceReadable<T> implements Readable<T> {
     private final BoundedSource<T> boundedSource;
 
     /**
@@ -114,6 +118,19 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
         }
       }
       return elements;
+    }
+
+    @Override
+    public List<String> getLocations() throws Exception {
+      if (boundedSource instanceof HadoopInputFormatIO.HadoopInputFormatBoundedSource) {
+        final Field inputSplitField = boundedSource.getClass().getDeclaredField("inputSplit");
+        inputSplitField.setAccessible(true);
+        final InputSplit inputSplit = ((HadoopInputFormatIO.SerializableSplit) inputSplitField
+            .get(boundedSource)).getSplit();
+        return Arrays.asList(inputSplit.getLocations());
+      } else {
+        throw new UnsupportedOperationException();
+      }
     }
   }
 }
