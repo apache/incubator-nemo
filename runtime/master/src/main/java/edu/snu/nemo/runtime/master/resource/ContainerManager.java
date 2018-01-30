@@ -195,8 +195,6 @@ public final class ContainerManager {
     // We set contextId = executorId in NemoDriver when we generate executor configuration.
     final String executorId = activeContext.getId();
 
-    LOG.info("[" + executorId + "] is up and running");
-
     final ResourceSpecification resourceSpec = pendingContextIdToResourceSpec.remove(executorId);
 
     // Connect to the executor and initiate Master side's executor representation.
@@ -210,7 +208,10 @@ public final class ContainerManager {
 
     // Create the executor representation.
     final ExecutorRepresenter executorRepresenter =
-        new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext, serializationExecutorService);
+        new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext, serializationExecutorService,
+            activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
+
+    LOG.info("{} is up and running at {}", executorId, executorRepresenter.getNodeName());
 
     executorsByContainerType.putIfAbsent(resourceSpec.getContainerType(), new ArrayList<>());
     executorsByContainerType.get(resourceSpec.getContainerType()).add(executorRepresenter);

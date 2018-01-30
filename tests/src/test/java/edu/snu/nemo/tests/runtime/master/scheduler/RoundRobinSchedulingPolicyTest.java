@@ -37,6 +37,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -73,18 +74,17 @@ public final class RoundRobinSchedulingPolicyTest {
 
     final ExecutorService serExecutorService = Executors.newSingleThreadExecutor();
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 1, 0);
-    final ExecutorRepresenter a3 =
-        new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext, serExecutorService);
-    final ExecutorRepresenter a2 =
-        new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext, serExecutorService);
-    final ExecutorRepresenter a1 =
-        new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final Function<String, ExecutorRepresenter> computeSpecExecutorRepresenterGenerator = executorId ->
+        new ExecutorRepresenter(executorId, computeSpec, mockMsgSender, activeContext, serExecutorService, executorId);
+    final ExecutorRepresenter a3 = computeSpecExecutorRepresenterGenerator.apply("a3");
+    final ExecutorRepresenter a2 = computeSpecExecutorRepresenterGenerator.apply("a2");
+    final ExecutorRepresenter a1 = computeSpecExecutorRepresenterGenerator.apply("a1");
 
     final ResourceSpecification storageSpec = new ResourceSpecification(ExecutorPlacementProperty.TRANSIENT, 1, 0);
-    final ExecutorRepresenter b2 =
-        new ExecutorRepresenter("b2", storageSpec, mockMsgSender, activeContext, serExecutorService);
-    final ExecutorRepresenter b1 =
-        new ExecutorRepresenter("b1", storageSpec, mockMsgSender, activeContext, serExecutorService);
+    final Function<String, ExecutorRepresenter> storageSpecExecutorRepresenterGenerator = executorId ->
+        new ExecutorRepresenter(executorId, storageSpec, mockMsgSender, activeContext, serExecutorService, executorId);
+    final ExecutorRepresenter b2 = storageSpecExecutorRepresenterGenerator.apply("b2");
+    final ExecutorRepresenter b1 = storageSpecExecutorRepresenterGenerator.apply("b1");
 
     executorRepresenterMap.put(a1.getExecutorId(), a1);
     executorRepresenterMap.put(a2.getExecutorId(), a2);
