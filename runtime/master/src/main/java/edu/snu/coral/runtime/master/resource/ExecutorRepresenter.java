@@ -34,7 +34,8 @@ import java.util.concurrent.ExecutorService;
  *    a) The executor's resource type.
  *    b) The executor's capacity (ex. number of cores).
  *    c) Task groups scheduled/launched for the executor.
- *    d) (Please add other information as we implement more features).
+ *    d) Name of the physical node which hosts this executor.
+ *    e) (Please add other information as we implement more features).
  */
 public final class ExecutorRepresenter {
 
@@ -46,12 +47,14 @@ public final class ExecutorRepresenter {
   private final MessageSender<ControlMessage.Message> messageSender;
   private final ActiveContext activeContext;
   private final ExecutorService serializationExecutorService;
+  private final String nodeName;
 
   public ExecutorRepresenter(final String executorId,
                              final ResourceSpecification resourceSpecification,
                              final MessageSender<ControlMessage.Message> messageSender,
                              final ActiveContext activeContext,
-                             final ExecutorService serializationExecutorService) {
+                             final ExecutorService serializationExecutorService,
+                             final String nodeName) {
     this.executorId = executorId;
     this.resourceSpecification = resourceSpecification;
     this.messageSender = messageSender;
@@ -60,6 +63,7 @@ public final class ExecutorRepresenter {
     this.failedTaskGroups = new HashSet<>();
     this.activeContext = activeContext;
     this.serializationExecutorService = serializationExecutorService;
+    this.nodeName = nodeName;
   }
 
   public void onExecutorFailed() {
@@ -121,6 +125,10 @@ public final class ExecutorRepresenter {
 
   public String getContainerType() {
     return resourceSpecification.getContainerType();
+  }
+
+  public String getNodeName() {
+    return nodeName;
   }
 
   public void shutDown() {

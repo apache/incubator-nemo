@@ -16,6 +16,7 @@
 package edu.snu.coral.common.ir;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * Interface for readable.
@@ -28,5 +29,15 @@ public interface Readable<O> extends Serializable {
    * @throws Exception exception while reading data.
    */
   Iterable<O> read() throws Exception;
+
+  /**
+   * Returns the list of locations where this readable resides.
+   * Each location has a complete copy of the readable.
+   * @return List of locations where this readable resides.
+   * @throws Exception exceptions on the way
+   */
+  default List<String> getLocations() throws Exception {
+    throw new UnsupportedOperationException();
+  }
 }
 
