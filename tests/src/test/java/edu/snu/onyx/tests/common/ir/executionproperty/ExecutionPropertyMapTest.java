@@ -22,7 +22,6 @@ import edu.snu.onyx.common.ir.edge.executionproperty.DataFlowModelProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionPropertyMap;
-import edu.snu.onyx.common.ir.vertex.BoundedSourceVertex;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -37,7 +36,7 @@ import static org.junit.Assert.assertNull;
  * Test {@link ExecutionPropertyMap}.
  */
 public class ExecutionPropertyMapTest {
-  private final IRVertex source = new BoundedSourceVertex<>(new EmptyComponents.EmptyBoundedSource("Source"));
+  private final IRVertex source = new EmptyComponents.EmptySourceVertex<>("Source");
   private final IRVertex destination = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
   private final DataCommunicationPatternProperty.Value comPattern = DataCommunicationPatternProperty.Value.OneToOne;
   private final IREdge edge = new IREdge(DataCommunicationPatternProperty.Value.OneToOne,

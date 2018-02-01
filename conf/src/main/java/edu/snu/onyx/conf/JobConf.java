@@ -141,6 +141,14 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
+   * The number of serialization threads for scheduling.
+   */
+  @NamedParameter(doc = "Number of serialization thread for scheduling", short_name = "schedule_ser_thread",
+      default_value = "8")
+  public final class ScheduleSerThread implements Name<Integer> {
+  }
+
+  /**
    * Hash range multiplier.
    * If we need to split or recombine an output data from a task after it is stored,
    * we multiply the hash range with this factor in advance
@@ -151,24 +159,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
    */
   @NamedParameter(doc = "Hash range multiplier", short_name = "hash_range_multiplier", default_value = "10")
   public final class HashRangeMultiplier implements Name<Integer> {
-  }
-
-  /**
-   * The number of threads in thread pool for outbound block transfer..
-   *
-   * These threads are responsible for serializing block into bytes.
-   */
-  @NamedParameter(doc = "Number of threads for outbound block transfer", short_name = "block_threads_outbound",
-      default_value = "5")
-  public final class PartitionTransferOutboundNumThreads implements Name<Integer> {
-  }
-
-  /**
-   * The size of outbound buffers for block transfer in bytes.
-   */
-  @NamedParameter(doc = "Size of outbound buffers for block transfer, in bytes",
-      short_name = "block_outbound_buffer", default_value = "10485760")
-  public final class PartitionTransferOutboundBufferSize implements Name<Integer> {
   }
 
   /**

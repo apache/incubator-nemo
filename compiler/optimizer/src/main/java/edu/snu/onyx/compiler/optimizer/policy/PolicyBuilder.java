@@ -101,11 +101,10 @@ public final class PolicyBuilder {
     return this;
   }
 
-  // TODO #119: fill the below document.
   /**
-   * Register run time pass.
-   * @param runtimePass the run time pass to register.
-   * @param runtimePassRegistrator runtime pass register.
+   * Register run time passes.
+   * @param runtimePass the runtime pass to register.
+   * @param runtimePassRegistrator the compile time pass that triggers the runtime pass.
    * @return the PolicyBuilder which registers runtimePass and runtimePassRegistrator.
    */
   public PolicyBuilder registerRuntimePass(final RuntimePass<?> runtimePass,

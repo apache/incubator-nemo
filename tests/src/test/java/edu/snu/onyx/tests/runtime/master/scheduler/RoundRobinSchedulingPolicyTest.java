@@ -16,10 +16,10 @@
 package edu.snu.onyx.tests.runtime.master.scheduler;
 
 import edu.snu.onyx.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.message.MessageSender;
 import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
-import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.master.JobStateManager;
 import edu.snu.onyx.runtime.master.resource.ContainerManager;
 import edu.snu.onyx.runtime.master.resource.ExecutorRepresenter;
@@ -35,6 +35,8 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -69,14 +71,20 @@ public final class RoundRobinSchedulingPolicyTest {
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
+    final ExecutorService serExecutorService = Executors.newSingleThreadExecutor();
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 1, 0);
-    final ExecutorRepresenter a3 = new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a2 = new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter a1 = new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter a3 =
+        new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final ExecutorRepresenter a2 =
+        new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final ExecutorRepresenter a1 =
+        new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext, serExecutorService);
 
     final ResourceSpecification storageSpec = new ResourceSpecification(ExecutorPlacementProperty.TRANSIENT, 1, 0);
-    final ExecutorRepresenter b2 = new ExecutorRepresenter("b2", storageSpec, mockMsgSender, activeContext);
-    final ExecutorRepresenter b1 = new ExecutorRepresenter("b1", storageSpec, mockMsgSender, activeContext);
+    final ExecutorRepresenter b2 =
+        new ExecutorRepresenter("b2", storageSpec, mockMsgSender, activeContext, serExecutorService);
+    final ExecutorRepresenter b1 =
+        new ExecutorRepresenter("b1", storageSpec, mockMsgSender, activeContext, serExecutorService);
 
     executorRepresenterMap.put(a1.getExecutorId(), a1);
     executorRepresenterMap.put(a2.getExecutorId(), a2);
@@ -101,118 +109,104 @@ public final class RoundRobinSchedulingPolicyTest {
 
   @Test
   public void testNoneContainerType() {
-    final TaskGroup A1 = new TaskGroup("A1", "Stage A", 0, null, ExecutorPlacementProperty.NONE);
-    final TaskGroup A2 = new TaskGroup("A2", "Stage A", 0, null, ExecutorPlacementProperty.NONE);
-    final TaskGroup A3 = new TaskGroup("A3", "Stage A", 0, null, ExecutorPlacementProperty.NONE);
-    final TaskGroup A4 = new TaskGroup("A4", "Stage A", 0, null, ExecutorPlacementProperty.NONE);
-    final TaskGroup A5 = new TaskGroup("A5", "Stage A", 0, null, ExecutorPlacementProperty.NONE);
-    final TaskGroup A6 = new TaskGroup("A6", "Stage A", 0, null, ExecutorPlacementProperty.NONE);
+    final int slots = 5;
+    final List<ScheduledTaskGroup> scheduledTaskGroups =
+        convertToScheduledTaskGroups(slots + 1, new byte[0], "Stage A", ExecutorPlacementProperty.NONE);
 
-    final ScheduledTaskGroup a1Wrapper = wrap(A1);
-    final ScheduledTaskGroup a2Wrapper = wrap(A2);
-    final ScheduledTaskGroup a3Wrapper = wrap(A3);
-    final ScheduledTaskGroup a4Wrapper = wrap(A4);
-    final ScheduledTaskGroup a5Wrapper = wrap(A5);
-    final ScheduledTaskGroup a6Wrapper = wrap(A6);
-
-    boolean isScheduled = schedulingPolicy.scheduleTaskGroup(a1Wrapper, jobStateManager);
-    assertTrue(isScheduled);
-
-    isScheduled= schedulingPolicy.scheduleTaskGroup(a2Wrapper, jobStateManager);
-    assertTrue(isScheduled);
-
-    isScheduled = schedulingPolicy.scheduleTaskGroup(a3Wrapper, jobStateManager);
-    assertTrue(isScheduled);
-
-    isScheduled = schedulingPolicy.scheduleTaskGroup(a4Wrapper, jobStateManager);
-    assertTrue(isScheduled);
-
-    isScheduled = schedulingPolicy.scheduleTaskGroup(a5Wrapper, jobStateManager);
-    assertTrue(isScheduled);
+    boolean isScheduled;
+    for (int i = 0; i < slots; i++) {
+      isScheduled = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroups.get(i), jobStateManager);
+      assertTrue(isScheduled);
+    }
 
     // No more slot
-    isScheduled = schedulingPolicy.scheduleTaskGroup(a6Wrapper, jobStateManager);
+    isScheduled = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroups.get(slots), jobStateManager);
     assertFalse(isScheduled);
   }
 
   @Test
   public void testSingleCoreTwoTypesOfExecutors() {
-    final TaskGroup A1 = new TaskGroup("A1", "Stage A", 0, null, ExecutorPlacementProperty.COMPUTE);
-    final TaskGroup A2 = new TaskGroup("A2", "Stage A", 1, null, ExecutorPlacementProperty.COMPUTE);
-    final TaskGroup A3 = new TaskGroup("A3", "Stage A", 2, null, ExecutorPlacementProperty.COMPUTE);
-    final TaskGroup A4 = new TaskGroup("A4", "Stage A", 3, null, ExecutorPlacementProperty.COMPUTE);
-    final TaskGroup A5 = new TaskGroup("A4", "Stage A", 4, null, ExecutorPlacementProperty.COMPUTE);
-    final TaskGroup B1 = new TaskGroup("B1", "Stage B", 0, null, ExecutorPlacementProperty.TRANSIENT);
-    final TaskGroup B2 = new TaskGroup("B2", "Stage B", 1, null, ExecutorPlacementProperty.TRANSIENT);
-    final TaskGroup B3 = new TaskGroup("B3", "Stage B", 2, null, ExecutorPlacementProperty.TRANSIENT);
+    final List<ScheduledTaskGroup> scheduledTaskGroupsA =
+        convertToScheduledTaskGroups(5, new byte[0], "Stage A", ExecutorPlacementProperty.COMPUTE);
+    final List<ScheduledTaskGroup> scheduledTaskGroupsB =
+        convertToScheduledTaskGroups(3, new byte[0], "Stage B", ExecutorPlacementProperty.TRANSIENT);
 
-    final ScheduledTaskGroup a1Wrapper = wrap(A1);
-    final ScheduledTaskGroup a2Wrapper = wrap(A2);
-    final ScheduledTaskGroup a3Wrapper = wrap(A3);
-    final ScheduledTaskGroup a4Wrapper = wrap(A4);
-    final ScheduledTaskGroup a5Wrapper = wrap(A5);
-    final ScheduledTaskGroup b1Wrapper = wrap(B1);
-    final ScheduledTaskGroup b2Wrapper = wrap(B2);
-    final ScheduledTaskGroup b3Wrapper = wrap(B3);
 
-    boolean a1 = schedulingPolicy.scheduleTaskGroup(a1Wrapper, jobStateManager);
+    boolean a0 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsA.get(0), jobStateManager);
+    assertTrue(a0);
+
+    boolean a1 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsA.get(1), jobStateManager);
     assertTrue(a1);
 
-    boolean a2 = schedulingPolicy.scheduleTaskGroup(a2Wrapper, jobStateManager);
+    boolean a2 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsA.get(2), jobStateManager);
     assertTrue(a2);
 
-    boolean a3 = schedulingPolicy.scheduleTaskGroup(a3Wrapper, jobStateManager);
+    boolean a3 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsA.get(3), jobStateManager);
+    // After 2000 ms
+    assertFalse(a3);
+
+    schedulingPolicy.onTaskGroupExecutionComplete("a1", scheduledTaskGroupsA.get(0).getTaskGroupId());
+
+    a3 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsA.get(3), jobStateManager);
     assertTrue(a3);
 
-    boolean a4 = schedulingPolicy.scheduleTaskGroup(a4Wrapper, jobStateManager);
+    boolean a4 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsA.get(4), jobStateManager);
     // After 2000 ms
     assertFalse(a4);
 
-    schedulingPolicy.onTaskGroupExecutionComplete("a1", "A1");
+    schedulingPolicy.onTaskGroupExecutionComplete("a3", scheduledTaskGroupsA.get(2).getTaskGroupId());
 
-    a4 = schedulingPolicy.scheduleTaskGroup(a4Wrapper, jobStateManager);
+    a4 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsA.get(4), jobStateManager);
     assertTrue(a4);
 
-    boolean a5 = schedulingPolicy.scheduleTaskGroup(a5Wrapper, jobStateManager);
-    // After 2000 ms
-    assertFalse(a5);
+    boolean b0 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsB.get(0), jobStateManager);
+    assertTrue(b0);
 
-    schedulingPolicy.onTaskGroupExecutionComplete("a3", "A3");
-
-    a5 = schedulingPolicy.scheduleTaskGroup(a5Wrapper, jobStateManager);
-    assertTrue(a5);
-
-    boolean b1 = schedulingPolicy.scheduleTaskGroup(b1Wrapper, jobStateManager);
+    boolean b1 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsB.get(1), jobStateManager);
     assertTrue(b1);
 
-    boolean b2 = schedulingPolicy.scheduleTaskGroup(b2Wrapper, jobStateManager);
-    assertTrue(b2);
-
-    boolean b3 = schedulingPolicy.scheduleTaskGroup(b3Wrapper, jobStateManager);
+    boolean b2 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsB.get(2), jobStateManager);
     // After 2000 ms
-    assertFalse(b3);
+    assertFalse(b2);
 
-    schedulingPolicy.onTaskGroupExecutionComplete("b1", "B1");
+    schedulingPolicy.onTaskGroupExecutionComplete("b1", scheduledTaskGroupsB.get(0).getTaskGroupId());
 
-    b3 = schedulingPolicy.scheduleTaskGroup(b3Wrapper, jobStateManager);
-    assertTrue(b3);
+    b2 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsB.get(2), jobStateManager);
+    assertTrue(b2);
 
     containerManager.onExecutorRemoved("b1");
     Set<String> executingTaskGroups = schedulingPolicy.onExecutorRemoved("b1");
     assertEquals(1, executingTaskGroups.size());
-    assertEquals("B3", executingTaskGroups.iterator().next());
+    assertEquals(scheduledTaskGroupsB.get(2).getTaskGroupId(), executingTaskGroups.iterator().next());
 
     containerManager.onExecutorRemoved("a1");
     executingTaskGroups = schedulingPolicy.onExecutorRemoved("a1");
     assertEquals(1, executingTaskGroups.size());
-    assertEquals("A4", executingTaskGroups.iterator().next());
+    assertEquals(scheduledTaskGroupsA.get(3).getTaskGroupId(), executingTaskGroups.iterator().next());
 
     verify(mockMsgSender, times(8)).send(anyObject());
   }
 
-  private ScheduledTaskGroup wrap(final TaskGroup taskGroup) {
-    return new ScheduledTaskGroup("TestPlan", taskGroup, Collections.emptyList(), Collections.emptyList(),
-        MAGIC_SCHEDULE_ATTEMPT_INDEX);
+  /**
+   * Wrap a DAG of a task group into {@link ScheduledTaskGroup}s.
+   *
+   * @param parallelism            how many scheduled task group will be generated.
+   * @param serializedTaskGroupDag the serialized DAG of the task group.
+   * @param stageId                the ID of the stage.
+   * @param containerType          the type of container to execute the task group on.
+   * @return the wrapped scheduled task groups.
+   */
+  private List<ScheduledTaskGroup> convertToScheduledTaskGroups(final int parallelism,
+                                                                final byte[] serializedTaskGroupDag,
+                                                                final String stageId,
+                                                                final String containerType) {
+    final List<ScheduledTaskGroup> scheduledTaskGroups = new ArrayList<>(parallelism);
+    for (int taskGroupIdx = 0; taskGroupIdx < parallelism; taskGroupIdx++) {
+      final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId(taskGroupIdx, stageId);
+      scheduledTaskGroups.add(new ScheduledTaskGroup("TestPlan", serializedTaskGroupDag, taskGroupId,
+          Collections.emptyList(), Collections.emptyList(), MAGIC_SCHEDULE_ATTEMPT_INDEX, containerType));
+    }
+    return scheduledTaskGroups;
   }
 }
 

@@ -15,9 +15,7 @@
  */
 package edu.snu.onyx.common.ir.vertex;
 
-import edu.snu.onyx.common.ir.Reader;
-
-import java.util.List;
+import edu.snu.onyx.common.ir.ReadablesWrapper;
 
 /**
  * IRVertex that reads data from an external source.
@@ -25,11 +23,12 @@ import java.util.List;
  * @param <O> output type.
  */
 public abstract class SourceVertex<O> extends IRVertex {
+
   /**
-   * Get parallel readers.
+   * Gets parallel readable wrapper.
    * @param desiredNumOfSplits number of splits desired.
-   * @return List of readers.
-   * @throws Exception .
+   * @return the wrapper for a list of readers.
+   * @throws Exception if fail to get.
    */
-  public abstract List<Reader<O>> getReaders(int desiredNumOfSplits) throws Exception;
+  public abstract ReadablesWrapper<O> getReadableWrapper(int desiredNumOfSplits) throws Exception;
 }

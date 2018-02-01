@@ -16,9 +16,9 @@
  */
 package edu.snu.onyx.examples.spark;
 
-import edu.snu.onyx.compiler.frontend.spark.JavaRDD;
-import edu.snu.onyx.compiler.frontend.spark.JavaSparkContext;
-import edu.snu.onyx.compiler.frontend.spark.SparkSession;
+import edu.snu.onyx.compiler.frontend.spark.core.java.JavaRDD;
+import edu.snu.onyx.compiler.frontend.spark.core.java.JavaSparkContext;
+import edu.snu.onyx.compiler.frontend.spark.sql.SparkSession;
 
 import java.util.ArrayList;
 import java.util.List;

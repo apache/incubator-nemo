@@ -14,46 +14,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.compiler.frontend.spark;
+package edu.snu.onyx.compiler.frontend.spark.core.java;
 
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import edu.snu.onyx.client.JobLauncher;
 import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.common.ir.edge.IREdge;
-import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.KeyExtractorProperty;
-import edu.snu.onyx.common.ir.vertex.IRVertex;
-import edu.snu.onyx.common.ir.vertex.InitializedSourceVertex;
-import edu.snu.onyx.common.ir.vertex.LoopVertex;
-import edu.snu.onyx.common.ir.vertex.OperatorVertex;
+import edu.snu.onyx.common.ir.vertex.*;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ParallelismProperty;
+import edu.snu.onyx.compiler.frontend.spark.SparkKeyExtractor;
 import edu.snu.onyx.compiler.frontend.spark.coder.SparkCoder;
-import edu.snu.onyx.compiler.frontend.spark.transform.MapTransform;
-import edu.snu.onyx.compiler.frontend.spark.transform.ReduceTransform;
+import edu.snu.onyx.compiler.frontend.spark.core.RDD;
+import edu.snu.onyx.compiler.frontend.spark.source.SparkBoundedSourceVertex;
+import edu.snu.onyx.compiler.frontend.spark.sql.Dataset;
+import edu.snu.onyx.compiler.frontend.spark.transform.*;
 import org.apache.spark.Partition;
 import org.apache.spark.Partitioner;
+import org.apache.spark.SparkContext;
 import org.apache.spark.TaskContext;
 import org.apache.spark.api.java.JavaFutureAction;
 import org.apache.spark.api.java.Optional;
-import org.apache.spark.api.java.function.FlatMapFunction;
-import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.Function2;
-import org.apache.spark.api.java.function.VoidFunction;
+import org.apache.spark.api.java.function.*;
 import org.apache.spark.partial.BoundedDouble;
 import org.apache.spark.partial.PartialResult;
-import org.apache.spark.serializer.JavaSerializer;
-import org.apache.spark.serializer.KryoSerializer;
 import org.apache.spark.serializer.Serializer;
 import org.apache.spark.storage.StorageLevel;
+import scala.reflect.ClassTag$;
 
-import javax.annotation.Nullable;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static edu.snu.onyx.compiler.frontend.spark.core.java.SparkFrontendUtils.getEdgeCommunicationPattern;
 
 /**
  * Java RDD.
@@ -61,47 +52,63 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   private final SparkContext sparkContext;
-  private final Integer parallelism;
   private final Stack<LoopVertex> loopVertexStack;
   private final DAG<IRVertex, IREdge> dag;
-  @Nullable private final IRVertex lastVertex;
+  private final IRVertex lastVertex;
   private final Serializer serializer;
 
   /**
-   * Static method to create a JavaRDD object.
+   * Static method to create a JavaRDD object from an iterable object.
    * @param sparkContext spark context containing configurations.
+   * @param initialData initial data.
    * @param parallelism parallelism information.
    * @param <T> type of the resulting object.
    * @return the new JavaRDD object.
    */
-  static <T> JavaRDD<T> of(final SparkContext sparkContext, final Integer parallelism) {
-    return new JavaRDD<>(sparkContext, parallelism,
-        new DAGBuilder<IRVertex, IREdge>().buildWithoutSourceSinkCheck(), null);
+  public static <T> JavaRDD<T> of(final SparkContext sparkContext,
+                                  final Iterable<T> initialData, final Integer parallelism) {
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
+    final IRVertex initializedSourceVertex = new InitializedSourceVertex<>(initialData);
+    initializedSourceVertex.setProperty(ParallelismProperty.of(parallelism));
+    builder.addVertex(initializedSourceVertex);
+
+    return new JavaRDD<>(sparkContext, builder.buildWithoutSourceSinkCheck(), initializedSourceVertex);
+  }
+
+  /**
+   * Static method to create a JavaRDD object from a Dataset.
+   * @param sparkContext spark context containing configurations.
+   * @param dataset dataset to read initial data from.
+   * @param <T> type of the resulting object.
+   * @return the new JavaRDD object.
+   */
+  public static <T> JavaRDD<T> of(final SparkContext sparkContext,
+                                  final Dataset<T> dataset) {
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
+    final IRVertex sparkBoundedSourceVertex = new SparkBoundedSourceVertex<>(dataset);
+    sparkBoundedSourceVertex.setProperty(ParallelismProperty.of(dataset.rdd().getNumPartitions()));
+    builder.addVertex(sparkBoundedSourceVertex);
+
+    return new JavaRDD<>(sparkContext, builder.buildWithoutSourceSinkCheck(), sparkBoundedSourceVertex);
   }
 
   /**
    * Constructor.
    * @param sparkContext spark context containing configurations.
-   * @param parallelism parallelism information.
    * @param dag the current DAG.
    * @param lastVertex last vertex added to the builder.
    */
-  private JavaRDD(final SparkContext sparkContext, final Integer parallelism,
-                  final DAG<IRVertex, IREdge> dag, @Nullable final IRVertex lastVertex) {
+  JavaRDD(final SparkContext sparkContext, final DAG<IRVertex, IREdge> dag, final IRVertex lastVertex) {
     // TODO #366: resolve while implementing scala RDD.
-    super(null, null);
+    super(RDD.of(sparkContext), ClassTag$.MODULE$.apply((Class<T>) Object.class));
 
     this.loopVertexStack = new Stack<>();
     this.sparkContext = sparkContext;
-    this.parallelism = parallelism;
     this.dag = dag;
     this.lastVertex = lastVertex;
-    if (sparkContext.conf().get("spark.serializer", "")
-        .equals("org.apache.spark.serializer.KryoSerializer")) {
-      this.serializer = new KryoSerializer(sparkContext.conf());
-    } else {
-      this.serializer = new JavaSerializer(sparkContext.conf());
-    }
+    this.serializer = SparkFrontendUtils.deriveSerializerFrom(sparkContext);
   }
 
   /**
@@ -114,22 +121,6 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   /////////////// TRANSFORMATIONS ///////////////
 
   /**
-   * Set initialized source.
-   * @param initialData initial data.
-   * @return the Java RDD with the initialized source vertex.
-   */
-  JavaRDD<T> setSource(final Iterable<T> initialData) {
-    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
-
-    final IRVertex initializedSourceVertex = new InitializedSourceVertex<>(initialData);
-    initializedSourceVertex.setProperty(ParallelismProperty.of(parallelism));
-    builder.addVertex(initializedSourceVertex, loopVertexStack);
-
-    return new JavaRDD<>(this.sparkContext, this.parallelism,
-        builder.buildWithoutSourceSinkCheck(), initializedSourceVertex);
-  }
-
-  /**
    * Map transform.
    * @param func function to apply.
    * @param <O> output type.
@@ -140,7 +131,6 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
 
     final IRVertex mapVertex = new OperatorVertex(new MapTransform<>(func));
-    mapVertex.setProperty(ParallelismProperty.of(parallelism));
     builder.addVertex(mapVertex, loopVertexStack);
 
     final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, mapVertex),
@@ -148,7 +138,39 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
     newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
     builder.connectVertices(newEdge);
 
-    return new JavaRDD<>(this.sparkContext, this.parallelism, builder.buildWithoutSourceSinkCheck(), mapVertex);
+    return new JavaRDD<>(this.sparkContext, builder.buildWithoutSourceSinkCheck(), mapVertex);
+  }
+
+  @Override
+  public <U> JavaRDD<U> flatMap(final FlatMapFunction<T, U> f) {
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
+
+    final IRVertex flatMapVertex = new OperatorVertex(new FlatMapTransform<>(f));
+    builder.addVertex(flatMapVertex, loopVertexStack);
+
+    final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, flatMapVertex),
+        lastVertex, flatMapVertex, new SparkCoder(serializer));
+    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
+    builder.connectVertices(newEdge);
+
+    return new JavaRDD<>(this.sparkContext, builder.buildWithoutSourceSinkCheck(), flatMapVertex);
+  }
+
+  /////////////// TRANSFORMATION TO PAIR RDD ///////////////
+
+  @Override
+  public <K2, V2> JavaPairRDD<K2, V2> mapToPair(final PairFunction<T, K2, V2> f)  {
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
+
+    final IRVertex mapToPairVertex = new OperatorVertex(new MapToPairTransform<>(f));
+    builder.addVertex(mapToPairVertex, loopVertexStack);
+
+    final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, mapToPairVertex),
+        lastVertex, mapToPairVertex, new SparkCoder(serializer));
+    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
+    builder.connectVertices(newEdge);
+
+    return new JavaPairRDD<>(this.sparkContext, builder.buildWithoutSourceSinkCheck(), mapToPairVertex);
   }
 
   /////////////// ACTIONS ///////////////
@@ -170,12 +192,9 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
    */
   @Override
   public T reduce(final Function2<T, T, T> func) {
-    // save result in a temporary file
-    final String resultFile = System.getProperty("user.dir") + "/reduceresult";
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
 
-    final IRVertex reduceVertex = new OperatorVertex(new ReduceTransform<>(func, resultFile));
-    reduceVertex.setProperty(ParallelismProperty.of(parallelism));
+    final IRVertex reduceVertex = new OperatorVertex(new ReduceTransform<>(func));
     builder.addVertex(reduceVertex, loopVertexStack);
 
     final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, reduceVertex),
@@ -183,49 +202,12 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
     newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
     builder.connectVertices(newEdge);
 
-    // launch DAG
-    JobLauncher.launchDAG(builder.build());
-
-    // Retrieve result data from file.
-    // TODO #711: remove this part, and make it properly write to sink.
-    try {
-      final Kryo kryo = new Kryo();
-      final List<T> result = new ArrayList<>();
-      Integer i = 0;
-      // TODO #711: remove this part, and make it properly write to sink.
-      File file = new File(resultFile + i);
-      while (file.exists()) {
-        final Input input = new Input(new FileInputStream(resultFile + i));
-        result.add((T) kryo.readClassAndObject(input));
-        input.close();
-
-        // Delete temporary file
-        file.delete();
-        file = new File(resultFile + ++i);
-      }
-      return ReduceTransform.reduceIterator(result.iterator(), func);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  /////////////// MISC ///////////////
-
-  /**
-   * Retrieve communication pattern of the edge.
-   * @param src source vertex.
-   * @param dst destination vertex.
-   * @return the communication pattern.
-   */
-  private static DataCommunicationPatternProperty.Value getEdgeCommunicationPattern(final IRVertex src,
-                                                                                    final IRVertex dst) {
-    // TODO #711: add Shuffle for KV data.
-    return DataCommunicationPatternProperty.Value.OneToOne;
+    return ReduceTransform.reduceIterator(collect().iterator(), func);
   }
 
   @Override
-  public org.apache.spark.SparkContext context() {
-    throw new UnsupportedOperationException("Operation unsupported. use getContext() instead.");
+  public List<T> collect() {
+    return SparkFrontendUtils.collect(dag, loopVertexStack, lastVertex, serializer);
   }
 
   /////////////// UNSUPPORTED TRANSFORMATIONS ///////////////
@@ -257,11 +239,6 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   @Override
   public JavaRDD<T> filter(final Function<T, Boolean> f) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
-  }
-
-  @Override
-  public <U> JavaRDD<U> flatMap(final FlatMapFunction<T, U> f) {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 
@@ -336,6 +313,49 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 
+  /////////////// UNSUPPORTED TRANSFORMATION TO PAIR RDD ///////////////
+
+  @Override
+  public <K2, V2> JavaPairRDD<K2, V2> flatMapToPair(final PairFlatMapFunction<T, K2, V2> f) {
+    throw new UnsupportedOperationException("Operation not yet implemented.");
+  }
+
+  @Override
+  public <U> JavaPairRDD<U, Iterable<T>> groupBy(final Function<T, U> f) {
+    throw new UnsupportedOperationException("Operation not yet implemented.");
+  }
+
+  @Override
+  public <U> JavaPairRDD<U, Iterable<T>> groupBy(final Function<T, U> f, final int numPartitions)  {
+    throw new UnsupportedOperationException("Operation not yet implemented.");
+  }
+
+  @Override
+  public <U> JavaPairRDD<U, T> keyBy(final Function<T, U> f) {
+    throw new UnsupportedOperationException("Operation not yet implemented.");
+  }
+
+  @Override
+  public <K2, V2> JavaPairRDD<K2, V2> mapPartitionsToPair(final PairFlatMapFunction<Iterator<T>, K2, V2> f) {
+    throw new UnsupportedOperationException("Operation not yet implemented.");
+  }
+
+  @Override
+  public <K2, V2> JavaPairRDD<K2, V2> mapPartitionsToPair(final PairFlatMapFunction<java.util.Iterator<T>, K2, V2> f,
+                                                          final boolean preservesPartitioning)  {
+    throw new UnsupportedOperationException("Operation not yet implemented.");
+  }
+
+  @Override
+  public JavaPairRDD<T, Long> zipWithIndex()  {
+    throw new UnsupportedOperationException("Operation not yet implemented.");
+  }
+
+  @Override
+  public JavaPairRDD<T, Long> zipWithUniqueId() {
+    throw new UnsupportedOperationException("Operation not yet implemented.");
+  }
+
   /////////////// UNSUPPORTED ACTIONS ///////////////
 
   @Override
@@ -348,10 +368,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 
-  @Override
-  public List<T> collect() {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
-  }
+
 
   @Override
   public JavaFutureAction<List<T>> collectAsync()  {

@@ -14,32 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.compiler.frontend.spark;
-
-import java.util.List;
+package edu.snu.onyx.compiler.frontend.spark.sql;
 
 /**
- * Spark context wrapper for Java.
+ * A data frame reader to create the initial dataset.
  */
-public final class JavaSparkContext {
-  private final SparkContext sparkContext;
-
+public final class DataFrameReader extends org.apache.spark.sql.DataFrameReader {
   /**
    * Constructor.
-   * @param sparkContext spark context to wrap.
+   * @param sparkSession spark session.
    */
-  public JavaSparkContext(final SparkContext sparkContext) {
-    this.sparkContext = sparkContext;
+  DataFrameReader(final SparkSession sparkSession) {
+    super(sparkSession);
   }
 
-  /**
-   * Initiate a JavaRDD with the number of parallelism.
-   * @param l input data as list.
-   * @param slices number of slices (parallelism).
-   * @param <T> type of the initial element.
-   * @return the newly initiated JavaRDD.
-   */
-  public <T> JavaRDD<T> parallelize(final List<T> l, final int slices) {
-    return JavaRDD.<T>of(this.sparkContext, slices).setSource(l);
+  @Override
+  public Dataset<String> textFile(final String path) {
+    return Dataset.from(super.textFile(path));
   }
 }

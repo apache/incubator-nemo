@@ -19,13 +19,12 @@ import edu.snu.onyx.compiler.frontend.beam.coder.BeamCoder;
 import edu.snu.onyx.common.dag.DAGBuilder;
 import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.onyx.common.ir.vertex.BoundedSourceVertex;
+import edu.snu.onyx.compiler.frontend.beam.source.BeamBoundedSourceVertex;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.LoopVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
 import edu.snu.onyx.common.ir.edge.executionproperty.KeyExtractorProperty;
 
-import edu.snu.onyx.compiler.frontend.beam.source.BeamBoundedSource;
 import edu.snu.onyx.compiler.frontend.beam.transform.*;
 
 import org.apache.beam.sdk.Pipeline;
@@ -135,7 +134,7 @@ public final class OnyxPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     final IRVertex irVertex;
     if (beamTransform instanceof Read.Bounded) {
       final Read.Bounded<O> read = (Read.Bounded) beamTransform;
-      irVertex = new BoundedSourceVertex<>(new BeamBoundedSource<>(read.getSource()));
+      irVertex = new BeamBoundedSourceVertex<>(read.getSource());
       builder.addVertex(irVertex, loopVertexStack);
     } else if (beamTransform instanceof GroupByKey) {
       irVertex = new OperatorVertex(new GroupByKeyTransform());
@@ -186,13 +185,13 @@ public final class OnyxPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     return irVertex;
   }
 
-  // TODO #119: fill the below document.
   /**
+   * Connect side inputs to the vertex.
    * @param builder the DAG builder to add the vertex to.
    * @param sideInputs side inputs.
    * @param pValueToVertex PValue to Vertex map.
    * @param pValueToCoder  PValue to Coder map.
-   * @param irVertex wrapper for a user operation in the IR.
+   * @param irVertex wrapper for a user operation in the IR. (Where the side input is headed to)
    */
   private static void connectSideInputs(final DAGBuilder<IRVertex, IREdge> builder,
                                         final List<PCollectionView<?>> sideInputs,
@@ -246,7 +245,8 @@ public final class OnyxPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
                                                                                     final IRVertex dst) {
     if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof GroupByKeyTransform) {
       return DataCommunicationPatternProperty.Value.Shuffle;
-    } else if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof CreateViewTransform) {
+    } else if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof CreateViewTransform
+        || src instanceof OperatorVertex && ((OperatorVertex) src).getTransform() instanceof CreateViewTransform) {
       return DataCommunicationPatternProperty.Value.BroadCast;
     } else {
       return DataCommunicationPatternProperty.Value.OneToOne;

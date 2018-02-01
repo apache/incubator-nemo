@@ -26,7 +26,6 @@ import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
-import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.common.data.HashRange;
 import edu.snu.onyx.runtime.common.eventhandler.DynamicOptimizationEventHandler;
 import org.slf4j.Logger;
@@ -89,16 +88,10 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
 
     // Overwrite the previously assigned hash value range in the physical DAG with the new range.
     optimizationEdges.forEach(optimizationEdge -> {
-      final List<TaskGroup> taskGroups = optimizationEdge.getDst().getTaskGroupList();
-      final Map<String, KeyRange> taskGroupIdToHashRangeMap = optimizationEdge.getTaskGroupIdToKeyRangeMap();
-      taskGroupIdToHashRangeMap.clear();
-      IntStream.range(0, taskGroupListSize).forEach(i -> {
-        // Update the information.
-        final String taskGroupId = taskGroups.get(i).getTaskGroupId();
-        taskGroupIdToHashRangeMap.put(taskGroupId, keyRanges.get(i));
-        //LOG.info("Skew: newly assigned keyrange: {} {} ~ {}",
-        //    taskGroupId, keyRanges.get(i).rangeBeginInclusive(), keyRanges.get(i).rangeEndExclusive());
-      });
+      // Update the information.
+      final List<KeyRange> taskGroupIdxToHashRange = new ArrayList<>();
+      IntStream.range(0, taskGroupListSize).forEach(i -> taskGroupIdxToHashRange.add(keyRanges.get(i)));
+      optimizationEdge.setTaskGroupIdxToKeyRange(taskGroupIdxToHashRange);
     });
 
     return new PhysicalPlan(originalPlan.getId(), physicalDAGBuilder.build(), originalPlan.getTaskIRVertexMap());

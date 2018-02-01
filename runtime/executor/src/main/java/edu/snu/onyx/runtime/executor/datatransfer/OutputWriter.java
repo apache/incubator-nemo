@@ -39,7 +39,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   private final String blockId;
   private final RuntimeEdge<?> runtimeEdge;
   private final String srcVertexId;
-  private final IRVertex dstVertex;
+  @Nullable private final IRVertex dstIrVertex;
   private final DataStoreProperty.Value blockStoreValue;
   private final Map<PartitionerProperty.Value, Partitioner> partitionerMap;
   private final List<Long> accumulatedPartitionSizeInfo;
@@ -48,14 +48,15 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   public OutputWriter(final int hashRangeMultiplier,
                       final int srcTaskIdx,
                       final String srcRuntimeVertexId,
-                      @Nullable final IRVertex dstRuntimeVertex, // Null if it is not a runtime vertex.
+                      // TODO #717: Remove nullable. (If the destination is not an IR vertex, do not make OutputWriter.)
+                      @Nullable final IRVertex dstIrVertex, // Null if it is not an IR vertex.
                       final RuntimeEdge<?> runtimeEdge,
                       final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
     this.blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
     this.runtimeEdge = runtimeEdge;
     this.srcVertexId = srcRuntimeVertexId;
-    this.dstVertex = dstRuntimeVertex;
+    this.dstIrVertex = dstIrVertex;
     this.blockManagerWorker = blockManagerWorker;
     this.blockStoreValue = runtimeEdge.getProperty(ExecutionProperty.Key.DataStore);
     this.partitionerMap = new HashMap<>();
@@ -175,8 +176,8 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    * @return the parallelism of the destination task.
    */
   private int getDstParallelism() {
-    return dstVertex == null || DataCommunicationPatternProperty.Value.OneToOne.equals(
+    return dstIrVertex == null || DataCommunicationPatternProperty.Value.OneToOne.equals(
         runtimeEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))
-        ? 1 : dstVertex.getProperty(ExecutionProperty.Key.Parallelism);
+        ? 1 : dstIrVertex.getProperty(ExecutionProperty.Key.Parallelism);
   }
 }

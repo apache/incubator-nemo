@@ -15,7 +15,8 @@
  */
 package edu.snu.onyx.common.ir.vertex;
 
-import edu.snu.onyx.common.ir.Reader;
+import edu.snu.onyx.common.ir.Readable;
+import edu.snu.onyx.common.ir.ReadablesWrapper;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -44,45 +45,65 @@ public final class InitializedSourceVertex<T> extends SourceVertex<T> {
   }
 
   @Override
-  public List<Reader<T>> getReaders(final int desiredNumOfSplits) throws Exception {
-    final List<Reader<T>> readers = new ArrayList<>();
-    final long sliceSize = initializedSourceData.spliterator().getExactSizeIfKnown() / desiredNumOfSplits;
-    final Iterator<T> iterator = initializedSourceData.iterator();
-
-    for (int i = 0; i < desiredNumOfSplits; i++) {
-      final List<T> dataForReader = new ArrayList<>();
-
-      if (i == desiredNumOfSplits - 1) { // final iteration
-        iterator.forEachRemaining(dataForReader::add);
-      } else {
-        for (int j = 0; j < sliceSize && iterator.hasNext(); j++) {
-          dataForReader.add(iterator.next());
-        }
-      }
-
-      readers.add(new InitializedSourceReader<>(dataForReader));
-    }
-    return readers;
+  public ReadablesWrapper<T> getReadableWrapper(final int desiredNumOfSplits) throws Exception {
+    return new InitializedSourceReadablesWrapper(desiredNumOfSplits);
   }
 
   /**
-   * Reader for initialized source vertex. It simply returns the initialized data.
+   * A ReadablesWrapper for InitializedSourceVertex.
+   */
+  private final class InitializedSourceReadablesWrapper implements ReadablesWrapper<T> {
+    final int desiredNumOfSplits;
+
+    /**
+     * Constructor of the InitializedSourceReadablesWrapper.
+     * @param desiredNumOfSplits the number of splits desired.
+     */
+    private InitializedSourceReadablesWrapper(final int desiredNumOfSplits) {
+      this.desiredNumOfSplits = desiredNumOfSplits;
+    }
+
+    @Override
+    public List<Readable<T>> getReadables() throws Exception {
+      final List<Readable<T>> readables = new ArrayList<>();
+      final long sliceSize = initializedSourceData.spliterator().getExactSizeIfKnown() / desiredNumOfSplits;
+      final Iterator<T> iterator = initializedSourceData.iterator();
+
+      for (int i = 0; i < desiredNumOfSplits; i++) {
+        final List<T> dataForReader = new ArrayList<>();
+
+        if (i == desiredNumOfSplits - 1) { // final iteration
+          iterator.forEachRemaining(dataForReader::add);
+        } else {
+          for (int j = 0; j < sliceSize && iterator.hasNext(); j++) {
+            dataForReader.add(iterator.next());
+          }
+        }
+
+        readables.add(new InitializedSourceReadable<>(dataForReader));
+      }
+      return readables;
+    }
+  }
+
+  /**
+   * Readable for initialized source vertex. It simply returns the initialized data.
    * @param <T> type of the initial data.
    */
-  public class InitializedSourceReader<T> implements Reader<T> {
+  private static final class InitializedSourceReadable<T> implements Readable<T> {
     private final Iterable<T> initializedSourceData;
 
     /**
      * Constructor.
      * @param initializedSourceData the source data.
      */
-    InitializedSourceReader(final Iterable<T> initializedSourceData) {
+    private InitializedSourceReadable(final Iterable<T> initializedSourceData) {
       this.initializedSourceData = initializedSourceData;
     }
 
     @Override
-    public final Iterator<T> read() throws Exception {
-      return this.initializedSourceData.iterator();
+    public Iterable<T> read() throws Exception {
+      return this.initializedSourceData;
     }
   }
 }

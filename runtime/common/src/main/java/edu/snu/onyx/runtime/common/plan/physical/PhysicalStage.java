@@ -15,36 +15,70 @@
  */
 package edu.snu.onyx.runtime.common.plan.physical;
 
+import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.dag.Vertex;
+import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
+import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
+import org.apache.commons.lang3.SerializationUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * PhysicalStage.
  */
 public final class PhysicalStage extends Vertex {
-  private final List<TaskGroup> taskGroupList;
+  private final DAG<Task, RuntimeEdge<Task>> taskGroupDag;
+  private final int parallelism;
   private final int scheduleGroupIndex;
+  private final String containerType;
+  private final byte[] serializedTaskGroupDag;
 
   /**
    * Constructor.
-   * @param stageId id of the stage.
-   * @param taskGroupList list of taskGroups.
+   *
+   * @param stageId            id of the stage.
+   * @param taskGroupDag       the DAG of the task group in this stage.
+   * @param parallelism        how many task groups will be executed in this stage.
    * @param scheduleGroupIndex the schedule group index.
+   * @param containerType      the type of container to execute the task group on.
    */
   public PhysicalStage(final String stageId,
-                       final List<TaskGroup> taskGroupList,
-                       final int scheduleGroupIndex) {
+                       final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
+                       final int parallelism,
+                       final int scheduleGroupIndex,
+                       final String containerType) {
     super(stageId);
-    this.taskGroupList = taskGroupList;
+    this.taskGroupDag = taskGroupDag;
+    this.parallelism = parallelism;
     this.scheduleGroupIndex = scheduleGroupIndex;
+    this.containerType = containerType;
+    this.serializedTaskGroupDag = SerializationUtils.serialize(taskGroupDag);
   }
 
   /**
-   * @return the list of taskGroups.
+   * @return the task group.
    */
-  public List<TaskGroup> getTaskGroupList() {
-    return taskGroupList;
+  public DAG<Task, RuntimeEdge<Task>> getTaskGroupDag() {
+    return taskGroupDag;
+  }
+
+  /**
+   * @return the serialized DAG of the task group.
+   */
+  public byte[] getSerializedTaskGroupDag() {
+    return serializedTaskGroupDag;
+  }
+
+  /**
+   * @return the list of the task group IDs in this stage.
+   */
+  public List<String> getTaskGroupIds() {
+    final List<String> taskGroupIds = new ArrayList<>();
+    for (int taskGroupIdx = 0; taskGroupIdx < parallelism; taskGroupIdx++) {
+      taskGroupIds.add(RuntimeIdGenerator.generateTaskGroupId(taskGroupIdx, getId()));
+    }
+    return taskGroupIds;
   }
 
   /**
@@ -54,11 +88,20 @@ public final class PhysicalStage extends Vertex {
     return scheduleGroupIndex;
   }
 
+  /**
+   * @return the type of container to execute the task group on.
+   */
+  public String getContainerType() {
+    return containerType;
+  }
+
   @Override
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"scheduleGroupIndex\": ").append(scheduleGroupIndex);
-    sb.append(", \"taskGroupList\": ").append(taskGroupList);
+    sb.append(", \"taskGroupDag\": ").append(taskGroupDag);
+    sb.append(", \"parallelism\": ").append(parallelism);
+    sb.append(", \"containerType\": \"").append(containerType).append("\"");
     sb.append('}');
     return sb.toString();
   }

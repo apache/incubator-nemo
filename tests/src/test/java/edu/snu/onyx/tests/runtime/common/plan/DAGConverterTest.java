@@ -22,20 +22,19 @@ import edu.snu.onyx.common.ir.edge.IREdge;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataFlowModelProperty;
 import edu.snu.onyx.common.ir.edge.executionproperty.DataStoreProperty;
-import edu.snu.onyx.common.ir.vertex.BoundedSourceVertex;
+import edu.snu.onyx.common.ir.vertex.SourceVertex;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.vertex.OperatorVertex;
-import edu.snu.onyx.common.ir.vertex.Source;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.onyx.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.onyx.common.ir.vertex.transform.Transform;
 import edu.snu.onyx.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.onyx.compiler.optimizer.CompiletimeOptimizer;
+import edu.snu.onyx.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.onyx.conf.JobConf;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlanGenerator;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalStageEdge;
-import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 import edu.snu.onyx.runtime.common.plan.stage.Stage;
 import edu.snu.onyx.runtime.common.plan.stage.StageEdge;
 import edu.snu.onyx.tests.compiler.optimizer.policy.TestPolicy;
@@ -44,12 +43,10 @@ import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Tests {@link PhysicalPlanGenerator}.
@@ -106,26 +103,16 @@ public final class DAGConverterTest {
     assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage1).size(), 1);
     assertEquals(physicalDAG.getOutgoingEdgesOf(physicalStage2).size(), 0);
 
-    final List<TaskGroup> taskGroupList1 = physicalStage1.getTaskGroupList();
-    final List<TaskGroup> taskGroupList2 = physicalStage2.getTaskGroupList();
-    assertEquals(taskGroupList1.size(), 3);
-    assertEquals(taskGroupList2.size(), 2);
+    assertEquals(physicalStage1.getTaskGroupIds().size(), 3);
+    assertEquals(physicalStage2.getTaskGroupIds().size(), 2);
   }
 
   @Test
   public void testComplexPlan() throws Exception {
     // Tests a plan of 4 stages.
-    final Source s = mock(Source.class);
-    final Source.Reader r = mock(Source.Reader.class);
-    final List<Source.Reader> dummyReaderList = new ArrayList<>(3);
-    dummyReaderList.add(r);
-    dummyReaderList.add(r);
-    dummyReaderList.add(r);
-    when(s.getEstimatedSizeBytes()).thenReturn(9L);
-    when(s.createReader()).thenReturn(r);
-    when(s.split(3L)).thenReturn(dummyReaderList);
+    final SourceVertex s = new EmptyComponents.EmptySourceVertex("Source");
 
-    final IRVertex v1 = new BoundedSourceVertex<>(s);
+    final IRVertex v1 = s;
     v1.setProperty(ParallelismProperty.of(3));
     v1.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
 

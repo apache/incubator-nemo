@@ -72,7 +72,6 @@ public final class DefaultStagePartitioningPass extends AnnotatingPass {
     final HashMap<IRVertex, Integer> vertexStageNumHashMap = new HashMap<>();
     final List<List<IRVertex>> vertexListForEachStage = new ArrayList<>();
     final AtomicInteger stageNumber = new AtomicInteger(1);
-    final List<Integer> dependentStagesList = new ArrayList<>();
 
     // First, traverse the DAG topologically to add each vertices to a list associated with each of the stage number.
     irDAG.topologicalDo(vertex -> {
@@ -80,7 +79,7 @@ public final class DefaultStagePartitioningPass extends AnnotatingPass {
       final Optional<List<IREdge>> inEdgeList = (inEdges == null || inEdges.isEmpty())
               ? Optional.empty() : Optional.of(inEdges);
 
-      if (!inEdgeList.isPresent()) { // If Source vertex
+      if (!inEdgeList.isPresent() || inEdgeList.get().size() > 1) { // If Source vertex or has multiple inEdges
         createNewStage(vertex, vertexStageNumHashMap, stageNumber, vertexListForEachStage);
       } else {
         // Filter candidate incoming edges that can be included in a stage with the vertex.
@@ -99,17 +98,10 @@ public final class DefaultStagePartitioningPass extends AnnotatingPass {
                 .equals(edge.getDst().getProperty(ExecutionProperty.Key.Parallelism)))
             // Src that is already included in a stage
             .filter(edge -> vertexStageNumHashMap.containsKey(edge.getSrc()))
-            // Others don't depend on the candidate stage.
-            .filter(edge -> !dependentStagesList.contains(vertexStageNumHashMap.get(edge.getSrc())))
             .collect(Collectors.toList()));
         // Choose one to connect out of the candidates. We want to connect the vertex to a single stage.
         final Optional<IREdge> edgeToConnect = inEdgesForStage.map(edges -> edges.stream().findAny())
             .orElse(Optional.empty());
-
-        // Mark stages that other stages depend on
-        inEdgeList.ifPresent(edges -> edges.stream()
-            .filter(e -> !e.equals(edgeToConnect.orElse(null))) // e never equals null
-            .forEach(inEdge -> dependentStagesList.add(vertexStageNumHashMap.get(inEdge.getSrc()))));
 
         if (!inEdgesForStage.isPresent() || inEdgesForStage.get().isEmpty() || !edgeToConnect.isPresent()) {
           // when we cannot connect vertex in other stages

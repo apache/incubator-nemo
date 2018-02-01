@@ -26,7 +26,6 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +38,7 @@ public final class MetricManagerWorker implements MetricMessageSender {
 
   private final ScheduledExecutorService scheduledExecutorService;
   private final BlockingQueue<ControlMessage.Metric> metricMessageQueue;
-  private final AtomicBoolean closed;
+  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
   private static final Logger LOG = LoggerFactory.getLogger(MetricManagerWorker.class.getName());
 
@@ -48,43 +47,47 @@ public final class MetricManagerWorker implements MetricMessageSender {
                               final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.metricMessageQueue = new LinkedBlockingQueue<>();
-    this.closed = new AtomicBoolean(false);
-    Runnable batchMetricMessages = () -> {
-
-      while (!closed.get() && !metricMessageQueue.isEmpty()) {
-
-        // Build batched metric messages
-        int size = metricMessageQueue.size();
-
-        final ControlMessage.MetricMsg.Builder metricMsgBuilder = ControlMessage.MetricMsg.newBuilder();
-
-        for (int i = 0; i < size; i++) {
-          final ControlMessage.Metric metric = metricMessageQueue.poll();
-          metricMsgBuilder.addMetric(i, metric);
-        }
-
-        persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.MetricMessageReceived)
-                .setMetricMsg(metricMsgBuilder.build())
-                .build());
-      }
-    };
+    this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
+    final Runnable batchMetricMessages = () -> flushMetricMessageQueueToMaster();
     this.scheduledExecutorService.scheduleAtFixedRate(batchMetricMessages, 0,
                                                       flushingPeriod, TimeUnit.MILLISECONDS);
   }
 
+  private void flushMetricMessageQueueToMaster() {
+    if (!metricMessageQueue.isEmpty()) {
+      // Build batched metric messages
+      int size = metricMessageQueue.size();
+
+      final ControlMessage.MetricMsg.Builder metricMsgBuilder = ControlMessage.MetricMsg.newBuilder();
+
+      LOG.info("MetricManagerWorker Size: {}", size);
+      for (int i = 0; i < size; i++) {
+        final ControlMessage.Metric metric = metricMessageQueue.poll();
+        LOG.info("MetricManagerWorker addMetric: {}, {}, {}", size, i, metric);
+        metricMsgBuilder.addMetric(i, metric);
+      }
+
+      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+          ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdGenerator.generateMessageId())
+              .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+              .setType(ControlMessage.MessageType.MetricMessageReceived)
+              .setMetricMsg(metricMsgBuilder.build())
+              .build());
+    }
+  }
+
   @Override
   public void send(final String metricKey, final String metricValue) {
+    LOG.debug("Executor logged! {}", metricKey);
     metricMessageQueue.add(
         ControlMessage.Metric.newBuilder().setMetricKey(metricKey).setMetricValue(metricValue).build());
   }
 
   @Override
   public void close() throws UnknownFailureCauseException {
-    closed.set(true);
-    scheduledExecutorService.shutdown();
+    LOG.info("Shutting down MetricManager ");
+    scheduledExecutorService.shutdownNow();
+    flushMetricMessageQueueToMaster();
   }
 }

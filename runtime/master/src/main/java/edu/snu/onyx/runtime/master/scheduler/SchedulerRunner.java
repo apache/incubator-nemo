@@ -88,7 +88,7 @@ public final class SchedulerRunner {
 
           if (!isScheduled) {
             LOG.info("Failed to assign an executor for {} before the timeout: {}",
-                new Object[]{nextTaskGroupToSchedule.get().getTaskGroup().getTaskGroupId(),
+                new Object[]{nextTaskGroupToSchedule.get().getTaskGroupId(),
                     schedulingPolicy.getScheduleTimeoutMs()});
 
             // Put this TaskGroup back to the queue since we failed to schedule it.

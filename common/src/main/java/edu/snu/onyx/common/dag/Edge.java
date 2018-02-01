@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
  * @param <V> the vertex type.
  */
 public class Edge<V extends Vertex> implements Serializable {
-  private static final Logger LOG = LoggerFactory.getLogger(Edge.class.getName());
 
   private final String id;
   private final V src;

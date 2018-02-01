@@ -51,7 +51,15 @@ public final class ExampleTestUtil {
         .reduce("", (p, q) -> (p + "\n" + q));
 
     if(!testOutput.equals(resourceOutput)) {
-      throw new RuntimeException("output mismatch");
+      final String outputMsg =
+          "Test output mismatch while comparing [" + outputFileName + "] from [" + testResourceFileName + "] under "
+              + resourcePath + ":\n"
+              + "=============" + outputFileName + "=================="
+              + testOutput
+              + "\n=============" + testResourceFileName + "=================="
+              + resourceOutput
+              + "\n===============================";
+      throw new RuntimeException(outputMsg);
     }
   }
 

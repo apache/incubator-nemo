@@ -63,13 +63,17 @@ public final class DefaultParallelismPass extends AnnotatingPass {
     dag.topologicalDo(vertex -> {
       try {
         final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
-        // We manipulate them if it is set as default value of 1.
         if (inEdges.isEmpty() && vertex instanceof SourceVertex) {
           // For source vertices, we try to split the source reader by the desired source parallelism.
           // After that, we set the parallelism as the number of split readers.
           // (It can be more/less than the desired value.)
           final SourceVertex sourceVertex = (SourceVertex) vertex;
-          vertex.setProperty(ParallelismProperty.of(sourceVertex.getReaders(desiredSourceParallelism).size()));
+          final Integer originalParallelism = vertex.getProperty(ExecutionProperty.Key.Parallelism);
+          // We manipulate them if it is set as default value of 1.
+          if (originalParallelism.equals(1)) {
+            vertex.setProperty(ParallelismProperty.of(
+                sourceVertex.getReadableWrapper(desiredSourceParallelism).getReadables().size()));
+          }
         } else if (!inEdges.isEmpty()) {
           // No reason to propagate via Broadcast edges, as the data streams that will use the broadcasted data
           // as a sideInput will have their own number of parallelism

@@ -15,6 +15,7 @@
  */
 package edu.snu.onyx.runtime.executor;
 
+import edu.snu.onyx.common.dag.DAG;
 import edu.snu.onyx.common.exception.UnknownExecutionStateException;
 import edu.snu.onyx.common.exception.UnknownFailureCauseException;
 import edu.snu.onyx.common.StateMachine;
@@ -22,7 +23,9 @@ import edu.snu.onyx.runtime.common.RuntimeIdGenerator;
 import edu.snu.onyx.runtime.common.comm.ControlMessage;
 import edu.snu.onyx.runtime.common.message.MessageEnvironment;
 import edu.snu.onyx.runtime.common.message.PersistentConnectionToMasterMap;
-import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
+import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
+import edu.snu.onyx.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.onyx.runtime.common.plan.physical.Task;
 import edu.snu.onyx.runtime.common.state.TaskGroupState;
 import edu.snu.onyx.runtime.common.state.TaskState;
 
@@ -50,9 +53,9 @@ public final class TaskGroupStateManager {
   private final Map<String, Long> taskGroupIdToStarttimeMap;
 
   /**
-   * Used to track all task states of this task group, by keeping a map of task ids to their states.
+   * Used to track all task states of this task group, by keeping a map of logical task ids to their states.
    */
-  private final Map<String, TaskState> idToTaskStates;
+  private final Map<String, TaskState> logicalIdToTaskStates;
 
   /**
    * Used to track task group completion status.
@@ -65,56 +68,56 @@ public final class TaskGroupStateManager {
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
 
-  public TaskGroupStateManager(final TaskGroup taskGroup,
-                               final int attemptIdx,
+  public TaskGroupStateManager(final ScheduledTaskGroup scheduledTaskGroup,
+                               final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
                                final String executorId,
                                final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                                final MetricMessageSender metricMessageSender) {
-    this.taskGroupId = taskGroup.getTaskGroupId();
-    this.attemptIdx = attemptIdx;
+    this.taskGroupId = scheduledTaskGroup.getTaskGroupId();
+    this.attemptIdx = scheduledTaskGroup.getAttemptIdx();
     this.executorId = executorId;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.metricMessageSender = metricMessageSender;
     metricDataBuilderMap = new HashMap<>();
-    idToTaskStates = new HashMap<>();
+    logicalIdToTaskStates = new HashMap<>();
     currentTaskGroupTaskIds = new HashSet<>();
-    taskGroupIdToStarttimeMap = new HashMap<>();
-    initializeStates(taskGroup);
+    initializeStates(taskGroupDag);
   }
 
   /**
    * Receives and initializes the states for the task group to manage.
-   * @param taskGroup to manage.
+   * @param taskGroupDag to manage.
    */
-  private void initializeStates(final TaskGroup taskGroup) {
-    taskGroup.getTaskDAG().getVertices().forEach(task -> {
+  private void initializeStates(final DAG<Task, RuntimeEdge<Task>> taskGroupDag) {
+    taskGroupDag.getVertices().forEach(task -> {
       currentTaskGroupTaskIds.add(task.getId());
-      idToTaskStates.put(task.getId(), new TaskState());
+      logicalIdToTaskStates.put(task.getId(), new TaskState());
     });
   }
 
   /**
    * Updates the state of the task group.
    * @param newState of the task group.
-   * @param tasksPutOnHold the IDs of the tasks put on hold, empty otherwise.
+   * @param taskPutOnHold the logical ID of the tasks put on hold, empty otherwise.
    * @param cause only provided as non-empty upon recoverable failures.
    */
   public synchronized void onTaskGroupStateChanged(final TaskGroupState.State newState,
-                                                   final Optional<List<String>> tasksPutOnHold,
+                                                   final Optional<String> taskPutOnHold,
                                                    final Optional<TaskGroupState.RecoverableFailureCause> cause) {
     final Map<String, Object> metric = new HashMap<>();
 
     switch (newState) {
     case EXECUTING:
       LOG.debug("Executing TaskGroup ID {}...", this.taskGroupId);
-      /*
-      metric.put("ExecutorId", executorId);
+      metric.put("ContainerId", executorId);
       metric.put("ScheduleAttempt", attemptIdx);
       metric.put("FromState", newState);
       beginMeasurement(taskGroupId, metric);
-      */
-      //taskGroupIdToStarttimeMap.put(taskGroupId, System.currentTimeMillis());
-      idToTaskStates.forEach((taskId, state) -> state.getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR));
+      logicalIdToTaskStates.forEach((taskId, state) -> {
+        LOG.debug("Task State Transition: id {} from {} to {}",
+            taskId, state.getStateMachine().getCurrentState(), TaskState.State.PENDING_IN_EXECUTOR);
+        state.getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR);
+      });
       break;
     case COMPLETE:
       LOG.debug("TaskGroup ID {} complete!", this.taskGroupId);
@@ -140,7 +143,7 @@ public final class TaskGroupStateManager {
       break;
     case ON_HOLD:
       LOG.debug("TaskGroup ID {} put on hold.", this.taskGroupId);
-      notifyTaskGroupStateToMaster(newState, tasksPutOnHold, cause);
+      notifyTaskGroupStateToMaster(newState, taskPutOnHold, cause);
       break;
     default:
       throw new IllegalStateException("Illegal state at this point");
@@ -150,13 +153,14 @@ public final class TaskGroupStateManager {
   /**
    * Updates the state of a task.
    * Task state changes only occur in executor.
-   * @param taskId of the task.
+   * @param physicalTaskId of the task.
    * @param newState of the task.
    * @param cause only provided as non-empty upon recoverable failures.
    */
-  public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newState,
+  public synchronized void onTaskStateChanged(final String physicalTaskId, final TaskState.State newState,
                                               final Optional<TaskGroupState.RecoverableFailureCause> cause) {
-    final StateMachine taskStateChanged = idToTaskStates.get(taskId).getStateMachine();
+    final String logicalTaskId = RuntimeIdGenerator.getLogicalTaskIdIdFromPhysicalTaskId(physicalTaskId);
+    final StateMachine taskStateChanged = logicalIdToTaskStates.get(logicalTaskId).getStateMachine();
     LOG.debug("Task State Transition: id {} from {} to {}",
         new Object[]{taskGroupId, taskStateChanged.getCurrentState(), newState});
     taskStateChanged.setState(newState);
@@ -165,34 +169,35 @@ public final class TaskGroupStateManager {
 
     switch (newState) {
     case READY:
+      break;
     case EXECUTING:
-      metric.put("ExecutorId", executorId);
+      metric.put("ContainerId", executorId);
       metric.put("ScheduleAttempt", attemptIdx);
       metric.put("FromState", newState);
-      beginMeasurement(taskId, metric);
+      beginMeasurement(logicalTaskId, metric);
       break;
     case COMPLETE:
-      currentTaskGroupTaskIds.remove(taskId);
+      currentTaskGroupTaskIds.remove(logicalTaskId);
       if (currentTaskGroupTaskIds.isEmpty()) {
         onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), cause);
       }
       metric.put("ToState", newState);
-      endMeasurement(taskId, metric);
+      endMeasurement(logicalTaskId, metric);
       break;
     case FAILED_RECOVERABLE:
       onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE, Optional.empty(), cause);
       metric.put("ToState", newState);
-      endMeasurement(taskId, metric);
+      endMeasurement(logicalTaskId, metric);
       break;
     case FAILED_UNRECOVERABLE:
       onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE, Optional.empty(), cause);
       metric.put("ToState", newState);
-      endMeasurement(taskId, metric);
+      endMeasurement(logicalTaskId, metric);
       break;
     case ON_HOLD:
-      currentTaskGroupTaskIds.remove(taskId);
+      currentTaskGroupTaskIds.remove(logicalTaskId);
       if (currentTaskGroupTaskIds.isEmpty()) {
-        onTaskGroupStateChanged(TaskGroupState.State.ON_HOLD, Optional.of(Arrays.asList(taskId)), cause);
+        onTaskGroupStateChanged(TaskGroupState.State.ON_HOLD, Optional.of(logicalTaskId), cause);
       }
       break;
     default:
@@ -203,26 +208,21 @@ public final class TaskGroupStateManager {
   /**
    * Notifies the change in task group state to master.
    * @param newState of the task group.
-   * @param tasksPutOnHold the IDs of the task that is put on hold, empty otherwise.
+   * @param taskPutOnHold the logical ID of the tasks put on hold, empty otherwise.
    * @param cause only provided as non-empty upon recoverable failures.
    */
   private void notifyTaskGroupStateToMaster(final TaskGroupState.State newState,
-                                            final Optional<List<String>> tasksPutOnHold,
+                                            final Optional<String> taskPutOnHold,
                                             final Optional<TaskGroupState.RecoverableFailureCause> cause) {
-    final Optional<List<String>> tasksPutOnHoldList;
-    if (!tasksPutOnHold.isPresent()) {
-      tasksPutOnHoldList = Optional.of(Collections.emptyList());
-    } else {
-      tasksPutOnHoldList = tasksPutOnHold;
-    }
-
     final ControlMessage.TaskGroupStateChangedMsg.Builder msgBuilder =
         ControlMessage.TaskGroupStateChangedMsg.newBuilder()
           .setExecutorId(executorId)
           .setTaskGroupId(taskGroupId)
           .setAttemptIdx(attemptIdx)
-          .setState(convertState(newState))
-          .addAllTasksPutOnHoldIds(tasksPutOnHoldList.get());
+          .setState(convertState(newState));
+    if (taskPutOnHold.isPresent()) {
+          msgBuilder.setTaskPutOnHoldId(taskPutOnHold.get());
+    }
     if (cause.isPresent()) {
       msgBuilder.setFailureCause(convertFailureCause(cause.get()));
     }
@@ -290,7 +290,7 @@ public final class TaskGroupStateManager {
   private void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {
     final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(compUnitId);
     metricDataBuilder.endMeasurement(finalMetric);
-    //metricMessageSender.send(compUnitId, metricDataBuilder.build().toJson());
+    metricMessageSender.send(compUnitId, metricDataBuilder.build().toJson());
     metricDataBuilderMap.remove(compUnitId);
   }
 

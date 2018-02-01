@@ -15,7 +15,6 @@
  */
 package edu.snu.onyx.runtime.common.plan.physical;
 
-
 import edu.snu.onyx.common.coder.Coder;
 import edu.snu.onyx.common.ir.vertex.IRVertex;
 import edu.snu.onyx.common.ir.executionproperty.ExecutionPropertyMap;
@@ -23,9 +22,8 @@ import edu.snu.onyx.runtime.common.data.KeyRange;
 import edu.snu.onyx.runtime.common.plan.RuntimeEdge;
 import edu.snu.onyx.runtime.common.data.HashRange;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Contains information stage boundary {@link edu.snu.onyx.runtime.common.plan.stage.StageEdge}.
@@ -44,9 +42,9 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
   private final IRVertex dstVertex;
 
   /**
-   * The map between the task group id and key range to read.
+   * The list between the task group idx and key range to read.
    */
-  private final Map<String, KeyRange> taskGroupIdToKeyRangeMap;
+  private List<KeyRange> taskGroupIdxToKeyRange;
 
   /**
    * Constructor.
@@ -71,10 +69,9 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
     // Initialize the key range of each dst task.
-    this.taskGroupIdToKeyRangeMap = new HashMap<>();
-    final List<TaskGroup> taskGroups = dstStage.getTaskGroupList();
-    for (int taskIdx = 0; taskIdx < taskGroups.size(); taskIdx++) {
-      taskGroupIdToKeyRangeMap.put(taskGroups.get(taskIdx).getTaskGroupId(), HashRange.of(taskIdx, taskIdx + 1));
+    this.taskGroupIdxToKeyRange = new ArrayList<>();
+    for (int taskIdx = 0; taskIdx < dstStage.getTaskGroupIds().size(); taskIdx++) {
+      taskGroupIdxToKeyRange.add(HashRange.of(taskIdx, taskIdx + 1));
     }
   }
 
@@ -104,7 +101,18 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     return sb.toString();
   }
 
-  public Map<String, KeyRange> getTaskGroupIdToKeyRangeMap() {
-    return taskGroupIdToKeyRangeMap;
+  /**
+   * @return the list between the task group idx and key range to read.
+   */
+  public List<KeyRange> getTaskGroupIdxToKeyRange() {
+    return taskGroupIdxToKeyRange;
+  }
+
+  /**
+   * Sets the task group idx to key range list.
+   * @param taskGroupIdxToKeyRange the list to set.
+   */
+  public void setTaskGroupIdxToKeyRange(final List<KeyRange> taskGroupIdxToKeyRange) {
+    this.taskGroupIdxToKeyRange = taskGroupIdxToKeyRange;
   }
 }

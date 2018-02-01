@@ -18,22 +18,21 @@ package edu.snu.onyx.runtime.common.eventhandler;
 import edu.snu.onyx.common.Pair;
 import edu.snu.onyx.common.eventhandler.CompilerEvent;
 import edu.snu.onyx.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.onyx.runtime.common.plan.physical.TaskGroup;
 
 /**
  * An event for updating the physical plan in the scheduler.
  */
 public final class UpdatePhysicalPlanEvent implements CompilerEvent {
   private final PhysicalPlan newPhysicalPlan;
-  private final Pair<String, TaskGroup> taskInfo;
+  private final Pair<String, String> taskInfo;
 
   /**
    * Constructor.
    * @param newPhysicalPlan the newly optimized physical plan.
-   * @param taskInfo information of the task at which this optimization occurs: its name and its taskGroup.
+   * @param taskInfo information of the task at which this optimization occurs: its name and its task group ID.
    */
   UpdatePhysicalPlanEvent(final PhysicalPlan newPhysicalPlan,
-                          final Pair<String, TaskGroup> taskInfo) {
+                          final Pair<String, String> taskInfo) {
     this.newPhysicalPlan = newPhysicalPlan;
     this.taskInfo = taskInfo;
   }
@@ -46,9 +45,9 @@ public final class UpdatePhysicalPlanEvent implements CompilerEvent {
   }
 
   /**
-   * @return the information of the task at which this optimization occurs: its name and its taskGroup.
+   * @return the information of the task at which this optimization occurs: its name and its task group ID.
    */
-  public Pair<String, TaskGroup> getTaskInfo() {
+  public Pair<String, String> getTaskInfo() {
     return this.taskInfo;
   }
 }

@@ -63,8 +63,6 @@ public final class Executor {
    */
   private final DataTransferFactory dataTransferFactory;
 
-  private TaskGroupStateManager taskGroupStateManager;
-
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
   private final MetricMessageSender metricMessageSender;
@@ -92,7 +90,7 @@ public final class Executor {
 
   private synchronized void onTaskGroupReceived(final ScheduledTaskGroup scheduledTaskGroup) {
     LOG.debug("Executor [{}] received TaskGroup [{}] to execute.",
-        new Object[]{executorId, scheduledTaskGroup.getTaskGroup().getTaskGroupId()});
+        new Object[]{executorId, scheduledTaskGroup.getTaskGroupId()});
     executorService.execute(() -> launchTaskGroup(scheduledTaskGroup));
   }
 
@@ -102,26 +100,22 @@ public final class Executor {
    */
   private void launchTaskGroup(final ScheduledTaskGroup scheduledTaskGroup) {
     try {
-      taskGroupStateManager =
-          new TaskGroupStateManager(scheduledTaskGroup.getTaskGroup(), scheduledTaskGroup.getAttemptIdx(), executorId,
-              persistentConnectionToMasterMap,
-              metricMessageSender);
+      final DAG<Task, RuntimeEdge<Task>> taskGroupDag =
+          SerializationUtils.deserialize(scheduledTaskGroup.getSerializedTaskGroupDag());
+      final TaskGroupStateManager taskGroupStateManager =
+          new TaskGroupStateManager(scheduledTaskGroup, taskGroupDag, executorId,
+              persistentConnectionToMasterMap, metricMessageSender);
 
       scheduledTaskGroup.getTaskGroupIncomingEdges()
           .forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
       scheduledTaskGroup.getTaskGroupOutgoingEdges()
           .forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
       // TODO #432: remove these coders when we "streamize" task execution within a TaskGroup.
-      final DAG<Task, RuntimeEdge<Task>> taskDag = scheduledTaskGroup.getTaskGroup().getTaskDAG();
-      taskDag.getVertices().forEach(v -> {
-        taskDag.getOutgoingEdgesOf(v).forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
+      taskGroupDag.getVertices().forEach(v -> {
+        taskGroupDag.getOutgoingEdgesOf(v).forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
       });
 
-      new TaskGroupExecutor(scheduledTaskGroup.getTaskGroup(),
-          taskGroupStateManager,
-          scheduledTaskGroup.getTaskGroupIncomingEdges(),
-          scheduledTaskGroup.getTaskGroupOutgoingEdges(),
-          dataTransferFactory).execute();
+      new TaskGroupExecutor(scheduledTaskGroup, taskGroupDag, taskGroupStateManager, dataTransferFactory).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()
@@ -134,8 +128,6 @@ public final class Executor {
                   .build())
               .build());
       throw e;
-    } finally {
-      terminate();
     }
   }
 
