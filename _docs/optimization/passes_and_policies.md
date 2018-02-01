@@ -5,22 +5,22 @@ permalink: /docs/passes_and_policies/
 
 ### Optimization Passes
 
-The [Onyx IR](../ir) can be flexibly modified, both in its logical structure and annotations, through an interface called *Onyx optimization pass*.
-An *optimization pass* is basically a function that takes an *Onyx IR* and outputs an optimized *Onyx IR*.
+The [Coral IR](../ir) can be flexibly modified, both in its logical structure and annotations, through an interface called *Coral optimization pass*.
+An *optimization pass* is basically a function that takes an *Coral IR* and outputs an optimized *Coral IR*.
 
 ##### Compile-time passes
 
 The modification during compile-time can be categorized in different ways:
 
-1. **Reshaping passes** modify the shape of the IR itself by inserting, regrouping, or deleting IR vertices and edges on an Onyx IR, such as collecting repetitive vertices inside a single loop or inserting metric vertices. This modifies the logical notion of data processing applications.
+1. **Reshaping passes** modify the shape of the IR itself by inserting, regrouping, or deleting IR vertices and edges on an Coral IR, such as collecting repetitive vertices inside a single loop or inserting metric vertices. This modifies the logical notion of data processing applications.
 2. **Annotating passes** annotate IR vertices and edges with *execution properties* with the provided logic to adjust and run the workload in the fashion that the user wants.
 3. **Composite passes** are collections of passes that are grouped together for convenience.
 
 ##### Run-time passes
 
-After the compilation and compile-time optimizations, the *Onyx IR* gets laid out as a *physical execution plan* to be submitted to and executed by the *Onyx Execution Runtime*.
+After the compilation and compile-time optimizations, the *Coral IR* gets laid out as a *physical execution plan* to be submitted to and executed by the *Coral Execution Runtime*.
 While execution, an *run-time optimization pass* can be performed to perform dynamic optimizations, like solving data skew, using runtime statistics.
-It takes the old *Onyx IR* and metric data of runtime statistics, and sends the newly optimized Onyx IR to execution runtime for the physical plan to be updated accordingly.
+It takes the old *Coral IR* and metric data of runtime statistics, and sends the newly optimized Coral IR to execution runtime for the physical plan to be updated accordingly.
 
 ### Examples
 
@@ -52,4 +52,4 @@ and data flow model pass, that determines the fashion in which each computation 
 
 Using different optimization policies for specific goals enables users to flexibly customize and perform data processing for different deployment characteristics.
 This greatly simplifies the work by replacing the work of exploring and rewriting system internals for modifying runtime behaviors with a simple process of using pluggable policies.
-It also makes it possible for the system to promptly meet new requirements through [easy extension of system capabilities](../extending_onyx).
+It also makes it possible for the system to promptly meet new requirements through [easy extension of system capabilities](../extending_Coral).
