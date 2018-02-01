@@ -5,13 +5,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <artifactId>onyx-project</artifactId>
-        <groupId>edu.snu.onyx</groupId>
+        <artifactId>coral-project</artifactId>
+        <groupId>edu.snu.coral</groupId>
         <version>0.1-SNAPSHOT</version>
         <relativePath>../../</relativePath>
     </parent>
 
-    <artifactId>onyx-examples-spark</artifactId>
+    <artifactId>coral-examples-spark</artifactId>
 
     <repositories>
         <repository>
@@ -19,12 +19,12 @@
             <url>file://${basedir}/../common/src/main/resources/repository</url>
         </repository>
     </repositories>
-    <name>Onyx Examples: Spark</name>
+    <name>Coral Examples: Spark</name>
 
     <dependencies>
         <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-compiler-frontend-spark</artifactId>
+            <groupId>edu.snu.coral</groupId>
+            <artifactId>coral-compiler-frontend-spark</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

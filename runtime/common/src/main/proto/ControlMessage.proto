@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package protobuf;
 
-option java_package = "edu.snu.onyx.runtime.common.comm";
+option java_package = "edu.snu.coral.runtime.common.comm";
 option java_outer_classname = "ControlMessage";
 
 enum MessageType {

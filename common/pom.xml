@@ -19,14 +19,14 @@ limitations under the License.
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>edu.snu.onyx</groupId>
-        <artifactId>onyx-project</artifactId>
+        <groupId>edu.snu.coral</groupId>
+        <artifactId>coral-project</artifactId>
         <version>0.1-SNAPSHOT</version>
         <relativePath>../</relativePath>
     </parent>
 
-    <artifactId>onyx-common</artifactId>
-    <name>Onyx Common</name>
+    <artifactId>coral-common</artifactId>
+    <name>Coral Common</name>
 
     <repositories>
         <repository>

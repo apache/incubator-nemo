@@ -17,15 +17,15 @@ limitations under the License.
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <groupId>edu.snu.onyx</groupId>
-        <artifactId>onyx-project</artifactId>
+        <groupId>edu.snu.coral</groupId>
+        <artifactId>coral-project</artifactId>
         <version>0.1-SNAPSHOT</version>
         <relativePath>../../</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>onyx-driver</artifactId>
-    <name>Onyx Driver</name>
+    <artifactId>coral-driver</artifactId>
+    <name>Coral Driver</name>
 
     <repositories>
         <repository>
@@ -36,38 +36,38 @@ limitations under the License.
 
     <dependencies>
         <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-common</artifactId>
+            <groupId>edu.snu.coral</groupId>
+            <artifactId>coral-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-compiler-backend</artifactId>
+            <groupId>edu.snu.coral</groupId>
+            <artifactId>coral-compiler-backend</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-compiler-optimizer</artifactId>
+            <groupId>edu.snu.coral</groupId>
+            <artifactId>coral-compiler-optimizer</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-runtime-common</artifactId>
+            <groupId>edu.snu.coral</groupId>
+            <artifactId>coral-runtime-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-runtime-executor</artifactId>
+            <groupId>edu.snu.coral</groupId>
+            <artifactId>coral-runtime-executor</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-runtime-master</artifactId>
+            <groupId>edu.snu.coral</groupId>
+            <artifactId>coral-runtime-master</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-conf</artifactId>
+            <groupId>edu.snu.coral</groupId>
+            <artifactId>coral-conf</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
