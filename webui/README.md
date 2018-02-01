@@ -1,6 +1,6 @@
-# Onyx Web Server
+# Coral Web Server
 
-A stand-alone web server which provides RESTful API for tracking Onyx jobs.
+A stand-alone web server which provides RESTful API for tracking Coral jobs.
 
 ## Prerequisites
 
@@ -31,7 +31,7 @@ brew install sqlite
 ## How to run it
 
 ```
-export FLASK_APP=/path/to/onyx/webui/onyxwebserver/__init__.py
+export FLASK_APP=/path/to/coral/webui/coralwebserver/__init__.py
 flask run
 ```
 The server runs on "localhost:5000".

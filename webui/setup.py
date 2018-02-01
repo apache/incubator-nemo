@@ -17,8 +17,8 @@
 from setuptools import setup
 
 setup(
-    name='onyxwebserver',
-    packages=['onyxwebserver'],
+    name='coralwebserver',
+    packages=['coralwebserver'],
     include_package_data=True,
     install_requires=[
         'flask',
