@@ -1,13 +1,13 @@
 # Site settings
-title: Onyx
-email: onyx@spl.snu.ac.kr
+title: Coral
+email: coral@spl.snu.ac.kr
 description: >
   A Data Processing System for Flexible Employment With Different Deployment Characteristics.
 
-baseurl: "/onyx" # the subpath of your site, e.g. /blog/
-url: https://snuspl.github.io/onyx/ # the base hostname & protocol for your site
-git_address: https://github.com/snuspl/onyx
-git_edit_address: https://github.com/snuspl/onyx
+baseurl: "/coral" # the subpath of your site, e.g. /blog/
+url: https://snuspl.github.io/coral/ # the base hostname & protocol for your site
+git_address: https://github.com/snuspl/coral
+git_edit_address: https://github.com/snuspl/coral
 
 # theme options from https://bootswatch.com/
 # comment out this to use default Bootstrap
