@@ -117,7 +117,8 @@ public final class Executor {
         taskGroupDag.getOutgoingEdgesOf(v).forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
       });
 
-      new TaskGroupExecutor(scheduledTaskGroup, taskGroupDag, taskGroupStateManager, dataTransferFactory).execute();
+      new TaskGroupExecutor(
+          scheduledTaskGroup, taskGroupDag, taskGroupStateManager, dataTransferFactory, metricMessageSender).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()
