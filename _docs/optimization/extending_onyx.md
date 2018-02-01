@@ -1,6 +1,6 @@
 ---
-title: Extending Onyx
-permalink: /docs/extending_onyx/
+title: Extending Coral
+permalink: /docs/extending_coral/
 ---
 
 ### Overview

@@ -1,5 +1,5 @@
 ---
-title: Onyx Intermediate Representation (IR)
+title: Coral Intermediate Representation (IR)
 permalink: /docs/ir/
 ---
 
@@ -12,8 +12,8 @@ On that layer, we can annotate specific execution properties related to the IR c
 
 ### IR structure
 
-Onyx IR is composed of vertices, which each represent a data-parallel operator that transforms data, and edges between them, which each represents the dependency of data flow between the vertices.
-Onyx IR supports four different types of IR vertices:
+Coral IR is composed of vertices, which each represent a data-parallel operator that transforms data, and edges between them, which each represents the dependency of data flow between the vertices.
+Coral IR supports four different types of IR vertices:
 
 - **UDF Vertex**: Most commonly used vertex. Each UDF vertex contains a transform which determines the actions to take for the given input data. A transform can express any kind of data processing operation that high-level languages articulate.
 - **Source Vertex**: This produces data by reading from an arbitrary source like disks and distributed filesystems.
