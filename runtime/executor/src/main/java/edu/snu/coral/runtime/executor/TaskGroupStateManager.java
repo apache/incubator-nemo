@@ -50,7 +50,6 @@ public final class TaskGroupStateManager {
   private final String executorId;
   private final MetricMessageSender metricMessageSender;
   private final Map<String, MetricDataBuilder> metricDataBuilderMap;
-  private final Map<String, Long> taskGroupIdToStarttimeMap;
 
   /**
    * Used to track all task states of this task group, by keeping a map of logical task ids to their states.

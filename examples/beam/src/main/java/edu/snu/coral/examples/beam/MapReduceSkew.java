@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.onyx.examples.beam;
+package edu.snu.coral.examples.beam;
 
-import edu.snu.onyx.compiler.frontend.beam.OnyxPipelineOptions;
-import edu.snu.onyx.compiler.frontend.beam.OnyxPipelineRunner;
+import edu.snu.coral.compiler.frontend.beam.CoralPipelineOptions;
+import edu.snu.coral.compiler.frontend.beam.CoralPipelineRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -50,8 +50,8 @@ public final class MapReduceSkew {
   public static void main(final String[] args) {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];
-    final PipelineOptions options = PipelineOptionsFactory.create().as(OnyxPipelineOptions.class);
-    options.setRunner(OnyxPipelineRunner.class);
+    final PipelineOptions options = PipelineOptionsFactory.create().as(CoralPipelineOptions.class);
+    options.setRunner(CoralPipelineRunner.class);
     options.setJobName("MapReduceSkew");
 
     final Pipeline p = Pipeline.create(options);
@@ -63,7 +63,8 @@ public final class MapReduceSkew {
           @Override
           public KV<String, Integer> apply(final String line) {
             final String[] words = line.split(" +");
-            String key = String.join("", Collections.nCopies(10, words[1]));
+            //String key = String.join("", Collections.nCopies(10, words[1]));
+            String key = parseIPtoNetwork(words[1]);
             Integer value = 1;
             return KV.of(key, value);
           }
@@ -73,7 +74,7 @@ public final class MapReduceSkew {
         .apply(MapElements.<KV<String, Integer>, String>via(new SimpleFunction<KV<String, Integer>, String>() {
           @Override
           public String apply(final KV<String, Integer> kv) {
-            //LOG.info("Map#2 : key {} value {}", kv.getKey(), kv.getValue());
+            LOG.info("Map : key {} value {}", kv.getKey(), kv.getValue());
             return kv.getKey() + "- " + kv.getValue();
           }
         }));
@@ -123,17 +124,18 @@ public final class MapReduceSkew {
    * @param ip IP address of a packet.
    */
   private static String parseIPtoNetwork(final String ip) {
-    String network = "";
+    String network;
     String[] ipparts = ip.split("\\.");
     if (ipparts.length == 1) {
       String[] ipv6 = ip.split(":");
       if (ipv6.length == 1) {
-        network = String.join("", Collections.nCopies(20, "192.168"));
+        network = String.join("", Collections.nCopies(15, "192.168.01"));
       } else {
-        network = String.join("", Collections.nCopies(20, ipv6[0] + ":" + ipv6[1]));
+        network = String.join("", Collections.nCopies(15, ipv6[0] + ":" + ipv6[1] + ":" + ipv6[2]));
       }
     } else {
-      network = String.join("", Collections.nCopies(20, ipparts[0] + "." + ipparts[1]));
+      network = String.join("",
+          Collections.nCopies(15, ipparts[0] + "." + ipparts[1] + "." + ipparts[2]));
     }
     return network;
   }

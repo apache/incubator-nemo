@@ -17,9 +17,6 @@ package edu.snu.coral.common.dag;
 
 import java.io.Serializable;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Connects two vertices of a DAG.
  * This class can be extended for various DAG representations.
