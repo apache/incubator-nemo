@@ -50,7 +50,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
   }
 
   @Override
-  public ReadablesWrapper<O> getReadableWrapper(final int desiredNumOfSplits) throws Exception {
+  public ReadablesWrapper<O> getReadables(final int desiredNumOfSplits) throws Exception {
     return new BoundedSourceReadablesWrapper(desiredNumOfSplits);
   }
 

@@ -47,7 +47,7 @@ public final class SparkBoundedSourceVertex<T> extends SourceVertex<T> {
   }
 
   @Override
-  public ReadablesWrapper<T> getReadableWrapper(final int desiredNumOfSplits) {
+  public ReadablesWrapper<T> getReadables(final int desiredNumOfSplits) {
     return readablesWrapper;
   }
 

@@ -94,7 +94,7 @@ public class EmptyComponents {
     }
 
     @Override
-    public ReadablesWrapper<T> getReadableWrapper(final int desirednumOfSplits) {
+    public ReadablesWrapper<T> getReadables(final int desirednumOfSplits) {
       return new EmptyReadablesWrapper<>();
     }
 

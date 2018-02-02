@@ -45,7 +45,7 @@ public final class InitializedSourceVertex<T> extends SourceVertex<T> {
   }
 
   @Override
-  public ReadablesWrapper<T> getReadableWrapper(final int desiredNumOfSplits) throws Exception {
+  public ReadablesWrapper<T> getReadables(final int desiredNumOfSplits) throws Exception {
     return new InitializedSourceReadablesWrapper(desiredNumOfSplits);
   }
 
