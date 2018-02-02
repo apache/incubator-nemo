@@ -143,7 +143,7 @@ public final class TaskGroupExecutorTest {
 
     // Execute the task group.
     final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
-        scheduledTaskGroup, taskDag, taskGroupStateManager, dataTransferFactory, null);
+        scheduledTaskGroup, taskDag, taskGroupStateManager, dataTransferFactory);
     taskGroupExecutor.execute();
 
     // Check the output.
@@ -201,7 +201,7 @@ public final class TaskGroupExecutorTest {
 
     // Execute the task group.
     final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
-        scheduledTaskGroup, taskDag, taskGroupStateManager, dataTransferFactory, null);
+        scheduledTaskGroup, taskDag, taskGroupStateManager, dataTransferFactory);
     taskGroupExecutor.execute();
 
     // Check the output.

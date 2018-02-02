@@ -118,7 +118,7 @@ public final class Executor {
       });
 
       new TaskGroupExecutor(
-          scheduledTaskGroup, taskGroupDag, taskGroupStateManager, dataTransferFactory, metricMessageSender).execute();
+          scheduledTaskGroup, taskGroupDag, taskGroupStateManager, dataTransferFactory).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()

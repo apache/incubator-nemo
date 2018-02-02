@@ -18,6 +18,7 @@ package edu.snu.coral.runtime.master.scheduler;
 import edu.snu.coral.common.Pair;
 import edu.snu.coral.common.dag.DAG;
 import edu.snu.coral.common.eventhandler.PubSubEventHandlerWrapper;
+import edu.snu.coral.common.ir.vertex.transform.RelayTransform;
 import edu.snu.coral.runtime.common.RuntimeIdGenerator;
 import edu.snu.coral.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.coral.runtime.common.plan.RuntimeEdge;

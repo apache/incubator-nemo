@@ -24,7 +24,6 @@ import edu.snu.coral.common.ir.Readable;
 import edu.snu.coral.common.ir.vertex.transform.Transform;
 import edu.snu.coral.common.ir.vertex.OperatorVertex;
 import edu.snu.coral.runtime.common.RuntimeIdGenerator;
-import edu.snu.coral.runtime.common.metric.MetricDataBuilder;
 import edu.snu.coral.runtime.common.plan.RuntimeEdge;
 import edu.snu.coral.runtime.common.plan.physical.*;
 import edu.snu.coral.runtime.common.state.TaskGroupState;
@@ -59,10 +58,10 @@ public final class TaskGroupExecutor {
   private final List<PhysicalStageEdge> stageIncomingEdges;
   private final List<PhysicalStageEdge> stageOutgoingEdges;
   private final DataTransferFactory channelFactory;
-  private final MetricMessageSender metricMessageSender;
-  private final Map<String, Object> metric;
-  private final MetricDataBuilder metricDataBuilder;
-  private final String compUnitId;
+  //private final MetricMessageSender metricMessageSender;
+  //private final Map<String, Object> metric;
+  //private final MetricDataBuilder metricDataBuilder;
+  //private final String compUnitId;
 
   /**
    * Map of task IDs in this task group to their readers/writers.
@@ -75,8 +74,8 @@ public final class TaskGroupExecutor {
   public TaskGroupExecutor(final ScheduledTaskGroup scheduledTaskGroup,
                            final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
                            final TaskGroupStateManager taskGroupStateManager,
-                           final DataTransferFactory channelFactory,
-                           final MetricMessageSender metricMessageSender) {
+                           final DataTransferFactory channelFactory) {
+//                           final MetricMessageSender metricMessageSender) {
     this.taskGroupDag = taskGroupDag;
     this.taskGroupId = scheduledTaskGroup.getTaskGroupId();
     this.taskGroupIdx = scheduledTaskGroup.getTaskGroupIdx();
@@ -84,11 +83,11 @@ public final class TaskGroupExecutor {
     this.stageIncomingEdges = scheduledTaskGroup.getTaskGroupIncomingEdges();
     this.stageOutgoingEdges = scheduledTaskGroup.getTaskGroupOutgoingEdges();
     this.channelFactory = channelFactory;
-    this.metricMessageSender = metricMessageSender;
+    //this.metricMessageSender = metricMessageSender;
 
-    this.compUnitId = taskGroupId + "_detail";
-    this.metric = new HashMap<>();
-    this.metricDataBuilder = new MetricDataBuilder(compUnitId);
+    //this.compUnitId = taskGroupId + "_detail";
+    //this.metric = new HashMap<>();
+    //this.metricDataBuilder = new MetricDataBuilder(compUnitId);
 
     this.physicalTaskIdToInputReaderMap = new HashMap<>();
     this.physicalTaskIdToOutputWriterMap = new HashMap<>();
@@ -169,7 +168,7 @@ public final class TaskGroupExecutor {
    */
   public void execute() {
     LOG.info("{} Execution Started!", taskGroupId);
-    metricDataBuilder.beginMeasurement(metric);
+    //metricDataBuilder.beginMeasurement(metric);
     if (isExecutionRequested) {
       throw new RuntimeException("TaskGroup {" + taskGroupId + "} execution called again!");
     } else {
@@ -179,24 +178,24 @@ public final class TaskGroupExecutor {
     taskGroupStateManager.onTaskGroupStateChanged(
         TaskGroupState.State.EXECUTING, Optional.empty(), Optional.empty());
 
-    int taskIdx = 0;
+    //int taskIdx = 0;
     for (final Task task : taskGroupDag.getTopologicalSort()) {
       final String physicalTaskId = getPhysicalTaskId(task.getId());
       taskGroupStateManager.onTaskStateChanged(physicalTaskId, TaskState.State.EXECUTING, Optional.empty());
       try {
         if (task instanceof BoundedSourceTask) {
-          final long startTime = System.currentTimeMillis();
+          //final long startTime = System.currentTimeMillis();
           launchBoundedSourceTask((BoundedSourceTask) task, taskGroupIdx);
           taskGroupStateManager.onTaskStateChanged(physicalTaskId, TaskState.State.COMPLETE, Optional.empty());
-          final long endTime = System.currentTimeMillis();
-          metric.put("BoundedSourceTask(ms)" + taskIdx++, endTime - startTime);
+          //final long endTime = System.currentTimeMillis();
+          //metric.put("BoundedSourceTask(ms)" + taskIdx++, endTime - startTime);
           LOG.info("{} Execution Complete!", taskGroupId);
         } else if (task instanceof OperatorTask) {
-          final long startTime = System.currentTimeMillis();
+          //final long startTime = System.currentTimeMillis();
           launchOperatorTask((OperatorTask) task);
           taskGroupStateManager.onTaskStateChanged(physicalTaskId, TaskState.State.COMPLETE, Optional.empty());
-          final long endTime = System.currentTimeMillis();
-          metric.put("OperatorTask(ms)" + taskIdx++, endTime - startTime);
+          //final long endTime = System.currentTimeMillis();
+          //metric.put("OperatorTask(ms)" + taskIdx++, endTime - startTime);
           LOG.info("{} Execution Complete!", taskGroupId);
         } else if (task instanceof MetricCollectionBarrierTask) {
           launchMetricCollectionBarrierTask((MetricCollectionBarrierTask) task);
@@ -221,8 +220,8 @@ public final class TaskGroupExecutor {
         throw new RuntimeException(e);
       }
     }
-    metricDataBuilder.endMeasurement(metric);
-    metricMessageSender.send(compUnitId, metricDataBuilder.build().toJson());
+    //metricDataBuilder.endMeasurement(metric);
+    //metricMessageSender.send(compUnitId, metricDataBuilder.build().toJson());
   }
 
   /**
@@ -233,10 +232,10 @@ public final class TaskGroupExecutor {
    */
   private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask,
                                        final int boundedSourceIdx) throws Exception {
-    final long startTime = System.currentTimeMillis();
+    //final long startTime = System.currentTimeMillis();
     final Readable readable = boundedSourceTask.getReadable(boundedSourceIdx);
-    final long endTime = System.currentTimeMillis();
-    metric.put("GetReadable(ms)", endTime - startTime);
+    //final long endTime = System.currentTimeMillis();
+    //metric.put("GetReadable(ms)", endTime - startTime);
 
     final Iterable readData = readable.read();
 
