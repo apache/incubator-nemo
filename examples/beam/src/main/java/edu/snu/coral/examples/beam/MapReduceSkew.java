@@ -74,7 +74,7 @@ public final class MapReduceSkew {
         .apply(MapElements.<KV<String, Integer>, String>via(new SimpleFunction<KV<String, Integer>, String>() {
           @Override
           public String apply(final KV<String, Integer> kv) {
-            LOG.info("Map : key {} value {}", kv.getKey(), kv.getValue());
+            //LOG.info("Map : key {} value {}", kv.getKey(), kv.getValue());
             return kv.getKey() + "- " + kv.getValue();
           }
         }));
