@@ -2,7 +2,6 @@ package edu.snu.coral.compiler.frontend.spark.source;
 
 import com.google.common.collect.Lists;
 import edu.snu.coral.common.ir.Readable;
-import edu.snu.coral.common.ir.ReadablesWrapper;
 import edu.snu.coral.common.ir.vertex.SourceVertex;
 import edu.snu.coral.compiler.frontend.spark.sql.Dataset;
 import org.apache.spark.Partition;
@@ -20,58 +19,41 @@ import java.util.List;
  * @param <T> type of data to read.
  */
 public final class SparkBoundedSourceVertex<T> extends SourceVertex<T> {
-  private final ReadablesWrapper<T> readablesWrapper;
+  private final List<Readable<T>> readables;
 
   /**
    * Constructor.
    * Note that we have to first create our iterators here and supply them to our readables.
+   * TODO #756: make this bit distributed.
+   *
    * @param dataset Dataset to read data from.
    */
   public SparkBoundedSourceVertex(final Dataset<T> dataset) {
-    this.readablesWrapper = new SparkBoundedSourceReadablesWrapper(dataset);
+    this.readables = new ArrayList<>();
+    for (final Partition partition: dataset.rdd().getPartitions()) {
+      readables.add(new SparkBoundedSourceReadable(partition, dataset.rdd()));
+    }
   }
 
   /**
    * Constructor.
-   * @param readablesWrapper readables wrapper.
+   *
+   * @param readables the list of Readables to set.
    */
-  public SparkBoundedSourceVertex(final ReadablesWrapper<T> readablesWrapper) {
-    this.readablesWrapper = readablesWrapper;
+  public SparkBoundedSourceVertex(final List<Readable<T>> readables) {
+    this.readables = readables;
   }
 
   @Override
   public SparkBoundedSourceVertex getClone() {
-    final SparkBoundedSourceVertex<T> that = new SparkBoundedSourceVertex<>((this.readablesWrapper));
+    final SparkBoundedSourceVertex<T> that = new SparkBoundedSourceVertex<>((this.readables));
     this.copyExecutionPropertiesTo(that);
     return that;
   }
 
   @Override
-  public ReadablesWrapper<T> getReadables(final int desiredNumOfSplits) {
-    return readablesWrapper;
-  }
-
-  /**
-   * A ReadablesWrapper for SparkBoundedSourceVertex.
-   */
-  private final class SparkBoundedSourceReadablesWrapper implements ReadablesWrapper<T> {
-    private final List<Readable<T>> readables;
-
-    /**
-     * Constructor.
-     * @param dataset dataset to read data from.
-     */
-    private SparkBoundedSourceReadablesWrapper(final Dataset<T> dataset) {
-      this.readables = new ArrayList<>();
-      for (final Partition partition: dataset.rdd().getPartitions()) {
-        readables.add(new SparkBoundedSourceReadable(partition, dataset.rdd()));
-      }
-    }
-
-    @Override
-    public List<Readable<T>> getReadables() {
-      return readables;
-    }
+  public List<Readable<T>> getReadables(final int desiredNumOfSplits) {
+    return readables;
   }
 
   /**

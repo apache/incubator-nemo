@@ -16,7 +16,6 @@
 package edu.snu.coral.common.ir.vertex;
 
 import edu.snu.coral.common.ir.Readable;
-import edu.snu.coral.common.ir.ReadablesWrapper;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -45,45 +44,26 @@ public final class InitializedSourceVertex<T> extends SourceVertex<T> {
   }
 
   @Override
-  public ReadablesWrapper<T> getReadables(final int desiredNumOfSplits) throws Exception {
-    return new InitializedSourceReadablesWrapper(desiredNumOfSplits);
-  }
+  public List<Readable<T>> getReadables(final int desiredNumOfSplits) throws Exception {
 
-  /**
-   * A ReadablesWrapper for InitializedSourceVertex.
-   */
-  private final class InitializedSourceReadablesWrapper implements ReadablesWrapper<T> {
-    final int desiredNumOfSplits;
+    final List<Readable<T>> readables = new ArrayList<>();
+    final long sliceSize = initializedSourceData.spliterator().getExactSizeIfKnown() / desiredNumOfSplits;
+    final Iterator<T> iterator = initializedSourceData.iterator();
 
-    /**
-     * Constructor of the InitializedSourceReadablesWrapper.
-     * @param desiredNumOfSplits the number of splits desired.
-     */
-    private InitializedSourceReadablesWrapper(final int desiredNumOfSplits) {
-      this.desiredNumOfSplits = desiredNumOfSplits;
-    }
+    for (int i = 0; i < desiredNumOfSplits; i++) {
+      final List<T> dataForReader = new ArrayList<>();
 
-    @Override
-    public List<Readable<T>> getReadables() throws Exception {
-      final List<Readable<T>> readables = new ArrayList<>();
-      final long sliceSize = initializedSourceData.spliterator().getExactSizeIfKnown() / desiredNumOfSplits;
-      final Iterator<T> iterator = initializedSourceData.iterator();
-
-      for (int i = 0; i < desiredNumOfSplits; i++) {
-        final List<T> dataForReader = new ArrayList<>();
-
-        if (i == desiredNumOfSplits - 1) { // final iteration
-          iterator.forEachRemaining(dataForReader::add);
-        } else {
-          for (int j = 0; j < sliceSize && iterator.hasNext(); j++) {
-            dataForReader.add(iterator.next());
-          }
+      if (i == desiredNumOfSplits - 1) { // final iteration
+        iterator.forEachRemaining(dataForReader::add);
+      } else {
+        for (int j = 0; j < sliceSize && iterator.hasNext(); j++) {
+          dataForReader.add(iterator.next());
         }
-
-        readables.add(new InitializedSourceReadable<>(dataForReader));
       }
-      return readables;
+
+      readables.add(new InitializedSourceReadable<>(dataForReader));
     }
+    return readables;
   }
 
   /**

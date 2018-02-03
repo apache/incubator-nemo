@@ -16,7 +16,6 @@
 package edu.snu.coral.runtime.common.plan.physical;
 
 import edu.snu.coral.common.ir.Readable;
-import edu.snu.coral.common.ir.ReadablesWrapper;
 import edu.snu.coral.common.ir.vertex.*;
 import edu.snu.coral.conf.JobConf;
 import edu.snu.coral.common.dag.DAG;

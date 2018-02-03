@@ -20,7 +20,6 @@ import edu.snu.coral.common.dag.DAG;
 import edu.snu.coral.common.dag.DAGBuilder;
 import edu.snu.coral.common.ir.OutputCollector;
 import edu.snu.coral.common.ir.Readable;
-import edu.snu.coral.common.ir.ReadablesWrapper;
 import edu.snu.coral.common.ir.vertex.transform.Transform;
 import edu.snu.coral.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.coral.common.ir.executionproperty.ExecutionPropertyMap;
