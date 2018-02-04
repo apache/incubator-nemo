@@ -17,7 +17,6 @@ package edu.snu.coral.compiler.optimizer.examples;
 
 import edu.snu.coral.common.ir.OutputCollector;
 import edu.snu.coral.common.ir.Readable;
-import edu.snu.coral.common.ir.ReadablesWrapper;
 import edu.snu.coral.common.ir.vertex.SourceVertex;
 import edu.snu.coral.common.ir.vertex.transform.Transform;
 
@@ -94,24 +93,13 @@ public class EmptyComponents {
     }
 
     @Override
-    public ReadablesWrapper<T> getReadableWrapper(final int desirednumOfSplits) {
-      return new EmptyReadablesWrapper<>();
+    public List<Readable<T>> getReadables(final int desirednumOfSplits) {
+      return Arrays.asList(new EmptyReadable<>());
     }
 
     @Override
     public EmptySourceVertex<T> getClone() {
       return new EmptySourceVertex<>(this.name);
-    }
-  }
-
-  /**
-   * An empty ReadablesWrapper.
-   * @param <T> type of the data.
-   */
-  static final class EmptyReadablesWrapper<T> implements ReadablesWrapper<T> {
-    @Override
-    public List<Readable<T>> getReadables() {
-      return Arrays.asList(new EmptyReadable<>());
     }
   }
 

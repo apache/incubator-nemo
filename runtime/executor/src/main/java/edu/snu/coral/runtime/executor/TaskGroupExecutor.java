@@ -94,7 +94,20 @@ public final class TaskGroupExecutor {
 
     this.isExecutionRequested = false;
 
+    initializeDataRead(scheduledTaskGroup.getLogicalTaskIdToReadable());
     initializeDataTransfer();
+  }
+
+  /**
+   * Initializes data read of {@link edu.snu.coral.common.ir.vertex.SourceVertex}.
+   *
+   * @param logicalTaskIdToReadable the map between logical task id to {@link Readable}.
+   */
+  private void initializeDataRead(final Map<String, Readable> logicalTaskIdToReadable) {
+    taskGroupDag.getTopologicalSort().stream()
+        .filter(task -> task instanceof BoundedSourceTask)
+        .forEach(boundedSourceTask -> ((BoundedSourceTask) boundedSourceTask).setReadable(
+            logicalTaskIdToReadable.get(boundedSourceTask.getId())));
   }
 
   /**
@@ -185,7 +198,7 @@ public final class TaskGroupExecutor {
       try {
         if (task instanceof BoundedSourceTask) {
           //final long startTime = System.currentTimeMillis();
-          launchBoundedSourceTask((BoundedSourceTask) task, taskGroupIdx);
+          launchBoundedSourceTask((BoundedSourceTask) task);
           taskGroupStateManager.onTaskStateChanged(physicalTaskId, TaskState.State.COMPLETE, Optional.empty());
           //final long endTime = System.currentTimeMillis();
           //metric.put("BoundedSourceTask(ms)" + taskIdx++, endTime - startTime);
@@ -226,14 +239,13 @@ public final class TaskGroupExecutor {
 
   /**
    * Processes a BoundedSourceTask.
+   *
    * @param boundedSourceTask the bounded source task to execute
-   * @param boundedSourceIdx  the idx of the bounded source to execute.
    * @throws Exception occurred during input read.
    */
-  private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask,
-                                       final int boundedSourceIdx) throws Exception {
+  private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask) throws Exception {
     //final long startTime = System.currentTimeMillis();
-    final Readable readable = boundedSourceTask.getReadable(boundedSourceIdx);
+    final Readable readable = boundedSourceTask.getReadable();
     //final long endTime = System.currentTimeMillis();
     //metric.put("GetReadable(ms)", endTime - startTime);
 

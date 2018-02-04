@@ -19,6 +19,7 @@ import edu.snu.coral.common.Pair;
 import edu.snu.coral.common.dag.DAG;
 import edu.snu.coral.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.coral.common.ir.vertex.transform.RelayTransform;
+import edu.snu.coral.common.ir.Readable;
 import edu.snu.coral.runtime.common.RuntimeIdGenerator;
 import edu.snu.coral.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.coral.runtime.common.plan.RuntimeEdge;
@@ -492,12 +493,16 @@ public final class BatchSingleJobScheduler implements Scheduler {
     final boolean isSmall = stageToSchedule.getTaskGroupDag().getTopologicalSort().stream()
         .filter(task -> task instanceof OperatorTask)
         .anyMatch(opTask -> ((OperatorTask) opTask).getTransform() instanceof RelayTransform);
+    // each readable and source task will be bounded in executor.
+    final List<Map<String, Readable>> logicalTaskIdToReadables = stageToSchedule.getLogicalTaskIdToReadables();
+
     taskGroupIdsToSchedule.forEach(taskGroupId -> {
       blockManagerMaster.onProducerTaskGroupScheduled(taskGroupId);
+      final int taskGroupIdx = RuntimeIdGenerator.getIndexFromTaskGroupId(taskGroupId);
       LOG.debug("Enquing {}", taskGroupId);
-      pendingTaskGroupQueue.enqueue(
-          new ScheduledTaskGroup(physicalPlan.getId(), stageToSchedule.getSerializedTaskGroupDag(), taskGroupId,
-              stageIncomingEdges, stageOutgoingEdges, attemptIdx, stageToSchedule.getContainerType(), isSmall));
+      pendingTaskGroupQueue.enqueue(new ScheduledTaskGroup(physicalPlan.getId(),
+          stageToSchedule.getSerializedTaskGroupDag(), taskGroupId, stageIncomingEdges, stageOutgoingEdges, attemptIdx,
+          stageToSchedule.getContainerType(), logicalTaskIdToReadables.get(taskGroupIdx), isSmall));
     });
   }
 

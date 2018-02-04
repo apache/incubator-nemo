@@ -20,7 +20,6 @@ import edu.snu.coral.common.ir.Readable;
 import java.util.ArrayList;
 import java.util.List;
 
-import edu.snu.coral.common.ir.ReadablesWrapper;
 import edu.snu.coral.common.ir.vertex.SourceVertex;
 import org.apache.beam.sdk.io.BoundedSource;
 import org.slf4j.Logger;
@@ -50,8 +49,13 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
   }
 
   @Override
-  public ReadablesWrapper<O> getReadableWrapper(final int desiredNumOfSplits) throws Exception {
-    return new BoundedSourceReadablesWrapper(desiredNumOfSplits);
+  public List<Readable<O>> getReadables(final int desiredNumOfSplits) throws Exception {
+    final List<Readable<O>> readables = new ArrayList<>();
+    LOG.info("estimate: {}", source.getEstimatedSizeBytes(null));
+    LOG.info("desired: {}", desiredNumOfSplits);
+    source.split(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null)
+        .forEach(boundedSource -> readables.add(new BoundedSourceReadable<>(boundedSource)));
+    return readables;
   }
 
   @Override
@@ -63,31 +67,6 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
     sb.append(source);
     sb.append("\"}");
     return sb.toString();
-  }
-
-  /**
-   * A ReadablesWrapper for BoundedSourceVertex.
-   */
-  private final class BoundedSourceReadablesWrapper implements ReadablesWrapper<O> {
-    final int desiredNumOfSplits;
-
-    /**
-     * Constructor of the BoundedSourceReadablesWrapper.
-     * @param desiredNumOfSplits the number of splits desired.
-     */
-    private BoundedSourceReadablesWrapper(final int desiredNumOfSplits) {
-      this.desiredNumOfSplits = desiredNumOfSplits;
-    }
-
-    @Override
-    public List<Readable<O>> getReadables() throws Exception {
-      final List<Readable<O>> readables = new ArrayList<>();
-      LOG.info("estimate: {}", source.getEstimatedSizeBytes(null));
-      LOG.info("desired: {}", desiredNumOfSplits);
-      source.split(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null)
-          .forEach(boundedSource -> readables.add(new BoundedSourceReadable<>(boundedSource)));
-      return readables;
-    }
   }
 
   /**

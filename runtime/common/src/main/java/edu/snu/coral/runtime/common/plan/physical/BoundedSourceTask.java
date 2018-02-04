@@ -16,34 +16,37 @@
 package edu.snu.coral.runtime.common.plan.physical;
 
 import edu.snu.coral.common.ir.Readable;
-import edu.snu.coral.common.ir.ReadablesWrapper;
 
 /**
  * BoundedSourceTask.
  * @param <O> the output type.
  */
 public final class BoundedSourceTask<O> extends Task {
-  private final ReadablesWrapper<O> readableWrapper;
+  private Readable<O> readable;
 
   /**
    * Constructor.
    * @param taskId id of the task.
    * @param irVertexId id of the IR vertex.
-   * @param readablesWrapper the wrapper of the readables for the source data.
    */
   public BoundedSourceTask(final String taskId,
-                           final String irVertexId,
-                           final ReadablesWrapper<O> readablesWrapper) {
+                           final String irVertexId) {
     super(taskId, irVertexId);
-    this.readableWrapper = readablesWrapper;
   }
 
   /**
-   * @param readableIdx the index of the target readable.
+   * Sets the readable for this task.
+   * @param readableToSet the readable to set.
+   */
+  public void setReadable(final Readable<O> readableToSet) {
+    this.readable = readableToSet;
+  }
+
+  /**
    * @return the readable of source data.
    * @throws Exception if fail to get.
    */
-  public Readable<O> getReadable(final int readableIdx) throws Exception {
-    return readableWrapper.getReadables().get(readableIdx);
+  public Readable<O> getReadable() throws Exception {
+    return readable;
   }
 }

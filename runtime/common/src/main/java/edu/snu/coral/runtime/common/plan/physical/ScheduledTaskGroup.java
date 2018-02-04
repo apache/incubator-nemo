@@ -15,10 +15,12 @@
  */
 package edu.snu.coral.runtime.common.plan.physical;
 
+import edu.snu.coral.common.ir.Readable;
 import edu.snu.coral.runtime.common.RuntimeIdGenerator;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A ScheduledTaskGroup is a grouping of {@link Task} that belong to a stage.
@@ -40,18 +42,20 @@ public final class ScheduledTaskGroup implements Serializable {
   private final String containerType;
   private final byte[] serializedTaskGroupDag;
   private final boolean isSmall;
+  private final Map<String, Readable> logicalTaskIdToReadable;
 
   /**
    * Constructor.
    *
-   * @param jobId                  the id of the job.
-   * @param serializedTaskGroupDag the serialized DAG of the task group.
-   * @param taskGroupId            the ID of the scheduled task group.
-   * @param taskGroupIncomingEdges the incoming edges of the task group.
-   * @param taskGroupOutgoingEdges the outgoing edges of the task group.
-   * @param attemptIdx             the attempt index.
-   * @param containerType          the type of container to execute the task group on.
-   * @param isSmall                whether this task group is small or not (scheduler hack for sailfish exp).
+   * @param jobId                   the id of the job.
+   * @param serializedTaskGroupDag  the serialized DAG of the task group.
+   * @param taskGroupId             the ID of the scheduled task group.
+   * @param taskGroupIncomingEdges  the incoming edges of the task group.
+   * @param taskGroupOutgoingEdges  the outgoing edges of the task group.
+   * @param attemptIdx              the attempt index.
+   * @param containerType           the type of container to execute the task group on.
+   * @param logicalTaskIdToReadable the map between logical task ID and readable.
+   * @param isSmall                 whether this task group is small or not (scheduler hack for sailfish exp).
    */
   public ScheduledTaskGroup(final String jobId,
                             final byte[] serializedTaskGroupDag,
@@ -60,6 +64,7 @@ public final class ScheduledTaskGroup implements Serializable {
                             final List<PhysicalStageEdge> taskGroupOutgoingEdges,
                             final int attemptIdx,
                             final String containerType,
+                            final Map<String, Readable> logicalTaskIdToReadable,
                             final boolean isSmall) {
     this.jobId = jobId;
     this.taskGroupId = taskGroupId;
@@ -70,6 +75,7 @@ public final class ScheduledTaskGroup implements Serializable {
     this.containerType = containerType;
     this.serializedTaskGroupDag = serializedTaskGroupDag;
     this.isSmall = isSmall;
+    this.logicalTaskIdToReadable = logicalTaskIdToReadable;
   }
 
   /**
@@ -130,5 +136,12 @@ public final class ScheduledTaskGroup implements Serializable {
 
   public boolean isSmall() {
     return isSmall;
+  }
+
+  /**
+   * @return the map between logical task ID and readable.
+   */
+  public Map<String, Readable> getLogicalTaskIdToReadable() {
+    return logicalTaskIdToReadable;
   }
 }

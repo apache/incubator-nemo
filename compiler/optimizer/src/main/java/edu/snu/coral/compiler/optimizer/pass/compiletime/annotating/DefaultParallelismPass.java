@@ -72,7 +72,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
           // We manipulate them if it is set as default value of 1.
           if (originalParallelism.equals(1)) {
             vertex.setProperty(ParallelismProperty.of(
-                sourceVertex.getReadableWrapper(desiredSourceParallelism).getReadables().size()));
+                sourceVertex.getReadables(desiredSourceParallelism).size()));
           }
         } else if (!inEdges.isEmpty()) {
           // No reason to propagate via Broadcast edges, as the data streams that will use the broadcasted data

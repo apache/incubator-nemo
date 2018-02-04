@@ -379,9 +379,9 @@ public final class SingleTaskGroupQueueTest {
    */
   private void scheduleStage(final PhysicalStage stage) {
     stage.getTaskGroupIds().forEach(taskGroupId ->
-        pendingTaskGroupPriorityQueue.enqueue(
-            new ScheduledTaskGroup("TestPlan", stage.getSerializedTaskGroupDag(), taskGroupId,
-                Collections.emptyList(), Collections.emptyList(), 0, stage.getContainerType(), false)));
+        pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(
+            "TestPlan", stage.getSerializedTaskGroupDag(), taskGroupId, Collections.emptyList(),
+            Collections.emptyList(), 0, stage.getContainerType(), Collections.emptyMap(), false)));
   }
 
   /**

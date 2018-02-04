@@ -15,7 +15,7 @@
  */
 package edu.snu.coral.runtime.common.plan.physical;
 
-import edu.snu.coral.common.ir.ReadablesWrapper;
+import edu.snu.coral.common.ir.Readable;
 import edu.snu.coral.common.ir.vertex.*;
 import edu.snu.coral.conf.JobConf;
 import edu.snu.coral.common.dag.DAG;
@@ -194,8 +194,13 @@ public final class PhysicalPlanGenerator
       final int stageParallelism = firstVertexProperties.get(ExecutionProperty.Key.Parallelism);
       final String containerType = firstVertexProperties.get(ExecutionProperty.Key.ExecutorPlacement);
 
-      // only one task group will be created and reused.
+      // Only one task group DAG will be created and reused.
       final DAGBuilder<Task, RuntimeEdge<Task>> stageInternalDAGBuilder = new DAGBuilder<>();
+      // Collect split source readables in advance and bind to each scheduled task group to avoid extra source split.
+      final List<Map<String, Readable>> logicalTaskIdToReadables = new ArrayList<>(stageParallelism);
+      for (int i = 0; i < stageParallelism; i++) {
+        logicalTaskIdToReadables.add(new HashMap<>());
+      }
 
       // Iterate over the vertices contained in this stage to convert to tasks.
       stageVertices.forEach(irVertex -> {
@@ -204,10 +209,13 @@ public final class PhysicalPlanGenerator
           final SourceVertex sourceVertex = (SourceVertex) irVertex;
 
           try {
-            final ReadablesWrapper readables = sourceVertex.getReadableWrapper(stageParallelism);
-            final String sourceVertexId = sourceVertex.getId();
-            newTaskToAdd = new BoundedSourceTask<>(RuntimeIdGenerator.generateLogicalTaskId(sourceVertexId),
-                sourceVertexId, readables);
+            final List<Readable> readables = sourceVertex.getReadables(stageParallelism);
+            final String irVertexId = sourceVertex.getId();
+            final String logicalTaskId = RuntimeIdGenerator.generateLogicalTaskId(irVertexId);
+            for (int i = 0; i < stageParallelism; i++) {
+              logicalTaskIdToReadables.get(i).put(logicalTaskId, readables.get(i));
+            }
+            newTaskToAdd = new BoundedSourceTask(logicalTaskId, irVertexId);
           } catch (Exception e) {
             throw new PhysicalPlanGenerationException(e);
           }
@@ -244,7 +252,7 @@ public final class PhysicalPlanGenerator
       // Create the task group to add for this stage.
       final PhysicalStage physicalStage =
           new PhysicalStage(stage.getId(), stageInternalDAGBuilder.build(),
-              stageParallelism, stage.getScheduleGroupIndex(), containerType);
+              stageParallelism, stage.getScheduleGroupIndex(), containerType, logicalTaskIdToReadables);
 
       physicalDAGBuilder.addVertex(physicalStage);
       runtimeStageIdToPhysicalStageMap.put(stage.getId(), physicalStage);
