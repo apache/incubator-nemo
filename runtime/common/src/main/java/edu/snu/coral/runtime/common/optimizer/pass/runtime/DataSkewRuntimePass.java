@@ -132,20 +132,27 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     // Do the optimization using the information derived above.
     final Long totalSize = aggregatedMetricData.stream().mapToLong(n -> n).sum(); // get total size
     final Long idealSizePerTaskGroup = totalSize / taskGroupListSize; // and derive the ideal size per task group
-    final double sizeBuffer = idealSizePerTaskGroup * 0.2;
     LOG.info("Skew: idealSizePerTaskgroup {} = {}(totalSize) / {}(taskGroupListSize)",
         idealSizePerTaskGroup, totalSize, taskGroupListSize);
 
+    final double sizeBufferFactor = 0.2;
+    final double sizeBuffer = idealSizePerTaskGroup * sizeBufferFactor;
+    final long upperBoundSize = idealSizePerTaskGroup + (long) sizeBuffer;
+    final long lowerBoundSize = idealSizePerTaskGroup - (long) sizeBuffer;
+    LOG.info("upper {} lower {}", upperBoundSize, lowerBoundSize);
+
     // find HashRanges to apply (for each blocks of each block).
     final List<KeyRange> keyRanges = new ArrayList<>(taskGroupListSize);
+    List<Long> sizePerTaskGroup = new ArrayList();
     int startingHashValue = 0;
     int finishingHashValue = 1; // initial values
-    List<Long> sizePerTaskGroup = new ArrayList();
     Long currentAccumulatedSize = 0L;
+    Long avgSizePerTaskGroup = idealSizePerTaskGroup;
     for (int i = 1; i <= taskGroupListSize; i++) {
       if (i != taskGroupListSize) {
-        final Long idealAccumulatedSize = idealSizePerTaskGroup * i; // where we should end
-        LOG.info("Skew: idealAccumulatedSize for taskGroup {}: {}", i, idealAccumulatedSize);
+        final Long idealAccumulatedSize = currentAccumulatedSize + avgSizePerTaskGroup; // where we should end
+        LOG.info("Skew: idealAccumulatedSize for taskGroup {}: {} + {} = {}",
+            i, currentAccumulatedSize, avgSizePerTaskGroup, idealAccumulatedSize);
         // find the point while adding up one by one.
         while (currentAccumulatedSize < idealAccumulatedSize) {
           currentAccumulatedSize += aggregatedMetricData.get(finishingHashValue);
@@ -154,12 +161,9 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
         }
 
         long finalSize;
-        long upperBoundSize = idealSizePerTaskGroup + (long) sizeBuffer;
-        long lowerBoundSize = idealSizePerTaskGroup - (long) sizeBuffer;
-        LOG.info("upper {} lower {}", upperBoundSize, lowerBoundSize);
         if (i > 1) {
           long currentSize = currentAccumulatedSize - sizePerTaskGroup.stream().mapToLong(l -> l).sum();
-          long oneStepBack = currentAccumulatedSize - aggregatedMetricData.get(finishingHashValue - 1);
+          long oneStepBack = currentSize - aggregatedMetricData.get(finishingHashValue - 1);
           LOG.info("oneStepBack {}", oneStepBack);
           if (!(currentSize >= lowerBoundSize && currentSize <= upperBoundSize)) {
             if (oneStepBack >= lowerBoundSize) {
@@ -176,6 +180,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
         }
 
         sizePerTaskGroup.add(finalSize);
+        avgSizePerTaskGroup = sizePerTaskGroup.stream().mapToLong(l -> l).sum() / sizePerTaskGroup.size();
         LOG.info("Skew: resulting size {}", finalSize);
 
         // assign appropriately
