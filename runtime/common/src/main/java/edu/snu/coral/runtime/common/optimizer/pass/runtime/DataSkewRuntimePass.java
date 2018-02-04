@@ -141,7 +141,6 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     int startingHashValue = 0;
     int finishingHashValue = 1; // initial values
     List<Long> sizePerTaskGroup = new ArrayList();
-    sizePerTaskGroup.add(0L);
     Long currentAccumulatedSize = 0L; //aggregatedMetricData.get(0); // what we have up to now
     for (int i = 1; i <= taskGroupListSize; i++) {
       if (i != taskGroupListSize) {
@@ -153,31 +152,29 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
           finishingHashValue++;
         }
 
-        long currentSize = currentAccumulatedSize - sizePerTaskGroup.stream().mapToLong(l -> l).sum();
-        long avgSize;
-        if (i == 1) {
-          avgSize = currentSize;
-        } else {
+        long currentSize;
+        long avgSize = 0;
+        long finalSize;
+        if (i > 1) {
+          currentSize = currentAccumulatedSize - sizePerTaskGroup.stream().mapToLong(l -> l).sum();
           avgSize = sizePerTaskGroup.stream().mapToLong(l -> l).sum() / sizePerTaskGroup.size();
+
+          if (currentSize > avgSize) {
+            finishingHashValue--;
+            currentAccumulatedSize -= aggregatedMetricData.get(finishingHashValue);
+          }
         }
 
-        if (currentSize > avgSize) {
-          finishingHashValue--;
-          currentAccumulatedSize -= aggregatedMetricData.get(finishingHashValue);
+        if (i == 1) {
+          finalSize = currentAccumulatedSize;
+        } else {
+          finalSize = currentAccumulatedSize - sizePerTaskGroup.stream().mapToLong(l -> l).sum();
         }
-        long size = currentAccumulatedSize - sizePerTaskGroup.stream().mapToLong(l -> l).sum();
-        sizePerTaskGroup.add(size);
+
+        sizePerTaskGroup.add(finalSize);
         LOG.info("Skew: avgSize {}", avgSize);
-        LOG.info("Skew: resulting size {}", size);
+        LOG.info("Skew: resulting size {}", finalSize);
 
-        /*
-        // Go back once if we came too far.
-        if (currentAccumulatedSize - idealAccumulatedSize
-            > idealAccumulatedSize - (currentAccumulatedSize - aggregatedMetricData.get(finishingHashValue - 1))) {
-          finishingHashValue--;
-          currentAccumulatedSize -= aggregatedMetricData.get(finishingHashValue);
-        }
-        */
         // assign appropriately
         keyRanges.add(i - 1, HashRange.of(startingHashValue, finishingHashValue));
         LOG.info("Skew: resulting hashrange {} ~ {}, size {}",
