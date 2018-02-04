@@ -15,7 +15,9 @@
  */
 package edu.snu.coral.common.ir.vertex;
 
-import edu.snu.coral.common.ir.ReadablesWrapper;
+import edu.snu.coral.common.ir.Readable;
+
+import java.util.List;
 
 /**
  * IRVertex that reads data from an external source.
@@ -25,10 +27,11 @@ import edu.snu.coral.common.ir.ReadablesWrapper;
 public abstract class SourceVertex<O> extends IRVertex {
 
   /**
-   * Gets parallel readable wrapper.
+   * Gets parallel readables.
+   *
    * @param desiredNumOfSplits number of splits desired.
-   * @return the wrapper for a list of readers.
+   * @return the list of readables.
    * @throws Exception if fail to get.
    */
-  public abstract ReadablesWrapper<O> getReadableWrapper(int desiredNumOfSplits) throws Exception;
+  public abstract List<Readable<O>> getReadables(int desiredNumOfSplits) throws Exception;
 }

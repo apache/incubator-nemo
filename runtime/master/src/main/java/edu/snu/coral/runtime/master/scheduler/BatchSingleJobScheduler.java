@@ -18,6 +18,7 @@ package edu.snu.coral.runtime.master.scheduler;
 import edu.snu.coral.common.Pair;
 import edu.snu.coral.common.dag.DAG;
 import edu.snu.coral.common.eventhandler.PubSubEventHandlerWrapper;
+import edu.snu.coral.common.ir.Readable;
 import edu.snu.coral.runtime.common.RuntimeIdGenerator;
 import edu.snu.coral.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.coral.runtime.common.plan.RuntimeEdge;
@@ -488,12 +489,16 @@ public final class BatchSingleJobScheduler implements Scheduler {
     final int attemptIdx = jobStateManager.getAttemptCountForStage(stageToSchedule.getId());
     LOG.info("Scheduling Stage {} with attemptIdx={}", new Object[]{stageToSchedule.getId(), attemptIdx});
 
+    // each readable and source task will be bounded in executor.
+    final List<Map<String, Readable>> logicalTaskIdToReadables = stageToSchedule.getLogicalTaskIdToReadables();
+
     taskGroupIdsToSchedule.forEach(taskGroupId -> {
       blockManagerMaster.onProducerTaskGroupScheduled(taskGroupId);
+      final int taskGroupIdx = RuntimeIdGenerator.getIndexFromTaskGroupId(taskGroupId);
       LOG.debug("Enquing {}", taskGroupId);
-      pendingTaskGroupQueue.enqueue(
-          new ScheduledTaskGroup(physicalPlan.getId(), stageToSchedule.getSerializedTaskGroupDag(), taskGroupId,
-              stageIncomingEdges, stageOutgoingEdges, attemptIdx, stageToSchedule.getContainerType()));
+      pendingTaskGroupQueue.enqueue(new ScheduledTaskGroup(physicalPlan.getId(),
+          stageToSchedule.getSerializedTaskGroupDag(), taskGroupId, stageIncomingEdges, stageOutgoingEdges, attemptIdx,
+          stageToSchedule.getContainerType(), logicalTaskIdToReadables.get(taskGroupIdx)));
     });
   }
 

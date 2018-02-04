@@ -84,7 +84,20 @@ public final class TaskGroupExecutor {
 
     this.isExecutionRequested = false;
 
+    initializeDataRead(scheduledTaskGroup.getLogicalTaskIdToReadable());
     initializeDataTransfer();
+  }
+
+  /**
+   * Initializes data read of {@link edu.snu.coral.common.ir.vertex.SourceVertex}.
+   *
+   * @param logicalTaskIdToReadable the map between logical task id to {@link Readable}.
+   */
+  private void initializeDataRead(final Map<String, Readable> logicalTaskIdToReadable) {
+    taskGroupDag.getTopologicalSort().stream()
+        .filter(task -> task instanceof BoundedSourceTask)
+        .forEach(boundedSourceTask -> ((BoundedSourceTask) boundedSourceTask).setReadable(
+            logicalTaskIdToReadable.get(boundedSourceTask.getId())));
   }
 
   /**
@@ -172,7 +185,7 @@ public final class TaskGroupExecutor {
       taskGroupStateManager.onTaskStateChanged(physicalTaskId, TaskState.State.EXECUTING, Optional.empty());
       try {
         if (task instanceof BoundedSourceTask) {
-          launchBoundedSourceTask((BoundedSourceTask) task, taskGroupIdx);
+          launchBoundedSourceTask((BoundedSourceTask) task);
           taskGroupStateManager.onTaskStateChanged(physicalTaskId, TaskState.State.COMPLETE, Optional.empty());
           LOG.info("{} Execution Complete!", taskGroupId);
         } else if (task instanceof OperatorTask) {
@@ -206,13 +219,12 @@ public final class TaskGroupExecutor {
 
   /**
    * Processes a BoundedSourceTask.
+   *
    * @param boundedSourceTask the bounded source task to execute
-   * @param boundedSourceIdx  the idx of the bounded source to execute.
    * @throws Exception occurred during input read.
    */
-  private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask,
-                                       final int boundedSourceIdx) throws Exception {
-    final Readable readable = boundedSourceTask.getReadable(boundedSourceIdx);
+  private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask) throws Exception {
+    final Readable readable = boundedSourceTask.getReadable();
     final Iterable readData = readable.read();
 
     final String physicalTaskId = getPhysicalTaskId(boundedSourceTask.getId());
