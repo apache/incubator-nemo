@@ -62,8 +62,6 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
 
   @Override
   public PhysicalPlan apply(final PhysicalPlan originalPlan, final Map<String, List<Long>> metricData) {
-    long start = System.currentTimeMillis();
-
     // Builder to create new stages.
     final DAGBuilder<PhysicalStage, PhysicalStageEdge> physicalDAGBuilder =
         new DAGBuilder<>(originalPlan.getStageDAG());
@@ -77,6 +75,9 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
         .filter(physicalStageEdge -> optimizationEdgeIds.contains(physicalStageEdge.getId()))
         .collect(Collectors.toList());
 
+    for (PhysicalStageEdge pEdge : optimizationEdges) {
+      LOG.info("Skew: optimizationEdge {} from {}", pEdge.getId(), pEdge.getSrcVertex());
+    }
     // Get number of evaluators of the next stage (number of blocks).
     final Integer taskGroupListSize = optimizationEdges.stream().findFirst().orElseThrow(() ->
         new RuntimeException("optimization edges are empty")).getDst().getTaskGroupIds().size();
@@ -92,6 +93,8 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
       final List<KeyRange> taskGroupIdxToHashRange = new ArrayList<>();
       IntStream.range(0, taskGroupListSize).forEach(i -> taskGroupIdxToHashRange.add(keyRanges.get(i)));
       optimizationEdge.setTaskGroupIdxToKeyRange(taskGroupIdxToHashRange);
+      LOG.info("Skew: optimizationEdge {} from {}: keyRange {}", optimizationEdge.getId(),
+          optimizationEdge.getSrcVertex(), taskGroupIdxToHashRange);
     });
 
     return new PhysicalPlan(originalPlan.getId(), physicalDAGBuilder.build(), originalPlan.getTaskIRVertexMap());
@@ -110,12 +113,21 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     // Count the hash range (number of blocks for each block).
     final int hashRangeCount = metricData.values().stream().findFirst().orElseThrow(() ->
         new DynamicOptimizationException("no valid metric data.")).size();
-
+    LOG.info("Skew: hashRangeCount from metric {}", hashRangeCount);
+    for (Map.Entry<String, List<Long>> metric : metricData.entrySet()) {
+      LOG.info("Skew: metric: blockId {} blockSizes {}", metric.getKey(), metric.getValue());
+    }
     // Aggregate metric data.
     final List<Long> aggregatedMetricData = new ArrayList<>(hashRangeCount);
     // for each hash range index, we aggregate the metric data.
     IntStream.range(0, hashRangeCount).forEach(i ->
         aggregatedMetricData.add(i, metricData.values().stream().mapToLong(lst -> lst.get(i)).sum()));
+
+    int hashRange = 0;
+    for (Long data : aggregatedMetricData) {
+      LOG.info("Skew: aggregatedMetricData[{}] {}", hashRange, data);
+      hashRange++;
+    }
 
     // Do the optimization using the information derived above.
     final Long totalSize = aggregatedMetricData.stream().mapToLong(n -> n).sum(); // get total size
@@ -132,9 +144,10 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     for (int i = 1; i <= taskGroupListSize; i++) {
       if (i != taskGroupListSize) {
         final Long idealAccumulatedSize = idealSizePerTaskGroup * i; // where we should end
-        //LOG.info("Skew: idealAccumulatedSize for {}: {}", i, idealAccumulatedSize);
+        LOG.info("Skew: idealAccumulatedSize for taskGroup {}: {}", i, idealAccumulatedSize);
         // find the point while adding up one by one.
         while (currentAccumulatedSize < idealAccumulatedSize) {
+          LOG.info("Skew: idealAccumulatedSize for taskGroup {}: {}", i, idealAccumulatedSize);
           currentAccumulatedSize += aggregatedMetricData.get(finishingHashValue);
           finishingHashValue++;
         }
@@ -144,13 +157,16 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
           finishingHashValue--;
           currentAccumulatedSize -= aggregatedMetricData.get(finishingHashValue);
         }
+
         // assign appropriately
         keyRanges.add(i - 1, HashRange.of(startingHashValue, finishingHashValue));
-        //LOG.info("Skew: resulting hashrange {} ~ {}", startingHashValue, finishingHashValue);
+        LOG.info("Skew: resulting hashrange {} ~ {}, size {}",
+            startingHashValue, finishingHashValue, currentAccumulatedSize);
         startingHashValue = finishingHashValue;
       } else { // last one: we put the range of the rest.
         keyRanges.add(i - 1, HashRange.of(startingHashValue, hashRangeCount));
-        //LOG.info("Skew: resulting hashrange {} ~ {}", startingHashValue, hashRangeCount);
+        LOG.info("Skew: resulting hashrange {} ~ {}, size {}", startingHashValue, hashRangeCount,
+            currentAccumulatedSize);
       }
     }
     return keyRanges;
