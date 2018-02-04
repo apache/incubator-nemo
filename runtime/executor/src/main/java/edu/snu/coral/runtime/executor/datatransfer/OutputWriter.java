@@ -84,6 +84,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     final int dstParallelism = getDstParallelism();
 
     final Partitioner partitioner = partitionerMap.get(partitionerPropertyValue);
+    LOG.info("Skew: Partitioner: {}", partitioner.getClass().getSimpleName());
     if (partitioner == null) {
       throw new UnsupportedPartitionerException(
           new Throwable("Partitioner " + partitionerPropertyValue + " is not supported."));

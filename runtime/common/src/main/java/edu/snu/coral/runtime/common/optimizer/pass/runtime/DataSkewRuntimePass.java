@@ -140,7 +140,9 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
     final List<KeyRange> keyRanges = new ArrayList<>(taskGroupListSize);
     int startingHashValue = 0;
     int finishingHashValue = 1; // initial values
-    Long currentAccumulatedSize = aggregatedMetricData.get(0); // what we have up to now
+    List<Long> sizePerTaskGroup = new ArrayList();
+    sizePerTaskGroup.add(0L);
+    Long currentAccumulatedSize = 0L; //aggregatedMetricData.get(0); // what we have up to now
     for (int i = 1; i <= taskGroupListSize; i++) {
       if (i != taskGroupListSize) {
         final Long idealAccumulatedSize = idealSizePerTaskGroup * i; // where we should end
@@ -150,13 +152,32 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
           currentAccumulatedSize += aggregatedMetricData.get(finishingHashValue);
           finishingHashValue++;
         }
+
+        long currentSize = currentAccumulatedSize - sizePerTaskGroup.stream().mapToLong(l -> l).sum();
+        long avgSize;
+        if (i == 1) {
+          avgSize = currentSize;
+        } else {
+          avgSize = sizePerTaskGroup.stream().mapToLong(l -> l).sum() / sizePerTaskGroup.size();
+        }
+
+        if (currentSize > avgSize) {
+          finishingHashValue--;
+          currentAccumulatedSize -= aggregatedMetricData.get(finishingHashValue);
+        }
+        long size = currentAccumulatedSize - sizePerTaskGroup.stream().mapToLong(l -> l).sum();
+        sizePerTaskGroup.add(size);
+        LOG.info("Skew: avgSize {}", avgSize);
+        LOG.info("Skew: resulting size {}", size);
+
+        /*
         // Go back once if we came too far.
         if (currentAccumulatedSize - idealAccumulatedSize
             > idealAccumulatedSize - (currentAccumulatedSize - aggregatedMetricData.get(finishingHashValue - 1))) {
           finishingHashValue--;
           currentAccumulatedSize -= aggregatedMetricData.get(finishingHashValue);
         }
-
+        */
         // assign appropriately
         keyRanges.add(i - 1, HashRange.of(startingHashValue, finishingHashValue));
         LOG.info("Skew: resulting hashrange {} ~ {}, size {}",
