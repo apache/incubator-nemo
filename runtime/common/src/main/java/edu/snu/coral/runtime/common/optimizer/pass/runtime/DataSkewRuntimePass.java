@@ -154,12 +154,13 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
         }
 
         long finalSize;
+        long upperBoundSize = idealSizePerTaskGroup + (long) sizeBuffer;
+        long lowerBoundSize = idealSizePerTaskGroup - (long) sizeBuffer;
+        LOG.info("upper {} lower {}", upperBoundSize, lowerBoundSize);
         if (i > 1) {
           long currentSize = currentAccumulatedSize - sizePerTaskGroup.stream().mapToLong(l -> l).sum();
-          long upperBoundSize = idealSizePerTaskGroup + (long) sizeBuffer;
-          long lowerBoundSize = idealSizePerTaskGroup - (long) sizeBuffer;
           long oneStepBack = currentAccumulatedSize - aggregatedMetricData.get(finishingHashValue - 1);
-
+          LOG.info("oneStepBack {}", oneStepBack);
           if (!(currentSize >= lowerBoundSize && currentSize <= upperBoundSize)) {
             if (oneStepBack >= lowerBoundSize) {
               finishingHashValue--;
