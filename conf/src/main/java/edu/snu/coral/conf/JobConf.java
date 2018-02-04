@@ -157,7 +157,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * The reason why we do not divide the output into a fixed number is that the fixed number can be smaller than
    * the destination task parallelism.
    */
-  @NamedParameter(doc = "Hash range multiplier", short_name = "hash_range_multiplier", default_value = "20")
+  @NamedParameter(doc = "Hash range multiplier", short_name = "hash_range_multiplier", default_value = "50")
   public final class HashRangeMultiplier implements Name<Integer> {
   }
 
