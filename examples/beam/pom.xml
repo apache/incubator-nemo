@@ -19,13 +19,13 @@ limitations under the License.
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>edu.snu.onyx</groupId>
-        <artifactId>onyx-project</artifactId>
+        <groupId>edu.snu.coral</groupId>
+        <artifactId>coral-project</artifactId>
         <version>0.1-SNAPSHOT</version>
         <relativePath>../../</relativePath>
     </parent>
 
-    <artifactId>onyx-examples-beam</artifactId>
+    <artifactId>coral-examples-beam</artifactId>
 
     <repositories>
         <repository>
@@ -33,12 +33,12 @@ limitations under the License.
             <url>file://${basedir}/../common/src/main/resources/repository</url>
         </repository>
     </repositories>
-    <name>Onyx Examples: Beam</name>
+    <name>Coral Examples: Beam</name>
 
     <dependencies>
         <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-compiler-frontend-beam</artifactId>
+            <groupId>edu.snu.coral</groupId>
+            <artifactId>coral-compiler-frontend-beam</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
