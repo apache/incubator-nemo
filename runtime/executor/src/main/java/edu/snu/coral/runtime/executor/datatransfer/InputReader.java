@@ -32,6 +32,8 @@ import edu.snu.coral.runtime.executor.data.BlockManagerWorker;
 
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -156,33 +158,34 @@ public final class InputReader extends DataTransfer {
     return Boolean.TRUE.equals(runtimeEdge.isSideInput());
   }
 
-  public CompletableFuture<Object> getSideInput() {
+  public Object getSideInput() throws InterruptedException {
     if (!isSideInputReader()) {
       throw new RuntimeException();
     }
-    final List<CompletableFuture<Iterator>> futures = this.read();
-    return futures.get(0).thenApply(f -> {
-      final List copy = new ArrayList();
-      f.forEachRemaining(copy::add);
-      if (copy.size() == 1) {
-        return copy.get(0);
+    final BlockingQueue<Iterator> sideInputQueue = new ArrayBlockingQueue<>(1);
+    this.read().get(0).thenApply(iterator -> sideInputQueue.add(iterator));
+    final Iterator iterator = sideInputQueue.take();
+
+    final List copy = new ArrayList();
+    iterator.forEachRemaining(copy::add);
+    if (copy.size() == 1) {
+      return copy.get(0);
+    } else {
+      if (copy.get(0) instanceof Iterable) {
+        final List collect = new ArrayList();
+        copy.forEach(element -> ((Iterable) element).iterator().forEachRemaining(collect::add));
+        return collect;
+      } else if (copy.get(0) instanceof Map) {
+        final Map collect = new HashMap();
+        copy.forEach(element -> {
+          final Set keySet = ((Map) element).keySet();
+          keySet.forEach(key -> collect.put(key, ((Map) element).get(key)));
+        });
+        return collect;
       } else {
-        if (copy.get(0) instanceof Iterable) {
-          final List collect = new ArrayList();
-          copy.forEach(element -> ((Iterable) element).iterator().forEachRemaining(collect::add));
-          return collect;
-        } else if (copy.get(0) instanceof Map) {
-          final Map collect = new HashMap();
-          copy.forEach(element -> {
-            final Set keySet = ((Map) element).keySet();
-            keySet.forEach(key -> collect.put(key, ((Map) element).get(key)));
-          });
-          return collect;
-        } else {
-          return copy;
-        }
+        return copy;
       }
-    });
+    }
   }
 
   /**
