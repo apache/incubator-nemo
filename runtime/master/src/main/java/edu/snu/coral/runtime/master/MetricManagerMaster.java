@@ -47,7 +47,6 @@ public final class MetricManagerMaster implements MetricMessageHandler {
     if (!isTerminated) {
       compUnitIdToMetricInJson.putIfAbsent(metricKey, new LinkedList<>());
       compUnitIdToMetricInJson.get(metricKey).add(metricValue);
-//      LOG.debug("{}", metricValue);
     }
   }
 

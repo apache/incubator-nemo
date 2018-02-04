@@ -20,7 +20,6 @@ import edu.snu.coral.common.dag.DAG;
 import edu.snu.coral.common.dag.DAGBuilder;
 import edu.snu.coral.common.ir.OutputCollector;
 import edu.snu.coral.common.ir.Readable;
-import edu.snu.coral.common.ir.ReadablesWrapper;
 import edu.snu.coral.common.ir.vertex.transform.Transform;
 import edu.snu.coral.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.coral.common.ir.executionproperty.ExecutionPropertyMap;
@@ -116,21 +115,15 @@ public final class TaskGroupExecutorTest {
     final String sourceTaskId = RuntimeIdGenerator.generateLogicalTaskId("Source_IR_Vertex");
     final String stageId = RuntimeIdGenerator.generateStageId(0);
 
-    final ReadablesWrapper readablesWrapper = new ReadablesWrapper() {
+    final BoundedSourceTask<Integer> boundedSourceTask = new BoundedSourceTask<>(sourceTaskId, sourceIrVertexId);
+    final Readable readable = new Readable() {
       @Override
-      public List<Readable> getReadables() throws Exception {
-        return Collections.singletonList(
-            new Readable() {
-              @Override
-              public Iterable read() throws Exception {
-                return elements;
-              }
-            });
+      public Iterable read() throws Exception {
+        return elements;
       }
     };
-
-    final BoundedSourceTask<Integer> boundedSourceTask =
-        new BoundedSourceTask<>(sourceTaskId, sourceIrVertexId, readablesWrapper);
+    final Map<String, Readable> logicalIdToReadable = new HashMap<>();
+    logicalIdToReadable.put(sourceTaskId, readable);
 
     final DAG<Task, RuntimeEdge<Task>> taskDag =
         new DAGBuilder<Task, RuntimeEdge<Task>>().addVertex(boundedSourceTask).build();
@@ -138,8 +131,8 @@ public final class TaskGroupExecutorTest {
     when(stageOutEdge.getSrcVertex()).thenReturn(sourceIRVertex);
     final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId(0, stageId);
     final ScheduledTaskGroup scheduledTaskGroup =
-        new ScheduledTaskGroup("testSourceTask", new byte[0], taskGroupId,
-            Collections.emptyList(), Collections.singletonList(stageOutEdge), 0, CONTAINER_TYPE);
+        new ScheduledTaskGroup("testSourceTask", new byte[0], taskGroupId, Collections.emptyList(),
+            Collections.singletonList(stageOutEdge), 0, CONTAINER_TYPE, logicalIdToReadable);
 
     // Execute the task group.
     final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
@@ -196,8 +189,8 @@ public final class TaskGroupExecutorTest {
     final PhysicalStageEdge stageOutEdge = mock(PhysicalStageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(operatorIRVertex2);
     final ScheduledTaskGroup scheduledTaskGroup =
-        new ScheduledTaskGroup("testSourceTask", new byte[0], taskGroupId,
-            Collections.singletonList(stageInEdge), Collections.singletonList(stageOutEdge), 0, CONTAINER_TYPE);
+        new ScheduledTaskGroup("testSourceTask", new byte[0], taskGroupId, Collections.singletonList(stageInEdge),
+            Collections.singletonList(stageOutEdge), 0, CONTAINER_TYPE, Collections.emptyMap());
 
     // Execute the task group.
     final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(

@@ -17,12 +17,14 @@ package edu.snu.coral.runtime.common.plan.physical;
 
 import edu.snu.coral.common.dag.DAG;
 import edu.snu.coral.common.dag.Vertex;
+import edu.snu.coral.common.ir.Readable;
 import edu.snu.coral.runtime.common.RuntimeIdGenerator;
 import edu.snu.coral.runtime.common.plan.RuntimeEdge;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * PhysicalStage.
@@ -33,27 +35,31 @@ public final class PhysicalStage extends Vertex {
   private final int scheduleGroupIndex;
   private final String containerType;
   private final byte[] serializedTaskGroupDag;
+  private final List<Map<String, Readable>> logicalTaskIdToReadables;
 
   /**
    * Constructor.
    *
-   * @param stageId            id of the stage.
-   * @param taskGroupDag       the DAG of the task group in this stage.
-   * @param parallelism        how many task groups will be executed in this stage.
-   * @param scheduleGroupIndex the schedule group index.
-   * @param containerType      the type of container to execute the task group on.
+   * @param stageId                  ID of the stage.
+   * @param taskGroupDag             the DAG of the task group in this stage.
+   * @param parallelism              how many task groups will be executed in this stage.
+   * @param scheduleGroupIndex       the schedule group index.
+   * @param containerType            the type of container to execute the task group on.
+   * @param logicalTaskIdToReadables the list of maps between logical task ID and {@link Readable}.
    */
   public PhysicalStage(final String stageId,
                        final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
                        final int parallelism,
                        final int scheduleGroupIndex,
-                       final String containerType) {
+                       final String containerType,
+                       final List<Map<String, Readable>> logicalTaskIdToReadables) {
     super(stageId);
     this.taskGroupDag = taskGroupDag;
     this.parallelism = parallelism;
     this.scheduleGroupIndex = scheduleGroupIndex;
     this.containerType = containerType;
     this.serializedTaskGroupDag = SerializationUtils.serialize(taskGroupDag);
+    this.logicalTaskIdToReadables = logicalTaskIdToReadables;
   }
 
   /**
@@ -93,6 +99,13 @@ public final class PhysicalStage extends Vertex {
    */
   public String getContainerType() {
     return containerType;
+  }
+
+  /**
+   * @return the list of maps between logical task ID and readable.
+   */
+  public List<Map<String, Readable>> getLogicalTaskIdToReadables() {
+    return logicalTaskIdToReadables;
   }
 
   @Override
