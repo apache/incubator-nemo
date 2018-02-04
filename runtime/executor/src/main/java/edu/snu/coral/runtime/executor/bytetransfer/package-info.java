@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,4 +16,4 @@
 /**
  * Responsible for transferring block content from one executor to another.
  */
-package edu.snu.coral.runtime.executor.data.blocktransfer;
+package edu.snu.coral.runtime.executor.bytetransfer;

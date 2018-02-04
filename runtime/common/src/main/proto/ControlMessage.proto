@@ -93,20 +93,24 @@ message MetricMsg {
 }
 
 // Messages between Executors
-enum BlockTransferType {
-    PUSH = 0;
-    PULL = 1;
+
+enum ByteTransferDataDirection {
+    INITIATOR_TO_PARTNER = 0;
+    PARTNER_TO_INITIATOR = 1;
 }
 
-message DataTransferControlMessage {
-    required string controlMessageSourceId = 1;
-    optional BlockStore blockStore = 2;
-    required BlockTransferType type = 3;
-    required int32 transferId = 4;
-    required bool encodePartialBlock = 5;
-    required string blockId = 6;
-    required string runtimeEdgeId = 7;
-    optional bytes keyRange = 8;
+message ByteTransferContextSetupMessage {
+    required string initiatorExecutorId = 1;
+    required int32 transferIndex = 2;
+    required ByteTransferDataDirection dataDirection = 3;
+    required bytes contextDescriptor = 4;
+}
+
+message ByteTransferContextDescriptor {
+    required string blockId = 1;
+    required BlockStore blockStore = 2;
+    required string runtimeEdgeId = 3;
+    optional bytes keyRange = 4;
 }
 
 enum TaskGroupStateFromExecutor {

@@ -15,23 +15,27 @@
  */
 package edu.snu.coral.runtime.executor.data;
 
+import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 import edu.snu.coral.common.exception.BlockFetchException;
 import edu.snu.coral.common.exception.BlockWriteException;
+import edu.snu.coral.common.exception.UnsupportedBlockStoreException;
 import edu.snu.coral.common.exception.UnsupportedExecutionPropertyException;
 import edu.snu.coral.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.coral.common.ir.edge.executionproperty.UsedDataHandlingProperty;
 import edu.snu.coral.conf.JobConf;
-import edu.snu.coral.runtime.common.data.KeyRange;
-import edu.snu.coral.runtime.executor.data.blocktransfer.BlockTransfer;
-import edu.snu.coral.runtime.executor.data.stores.BlockStore;
-import edu.snu.coral.runtime.common.RuntimeIdGenerator;
 import edu.snu.coral.runtime.common.comm.ControlMessage;
+import edu.snu.coral.runtime.common.comm.ControlMessage.ByteTransferContextDescriptor;
+import edu.snu.coral.runtime.common.data.KeyRange;
+import edu.snu.coral.runtime.common.RuntimeIdGenerator;
 import edu.snu.coral.runtime.common.message.MessageEnvironment;
-import edu.snu.coral.common.exception.UnsupportedBlockStoreException;
 import edu.snu.coral.runtime.common.message.PersistentConnectionToMasterMap;
-import edu.snu.coral.runtime.executor.data.blocktransfer.BlockInputStream;
-import edu.snu.coral.runtime.executor.data.blocktransfer.BlockOutputStream;
+import edu.snu.coral.runtime.executor.bytetransfer.ByteInputContext;
+import edu.snu.coral.runtime.executor.bytetransfer.ByteOutputContext;
+import edu.snu.coral.runtime.executor.bytetransfer.ByteTransfer;
+import edu.snu.coral.runtime.executor.data.stores.BlockStore;
 import edu.snu.coral.runtime.executor.data.stores.*;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -58,10 +62,11 @@ public final class BlockManagerWorker {
   private final LocalFileStore localFileStore;
   private final RemoteFileStore remoteFileStore;
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
-  private final BlockTransfer blockTransfer;
+  private final ByteTransfer byteTransfer;
   // Executor service to schedule I/O Runnable which can be done in background.
   private final ExecutorService backgroundExecutorService;
   private final Map<String, AtomicInteger> blockToRemainingRead;
+  private final SerializerManager serializerManager;
 
   @Inject
   private BlockManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -71,16 +76,18 @@ public final class BlockManagerWorker {
                              final LocalFileStore localFileStore,
                              final RemoteFileStore remoteFileStore,
                              final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
-                             final BlockTransfer blockTransfer) {
+                             final ByteTransfer byteTransfer,
+                             final SerializerManager serializerManager) {
     this.executorId = executorId;
     this.memoryStore = memoryStore;
     this.serializedMemoryStore = serializedMemoryStore;
     this.localFileStore = localFileStore;
     this.remoteFileStore = remoteFileStore;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
-    this.blockTransfer = blockTransfer;
+    this.byteTransfer = byteTransfer;
     this.backgroundExecutorService = Executors.newFixedThreadPool(numThreads);
     this.blockToRemainingRead = new ConcurrentHashMap<>();
+    this.serializerManager = serializerManager;
   }
 
   /**
@@ -121,12 +128,8 @@ public final class BlockManagerWorker {
       handleUsedData(blockStore, blockId);
 
       // Block resides in this evaluator!
-      try {
-        return CompletableFuture.completedFuture(DataUtil.concatNonSerPartitions(optionalResultPartitions.get())
-            .iterator());
-      } catch (final IOException e) {
-        throw new BlockFetchException(e);
-      }
+      return CompletableFuture.completedFuture(DataUtil.concatNonSerPartitions(optionalResultPartitions.get())
+          .iterator());
     } else {
       // We don't have the block here...
       throw new RuntimeException(String.format("Block %s not found in local BlockManagerWorker", blockId));
@@ -179,8 +182,15 @@ public final class BlockManagerWorker {
         // Block resides in the evaluator
         return retrieveDataFromBlock(blockId, runtimeEdgeId, blockStore, keyRange);
       } else {
-        return blockTransfer.initiatePull(targetExecutorId, false, blockStore, blockId,
-            runtimeEdgeId, keyRange).getCompleteFuture();
+        final ByteTransferContextDescriptor descriptor = ByteTransferContextDescriptor.newBuilder()
+            .setBlockId(blockId)
+            .setBlockStore(convertBlockStore(blockStore))
+            .setRuntimeEdgeId(runtimeEdgeId)
+            .setKeyRange(ByteString.copyFrom(SerializationUtils.serialize(keyRange)))
+            .build();
+        return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray()).thenApply(context ->
+            new DataUtil.InputStreamIterator(context.getInputStreams(),
+                serializerManager.getSerializer(runtimeEdgeId)));
       }
     });
   }
@@ -352,17 +362,20 @@ public final class BlockManagerWorker {
   }
 
   /**
-   * Respond to a pull request by another executor.
+   * Respond to a block request by another executor.
    * <p>
    * This method is executed by {edu.snu.coral.runtime.executor.data.blocktransfer.BlockTransport} thread. \
    * Never execute a blocking call in this method!
    *
-   * @param outputStream {@link BlockOutputStream}
+   * @param outputContext {@link ByteOutputContext}
+   * @throws InvalidProtocolBufferException from errors during parsing context descriptor
    */
-  public void onPullRequest(final BlockOutputStream<?> outputStream) {
-    // We are getting the block from local store!
-    final Optional<DataStoreProperty.Value> blockStoreOptional = outputStream.getBlockStore();
-    final DataStoreProperty.Value blockStore = blockStoreOptional.get();
+  public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
+    final ByteTransferContextDescriptor descriptor = ByteTransferContextDescriptor.PARSER
+        .parseFrom(outputContext.getContextDescriptor());
+    final DataStoreProperty.Value blockStore = convertBlockStore(descriptor.getBlockStore());
+    final String blockId = descriptor.getBlockId();
+    final KeyRange keyRange = SerializationUtils.deserialize(descriptor.getKeyRange().toByteArray());
 
     backgroundExecutorService.submit(new Runnable() {
       @Override
@@ -371,36 +384,66 @@ public final class BlockManagerWorker {
           if (DataStoreProperty.Value.LocalFileStore.equals(blockStore)
               || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
             final FileStore fileStore = (FileStore) getBlockStore(blockStore);
-            outputStream.writeFileAreas(fileStore.getFileAreas(outputStream.getBlockId(),
-                outputStream.getKeyRange())).close();
-            handleUsedData(blockStore, outputStream.getBlockId());
+            for (final FileArea fileArea : fileStore.getFileAreas(blockId, keyRange)) {
+              outputContext.newOutputStream().writeFileArea(fileArea).close();
+            }
           } else {
-            final BlockStore store = getBlockStore(blockStore);
-            final Optional<Iterable<SerializedPartition>> optionalResult = store.getSerializedPartitions(
-                outputStream.getBlockId(), outputStream.getKeyRange());
-            outputStream.writeSerializedPartitions(optionalResult.get()).close();
-            handleUsedData(blockStore, outputStream.getBlockId());
+            final Optional<Iterable<SerializedPartition>> optionalResult = getBlockStore(blockStore)
+                .getSerializedPartitions(blockId, keyRange);
+            for (final SerializedPartition partition : optionalResult.get()) {
+              outputContext.newOutputStream().writeSerializedPartition(partition).close();
+            }
           }
+          handleUsedData(blockStore, blockId);
+          outputContext.close();
         } catch (final IOException | BlockFetchException e) {
-          LOG.error("Closing a pull request exceptionally", e);
-          outputStream.closeExceptionally(e);
+          LOG.error("Closing a block request exceptionally", e);
+          outputContext.onChannelError(e);
         }
       }
     });
   }
 
   /**
-   * Respond to a push notification by another executor.
-   * <p>
-   * A push notification is generated when a remote executor invokes {@link edu.snu.coral.runtime.executor.data
-   * .blocktransfer.BlockTransfer#initiatePush(String, boolean, String, String, HashRange)} to transfer
-   * a block to another executor.
+   * Respond to a block notification by another executor.
    * <p>
    * This method is executed by {edu.snu.coral.runtime.executor.data.blocktransfer.BlockTransport}
    * thread. Never execute a blocking call in this method!
    *
-   * @param inputStream {@link BlockInputStream}
+   * @param inputContext {@link ByteInputContext}
    */
-  public void onPushNotification(final BlockInputStream inputStream) {
+  public void onInputContext(final ByteInputContext inputContext) {
+  }
+
+  private static ControlMessage.BlockStore convertBlockStore(
+      final DataStoreProperty.Value blockStore) {
+    switch (blockStore) {
+      case MemoryStore:
+        return ControlMessage.BlockStore.MEMORY;
+      case SerializedMemoryStore:
+        return ControlMessage.BlockStore.SER_MEMORY;
+      case LocalFileStore:
+        return ControlMessage.BlockStore.LOCAL_FILE;
+      case GlusterFileStore:
+        return ControlMessage.BlockStore.REMOTE_FILE;
+      default:
+        throw new UnsupportedBlockStoreException(new Exception(blockStore + " is not supported."));
+    }
+  }
+
+  private static DataStoreProperty.Value convertBlockStore(
+      final ControlMessage.BlockStore blockStoreType) {
+    switch (blockStoreType) {
+      case MEMORY:
+        return DataStoreProperty.Value.MemoryStore;
+      case SER_MEMORY:
+        return DataStoreProperty.Value.SerializedMemoryStore;
+      case LOCAL_FILE:
+        return DataStoreProperty.Value.LocalFileStore;
+      case REMOTE_FILE:
+        return DataStoreProperty.Value.GlusterFileStore;
+      default:
+        throw new UnsupportedBlockStoreException(new Exception("This block store is not yet supported"));
+    }
   }
 }

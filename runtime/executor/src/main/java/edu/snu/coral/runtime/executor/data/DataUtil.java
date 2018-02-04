@@ -55,14 +55,11 @@ public final class DataUtil {
    * @param inputStream         the input stream which will return the data in the partition as bytes.
    * @param <K>                 the key type of the partitions.
    * @return the list of deserialized elements.
-   * @throws IOException if fail to deserialize.
    */
-  public static <K extends Serializable> NonSerializedPartition deserializePartition(final long elementsInPartition,
-                                                            final Serializer serializer,
-                                                            final K key,
-                                                            final InputStream inputStream) throws IOException {
+  public static <K extends Serializable> NonSerializedPartition deserializePartition(
+      final long elementsInPartition, final Serializer serializer, final K key, final InputStream inputStream) {
     final List deserializedData = new ArrayList();
-    (new InputStreamIterator(inputStream, serializer, elementsInPartition))
+    (new InputStreamIterator(Collections.singletonList(inputStream).iterator(), serializer, elementsInPartition))
         .forEachRemaining(deserializedData::add);
     return new NonSerializedPartition(key, deserializedData);
   }
@@ -146,10 +143,8 @@ public final class DataUtil {
    *
    * @param partitionsToConcat the partitions to concatenate.
    * @return the concatenated iterable of all elements.
-   * @throws IOException if fail to concatenate.
    */
-  public static Iterable concatNonSerPartitions(final Iterable<NonSerializedPartition> partitionsToConcat)
-      throws IOException {
+  public static Iterable concatNonSerPartitions(final Iterable<NonSerializedPartition> partitionsToConcat) {
     final List concatStreamBase = new ArrayList<>();
     Stream<Object> concatStream = concatStreamBase.stream();
     for (final NonSerializedPartition nonSerializedPartition : partitionsToConcat) {
@@ -165,10 +160,11 @@ public final class DataUtil {
    */
   public static final class InputStreamIterator<T> implements Iterator<T> {
 
-    private final InputStream inputStream;
+    private final Iterator<InputStream> inputStreams;
     private final Serializer<T> serializer;
     private final long limit;
 
+    private volatile InputStream currentInputStream = null;
     private volatile boolean hasNext = false;
     private volatile T next;
     private volatile boolean cannotContinueDecoding = false;
@@ -177,13 +173,11 @@ public final class DataUtil {
     /**
      * Construct {@link Iterator} from {@link InputStream} and {@link Coder}.
      *
-     * @param inputStream The stream to read data from.
-     * @param serializer  The serializer.
-     * @throws IOException if fail to build new stream.
+     * @param inputStreams The streams to read data from.
+     * @param serializer   The serializer.
      */
-    public InputStreamIterator(final InputStream inputStream, final Serializer<T> serializer)
-        throws IOException {
-      this.inputStream = buildInputStream(inputStream, serializer.getChainables());
+    public InputStreamIterator(final Iterator<InputStream> inputStreams, final Serializer<T> serializer) {
+      this.inputStreams = inputStreams;
       this.serializer = serializer;
       // -1 means no limit.
       this.limit = -1;
@@ -192,17 +186,18 @@ public final class DataUtil {
     /**
      * Construct {@link Iterator} from {@link InputStream} and {@link Coder}.
      *
-     * @param inputStream The stream to read data from.
-     * @param serializer  The serializer.
-     * @param limit       The number of elements from the {@link InputStream}.
-     * @throws IOException if fail to build new stream.
+     * @param inputStreams The streams to read data from.
+     * @param serializer   The serializer.
+     * @param serializer   The serializer.
+     * @param limit        The number of elements from the {@link InputStream}.
      */
-    public InputStreamIterator(final InputStream inputStream, final Serializer<T> serializer, final long limit)
-        throws IOException {
+    public InputStreamIterator(final Iterator<InputStream> inputStreams,
+                               final Serializer<T> serializer,
+                               final long limit) {
       if (limit < 0) {
         throw new IllegalArgumentException("Negative limit not allowed.");
       }
-      this.inputStream = buildInputStream(inputStream, serializer.getChainables());
+      this.inputStreams = inputStreams;
       this.serializer = serializer;
       this.limit = limit;
     }
@@ -219,14 +214,23 @@ public final class DataUtil {
         cannotContinueDecoding = true;
         return false;
       }
-      try {
-        next = serializer.getCoder().decode(inputStream);
-        hasNext = true;
-        elementsDecoded++;
-        return true;
-      } catch (final IOException e) {
-        cannotContinueDecoding = true;
-        return false;
+      while (true) {
+        try {
+          if (currentInputStream == null) {
+            if (inputStreams.hasNext()) {
+              currentInputStream = buildInputStream(inputStreams.next(), serializer.getChainables());
+            } else {
+              cannotContinueDecoding = true;
+              return false;
+            }
+          }
+          next = serializer.getCoder().decode(currentInputStream);
+          hasNext = true;
+          elementsDecoded++;
+          return true;
+        } catch (final IOException e) {
+          currentInputStream = null;
+        }
       }
     }
 

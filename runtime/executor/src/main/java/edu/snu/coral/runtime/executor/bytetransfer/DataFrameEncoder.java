@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.coral.runtime.executor.data.blocktransfer;
+package edu.snu.coral.runtime.executor.bytetransfer;
 
 import edu.snu.coral.runtime.common.comm.ControlMessage;
 import io.netty.buffer.ByteBuf;
@@ -21,8 +21,6 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageEncoder;
 import io.netty.util.Recycler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -36,12 +34,9 @@ import java.util.List;
 @ChannelHandler.Sharable
 final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.DataFrame> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DataFrameEncoder.class);
-
-  static final int TYPE_AND_TRANSFERID_LENGTH = Short.BYTES + Short.BYTES;
-  // the length of a frame body (not the entire frame) is stored in 4 bytes
-  static final int BODYLENGTH_LENGTH = Integer.BYTES;
-  static final int HEADER_LENGTH = TYPE_AND_TRANSFERID_LENGTH + BODYLENGTH_LENGTH;
+  private static final int TRANSFER_INDEX_LENGTH = Integer.BYTES;
+  private static final int BODY_LENGTH_LENGTH = Integer.BYTES;
+  private static final int HEADER_LENGTH = Byte.BYTES + TRANSFER_INDEX_LENGTH + BODY_LENGTH_LENGTH;
 
   // the maximum length of a frame body. 2**32 - 1
   static final long LENGTH_MAX = 4294967295L;
@@ -54,23 +49,20 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
   protected void encode(final ChannelHandlerContext ctx, final DataFrame in, final List out) {
     // encode header
     final ByteBuf header = ctx.alloc().ioBuffer(HEADER_LENGTH, HEADER_LENGTH);
-    final short type;
-    final boolean isPull = in.type == ControlMessage.BlockTransferType.PULL;
-    if (isPull) {
-      if (in.isLastFrame) {
-        type = FrameDecoder.PULL_LASTFRAME;
-      } else {
-        type = FrameDecoder.PULL_INTERMEDIATE_FRAME;
-      }
-    } else {
-      if (in.isLastFrame) {
-        type = FrameDecoder.PUSH_LASTFRAME;
-      } else {
-        type = FrameDecoder.PUSH_INTERMEDIATE_FRAME;
-      }
+    byte flags = (byte) 0;
+    flags |= (byte) (1 << 3);
+    if (in.contextId.getDataDirection() == ControlMessage.ByteTransferDataDirection.PARTNER_TO_INITIATOR) {
+      flags |= (byte) (1 << 2);
     }
-    header.writeShort(type);
-    header.writeShort(in.transferId);
+    if (in.opensSubStream) {
+      flags |= (byte) (1 << 1);
+    }
+    if (in.closesContext) {
+      flags |= (byte) (1 << 0);
+    }
+
+    header.writeByte(flags);
+    header.writeInt(in.contextId.getTransferIndex());
 
     // in.length should not exceed the range of unsigned int
     assert (in.length <= LENGTH_MAX);
@@ -85,16 +77,6 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
 
     // recycle DataFrame object
     in.recycle();
-
-    // a transport context is closed. remove from map.
-    if (in.isLastFrame) {
-      final ControlMessageToBlockStreamCodec duplexHandler
-          = ctx.channel().pipeline().get(ControlMessageToBlockStreamCodec.class);
-      (isPull ? duplexHandler.getPullTransferIdToOutputStream() : duplexHandler.getPushTransferIdToOutputStream())
-          .remove(in.transferId);
-      LOG.debug("Closing transport {}:{}, where the block sender is {} and the receiver is {}", new Object[]{
-          isPull ? "pull" : "push", in.transferId, ctx.channel().localAddress(), ctx.channel().remoteAddress()});
-    }
   }
 
   /**
@@ -109,8 +91,6 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
       }
     };
 
-    private final Recycler.Handle handle;
-
     /**
      * Creates a {@link DataFrame}.
      *
@@ -120,34 +100,48 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
       this.handle = handle;
     }
 
-    private ControlMessage.BlockTransferType type;
-    private boolean isLastFrame;
-    private short transferId;
-    private long length;
+    private final Recycler.Handle handle;
+    private ByteTransferContext.ContextId contextId;
     @Nullable
     private Object body;
+    private long length;
+    private boolean opensSubStream;
+    private boolean closesContext;
 
     /**
-     * Creates a {@link DataFrame}.
+     * Creates a {@link DataFrame} to supply content to sub-stream.
      *
-     * @param type        the transfer type, namely pull or push
-     * @param isLastFrame whether or not this frame is the last frame of a data message
-     * @param transferId  the transfer id
+     * @param contextId   the context id
+     * @param body        the body or {@code null}
      * @param length      the length of the body, in bytes
-     * @param body        the body
+     * @param opensSubStream whether this frame opens a new sub-stream or not
      * @return the {@link DataFrame} object
      */
-    static DataFrame newInstance(final ControlMessage.BlockTransferType type,
-                                 final boolean isLastFrame,
-                                 final short transferId,
+    static DataFrame newInstance(final ByteTransferContext.ContextId contextId,
+                                 @Nullable final Object body,
                                  final long length,
-                                 @Nullable final Object body) {
+                                 final boolean opensSubStream) {
       final DataFrame dataFrame = RECYCLER.get();
-      dataFrame.type = type;
-      dataFrame.isLastFrame = isLastFrame;
-      dataFrame.transferId = transferId;
-      dataFrame.length = length;
+      dataFrame.contextId = contextId;
       dataFrame.body = body;
+      dataFrame.length = length;
+      dataFrame.opensSubStream = opensSubStream;
+      dataFrame.closesContext = false;
+      return dataFrame;
+    }
+
+    /**
+     * Creates a {@link DataFrame} to close the whole context.
+     * @param contextId   the context id
+     * @return the {@link DataFrame} object
+     */
+    static DataFrame newInstance(final ByteTransferContext.ContextId contextId) {
+      final DataFrame dataFrame = RECYCLER.get();
+      dataFrame.contextId = contextId;
+      dataFrame.body = null;
+      dataFrame.length = 0;
+      dataFrame.opensSubStream = false;
+      dataFrame.closesContext = true;
       return dataFrame;
     }
 
@@ -156,7 +150,7 @@ final class DataFrameEncoder extends MessageToMessageEncoder<DataFrameEncoder.Da
      */
     void recycle() {
       body = null;
-      RECYCLER.recycle(this, handle);
+      handle.recycle(this);
     }
   }
 }

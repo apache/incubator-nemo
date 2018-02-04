@@ -36,7 +36,6 @@ import edu.snu.coral.runtime.executor.datatransfer.OutputWriter;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
@@ -246,7 +245,7 @@ public final class TaskGroupExecutor {
     physicalTaskIdToInputReaderMap.get(physicalTaskId).stream().filter(InputReader::isSideInputReader)
         .forEach(inputReader -> {
           try {
-            final Object sideInput = inputReader.getSideInput().get();
+            final Object sideInput = inputReader.getSideInput();
             final RuntimeEdge inEdge = inputReader.getRuntimeEdge();
             final Transform srcTransform;
             if (inEdge instanceof PhysicalStageEdge) {
@@ -256,7 +255,7 @@ public final class TaskGroupExecutor {
               srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
             }
             sideInputMap.put(srcTransform, sideInput);
-          } catch (final InterruptedException | ExecutionException e) {
+          } catch (final InterruptedException e) {
             throw new BlockFetchException(e);
           }
         });
