@@ -147,7 +147,6 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
         LOG.info("Skew: idealAccumulatedSize for taskGroup {}: {}", i, idealAccumulatedSize);
         // find the point while adding up one by one.
         while (currentAccumulatedSize < idealAccumulatedSize) {
-          LOG.info("Skew: idealAccumulatedSize for taskGroup {}: {}", i, idealAccumulatedSize);
           currentAccumulatedSize += aggregatedMetricData.get(finishingHashValue);
           finishingHashValue++;
         }
@@ -169,6 +168,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
             currentAccumulatedSize);
       }
     }
+
     return keyRanges;
   }
 }
