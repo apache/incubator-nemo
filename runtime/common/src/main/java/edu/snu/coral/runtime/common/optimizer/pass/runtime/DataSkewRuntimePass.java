@@ -149,6 +149,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<L
         // find the point while adding up one by one.
         while (currentAccumulatedSize < idealAccumulatedSize) {
           currentAccumulatedSize += aggregatedMetricData.get(finishingHashValue);
+          LOG.info("Adding {}, hashVal {}", aggregatedMetricData.get(finishingHashValue));
           finishingHashValue++;
         }
 
