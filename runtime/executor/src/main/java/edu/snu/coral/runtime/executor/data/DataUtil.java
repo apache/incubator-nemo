@@ -52,12 +52,12 @@ public final class DataUtil {
    * @return the list of deserialized elements.
    * @throws IOException if fail to deserialize.
    */
-  public static <K extends Serializable> NonSerializedPartition deserializePartition(final long elementsInPartition,
-                                                            final Coder coder,
-                                                            final K key,
-                                                            final InputStream inputStream) throws IOException {
+  public static <K extends Serializable> NonSerializedPartition deserializePartition(
+      final long elementsInPartition, final Coder coder, final K key, final InputStream inputStream)
+      throws IOException {
     final List deserializedData = new ArrayList();
-    (new InputStreamIterator(inputStream, coder, elementsInPartition)).forEachRemaining(deserializedData::add);
+    (new InputStreamIterator(Collections.singletonList(inputStream).iterator(), coder, elementsInPartition))
+        .forEachRemaining(deserializedData::add);
     return new NonSerializedPartition(key, deserializedData);
   }
 
@@ -159,10 +159,11 @@ public final class DataUtil {
    */
   public static final class InputStreamIterator<T> implements Iterator<T> {
 
-    private final InputStream inputStream;
+    private final Iterator<InputStream> inputStreams;
     private final Coder<T> coder;
     private final long limit;
 
+    private volatile InputStream currentInputStream = null;
     private volatile boolean hasNext = false;
     private volatile T next;
     private volatile boolean cannotContinueDecoding = false;
@@ -171,11 +172,11 @@ public final class DataUtil {
     /**
      * Construct {@link Iterator} from {@link InputStream} and {@link Coder}.
      *
-     * @param inputStream The stream to read data from.
-     * @param coder       The coder to decode bytes into {@code T}.
+     * @param inputStreams The streams to read data from.
+     * @param coder        The coder to decode bytes into {@code T}.
      */
-    public InputStreamIterator(final InputStream inputStream, final Coder<T> coder) {
-      this.inputStream = inputStream;
+    public InputStreamIterator(final Iterator<InputStream> inputStreams, final Coder<T> coder) {
+      this.inputStreams = inputStreams;
       this.coder = coder;
       // -1 means no limit.
       this.limit = -1;
@@ -184,15 +185,15 @@ public final class DataUtil {
     /**
      * Construct {@link Iterator} from {@link InputStream} and {@link Coder}.
      *
-     * @param inputStream The stream to read data from.
-     * @param coder       The coder to decode bytes into {@code T}.
-     * @param limit       The number of elements from the {@link InputStream}.
+     * @param inputStreams The streams to read data from.
+     * @param coder        The coder to decode bytes into {@code T}.
+     * @param limit        The number of elements from the {@link InputStream}.
      */
-    public InputStreamIterator(final InputStream inputStream, final Coder<T> coder, final long limit) {
+    public InputStreamIterator(final Iterator<InputStream> inputStreams, final Coder<T> coder, final long limit) {
       if (limit < 0) {
         throw new IllegalArgumentException("Negative limit not allowed.");
       }
-      this.inputStream = inputStream;
+      this.inputStreams = inputStreams;
       this.coder = coder;
       this.limit = limit;
     }
@@ -209,14 +210,23 @@ public final class DataUtil {
         cannotContinueDecoding = true;
         return false;
       }
-      try {
-        next = coder.decode(inputStream);
-        hasNext = true;
-        elementsDecoded++;
-        return true;
-      } catch (final IOException e) {
-        cannotContinueDecoding = true;
-        return false;
+      while (true) {
+        try {
+          if (currentInputStream == null) {
+            if (inputStreams.hasNext()) {
+              currentInputStream = inputStreams.next();
+            } else {
+              cannotContinueDecoding = true;
+              return false;
+            }
+          }
+          next = coder.decode(currentInputStream);
+          hasNext = true;
+          elementsDecoded++;
+          return true;
+        } catch (final IOException e) {
+          currentInputStream = null;
+        }
       }
     }
 

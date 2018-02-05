@@ -156,33 +156,32 @@ public final class InputReader extends DataTransfer {
     return Boolean.TRUE.equals(runtimeEdge.isSideInput());
   }
 
-  public CompletableFuture<Object> getSideInput() {
+  public Object getSideInput() throws InterruptedException, ExecutionException {
     if (!isSideInputReader()) {
       throw new RuntimeException();
     }
-    final List<CompletableFuture<Iterator>> futures = this.read();
-    return futures.get(0).thenApply(f -> {
-      final List copy = new ArrayList();
-      f.forEachRemaining(copy::add);
-      if (copy.size() == 1) {
-        return copy.get(0);
+    final Iterator iterator = this.read().get(0).get();
+
+    final List copy = new ArrayList();
+    iterator.forEachRemaining(copy::add);
+    if (copy.size() == 1) {
+      return copy.get(0);
+    } else {
+      if (copy.get(0) instanceof Iterable) {
+        final List collect = new ArrayList();
+        copy.forEach(element -> ((Iterable) element).iterator().forEachRemaining(collect::add));
+        return collect;
+      } else if (copy.get(0) instanceof Map) {
+        final Map collect = new HashMap();
+        copy.forEach(element -> {
+          final Set keySet = ((Map) element).keySet();
+          keySet.forEach(key -> collect.put(key, ((Map) element).get(key)));
+        });
+        return collect;
       } else {
-        if (copy.get(0) instanceof Iterable) {
-          final List collect = new ArrayList();
-          copy.forEach(element -> ((Iterable) element).iterator().forEachRemaining(collect::add));
-          return collect;
-        } else if (copy.get(0) instanceof Map) {
-          final Map collect = new HashMap();
-          copy.forEach(element -> {
-            final Set keySet = ((Map) element).keySet();
-            keySet.forEach(key -> collect.put(key, ((Map) element).get(key)));
-          });
-          return collect;
-        } else {
-          return copy;
-        }
+        return copy;
       }
-    });
+    }
   }
 
   /**

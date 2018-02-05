@@ -94,7 +94,7 @@ public final class HashRange implements KeyRange<Integer> {
   @Override
   public String toString() {
     final StringBuilder printableKeyRange = new StringBuilder("[");
-    printableKeyRange.append(rangeBeginInclusive()).append(rangeEndExclusive()).append(")");
+    printableKeyRange.append(rangeBeginInclusive()).append(", ").append(rangeEndExclusive()).append(")");
 
     return printableKeyRange.toString();
   }
