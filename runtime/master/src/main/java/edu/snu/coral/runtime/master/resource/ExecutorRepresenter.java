@@ -23,7 +23,6 @@ import edu.snu.coral.runtime.common.message.MessageSender;
 import edu.snu.coral.runtime.common.plan.physical.ScheduledTaskGroup;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
-import org.apache.reef.driver.evaluator.EvaluatorDescriptor;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -47,7 +46,6 @@ public final class ExecutorRepresenter {
   private final MessageSender<ControlMessage.Message> messageSender;
   private final ActiveContext activeContext;
   private final ExecutorService serializationExecutorService;
-
   private final String nodeName;
 
   public ExecutorRepresenter(final String executorId,
@@ -55,7 +53,7 @@ public final class ExecutorRepresenter {
                              final MessageSender<ControlMessage.Message> messageSender,
                              final ActiveContext activeContext,
                              final ExecutorService serializationExecutorService,
-                             final EvaluatorDescriptor evaluatorDescriptor) {
+                             final String nodeName) {
     this.executorId = executorId;
     this.resourceSpecification = resourceSpecification;
     this.messageSender = messageSender;
@@ -64,8 +62,7 @@ public final class ExecutorRepresenter {
     this.failedTaskGroups = new HashSet<>();
     this.activeContext = activeContext;
     this.serializationExecutorService = serializationExecutorService;
-
-    this.nodeName = evaluatorDescriptor.getNodeDescriptor().getName();
+    this.nodeName = nodeName;
   }
 
   public void onExecutorFailed() {

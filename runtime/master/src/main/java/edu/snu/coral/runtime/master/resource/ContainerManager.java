@@ -207,8 +207,9 @@ public final class ContainerManager {
     }
 
     // Create the executor representation.
-    final ExecutorRepresenter executorRepresenter = new ExecutorRepresenter(executorId, resourceSpec, messageSender,
-        activeContext, serializationExecutorService, activeContext.getEvaluatorDescriptor());
+    final ExecutorRepresenter executorRepresenter =
+        new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext, serializationExecutorService,
+            activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
 
     LOG.info("{} is up and running at {}", executorId, executorRepresenter.getNodeName());
 
