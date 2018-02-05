@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,18 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.coral.runtime.executor.data.blocktransfer;
+package edu.snu.coral.runtime.executor.bytetransfer;
 
 import edu.snu.coral.conf.JobConf;
 import edu.snu.coral.runtime.common.NettyChannelImplementationSelector;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
+import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.ChannelGroupFuture;
+import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.reef.io.network.naming.NameResolver;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.Identifier;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
@@ -34,19 +36,18 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.net.InetSocketAddress;
-import java.util.function.Consumer;
 
 /**
  * Bootstraps the server and connects to other servers on demand.
  */
-final class BlockTransport implements AutoCloseable {
+final class ByteTransport implements AutoCloseable {
 
-  private static final Logger LOG = LoggerFactory.getLogger(BlockTransport.class);
-  private static final String SERVER_LISTENING = "block:server:listening";
-  private static final String SERVER_WORKING = "block:server:working";
-  private static final String CLIENT = "block:client";
+  private static final Logger LOG = LoggerFactory.getLogger(ByteTransport.class);
+  private static final String SERVER_LISTENING = "byte:server:listening";
+  private static final String SERVER_WORKING = "byte:server:working";
+  private static final String CLIENT = "byte:client";
 
-  private final InjectionFuture<BlockTransfer> blockTransfer;
+  private final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
   private final NameResolver nameResolver;
 
   private final EventLoopGroup serverListeningGroup;
@@ -56,9 +57,7 @@ final class BlockTransport implements AutoCloseable {
   private final Channel serverListeningChannel;
 
   /**
-   * Constructs a block transport and starts listening.
-   *
-   * @param blockTransfer         provides handler for inbound control messages
+   * Constructs a byte transport and starts listening.
    * @param nameResolver          provides naming registry
    * @param localExecutorId       the id of this executor
    * @param channelImplSelector   provides implementation for netty channel
@@ -72,12 +71,11 @@ final class BlockTransport implements AutoCloseable {
    * @param numClientThreads      the number of client threads
    */
   @Inject
-  private BlockTransport(
-      final InjectionFuture<BlockTransfer> blockTransfer,
+  private ByteTransport(
       final NameResolver nameResolver,
       @Parameter(JobConf.ExecutorId.class) final String localExecutorId,
       final NettyChannelImplementationSelector channelImplSelector,
-      final BlockTransportChannelInitializer channelInitializer,
+      final ByteTransportChannelInitializer channelInitializer,
       final TcpPortProvider tcpPortProvider,
       final LocalAddressProvider localAddressProvider,
       @Parameter(JobConf.PartitionTransportServerPort.class) final int port,
@@ -86,11 +84,10 @@ final class BlockTransport implements AutoCloseable {
       @Parameter(JobConf.PartitionTransportServerNumWorkingThreads.class) final int numWorkingThreads,
       @Parameter(JobConf.PartitionTransportClientNumThreads.class) final int numClientThreads) {
 
-    this.blockTransfer = blockTransfer;
     this.nameResolver = nameResolver;
 
     if (port < 0) {
-      throw new IllegalArgumentException(String.format("Invalid BlockTransportPort: %d", port));
+      throw new IllegalArgumentException(String.format("Invalid ByteTransportPort: %d", port));
     }
 
     final String host = localAddressProvider.getLocalAddress();
@@ -101,15 +98,13 @@ final class BlockTransport implements AutoCloseable {
         new DefaultThreadFactory(SERVER_WORKING));
     clientGroup = channelImplSelector.newEventLoopGroup(numClientThreads, new DefaultThreadFactory(CLIENT));
 
-    clientBootstrap = new Bootstrap();
-    clientBootstrap
+    clientBootstrap = new Bootstrap()
         .group(clientGroup)
         .channel(channelImplSelector.getChannelClass())
         .handler(channelInitializer)
         .option(ChannelOption.SO_REUSEADDR, true);
 
-    final ServerBootstrap serverBootstrap = new ServerBootstrap();
-    serverBootstrap
+    final ServerBootstrap serverBootstrap = new ServerBootstrap()
         .group(serverListeningGroup, serverWorkingGroup)
         .channel(channelImplSelector.getServerChannelClass())
         .childHandler(channelInitializer)
@@ -162,14 +157,14 @@ final class BlockTransport implements AutoCloseable {
     serverListeningChannel = listeningChannel;
 
     try {
-      final BlockTransportIdentifier identifier = new BlockTransportIdentifier(localExecutorId);
+      final ByteTransportIdentifier identifier = new ByteTransportIdentifier(localExecutorId);
       nameResolver.register(identifier, (InetSocketAddress) listeningChannel.localAddress());
     } catch (final Exception e) {
-      LOG.error("Cannot register BlockTransport listening address to the naming registry", e);
+      LOG.error("Cannot register ByteTransport listening address to the naming registry", e);
       throw new RuntimeException(e);
     }
 
-    LOG.info("BlockTransport server in {} is listening at {}", localExecutorId, listeningChannel.localAddress());
+    LOG.info("ByteTransport server in {} is listening at {}", localExecutorId, listeningChannel.localAddress());
   }
 
   /**
@@ -180,7 +175,7 @@ final class BlockTransport implements AutoCloseable {
     LOG.info("Stopping listening at {} and closing", serverListeningChannel.localAddress());
 
     final ChannelFuture closeListeningChannelFuture = serverListeningChannel.close();
-    final ChannelGroupFuture channelGroupCloseFuture = blockTransfer.get().getChannelGroup().close();
+    final ChannelGroupFuture channelGroupCloseFuture = channelGroup.close();
     final Future serverListeningGroupCloseFuture = serverListeningGroup.shutdownGracefully();
     final Future serverWorkingGroupCloseFuture = serverWorkingGroup.shutdownGracefully();
     final Future clientGroupCloseFuture = clientGroup.shutdownGracefully();
@@ -193,43 +188,62 @@ final class BlockTransport implements AutoCloseable {
   }
 
   /**
-   * Connect to the {@link BlockTransport} server of the specified executor.
+   * Connect to the {@link ByteTransport} server of the specified executor.
    * @param remoteExecutorId  the id of the executor
-   * @param onError           the {@link Consumer} to be invoked on an error on name resolving
    * @return a {@link ChannelFuture} for connecting
    */
-  ChannelFuture connectTo(final String remoteExecutorId, final Consumer<Throwable> onError) {
+  ChannelFuture connectTo(final String remoteExecutorId) {
     final InetSocketAddress address;
     try {
-      final BlockTransportIdentifier identifier = new BlockTransportIdentifier(remoteExecutorId);
+      final ByteTransportIdentifier identifier = new ByteTransportIdentifier(remoteExecutorId);
       address = nameResolver.lookup(identifier);
     } catch (final Exception e) {
-      LOG.error(String.format("Cannot lookup BlockTransport listening address of %s", remoteExecutorId), e);
-      onError.accept(e);
+      LOG.error(String.format("Cannot lookup ByteTransport listening address of %s", remoteExecutorId), e);
       throw new RuntimeException(e);
     }
-    return clientBootstrap.connect(address);
+    final ChannelFuture connectFuture = clientBootstrap.connect(address);
+    connectFuture.addListener(future -> {
+      if (future.isSuccess()) {
+        // Succeed to connect
+        LOG.debug("Connected to {}", remoteExecutorId);
+        return;
+      }
+      // Failed to connect
+      if (future.cause() == null) {
+        LOG.error("Failed to connect to {}", remoteExecutorId);
+      } else {
+        LOG.error(String.format("Failed to connect to %s", remoteExecutorId), future.cause());
+      }
+    });
+    return connectFuture;
   }
 
   /**
-   * {@link Identifier} for {@link BlockTransfer}.
+   * @return {@link ChannelGroup} for active connections between this executor and remote executor.
    */
-  private static final class BlockTransportIdentifier implements Identifier {
+  ChannelGroup getChannelGroup() {
+    return channelGroup;
+  }
+
+  /**
+   * {@link Identifier} for {@link ByteTransfer}.
+   */
+  private static final class ByteTransportIdentifier implements Identifier {
 
     private final String executorId;
 
     /**
-     * Creates a {@link BlockTransportIdentifier}.
+     * Creates a {@link ByteTransportIdentifier}.
      *
      * @param executorId id of the {@link edu.snu.coral.runtime.executor.Executor}
      */
-    private BlockTransportIdentifier(final String executorId) {
+    private ByteTransportIdentifier(final String executorId) {
       this.executorId = executorId;
     }
 
     @Override
     public String toString() {
-      return "block://" + executorId;
+      return "byte://" + executorId;
     }
 
     @Override
@@ -240,7 +254,7 @@ final class BlockTransport implements AutoCloseable {
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      final BlockTransportIdentifier that = (BlockTransportIdentifier) o;
+      final ByteTransportIdentifier that = (ByteTransportIdentifier) o;
       return executorId.equals(that.executorId);
     }
 

@@ -270,7 +270,7 @@ public final class TaskGroupExecutor {
     physicalTaskIdToInputReaderMap.get(physicalTaskId).stream().filter(InputReader::isSideInputReader)
         .forEach(inputReader -> {
           try {
-            final Object sideInput = inputReader.getSideInput().get();
+            final Object sideInput = inputReader.getSideInput();
             final RuntimeEdge inEdge = inputReader.getRuntimeEdge();
             final Transform srcTransform;
             if (inEdge instanceof PhysicalStageEdge) {
