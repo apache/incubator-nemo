@@ -34,7 +34,8 @@ import java.util.concurrent.ExecutorService;
  *    a) The executor's resource type.
  *    b) The executor's capacity (ex. number of cores).
  *    c) Task groups scheduled/launched for the executor.
- *    d) (Please add other information as we implement more features).
+ *    d) Name of the physical node which hosts this executor.
+ *    e) (Please add other information as we implement more features).
  */
 public final class ExecutorRepresenter {
 
