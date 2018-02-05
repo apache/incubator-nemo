@@ -19,8 +19,10 @@ import edu.snu.coral.common.ir.vertex.executionproperty.ExecutorPlacementPropert
 import edu.snu.coral.runtime.common.message.MessageEnvironment;
 import edu.snu.coral.runtime.master.resource.ContainerManager;
 import edu.snu.coral.runtime.master.resource.ResourceSpecification;
+import org.apache.reef.driver.catalog.NodeDescriptor;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.driver.evaluator.EvaluatorDescriptor;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.junit.Before;
 import org.junit.Test;
@@ -94,8 +96,14 @@ public final class ContainerManagerTest {
   }
 
   private ActiveContext createMockContext() {
+    final String name = "TestContext" + testIdNumber++;
+    final NodeDescriptor mockedNodeDescriptor = mock(NodeDescriptor.class);
+    when(mockedNodeDescriptor.getName()).thenReturn(name);
+    final EvaluatorDescriptor mockedEvaluatorDescriptor = mock(EvaluatorDescriptor.class);
+    when(mockedEvaluatorDescriptor.getNodeDescriptor()).thenReturn(mockedNodeDescriptor);
     final ActiveContext mockedContext = mock(ActiveContext.class);
-    when(mockedContext.getId()).thenReturn("TestContext" + testIdNumber++);
+    when(mockedContext.getId()).thenReturn(name);
+    when(mockedContext.getEvaluatorDescriptor()).thenReturn(mockedEvaluatorDescriptor);
 
     return mockedContext;
   }
