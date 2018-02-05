@@ -62,7 +62,7 @@ public final class DataUtil {
                                                             final K key,
                                                             final InputStream inputStream) throws IOException {
     final List deserializedData = new ArrayList();
-    (new InputStreamIterator(Collections.singletonList(inputStream).iterator(), coder, elementsInPartition))
+    (new InputStreamIterator(Collections.singletonList(inputStream).iterator(), serializer, elementsInPartition))
         .forEachRemaining(deserializedData::add);
     return new NonSerializedPartition(key, deserializedData);
   }
@@ -195,7 +195,10 @@ public final class DataUtil {
      * @param serializer  The serializer.
      * @param limit        The number of elements from the {@link InputStream}.
      */
-    public InputStreamIterator(final Iterator<InputStream> inputStreams, final Serializer<T> serializer, final long limit) {
+    public InputStreamIterator(
+        final Iterator<InputStream> inputStreams,
+        final Serializer<T> serializer,
+        final long limit) {
       if (limit < 0) {
         throw new IllegalArgumentException("Negative limit not allowed.");
       }
