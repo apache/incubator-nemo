@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.coral.runtime.executor.data.blocktransfer;
+package edu.snu.coral.runtime.executor.bytetransfer;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
@@ -21,7 +21,7 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 
 /**
- * A blocking queue implementation which is capable of closing the input end.
+ * A blocking queue implementation which is capable of closing.
  *
  * @param <T> the type of elements
  */
@@ -52,10 +52,14 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    *
    * @param element the element to add
    * @throws IllegalStateException if the input end of this queue has been closed
+   * @throws NullPointerException if {@code element} is {@code null}
    */
   public synchronized void put(final T element) {
+    if (element == null) {
+      throw new NullPointerException();
+    }
     if (closed) {
-      throw new IllegalStateException("The input end of this queue has been closed");
+      throw new IllegalStateException("This queue has been closed");
     }
     queue.add(element);
     notifyAll();
@@ -64,6 +68,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
   /**
    * Mark the input end of this queue as closed.
    */
+  @Override
   public synchronized void close() {
     closed = true;
     notifyAll();
