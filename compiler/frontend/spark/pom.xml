@@ -56,5 +56,10 @@ limitations under the License.
             <artifactId>spark-sql_2.11</artifactId>
             <version>${spark.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.reef</groupId>
+            <artifactId>wake</artifactId>
+            <version>${reef.version}</version>
+        </dependency>
     </dependencies>
 </project>
