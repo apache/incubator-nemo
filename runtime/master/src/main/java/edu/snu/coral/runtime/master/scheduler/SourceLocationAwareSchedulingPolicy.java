@@ -155,7 +155,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
    */
   private static Set<String> getSourceLocation(final DAG<Task, RuntimeEdge<Task>> taskGroupDAG,
                                                final Map<String, Readable> logicalTaskIdToReadable) throws Exception {
-    final Set<String> sourceLocations = new HashSet<>();
+    final List<String> sourceLocations = new ArrayList<>();
     final List<BoundedSourceTask> sourceTasks = taskGroupDAG.getVertices().stream()
         .filter(task -> task instanceof BoundedSourceTask)
         .map(task -> ((BoundedSourceTask) task))
@@ -165,6 +165,6 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
       final Collection<String> locations = readable.getLocations();
       sourceLocations.addAll(locations);
     }
-    return sourceLocations;
+    return new HashSet<>(sourceLocations);
   }
 }
