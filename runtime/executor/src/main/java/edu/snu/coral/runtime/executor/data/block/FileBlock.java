@@ -17,7 +17,7 @@ package edu.snu.coral.runtime.executor.data.block;
 
 import edu.snu.coral.runtime.common.data.KeyRange;
 import edu.snu.coral.runtime.executor.data.*;
-import edu.snu.coral.runtime.executor.data.chainable.Serializer;
+import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.coral.runtime.executor.data.metadata.PartitionMetadata;
 import edu.snu.coral.runtime.executor.data.metadata.FileMetadata;
 

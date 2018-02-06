@@ -17,7 +17,7 @@ package edu.snu.coral.runtime.executor.data.stores;
 
 import edu.snu.coral.runtime.common.RuntimeIdGenerator;
 import edu.snu.coral.runtime.executor.data.SerializerManager;
-import edu.snu.coral.runtime.executor.data.chainable.Serializer;
+import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 
 /**
  * This abstract class represents a default {@link BlockStore},

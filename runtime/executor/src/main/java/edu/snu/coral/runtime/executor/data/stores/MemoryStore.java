@@ -17,7 +17,7 @@ package edu.snu.coral.runtime.executor.data.stores;
 
 import edu.snu.coral.runtime.executor.data.SerializerManager;
 import edu.snu.coral.runtime.executor.data.block.NonSerializedMemoryBlock;
-import edu.snu.coral.runtime.executor.data.chainable.Serializer;
+import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;

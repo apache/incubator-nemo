@@ -19,7 +19,7 @@ import edu.snu.coral.common.exception.BlockFetchException;
 import edu.snu.coral.conf.JobConf;
 import edu.snu.coral.runtime.common.data.KeyRange;
 import edu.snu.coral.runtime.executor.data.*;
-import edu.snu.coral.runtime.executor.data.chainable.Serializer;
+import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.coral.runtime.executor.data.metadata.LocalFileMetadata;
 import edu.snu.coral.runtime.executor.data.block.FileBlock;
 import org.apache.reef.tang.annotations.Parameter;

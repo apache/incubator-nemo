@@ -15,13 +15,13 @@
  */
 package edu.snu.coral.runtime.executor.data;
 
-import edu.snu.coral.runtime.executor.data.chainable.Chainable;
-import edu.snu.coral.runtime.executor.data.chainable.CompressionChainable;
+import edu.snu.coral.runtime.executor.data.streamchainer.CompressionStreamChainer;
+import edu.snu.coral.runtime.executor.data.streamchainer.StreamChainer;
 import edu.snu.coral.common.coder.Coder;
 import edu.snu.coral.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.coral.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.coral.common.ir.executionproperty.ExecutionPropertyMap;
-import edu.snu.coral.runtime.executor.data.chainable.Serializer;
+import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,17 +60,17 @@ public final class SerializerManager {
     final Serializer serializer = new Serializer(coder, Collections.emptyList());
     runtimeEdgeIdToSerializer.putIfAbsent(runtimeEdgeId, serializer);
 
-    final List<Chainable> chainableList = new ArrayList<>();
+    final List<StreamChainer> streamChainerList = new ArrayList<>();
 
     // Compression chain
     CompressionProperty.Compression compressionProperty = propertyMap.get(ExecutionProperty.Key.Compression);
     if (compressionProperty != null) {
       LOG.debug("Adding {} compression chain for {}",
           compressionProperty, runtimeEdgeId);
-      chainableList.add(new CompressionChainable(compressionProperty));
+      streamChainerList.add(new CompressionStreamChainer(compressionProperty));
     }
 
-    serializer.setChainables(chainableList);
+    serializer.setStreamChainers(streamChainerList);
   }
 
   /**

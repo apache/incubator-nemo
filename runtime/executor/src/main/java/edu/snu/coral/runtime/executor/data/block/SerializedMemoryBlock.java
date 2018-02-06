@@ -19,7 +19,7 @@ import edu.snu.coral.runtime.common.data.KeyRange;
 import edu.snu.coral.runtime.executor.data.DataUtil;
 import edu.snu.coral.runtime.executor.data.NonSerializedPartition;
 import edu.snu.coral.runtime.executor.data.SerializedPartition;
-import edu.snu.coral.runtime.executor.data.chainable.Serializer;
+import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;

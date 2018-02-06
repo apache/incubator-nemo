@@ -2,8 +2,8 @@ package edu.snu.coral.runtime.executor.data;
 
 import edu.snu.coral.common.DirectByteArrayOutputStream;
 import edu.snu.coral.common.coder.Coder;
-import edu.snu.coral.runtime.executor.data.chainable.Chainable;
-import edu.snu.coral.runtime.executor.data.chainable.Serializer;
+import edu.snu.coral.runtime.executor.data.streamchainer.StreamChainer;
+import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 
 import java.io.*;
 import java.util.*;
@@ -36,7 +36,7 @@ public final class DataUtil {
                                         final ByteArrayOutputStream bytesOutputStream) throws IOException {
     long elementsCount = 0;
     final Coder coder = serializer.getCoder();
-    final OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getChainables());
+    final OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getStreamChainers());
     for (final Object element : nonSerializedPartition.getData()) {
       coder.encode(element, wrappedStream);
       elementsCount++;
@@ -223,7 +223,7 @@ public final class DataUtil {
         try {
           if (currentInputStream == null) {
             if (inputStreams.hasNext()) {
-              currentInputStream = buildInputStream(inputStreams.next(), serializer.getChainables());
+              currentInputStream = buildInputStream(inputStreams.next(), serializer.getStreamChainers());
             } else {
               cannotContinueDecoding = true;
               return false;
@@ -253,37 +253,37 @@ public final class DataUtil {
   }
 
   /**
-   * Wrap {@link InputStream} with {@link Chainable}s.
+   * Chain {@link InputStream} with {@link StreamChainer}s.
    *
-   * @param in         the {@link InputStream}.
-   * @param chainables the list of {@link Chainable} to be applied on the stream.
-   * @return chained {@link InputStream}.
-   * @throws IOException if fail to create new stream.
+   * @param in             the {@link InputStream}.
+   * @param streamChainers the list of {@link StreamChainer} to be applied on the stream.
+   * @return chained       {@link InputStream}.
+   * @throws IOException   if fail to create new stream.
    */
-  public static InputStream buildInputStream(final InputStream in, final List<Chainable> chainables)
+  public static InputStream buildInputStream(final InputStream in, final List<StreamChainer> streamChainers)
   throws IOException {
     InputStream chained = in;
-    for (final Chainable chainable : chainables) {
-      chained = chainable.chainInput(chained);
+    for (final StreamChainer streamChainer : streamChainers) {
+      chained = streamChainer.chainInput(chained);
     }
     return chained;
   }
 
   /**
-   * Wrap {@link OutputStream} with {@link Chainable}s.
+   * Chain {@link OutputStream} with {@link StreamChainer}s.
    *
-   * @param out        the {@link OutputStream}.
-   * @param chainables the list of {@link Chainable} to be applied on the stream.
-   * @return chained {@link OutputStream}.
-   * @throws IOException if fail to create new stream.
+   * @param out            the {@link OutputStream}.
+   * @param streamChainers the list of {@link StreamChainer} to be applied on the stream.
+   * @return chained       {@link OutputStream}.
+   * @throws IOException   if fail to create new stream.
    */
-  public static OutputStream buildOutputStream(final OutputStream out, final List<Chainable> chainables)
+  public static OutputStream buildOutputStream(final OutputStream out, final List<StreamChainer> streamChainers)
   throws IOException {
     OutputStream chained = out;
-    final List<Chainable> temporaryChainableList = new ArrayList<>(chainables);
-    Collections.reverse(temporaryChainableList);
-    for (final Chainable chainable : temporaryChainableList) {
-      chained = chainable.chainOutput(chained);
+    final List<StreamChainer> temporaryStreamChainerList = new ArrayList<>(streamChainers);
+    Collections.reverse(temporaryStreamChainerList);
+    for (final StreamChainer streamChainer : temporaryStreamChainerList) {
+      chained = streamChainer.chainOutput(chained);
     }
     return chained;
   }

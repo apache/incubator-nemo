@@ -26,7 +26,7 @@ import edu.snu.coral.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.coral.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.coral.runtime.common.state.BlockState;
 import edu.snu.coral.runtime.executor.data.*;
-import edu.snu.coral.runtime.executor.data.chainable.Serializer;
+import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.coral.runtime.executor.data.stores.*;
 import edu.snu.coral.runtime.master.BlockManagerMaster;
 import edu.snu.coral.runtime.master.RuntimeMaster;

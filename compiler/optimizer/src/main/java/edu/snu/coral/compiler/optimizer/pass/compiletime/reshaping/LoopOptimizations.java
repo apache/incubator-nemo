@@ -281,7 +281,7 @@ public final class LoopOptimizations {
           final List<IREdge> edgesToRemove = new ArrayList<>();
           final List<IREdge> edgesToAdd = new ArrayList<>();
           inEdges.getOrDefault(loopVertex, new ArrayList<>()).stream().filter(e ->
-              // chainable edges that have their sources as the refactored vertices.
+              // filter edges that have their sources as the refactored vertices.
               candidate.getValue().stream().map(IREdge::getSrc).anyMatch(edgeSrc -> edgeSrc.equals(e.getSrc())))
               .forEach(edge -> {
                 edgesToRemove.add(edge);

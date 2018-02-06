@@ -1,4 +1,4 @@
-package edu.snu.coral.runtime.executor.data.chainable;
+package edu.snu.coral.runtime.executor.data.streamchainer;
 
 import edu.snu.coral.common.exception.UnsupportedCompressionException;
 import edu.snu.coral.common.ir.edge.executionproperty.CompressionProperty;
@@ -12,9 +12,9 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 /**
- * {@link Chainable} for applying compression.
+ * {@link StreamChainer} for applying compression.
  */
-public class CompressionChainable implements Chainable {
+public class CompressionStreamChainer implements StreamChainer {
   private final CompressionProperty.Compression compression;
 
   /**
@@ -22,7 +22,7 @@ public class CompressionChainable implements Chainable {
    *
    * @param compression compression method.
    */
-  public CompressionChainable(final CompressionProperty.Compression compression) {
+  public CompressionStreamChainer(final CompressionProperty.Compression compression) {
     this.compression = compression;
   }
 

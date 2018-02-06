@@ -21,7 +21,7 @@ import edu.snu.coral.common.exception.BlockWriteException;
 import edu.snu.coral.runtime.common.data.KeyRange;
 import edu.snu.coral.runtime.executor.data.*;
 import edu.snu.coral.runtime.executor.data.block.Block;
-import edu.snu.coral.runtime.executor.data.chainable.Serializer;
+import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.coral.runtime.executor.data.metadata.RemoteFileMetadata;
 import edu.snu.coral.runtime.executor.data.block.FileBlock;
 import org.apache.reef.tang.annotations.Parameter;
