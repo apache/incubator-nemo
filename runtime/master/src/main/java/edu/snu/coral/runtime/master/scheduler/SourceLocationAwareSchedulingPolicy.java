@@ -138,6 +138,8 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
    */
   private synchronized List<ExecutorRepresenter> selectExecutorByContainerTypeAndNodeNames(
       final String containerType, final Set<String> nodeNames) {
+    LOG.info("Executor predicate: {}, [{}] from [{}]", containerType, String.join(", ", nodeNames),
+        String.join(", ", availableExecutors));
     final Map<String, ExecutorRepresenter> executorIdToExecutorRepresenter
         = containerManager.getExecutorRepresenterMap();
     return availableExecutors.stream().map(executorId -> executorIdToExecutorRepresenter.get(executorId))
