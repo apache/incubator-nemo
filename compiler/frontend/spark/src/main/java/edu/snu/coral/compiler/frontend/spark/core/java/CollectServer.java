@@ -19,9 +19,11 @@ package edu.snu.coral.compiler.frontend.spark.core.java;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.impl.SyncStage;
 import org.apache.reef.wake.remote.RemoteConfiguration;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
+import org.apache.reef.wake.remote.impl.TransportEvent;
 import org.apache.reef.wake.remote.transport.Transport;
 import org.apache.reef.wake.remote.transport.netty.NettyMessagingTransport;
 import org.slf4j.Logger;
@@ -43,7 +45,7 @@ public final class CollectServer {
     injector.bindVolatileParameter(RemoteConfiguration.HostAddress.class, localAddressProvider.getLocalAddress());
     injector.bindVolatileParameter(RemoteConfiguration.Port.class, 0);
     injector.bindVolatileParameter(RemoteConfiguration.RemoteServerStage.class,
-        new SyncStage<>(new NamingServerHandler(handler, codec)));
+        new SyncStage<>(new CollectEventHandler()));
 
     try {
       this.transport = injector.getInstance(NettyMessagingTransport.class);
@@ -55,5 +57,10 @@ public final class CollectServer {
     LOG.info("Collect server starting, listening at port {}", this.port);
   }
 
-  private
+  private class CollectEventHandler implements EventHandler<TransportEvent> {
+    @Override
+    public void onNext(final TransportEvent transportEvent) {
+
+    }
+  }
 }
