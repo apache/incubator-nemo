@@ -96,7 +96,7 @@ public final class SparkBoundedSourceVertex<T> extends SourceVertex<T> {
       final SparkPlan plan = dataset.sparkSession().sessionState().executePlan(deserialized).executedPlan();
 
       final Iterator<InternalRow> rows = JavaConverters.asJavaIteratorConverter(
-          ReadData$.MODULE$.execute(plan, partition, emptyContext)).asJava();
+          ReadData.execute(plan, partition, emptyContext)).asJava();
 
       final List<T> list = new ArrayList<>();
       rows.forEachRemaining(row -> list.add((T) row.get(0, objectType)));

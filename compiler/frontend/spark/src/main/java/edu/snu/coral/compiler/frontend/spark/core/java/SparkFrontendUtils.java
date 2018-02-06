@@ -34,6 +34,10 @@ import org.apache.spark.SparkContext;
 import org.apache.spark.serializer.JavaSerializer;
 import org.apache.spark.serializer.KryoSerializer;
 import org.apache.spark.serializer.Serializer;
+import org.apache.spark.sql.catalyst.expressions.Expression;
+import org.apache.spark.sql.execution.datasources.DataSourceStrategy$;
+import org.apache.spark.sql.sources.Filter;
+import scala.Option;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -133,5 +137,9 @@ public final class SparkFrontendUtils {
     } else {
       return DataCommunicationPatternProperty.Value.OneToOne;
     }
+  }
+
+  public static Option<Filter> translateFilter(final Expression predicate) {
+    return DataSourceStrategy$.MODULE$.translateFilter(predicate);
   }
 }
