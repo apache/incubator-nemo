@@ -69,9 +69,9 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
                                                 final JobStateManager jobStateManager) {
     final DAG<Task, RuntimeEdge<Task>> taskGroupDAG = (DAG<Task, RuntimeEdge<Task>>)
         SerializationUtils.deserialize(scheduledTaskGroup.getSerializedTaskGroupDag());
-    final Set<String> sourceLocations = Collections.emptySet();
+    Set<String> sourceLocations = Collections.emptySet();
     try {
-      sourceLocations.addAll(getSourceLocation(taskGroupDAG, scheduledTaskGroup.getLogicalTaskIdToReadable()));
+      sourceLocations = getSourceLocation(taskGroupDAG, scheduledTaskGroup.getLogicalTaskIdToReadable());
     } catch (final Exception e) {
       LOG.warn(String.format("Cannot get source location for %s", scheduledTaskGroup.getTaskGroupId()), e);
     }
