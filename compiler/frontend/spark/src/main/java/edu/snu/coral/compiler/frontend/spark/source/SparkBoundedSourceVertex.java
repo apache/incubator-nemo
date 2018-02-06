@@ -1,18 +1,20 @@
 package edu.snu.coral.compiler.frontend.spark.source;
 
-import com.google.common.collect.Lists;
 import edu.snu.coral.common.ir.Readable;
 import edu.snu.coral.common.ir.ReadablesWrapper;
 import edu.snu.coral.common.ir.vertex.SourceVertex;
 import edu.snu.coral.compiler.frontend.spark.sql.Dataset;
-import org.apache.spark.Partition;
-import org.apache.spark.SparkConf;
-import org.apache.spark.SparkContext;
-import org.apache.spark.TaskContext$;
-import org.apache.spark.rdd.RDD;
+import org.apache.spark.*;
+import org.apache.spark.sql.catalyst.InternalRow;
+import org.apache.spark.sql.catalyst.plans.logical.CatalystSerde$;
+import org.apache.spark.sql.catalyst.plans.logical.DeserializeToObject;
+import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
+import org.apache.spark.sql.execution.SparkPlan;
+import org.apache.spark.sql.types.DataType;
 import scala.collection.JavaConverters;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -64,7 +66,7 @@ public final class SparkBoundedSourceVertex<T> extends SourceVertex<T> {
     private SparkBoundedSourceReadablesWrapper(final Dataset<T> dataset) {
       this.readables = new ArrayList<>();
       for (final Partition partition: dataset.rdd().getPartitions()) {
-        readables.add(new SparkBoundedSourceReadable(partition, dataset.rdd()));
+        readables.add(new SparkBoundedSourceReadable(partition, dataset));
       }
     }
 
@@ -78,24 +80,31 @@ public final class SparkBoundedSourceVertex<T> extends SourceVertex<T> {
    * A Readable for SparkBoundedSourceReadablesWrapper.
    */
   private final class SparkBoundedSourceReadable implements Readable<T> {
-    private final SparkConf conf;
     private final Iterable<T> iterable;
 
     /**
      * Constructor.
      * @param partition partition for this readable.
-     * @param rdd rdd to read data from.
+     * @param dataset dataset to read data from.
      */
-    private SparkBoundedSourceReadable(final Partition partition, final RDD<T> rdd) {
-      this.conf = rdd.sparkContext().conf();
-      // TODO #756: make this bit distributed.
-      this.iterable = Lists.newArrayList(() ->
-          JavaConverters.asJavaIteratorConverter(rdd.iterator(partition, TaskContext$.MODULE$.empty())).asJava());
+    private SparkBoundedSourceReadable(final Partition partition, final Dataset<T> dataset) {
+      final TaskContext emptyContext = TaskContext$.MODULE$.empty();
+
+      final DataType objectType = dataset.exprEnc().deserializer().dataType();
+      final LogicalPlan logicalPlan = dataset.logicalPlan();
+      final DeserializeToObject deserialized =  CatalystSerde$.MODULE$.deserialize(logicalPlan, dataset.exprEnc());
+      final SparkPlan plan = dataset.sparkSession().sessionState().executePlan(deserialized).executedPlan();
+
+      final Iterator<InternalRow> rows = JavaConverters.asJavaIteratorConverter(
+          ReadData$.MODULE$.execute(plan, partition, emptyContext)).asJava();
+
+      final List<T> list = new ArrayList<>();
+      rows.forEachRemaining(row -> list.add((T) row.get(0, objectType)));
+      this.iterable = list;
     }
 
     @Override
     public Iterable<T> read() {
-      new SparkContext(conf);
       return iterable;
     }
   }
