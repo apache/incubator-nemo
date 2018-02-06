@@ -12,7 +12,7 @@ object ReadData {
   def execute(sparkPlan: SparkPlan,
               partition: Partition,
               tc: TaskContext): Iterator[InternalRow] = sparkPlan match {
-//  DESERIALIZE TO OBJECT EXEC: #doExecute
+    //  DESERIALIZE TO OBJECT EXEC: #doExecute
     case p: DeserializeToObjectExec =>
       println("DESERIALIZE: " + p)
       val childRows: Iterator[InternalRow] = this.execute(p.child, partition, tc)
@@ -20,7 +20,7 @@ object ReadData {
       projection.initialize(partition.index)
       childRows.map(r => projection.apply(r))
 
-//  WHOLE STAGE CODE GEN EXEC: #doExecute
+    //  WHOLE STAGE CODE GEN EXEC: #doExecute
     case p: WholeStageCodegenExec =>
       println("WHOLESTAGECODEGEN: " + p)
       val (ctx, cleanedSource) = p.doCodeGen()
@@ -37,7 +37,7 @@ object ReadData {
 
       this.execute(p.child, partition, tc)
 
-//  FILE SOURCE SCAN EXEC: doExecute
+    //  FILE SOURCE SCAN EXEC: doExecute
     case p: FileSourceScanExec =>
       println("FILESOURCESCAN: " + p)
       val unsafeRows = {
@@ -59,7 +59,7 @@ object ReadData {
         r
       })
 
-//  ELSE
+    //  ELSE
     case p =>
       println("ELSE: " + p)
       // To catch those that are not supported
