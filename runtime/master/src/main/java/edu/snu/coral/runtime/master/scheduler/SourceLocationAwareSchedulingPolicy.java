@@ -74,7 +74,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
         SerializationUtils.deserialize(scheduledTaskGroup.getSerializedTaskGroupDag());
     Set<String> sourceLocations = Collections.emptySet();
     try {
-      sourceLocations = getSourceLocation(taskGroupDAG, scheduledTaskGroup.getLogicalTaskIdToReadable());
+      sourceLocations = getSourceLocation(scheduledTaskGroup.getLogicalTaskIdToReadable().values());
     } catch (final Exception e) {
       LOG.warn(String.format("Cannot get source location for %s", scheduledTaskGroup.getTaskGroupId()), e);
     }
@@ -154,7 +154,6 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
         = containerManager.getExecutorRepresenterMap();
     final Stream<ExecutorRepresenter> candidates = availableExecutors.stream()
         .map(executorId -> executorIdToExecutorRepresenter.get(executorId))
-        .filter(executor -> executor.getContainerType().equals(containerType))
         .filter(executor -> executor.getRunningTaskGroups().size() < executor.getExecutorCapacity())
         .filter(executor -> nodeNames.contains(executor.getNodeName()));
     if (containerType.equals(ExecutorPlacementProperty.NONE)) {
@@ -166,22 +165,14 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
   }
 
   /**
-   * @param taskGroupDAG TaskGroup DAG to investigate
-   * @param logicalTaskIdToReadable the map between logical task id to {@link Readable}.
+   * @param readables collection of readables
    * @return Set of source locations from source tasks in {@code taskGroupDAG}
    * @throws Exception for any exception raised during querying source locations for a readable
    */
-  private static Set<String> getSourceLocation(final DAG<Task, RuntimeEdge<Task>> taskGroupDAG,
-                                               final Map<String, Readable> logicalTaskIdToReadable) throws Exception {
+  private static Set<String> getSourceLocation(final Collection<Readable> readables) throws Exception {
     final List<String> sourceLocations = new ArrayList<>();
-    final List<BoundedSourceTask> sourceTasks = taskGroupDAG.getVertices().stream()
-        .filter(task -> task instanceof BoundedSourceTask)
-        .map(task -> ((BoundedSourceTask) task))
-        .collect(Collectors.toList());
-    for (final BoundedSourceTask sourceTask : sourceTasks) {
-      final Readable readable = logicalTaskIdToReadable.get(sourceTask.getId());
-      final Collection<String> locations = readable.getLocations();
-      sourceLocations.addAll(locations);
+    for (final Readable readable : readables) {
+      sourceLocations.addAll(readable.getLocations());
     }
     return new HashSet<>(sourceLocations);
   }
