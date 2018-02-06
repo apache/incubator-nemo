@@ -154,7 +154,6 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
         = containerManager.getExecutorRepresenterMap();
     final Stream<ExecutorRepresenter> candidates = availableExecutors.stream()
         .map(executorId -> executorIdToExecutorRepresenter.get(executorId))
-        .filter(executor -> executor.getContainerType().equals(containerType))
         .filter(executor -> executor.getRunningTaskGroups().size() < executor.getExecutorCapacity())
         .filter(executor -> nodeNames.contains(executor.getNodeName()));
     if (containerType.equals(ExecutorPlacementProperty.NONE)) {
