@@ -16,7 +16,9 @@
 package edu.snu.coral.runtime.master.scheduler;
 
 import edu.snu.coral.common.dag.DAG;
+import edu.snu.coral.common.exception.SchedulingException;
 import edu.snu.coral.common.ir.Readable;
+import edu.snu.coral.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.coral.runtime.common.plan.RuntimeEdge;
 import edu.snu.coral.runtime.common.plan.physical.BoundedSourceTask;
 import edu.snu.coral.runtime.common.plan.physical.ScheduledTaskGroup;
@@ -35,6 +37,7 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * This policy is same as {@link RoundRobinSchedulingPolicy}, however for TaskGroups
@@ -79,7 +82,16 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
       return roundRobinSchedulingPolicy.scheduleTaskGroup(scheduledTaskGroup, jobStateManager);
     }
 
-    return attemptSchedule(scheduledTaskGroup, jobStateManager, sourceLocations);
+    if (attemptSchedule(scheduledTaskGroup, jobStateManager, sourceLocations)) {
+      return true;
+    } else {
+      try {
+        Thread.sleep(scheduleTimeoutMs);
+      } catch (final InterruptedException e) {
+        throw new SchedulingException(e);
+      }
+      return attemptSchedule(scheduledTaskGroup, jobStateManager, sourceLocations);
+    }
   }
 
   /**
@@ -138,15 +150,19 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
    */
   private synchronized List<ExecutorRepresenter> selectExecutorByContainerTypeAndNodeNames(
       final String containerType, final Set<String> nodeNames) {
-    LOG.info("Executor predicate: {}, [{}] from [{}]", containerType, String.join(", ", nodeNames),
-        String.join(", ", availableExecutors));
     final Map<String, ExecutorRepresenter> executorIdToExecutorRepresenter
         = containerManager.getExecutorRepresenterMap();
-    return availableExecutors.stream().map(executorId -> executorIdToExecutorRepresenter.get(executorId))
-        // .filter(executor -> executor.getContainerType().equals(containerType))
+    final Stream<ExecutorRepresenter> candidates = availableExecutors.stream()
+        .map(executorId -> executorIdToExecutorRepresenter.get(executorId))
+        .filter(executor -> executor.getContainerType().equals(containerType))
         .filter(executor -> executor.getRunningTaskGroups().size() < executor.getExecutorCapacity())
-        .filter(executor -> nodeNames.contains(executor.getNodeName()))
-        .collect(Collectors.toList());
+        .filter(executor -> nodeNames.contains(executor.getNodeName()));
+    if (containerType.equals(ExecutorPlacementProperty.NONE)) {
+      return candidates.collect(Collectors.toList());
+    } else {
+      return candidates.filter(executor -> executor.getContainerType().equals(containerType))
+          .collect(Collectors.toList());
+    }
   }
 
   /**
