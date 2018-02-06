@@ -16,6 +16,7 @@
 package edu.snu.coral.runtime.master.scheduler;
 
 import edu.snu.coral.common.dag.DAG;
+import edu.snu.coral.common.ir.Readable;
 import edu.snu.coral.runtime.common.plan.RuntimeEdge;
 import edu.snu.coral.runtime.common.plan.physical.BoundedSourceTask;
 import edu.snu.coral.runtime.common.plan.physical.ScheduledTaskGroup;
@@ -65,13 +66,14 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
 
   @Override
   public synchronized boolean scheduleTaskGroup(final ScheduledTaskGroup scheduledTaskGroup,
-                                   final JobStateManager jobStateManager) {
+                                                final JobStateManager jobStateManager) {
     final DAG<Task, RuntimeEdge<Task>> taskGroupDAG = (DAG<Task, RuntimeEdge<Task>>)
         SerializationUtils.deserialize(scheduledTaskGroup.getSerializedTaskGroupDag());
     final Set<String> sourceLocations = Collections.emptySet();
     try {
       sourceLocations.addAll(getSourceLocation(taskGroupDAG));
     } catch (final Exception e) {
+      LOG.warn(String.format("Cannot get source location for %s", scheduledTaskGroup.getTaskGroupId()), e);
     }
     if (sourceLocations.size() == 0) {
       return roundRobinSchedulingPolicy.scheduleTaskGroup(scheduledTaskGroup, jobStateManager);
@@ -88,8 +90,8 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
    * @return true if the task group is successfully scheduled, false otherwise.
    */
   private synchronized boolean attemptSchedule(final ScheduledTaskGroup scheduledTaskGroup,
-                                  final JobStateManager jobStateManager,
-                                  final Set<String> sourceLocations) {
+                                               final JobStateManager jobStateManager,
+                                               final Set<String> sourceLocations) {
     final List<ExecutorRepresenter> candidateExecutors =
         selectExecutorByContainerTypeAndNodeNames(scheduledTaskGroup.getContainerType(), sourceLocations);
     if (candidateExecutors.size() == 0) {
@@ -101,7 +103,8 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
     jobStateManager.onTaskGroupStateChanged(scheduledTaskGroup.getTaskGroupId(), TaskGroupState.State.EXECUTING);
     selectedExecutor.onTaskGroupScheduled(scheduledTaskGroup);
     LOG.info("Scheduling {} (source location: {}) to {} (node name: {})", scheduledTaskGroup.getTaskGroupId(),
-        String.join(" ", sourceLocations), selectedExecutor.getExecutorId(), selectedExecutor.getNodeName());
+        String.join(", ", sourceLocations), selectedExecutor.getExecutorId(),
+        selectedExecutor.getNodeName());
     return true;
   }
 
@@ -156,7 +159,9 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
         .map(task -> ((BoundedSourceTask) task))
         .collect(Collectors.toList());
     for (final BoundedSourceTask sourceTask : sourceTasks) {
-      sourceLocations.addAll(sourceTask.getReadable().getLocations());
+      final Readable readable = sourceTask.getReadable();
+      final Collection<String> locations = readable.getLocations();
+      sourceLocations.addAll(locations);
     }
     return sourceLocations;
   }
