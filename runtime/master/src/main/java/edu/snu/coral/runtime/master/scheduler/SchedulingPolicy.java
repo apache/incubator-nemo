@@ -26,7 +26,7 @@ import java.util.Set;
  * Defines the policy by which {@link BatchSingleJobScheduler} assigns task groups to executors.
  */
 @DriverSide
-@DefaultImplementation(SourceLocationAwareSchedulingPolicy.class)
+@DefaultImplementation(RoundRobinSchedulingPolicy.class)
 public interface SchedulingPolicy {
 
   /**
