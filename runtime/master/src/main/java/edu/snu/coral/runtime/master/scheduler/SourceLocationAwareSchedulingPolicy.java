@@ -20,7 +20,6 @@ import edu.snu.coral.common.exception.SchedulingException;
 import edu.snu.coral.common.ir.Readable;
 import edu.snu.coral.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.coral.runtime.common.plan.RuntimeEdge;
-import edu.snu.coral.runtime.common.plan.physical.BoundedSourceTask;
 import edu.snu.coral.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.coral.runtime.common.plan.physical.Task;
 import edu.snu.coral.runtime.common.state.TaskGroupState;
