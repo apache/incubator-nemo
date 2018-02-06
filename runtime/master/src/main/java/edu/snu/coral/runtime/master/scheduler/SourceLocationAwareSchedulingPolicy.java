@@ -20,9 +20,11 @@ import edu.snu.coral.runtime.common.plan.RuntimeEdge;
 import edu.snu.coral.runtime.common.plan.physical.BoundedSourceTask;
 import edu.snu.coral.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.coral.runtime.common.plan.physical.Task;
+import edu.snu.coral.runtime.common.state.TaskGroupState;
 import edu.snu.coral.runtime.master.JobStateManager;
 import edu.snu.coral.runtime.master.resource.ContainerManager;
 import edu.snu.coral.runtime.master.resource.ExecutorRepresenter;
+import org.apache.commons.lang.SerializationUtils;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,8 +32,8 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * This policy is same as {@link RoundRobinSchedulingPolicy}, however for TaskGroups
@@ -62,19 +64,55 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
   }
 
   @Override
-  public boolean scheduleTaskGroup(final ScheduledTaskGroup scheduledTaskGroup,
+  public synchronized boolean scheduleTaskGroup(final ScheduledTaskGroup scheduledTaskGroup,
                                    final JobStateManager jobStateManager) {
-    return roundRobinSchedulingPolicy.scheduleTaskGroup(scheduledTaskGroup, jobStateManager);
+    final DAG<Task, RuntimeEdge<Task>> taskGroupDAG = (DAG<Task, RuntimeEdge<Task>>)
+        SerializationUtils.deserialize(scheduledTaskGroup.getSerializedTaskGroupDag());
+    final Set<String> sourceLocations = Collections.emptySet();
+    try {
+      sourceLocations.addAll(getSourceLocation(taskGroupDAG));
+    } catch (final Exception e) {
+    }
+    if (sourceLocations.size() == 0) {
+      return roundRobinSchedulingPolicy.scheduleTaskGroup(scheduledTaskGroup, jobStateManager);
+    }
+
+    return attemptSchedule(scheduledTaskGroup, jobStateManager, sourceLocations);
+  }
+
+  /**
+   * Try to schedule a TaskGroup with source task.
+   * @param scheduledTaskGroup TaskGroup to schedule
+   * @param jobStateManager {@link JobStateManager}
+   * @param jobStateManager jobStateManager which the TaskGroup belongs to.
+   * @return true if the task group is successfully scheduled, false otherwise.
+   */
+  private synchronized boolean attemptSchedule(final ScheduledTaskGroup scheduledTaskGroup,
+                                  final JobStateManager jobStateManager,
+                                  final Set<String> sourceLocations) {
+    final List<ExecutorRepresenter> candidateExecutors =
+        selectExecutorByContainerTypeAndNodeNames(scheduledTaskGroup.getContainerType(), sourceLocations);
+    if (candidateExecutors.size() == 0) {
+      return false;
+    }
+    final int randomIndex = ThreadLocalRandom.current().nextInt(0, candidateExecutors.size());
+    final ExecutorRepresenter selectedExecutor = candidateExecutors.get(randomIndex);
+
+    jobStateManager.onTaskGroupStateChanged(scheduledTaskGroup.getTaskGroupId(), TaskGroupState.State.EXECUTING);
+    selectedExecutor.onTaskGroupScheduled(scheduledTaskGroup);
+    LOG.info("Scheduling {} (source location: {}) to {} (node name: {})", scheduledTaskGroup.getTaskGroupId(),
+        String.join(" ", sourceLocations), selectedExecutor.getExecutorId(), selectedExecutor.getNodeName());
+    return true;
   }
 
   @Override
-  public void onExecutorAdded(final String executorId) {
+  public synchronized void onExecutorAdded(final String executorId) {
     availableExecutors.add(executorId);
     roundRobinSchedulingPolicy.onExecutorAdded(executorId);
   }
 
   @Override
-  public Set<String> onExecutorRemoved(final String executorId) {
+  public synchronized Set<String> onExecutorRemoved(final String executorId) {
     availableExecutors.remove(executorId);
     return roundRobinSchedulingPolicy.onExecutorRemoved(executorId);
   }
@@ -95,8 +133,8 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
    * @return list of executors, which resides in one of {@code nodeNames}, has container type of {@code containerType},
    *         and has an empty slot for execution
    */
-  private List<ExecutorRepresenter> selectExecutorByContainerTypeAndNodeNames(final String containerType,
-                                                                              final Set<String> nodeNames) {
+  private synchronized List<ExecutorRepresenter> selectExecutorByContainerTypeAndNodeNames(
+      final String containerType, final Set<String> nodeNames) {
     final Map<String, ExecutorRepresenter> executorIdToExecutorRepresenter
         = containerManager.getExecutorRepresenterMap();
     return availableExecutors.stream().map(executorId -> executorIdToExecutorRepresenter.get(executorId))
