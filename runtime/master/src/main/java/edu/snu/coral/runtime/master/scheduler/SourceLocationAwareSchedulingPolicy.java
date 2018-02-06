@@ -71,7 +71,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
         SerializationUtils.deserialize(scheduledTaskGroup.getSerializedTaskGroupDag());
     final Set<String> sourceLocations = Collections.emptySet();
     try {
-      sourceLocations.addAll(getSourceLocation(taskGroupDAG));
+      sourceLocations.addAll(getSourceLocation(taskGroupDAG, scheduledTaskGroup.getLogicalTaskIdToReadable()));
     } catch (final Exception e) {
       LOG.warn(String.format("Cannot get source location for %s", scheduledTaskGroup.getTaskGroupId()), e);
     }
@@ -149,17 +149,19 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
 
   /**
    * @param taskGroupDAG TaskGroup DAG to investigate
+   * @param logicalTaskIdToReadable the map between logical task id to {@link Readable}.
    * @return Set of source locations from source tasks in {@code taskGroupDAG}
    * @throws Exception for any exception raised during querying source locations for a readable
    */
-  private static Set<String> getSourceLocation(final DAG<Task, RuntimeEdge<Task>> taskGroupDAG) throws Exception {
+  private static Set<String> getSourceLocation(final DAG<Task, RuntimeEdge<Task>> taskGroupDAG,
+                                               final Map<String, Readable> logicalTaskIdToReadable) throws Exception {
     final Set<String> sourceLocations = new HashSet<>();
     final List<BoundedSourceTask> sourceTasks = taskGroupDAG.getVertices().stream()
         .filter(task -> task instanceof BoundedSourceTask)
         .map(task -> ((BoundedSourceTask) task))
         .collect(Collectors.toList());
     for (final BoundedSourceTask sourceTask : sourceTasks) {
-      final Readable readable = sourceTask.getReadable();
+      final Readable readable = logicalTaskIdToReadable.get(sourceTask.getId());
       final Collection<String> locations = readable.getLocations();
       sourceLocations.addAll(locations);
     }
