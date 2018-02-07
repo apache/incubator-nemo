@@ -15,18 +15,14 @@
  */
 package edu.snu.coral.runtime.master.scheduler;
 
-import edu.snu.coral.common.dag.DAG;
 import edu.snu.coral.common.exception.SchedulingException;
 import edu.snu.coral.common.ir.Readable;
 import edu.snu.coral.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
-import edu.snu.coral.runtime.common.plan.RuntimeEdge;
 import edu.snu.coral.runtime.common.plan.physical.ScheduledTaskGroup;
-import edu.snu.coral.runtime.common.plan.physical.Task;
 import edu.snu.coral.runtime.common.state.TaskGroupState;
 import edu.snu.coral.runtime.master.JobStateManager;
 import edu.snu.coral.runtime.master.resource.ContainerManager;
 import edu.snu.coral.runtime.master.resource.ExecutorRepresenter;
-import org.apache.commons.lang.SerializationUtils;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,22 +62,31 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
     return scheduleTimeoutMs;
   }
 
+  /**
+   * Try to schedule a TaskGroup.
+   * If the TaskGroup has one or more source tasks, this method schedules the task group to one of the physical nodes,
+   * chosen from union of set of locations where splits of each source task resides.
+   * If the TaskGroup has no source tasks, falls back to {@link RoundRobinSchedulingPolicy}.
+   * @param scheduledTaskGroup to schedule.
+   * @param jobStateManager jobStateManager which the TaskGroup belongs to.
+   * @return true if the task group is successfully scheduled, false otherwise.
+   */
   @Override
   public synchronized boolean scheduleTaskGroup(final ScheduledTaskGroup scheduledTaskGroup,
                                                 final JobStateManager jobStateManager) {
-    final DAG<Task, RuntimeEdge<Task>> taskGroupDAG = (DAG<Task, RuntimeEdge<Task>>)
-        SerializationUtils.deserialize(scheduledTaskGroup.getSerializedTaskGroupDag());
     Set<String> sourceLocations = Collections.emptySet();
     try {
-      sourceLocations = getSourceLocation(scheduledTaskGroup.getLogicalTaskIdToReadable().values());
+      sourceLocations = getSourceLocations(scheduledTaskGroup.getLogicalTaskIdToReadable().values());
     } catch (final Exception e) {
-      LOG.warn(String.format("Cannot get source location for %s", scheduledTaskGroup.getTaskGroupId()), e);
+      LOG.warn(String.format("Exception while trying to get source location for %s",
+          scheduledTaskGroup.getTaskGroupId()), e);
     }
     if (sourceLocations.size() == 0) {
+      // No source location information found, fall back to the RoundRobinSchedulingPolicy
       return roundRobinSchedulingPolicy.scheduleTaskGroup(scheduledTaskGroup, jobStateManager);
     }
 
-    if (attemptSchedule(scheduledTaskGroup, jobStateManager, sourceLocations)) {
+    if (scheduleToLocalNode(scheduledTaskGroup, jobStateManager, sourceLocations)) {
       return true;
     } else {
       try {
@@ -89,7 +94,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
       } catch (final InterruptedException e) {
         throw new SchedulingException(e);
       }
-      return attemptSchedule(scheduledTaskGroup, jobStateManager, sourceLocations);
+      return scheduleToLocalNode(scheduledTaskGroup, jobStateManager, sourceLocations);
     }
   }
 
@@ -100,9 +105,9 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
    * @param jobStateManager jobStateManager which the TaskGroup belongs to.
    * @return true if the task group is successfully scheduled, false otherwise.
    */
-  private synchronized boolean attemptSchedule(final ScheduledTaskGroup scheduledTaskGroup,
-                                               final JobStateManager jobStateManager,
-                                               final Set<String> sourceLocations) {
+  private synchronized boolean scheduleToLocalNode(final ScheduledTaskGroup scheduledTaskGroup,
+                                                   final JobStateManager jobStateManager,
+                                                   final Set<String> sourceLocations) {
     final List<ExecutorRepresenter> candidateExecutors =
         selectExecutorByContainerTypeAndNodeNames(scheduledTaskGroup.getContainerType(), sourceLocations);
     if (candidateExecutors.size() == 0) {
@@ -151,14 +156,14 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
       final String containerType, final Set<String> nodeNames) {
     final Map<String, ExecutorRepresenter> executorIdToExecutorRepresenter
         = containerManager.getExecutorRepresenterMap();
-    final Stream<ExecutorRepresenter> candidates = availableExecutors.stream()
+    final Stream<ExecutorRepresenter> localNodesWithSpareCapacity = availableExecutors.stream()
         .map(executorId -> executorIdToExecutorRepresenter.get(executorId))
         .filter(executor -> executor.getRunningTaskGroups().size() < executor.getExecutorCapacity())
         .filter(executor -> nodeNames.contains(executor.getNodeName()));
     if (containerType.equals(ExecutorPlacementProperty.NONE)) {
-      return candidates.collect(Collectors.toList());
+      return localNodesWithSpareCapacity.collect(Collectors.toList());
     } else {
-      return candidates.filter(executor -> executor.getContainerType().equals(containerType))
+      return localNodesWithSpareCapacity.filter(executor -> executor.getContainerType().equals(containerType))
           .collect(Collectors.toList());
     }
   }
@@ -168,7 +173,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
    * @return Set of source locations from source tasks in {@code taskGroupDAG}
    * @throws Exception for any exception raised during querying source locations for a readable
    */
-  private static Set<String> getSourceLocation(final Collection<Readable> readables) throws Exception {
+  private static Set<String> getSourceLocations(final Collection<Readable> readables) throws Exception {
     final List<String> sourceLocations = new ArrayList<>();
     for (final Readable readable : readables) {
       sourceLocations.addAll(readable.getLocations());
