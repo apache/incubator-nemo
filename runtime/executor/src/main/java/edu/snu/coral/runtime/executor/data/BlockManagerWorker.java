@@ -66,7 +66,7 @@ public final class BlockManagerWorker {
   // Executor service to schedule I/O Runnable which can be done in background.
   private final ExecutorService backgroundExecutorService;
   private final Map<String, AtomicInteger> blockToRemainingRead;
-  private final CoderManager coderManager;
+  private final SerializerManager serializerManager;
 
   @Inject
   private BlockManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -77,7 +77,7 @@ public final class BlockManagerWorker {
                              final RemoteFileStore remoteFileStore,
                              final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                              final ByteTransfer byteTransfer,
-                             final CoderManager coderManager) {
+                             final SerializerManager serializerManager) {
     this.executorId = executorId;
     this.memoryStore = memoryStore;
     this.serializedMemoryStore = serializedMemoryStore;
@@ -87,7 +87,7 @@ public final class BlockManagerWorker {
     this.byteTransfer = byteTransfer;
     this.backgroundExecutorService = Executors.newFixedThreadPool(numThreads);
     this.blockToRemainingRead = new ConcurrentHashMap<>();
-    this.coderManager = coderManager;
+    this.serializerManager = serializerManager;
   }
 
   /**
@@ -194,7 +194,8 @@ public final class BlockManagerWorker {
             .build();
         return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray())
             .thenCompose(context -> context.getCompletedFuture())
-            .thenApply(streams -> new DataUtil.InputStreamIterator(streams, coderManager.getCoder(runtimeEdgeId)));
+            .thenApply(streams -> new DataUtil.InputStreamIterator(streams,
+                serializerManager.getSerializer(runtimeEdgeId)));
       }
     });
   }
