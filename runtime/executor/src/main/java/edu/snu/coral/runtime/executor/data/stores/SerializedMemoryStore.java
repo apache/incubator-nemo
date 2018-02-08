@@ -15,9 +15,9 @@
  */
 package edu.snu.coral.runtime.executor.data.stores;
 
-import edu.snu.coral.common.coder.Coder;
-import edu.snu.coral.runtime.executor.data.CoderManager;
+import edu.snu.coral.runtime.executor.data.SerializerManager;
 import edu.snu.coral.runtime.executor.data.block.SerializedMemoryBlock;
+import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -30,11 +30,11 @@ public final class SerializedMemoryStore extends LocalBlockStore {
 
   /**
    * Constructor.
-   * @param coderManager the coder manager.
+   * @param serializerManager the serializer manager.
    */
   @Inject
-  private SerializedMemoryStore(final CoderManager coderManager) {
-    super(coderManager);
+  private SerializedMemoryStore(final SerializerManager serializerManager) {
+    super(serializerManager);
   }
 
   /**
@@ -42,8 +42,8 @@ public final class SerializedMemoryStore extends LocalBlockStore {
    */
   @Override
   public void createBlock(final String blockId) {
-    final Coder coder = getCoderFromWorker(blockId);
-    getBlockMap().put(blockId, new SerializedMemoryBlock(coder));
+    final Serializer serializer = getSerializerFromWorker(blockId);
+    getBlockMap().put(blockId, new SerializedMemoryBlock(serializer));
   }
 
   /**

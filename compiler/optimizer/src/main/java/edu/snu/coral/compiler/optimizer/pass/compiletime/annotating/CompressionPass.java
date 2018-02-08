@@ -29,7 +29,15 @@ public final class CompressionPass extends AnnotatingPass {
   private final CompressionProperty.Compression compression;
 
   /**
-   * Default constructor.
+   * Default constructor. Uses LZ4 as default.
+   */
+  public CompressionPass() {
+    super(ExecutionProperty.Key.Compression);
+    this.compression = CompressionProperty.Compression.LZ4;
+  }
+
+  /**
+   * Constructor.
    * @param compression Compression to apply on edges.
    */
   public CompressionPass(final CompressionProperty.Compression compression) {

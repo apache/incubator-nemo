@@ -29,7 +29,7 @@ import edu.snu.coral.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.coral.runtime.common.plan.RuntimeEdge;
 import edu.snu.coral.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.coral.runtime.common.plan.physical.Task;
-import edu.snu.coral.runtime.executor.data.CoderManager;
+import edu.snu.coral.runtime.executor.data.SerializerManager;
 import edu.snu.coral.runtime.executor.datatransfer.DataTransferFactory;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
@@ -56,7 +56,7 @@ public final class Executor {
   /**
    * In charge of this executor's intermediate data transfer.
    */
-  private final CoderManager coderManager;
+  private final SerializerManager serializerManager;
 
   /**
    * Factory of InputReader/OutputWriter for executing tasks groups.
@@ -72,13 +72,13 @@ public final class Executor {
                   @Parameter(JobConf.ExecutorCapacity.class) final int executorCapacity,
                   final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                   final MessageEnvironment messageEnvironment,
-                  final CoderManager coderManager,
+                  final SerializerManager serializerManager,
                   final DataTransferFactory dataTransferFactory,
                   final MetricManagerWorker metricMessageSender) {
     this.executorId = executorId;
     this.executorService = Executors.newFixedThreadPool(executorCapacity);
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
-    this.coderManager = coderManager;
+    this.serializerManager = serializerManager;
     this.dataTransferFactory = dataTransferFactory;
     this.metricMessageSender = metricMessageSender;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
@@ -107,12 +107,13 @@ public final class Executor {
               persistentConnectionToMasterMap, metricMessageSender);
 
       scheduledTaskGroup.getTaskGroupIncomingEdges()
-          .forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
+          .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
       scheduledTaskGroup.getTaskGroupOutgoingEdges()
-          .forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
+          .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
       // TODO #432: remove these coders when we "streamize" task execution within a TaskGroup.
       taskGroupDag.getVertices().forEach(v -> {
-        taskGroupDag.getOutgoingEdgesOf(v).forEach(e -> coderManager.registerCoder(e.getId(), e.getCoder()));
+        taskGroupDag.getOutgoingEdgesOf(v)
+            .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
       });
 
       new TaskGroupExecutor(scheduledTaskGroup, taskGroupDag, taskGroupStateManager, dataTransferFactory).execute();
