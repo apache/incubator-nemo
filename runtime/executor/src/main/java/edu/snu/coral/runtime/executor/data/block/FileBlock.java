@@ -52,6 +52,13 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
   }
 
   /**
+   * @return file metadata.
+   */
+  public FileMetadata<K> getMetadata() {
+    return metadata;
+  }
+
+  /**
    * Writes the serialized data of this block having a specific key value as a partition to the file
    * where this block resides.
    * Invariant: This method does not support concurrent write for a single block.

@@ -60,6 +60,7 @@ public final class BlockManagerWorker {
   private final MemoryStore memoryStore;
   private final SerializedMemoryStore serializedMemoryStore;
   private final LocalFileStore localFileStore;
+  private final LocalFileStoreWithZram localFileStoreWithZram;
   private final RemoteFileStore remoteFileStore;
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
   private final ByteTransfer byteTransfer;
@@ -74,6 +75,7 @@ public final class BlockManagerWorker {
                              final MemoryStore memoryStore,
                              final SerializedMemoryStore serializedMemoryStore,
                              final LocalFileStore localFileStore,
+                             final LocalFileStoreWithZram localFileStoreWithZram,
                              final RemoteFileStore remoteFileStore,
                              final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                              final ByteTransfer byteTransfer,
@@ -82,6 +84,7 @@ public final class BlockManagerWorker {
     this.memoryStore = memoryStore;
     this.serializedMemoryStore = serializedMemoryStore;
     this.localFileStore = localFileStore;
+    this.localFileStoreWithZram = localFileStoreWithZram;
     this.remoteFileStore = remoteFileStore;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.byteTransfer = byteTransfer;
@@ -358,7 +361,7 @@ public final class BlockManagerWorker {
       case SerializedMemoryStore:
         return serializedMemoryStore;
       case LocalFileStore:
-        return localFileStore;
+        return localFileStoreWithZram;
       case GlusterFileStore:
         return remoteFileStore;
       default:

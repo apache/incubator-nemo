@@ -50,6 +50,14 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
+   * Directory to store files for storing blocks.
+   */
+  @NamedParameter(doc = "zRAM Directory to store temporary files", short_name = "file_zram_dir",
+      default_value = "/tmp/zram/files")
+  public final class ZramDirectory implements Name<String> {
+  }
+
+  /**
    * Directory points the mounted GlusterFS volume to store files in remote fashion.
    * If the volume is not mounted to this directory, the remote file store will act like local file store
    * (but maybe inefficiently).
