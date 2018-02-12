@@ -16,6 +16,7 @@
 package edu.snu.coral.compiler.optimizer.policy;
 
 import edu.snu.coral.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.coral.compiler.optimizer.pass.compiletime.annotating.CompressionPass;
 import edu.snu.coral.compiler.optimizer.pass.compiletime.composite.PrimitiveCompositePass;
 import edu.snu.coral.runtime.common.optimizer.pass.runtime.RuntimePass;
 
@@ -33,6 +34,7 @@ public final class DefaultPolicy implements Policy {
   public DefaultPolicy() {
     this.policy = new PolicyBuilder(true)
         .registerCompileTimePass(new PrimitiveCompositePass())
+        .registerCompileTimePass(new CompressionPass())
         .build();
   }
 

@@ -17,11 +17,11 @@ package edu.snu.coral.runtime.executor.data.stores;
 
 import edu.snu.coral.common.exception.BlockFetchException;
 import edu.snu.coral.conf.JobConf;
-import edu.snu.coral.common.coder.Coder;
 import edu.snu.coral.common.exception.BlockWriteException;
 import edu.snu.coral.runtime.common.data.KeyRange;
 import edu.snu.coral.runtime.executor.data.*;
 import edu.snu.coral.runtime.executor.data.block.Block;
+import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.coral.runtime.executor.data.metadata.RemoteFileMetadata;
 import edu.snu.coral.runtime.executor.data.block.FileBlock;
 import org.apache.reef.tang.annotations.Parameter;
@@ -51,15 +51,15 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   /**
    * Constructor.
    *
-   * @param volumeDirectory the remote volume directory which will contain the files.
-   * @param jobId           the job id.
-   * @param coderManager    the coder manager.
+   * @param volumeDirectory   the remote volume directory which will contain the files.
+   * @param jobId             the job id.
+   * @param serializerManager the serializer manager.
    */
   @Inject
   private GlusterFileStore(@Parameter(JobConf.GlusterVolumeDirectory.class) final String volumeDirectory,
                            @Parameter(JobConf.JobId.class) final String jobId,
-                           final CoderManager coderManager) {
-    super(coderManager);
+                           final SerializerManager serializerManager) {
+    super(serializerManager);
     this.blockMap = new ConcurrentHashMap<>();
     this.fileDirectory = volumeDirectory + "/" + jobId;
     new File(fileDirectory).mkdirs();
@@ -74,11 +74,11 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   @Override
   public void createBlock(final String blockId) {
     removeBlock(blockId);
-    final Coder coder = getCoderFromWorker(blockId);
+    final Serializer serializer = getSerializerFromWorker(blockId);
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final RemoteFileMetadata metadata =
         RemoteFileMetadata.create(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
-    final FileBlock block = new FileBlock<>(coder, filePath, metadata);
+    final FileBlock block = new FileBlock<>(serializer, filePath, metadata);
     blockMap.put(blockId, block);
   }
 
@@ -240,10 +240,10 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    * @throws IOException if fail to get.
    */
   private <K extends Serializable> FileBlock<K> getBlockFromFile(final String blockId) throws IOException {
-    final Coder coder = getCoderFromWorker(blockId);
+    final Serializer serializer = getSerializerFromWorker(blockId);
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     final RemoteFileMetadata<K> metadata =
         RemoteFileMetadata.open(DataUtil.blockIdToMetaFilePath(blockId, fileDirectory));
-    return new FileBlock<>(coder, filePath, metadata);
+    return new FileBlock<>(serializer, filePath, metadata);
   }
 }
