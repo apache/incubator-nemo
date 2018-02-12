@@ -243,8 +243,8 @@ public final class TaskGroupExecutor {
       writtenBytes += outputWriter.close();
     }
     final long endWriteTime = System.currentTimeMillis();
-    metric.put("BoundedSourceWriteTime(ms)", endWriteTime - endReadTime);
-    metric.put("BoundedSourceWrittenBytes", writtenBytes);
+    metric.put("OutputWriteTime(ms)", endWriteTime - endReadTime);
+    metric.put("WrittenBytes", writtenBytes);
     metricCollector.endMeasurement(physicalTaskId, metric);
   }
 
@@ -343,7 +343,7 @@ public final class TaskGroupExecutor {
       LOG.info("This is a sink task: {}", physicalTaskId);
     }
     final long endWriteTime = System.currentTimeMillis();
-    metric.put("WriteTime(ms)", endWriteTime - endTransformTime + accumulatedWriteTime);
+    metric.put("OutputTime(ms)", endWriteTime - endTransformTime + accumulatedWriteTime);
     metric.put("WrittenBytes", writtenBytes);
 
     metricCollector.endMeasurement(physicalTaskId, metric);
@@ -377,7 +377,7 @@ public final class TaskGroupExecutor {
       }
     });
     final long endReadTime = System.currentTimeMillis();
-    metric.put("ReadTime(ms)", endReadTime - startReadTime);
+    metric.put("InputReadTime(ms)", endReadTime - startReadTime);
 
     long writtenBytes = 0;
     for (final OutputWriter outputWriter : physicalTaskIdToOutputWriterMap.get(physicalTaskId)) {
@@ -385,7 +385,7 @@ public final class TaskGroupExecutor {
       writtenBytes += outputWriter.close();
     }
     final long endWriteTime  = System.currentTimeMillis();
-    metric.put("ReadTime(ms)", endWriteTime - endReadTime);
+    metric.put("OutputWriteTime(ms)", endWriteTime - endReadTime);
     metric.put("WrittenBytes", writtenBytes);
     metricCollector.endMeasurement(physicalTaskId, metric);
   }

@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import numpy as np
 
 def main():
    try:
@@ -13,19 +14,39 @@ def main():
            sys.exit()
 
        metricDictionary = dict()
+       vertexToMetricDict = dict()
        with open(filepath, 'r') as fp:
            for line in fp:
                metricInJson = json.loads(line)
                metricKey = metricInJson["computationUnitId"]
                metricDictionary[metricKey] = metricInJson["metricList"]
+               if metricKey.find('Task-vertex-') != -1: # Vertex metric
+                   vertexIdSuffix = metricKey.split('Task-vertex-')[1]
+                   if vertexIdSuffix.find('_') != -1: # physical level metric
+                       vertexId = 'vertex-' + vertexIdSuffix.split('_')[0]
+                       for metricDict in metricDictionary[metricKey]:
+                           for key, value in metricDict.items():
+                               if (key != 'EndTime') & (key != 'StartTime'):
+                                   vertexMetricDict = vertexToMetricDict.get(vertexId, dict())
+                                   vertexMetricDictValueList = vertexMetricDict.get(key, [])
+                                   vertexMetricDictValueList.append(value)
+                                   vertexMetricDict[key] = vertexMetricDictValueList
+                                   vertexToMetricDict[vertexId] = vertexMetricDict
+                   
 
        query_metric = True
        while(query_metric):
-           user_input = input("1 - View metric for a computation unit, 2 - exit: ")
+           user_input = input("1 - View metric for a computation unit, 2 - View metric for all IR vertices, 3 - exit: ")
            if user_input == "1":
                computationUnitId = input("Enter computation unit ID: ")
                for metric in metricDictionary[computationUnitId]:
-                   print("{}: {} -> {} took {} ms".format(metric["ContainerId"], metric["FromState"], metric["ToState"], metric["ElapsedTime(s)"]))
+                   print(metric)
+           elif user_input == "2":
+               for vertexId, metricDict in vertexToMetricDict.items():
+                   print(vertexId)
+                   print('Metric\t' + 'Min\t' + 'Mean\t' + 'Max')
+                   for metricKey, metricValues in metricDict.items():
+                       print(metricKey + '\t' + str(np.min(metricValues)) + '\t' + str(np.mean(metricValues)) + '\t' + str(np.max(metricValues)))
            else:
                print ("Exiting metric parser")
                query_metric = False
