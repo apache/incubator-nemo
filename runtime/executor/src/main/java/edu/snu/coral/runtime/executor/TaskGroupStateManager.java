@@ -48,8 +48,7 @@ public final class TaskGroupStateManager {
   private final String taskGroupId;
   private final int attemptIdx;
   private final String executorId;
-  private final MetricMessageSender metricMessageSender;
-  private final Map<String, MetricDataBuilder> metricDataBuilderMap;
+  private final MetricCollector metricCollector;
 
   /**
    * Used to track all task states of this task group, by keeping a map of logical task ids to their states.
@@ -66,7 +65,6 @@ public final class TaskGroupStateManager {
 
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
-
   public TaskGroupStateManager(final ScheduledTaskGroup scheduledTaskGroup,
                                final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
                                final String executorId,
@@ -76,8 +74,7 @@ public final class TaskGroupStateManager {
     this.attemptIdx = scheduledTaskGroup.getAttemptIdx();
     this.executorId = executorId;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
-    this.metricMessageSender = metricMessageSender;
-    metricDataBuilderMap = new HashMap<>();
+    this.metricCollector = new MetricCollector(metricMessageSender);
     logicalIdToTaskStates = new HashMap<>();
     currentTaskGroupTaskIds = new HashSet<>();
     initializeStates(taskGroupDag);
@@ -111,7 +108,7 @@ public final class TaskGroupStateManager {
       metric.put("ContainerId", executorId);
       metric.put("ScheduleAttempt", attemptIdx);
       metric.put("FromState", newState);
-      beginMeasurement(taskGroupId, metric);
+      metricCollector.beginMeasurement(taskGroupId, metric);
       logicalIdToTaskStates.forEach((taskId, state) -> {
         LOG.debug("Task State Transition: id {} from {} to {}",
             taskId, state.getStateMachine().getCurrentState(), TaskState.State.PENDING_IN_EXECUTOR);
@@ -121,19 +118,19 @@ public final class TaskGroupStateManager {
     case COMPLETE:
       LOG.debug("TaskGroup ID {} complete!", this.taskGroupId);
       metric.put("ToState", newState);
-      endMeasurement(taskGroupId, metric);
+      metricCollector.endMeasurement(taskGroupId, metric);
       notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case FAILED_RECOVERABLE:
       LOG.debug("TaskGroup ID {} failed (recoverable).", this.taskGroupId);
       metric.put("ToState", newState);
-      endMeasurement(taskGroupId, metric);
+      metricCollector.endMeasurement(taskGroupId, metric);
       notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case FAILED_UNRECOVERABLE:
       LOG.debug("TaskGroup ID {} failed (unrecoverable).", this.taskGroupId);
       metric.put("ToState", newState);
-      endMeasurement(taskGroupId, metric);
+      metricCollector.endMeasurement(taskGroupId, metric);
       notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case ON_HOLD:
@@ -169,7 +166,7 @@ public final class TaskGroupStateManager {
       metric.put("ContainerId", executorId);
       metric.put("ScheduleAttempt", attemptIdx);
       metric.put("FromState", newState);
-      beginMeasurement(logicalTaskId, metric);
+      metricCollector.beginMeasurement(logicalTaskId, metric);
       break;
     case COMPLETE:
       currentTaskGroupTaskIds.remove(logicalTaskId);
@@ -177,17 +174,17 @@ public final class TaskGroupStateManager {
         onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), cause);
       }
       metric.put("ToState", newState);
-      endMeasurement(logicalTaskId, metric);
+      metricCollector.endMeasurement(logicalTaskId, metric);
       break;
     case FAILED_RECOVERABLE:
       onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE, Optional.empty(), cause);
       metric.put("ToState", newState);
-      endMeasurement(logicalTaskId, metric);
+      metricCollector.endMeasurement(logicalTaskId, metric);
       break;
     case FAILED_UNRECOVERABLE:
       onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE, Optional.empty(), cause);
       metric.put("ToState", newState);
-      endMeasurement(logicalTaskId, metric);
+      metricCollector.endMeasurement(logicalTaskId, metric);
       break;
     case ON_HOLD:
       currentTaskGroupTaskIds.remove(logicalTaskId);
@@ -262,31 +259,6 @@ public final class TaskGroupStateManager {
       throw new UnknownFailureCauseException(
           new Throwable("The failure cause for the recoverable failure is unknown"));
     }
-  }
-
-  /**
-   * Begins recording the start time of this metric measurement, in addition to the metric given.
-   * This method ensures thread-safety by synchronizing its callers.
-   * @param compUnitId to be used as metricKey
-   * @param initialMetric metric to add
-   */
-  private void beginMeasurement(final String compUnitId, final Map<String, Object> initialMetric) {
-    final MetricDataBuilder metricDataBuilder = new MetricDataBuilder(compUnitId);
-    metricDataBuilder.beginMeasurement(initialMetric);
-    metricDataBuilderMap.put(compUnitId, metricDataBuilder);
-  }
-
-  /**
-   * Ends this metric measurement, recording the end time in addition to the metric given.
-   * This method ensures thread-safety by synchronizing its callers.
-   * @param compUnitId to be used as metricKey
-   * @param finalMetric metric to add
-   */
-  private void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {
-    final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(compUnitId);
-    metricDataBuilder.endMeasurement(finalMetric);
-    metricMessageSender.send(compUnitId, metricDataBuilder.build().toJson());
-    metricDataBuilderMap.remove(compUnitId);
   }
 
   // Tentative

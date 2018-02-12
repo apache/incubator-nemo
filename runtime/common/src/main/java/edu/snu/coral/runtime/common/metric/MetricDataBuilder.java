@@ -85,6 +85,7 @@ public final class MetricDataBuilder {
     metricMap.put("EndTime", endTime);
     metricMap.put("ElapsedTime(ms)", endTime - startTime);
     this.metrics.putAll(metricMap);
+    this.metrics.put("MetricList", this.metrics.keySet());
   }
 
   /**
