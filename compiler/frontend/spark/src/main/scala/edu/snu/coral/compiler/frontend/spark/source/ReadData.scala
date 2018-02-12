@@ -10,34 +10,33 @@ import org.apache.spark.sql.catalyst.expressions.UnsafeProjection
 import org.apache.spark.sql.catalyst.expressions.codegen.GenerateSafeProjection
 import org.apache.spark.sql.execution._
 import org.apache.spark.sql.execution.datasources._
-import org.apache.spark.sql.sources.Filter
 import org.apache.spark.sql.types.{StructField, StructType}
 
 object ReadData {
   def execute(sparkPlan: SparkPlan,
               partition: Partition,
-              tc: TaskContext): Iterator[InternalRow] = sparkPlan match {
+              tc: TaskContext,
+              inputRDDs: Seq[RDD[InternalRow]],
+              readFunction: (PartitionedFile) => Iterator[InternalRow]): Iterator[InternalRow] = sparkPlan match {
     //  DESERIALIZE TO OBJECT EXEC: #doExecute
     case p: DeserializeToObjectExec =>
-      val childRows: Iterator[InternalRow] = this.execute(p.child, partition, tc)
+      val childRows: Iterator[InternalRow] = this.execute(p.child, partition, tc, inputRDDs, readFunction)
       val projection = GenerateSafeProjection.generate(p.deserializer :: Nil, p.child.output)
       projection.initialize(partition.index)
       childRows.map(r => projection.apply(r))
 
     //  WHOLE STAGE CODE GEN EXEC: #doExecute
     case p: WholeStageCodegenExec =>
-      this.execute(p.child, partition, tc)
+      this.execute(p.child, partition, tc, inputRDDs, readFunction)
 
     //  FILE SOURCE SCAN EXEC: doExecute
     case p: FileSourceScanExec =>
-      val relation: HadoopFsRelation = p.relation
-      val requiredSchema: StructType = p.requiredSchema
-      val pushedDownFilters = p.dataFilters.flatMap(p => SparkFrontendUtils.translateFilter(p))
+
 
       val unsafeRows = {
-        val scan = p.inputRDDs().head
+        val scan = inputRDDs.head
         val rawRows: Iterator[InternalRow] =
-          this.computeInputRDD(scan, partition, tc, relation, requiredSchema, pushedDownFilters)
+          this.computeInputRDD(scan, partition, tc, readFunction)
 
         if (p.needsUnsafeRowConversion) {
           val attributes = p.output
@@ -61,23 +60,37 @@ object ReadData {
       rdd.compute(partition, tc)
   }
 
+  def getInputRDDs(sparkPlan: SparkPlan): (Seq[RDD[InternalRow]], PartitionedFile => Iterator[InternalRow]) =
+    sparkPlan match {
+      case p: DeserializeToObjectExec =>
+        this.getInputRDDs(p.child)
+      case p: WholeStageCodegenExec =>
+        this.getInputRDDs(p.child)
+      case p: FileSourceScanExec =>
+        val relation: HadoopFsRelation = p.relation
+        val requiredSchema: StructType = p.requiredSchema
+        val pushedDownFilters = p.dataFilters.flatMap(p => SparkFrontendUtils.translateFilter(p))
+
+        val readFile: (PartitionedFile) => Iterator[InternalRow] =
+          relation.fileFormat.buildReaderWithPartitionValues(
+            sparkSession = relation.sparkSession,
+            dataSchema = relation.dataSchema,
+            partitionSchema = relation.partitionSchema,
+            requiredSchema = requiredSchema,
+            filters = pushedDownFilters,
+            options = relation.options,
+            hadoopConf = relation.sparkSession.sessionState.newHadoopConfWithOptions(relation.options))
+
+        (p.inputRDDs(), readFile)
+      case p =>
+        throw new UnsupportedOperationException("operation unsupported for " + p)
+    }
+
   def computeInputRDD(rdd: RDD[InternalRow],
                       split: Partition,
                       context: TaskContext,
-                      relation: HadoopFsRelation,
-                      requiredSchema: StructType,
-                      pushedDownFilters: Seq[Filter]): Iterator[InternalRow] = rdd match {
+                      readFunction: (PartitionedFile) => Iterator[InternalRow]): Iterator[InternalRow] = rdd match {
     case r: FileScanRDD =>
-      val readFile: (PartitionedFile) => Iterator[InternalRow] =
-        relation.fileFormat.buildReaderWithPartitionValues(
-          sparkSession = relation.sparkSession,
-          dataSchema = relation.dataSchema,
-          partitionSchema = relation.partitionSchema,
-          requiredSchema = requiredSchema,
-          filters = pushedDownFilters,
-          options = relation.options,
-          hadoopConf = relation.sparkSession.sessionState.newHadoopConfWithOptions(relation.options))
-
       val iterator = new Iterator[Object] with AutoCloseable {
         private[this] val files = split.asInstanceOf[FilePartition].files.toIterator
         private[this] var currentFile: PartitionedFile = null
@@ -93,7 +106,7 @@ object ReadData {
 
         private def readCurrentFile(): Iterator[InternalRow] = {
           try {
-            readFile(currentFile)
+            readFunction(currentFile)
           } catch {
             case e: FileNotFoundException =>
               throw new FileNotFoundException(
