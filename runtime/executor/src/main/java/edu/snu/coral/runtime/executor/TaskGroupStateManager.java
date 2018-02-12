@@ -31,11 +31,9 @@ import edu.snu.coral.runtime.common.state.TaskState;
 
 import java.util.*;
 
-import edu.snu.coral.runtime.common.metric.MetricDataBuilder;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * Manages the states related to a task group.
