@@ -44,9 +44,18 @@ def main():
                print ('The "WrittenBytes" metric can be 0 if the data is not serialized and just handled on memory')
                for vertexId, metricDict in vertexToMetricDict.items():
                    print(vertexId)
-                   print('Metric\t' + 'Min\t' + 'Mean\t' + 'Max\t' + 'Total')
+                   metricKeys, valuesMin, valuesMean, valuesMax, valuesSum = ['Metric'], ['Min'], ['Mean'], ['Max'], ['Total']
                    for metricKey, metricValues in metricDict.items():
-                       print(metricKey + '\t' + str(np.min(metricValues)) + '\t' + str(np.mean(metricValues)) + '\t' + str(np.max(metricValues)) + '\t' + str(np.sum(metricValues)))
+                       metricKeys.append(metricKey)
+                       valuesMin.append(str(np.min(metricValues)))
+                       valuesMean.append(str(np.mean(metricValues)))
+                       valuesMax.append(str(np.max(metricValues)))
+                       valuesSum.append(str(np.sum(metricValues)))
+                   padding = 1
+                   widthKey, widthMin, widthMean, widthMax, widthSum = map(lambda x:len(max(x, key=len)) + padding, [metricKeys, valuesMin, valuesMean, valuesMax, valuesSum])
+                   templete = '{:<%s} {:<%s} {:<%s} {:<%s} {:<%s}' % (widthKey, widthMin, widthMean, widthMax, widthSum)
+                   for metricKey, valueMin, valueMean, valueMax, valueSum in zip(metricKeys, valuesMin, valuesMean, valuesMax, valuesSum):
+                    print(templete.format(metricKey, valueMin, valueMean, valueMax, valueSum))
            else:
                print ("Exiting metric parser")
                query_metric = False
