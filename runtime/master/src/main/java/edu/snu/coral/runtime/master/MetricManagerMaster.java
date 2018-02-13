@@ -57,8 +57,8 @@ public final class MetricManagerMaster implements MetricMessageHandler {
 
   @Override
   public synchronized void terminate() {
-    //compUnitIdToMetricInJson.forEach((compUnitId, metricList) ->
-        //LOG.info("{\"computationUnitId\":\"{}\", \"metricList\":{}}", compUnitId, metricList));
+    compUnitIdToMetricInJson.forEach((compUnitId, metricList) ->
+        LOG.info("{\"computationUnitId\":\"{}\", \"metricList\":{}}", compUnitId, metricList));
     compUnitIdToMetricInJson.clear();
     isTerminated = true;
   }
