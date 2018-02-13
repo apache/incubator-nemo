@@ -32,7 +32,6 @@ def main():
                                    vertexMetricDictValueList.append(value)
                                    vertexMetricDict[key] = vertexMetricDictValueList
                                    vertexToMetricDict[vertexId] = vertexMetricDict
-                   
 
        query_metric = True
        while(query_metric):
