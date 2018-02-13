@@ -27,6 +27,7 @@ import edu.snu.coral.compiler.frontend.spark.coder.SparkCoder;
 import edu.snu.coral.compiler.frontend.spark.core.RDD;
 import edu.snu.coral.compiler.frontend.spark.source.SparkBoundedSourceVertex;
 import edu.snu.coral.compiler.frontend.spark.sql.Dataset;
+import edu.snu.coral.compiler.frontend.spark.sql.SparkSession;
 import edu.snu.coral.compiler.frontend.spark.transform.*;
 import org.apache.spark.Partition;
 import org.apache.spark.Partitioner;
@@ -78,20 +79,20 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   /**
    * Static method to create a JavaRDD object from a Dataset.
-   * @param sparkContext spark context containing configurations.
+   * @param sparkSession spark session containing configurations.
    * @param dataset dataset to read initial data from.
    * @param <T> type of the resulting object.
    * @return the new JavaRDD object.
    */
-  public static <T> JavaRDD<T> of(final SparkContext sparkContext,
+  public static <T> JavaRDD<T> of(final SparkSession sparkSession,
                                   final Dataset<T> dataset) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
-    final IRVertex sparkBoundedSourceVertex = new SparkBoundedSourceVertex<>(dataset);
+    final IRVertex sparkBoundedSourceVertex = new SparkBoundedSourceVertex<>(sparkSession, dataset);
     sparkBoundedSourceVertex.setProperty(ParallelismProperty.of(dataset.rdd().getNumPartitions()));
     builder.addVertex(sparkBoundedSourceVertex);
 
-    return new JavaRDD<>(sparkContext, builder.buildWithoutSourceSinkCheck(), sparkBoundedSourceVertex);
+    return new JavaRDD<>(sparkSession.sparkContext(), builder.buildWithoutSourceSinkCheck(), sparkBoundedSourceVertex);
   }
 
   /**
@@ -211,6 +212,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   }
 
   /////////////// UNSUPPORTED TRANSFORMATIONS ///////////////
+  //TODO#776: support unimplemented RDD transformation/actions.
 
   @Override
   public JavaRDD<T> cache() {
@@ -314,6 +316,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   }
 
   /////////////// UNSUPPORTED TRANSFORMATION TO PAIR RDD ///////////////
+  //TODO#776: support unimplemented RDD transformation/actions.
 
   @Override
   public <K2, V2> JavaPairRDD<K2, V2> flatMapToPair(final PairFlatMapFunction<T, K2, V2> f) {
@@ -357,6 +360,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   }
 
   /////////////// UNSUPPORTED ACTIONS ///////////////
+  //TODO#776: support unimplemented RDD transformation/actions.
 
   @Override
   public <U> U aggregate(final U zeroValue, final Function2<U, T, U> seqOp, final Function2<U, U, U> combOp) {
