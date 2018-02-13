@@ -44,18 +44,19 @@ def main():
                print ('The "WrittenBytes" metric can be 0 if the data is not serialized and just handled on memory')
                for vertexId, metricDict in sorted(vertexToMetricDict.items()):
                    print(vertexId)
-                   metricKeys, valuesMin, valuesMean, valuesMax, valuesSum = ['Metric'], ['Min'], ['Mean'], ['Max'], ['Total']
+                   metricKeys, valuesMin, valuesMedian, valuesMax, valuesMean, valuesSum = ['Metric'], ['Min'], ['Median'], ['Max'], ['Mean'], ['Total']
                    for metricKey, metricValues in metricDict.items():
                        metricKeys.append(metricKey)
                        valuesMin.append(str(np.min(metricValues)))
-                       valuesMean.append(str(np.mean(metricValues)))
+                       valuesMedian.append(str(np.median(metricValues)))
                        valuesMax.append(str(np.max(metricValues)))
+                       valuesMean.append(str(np.mean(metricValues)))
                        valuesSum.append(str(np.sum(metricValues)))
                    padding = 1
-                   widthKey, widthMin, widthMean, widthMax, widthSum = map(lambda x:len(max(x, key=len)) + padding, [metricKeys, valuesMin, valuesMean, valuesMax, valuesSum])
-                   templete = '{:<%s} {:<%s} {:<%s} {:<%s} {:<%s}' % (widthKey, widthMin, widthMean, widthMax, widthSum)
-                   for metricKey, valueMin, valueMean, valueMax, valueSum in zip(metricKeys, valuesMin, valuesMean, valuesMax, valuesSum):
-                    print(templete.format(metricKey, valueMin, valueMean, valueMax, valueSum))
+                   widthKey, widthMin, widthMedian, widthMax, widthMean, widthSum = map(lambda x:len(max(x, key=len)) + padding, [metricKeys, valuesMin, valuesMedian, valuesMax, valuesMean, valuesSum])
+                   templete = '{:<%s} {:<%s} {:<%s} {:<%s} {:<%s} {:<%s}' % (widthKey, widthMin, widthMedian, widthMax, widthMean, widthSum)
+                   for metricKey, valueMin, valueMedian, valueMax, valueMean, valueSum in zip(metricKeys, valuesMin, valuesMedian, valuesMax, valuesMean, valuesSum):
+                    print(templete.format(metricKey, valueMin, valueMedian, valueMax, valueMean, valueSum))
            else:
                print ("Exiting metric parser")
                query_metric = False
