@@ -16,7 +16,7 @@
 package edu.snu.coral.examples.beam;
 
 import edu.snu.coral.client.JobLauncher;
-import edu.snu.coral.common.ArgBuilder;
+import edu.snu.coral.common.test.ArgBuilder;
 import edu.snu.coral.examples.beam.policy.PadoPolicyParallelsimFive;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,7 +31,8 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class AlternatingLeastSquareITCase {
   private static final int TIMEOUT = 180000;
-  private static final String input = System.getProperty("user.dir") + "/../resources/sample_input_als";
+  private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
+  private static final String input = fileBasePath + "sample_input_als";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
 

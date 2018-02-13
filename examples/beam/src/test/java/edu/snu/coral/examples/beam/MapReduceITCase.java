@@ -16,7 +16,8 @@
 package edu.snu.coral.examples.beam;
 
 import edu.snu.coral.client.JobLauncher;
-import edu.snu.coral.common.ArgBuilder;
+import edu.snu.coral.common.test.ArgBuilder;
+import edu.snu.coral.common.test.ExampleTestUtil;
 import edu.snu.coral.examples.beam.policy.*;
 import org.junit.After;
 import org.junit.Before;
@@ -34,7 +35,7 @@ public final class MapReduceITCase {
   private static final int TIMEOUT = 120000;
   private static final String inputFileName = "sample_input_mr";
   private static final String outputFileName = "sample_output_mr";
-  private static final String testResourceFileName = "test_output_mr_test";
+  private static final String testResourceFileName = "test_output_mr";
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
