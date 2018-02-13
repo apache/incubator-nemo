@@ -18,7 +18,6 @@ package edu.snu.coral.examples.beam.policy;
 import edu.snu.coral.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.coral.compiler.optimizer.policy.DisaggregationPolicy;
 import edu.snu.coral.compiler.optimizer.policy.Policy;
-import edu.snu.coral.examples.beam.ExampleTestUtil;
 import edu.snu.coral.runtime.common.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
@@ -30,7 +29,7 @@ public final class DisaggregationPolicyParallelsimFive implements Policy {
   private final Policy policy;
 
   public DisaggregationPolicyParallelsimFive() {
-    this.policy = ExampleTestUtil.overwriteParallelism(5, DisaggregationPolicy.class.getCanonicalName());
+    this.policy = PolicyTestUtil.overwriteParallelism(5, DisaggregationPolicy.class.getCanonicalName());
   }
 
   @Override

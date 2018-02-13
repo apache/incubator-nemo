@@ -15,7 +15,7 @@
  */
 package edu.snu.coral.tests.compiler;
 
-import edu.snu.coral.common.ArgBuilder;
+import edu.snu.coral.common.test.ArgBuilder;
 import edu.snu.coral.conf.JobConf;
 import edu.snu.coral.common.ir.edge.IREdge;
 import edu.snu.coral.common.ir.vertex.IRVertex;
