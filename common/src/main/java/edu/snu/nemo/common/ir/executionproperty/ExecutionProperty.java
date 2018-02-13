@@ -72,6 +72,7 @@ public abstract class ExecutionProperty<T> implements Serializable {
     KeyExtractor,
     UsedDataHandling,
     Compression,
+    InvariantData,
 
     // Applies to IRVertex
     DynamicOptimizationType,
