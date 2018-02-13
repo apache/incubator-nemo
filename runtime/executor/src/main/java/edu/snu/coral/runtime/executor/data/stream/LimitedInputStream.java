@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.coral.runtime.executor.data;
+package edu.snu.coral.runtime.executor.data.stream;
 
 import java.io.IOException;
 import java.io.InputStream;
 
 /**
  * This class provide functionality to limit bytes read from {@link InputStream}.
- * You need to wrap chained compression stream with this stream to prevent overreading
+ * You need to wrap chained compression stream with this stream to prevent over-reading
  * inner stream.
  */
 public final class LimitedInputStream extends InputStream {

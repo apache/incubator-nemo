@@ -42,11 +42,12 @@ def main():
                for metric in metricDictionary[computationUnitId]:
                    print(metric)
            elif user_input == "2":
+               print ('The "WrittenBytes" metric can be 0 if the data is not serialized and just handled on memory')
                for vertexId, metricDict in vertexToMetricDict.items():
                    print(vertexId)
-                   print('Metric\t' + 'Min\t' + 'Mean\t' + 'Max')
+                   print('Metric\t' + 'Min\t' + 'Mean\t' + 'Max\t' + 'Total')
                    for metricKey, metricValues in metricDict.items():
-                       print(metricKey + '\t' + str(np.min(metricValues)) + '\t' + str(np.mean(metricValues)) + '\t' + str(np.max(metricValues)))
+                       print(metricKey + '\t' + str(np.min(metricValues)) + '\t' + str(np.mean(metricValues)) + '\t' + str(np.max(metricValues)) + '\t' + str(np.sum(metricValues)))
            else:
                print ("Exiting metric parser")
                query_metric = False
