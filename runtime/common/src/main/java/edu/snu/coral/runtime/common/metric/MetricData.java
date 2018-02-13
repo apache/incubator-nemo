@@ -36,8 +36,8 @@ public class MetricData {
    * @param computationUnitId the id of the computation unit.
    * @param metrics the metric data.
    */
-  public MetricData(final String computationUnitId,
-                    final Map<String, Object> metrics) {
+  MetricData(final String computationUnitId,
+             final Map<String, Object> metrics) {
     this.computationUnitId = computationUnitId;
     this.objectMapper = new ObjectMapper();
     this.metrics = metrics;

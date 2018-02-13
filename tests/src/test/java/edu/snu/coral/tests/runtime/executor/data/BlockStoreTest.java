@@ -15,6 +15,7 @@
  */
 package edu.snu.coral.tests.runtime.executor.data;
 
+import edu.snu.coral.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.coral.conf.JobConf;
 import edu.snu.coral.compiler.frontend.beam.coder.BeamCoder;
 import edu.snu.coral.common.coder.Coder;
@@ -26,6 +27,8 @@ import edu.snu.coral.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.coral.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.coral.runtime.common.state.BlockState;
 import edu.snu.coral.runtime.executor.data.*;
+import edu.snu.coral.runtime.executor.data.streamchainer.CompressionStreamChainer;
+import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.coral.runtime.executor.data.stores.*;
 import edu.snu.coral.runtime.master.BlockManagerMaster;
 import edu.snu.coral.runtime.master.RuntimeMaster;
@@ -65,11 +68,13 @@ import static org.mockito.Mockito.when;
  * Tests write and read for {@link BlockStore}s.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({BlockManagerMaster.class, RuntimeMaster.class, CoderManager.class})
+@PrepareForTest({BlockManagerMaster.class, RuntimeMaster.class, SerializerManager.class})
 public final class BlockStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
-  private static final CoderManager coderManager = mock(CoderManager.class);
+  private static final Serializer SERIALIZER = new Serializer(CODER,
+      Collections.singletonList(new CompressionStreamChainer(CompressionProperty.Compression.LZ4)));
+  private static final SerializerManager serializerManager = mock(SerializerManager.class);
   private BlockManagerMaster blockManagerMaster;
   private LocalMessageDispatcher messageDispatcher;
   // Variables for shuffle test
@@ -104,7 +109,7 @@ public final class BlockStoreTest {
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
     blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
-    when(coderManager.getCoder(any())).thenReturn(CODER);
+    when(serializerManager.getSerializer(any())).thenReturn(SERIALIZER);
 
     // Following part is for for the shuffle test.
     final List<String> writeTaskIdList = new ArrayList<>(NUM_WRITE_TASKS);
@@ -219,7 +224,7 @@ public final class BlockStoreTest {
   @Test(timeout = 10000)
   public void testMemoryStore() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(CoderManager.class, coderManager);
+    injector.bindVolatileInstance(SerializerManager.class, serializerManager);
     final BlockStore memoryStore = injector.getInstance(MemoryStore.class);
     shuffle(memoryStore, memoryStore);
     concurrentRead(memoryStore, memoryStore);
@@ -232,7 +237,7 @@ public final class BlockStoreTest {
   @Test(timeout = 10000)
   public void testSerMemoryStore() throws Exception {
     final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(CoderManager.class, coderManager);
+    injector.bindVolatileInstance(SerializerManager.class, serializerManager);
     final BlockStore serMemoryStore = injector.getInstance(SerializedMemoryStore.class);
     shuffle(serMemoryStore, serMemoryStore);
     concurrentRead(serMemoryStore, serMemoryStore);
@@ -247,7 +252,7 @@ public final class BlockStoreTest {
     FileUtils.deleteDirectory(new File(TMP_FILE_DIRECTORY));
     final Injector injector = Tang.Factory.getTang().newInjector();
     injector.bindVolatileParameter(JobConf.FileDirectory.class, TMP_FILE_DIRECTORY);
-    injector.bindVolatileInstance(CoderManager.class, coderManager);
+    injector.bindVolatileInstance(SerializerManager.class, serializerManager);
 
     final BlockStore localFileStore = injector.getInstance(LocalFileStore.class);
     shuffle(localFileStore, localFileStore);
@@ -283,7 +288,7 @@ public final class BlockStoreTest {
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_FILE_DIRECTORY);
     injector.bindVolatileParameter(JobConf.JobId.class, "GFS test");
     injector.bindVolatileParameter(JobConf.ExecutorId.class, executorId);
-    injector.bindVolatileInstance(CoderManager.class, coderManager);
+    injector.bindVolatileInstance(SerializerManager.class, serializerManager);
     injector.bindVolatileInstance(MessageEnvironment.class, localMessageEnvironment);
     return injector.getInstance(GlusterFileStore.class);
   }
@@ -590,7 +595,8 @@ public final class BlockStoreTest {
           hashRange + " is empty.");
     }
     final Iterable<NonSerializedPartition> nonSerializedResult = optionalNonSerResult.get();
-    final Iterable serToNonSerialized = DataUtil.convertToNonSerPartitions(CODER, serializedResult);
+    final Iterable serToNonSerialized = DataUtil.convertToNonSerPartitions(
+        SERIALIZER, serializedResult);
 
     assertEquals(expectedResult, DataUtil.concatNonSerPartitions(nonSerializedResult));
     assertEquals(expectedResult, DataUtil.concatNonSerPartitions(serToNonSerialized));

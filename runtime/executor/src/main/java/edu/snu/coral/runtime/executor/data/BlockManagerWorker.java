@@ -66,7 +66,7 @@ public final class BlockManagerWorker {
   // Executor service to schedule I/O Runnable which can be done in background.
   private final ExecutorService backgroundExecutorService;
   private final Map<String, AtomicInteger> blockToRemainingRead;
-  private final CoderManager coderManager;
+  private final SerializerManager serializerManager;
 
   @Inject
   private BlockManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -77,7 +77,7 @@ public final class BlockManagerWorker {
                              final RemoteFileStore remoteFileStore,
                              final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                              final ByteTransfer byteTransfer,
-                             final CoderManager coderManager) {
+                             final SerializerManager serializerManager) {
     this.executorId = executorId;
     this.memoryStore = memoryStore;
     this.serializedMemoryStore = serializedMemoryStore;
@@ -87,7 +87,7 @@ public final class BlockManagerWorker {
     this.byteTransfer = byteTransfer;
     this.backgroundExecutorService = Executors.newFixedThreadPool(numThreads);
     this.blockToRemainingRead = new ConcurrentHashMap<>();
-    this.coderManager = coderManager;
+    this.serializerManager = serializerManager;
   }
 
   /**
@@ -106,15 +106,13 @@ public final class BlockManagerWorker {
   /**
    * Retrieves data from the stored block. A specific hash value range can be designated.
    *
-   * @param blockId       of the block.
-   * @param runtimeEdgeId id of the runtime edge that corresponds to the block.
-   * @param blockStore    for the data storage.
-   * @param keyRange     the key range descriptor.
+   * @param blockId    of the block.
+   * @param blockStore for the data storage.
+   * @param keyRange   the key range descriptor.
    * @return the result data in the block.
    */
   private CompletableFuture<Iterator> retrieveDataFromBlock(
       final String blockId,
-      final String runtimeEdgeId,
       final DataStoreProperty.Value blockStore,
       final KeyRange keyRange) {
     LOG.info("RetrieveDataFromBlock: {}", blockId);
@@ -184,7 +182,7 @@ public final class BlockManagerWorker {
       final String targetExecutorId = blockLocationInfoMsg.getOwnerExecutorId();
       if (targetExecutorId.equals(executorId) || targetExecutorId.equals(REMOTE_FILE_STORE)) {
         // Block resides in the evaluator
-        return retrieveDataFromBlock(blockId, runtimeEdgeId, blockStore, keyRange);
+        return retrieveDataFromBlock(blockId, blockStore, keyRange);
       } else {
         final ByteTransferContextDescriptor descriptor = ByteTransferContextDescriptor.newBuilder()
             .setBlockId(blockId)
@@ -194,7 +192,8 @@ public final class BlockManagerWorker {
             .build();
         return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray())
             .thenCompose(context -> context.getCompletedFuture())
-            .thenApply(streams -> new DataUtil.InputStreamIterator(streams, coderManager.getCoder(runtimeEdgeId)));
+            .thenApply(streams -> new DataUtil.InputStreamIterator(streams,
+                serializerManager.getSerializer(runtimeEdgeId)));
       }
     });
   }

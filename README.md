@@ -8,7 +8,6 @@
 ### Prerequisites
 * Java 8
 * Maven
-* Latest REEF snapshot
 * YARN settings
     * Download Hadoop 2.7.4 at http://apache.tt.co.kr/hadoop/common/hadoop-2.7.4/
     * Set the shell profile as following:
@@ -18,15 +17,37 @@
         export PATH=$PATH:$HADOOP_HOME/bin
         ```
 * Protobuf 2.5.0
-    * Downloadable at https://github.com/google/protobuf/releases/tag/v2.5.0
-    * On Ubuntu:
-    1. Run `sudo apt-get install autoconf automake libtool curl make g++ unzip`
-    2. Extract the downloaded tarball and run
-        * `sudo ./configure`
-        * `sudo make`
-        * `sudo make check`
-        * `sudo make install`
-    3. To check for a successful installation of version 2.5.0, run `protoc --version`
+    * On Ubuntu 14.04 LTS and its point releases:
+
+      ```bash
+      sudo apt-get install protobuf-compiler
+      ```
+
+    * On Ubuntu 16.04 LTS and its point releases:
+
+      ```bash
+      sudo add-apt-repository ppa:snuspl/protobuf-250
+      sudo apt update
+      sudo apt install protobuf-compiler=2.5.0-9xenial1
+      ```
+
+    * On macOS:
+
+      ```bash
+      brew tap homebrew/versions
+      brew install protobuf@2.5
+      ```
+
+    * Or build from source:
+
+      * Downloadable at https://github.com/google/protobuf/releases/tag/v2.5.0
+      * Extract the downloaded tarball
+      * `./configure`
+      * `make`
+      * `make check`
+      * `sudo make install`
+
+    *  To check for a successful installation of version 2.5.0, run `protoc --version`
 
 ### Installing Coral
 * Run all tests and install: `mvn clean install -T 2C`
@@ -78,9 +99,9 @@
 ### Configurable options
 * `num` (optional): Number of containers. Default value is 1
 * `type`:  Three container types are supported:
-	* `Transient` : Containers that store eviction-prone resources. When batch jobs use idle resources in `Transient` containers, they can be arbitrarily evicted when latency-critical jobs attempt to use the resources.
-	* `Reserved` : Containers that store eviction-free resources. `Reserved` containers are used to reliably store intermediate data which have high eviction cost.
-	* `Compute` : Containers that are mainly used for computation.
+  * `Transient` : Containers that store eviction-prone resources. When batch jobs use idle resources in `Transient` containers, they can be arbitrarily evicted when latency-critical jobs attempt to use the resources.
+  * `Reserved` : Containers that store eviction-free resources. `Reserved` containers are used to reliably store intermediate data which have high eviction cost.
+  * `Compute` : Containers that are mainly used for computation.
 * `memory_mb`: Memory size in MB
 * `capacity`: Number of `TaskGroup`s that can be run in an executor. Set this value to be the same as the number of CPU cores of the container.
 
@@ -108,7 +129,7 @@ This example configuration specifies
 ## Monitoring your job using web UI
 Coral Compiler and Engine can store JSON representation of intermediate DAGs.
 * `-dag_dir` command line option is used to specify the directory where the JSON files are stored. The default directory is `./dag`.
-Using our [online visualizer](https://service.jangho.io/coral-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
+  Using our [online visualizer](https://service.jangho.io/coral-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
 
 ### Examples
 ```bash

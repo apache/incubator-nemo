@@ -16,7 +16,8 @@
 package edu.snu.coral.examples.spark;
 
 import edu.snu.coral.client.JobLauncher;
-import edu.snu.coral.common.ArgBuilder;
+import edu.snu.coral.common.test.ArgBuilder;
+import edu.snu.coral.common.test.ExampleTestUtil;
 import edu.snu.coral.compiler.optimizer.policy.DefaultPolicy;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,6 +35,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 public final class SparkITCase {
   private static final int TIMEOUT = 120000;
   private static ArgBuilder builder = new ArgBuilder();
+  private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
   @Before
   public void setUp() {
@@ -42,14 +44,21 @@ public final class SparkITCase {
 
   @Test(timeout = TIMEOUT)
   public void testSparkWordCount() throws Exception {
-    final String input = System.getProperty("user.dir") + "/../resources/sample_input_wordcount";
+    final String inputFileName = "sample_input_wordcount";
+    final String outputFileName = "sample_output_wordcount";
+    final String testResourceFilename = "test_output_wordcount";
+    final String inputFilePath = fileBasePath + inputFileName;
+    final String outputFilePath = fileBasePath + outputFileName;
 
     JobLauncher.main(builder
         .addJobId(JavaWordCount.class.getSimpleName() + "_test")
         .addUserMain(JavaWordCount.class.getCanonicalName())
-        .addUserArgs(input)
+        .addUserArgs(inputFilePath, outputFilePath)
         .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
+
+    ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFilename);
+    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
   }
 
   @Test(timeout = TIMEOUT)

@@ -18,7 +18,6 @@ package edu.snu.coral.examples.beam.policy;
 import edu.snu.coral.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.coral.compiler.optimizer.policy.Policy;
 import edu.snu.coral.compiler.optimizer.policy.SailfishPolicy;
-import edu.snu.coral.examples.beam.ExampleTestUtil;
 import edu.snu.coral.runtime.common.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
@@ -30,7 +29,7 @@ public final class SailfishPolicyParallelsimFive implements Policy {
   private final Policy policy;
 
   public SailfishPolicyParallelsimFive() {
-    this.policy = ExampleTestUtil.overwriteParallelism(5, SailfishPolicy.class.getCanonicalName());
+    this.policy = PolicyTestUtil.overwriteParallelism(5, SailfishPolicy.class.getCanonicalName());
   }
 
   @Override

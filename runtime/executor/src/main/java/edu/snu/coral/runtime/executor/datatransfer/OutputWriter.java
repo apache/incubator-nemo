@@ -32,7 +32,7 @@ import java.util.*;
 /**
  * Represents the output data transfer from a task.
  */
-public final class OutputWriter extends DataTransfer implements AutoCloseable {
+public final class OutputWriter extends DataTransfer {
   private final String blockId;
   private final RuntimeEdge<?> runtimeEdge;
   private final String srcVertexId;
@@ -40,6 +40,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   private final DataStoreProperty.Value blockStoreValue;
   private final Map<PartitionerProperty.Value, Partitioner> partitionerMap;
   private final List<Long> accumulatedPartitionSizeInfo;
+  private long totalWrittenBytes;
   private final BlockManagerWorker blockManagerWorker;
 
   public OutputWriter(final int hashRangeMultiplier,
@@ -57,6 +58,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     this.blockManagerWorker = blockManagerWorker;
     this.blockStoreValue = runtimeEdge.getProperty(ExecutionProperty.Key.DataStore);
     this.partitionerMap = new HashMap<>();
+    this.totalWrittenBytes = 0;
     // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
     this.accumulatedPartitionSizeInfo = new ArrayList<>();
     partitionerMap.put(PartitionerProperty.Value.IntactPartitioner, new IntactPartitioner());
@@ -112,21 +114,24 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
 
   /**
    * Notifies that all writes for a block is end.
-   * Subscribers waiting for the data of the target block are notified when the block is committed.
-   * Also, further subscription about a committed block will not blocked but get the data in it and finished.
+   * Further write about a committed block will throw an exception.
+   *
+   * @return the total written bytes.
    */
-  @Override
-  public void close() {
+  public long close() {
     // Commit block.
     final UsedDataHandlingProperty.Value usedDataHandling =
         runtimeEdge.getProperty(ExecutionProperty.Key.UsedDataHandling);
     blockManagerWorker.commitBlock(blockId, blockStoreValue,
         accumulatedPartitionSizeInfo, srcVertexId, getDstParallelism(), usedDataHandling);
+    return totalWrittenBytes;
   }
 
   private void writeOneToOne(final List<Partition> partitionsToWrite) {
     // Write data.
-    blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
+    final Optional<List<Long>> partitionSizeList =
+        blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
+    partitionSizeList.ifPresent(this::addWrittenBytes);
   }
 
   private void writeBroadcast(final List<Partition> partitionsToWrite) {
@@ -141,7 +146,9 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     }
 
     // Write data.
-    blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
+    final Optional<List<Long>> partitionSizeList =
+        blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
+    partitionSizeList.ifPresent(this::addWrittenBytes);
   }
 
   /**
@@ -160,10 +167,22 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   private void dataSkewWrite(final List<Partition> partitionsToWrite) {
 
     // Write data.
-    final Optional<List<Long>> partitionSizeInfo =
+    final Optional<List<Long>> partitionSizeList =
         blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
-    if (partitionSizeInfo.isPresent()) {
-      this.accumulatedPartitionSizeInfo.addAll(partitionSizeInfo.get());
+    partitionSizeList.ifPresent(partitionsSize -> {
+      addWrittenBytes(partitionsSize);
+      this.accumulatedPartitionSizeInfo.addAll(partitionsSize);
+    });
+  }
+
+  /**
+   * Accumulates the size of written partitions.
+   *
+   * @param partitionSizeList the list of written partitions.
+   */
+  private void addWrittenBytes(final List<Long> partitionSizeList) {
+    for (final Long partitionSize : partitionSizeList) {
+      this.totalWrittenBytes += partitionSize;
     }
   }
 

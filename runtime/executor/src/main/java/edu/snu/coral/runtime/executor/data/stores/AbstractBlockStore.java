@@ -15,33 +15,33 @@
  */
 package edu.snu.coral.runtime.executor.data.stores;
 
-import edu.snu.coral.common.coder.Coder;
 import edu.snu.coral.runtime.common.RuntimeIdGenerator;
-import edu.snu.coral.runtime.executor.data.CoderManager;
+import edu.snu.coral.runtime.executor.data.SerializerManager;
+import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 
 /**
  * This abstract class represents a default {@link BlockStore},
  * which contains other components used in each implementation of {@link BlockStore}.
  */
 public abstract class AbstractBlockStore implements BlockStore {
-  private final CoderManager coderManager;
+  private final SerializerManager serializerManager;
 
   /**
    * Constructor.
-   * @param coderManager the coder manager.
+   * @param serializerManager the coder manager.
    */
-  protected AbstractBlockStore(final CoderManager coderManager) {
-    this.coderManager = coderManager;
+  protected AbstractBlockStore(final SerializerManager serializerManager) {
+    this.serializerManager = serializerManager;
   }
 
   /**
-   * Gets data coder for a block from the {@link CoderManager}.
+   * Gets data coder for a block from the {@link SerializerManager}.
    *
    * @param blockId the ID of the block to get the coder.
    * @return the coder.
    */
-  public final Coder getCoderFromWorker(final String blockId) {
+  public final Serializer getSerializerFromWorker(final String blockId) {
     final String runtimeEdgeId = RuntimeIdGenerator.getRuntimeEdgeIdFromBlockId(blockId);
-    return coderManager.getCoder(runtimeEdgeId);
+    return serializerManager.getSerializer(runtimeEdgeId);
   }
 }
