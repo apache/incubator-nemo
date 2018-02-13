@@ -231,19 +231,19 @@ public final class TaskGroupExecutor {
     final Map<String, Object> metric = new HashMap<>();
     metricCollector.beginMeasurement(physicalTaskId, metric);
 
-    final long startReadTime = System.currentTimeMillis();
+    final long readStartTime = System.currentTimeMillis();
     final Readable readable = boundedSourceTask.getReadable();
     final Iterable readData = readable.read();
-    final long endReadTime = System.currentTimeMillis();
-    metric.put("BoundedSourceReadTime(ms)", endReadTime - startReadTime);
+    final long readEndTime = System.currentTimeMillis();
+    metric.put("BoundedSourceReadTime(ms)", readEndTime - readStartTime);
 
     long writtenBytes = 0;
     for (final OutputWriter outputWriter : physicalTaskIdToOutputWriterMap.get(physicalTaskId)) {
       outputWriter.write(readData);
       writtenBytes += outputWriter.close();
     }
-    final long endWriteTime = System.currentTimeMillis();
-    metric.put("OutputWriteTime(ms)", endWriteTime - endReadTime);
+    final long writeEndTime = System.currentTimeMillis();
+    metric.put("OutputWriteTime(ms)", writeEndTime - readEndTime);
     metric.put("WrittenBytes", writtenBytes);
     metricCollector.endMeasurement(physicalTaskId, metric);
   }
@@ -258,7 +258,7 @@ public final class TaskGroupExecutor {
     final Map<String, Object> metric = new HashMap<>();
     metricCollector.beginMeasurement(physicalTaskId, metric);
 
-    final long startReadTime = System.currentTimeMillis();
+    final long readStartTime = System.currentTimeMillis();
     // Check for side inputs
     physicalTaskIdToInputReaderMap.get(physicalTaskId).stream().filter(InputReader::isSideInputReader)
         .forEach(inputReader -> {
@@ -301,15 +301,18 @@ public final class TaskGroupExecutor {
             dataQueue.add(Pair.of(data, srcIrVtxId));
           }));
         });
-    final long endReadTime = System.currentTimeMillis();
-    metric.put("InputReadTime(ms)", endReadTime - startReadTime);
+    final long readFutureEndTime = System.currentTimeMillis();
 
+    long accumulatedBlockedReadTime = 0;
     long accumulatedWriteTime = 0;
     // Consumes all of the partitions from incoming edges.
     for (int srcTaskNum = 0; srcTaskNum < sourceParallelism.get(); srcTaskNum++) {
       try {
         // Because the data queue is a blocking queue, we may need to wait some available data to be pushed.
+        final long blockedReadStartTime = System.currentTimeMillis();
         final Pair<Iterator, String> availableData = dataQueue.take();
+        final long blockedReadEndTime = System.currentTimeMillis();
+        accumulatedBlockedReadTime += blockedReadEndTime - blockedReadStartTime;
         transform.onData(availableData.left(), availableData.right());
       } catch (final InterruptedException e) {
         throw new BlockFetchException(e);
@@ -326,8 +329,10 @@ public final class TaskGroupExecutor {
     }
     transform.close();
 
-    final long endTransformTime = System.currentTimeMillis();
-    metric.put("TransformTime(ms)", endTransformTime - endReadTime - accumulatedWriteTime);
+    metric.put("InputReadTime(ms)", readFutureEndTime - readStartTime + accumulatedBlockedReadTime);
+    final long transformEndTime = System.currentTimeMillis();
+    metric.put("TransformTime(ms)",
+        transformEndTime - readFutureEndTime - accumulatedWriteTime - accumulatedBlockedReadTime);
 
     // Check whether there is any output data from the transform and write the output of this task to the writer.
     long writtenBytes = 0;
@@ -342,8 +347,8 @@ public final class TaskGroupExecutor {
     } else {
       LOG.info("This is a sink task: {}", physicalTaskId);
     }
-    final long endWriteTime = System.currentTimeMillis();
-    metric.put("OutputTime(ms)", endWriteTime - endTransformTime + accumulatedWriteTime);
+    final long writeEndTime = System.currentTimeMillis();
+    metric.put("OutputTime(ms)", writeEndTime - transformEndTime + accumulatedWriteTime);
     metric.put("WrittenBytes", writtenBytes);
 
     metricCollector.endMeasurement(physicalTaskId, metric);
@@ -358,7 +363,7 @@ public final class TaskGroupExecutor {
     final Map<String, Object> metric = new HashMap<>();
     metricCollector.beginMeasurement(physicalTaskId, metric);
 
-    final long startReadTime = System.currentTimeMillis();
+    final long readStartTime = System.currentTimeMillis();
     final BlockingQueue<Iterator> dataQueue = new LinkedBlockingQueue<>();
     final AtomicInteger sourceParallelism = new AtomicInteger(0);
     physicalTaskIdToInputReaderMap.get(physicalTaskId).stream().filter(inputReader -> !inputReader.isSideInputReader())
@@ -376,16 +381,16 @@ public final class TaskGroupExecutor {
         throw new BlockFetchException(e);
       }
     });
-    final long endReadTime = System.currentTimeMillis();
-    metric.put("InputReadTime(ms)", endReadTime - startReadTime);
+    final long readEndTime = System.currentTimeMillis();
+    metric.put("InputReadTime(ms)", readEndTime - readStartTime);
 
     long writtenBytes = 0;
     for (final OutputWriter outputWriter : physicalTaskIdToOutputWriterMap.get(physicalTaskId)) {
       outputWriter.write(data);
       writtenBytes += outputWriter.close();
     }
-    final long endWriteTime  = System.currentTimeMillis();
-    metric.put("OutputWriteTime(ms)", endWriteTime - endReadTime);
+    final long writeEndTime  = System.currentTimeMillis();
+    metric.put("OutputWriteTime(ms)", writeEndTime - readEndTime);
     metric.put("WrittenBytes", writtenBytes);
     metricCollector.endMeasurement(physicalTaskId, metric);
   }
