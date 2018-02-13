@@ -15,6 +15,7 @@
  */
 package edu.snu.coral.tests.runtime.executor.data;
 
+import edu.snu.coral.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.coral.conf.JobConf;
 import edu.snu.coral.compiler.frontend.beam.coder.BeamCoder;
 import edu.snu.coral.common.coder.Coder;
@@ -26,6 +27,7 @@ import edu.snu.coral.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.coral.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.coral.runtime.common.state.BlockState;
 import edu.snu.coral.runtime.executor.data.*;
+import edu.snu.coral.runtime.executor.data.streamchainer.CompressionStreamChainer;
 import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.coral.runtime.executor.data.stores.*;
 import edu.snu.coral.runtime.master.BlockManagerMaster;
@@ -70,7 +72,8 @@ import static org.mockito.Mockito.when;
 public final class BlockStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
-  private static final Serializer SERIALIZER = new Serializer(CODER, Collections.emptyList());
+  private static final Serializer SERIALIZER = new Serializer(CODER,
+      Collections.singletonList(new CompressionStreamChainer(CompressionProperty.Compression.LZ4)));
   private static final SerializerManager serializerManager = mock(SerializerManager.class);
   private BlockManagerMaster blockManagerMaster;
   private LocalMessageDispatcher messageDispatcher;
@@ -593,7 +596,7 @@ public final class BlockStoreTest {
     }
     final Iterable<NonSerializedPartition> nonSerializedResult = optionalNonSerResult.get();
     final Iterable serToNonSerialized = DataUtil.convertToNonSerPartitions(
-        new Serializer(CODER, Collections.emptyList()), serializedResult);
+        SERIALIZER, serializedResult);
 
     assertEquals(expectedResult, DataUtil.concatNonSerPartitions(nonSerializedResult));
     assertEquals(expectedResult, DataUtil.concatNonSerPartitions(serToNonSerialized));

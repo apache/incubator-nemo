@@ -20,16 +20,20 @@ package edu.snu.coral.compiler.frontend.spark.sql;
  * A data frame reader to create the initial dataset.
  */
 public final class DataFrameReader extends org.apache.spark.sql.DataFrameReader {
+  private final SparkSession sparkSession;
+
   /**
    * Constructor.
    * @param sparkSession spark session.
    */
   DataFrameReader(final SparkSession sparkSession) {
     super(sparkSession);
+    this.sparkSession = sparkSession;
   }
 
   @Override
   public Dataset<String> textFile(final String path) {
+    sparkSession.appendCommand("DataFrameReader#textFile", path);
     return Dataset.from(super.textFile(path));
   }
 }

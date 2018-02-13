@@ -13,22 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.coral.examples.beam;
-
-import edu.snu.coral.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.coral.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
-import edu.snu.coral.compiler.optimizer.policy.Policy;
-import edu.snu.coral.runtime.common.optimizer.pass.runtime.RuntimePass;
+package edu.snu.coral.common.test;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Test Utils for Examples.
+ */
 public final class ExampleTestUtil {
+  /**
+   * Private constructor.
+   */
+  private ExampleTestUtil() {
+  }
+
+  /**
+   * Ensures output correctness with the given test resource file.
+   *
+   * @param resourcePath root folder for both resources.
+   * @param outputFileName output file name.
+   * @param testResourceFileName the test result file name.
+   * @throws IOException IOException while testing.
+   */
   public static void ensureOutputValidity(final String resourcePath,
                                           final String outputFileName,
                                           final String testResourceFileName)
@@ -50,7 +61,7 @@ public final class ExampleTestUtil {
         .sorted()
         .reduce("", (p, q) -> (p + "\n" + q));
 
-    if(!testOutput.equals(resourceOutput)) {
+    if (!testOutput.equals(resourceOutput)) {
       final String outputMsg =
           "Test output mismatch while comparing [" + outputFileName + "] from [" + testResourceFileName + "] under "
               + resourcePath + ":\n"
@@ -76,41 +87,10 @@ public final class ExampleTestUtil {
         .filter(Files::isRegularFile)
         .filter(path -> path.getFileName().toString().startsWith(outputFileName))
         .collect(Collectors.toSet());
-    for(final Path outputFilePath : outputFilePaths) {
+    for (final Path outputFilePath : outputFilePaths) {
       Files.delete(outputFilePath);
     }
   }
 
-  /**
-   * Overwrite the parallelism of existing policy.
-   *
-   * @param desiredSourceParallelism       the desired source parallelism to set.
-   * @param policyToOverwriteCanonicalName the name of the policy to overwrite parallelism.
-   * @return the overwritten policy.
-   */
-  public static Policy overwriteParallelism(final int desiredSourceParallelism,
-                                            final String policyToOverwriteCanonicalName) {
-    final Policy policyToOverwrite;
-    try {
-      policyToOverwrite = (Policy) Class.forName(policyToOverwriteCanonicalName).newInstance();
-    } catch (final ClassNotFoundException | InstantiationException | IllegalAccessException e) {
-      throw new RuntimeException(e);
-    }
-    final List<CompileTimePass> compileTimePasses = policyToOverwrite.getCompileTimePasses();
-    final int parallelismPassIdx = compileTimePasses.indexOf(new DefaultParallelismPass());
-    compileTimePasses.set(parallelismPassIdx, new DefaultParallelismPass(desiredSourceParallelism, 2));
-    final List<RuntimePass<?>> runtimePasses = policyToOverwrite.getRuntimePasses();
 
-    return new Policy() {
-      @Override
-      public List<CompileTimePass> getCompileTimePasses() {
-        return compileTimePasses;
-      }
-
-      @Override
-      public List<RuntimePass<?>> getRuntimePasses() {
-        return runtimePasses;
-      }
-    };
-  }
 }

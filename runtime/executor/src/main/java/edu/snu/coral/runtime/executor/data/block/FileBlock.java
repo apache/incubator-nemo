@@ -17,6 +17,7 @@ package edu.snu.coral.runtime.executor.data.block;
 
 import edu.snu.coral.runtime.common.data.KeyRange;
 import edu.snu.coral.runtime.executor.data.*;
+import edu.snu.coral.runtime.executor.data.stream.LimitedInputStream;
 import edu.snu.coral.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.coral.runtime.executor.data.metadata.PartitionMetadata;
 import edu.snu.coral.runtime.executor.data.metadata.FileMetadata;
@@ -120,10 +121,24 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
         final K key = partitionMetadata.getKey();
         if (keyRange.includes(key)) {
           // The key value of this partition is in the range.
+          final long availableBefore = fileStream.available();
+          // We need to limit read bytes on this FileStream, which could be over-read by wrapped
+          // compression stream. We recommend to wrap with LimitedInputStream once more when
+          // reading input from chained compression InputStream.
+          // Plus, this stream must be not closed to prevent to close the filtered file partition.
+          final LimitedInputStream limitedInputStream =
+              new LimitedInputStream(fileStream, partitionMetadata.getPartitionSize());
           final NonSerializedPartition<K> deserializePartition =
               DataUtil.deserializePartition(
-                  partitionMetadata.getElementsTotal(), serializer, key, fileStream);
+                  partitionMetadata.getElementsTotal(), serializer, key, limitedInputStream);
           deserializedPartitions.add(deserializePartition);
+          // rearrange file pointer
+          final long toSkip = partitionMetadata.getPartitionSize() - availableBefore + fileStream.available();
+          if (toSkip > 0) {
+            skipBytes(fileStream, toSkip);
+          } else if (toSkip < 0) {
+            throw new IOException("file stream has been overread");
+          }
         } else {
           // Have to skip this partition.
           skipBytes(fileStream, partitionMetadata.getPartitionSize());
