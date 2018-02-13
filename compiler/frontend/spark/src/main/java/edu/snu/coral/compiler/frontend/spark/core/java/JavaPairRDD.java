@@ -98,4 +98,6 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
   public List<Tuple2<K, V>> collect() {
     return SparkFrontendUtils.collect(dag, loopVertexStack, lastVertex, serializer);
   }
+
+  //TODO#776: support unimplemented RDD transformation/actions.
 }

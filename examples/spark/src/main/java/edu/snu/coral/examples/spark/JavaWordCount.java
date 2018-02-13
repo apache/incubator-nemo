@@ -21,6 +21,9 @@ import edu.snu.coral.compiler.frontend.spark.core.java.JavaRDD;
 import edu.snu.coral.compiler.frontend.spark.sql.SparkSession;
 import scala.Tuple2;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -45,7 +48,7 @@ public final class JavaWordCount {
   public static void main(final String[] args) throws Exception {
 
     if (args.length < 1) {
-      System.err.println("Usage: JavaWordCount <file>");
+      System.err.println("Usage: JavaWordCount <input_file> [<output_file>]");
       System.exit(1);
     }
 
@@ -63,8 +66,20 @@ public final class JavaWordCount {
     JavaPairRDD<String, Integer> counts = ones.reduceByKey((i1, i2) -> i1 + i2);
 
     List<Tuple2<String, Integer>> output = counts.collect();
-    for (Tuple2<?, ?> tuple : output) {
-      System.out.println(tuple._1 + ": " + tuple._2);
+
+    final boolean writemode = args[1] != null;
+    if (writemode) { // print to output file
+      try (BufferedWriter bw = new BufferedWriter(new FileWriter(args[1]))) {
+        for (Tuple2<?, ?> tuple : output) {
+          bw.write(tuple._1 + ": " + tuple._2 + "\n");
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    } else { // print to console.
+      for (Tuple2<?, ?> tuple : output) {
+        System.out.println(tuple._1 + ": " + tuple._2);
+      }
     }
     spark.stop();
   }

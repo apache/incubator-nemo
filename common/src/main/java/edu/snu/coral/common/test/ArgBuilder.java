@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.coral.common;
+package edu.snu.coral.common.test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
