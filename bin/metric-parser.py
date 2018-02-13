@@ -42,7 +42,7 @@ def main():
                    print(metric)
            elif user_input == "2":
                print ('The "WrittenBytes" metric can be 0 if the data is not serialized and just handled on memory')
-               for vertexId, metricDict in vertexToMetricDict.items():
+               for vertexId, metricDict in sorted(vertexToMetricDict.items()):
                    print(vertexId)
                    metricKeys, valuesMin, valuesMean, valuesMax, valuesSum = ['Metric'], ['Min'], ['Mean'], ['Max'], ['Total']
                    for metricKey, metricValues in metricDict.items():
