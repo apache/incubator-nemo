@@ -221,6 +221,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
       this.input = in;
     }
 
+//    ProcessContext
     @Override
     public I element() {
       return this.input;
@@ -246,6 +247,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
       throw new UnsupportedOperationException("updateWatermark() in ProcessContext under DoTransform");
     }
 
+//    WindowedContext
     @Override
     public PipelineOptions getPipelineOptions() {
       return this.options;
@@ -271,6 +273,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
       throw new UnsupportedOperationException("output(TupleTag, T, Instant) in ProcessContext under DoTransform");
     }
 
+//    ArgumentProvider
     @Override
     public BoundedWindow window() {
       return new BoundedWindow() {
@@ -279,6 +282,11 @@ public final class DoTransform<I, O> implements Transform<I, O> {
           return GlobalWindow.INSTANCE.maxTimestamp();
         }
       };
+    }
+
+    @Override
+    public PipelineOptions pipelineOptions() {
+      return this.getPipelineOptions();
     }
 
     @Override
@@ -292,14 +300,12 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     }
 
     @Override
-    public DoFn.ProcessContext
-        processContext(final DoFn<I, O> doFn) {
+    public DoFn.ProcessContext processContext(final DoFn<I, O> doFn) {
       return this;
     }
 
     @Override
-    public DoFn.OnTimerContext
-        onTimerContext(final DoFn<I, O> doFn) {
+    public DoFn.OnTimerContext onTimerContext(final DoFn<I, O> doFn) {
       throw new UnsupportedOperationException("onTimerContext() in ProcessContext under DoTransform");
     }
 
