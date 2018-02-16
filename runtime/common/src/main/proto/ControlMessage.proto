@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package protobuf;
 
-option java_package = "edu.snu.onyx.runtime.common.comm";
+option java_package = "edu.snu.coral.runtime.common.comm";
 option java_outer_classname = "ControlMessage";
 
 enum MessageType {
@@ -49,7 +49,7 @@ message TaskGroupStateChangedMsg {
     required string executorId = 1;
     required string taskGroupId = 2;
     required TaskGroupStateFromExecutor state = 3;
-    repeated string tasksPutOnHoldIds = 4;
+    optional string taskPutOnHoldId = 4;
     optional RecoverableFailureCause failureCause = 5;
     required int32 attemptIdx = 6;
 }
@@ -93,20 +93,24 @@ message MetricMsg {
 }
 
 // Messages between Executors
-enum BlockTransferType {
-    PUSH = 0;
-    PULL = 1;
+
+enum ByteTransferDataDirection {
+    INITIATOR_SENDS_DATA = 0;
+    INITIATOR_RECEIVES_DATA = 1;
 }
 
-message DataTransferControlMessage {
-    required string controlMessageSourceId = 1;
-    optional BlockStore blockStore = 2;
-    required BlockTransferType type = 3;
-    required int32 transferId = 4;
-    required bool encodePartialBlock = 5;
-    required string blockId = 6;
-    required string runtimeEdgeId = 7;
-    optional bytes keyRange = 8;
+message ByteTransferContextSetupMessage {
+    required string initiatorExecutorId = 1;
+    required int32 transferIndex = 2;
+    required ByteTransferDataDirection dataDirection = 3;
+    required bytes contextDescriptor = 4;
+}
+
+message ByteTransferContextDescriptor {
+    required string blockId = 1;
+    required BlockStore blockStore = 2;
+    required string runtimeEdgeId = 3;
+    optional bytes keyRange = 4;
 }
 
 enum TaskGroupStateFromExecutor {

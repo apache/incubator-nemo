@@ -19,14 +19,14 @@ limitations under the License.
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>edu.snu.onyx</groupId>
-        <artifactId>onyx-project</artifactId>
+        <groupId>edu.snu.coral</groupId>
+        <artifactId>coral-project</artifactId>
         <version>0.1-SNAPSHOT</version>
         <relativePath>../../</relativePath>
     </parent>
 
-    <artifactId>onyx-runtime-executor</artifactId>
-    <name>Onyx Runtime Executor</name>
+    <artifactId>coral-runtime-executor</artifactId>
+    <name>Coral Runtime Executor</name>
 
     <repositories>
         <repository>
@@ -37,19 +37,25 @@ limitations under the License.
 
     <dependencies>
         <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-common</artifactId>
+            <groupId>edu.snu.coral</groupId>
+            <artifactId>coral-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-runtime-common</artifactId>
+            <groupId>edu.snu.coral</groupId>
+            <artifactId>coral-runtime-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.onyx</groupId>
-            <artifactId>onyx-conf</artifactId>
+            <groupId>edu.snu.coral</groupId>
+            <artifactId>coral-conf</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <!--Compression-->
+        <dependency>
+            <groupId>org.lz4</groupId>
+            <artifactId>lz4-java</artifactId>
+            <version>1.4.1</version>
         </dependency>
     </dependencies>
 </project>
