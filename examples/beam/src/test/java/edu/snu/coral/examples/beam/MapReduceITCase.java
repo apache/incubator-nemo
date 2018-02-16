@@ -18,7 +18,6 @@ package edu.snu.coral.examples.beam;
 import edu.snu.coral.client.JobLauncher;
 import edu.snu.coral.common.test.ArgBuilder;
 import edu.snu.coral.common.test.ExampleTestUtil;
-import edu.snu.coral.compiler.optimizer.policy.DataSkewPolicy;
 import edu.snu.coral.examples.beam.policy.*;
 import org.junit.After;
 import org.junit.Before;
@@ -56,7 +55,7 @@ public final class MapReduceITCase {
   @After
   public void tearDown() throws Exception {
     ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
-    //ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
   }
 
   @Test (timeout = TIMEOUT)
@@ -99,7 +98,7 @@ public final class MapReduceITCase {
   public void testDataSkew() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_dataskew")
-        .addOptimizationPolicy(DataSkewPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(DataSkewPolicyParallelsimFive.class.getCanonicalName())
         .build());
   }
 }

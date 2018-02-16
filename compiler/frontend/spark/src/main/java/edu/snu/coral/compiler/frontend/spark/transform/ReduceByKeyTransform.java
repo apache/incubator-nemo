@@ -27,10 +27,10 @@ public final class ReduceByKeyTransform<K, V> implements Transform<Tuple2<K, V>,
   }
 
   @Override
-  public void prepare(final Context context, final Pipe<Tuple2<K, V>> outputCollector) {
-    this.pipe = outputCollector;
+  public void prepare(final Context context, final Pipe<Tuple2<K, V>> p) {
+    this.pipe = p;
   }
-  
+
   @Override
   public void onData(final Object element) {
     K key = ((Tuple2<K, V>) element)._1;

@@ -7,7 +7,6 @@ import edu.snu.coral.common.ir.Pipe;
 import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 /**

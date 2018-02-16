@@ -20,8 +20,6 @@ import edu.snu.coral.common.ir.vertex.transform.Transform;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
 
-import java.util.Iterator;
-
 /**
  * Map elements to Pair elements.
  * @param <T> input type.

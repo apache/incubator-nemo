@@ -210,7 +210,7 @@ public final class RuntimeIdGenerator {
   private static String[] parseTaskGroupId(final String taskGroupId) {
     return taskGroupId.split(TASK_GROUP_INFIX);
   }
-  
+
   /**
    * Extracts logical task ID from a physical task ID.
    *

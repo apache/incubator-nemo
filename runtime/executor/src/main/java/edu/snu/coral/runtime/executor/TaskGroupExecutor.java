@@ -72,7 +72,7 @@ public final class TaskGroupExecutor {
   private final Map<String, PipeImpl> physicalTaskIdToOutputPipeMap;
   private final List<String> taskList;
   private boolean isExecutionRequested;
-  private boolean isTaskGroupOnHold;
+  private String logicalTaskIdPutOnHold;
 
   public TaskGroupExecutor(final ScheduledTaskGroup scheduledTaskGroup,
                            final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
@@ -93,7 +93,6 @@ public final class TaskGroupExecutor {
     this.taskList = new ArrayList<>();
 
     this.isExecutionRequested = false;
-    this.isTaskGroupOnHold = false;
 
     initializeDataRead(scheduledTaskGroup.getLogicalTaskIdToReadable());
     initializeDataTransfer();
@@ -133,7 +132,7 @@ public final class TaskGroupExecutor {
         final OutputWriter outputWriter = channelFactory.createWriter(
             task, taskGroupIdx, physicalStageEdge.getDstVertex(), physicalStageEdge);
         addOutputWriter(task, outputWriter);
-        LOG.info("log: Adding OutputWriter {} {} {}", taskGroupId, task.getIrVertexId(), outputWriter);
+        LOG.info("log: Adding OutputWriter {} {} {}", taskGroupId, physicalTaskId, outputWriter);
       });
 
       // Add InputPipes for intra-stage data transfer
@@ -181,7 +180,7 @@ public final class TaskGroupExecutor {
     if (parentTasks != null) {
       parentTasks.forEach(parent -> {
         LOG.info("log: Adding InputPipe(Parents of {} {}: {})",
-            taskGroupId, task.getIrVertexId(), parent.getIrVertexId());
+            taskGroupId, physicalTaskId, parent.getIrVertexId());
         final String physicalParentTaskId = getPhysicalTaskId(parent.getId());
         localPipes.add(physicalTaskIdToOutputPipeMap.get(physicalParentTaskId));
       });
@@ -199,7 +198,7 @@ public final class TaskGroupExecutor {
       if (outEdge.isSideInput()) {
         outputPipe.markAsSideInput();
         LOG.info("log: {} {} Adding OutputPipe which will be a sideInput, edge {}",
-            taskGroupId, task.getIrVertexId(), outEdge);
+            taskGroupId, physicalTaskId, outEdge);
       }
     });
 
@@ -291,19 +290,21 @@ public final class TaskGroupExecutor {
 
   private void checkBoundedSourceTaskCompletion(final BoundedSourceTask task) {
     final String physicalTaskId = getPhysicalTaskId(task.getId());
-    taskList.remove(getPhysicalTaskId(physicalTaskId));
+    taskList.remove(physicalTaskId);
     LOG.info("log: {} {} Complete!", taskGroupId, physicalTaskId);
+    LOG.info("log: pendingTasks: {}", taskList);
   }
 
   private void checkOperatorTaskCompletion(final OperatorTask task) {
     final String physicalTaskId = getPhysicalTaskId(task.getId());
+
     if (allInputPipesEmpty(task) && allParentTasksComplete(task)) {
       task.getTransform().close();
       if (hasOutputWriter(task)) {
         writeToOutputWriter(physicalTaskIdToOutputPipeMap.get(physicalTaskId), task);
       }
       taskList.remove(physicalTaskId);
-      LOG.info("log: {} {} Complete!", taskGroupId, task.getId());
+      LOG.info("log: {} {} Complete!", taskGroupId, physicalTaskId);
       LOG.info("log: pendingTasks: {}", taskList);
     }
   }
@@ -314,9 +315,7 @@ public final class TaskGroupExecutor {
       if (hasOutputWriter(task)) {
         writeToOutputWriter(physicalTaskIdToOutputPipeMap.get(physicalTaskId), task);
       }
-      taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.ON_HOLD,
-          Optional.of(physicalTaskId), Optional.empty());
-      isTaskGroupOnHold = true;
+      logicalTaskIdPutOnHold = RuntimeIdGenerator.getLogicalTaskIdIdFromPhysicalTaskId(physicalTaskId);
       taskList.remove(physicalTaskId);
       LOG.info("log: {} {} Complete / ON_HOLD!", taskGroupId, physicalTaskId);
       LOG.info("log: pendingTasks: {}", taskList);
@@ -394,8 +393,12 @@ public final class TaskGroupExecutor {
 
     closeOutputWriters();
 
-    if (!isTaskGroupOnHold) {
+    if (logicalTaskIdPutOnHold == null) {
       taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), Optional.empty());
+    } else {
+      taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.ON_HOLD,
+          Optional.of(logicalTaskIdPutOnHold),
+          Optional.empty());
     }
 
     LOG.info("{} Complete!", taskGroupId);
@@ -408,7 +411,6 @@ public final class TaskGroupExecutor {
    * @throws Exception occurred during input read.
    */
   private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask) throws Exception {
-
     final Readable readable = boundedSourceTask.getReadable();
     final Iterable readData = readable.read();
 
@@ -457,8 +459,7 @@ public final class TaskGroupExecutor {
                 srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
               }
               sideInputMap.put(srcTransform, sideInput);
-              LOG.info("log: {} {} sideInput from InputReader {}", taskGroupId, task.getId(),
-                  sideInput);
+              LOG.info("log: {} {} sideInput from InputReader {}", taskGroupId, physicalTaskId, sideInput);
             } catch (final InterruptedException | ExecutionException e) {
               throw new BlockFetchException(e);
             }
@@ -477,7 +478,7 @@ public final class TaskGroupExecutor {
               srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
             }
             sideInputMap.put(srcTransform, sideInput);
-            LOG.info("log: {} {} sideInput from InputPipe {}", taskGroupId, task.getId(), sideInput);
+            LOG.info("log: {} {} sideInput from InputPipe {}", taskGroupId, physicalTaskId, sideInput);
           });
     }
 
@@ -493,16 +494,14 @@ public final class TaskGroupExecutor {
           .filter(inputReader -> !inputReader.isSideInputReader())
           .forEach(inputReader -> {
             List<CompletableFuture<Iterator>> futures = inputReader.read();
-
             /*
-            // Add consumers which will push the data to the data queue when it ready to the futures.
-            futures.forEach(compFuture -> compFuture.whenComplete((data, exception) -> {
-            if (exception != null) {
-              throw new BlockFetchException(exception);
-            }
-            dataQueue.add(Pair.of(data, srcIrVtxId));
-            }
-            */
+            futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
+              if (exception != null) {
+                throw new BlockFetchException(exception);
+              }
+
+              LOG.info("log: {} {} Entered into InputReader", taskGroupId, physicalTaskId);
+*/
             futures.forEach(compFuture -> {
               try {
                 Iterator iterator = compFuture.get();
@@ -532,14 +531,12 @@ public final class TaskGroupExecutor {
             if (aggregationNeeded(task)) {
               List<Object> iterable = localReader.collectOutputList();
               dataQueue.add(iterable);
-              //LOG.info("log: {} {} Read from InputPipe : {}",
-              //    taskGroupId, task.getId(), iterable);
+              LOG.info("log: {} {} Read from InputPipe : {}", taskGroupId, physicalTaskId, iterable);
             } else {
               Object data = localReader.remove();
               if (data != null) {
                 dataQueue.add(data);
-                LOG.info("log: {} {} Read from InputPipe : {}",
-                    taskGroupId, task.getId(), data);
+                LOG.info("log: {} {} Read from InputPipe : {}", taskGroupId, physicalTaskId, data);
               } else {
                 List<Object> iterable = Collections.singletonList(data);
                 dataQueue.add(iterable);
@@ -551,7 +548,7 @@ public final class TaskGroupExecutor {
     // Consumes the received element from incoming edges.
     // Calculate the number of inter-TaskGroup data to process.
     int numElements = dataQueue.size();
-    LOG.info("log: {} {}: numElements {}", taskGroupId, task.getId(), numElements);
+    LOG.info("log: {} {}: numElements {}", taskGroupId, physicalTaskId, numElements);
 
     IntStream.range(0, numElements).forEach(dataNum -> {
       Object data = dataQueue.pop();
