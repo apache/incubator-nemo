@@ -18,7 +18,10 @@ package edu.snu.coral.runtime.executor.data.partitioner;
 import edu.snu.coral.common.KeyExtractor;
 import edu.snu.coral.runtime.executor.data.Partition;
 import edu.snu.coral.runtime.executor.data.NonSerializedPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -34,6 +37,7 @@ import java.util.stream.IntStream;
  * For more information, please check {@link edu.snu.coral.conf.JobConf.HashRangeMultiplier}.
  */
 public final class DataSkewHashPartitioner implements Partitioner {
+  private static final Logger LOG = LoggerFactory.getLogger(DataSkewHashPartitioner.class.getName());
   private final int hashRangeMultiplier; // Hash range multiplier.
 
   public DataSkewHashPartitioner(final int hashRangeMultiplier) {
@@ -45,7 +49,11 @@ public final class DataSkewHashPartitioner implements Partitioner {
                                    final int dstParallelism,
                                    final KeyExtractor keyExtractor) {
     // For this hash range, please check the description of HashRangeMultiplier in JobConf.
-    final int hashRange = hashRangeMultiplier * dstParallelism;
+    // For actual hash range to use, we calculate a prime number right next to the desired hash range.
+    final BigInteger hashRangeBase = new BigInteger(String.valueOf(dstParallelism * hashRangeMultiplier));
+    final int hashRange = hashRangeBase.nextProbablePrime().intValue();
+
+    LOG.info("hashRangeBase {} resulting hashRange {}", hashRangeBase, hashRange);
 
     // Separate the data into partitions according to the hash value of their key.
     final List<List> elementsByKey = new ArrayList<>(hashRange);
