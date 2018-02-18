@@ -209,9 +209,12 @@ public final class AlternatingLeastSquare {
       }
 
       final Map<Integer, List<Double>> fixedMatrix = c.sideInput(fixedMatrixView);
-
+      LOG.info("log: fixedMatrix: {} whose size is {}, fixedMatrixView: {}", fixedMatrix, fixedMatrix.size(),
+          fixedMatrixView);
       final List<Integer> indexArr = c.element().getValue().left();
       final List<Double> ratingArr = c.element().getValue().right();
+      LOG.info("log: indexArr {}", indexArr);
+      LOG.info("log: ratingArr {}", ratingArr);
 
       final Integer size = indexArr.size();
 
@@ -222,7 +225,7 @@ public final class AlternatingLeastSquare {
         final Integer ratingIndex = indexArr.get(i);
         final Double rating = ratingArr.get(i);
         for (Integer j = 0; j < numFeatures; j++) {
-//          LOG.info("Rating index " + ratingIndex);
+          LOG.info("log: Rating index(indexArr.get({})) ", ratingIndex, i);
           if (j < fixedMatrix.get(ratingIndex).size()) {
             conf[j] = fixedMatrix.get(ratingIndex).get(j).doubleValue();
           } else {

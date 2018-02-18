@@ -94,9 +94,12 @@ public final class PipeImpl<O> implements Pipe<O> {
   public List<O> collectOutputList() {
     LinkedBlockingQueue<O> currentQueue = outputQueue.getAndSet(new LinkedBlockingQueue<>());
     List<O> outputList = new ArrayList<>();
+    currentQueue.iterator().forEachRemaining(outputList::add);
+    /*
     while (currentQueue.size() > 0) {
       outputList.add(currentQueue.remove());
     }
+    */
     return outputList;
   }
 }

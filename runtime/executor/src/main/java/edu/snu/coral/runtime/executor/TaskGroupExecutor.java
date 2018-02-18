@@ -505,16 +505,24 @@ public final class TaskGroupExecutor {
             futures.forEach(compFuture -> {
               try {
                 Iterator iterator = compFuture.get();
-                iterator.forEachRemaining(data -> {
-                  if (data != null) {
-                    dataQueue.add(data);
-                    LOG.info("log: {} {} Read from InputReader : {}",
-                        taskGroupId, task.getId(), data);
-                  } else {
-                    List<Object> iterable = Collections.singletonList(data);
-                    dataQueue.add(iterable);
-                  }
-                });
+                if (aggregationNeeded(task)) {
+                  List<Object> iterable = new ArrayList<>();
+                  iterator.forEachRemaining(iterable::add);
+                  dataQueue.add(iterable);
+                  LOG.info("log: {} {} Aggregation needed for creating PCollectionView! Read from InputReader : {}",
+                      taskGroupId, physicalTaskId, iterable);
+                } else {
+                  iterator.forEachRemaining(data -> {
+                    if (data != null) {
+                      dataQueue.add(data);
+                      LOG.info("log: {} {} Read from InputReader : {}",
+                          taskGroupId, task.getId(), data);
+                    } else {
+                      List<Object> iterable = Collections.singletonList(data);
+                      dataQueue.add(iterable);
+                    }
+                  });
+                }
               } catch (InterruptedException e) {
                 throw new RuntimeException("Interrupted while waiting for InputReader.readElement()", e);
               } catch (ExecutionException e1) {
@@ -531,7 +539,8 @@ public final class TaskGroupExecutor {
             if (aggregationNeeded(task)) {
               List<Object> iterable = localReader.collectOutputList();
               dataQueue.add(iterable);
-              LOG.info("log: {} {} Read from InputPipe : {}", taskGroupId, physicalTaskId, iterable);
+              LOG.info("log: {} {} Aggregation needed for creating PCollectionView! Read from InputPipe : {}",
+                  taskGroupId, physicalTaskId, iterable);
             } else {
               Object data = localReader.remove();
               if (data != null) {
@@ -572,20 +581,27 @@ public final class TaskGroupExecutor {
           .filter(inputReader -> !inputReader.isSideInputReader())
           .forEach(inputReader -> inputReader.read()
               .forEach(compFuture -> {
-                compFuture.thenAccept(iterator ->
-                    iterator.forEachRemaining(data -> {
-                      if (data != null) {
-                        pipe.emit(data);
-                        LOG.info("log: {} {} Read from InputReader : {}",
-                            taskGroupId, physicalTaskId, data);
-                      } else {
-                        List<Object> iterable = Collections.singletonList(data);
-                        pipe.emit(iterable);
-                      }
-                    })
-                );
-              })
-          );
+                compFuture.thenAccept(iterator -> {
+                if (aggregationNeeded(task)) {
+                  List<Object> iterable = new ArrayList<>();
+                  iterator.forEachRemaining(iterable::add);
+                  pipe.emit(iterable);
+                  LOG.info("log: {} {} Aggregation needed for creating PCollectionView! Read from InputReader : {}",
+                      taskGroupId, physicalTaskId, iterable);
+                } else {
+                  iterator.forEachRemaining(data -> {
+                    if (data != null) {
+                      pipe.emit(data);
+                      LOG.info("log: {} {} Read from InputReader : {}",
+                          taskGroupId, physicalTaskId, data);
+                    } else {
+                      List<Object> iterable = Collections.singletonList(data);
+                      pipe.emit(iterable);
+                    }
+                  });
+                }
+              });
+              }));
     }
 
     if (hasInputPipe(task)) {
@@ -595,6 +611,8 @@ public final class TaskGroupExecutor {
             if (aggregationNeeded(task)) {
               List<Object> iterable = localReader.collectOutputList();
               pipe.emit(iterable);
+              LOG.info("log: {} {} Aggregation needed for creating PCollectionView! Read from InputPipe : {}",
+                  taskGroupId, physicalTaskId, iterable);
             } else {
               Object data = localReader.remove();
               if (data != null) {
