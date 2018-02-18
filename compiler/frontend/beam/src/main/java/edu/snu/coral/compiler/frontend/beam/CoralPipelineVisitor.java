@@ -140,6 +140,17 @@ public final class CoralPipelineVisitor extends Pipeline.PipelineVisitor.Default
       builder.addVertex(irVertex, loopVertexStack);
     } else if (beamTransform instanceof View.CreatePCollectionView) {
       final View.CreatePCollectionView view = (View.CreatePCollectionView) beamTransform;
+
+      /*
+      // First, add AggregateTransform that aggregates the element-wise data
+      // to the right type of PCollection that CreateViewTransform#viewFn expects.
+      final AggregateTransform aggregateTransform = new AggregateTransform(view.getView().getViewFn());
+      final IRVertex irVertexTmp = new OperatorVertex(aggregateTransform);
+      builder.addVertex(irVertexTmp, loopVertexStack);
+      */
+
+
+
       final CreateViewTransform transform = new CreateViewTransform(view.getView());
       irVertex = new OperatorVertex(transform);
       pValueToVertex.put(view.getView(), irVertex);
@@ -151,6 +162,13 @@ public final class CoralPipelineVisitor extends Pipeline.PipelineVisitor.Default
           .filter(v -> v instanceof PCollection).findFirst().map(v -> (PCollection) v).get().getCoder();
       beamNode.getOutputs().values().stream()
           .forEach(output -> pValueToCoder.put(output, getCoderForView(view.getView().getViewFn(), beamInputCoder)));
+
+
+
+
+
+
+
     } else if (beamTransform instanceof Window) {
       final Window<I> window = (Window<I>) beamTransform;
       final WindowTransform transform = new WindowTransform(window.getWindowFn());

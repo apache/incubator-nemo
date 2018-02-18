@@ -225,14 +225,14 @@ public final class AlternatingLeastSquare {
         final Integer ratingIndex = indexArr.get(i);
         final Double rating = ratingArr.get(i);
         for (Integer j = 0; j < numFeatures; j++) {
-          LOG.info("log: Rating index(indexArr.get({})) ", ratingIndex, i);
+          LOG.info("log: ratingIndex {} (indexArr.get({})) ", ratingIndex, i);
+          LOG.info("log: fixedMatrix.get(ratingIndex: {}): {} ", ratingIndex, fixedMatrix.get(ratingIndex));
           if (j < fixedMatrix.get(ratingIndex).size()) {
             conf[j] = fixedMatrix.get(ratingIndex).get(j).doubleValue();
           } else {
             conf[j] = 0.0;
           }
         }
-
 
         NETLIB_BLAS.dspr("U", numFeatures, 1.0, ArrayUtils.toPrimitive(conf), 1,
             ArrayUtils.toPrimitive(upperTriangularLeftMatrix));
