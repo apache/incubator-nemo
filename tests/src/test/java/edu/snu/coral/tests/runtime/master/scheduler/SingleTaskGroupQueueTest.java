@@ -225,6 +225,7 @@ public final class SingleTaskGroupQueueTest {
    */
   @Test
   public void testPushRemoveAndAddStageDependency() throws Exception {
+    System.out.println("************testPushRemoveAndAddStageDependency*****************");
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
     v1.setProperty(ParallelismProperty.of(3));

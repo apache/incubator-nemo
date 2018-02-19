@@ -223,6 +223,8 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
   @Override
   public void onJobScheduled(final PhysicalPlan physicalPlanForJob) {
     this.physicalPlan = physicalPlanForJob;
+    this.schedulableStages.clear();
+    this.stageIdToPendingTaskGroups.clear();
   }
 
   @Override
