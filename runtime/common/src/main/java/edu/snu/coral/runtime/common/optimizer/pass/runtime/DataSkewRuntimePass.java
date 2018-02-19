@@ -16,11 +16,9 @@
 package edu.snu.coral.runtime.common.optimizer.pass.runtime;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import edu.snu.coral.common.eventhandler.CommonEventHandler;
 import edu.snu.coral.common.dag.DAG;
 import edu.snu.coral.common.dag.DAGBuilder;
+import edu.snu.coral.common.eventhandler.RuntimeEventHandler;
 import edu.snu.coral.common.exception.DynamicOptimizationException;
 
 import edu.snu.coral.runtime.common.RuntimeIdGenerator;
@@ -30,34 +28,31 @@ import edu.snu.coral.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.coral.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.coral.runtime.common.data.HashRange;
 import edu.snu.coral.runtime.common.eventhandler.DynamicOptimizationEventHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 /**
  * Dynamic optimization pass for handling data skew.
  */
 public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<Long>>> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
-  private final Set<Class<? extends CommonEventHandler<?>>> eventHandlers;
+  private final Set<RuntimeEventHandler<?>> eventHandlers;
 
   /**
    * Constructor.
    */
   public DataSkewRuntimePass() {
-    this.eventHandlers = Stream.of(
-        DynamicOptimizationEventHandler.class
-    ).collect(Collectors.toSet());
+    this.eventHandlers = Collections.<RuntimeEventHandler<?>>singleton(
+        DynamicOptimizationEventHandler.getEventHandlerInstance());
   }
 
   @Override
-  public Set<Class<? extends CommonEventHandler<?>>> getEventHandlers() {
-    return eventHandlers;
+  public Set<RuntimeEventHandler<?>> getEventHandlers() {
+    return this.eventHandlers;
   }
 
   @Override
