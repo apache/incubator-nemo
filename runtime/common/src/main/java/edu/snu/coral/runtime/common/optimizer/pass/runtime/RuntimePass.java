@@ -15,7 +15,7 @@
  */
 package edu.snu.coral.runtime.common.optimizer.pass.runtime;
 
-import edu.snu.coral.common.eventhandler.CommonEventHandler;
+import edu.snu.coral.common.eventhandler.RuntimeEventHandler;
 import edu.snu.coral.runtime.common.plan.physical.PhysicalPlan;
 
 import java.io.Serializable;
@@ -32,5 +32,5 @@ public interface RuntimePass<T> extends BiFunction<PhysicalPlan, T, PhysicalPlan
   /**
    * @return the set of event handlers used with the runtime pass.
    */
-  Set<Class<? extends CommonEventHandler<?>>> getEventHandlers();
+  Set<RuntimeEventHandler<?>> getEventHandlers();
 }

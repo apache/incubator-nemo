@@ -24,7 +24,6 @@ import edu.snu.coral.compiler.backend.coral.CoralBackend;
 import edu.snu.coral.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.coral.compiler.optimizer.policy.Policy;
 import edu.snu.coral.conf.JobConf;
-import edu.snu.coral.runtime.common.eventhandler.DynamicOptimizationEventHandler;
 import edu.snu.coral.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.coral.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
@@ -49,13 +48,14 @@ public final class UserApplicationRunner implements Runnable {
   private final RuntimeMaster runtimeMaster;
   private final Backend<PhysicalPlan> backend;
 
+  private final PubSubEventHandlerWrapper pubSubWrapper;
+
   @Inject
   private UserApplicationRunner(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
                                 @Parameter(JobConf.SerializedDAG.class) final String dagString,
                                 @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy,
                                 @Parameter(JobConf.MaxScheduleAttempt.class) final int maxScheduleAttempt,
                                 final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
-                                final DynamicOptimizationEventHandler dynamicOptimizationEventHandler,
                                 final RuntimeMaster runtimeMaster) {
     this.dagDirectory = dagDirectory;
     this.dagString = dagString;
@@ -63,8 +63,7 @@ public final class UserApplicationRunner implements Runnable {
     this.maxScheduleAttempt = maxScheduleAttempt;
     this.runtimeMaster = runtimeMaster;
     this.backend = new CoralBackend();
-    pubSubEventHandlerWrapper.getPubSubEventHandler()
-        .subscribe(dynamicOptimizationEventHandler.getEventClass(), dynamicOptimizationEventHandler);
+    this.pubSubWrapper = pubSubEventHandlerWrapper;
   }
 
   @Override
@@ -79,6 +78,11 @@ public final class UserApplicationRunner implements Runnable {
       final DAG<IRVertex, IREdge> optimizedDAG = CompiletimeOptimizer.optimize(dag, optimizationPolicy, dagDirectory);
       optimizedDAG.storeJSON(dagDirectory, "ir-" + optimizationPolicy.getClass().getSimpleName(),
           "IR optimized for " + optimizationPolicy.getClass().getSimpleName());
+
+      optimizationPolicy.getRuntimePasses().forEach(runtimePass ->
+          runtimePass.getEventHandlers().forEach(runtimeEventHandler ->
+              pubSubWrapper.getPubSubEventHandler()
+                  .subscribe(runtimeEventHandler.getEventClass(), runtimeEventHandler)));
 
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
 
