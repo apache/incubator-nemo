@@ -280,8 +280,10 @@ public final class SingleTaskGroupQueueTest {
 
         // Now that we've dequeued all of the children TaskGroups, we should now start getting the parents.
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
+        System.out.println(dagOf2Stages.get(0).getId());
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
       } catch (Exception e) {
+        System.out.println(dagOf2Stages.get(0).getId());
         e.printStackTrace();
         throw e;
       }
@@ -391,6 +393,8 @@ public final class SingleTaskGroupQueueTest {
    */
   private String dequeueAndGetStageId() {
     final ScheduledTaskGroup scheduledTaskGroup = pendingTaskGroupPriorityQueue.dequeue().get();
-    return RuntimeIdGenerator.getStageIdFromTaskGroupId(scheduledTaskGroup.getTaskGroupId());
+    final String test = RuntimeIdGenerator.getStageIdFromTaskGroupId(scheduledTaskGroup.getTaskGroupId());
+    System.out.println("DequeuedStageID: " + test);
+    return test;
   }
 }
