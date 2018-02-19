@@ -117,12 +117,7 @@ public final class SingleTaskGroupQueueTest {
       // BatchSingleJobScheduler will schedule TaskGroups in this order as well.
       scheduleStage(dagOf2Stages.get(1));
       // Then, schedule the parent TaskGroups.
-      dagOf2Stages.get(0).getTaskGroupIds().forEach(taskGroupId ->
-        pendingTaskGroupPriorityQueue.enqueue(
-            new ScheduledTaskGroup("TestPlan", dagOf2Stages.get(0).getSerializedTaskGroupDag(), taskGroupId,
-                null, null, 0, dagOf2Stages.get(0).getContainerType())));
       scheduleStage(dagOf2Stages.get(0));
-
     });
 
     // This mimics SchedulerRunner's behavior
@@ -195,10 +190,6 @@ public final class SingleTaskGroupQueueTest {
     executorService.execute(() -> {
       // First schedule the parent TaskGroups (since it is pull).
       // BatchSingleJobScheduler will schedule TaskGroups in this order as well.
-      dagOf2Stages.get(0).getTaskGroupIds().forEach(taskGroupId ->
-          pendingTaskGroupPriorityQueue.enqueue(
-              new ScheduledTaskGroup("TestPlan", dagOf2Stages.get(0).getSerializedTaskGroupDag(), taskGroupId,
-              null, null, 0, dagOf2Stages.get(0).getContainerType())));
       scheduleStage(dagOf2Stages.get(0));
     });
 
@@ -301,10 +292,6 @@ public final class SingleTaskGroupQueueTest {
       // BatchSingleJobScheduler will schedule TaskGroups in this order as well.
       scheduleStage(dagOf2Stages.get(1));
       // Then, schedule the parent TaskGroups.
-      dagOf2Stages.get(0).getTaskGroupIds().forEach(taskGroupId ->
-          pendingTaskGroupPriorityQueue.enqueue(
-              new ScheduledTaskGroup("TestPlan", dagOf2Stages.get(0).getSerializedTaskGroupDag(), taskGroupId,
-                  null, null, 0, dagOf2Stages.get(0).getContainerType())));
       scheduleStage(dagOf2Stages.get(0));
     });
 
