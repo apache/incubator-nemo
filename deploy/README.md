@@ -1,4 +1,4 @@
-# Onyx-Hadoop(YARN/HDFS) Cluster Deployment Guide
+# Coral-Hadoop(YARN/HDFS) Cluster Deployment Guide
 
 ## Install the operating system
 * Ubuntu 14.04.4 LTS
@@ -25,11 +25,11 @@
 * Set your mac's `/etc/hosts`
 * Go to `v-m:8088` and `v-m:50070`
 
-## Run Onyx in the cluster
-* git clone Onyx on v-m and install
+## Run Coral in the cluster
+* git clone Coral on v-m and install
 * Upload a local input file to HDFS with `hdfs -put`
-* Launch a Onyx job with `-deploy_mode yarn`, and hdfs paths as the input/output
-* Example: `./bin/run.sh -deploy_mode yarn -job_id mr -user_main edu.snu.onyx.examples.beam.MapReduce -user_args "hdfs://v-m:9000/sample_input_mr hdfs://v-m:9000/sample_output_mr"`
+* Launch a Coral job with `-deploy_mode yarn`, and hdfs paths as the input/output
+* Example: `./bin/run.sh -deploy_mode yarn -job_id mr -user_main edu.snu.coral.examples.beam.MapReduce -user_args "hdfs://v-m:9000/sample_input_mr hdfs://v-m:9000/sample_output_mr"`
 
 ## And you're all set.....?
 * I hope so
