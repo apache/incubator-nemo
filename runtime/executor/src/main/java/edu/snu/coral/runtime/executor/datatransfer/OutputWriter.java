@@ -133,6 +133,10 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
   }
 
+  public RuntimeEdge getRuntimeEdge() {
+    return runtimeEdge;
+  }
+
   private void writeBroadcast(final List<Partition> partitionsToWrite) {
     writeOneToOne(partitionsToWrite);
   }

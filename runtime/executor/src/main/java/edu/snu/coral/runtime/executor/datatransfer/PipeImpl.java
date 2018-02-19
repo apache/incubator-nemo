@@ -17,6 +17,8 @@ package edu.snu.coral.runtime.executor.datatransfer;
 
 import edu.snu.coral.common.ir.Pipe;
 import edu.snu.coral.runtime.common.plan.RuntimeEdge;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +30,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * @param <O> output type.
  */
 public final class PipeImpl<O> implements Pipe<O> {
-  private AtomicReference<LinkedBlockingQueue<O>> outputQueue;
+  private static final Logger LOG = LoggerFactory.getLogger(PipeImpl.class.getName());
+  private final AtomicReference<LinkedBlockingQueue<O>> outputQueue;
   private boolean isSideInput;
   private RuntimeEdge runtimeEdge;
 
@@ -36,9 +39,9 @@ public final class PipeImpl<O> implements Pipe<O> {
    * Constructor of a new Pipe.
    */
   public PipeImpl() {
-    outputQueue = new AtomicReference<>(new LinkedBlockingQueue<>());
-    isSideInput = false;
-    runtimeEdge = null;
+    this.outputQueue = new AtomicReference<>(new LinkedBlockingQueue<>());
+    this.isSideInput = false;
+    this.runtimeEdge = null;
   }
 
   @Override
@@ -86,6 +89,17 @@ public final class PipeImpl<O> implements Pipe<O> {
     return runtimeEdge;
   }
 
+  public void setQueue(final LinkedBlockingQueue queue) {
+    outputQueue.getAndSet(queue);
+  }
+
+  public LinkedBlockingQueue<O> duplicateQueue() {
+    final LinkedBlockingQueue dupQueue = new LinkedBlockingQueue<>();
+    outputQueue.get().iterator().forEachRemaining(dupQueue::add);
+    LOG.info("outputQueue size after iterator: {}", outputQueue.get().size());
+    return dupQueue;
+  }
+
   /**
    * Collects the accumulated output and replace the output list.
    *
@@ -95,11 +109,6 @@ public final class PipeImpl<O> implements Pipe<O> {
     LinkedBlockingQueue<O> currentQueue = outputQueue.getAndSet(new LinkedBlockingQueue<>());
     List<O> outputList = new ArrayList<>();
     currentQueue.iterator().forEachRemaining(outputList::add);
-    /*
-    while (currentQueue.size() > 0) {
-      outputList.add(currentQueue.remove());
-    }
-    */
     return outputList;
   }
 }
