@@ -35,6 +35,8 @@ import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
@@ -50,6 +52,7 @@ import static org.mockito.Mockito.mock;
  * Tests {@link SingleJobTaskGroupQueue}.
  */
 public final class SingleTaskGroupQueueTest {
+  private static final Logger LOG = LoggerFactory.getLogger(SingleTaskGroupQueueTest.class.getName());
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
   private SingleJobTaskGroupQueue pendingTaskGroupPriorityQueue;
   private PhysicalPlanGenerator physicalPlanGenerator;
@@ -276,14 +279,16 @@ public final class SingleTaskGroupQueueTest {
 
         // Let's say we fail to schedule, and enqueue this TaskGroup back.
         pendingTaskGroupPriorityQueue.enqueue(dequeuedTaskGroup);
+        LOG.info("1: " + dagOf2Stages.get(0).getId());
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
+        LOG.info("2: " + dagOf2Stages.get(1).getId());
 
         // Now that we've dequeued all of the children TaskGroups, we should now start getting the parents.
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
-        System.out.println(dagOf2Stages.get(0).getId());
+        LOG.info("3: " + dagOf2Stages.get(0).getId());
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
       } catch (Exception e) {
-        System.out.println(dagOf2Stages.get(0).getId());
+        LOG.info("4: " + dagOf2Stages.get(0).getId());
         e.printStackTrace();
         throw e;
       }
