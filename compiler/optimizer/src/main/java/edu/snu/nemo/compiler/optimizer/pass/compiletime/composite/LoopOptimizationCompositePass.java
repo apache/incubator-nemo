@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.composite;
 
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.InvariantDataPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.LoopExtractionPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.LoopOptimizations;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.LoopUnrollingPass;
@@ -33,7 +34,8 @@ public final class LoopOptimizationCompositePass extends CompositePass {
         new LoopExtractionPass(),
         LoopOptimizations.getLoopFusionPass(),
         LoopOptimizations.getLoopInvariantCodeMotionPass(),
-        new LoopUnrollingPass() // Groups then unrolls loops.
+        new LoopUnrollingPass(), // Groups then unrolls loops.
+        new InvariantDataPass()
     ));
   }
 }

@@ -53,9 +53,11 @@ public final class InvariantDataPass extends AnnotatingPass {
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
         .forEach(e -> {
           final Pair<Integer, String> invariantDataProperty = e.getProperty(ExecutionProperty.Key.InvariantData);
-          final String id = invariantDataProperty.right();
-          if (idMappingCount.containsKey(id)) {
-            e.setProperty(InvariantDataProperty.of(Pair.of(idMappingCount.get(id), id)));
+          if (invariantDataProperty != null) {
+            final String id = invariantDataProperty.right();
+            if (idMappingCount.containsKey(id)) {
+              e.setProperty(InvariantDataProperty.of(Pair.of(idMappingCount.get(id), id)));
+            }
           }
         }));
     return dag;
