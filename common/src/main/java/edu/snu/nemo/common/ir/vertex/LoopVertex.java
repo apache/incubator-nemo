@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * IRVertex that contains a partial DAG that is iterative.
  */
 public final class LoopVertex extends IRVertex {
-  private static int INVARIANT_ID = 0;
+  private static int invariantId = 0;
   private final DAGBuilder<IRVertex, IREdge> builder; // Contains DAG information
   private final String compositeTransformFullName;
 
@@ -192,8 +192,8 @@ public final class LoopVertex extends IRVertex {
    */
   public void markInvariantEdge() {
     nonIterativeIncomingEdges.forEach(((irVertex, irEdges) -> irEdges.forEach(irEdge -> {
-      irEdge.setProperty(InvariantDataProperty.of(Pair.of(Boolean.FALSE, String.valueOf(INVARIANT_ID))));
-      INVARIANT_ID++;
+      irEdge.setProperty(InvariantDataProperty.of(Pair.of(1, String.valueOf(invariantId))));
+      invariantId++;
     })));
   }
 

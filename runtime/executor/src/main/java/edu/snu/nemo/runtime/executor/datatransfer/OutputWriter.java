@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.executor.datatransfer;
 
 import edu.snu.nemo.common.KeyExtractor;
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -42,7 +43,6 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   private final List<Long> accumulatedPartitionSizeInfo;
   private final List<Long> writtenBytes;
   private final BlockManagerWorker blockManagerWorker;
-  private final boolean emptyWriter;
 
   public OutputWriter(final int hashRangeMultiplier,
                       final int srcTaskIdx,
@@ -50,15 +50,13 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
                       // TODO #717: Remove nullable. (If the destination is not an IR vertex, do not make OutputWriter.)
                       @Nullable final IRVertex dstIrVertex, // Null if it is not an IR vertex.
                       final RuntimeEdge<?> runtimeEdge,
-                      final BlockManagerWorker blockManagerWorker,
-                      final boolean emptyWriter) {
+                      final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
     this.blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
     this.runtimeEdge = runtimeEdge;
     this.srcVertexId = srcRuntimeVertexId;
     this.dstIrVertex = dstIrVertex;
     this.blockManagerWorker = blockManagerWorker;
-    this.emptyWriter = emptyWriter;
     this.blockStoreValue = runtimeEdge.getProperty(ExecutionProperty.Key.DataStore);
     this.partitionerMap = new HashMap<>();
     this.writtenBytes = new ArrayList<>();
@@ -92,7 +90,16 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     }
 
     final KeyExtractor keyExtractor = runtimeEdge.getProperty(ExecutionProperty.Key.KeyExtractor);
-    final List<Partition> partitionsToWrite = partitioner.partition(dataToWrite, dstParallelism, keyExtractor);
+    final List<Partition> partitionsToWrite;
+
+    final Pair<Integer, String> invariantDataProperty = runtimeEdge.getProperty(ExecutionProperty.Key.InvariantData);
+    if (invariantDataProperty != null
+        && !invariantDataProperty.right().equals(runtimeEdge.getId())
+        && invariantDataProperty.left() > 1) {
+      partitionsToWrite = partitioner.partition(Collections.emptyList(), dstParallelism, keyExtractor);
+    } else {
+      partitionsToWrite = partitioner.partition(dataToWrite, dstParallelism, keyExtractor);
+    }
 
     // Write the grouped blocks into partitions.
     // TODO #492: Modularize the data communication pattern.
@@ -123,9 +130,11 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     // Commit block.
     final UsedDataHandlingProperty.Value usedDataHandling =
         runtimeEdge.getProperty(ExecutionProperty.Key.UsedDataHandling);
-    // TODO change expected read
+    final Pair<Integer, String> invariantDataProperty =
+        runtimeEdge.getProperty(ExecutionProperty.Key.InvariantData);
+    final int multiplier = invariantDataProperty == null ? 1 : invariantDataProperty.left();
     blockManagerWorker.commitBlock(blockId, blockStoreValue,
-        accumulatedPartitionSizeInfo, srcVertexId, getDstParallelism(), usedDataHandling);
+        accumulatedPartitionSizeInfo, srcVertexId, getDstParallelism() * multiplier, usedDataHandling);
   }
 
   /**
@@ -209,14 +218,5 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     return dstIrVertex == null || DataCommunicationPatternProperty.Value.OneToOne.equals(
         runtimeEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))
         ? 1 : dstIrVertex.getProperty(ExecutionProperty.Key.Parallelism);
-  }
-
-  /**
-   * Get whether this is empty writer.
-   *
-   * @return boolean for whether this is empty writer.
-   */
-  public final boolean isEmptyWriter() {
-    return emptyWriter;
   }
 }
