@@ -1,7 +1,7 @@
-package edu.snu.coral.common.ir.edge.executionproperty;
+package edu.snu.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.coral.common.Pair;
-import edu.snu.coral.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.Pair;
+import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 
 /**
  * Invariant data ExecutionProperty. Use to indicate same data edge when unrolling loop vertex.
