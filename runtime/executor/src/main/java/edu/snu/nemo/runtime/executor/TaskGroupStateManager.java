@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.executor;
 
-import edu.snu.coral.runtime.executor.MetricCollector;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.exception.UnknownFailureCauseException;
