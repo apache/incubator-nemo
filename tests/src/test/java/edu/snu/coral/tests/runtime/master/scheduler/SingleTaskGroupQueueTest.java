@@ -266,7 +266,7 @@ public final class SingleTaskGroupQueueTest {
 
     // This mimics SchedulerRunner's behavior, but let's schedule this thread first this time,
     // as opposed to testPushPriority.
-    Future<String> testResult = executorService.submit(() -> {
+    Future<?> testResult = executorService.submit(() -> {
       String test = "";
       try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
@@ -285,16 +285,16 @@ public final class SingleTaskGroupQueueTest {
         test += "2: " + dagOf2Stages.get(1).getId();
 
         // Now that we've dequeued all of the children TaskGroups, we should now start getting the parents.
+        LOG.info(test);
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
         test += "3: " + dagOf2Stages.get(0).getId();
+        LOG.info(test);
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
       } catch (Exception e) {
         test += "4: " + dagOf2Stages.get(0).getId();
+        LOG.info(test);
         e.printStackTrace();
         throw e;
-      } finally {
-        LOG.info(test);
-        return test;
       }
     });
 
@@ -307,8 +307,7 @@ public final class SingleTaskGroupQueueTest {
       scheduleStage(dagOf2Stages.get(0));
     });
 
-    final String result = testResult.get();
-    LOG.info(result);
+    testResult.get();
   }
 
   /**
