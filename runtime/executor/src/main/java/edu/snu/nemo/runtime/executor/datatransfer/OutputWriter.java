@@ -42,6 +42,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   private final List<Long> accumulatedPartitionSizeInfo;
   private final List<Long> writtenBytes;
   private final BlockManagerWorker blockManagerWorker;
+  private final boolean emptyWriter;
 
   public OutputWriter(final int hashRangeMultiplier,
                       final int srcTaskIdx,
@@ -49,13 +50,15 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
                       // TODO #717: Remove nullable. (If the destination is not an IR vertex, do not make OutputWriter.)
                       @Nullable final IRVertex dstIrVertex, // Null if it is not an IR vertex.
                       final RuntimeEdge<?> runtimeEdge,
-                      final BlockManagerWorker blockManagerWorker) {
+                      final BlockManagerWorker blockManagerWorker,
+                      final boolean emptyWriter) {
     super(runtimeEdge.getId());
     this.blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
     this.runtimeEdge = runtimeEdge;
     this.srcVertexId = srcRuntimeVertexId;
     this.dstIrVertex = dstIrVertex;
     this.blockManagerWorker = blockManagerWorker;
+    this.emptyWriter = emptyWriter;
     this.blockStoreValue = runtimeEdge.getProperty(ExecutionProperty.Key.DataStore);
     this.partitionerMap = new HashMap<>();
     this.writtenBytes = new ArrayList<>();
@@ -206,5 +209,14 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     return dstIrVertex == null || DataCommunicationPatternProperty.Value.OneToOne.equals(
         runtimeEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))
         ? 1 : dstIrVertex.getProperty(ExecutionProperty.Key.Parallelism);
+  }
+
+  /**
+   * Get whether this is empty writer.
+   *
+   * @return boolean for whether this is empty writer.
+   */
+  public final boolean isEmptyWriter() {
+    return emptyWriter;
   }
 }

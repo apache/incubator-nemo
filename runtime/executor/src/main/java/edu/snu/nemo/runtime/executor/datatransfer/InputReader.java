@@ -147,6 +147,11 @@ public final class InputReader extends DataTransfer {
     return runtimeEdge;
   }
 
+  /**
+   * Get real edge id.
+   *
+   * @return the list of the completable future of the data.
+   */
   private String getRealId() {
     if (realId.isPresent()) {
       return realId.get();
