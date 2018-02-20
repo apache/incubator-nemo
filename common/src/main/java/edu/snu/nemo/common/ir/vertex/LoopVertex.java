@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.common.ir.vertex;
 
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
@@ -191,7 +192,7 @@ public final class LoopVertex extends IRVertex {
    */
   public void markInvariantEdge() {
     nonIterativeIncomingEdges.forEach(((irVertex, irEdges) -> irEdges.forEach(irEdge -> {
-      irEdge.setProperty(InvariantDataProperty.of(INVARIANT_ID));
+      irEdge.setProperty(InvariantDataProperty.of(Pair.of(Boolean.FALSE, String.valueOf(INVARIANT_ID))));
       INVARIANT_ID++;
     })));
   }
