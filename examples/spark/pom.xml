@@ -5,13 +5,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <artifactId>coral-project</artifactId>
-        <groupId>edu.snu.coral</groupId>
+        <artifactId>nemo-project</artifactId>
+        <groupId>edu.snu.nemo</groupId>
         <version>0.1-SNAPSHOT</version>
         <relativePath>../../</relativePath>
     </parent>
 
-    <artifactId>coral-examples-spark</artifactId>
+    <artifactId>nemo-examples-spark</artifactId>
 
     <repositories>
         <repository>
@@ -19,12 +19,12 @@
             <url>file://${basedir}/../common/src/main/resources/repository</url>
         </repository>
     </repositories>
-    <name>Coral Examples: Spark</name>
+    <name>Nemo Examples: Spark</name>
 
     <dependencies>
         <dependency>
-            <groupId>edu.snu.coral</groupId>
-            <artifactId>coral-compiler-frontend-spark</artifactId>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-compiler-frontend-spark</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

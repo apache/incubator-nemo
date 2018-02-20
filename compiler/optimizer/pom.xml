@@ -19,14 +19,14 @@ limitations under the License.
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>edu.snu.coral</groupId>
-        <artifactId>coral-project</artifactId>
+        <groupId>edu.snu.nemo</groupId>
+        <artifactId>nemo-project</artifactId>
         <version>0.1-SNAPSHOT</version>
         <relativePath>../../</relativePath>
     </parent>
 
-    <artifactId>coral-compiler-optimizer</artifactId>
-    <name>Coral Compiler Optimizer</name>
+    <artifactId>nemo-compiler-optimizer</artifactId>
+    <name>Nemo Compiler Optimizer</name>
 
     <repositories>
         <repository>
@@ -37,13 +37,13 @@ limitations under the License.
 
     <dependencies>
         <dependency>
-            <groupId>edu.snu.coral</groupId>
-            <artifactId>coral-common</artifactId>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.coral</groupId>
-            <artifactId>coral-runtime-common</artifactId>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-runtime-common</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
