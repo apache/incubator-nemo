@@ -294,7 +294,7 @@ public final class SingleTaskGroupQueueTest {
         test += "4: " + dagOf2Stages.get(0).getId();
         LOG.info(test);
         e.printStackTrace();
-        throw e;
+        throw new RuntimeException(test);
       }
     });
 
