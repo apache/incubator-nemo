@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.master;
 
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.exception.IllegalMessageException;
 import edu.snu.nemo.runtime.common.exception.AbsentBlockException;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
@@ -366,12 +365,15 @@ public final class BlockManagerMaster {
   public static final class BlockLocationRequestHandler {
     private final String blockId;
     private final CompletableFuture<String> locationFuture;
-    private final Queue<Pair<Long, MessageContext>> requestQueue;
 
+    /**
+     * Constructor.
+     *
+     * @param blockId the ID of the block.
+     */
     BlockLocationRequestHandler(final String blockId) {
       this.blockId = blockId;
       this.locationFuture = new CompletableFuture<>();
-      this.requestQueue = new ArrayDeque<>();
     }
 
     /**
@@ -380,12 +382,8 @@ public final class BlockManagerMaster {
      *
      * @param location the location of the block.
      */
-    synchronized void complete(final String location) {
+    void complete(final String location) {
       locationFuture.complete(location);
-
-      for (final Pair<Long, MessageContext> requestInfo : requestQueue) {
-        replyLocation(requestInfo.left(), requestInfo.right());
-      }
     }
 
     /**
@@ -394,11 +392,8 @@ public final class BlockManagerMaster {
      *
      * @param throwable the cause of failure.
      */
-    synchronized void completeExceptionally(final Throwable throwable) {
+    void completeExceptionally(final Throwable throwable) {
       locationFuture.completeExceptionally(throwable);
-      for (final Pair<Long, MessageContext> requestInfo : requestQueue) {
-        replyLocation(requestInfo.left(), requestInfo.right());
-      }
     }
 
     /**
@@ -408,23 +403,8 @@ public final class BlockManagerMaster {
      * @param requestId      the ID of the block location request.
      * @param messageContext the message context to reply.
      */
-    synchronized void registerRequest(final long requestId,
-                                      final MessageContext messageContext) {
-      if (locationFuture.isDone()) {
-        replyLocation(requestId, messageContext);
-      } else {
-        requestQueue.add(Pair.of(requestId, messageContext));
-      }
-    }
-
-    /**
-     * Replies the block location.
-     *
-     * @param requestId      the ID of the block location request.
-     * @param messageContext the message context to reply.
-     */
-    private void replyLocation(final long requestId,
-                               final MessageContext messageContext) {
+    void registerRequest(final long requestId,
+                         final MessageContext messageContext) {
       final ControlMessage.BlockLocationInfoMsg.Builder infoMsgBuilder =
           ControlMessage.BlockLocationInfoMsg.newBuilder()
               .setRequestId(requestId)
