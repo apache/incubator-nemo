@@ -260,7 +260,9 @@ public final class DataTransferTest {
                             final DataCommunicationPatternProperty.Value commPattern,
                             final DataStoreProperty.Value store) throws RuntimeException {
     final int testIndex = TEST_INDEX.getAndIncrement();
+    final int testIndex2 = TEST_INDEX.getAndIncrement();
     final String edgeId = String.format(EDGE_PREFIX_TEMPLATE, testIndex);
+    final String edgeId2 = String.format(EDGE_PREFIX_TEMPLATE, testIndex2);
     final Pair<IRVertex, IRVertex> verticesPair = setupVertices(edgeId, sender, receiver);
     final IRVertex srcVertex = verticesPair.left();
     final IRVertex dstVertex = verticesPair.right();
@@ -271,10 +273,11 @@ public final class DataTransferTest {
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
     edgeProperties.put(DataCommunicationPatternProperty.of(commPattern));
     edgeProperties.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+    edgeProperties.put(InvariantDataProperty.of(Pair.of(2, edgeId)));
 
     edgeProperties.put(DataStoreProperty.of(store));
     edgeProperties.put(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
-    final RuntimeEdge dummyEdge;
+    final RuntimeEdge dummyEdge, dummyEdge2;
 
     final IRVertex srcMockVertex = mock(IRVertex.class);
     final IRVertex dstMockVertex = mock(IRVertex.class);
@@ -282,6 +285,12 @@ public final class DataTransferTest {
     final PhysicalStage dstStage = setupStages("dstStage-" + testIndex);
     dummyEdge = new PhysicalStageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
         srcStage, dstStage, CODER, false);
+    final IRVertex srcMockVertex2 = mock(IRVertex.class);
+    final IRVertex dstMockVertex2 = mock(IRVertex.class);
+    final PhysicalStage srcStage2 = setupStages("srcStage-" + testIndex2);
+    final PhysicalStage dstStage2 = setupStages("dstStage-" + testIndex2);
+    dummyEdge2 = new PhysicalStageEdge(edgeId2, edgeProperties, srcMockVertex2, dstMockVertex2,
+        srcStage2, dstStage2, CODER, false);
     // Initialize states in Master
     srcStage.getTaskGroupIds().forEach(srcTaskGroupId -> {
       final String blockId = RuntimeIdGenerator.generateBlockId(
@@ -303,14 +312,23 @@ public final class DataTransferTest {
 
     // Read
     final List<List> dataReadList = new ArrayList<>();
+    final List<List> dataReadList2 = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
       final InputReader reader =
           new InputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
+      final InputReader reader2 =
+          new InputReader(dstTaskIndex, srcVertex, dummyEdge2, receiver);
 
       if (DataCommunicationPatternProperty.Value.OneToOne.equals(commPattern)) {
         assertEquals(1, reader.getSourceParallelism());
       } else {
         assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
+      }
+
+      if (DataCommunicationPatternProperty.Value.OneToOne.equals(commPattern)) {
+        assertEquals(1, reader2.getSourceParallelism());
+      } else {
+        assertEquals(PARALLELISM_TEN, reader2.getSourceParallelism());
       }
 
       final List dataRead = new ArrayList<>();
@@ -320,19 +338,33 @@ public final class DataTransferTest {
         throw new RuntimeException(e);
       }
       dataReadList.add(dataRead);
+
+      final List dataRead2 = new ArrayList<>();
+      try {
+        InputReader.combineFutures(reader2.read()).forEachRemaining(dataRead2::add);
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
+      }
+      dataReadList2.add(dataRead2);
     });
 
     // Compare (should be the same)
     final List flattenedWrittenData = flatten(dataWrittenList);
+    final List flattenedWrittenData2 = flatten(dataWrittenList);
     final List flattenedReadData = flatten(dataReadList);
+    final List flattenedReadData2 = flatten(dataReadList2);
     if (DataCommunicationPatternProperty.Value.BroadCast.equals(commPattern)) {
       final List broadcastedWrittenData = new ArrayList<>();
+      final List broadcastedWrittenData2 = new ArrayList<>();
       IntStream.range(0, PARALLELISM_TEN).forEach(i -> broadcastedWrittenData.addAll(flattenedWrittenData));
+      IntStream.range(0, PARALLELISM_TEN).forEach(i -> broadcastedWrittenData2.addAll(flattenedWrittenData2));
       assertEquals(broadcastedWrittenData.size(), flattenedReadData.size());
       flattenedReadData.forEach(rData -> assertTrue(broadcastedWrittenData.remove(rData)));
+      flattenedReadData2.forEach(rData -> assertTrue(broadcastedWrittenData2.remove(rData)));
     } else {
       assertEquals(flattenedWrittenData.size(), flattenedReadData.size());
       flattenedReadData.forEach(rData -> assertTrue(flattenedWrittenData.remove(rData)));
+      flattenedReadData2.forEach(rData -> assertTrue(flattenedWrittenData2.remove(rData)));
     }
   }
 

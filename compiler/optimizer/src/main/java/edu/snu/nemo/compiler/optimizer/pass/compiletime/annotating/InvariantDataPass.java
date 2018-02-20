@@ -46,17 +46,9 @@ public final class InvariantDataPass extends AnnotatingPass {
           final Pair<Integer, String> invariantDataProperty = e.getProperty(ExecutionProperty.Key.InvariantData);
           if (invariantDataProperty != null) {
             realIdMapping.putIfAbsent(invariantDataProperty.right(), e.getId());
-            idMappingCount.merge(realIdMapping.get(invariantDataProperty.right()), 1, Integer::sum);
-            final Integer dstStageId = vertex.getProperty(ExecutionProperty.Key.StageId);
-            final Integer srcStageId = e.getSrc().getProperty(ExecutionProperty.Key.StageId);
-            if (dstStageId != null && srcStageId != null && dstStageId.equals(srcStageId)) {
-              e.setProperty(InvariantDataProperty.of(
-                  Pair.of(0, realIdMapping.get(invariantDataProperty.right()))));
-            } else {
-              e.setProperty(InvariantDataProperty.of(
-                  Pair.of(0, RuntimeIdGenerator.generateStageEdgeId(
-                      realIdMapping.get(invariantDataProperty.right())))));
-            }
+            final String realId = realIdMapping.get(invariantDataProperty.right());
+            final Integer currentCount = idMappingCount.getOrDefault(realId, 0);
+            idMappingCount.put(realId, currentCount + 1);
           }
         }));
 
@@ -65,8 +57,26 @@ public final class InvariantDataPass extends AnnotatingPass {
           final Pair<Integer, String> invariantDataProperty = e.getProperty(ExecutionProperty.Key.InvariantData);
           if (invariantDataProperty != null) {
             final String id = invariantDataProperty.right();
-            if (idMappingCount.containsKey(id)) {
-              e.setProperty(InvariantDataProperty.of(Pair.of(idMappingCount.get(id), id)));
+            final String realId = realIdMapping.get(id);
+            if (idMappingCount.containsKey(realId)) {
+              e.setProperty(InvariantDataProperty.of(Pair.of(idMappingCount.get(realId), id)));
+            }
+          }
+        }));
+
+    dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
+        .forEach(e -> {
+          final Pair<Integer, String> invariantDataProperty = e.getProperty(ExecutionProperty.Key.InvariantData);
+          if (invariantDataProperty != null) {
+            final Integer dstStageId = vertex.getProperty(ExecutionProperty.Key.StageId);
+            final Integer srcStageId = e.getSrc().getProperty(ExecutionProperty.Key.StageId);
+            if (dstStageId != null && srcStageId != null && dstStageId.equals(srcStageId)) {
+              e.setProperty(InvariantDataProperty.of(
+                  Pair.of(invariantDataProperty.left(), realIdMapping.get(invariantDataProperty.right()))));
+            } else {
+              e.setProperty(InvariantDataProperty.of(
+                  Pair.of(invariantDataProperty.left(), RuntimeIdGenerator.generateStageEdgeId(
+                      realIdMapping.get(invariantDataProperty.right())))));
             }
           }
         }));
