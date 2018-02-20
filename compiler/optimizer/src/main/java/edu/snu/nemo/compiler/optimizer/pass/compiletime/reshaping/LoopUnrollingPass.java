@@ -43,6 +43,7 @@ public final class LoopUnrollingPass extends ReshapingPass {
     dag.topologicalDo(irVertex -> {
       if (irVertex instanceof LoopVertex) {
         LoopVertex loopVertex = (LoopVertex) irVertex;
+        loopVertex.markInvariantEdge();
         while (!loopVertex.loopTerminationConditionMet()) {
           loopVertex = loopVertex.unRollIteration(builder);
         }
