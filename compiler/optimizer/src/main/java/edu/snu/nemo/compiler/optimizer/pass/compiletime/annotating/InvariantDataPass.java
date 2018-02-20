@@ -21,6 +21,7 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.InvariantDataProperty;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 
 import java.util.HashMap;
 
@@ -46,7 +47,16 @@ public final class InvariantDataPass extends AnnotatingPass {
           if (invariantDataProperty != null) {
             realIdMapping.putIfAbsent(invariantDataProperty.right(), e.getId());
             idMappingCount.merge(realIdMapping.get(invariantDataProperty.right()), 1, Integer::sum);
-            e.setProperty(InvariantDataProperty.of(Pair.of(0, realIdMapping.get(invariantDataProperty.right()))));
+            final Integer dstStageId = vertex.getProperty(ExecutionProperty.Key.StageId);
+            final Integer srcStageId = e.getSrc().getProperty(ExecutionProperty.Key.StageId);
+            if (dstStageId != null && srcStageId != null && dstStageId.equals(srcStageId)) {
+              e.setProperty(InvariantDataProperty.of(
+                  Pair.of(0, realIdMapping.get(invariantDataProperty.right()))));
+            } else {
+              e.setProperty(InvariantDataProperty.of(
+                  Pair.of(0, RuntimeIdGenerator.generateStageEdgeId(
+                      realIdMapping.get(invariantDataProperty.right())))));
+            }
           }
         }));
 
