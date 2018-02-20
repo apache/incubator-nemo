@@ -39,12 +39,23 @@ public final class InvariantDataPass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     final HashMap<String, String> realIdMapping = new HashMap<>();
+    final HashMap<String, Integer> idMappingCount = new HashMap<>();
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
         .forEach(e -> {
-          final Pair<Boolean, String> invariantDataProperty = vertex.getProperty(ExecutionProperty.Key.InvariantData);
+          final Pair<Integer, String> invariantDataProperty = e.getProperty(ExecutionProperty.Key.InvariantData);
           if (invariantDataProperty != null) {
-            realIdMapping.putIfAbsent(invariantDataProperty.right(), vertex.getId());
-            vertex.setProperty(InvariantDataProperty.of(Pair.of(Boolean.TRUE, vertex.getId())));
+            realIdMapping.putIfAbsent(invariantDataProperty.right(), e.getId());
+            idMappingCount.merge(realIdMapping.get(invariantDataProperty.right()), 1, Integer::sum);
+            e.setProperty(InvariantDataProperty.of(Pair.of(0, realIdMapping.get(invariantDataProperty.right()))));
+          }
+        }));
+
+    dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
+        .forEach(e -> {
+          final Pair<Integer, String> invariantDataProperty = e.getProperty(ExecutionProperty.Key.InvariantData);
+          final String id = invariantDataProperty.right();
+          if (idMappingCount.containsKey(id)) {
+            e.setProperty(InvariantDataProperty.of(Pair.of(idMappingCount.get(id), id)));
           }
         }));
     return dag;
