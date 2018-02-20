@@ -268,7 +268,7 @@ public final class SingleTaskGroupQueueTest {
     // as opposed to testPushPriority.
     Future<?> testResult = executorService.submit(() -> {
       String test = "";
-      try {
+//      try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
         final ScheduledTaskGroup dequeuedTaskGroup = pendingTaskGroupPriorityQueue.dequeue().get();
         assertEquals(RuntimeIdGenerator.getStageIdFromTaskGroupId(dequeuedTaskGroup.getTaskGroupId()),
@@ -282,20 +282,20 @@ public final class SingleTaskGroupQueueTest {
         pendingTaskGroupPriorityQueue.enqueue(dequeuedTaskGroup);
         test += "1: " + dagOf2Stages.get(0).getId();
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
-        test += "2: " + dagOf2Stages.get(1).getId();
+        test += "/ 2: " + dagOf2Stages.get(1).getId();
 
         // Now that we've dequeued all of the children TaskGroups, we should now start getting the parents.
         LOG.info(test);
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
-        test += "3: " + dagOf2Stages.get(0).getId();
+        test += "/ 3: " + dagOf2Stages.get(0).getId();
         LOG.info(test);
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
-      } catch (Exception e) {
-        test += "4: " + dagOf2Stages.get(0).getId();
-        LOG.info(test);
-        e.printStackTrace();
-        throw new RuntimeException(test);
-      }
+//      } catch (Exception e) {
+//        test += "4: " + dagOf2Stages.get(0).getId();
+//        LOG.info(test);
+//        e.printStackTrace();
+//        throw new RuntimeException(test);
+//      }
     });
 
     // This mimics Batch Scheduler's behavior
