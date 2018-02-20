@@ -23,18 +23,16 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * This class represents a block metadata stored in the metadata server.
  */
 @ThreadSafe
 final class BlockMetadata {
-  // Partition level metadata.
   private static final Logger LOG = LoggerFactory.getLogger(BlockManagerMaster.class.getName());
   private final String blockId;
   private final BlockState blockState;
-  private volatile CompletableFuture<String> locationFuture; // the future of the location of this block.
+  private volatile BlockManagerMaster.BlockLocationRequestHandler locationHandler;
 
   /**
    * Constructs the metadata for a block.
@@ -45,7 +43,7 @@ final class BlockMetadata {
     // Initialize block level metadata.
     this.blockId = blockId;
     this.blockState = new BlockState();
-    this.locationFuture = new CompletableFuture<>();
+    this.locationHandler = new BlockManagerMaster.BlockLocationRequestHandler(blockId);
   }
 
   /**
@@ -70,27 +68,18 @@ final class BlockMetadata {
       case LOST_BEFORE_COMMIT:
       case REMOVED:
         // Reset the block location and committer information.
-        locationFuture.completeExceptionally(new AbsentBlockException(blockId, newState));
-        locationFuture = new CompletableFuture<>();
+        locationHandler.completeExceptionally(new AbsentBlockException(blockId, newState));
+        locationHandler = new BlockManagerMaster.BlockLocationRequestHandler(blockId);
         stateMachine.setState(newState);
         break;
       case COMMITTED:
         assert (location != null);
-        completeLocationFuture(location);
+        locationHandler.complete(location);
         stateMachine.setState(newState);
         break;
       default:
         throw new UnsupportedOperationException(newState.toString());
     }
-  }
-
-  /**
-   * Completes the location future of this block.
-   *
-   * @param location the location of the block.
-   */
-  private synchronized void completeLocationFuture(final String location) {
-    locationFuture.complete(location);
   }
 
   /**
@@ -108,9 +97,9 @@ final class BlockMetadata {
   }
 
   /**
-   * @return the future of the location of this Block.
+   * @return the handler of block location requests.
    */
-  synchronized CompletableFuture<String> getLocationFuture() {
-    return locationFuture;
+  synchronized BlockManagerMaster.BlockLocationRequestHandler getLocationHandler() {
+    return locationHandler;
   }
 }
