@@ -17,8 +17,8 @@
 from setuptools import setup
 
 setup(
-    name='coralwebserver',
-    packages=['coralwebserver'],
+    name='nemowebserver',
+    packages=['nemowebserver'],
     include_package_data=True,
     install_requires=[
         'flask',

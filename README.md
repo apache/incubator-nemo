@@ -1,9 +1,9 @@
-# Coral
+# Nemo
 
-[![Build Status](https://travis-ci.org/snuspl/coral.svg?branch=master)](https://travis-ci.org/snuspl/coral)
-[![Build Status](https://cmsbuild.snu.ac.kr/buildStatus/icon?job=Coral-master)](https://cmsbuild.snu.ac.kr/job/Coral-master/)
+[![Build Status](https://travis-ci.org/snuspl/nemo.svg?branch=master)](https://travis-ci.org/snuspl/nemo)
+[![Build Status](https://cmsbuild.snu.ac.kr/buildStatus/icon?job=Nemo-master)](https://cmsbuild.snu.ac.kr/job/Nemo-master/)
 
-## Coral prerequisites and setup
+## Nemo prerequisites and setup
 
 ### Prerequisites
 * Java 8
@@ -49,7 +49,7 @@
 
     *  To check for a successful installation of version 2.5.0, run `protoc --version`
 
-### Installing Coral
+### Installing Nemo
 * Run all tests and install: `mvn clean install -T 2C`
 * Run only unit tests and install: `mvn clean install -DskipITs -T 2C`
 
@@ -60,18 +60,18 @@
 
 ```bash
 ./bin/run_external_app.sh \
-    `pwd`/coral_app/target/bd17f-1.0-SNAPSHOT.jar \
+    `pwd`/nemo_app/target/bd17f-1.0-SNAPSHOT.jar \
     -job_id mapreduce \
     -executor_json `pwd`/examples/resources/sample_executor_resources.json \
     -user_main MapReduce \
-    -user_args "`pwd`/mr_input_data `pwd`/coral_output/output_data"
+    -user_args "`pwd`/mr_input_data `pwd`/nemo_output/output_data"
 ```
 
 ### Configurable options
 * `-job_id`: ID of the Beam job
 * `-user_main`: Canonical name of the Beam application
 * `-user_args`: Arguments that the Beam application accepts
-* `-optimization_policy`: Canonical name of the optimization policy to apply to a job DAG in Coral Compiler
+* `-optimization_policy`: Canonical name of the optimization policy to apply to a job DAG in Nemo Compiler
 * `-deploy_mode`: `yarn` is supported(default value is `local`)
 
 ### Examples
@@ -80,8 +80,8 @@
 ./bin/run.sh \
 	-job_id mr_default \
 	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
-	-optimization_policy edu.snu.coral.compiler.optimizer.policy.DefaultPolicy \
-	-user_main edu.snu.coral.examples.beam.MapReduce \
+	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy \
+	-user_main edu.snu.nemo.examples.beam.MapReduce \
 	-user_args "`pwd`/examples/resources/sample_input_mr `pwd`/examples/resources/sample_output_mr"
 
 ## YARN cluster example
@@ -89,8 +89,8 @@
 	-deploy_mode yarn \
   	-job_id mr_pado \
 	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
-  	-user_main edu.snu.coral.examples.beam.MapReduce \
-  	-optimization_policy edu.snu.coral.compiler.optimizer.policy.PadoPolicy \
+  	-user_main edu.snu.nemo.examples.beam.MapReduce \
+  	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.PadoPolicy \
   	-user_args "hdfs://v-m:9000/sample_input_mr hdfs://v-m:9000/sample_output_mr"
 ```
 ## Resource Configuration
@@ -127,17 +127,17 @@ This example configuration specifies
 * 1 reserved container with 2 cores and 1024MB memory
 
 ## Monitoring your job using web UI
-Coral Compiler and Engine can store JSON representation of intermediate DAGs.
+Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
 * `-dag_dir` command line option is used to specify the directory where the JSON files are stored. The default directory is `./dag`.
-  Using our [online visualizer](https://service.jangho.io/coral-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
+  Using our [online visualizer](https://service.jangho.io/nemo-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
 
 ### Examples
 ```bash
 ./bin/run.sh \
 	-job_id als \
 	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
-  	-user_main edu.snu.coral.examples.beam.AlternatingLeastSquare \
-  	-optimization_policy edu.snu.coral.compiler.optimizer.policy.PadoPolicy \
+  	-user_main edu.snu.nemo.examples.beam.AlternatingLeastSquare \
+  	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.PadoPolicy \
   	-dag_dir "./dag/als" \
   	-user_args "`pwd`/examples/resources/sample_input_als 10 3"
 ```
