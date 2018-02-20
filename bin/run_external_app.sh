@@ -16,4 +16,4 @@
 
 parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd $parent_path
-java -cp examples/target/coral-examples-0.1-SNAPSHOT-shaded.jar:$1:`yarn classpath` edu.snu.coral.client.JobLauncher "${@:2}"
+java -cp examples/target/nemo-examples-0.1-SNAPSHOT-shaded.jar:$1:`yarn classpath` edu.snu.nemo.client.JobLauncher "${@:2}"
