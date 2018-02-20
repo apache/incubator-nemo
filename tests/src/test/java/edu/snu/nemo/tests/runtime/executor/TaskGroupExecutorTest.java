@@ -28,6 +28,7 @@ import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.physical.*;
 import edu.snu.nemo.runtime.common.state.TaskState;
+import edu.snu.nemo.runtime.executor.MetricMessageSender;
 import edu.snu.nemo.runtime.executor.TaskGroupExecutor;
 import edu.snu.nemo.runtime.executor.TaskGroupStateManager;
 import edu.snu.nemo.runtime.executor.datatransfer.DataTransferFactory;
@@ -50,10 +51,9 @@ import java.util.stream.StreamSupport;
 import static edu.snu.nemo.tests.runtime.RuntimeTestUtil.getRangedNumList;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Tests {@link TaskGroupExecutor}.
@@ -71,6 +71,7 @@ public final class TaskGroupExecutorTest {
   private TaskGroupStateManager taskGroupStateManager;
   private Map<String, List<TaskState.State>> taskIdToStateList;
   private List<TaskState.State> expectedTaskStateList;
+  private MetricMessageSender metricMessageSender;
 
   @Before
   public void setUp() throws Exception {
@@ -101,6 +102,11 @@ public final class TaskGroupExecutorTest {
     when(dataTransferFactory.createReader(anyInt(), any(), any())).then(new InterStageReaderAnswer());
     when(dataTransferFactory.createLocalWriter(any(), anyInt(), any())).then(new WriterAnswer());
     when(dataTransferFactory.createWriter(any(), anyInt(), any(), any())).then(new WriterAnswer());
+
+    // Mock a MetricMessageSender.
+    metricMessageSender = mock(MetricMessageSender.class);
+    doNothing().when(metricMessageSender).send(anyString(), anyString());
+    doNothing().when(metricMessageSender).close();
   }
 
   /**
@@ -136,7 +142,7 @@ public final class TaskGroupExecutorTest {
 
     // Execute the task group.
     final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
-        scheduledTaskGroup, taskDag, taskGroupStateManager, dataTransferFactory);
+        scheduledTaskGroup, taskDag, taskGroupStateManager, dataTransferFactory, metricMessageSender);
     taskGroupExecutor.execute();
 
     // Check the output.
@@ -194,7 +200,7 @@ public final class TaskGroupExecutorTest {
 
     // Execute the task group.
     final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
-        scheduledTaskGroup, taskDag, taskGroupStateManager, dataTransferFactory);
+        scheduledTaskGroup, taskDag, taskGroupStateManager, dataTransferFactory, metricMessageSender);
     taskGroupExecutor.execute();
 
     // Check the output.

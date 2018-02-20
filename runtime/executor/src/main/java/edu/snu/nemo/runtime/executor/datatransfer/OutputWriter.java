@@ -40,6 +40,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   private final DataStoreProperty.Value blockStoreValue;
   private final Map<PartitionerProperty.Value, Partitioner> partitionerMap;
   private final List<Long> accumulatedPartitionSizeInfo;
+  private final List<Long> writtenBytes;
   private final BlockManagerWorker blockManagerWorker;
 
   public OutputWriter(final int hashRangeMultiplier,
@@ -57,6 +58,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     this.blockManagerWorker = blockManagerWorker;
     this.blockStoreValue = runtimeEdge.getProperty(ExecutionProperty.Key.DataStore);
     this.partitionerMap = new HashMap<>();
+    this.writtenBytes = new ArrayList<>();
     // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
     this.accumulatedPartitionSizeInfo = new ArrayList<>();
     partitionerMap.put(PartitionerProperty.Value.IntactPartitioner, new IntactPartitioner());
@@ -112,10 +114,8 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
 
   /**
    * Notifies that all writes for a block is end.
-   * Subscribers waiting for the data of the target block are notified when the block is committed.
-   * Also, further subscription about a committed block will not blocked but get the data in it and finished.
+   * Further write about a committed block will throw an exception.
    */
-  @Override
   public void close() {
     // Commit block.
     final UsedDataHandlingProperty.Value usedDataHandling =
@@ -124,9 +124,26 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
         accumulatedPartitionSizeInfo, srcVertexId, getDstParallelism(), usedDataHandling);
   }
 
+  /**
+   * @return the total written bytes.
+   */
+  public Optional<Long> getWrittenBytes() {
+    if (writtenBytes.isEmpty()) {
+      return Optional.empty(); // no serialized data.
+    } else {
+      long totalWrittenBytes = 0;
+      for (final long writtenPartitionBytes : writtenBytes) {
+        totalWrittenBytes += writtenPartitionBytes;
+      }
+      return Optional.of(totalWrittenBytes);
+    }
+  }
+
   private void writeOneToOne(final List<Partition> partitionsToWrite) {
     // Write data.
-    blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
+    final Optional<List<Long>> partitionSizeList =
+        blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
+    partitionSizeList.ifPresent(this::addWrittenBytes);
   }
 
   private void writeBroadcast(final List<Partition> partitionsToWrite) {
@@ -141,7 +158,9 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     }
 
     // Write data.
-    blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
+    final Optional<List<Long>> partitionSizeList =
+        blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
+    partitionSizeList.ifPresent(this::addWrittenBytes);
   }
 
   /**
@@ -160,11 +179,21 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   private void dataSkewWrite(final List<Partition> partitionsToWrite) {
 
     // Write data.
-    final Optional<List<Long>> partitionSizeInfo =
+    final Optional<List<Long>> partitionSizeList =
         blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
-    if (partitionSizeInfo.isPresent()) {
-      this.accumulatedPartitionSizeInfo.addAll(partitionSizeInfo.get());
-    }
+    partitionSizeList.ifPresent(partitionsSize -> {
+      addWrittenBytes(partitionsSize);
+      this.accumulatedPartitionSizeInfo.addAll(partitionsSize);
+    });
+  }
+
+  /**
+   * Accumulates the size of written partitions.
+   *
+   * @param partitionSizeList the list of written partitions.
+   */
+  private void addWrittenBytes(final List<Long> partitionSizeList) {
+    partitionSizeList.forEach(writtenBytes::add);
   }
 
   /**
