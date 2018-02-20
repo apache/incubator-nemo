@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.executor.datatransfer;
 
 import com.google.common.annotations.VisibleForTesting;
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -46,7 +47,6 @@ import java.util.stream.StreamSupport;
 public final class InputReader extends DataTransfer {
   private final int dstTaskIndex;
   private final BlockManagerWorker blockManagerWorker;
-  private final Optional<String> realId;
 
   /**
    * Attributes that specify how we should read the input.
@@ -60,14 +60,12 @@ public final class InputReader extends DataTransfer {
                      // (If the source is not an IR vertex, do not make InputReader.)
                      @Nullable final IRVertex srcVertex, // null if the source vertex is not an IR vertex.
                      final RuntimeEdge runtimeEdge,
-                     final BlockManagerWorker blockManagerWorker,
-                     final Optional<String> realId) {
+                     final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
     this.dstTaskIndex = dstTaskIndex;
     this.srcVertex = srcVertex;
     this.runtimeEdge = runtimeEdge;
     this.blockManagerWorker = blockManagerWorker;
-    this.realId = realId;
   }
 
   /**
@@ -153,10 +151,12 @@ public final class InputReader extends DataTransfer {
    * @return the list of the completable future of the data.
    */
   private String getRealId() {
-    if (realId.isPresent()) {
-      return realId.get();
+    final Pair<Integer, String> invariantDataProperty =
+        (Pair<Integer, String>) runtimeEdge.getProperty(ExecutionProperty.Key.InvariantData);
+    if (invariantDataProperty == null || invariantDataProperty.left() <= 1) {
+      return getId();
     }
-    return getId();
+    return invariantDataProperty.right();
   }
 
   public String getSrcIrVertexId() {

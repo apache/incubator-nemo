@@ -6,12 +6,12 @@ import edu.snu.coral.common.ir.executionproperty.ExecutionProperty;
 /**
  * Invariant data ExecutionProperty. Use to indicate same data edge when unrolling loop vertex.
  */
-public final class InvariantDataProperty extends ExecutionProperty<Pair<Boolean, String>> {
+public final class InvariantDataProperty extends ExecutionProperty<Pair<Integer, String>> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private InvariantDataProperty(final Pair<Boolean, String> value) {
+  private InvariantDataProperty(final Pair<Integer, String> value) {
     super(Key.InvariantData, value);
   }
 
@@ -20,7 +20,7 @@ public final class InvariantDataProperty extends ExecutionProperty<Pair<Boolean,
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static InvariantDataProperty of(final Pair<Boolean, String> value) {
+  public static InvariantDataProperty of(final Pair<Integer, String> value) {
     return new InvariantDataProperty(value);
   }
 }
