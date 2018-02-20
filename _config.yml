@@ -1,13 +1,13 @@
 # Site settings
-title: Coral
-email: coral@spl.snu.ac.kr
+title: Nemo
+email: nemo@spl.snu.ac.kr
 description: >
   A Data Processing System for Flexible Employment With Different Deployment Characteristics.
 
-baseurl: "/coral" # the subpath of your site, e.g. /blog/
-url: https://snuspl.github.io/coral/ # the base hostname & protocol for your site
-git_address: https://github.com/snuspl/coral
-git_edit_address: https://github.com/snuspl/coral
+baseurl: "/nemo" # the subpath of your site, e.g. /blog/
+url: https://snuspl.github.io/nemo/ # the base hostname & protocol for your site
+git_address: https://github.com/snuspl/nemo
+git_edit_address: https://github.com/snuspl/nemo
 
 # theme options from https://bootswatch.com/
 # comment out this to use default Bootstrap
