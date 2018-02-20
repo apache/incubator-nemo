@@ -40,18 +40,18 @@ import java.util.stream.IntStream;
  */
 public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<Long>>> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
-  private final Set<RuntimeEventHandler<?>> eventHandlers;
+  private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
 
   /**
    * Constructor.
    */
   public DataSkewRuntimePass() {
-    this.eventHandlers = Collections.<RuntimeEventHandler<?>>singleton(
-        DynamicOptimizationEventHandler.getEventHandlerInstance());
+    this.eventHandlers = Collections.singleton(
+        DynamicOptimizationEventHandler.class);
   }
 
   @Override
-  public Set<RuntimeEventHandler<?>> getEventHandlers() {
+  public Set<Class<? extends RuntimeEventHandler>> getEventHandlerClasses() {
     return this.eventHandlers;
   }
 
