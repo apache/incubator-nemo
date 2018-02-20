@@ -77,7 +77,7 @@ public final class SingleTaskGroupQueueTest {
    * This method builds a physical DAG starting from an IR DAG and submits it to {@link SingleJobTaskGroupQueue}.
    * Tests whether the dequeued TaskGroups are according to the stage-dependency priority.
    */
-  @Test
+//  @Test
   public void testPushPriority() throws Exception {
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
@@ -151,7 +151,7 @@ public final class SingleTaskGroupQueueTest {
    * This method builds a physical DAG starting from an IR DAG and submits it to {@link SingleJobTaskGroupQueue}.
    * Tests whether the dequeued TaskGroups are according to the stage-dependency priority.
    */
-  @Test
+//  @Test
   public void testPullPriority() throws Exception {
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
@@ -308,6 +308,7 @@ public final class SingleTaskGroupQueueTest {
     });
 
     testResult.get();
+    pendingTaskGroupPriorityQueue.printLog();
   }
 
   /**
@@ -315,7 +316,7 @@ public final class SingleTaskGroupQueueTest {
    * Tests whether the dequeued TaskGroups are according to the stage-dependency priority,
    * while concurrently scheduling TaskGroups that have dependencies, but are of different container types.
    */
-  @Test
+//  @Test
   public void testContainerTypeAwareness() throws Exception {
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
@@ -403,7 +404,8 @@ public final class SingleTaskGroupQueueTest {
   private String dequeueAndGetStageId() {
     final ScheduledTaskGroup scheduledTaskGroup = pendingTaskGroupPriorityQueue.dequeue().get();
     final String test = RuntimeIdGenerator.getStageIdFromTaskGroupId(scheduledTaskGroup.getTaskGroupId());
-    System.out.println("DequeuedStageID: " + test);
+    LOG.info("DequeuedStageID: " + test);
+
     return test;
   }
 }
