@@ -182,7 +182,7 @@ public final class DataUtil {
      * Construct {@link Iterator} from {@link InputStream} and {@link Coder}.
      *
      * @param inputStreams The streams to read data from.
-     * @param serializer  The serializer.
+     * @param serializer   The serializer.
      */
     public InputStreamIterator(final Iterator<InputStream> inputStreams, final Serializer<T> serializer) {
       this.inputStreams = inputStreams;
@@ -195,7 +195,7 @@ public final class DataUtil {
      * Construct {@link Iterator} from {@link InputStream} and {@link Coder}.
      *
      * @param inputStreams The streams to read data from.
-     * @param serializer  The serializer.
+     * @param serializer   The serializer.
      * @param limit        The number of elements from the {@link InputStream}.
      */
     public InputStreamIterator(
