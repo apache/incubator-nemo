@@ -32,5 +32,5 @@ public interface RuntimePass<T> extends BiFunction<PhysicalPlan, T, PhysicalPlan
   /**
    * @return the set of event handlers used with the runtime pass.
    */
-  Set<RuntimeEventHandler<?>> getEventHandlers();
+  Set<Class<? extends RuntimeEventHandler>> getEventHandlerClasses();
 }

@@ -17,6 +17,7 @@ package edu.snu.nemo.driver;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
+import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.backend.Backend;
@@ -27,6 +28,7 @@ import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +47,7 @@ public final class UserApplicationRunner implements Runnable {
   private final String optimizationPolicyCanonicalName;
   private final int maxScheduleAttempt;
 
+  private final Injector injector;
   private final RuntimeMaster runtimeMaster;
   private final Backend<PhysicalPlan> backend;
 
@@ -56,11 +59,13 @@ public final class UserApplicationRunner implements Runnable {
                                 @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy,
                                 @Parameter(JobConf.MaxScheduleAttempt.class) final int maxScheduleAttempt,
                                 final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
+                                final Injector injector,
                                 final RuntimeMaster runtimeMaster) {
     this.dagDirectory = dagDirectory;
     this.dagString = dagString;
     this.optimizationPolicyCanonicalName = optimizationPolicy;
     this.maxScheduleAttempt = maxScheduleAttempt;
+    this.injector = injector;
     this.runtimeMaster = runtimeMaster;
     this.backend = new NemoBackend();
     this.pubSubWrapper = pubSubEventHandlerWrapper;
@@ -80,16 +85,22 @@ public final class UserApplicationRunner implements Runnable {
           "IR optimized for " + optimizationPolicy.getClass().getSimpleName());
 
       optimizationPolicy.getRuntimePasses().forEach(runtimePass ->
-          runtimePass.getEventHandlers().forEach(runtimeEventHandler ->
+          runtimePass.getEventHandlerClasses().forEach(runtimeEventHandlerClass -> {
+            try {
+              final RuntimeEventHandler runtimeEventHandler = injector.getInstance(runtimeEventHandlerClass);
               pubSubWrapper.getPubSubEventHandler()
-                  .subscribe(runtimeEventHandler.getEventClass(), runtimeEventHandler)));
+                  .subscribe(runtimeEventHandler.getEventClass(), runtimeEventHandler);
+            } catch (final Exception e) {
+              throw new RuntimeException(e);
+            }
+          }));
 
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
 
       physicalPlan.getStageDAG().storeJSON(dagDirectory, "plan", "physical execution plan by compiler");
       runtimeMaster.execute(physicalPlan, maxScheduleAttempt);
       runtimeMaster.terminate();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new RuntimeException(e);
     }
   }
