@@ -120,6 +120,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     // Commit block.
     final UsedDataHandlingProperty.Value usedDataHandling =
         runtimeEdge.getProperty(ExecutionProperty.Key.UsedDataHandling);
+    // TODO change expected read
     blockManagerWorker.commitBlock(blockId, blockStoreValue,
         accumulatedPartitionSizeInfo, srcVertexId, getDstParallelism(), usedDataHandling);
   }
