@@ -26,22 +26,22 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Output Collector Implementation.
+ * Pipe implementation that requires synchronization.
  * @param <O> output type.
  */
 public final class PipeImpl<O> implements Pipe<O> {
   private static final Logger LOG = LoggerFactory.getLogger(PipeImpl.class.getName());
   private final AtomicReference<LinkedBlockingQueue<O>> outputQueue;
-  private boolean isSideInput;
-  private RuntimeEdge runtimeEdge;
+  private RuntimeEdge sideInputRuntimeEdge;
+  private List<String> sideInputReceivers;
 
   /**
    * Constructor of a new Pipe.
    */
   public PipeImpl() {
     this.outputQueue = new AtomicReference<>(new LinkedBlockingQueue<>());
-    this.isSideInput = false;
-    this.runtimeEdge = null;
+    this.sideInputRuntimeEdge = null;
+    this.sideInputReceivers = new ArrayList<>();
   }
 
   @Override
@@ -49,7 +49,7 @@ public final class PipeImpl<O> implements Pipe<O> {
     try {
       outputQueue.get().put(output);
     } catch (InterruptedException e) {
-      throw new RuntimeException("Interrupted while PipeImpl#emit", e);
+      throw new RuntimeException("Interrupted during emitting to pipe");
     }
   }
 
@@ -60,7 +60,7 @@ public final class PipeImpl<O> implements Pipe<O> {
 
   /**
    * Inter-Task data is transferred from sender-side Task's PipeImpl to receiver-side Task.
-   * @return the output element that is transferred to the next Task of TaskGroup.
+   * @return the first element of this list
    */
   public O remove() {
     return outputQueue.get().remove();
@@ -74,35 +74,29 @@ public final class PipeImpl<O> implements Pipe<O> {
     return outputQueue.get().size();
   }
 
-  public void markAsSideInput() {
-    isSideInput = true;
+  public void setSideInputRuntimeEdge(final RuntimeEdge edge) {
+    sideInputRuntimeEdge = edge;
+  }
+
+  public RuntimeEdge getSideInputRuntimeEdge() {
+    return sideInputRuntimeEdge;
   }
 
   public boolean isSideInput() {
-    return isSideInput;
+    return sideInputReceivers.size() != 0;
   }
 
-  public void setRuntimeEdge(final RuntimeEdge edge) {
-    runtimeEdge = edge;
-  }
-  public RuntimeEdge getRuntimeEdge() {
-    return runtimeEdge;
+  public void setAsSideInput(final String physicalTaskId) {
+    sideInputReceivers.add(physicalTaskId);
   }
 
-  public void setQueue(final LinkedBlockingQueue queue) {
-    outputQueue.getAndSet(queue);
-  }
-
-  public LinkedBlockingQueue<O> duplicateQueue() {
-    final LinkedBlockingQueue dupQueue = new LinkedBlockingQueue<>();
-    outputQueue.get().iterator().forEachRemaining(dupQueue::add);
-    LOG.info("outputQueue size after iterator: {}", outputQueue.get().size());
-    return dupQueue;
+  public boolean hasSideInputFor(final String physicalTaskId) {
+    return sideInputReceivers.contains(physicalTaskId);
   }
 
   /**
    * Collects the accumulated output and replace the output list.
-   *
+   * Done at once at sink task, which forms the inter-TaskGroup data.
    * @return the list of output elements.
    */
   public List<O> collectOutputList() {

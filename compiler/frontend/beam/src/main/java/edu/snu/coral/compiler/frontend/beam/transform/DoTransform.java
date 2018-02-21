@@ -176,6 +176,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     @Override
     public void output(final O output, final Instant instant, final BoundedWindow boundedWindow) {
       pipe.emit(output);
+      LOG.info("DoTransform emitting {}", output);
     }
 
     @Override

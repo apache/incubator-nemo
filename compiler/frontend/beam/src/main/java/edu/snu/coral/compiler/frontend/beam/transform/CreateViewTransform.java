@@ -75,7 +75,7 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
       final KV kv = (KV) element;
       ((HashMap) aggregatedElement).putIfAbsent(kv.getKey(), kv.getValue());
     }
-*/
+    */
     windowed.add(WindowedValue.valueInGlobalWindow((I) element));
   }
 

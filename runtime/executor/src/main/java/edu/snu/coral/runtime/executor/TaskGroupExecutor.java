@@ -19,27 +19,24 @@ import edu.snu.coral.common.ContextImpl;
 import edu.snu.coral.common.dag.DAG;
 import edu.snu.coral.common.exception.BlockFetchException;
 import edu.snu.coral.common.exception.BlockWriteException;
+import edu.snu.coral.common.ir.Pipe;
 import edu.snu.coral.common.ir.Readable;
-import edu.snu.coral.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.coral.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.coral.common.ir.vertex.transform.Transform;
 import edu.snu.coral.common.ir.vertex.OperatorVertex;
 import edu.snu.coral.runtime.common.RuntimeIdGenerator;
 import edu.snu.coral.runtime.common.plan.RuntimeEdge;
 import edu.snu.coral.runtime.common.plan.physical.*;
 import edu.snu.coral.runtime.common.state.TaskGroupState;
-import edu.snu.coral.runtime.executor.datatransfer.DataTransferFactory;
-import edu.snu.coral.runtime.executor.datatransfer.InputReader;
-import edu.snu.coral.runtime.executor.datatransfer.OutputWriter;
-import edu.snu.coral.runtime.executor.datatransfer.PipeImpl;
+import edu.snu.coral.runtime.executor.datatransfer.*;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -57,21 +54,27 @@ public final class TaskGroupExecutor {
   private final List<PhysicalStageEdge> stageOutgoingEdges;
   private final DataTransferFactory channelFactory;
 
-  /**
-   * Map of task IDs in this task group to their readers/writers.
-   */
-  private final Map<String, List<InputReader>> physicalTaskIdToInputReaderMap;
-  private final Map<String, List<OutputWriter>> physicalTaskIdToOutputWriterMap;
-
-  // For inter-TaskGroup data transfer, each task fetches intra-TaskGroup input
-  // from its parents' Pipes. Here, we call the Pipes as following:
-  // InputPipe: Parent tasks' Pipes and whether the data in it are side inputs
-  // OutputPipe: This task's Pipes
-  private final Map<String, List<PipeImpl>> physicalTaskIdToInputPipeMap;
-  private final Map<String, List<PipeImpl>> physicalTaskIdToOutputPipeMap;
-  private final List<String> taskList;
+  // List of this TaskGroup's readers/writers that deals with inter-TaskGroup data.
+  private final List<InputReader> inputReaders;
+  private final List<OutputWriter> outputWriters;
+  private final Map<InputReader, List<Task>> inputReaderToTasksMap;
+  // Map of task ID to its intra-TaskGroup data pipe.
+  private final Map<String, List<PipeImpl>> physicalTaskIdToInputPipesMap;
+  private final Map<String, PipeImpl> physicalTaskIdToOutputPipeMap;  // one and only one Pipe per task
+  private final List<Task> sourceTasks;
+  private final List<Task> sinkTasks;
+  private final Map<Task, List<InputReader>> srcTaskToSideInputReadersMap;
+  private final Map<String, List<Task>> iteratorIdToTasksMap;
+  private final Map<String, Iterator> idToIteratorMap;
+  private Map<PipeImpl, List<Task>> pipeToDstTasksMap;
   private boolean isExecutionRequested;
   private String logicalTaskIdPutOnHold;
+  private final Set<Transform> preparedTransforms;
+  private int numPartitions;
+  private boolean processedSrcData;
+
+  private static final String ITERATOR_PREFIX = "Iterator-";
+  private static AtomicInteger iteratorIdGenerator;
 
   public TaskGroupExecutor(final ScheduledTaskGroup scheduledTaskGroup,
                            final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
@@ -85,13 +88,25 @@ public final class TaskGroupExecutor {
     this.stageOutgoingEdges = scheduledTaskGroup.getTaskGroupOutgoingEdges();
     this.channelFactory = channelFactory;
 
-    this.physicalTaskIdToInputReaderMap = new HashMap<>();
-    this.physicalTaskIdToOutputWriterMap = new HashMap<>();
-    this.physicalTaskIdToInputPipeMap = new HashMap<>();
+    this.inputReaders = new ArrayList<>();
+    this.outputWriters = new ArrayList<>();
+    this.idToIteratorMap = new HashMap<>();
+    this.inputReaderToTasksMap = new HashMap<>();
+    this.physicalTaskIdToInputPipesMap = new HashMap<>();
     this.physicalTaskIdToOutputPipeMap = new HashMap<>();
-    this.taskList = new ArrayList<>();
+    this.sourceTasks = new ArrayList<>();
+    this.sinkTasks = new ArrayList<>();
+    this.srcTaskToSideInputReadersMap = new HashMap<>();
+    this.iteratorIdToTasksMap = new HashMap<>();
+    this.pipeToDstTasksMap = new HashMap<>();
 
+    this.logicalTaskIdPutOnHold = null;
     this.isExecutionRequested = false;
+    this.preparedTransforms = new HashSet<>();
+    this.numPartitions = 0;
+    this.processedSrcData = false;
+
+    iteratorIdGenerator = new AtomicInteger(0);
 
     initializeDataRead(scheduledTaskGroup.getLogicalTaskIdToReadable());
     initializeDataTransfer();
@@ -114,24 +129,34 @@ public final class TaskGroupExecutor {
    * Note that there are edges that are cross-stage and stage-internal.
    */
   private void initializeDataTransfer() {
+    setSourceTasks();
+    setSinkTasks();
+
     taskGroupDag.topologicalDo(task -> {
       final Set<PhysicalStageEdge> inEdgesFromOtherStages = getInEdgesFromOtherStages(task);
       final Set<PhysicalStageEdge> outEdgesToOtherStages = getOutEdgesToOtherStages(task);
-      final String physicalTaskId = getPhysicalTaskId(task.getId());
 
       // Add InputReaders for inter-stage data transfer
       inEdgesFromOtherStages.forEach(physicalStageEdge -> {
         final InputReader inputReader = channelFactory.createReader(
             taskGroupIdx, physicalStageEdge.getSrcVertex(), physicalStageEdge);
-        addInputReader(task, inputReader);
+
+        // If InputReader that has side input, collect them separately.
+        if (inputReader.isSideInputReader()) {
+          srcTaskToSideInputReadersMap.putIfAbsent(task, new ArrayList<>());
+          srcTaskToSideInputReadersMap.get(task).add(inputReader);
+        } else {
+          inputReaders.add(inputReader);
+          inputReaderToTasksMap.putIfAbsent(inputReader, new ArrayList<>());
+          inputReaderToTasksMap.get(inputReader).add(task);
+        }
       });
 
       // Add OutputWriters for inter-stage data transfer
       outEdgesToOtherStages.forEach(physicalStageEdge -> {
         final OutputWriter outputWriter = channelFactory.createWriter(
             task, taskGroupIdx, physicalStageEdge.getDstVertex(), physicalStageEdge);
-        addOutputWriter(task, outputWriter);
-        LOG.info("log: Adding OutputWriter {} {} {}", taskGroupId, physicalTaskId, outputWriter);
+        outputWriters.add(outputWriter);
       });
 
       // Add InputPipes for intra-stage data transfer
@@ -139,10 +164,9 @@ public final class TaskGroupExecutor {
 
       // Add OutputPipe for intra-stage data transfer
       addOutputPipe(task);
-
-      taskList.add(physicalTaskId);
     });
-    LOG.info("log: taskList: {}", taskList.size());
+    LOG.info("{} InputReaders: {}", taskGroupId, inputReaders);
+    LOG.info("{} OutputWriters: {}", taskGroupId, outputWriters);
   }
 
   // Helper functions to initializes cross-stage edges.
@@ -158,210 +182,229 @@ public final class TaskGroupExecutor {
         .collect(Collectors.toSet());
   }
 
-  // Helper functions to add the initialized reader/writer to the maintained map.
-  private void addInputReader(final Task task, final InputReader inputReader) {
-    final String physicalTaskId = getPhysicalTaskId(task.getId());
-    physicalTaskIdToInputReaderMap.computeIfAbsent(physicalTaskId, readerList -> new ArrayList<>());
-    physicalTaskIdToInputReaderMap.get(physicalTaskId).add(inputReader);
+  private void setSourceTasks() {
+    taskGroupDag.topologicalDo(task -> {
+      // TODO #XXX: Count other types of source tasks, i. e. InitializedSourceTask
+      if (task instanceof BoundedSourceTask
+          || getInEdgesFromOtherStages(task).size() > 0) {
+        sourceTasks.add(task);
+        LOG.info("Source Task: {} {}", taskGroupId, getPhysicalTaskId(task.getId()));
+      }
+    });
   }
 
-  private void addOutputWriter(final Task task, final OutputWriter outputWriter) {
-    final String physicalTaskId = getPhysicalTaskId(task.getId());
-    physicalTaskIdToOutputWriterMap.computeIfAbsent(physicalTaskId, readerList -> new ArrayList<>());
-    physicalTaskIdToOutputWriterMap.get(physicalTaskId).add(outputWriter);
+  private void setSinkTasks() {
+    taskGroupDag.topologicalDo(task -> {
+      if (getOutEdgesToOtherStages(task).size() > 0) {
+        sinkTasks.add(task);
+        LOG.info("Sink Task: {} {}", taskGroupId, getPhysicalTaskId(task.getId()));
+      }
+    });
   }
 
+  /**
+   * Add input pipes to each {@link Task}.
+   * Input pipe denotes all the pipes of intra-Stage parent tasks of this task.
+   *
+   * @param task the Task to add input pipes to.
+   */
   private void addInputPipe(final Task task) {
     List<PipeImpl> inputPipes = new ArrayList<>();
     List<Task> parentTasks = taskGroupDag.getParents(task.getId());
     final String physicalTaskId = getPhysicalTaskId(task.getId());
 
-    // exact edge-based decision:
-    // get the edge, given the two vertices.
     if (parentTasks != null) {
       parentTasks.forEach(parent -> {
-        final String physicalParentTaskId = getPhysicalTaskId(parent.getId());
-        RuntimeEdge<Task> edgeBetween = taskGroupDag.getEdgeBetween(parent.getId(), task.getId());
-
-        // Get the right pipe based on the edge between this task and its parent.
-        /*
-        for (PipeImpl pipe : physicalTaskIdToOutputPipeMap.get(physicalParentTaskId)) {
-          if (pipe.getRuntimeEdge().equals(edgeBetween)) {
-            parentOutputPipe = pipe;
-          }
-        }
-        */
-
-        physicalTaskIdToOutputPipeMap.get(physicalParentTaskId).stream()
-            .filter(pipe -> pipe.getRuntimeEdge().equals(edgeBetween))
-            .map(pipe -> inputPipes.add(pipe));
-
-        LOG.info("log: Adding Outputpipe of {} as InputPipe of {} {}, edge {}",
-            getPhysicalTaskId(parent.getId()), taskGroupId, physicalTaskId, edgeBetween.getId());
+        final PipeImpl parentOutputPipe = physicalTaskIdToOutputPipeMap.get(getPhysicalTaskId(parent.getId()));
+        inputPipes.add(parentOutputPipe);
+        LOG.info("log: Added Outputpipe of {} as InputPipe of {} {}",
+            getPhysicalTaskId(parent.getId()), taskGroupId, physicalTaskId);
       });
-      physicalTaskIdToInputPipeMap.put(physicalTaskId, inputPipes);
+      physicalTaskIdToInputPipesMap.put(physicalTaskId, inputPipes);
     }
   }
 
+  /**
+   * Add output pipes to each {@link Task}.
+   * Output pipe denotes the one and only one pipe of this task.
+   * Check the outgoing edges that will use this pipe,
+   * and set this pipe as side input if any one of the edges uses this pipe as side input.
+   *
+   * @param task the Task to add output pipes to.
+   */
   private void addOutputPipe(final Task task) {
-    List<PipeImpl> outputPipes = new ArrayList<>();
+    final PipeImpl outputPipe = new PipeImpl();
     final String physicalTaskId = getPhysicalTaskId(task.getId());
     final List<RuntimeEdge<Task>> outEdges = taskGroupDag.getOutgoingEdgesOf(task);
 
     outEdges.forEach(outEdge -> {
-      final PipeImpl outputPipe = new PipeImpl();
-      outputPipe.setRuntimeEdge(outEdge);
       if (outEdge.isSideInput()) {
-        outputPipe.markAsSideInput();
-        LOG.info("log: {} {} Adding OutputPipe which will be a sideInput, edge {}",
+        outputPipe.setSideInputRuntimeEdge(outEdge);
+        outputPipe.setAsSideInput(physicalTaskId);
+        LOG.info("log: {} {} Marked as accepting sideInput(edge {})",
             taskGroupId, physicalTaskId, outEdge.getId());
       }
-      outputPipes.add(outputPipe);
-      LOG.info("log: {} {} Adding OutputPipe, edge {}",
-          taskGroupId, physicalTaskId, outEdge);
     });
-    physicalTaskIdToOutputPipeMap.put(physicalTaskId, outputPipes);
-  }
 
-  private boolean hasInputReader(final Task task) {
-    return physicalTaskIdToInputReaderMap.containsKey(getPhysicalTaskId(task.getId()));
-  }
-
-  private boolean hasOutputWriter(final Task task) {
-    return physicalTaskIdToOutputWriterMap.containsKey(getPhysicalTaskId(task.getId()));
+    physicalTaskIdToOutputPipeMap.put(physicalTaskId, outputPipe);
+    LOG.info("log: {} {} Added OutputPipe", taskGroupId, physicalTaskId);
   }
 
   private boolean hasInputPipe(final Task task) {
-    return physicalTaskIdToInputPipeMap.containsKey(getPhysicalTaskId(task.getId()));
+    return physicalTaskIdToInputPipesMap.containsKey(getPhysicalTaskId(task.getId()));
   }
 
-  private void writeToOutputWriter(final Task task) {
+  private void setTaskPutOnHold(final MetricCollectionBarrierTask task) {
     final String physicalTaskId = getPhysicalTaskId(task.getId());
-
-    for (PipeImpl pipe : physicalTaskIdToOutputPipeMap.get(physicalTaskId)) {
-      for (OutputWriter ow : physicalTaskIdToOutputWriterMap.get(physicalTaskId)) {
-        if (pipe.getRuntimeEdge().equals(ow.getRuntimeEdge())) {
-          final List output = pipe.collectOutputList();
-          if (!output.isEmpty()) {
-            physicalTaskIdToOutputWriterMap.get(physicalTaskId).forEach(outputWriter -> {
-              outputWriter.write(output);
-              LOG.info("log: {} {}: Write to OutputWriter {}, edge {}",
-                  taskGroupId, physicalTaskId, output, outputWriter.getRuntimeEdge());
-            });
-          }
-        }
-      }
-    }
+    logicalTaskIdPutOnHold = RuntimeIdGenerator.getLogicalTaskIdIdFromPhysicalTaskId(physicalTaskId);
   }
 
-  private void closeOutputWriters() {
-    for (final Map.Entry<String, List<OutputWriter>> entry : physicalTaskIdToOutputWriterMap.entrySet()) {
-      final String physicalTaskId = entry.getKey();
-      final List<OutputWriter> outputWriters = entry.getValue();
-      outputWriters.forEach(outputWriter -> {
-        outputWriter.close();
-        LOG.info("log: {} {} Closed OutputWriter(commited block!) {}",
-            taskGroupId, physicalTaskId, outputWriter.getId());
-      });
-    }
-  }
-
-  // TODO #737: Make AggregationTransform ReshapingPass to do this work at Complier side.
-  private boolean aggregationNeeded(final Task task) {
-    // If this task's outEdge is annotated as Broadcast,
-    // this task should work on all input data and process an Iterable.
-    for (RuntimeEdge outEdge : getOutEdgesToOtherStages(task)) {
-      if (outEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
-          .equals(DataCommunicationPatternProperty.Value.BroadCast)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-
-  /**
-   * Check whether this task has no intra-TaskGroup input left to process.
-   *
-   * @param task Task to check intra-TaskGroup input.
-   * @return true if there is no intra-TaskGroup input left to be processed.
-   */
-  private boolean allInputPipesEmpty(final Task task) {
-    if (physicalTaskIdToInputPipeMap.containsKey(getPhysicalTaskId(task.getId()))) {
-      int nonEmptyInputPipes = 0;
-      for (PipeImpl inputPipe : physicalTaskIdToInputPipeMap.get(getPhysicalTaskId(task.getId()))) {
-        if (!inputPipe.isEmpty()) {
-          nonEmptyInputPipes++;
-        }
-      }
-      return nonEmptyInputPipes == 0;
-    } else {
-      return true;
-    }
-  }
-
-  private boolean allParentTasksComplete(final Task task) {
-    // If there is a parent task that hasn't yet completed,
-    // then this task isn't complete.
-    List<Task> parentTasks = taskGroupDag.getParents(task.getId());
-    AtomicInteger parentTasksNotYetComplete = new AtomicInteger(0);
-    parentTasks.forEach(parentTask -> {
-      if (taskList.contains(getPhysicalTaskId(parentTask.getId()))) {
-        parentTasksNotYetComplete.getAndIncrement();
+  // Called only once by the sink task of this TaskGroup.
+  // Empties the pipe of this sink task and form the inter-TaskGroup data.
+  private void writeAndCloseOutputWriters() {
+    sinkTasks.forEach(sinkTask -> {
+      final String physicalTaskId = getPhysicalTaskId(sinkTask.getId());
+      final PipeImpl pipe = physicalTaskIdToOutputPipeMap.get(physicalTaskId);
+      final List output = pipe.collectOutputList();
+      LOG.info("log: {} {}: sink task, Write to OutputWriter {}", taskGroupId, physicalTaskId, output);
+      if (!output.isEmpty()) {
+        outputWriters.forEach(outputWriter -> {
+          outputWriter.write(output);
+        });
       }
     });
 
-    return parentTasksNotYetComplete.get() == 0;
+    outputWriters.forEach(outputWriter -> outputWriter.close());
   }
 
-  private void checkBoundedSourceTaskCompletion(final BoundedSourceTask task) {
-    final String physicalTaskId = getPhysicalTaskId(task.getId());
-    taskList.remove(physicalTaskId);
-    LOG.info("log: {} {} Complete!", taskGroupId, physicalTaskId);
-    LOG.info("log: pendingTasks: {}", taskList);
-  }
-
-  private void checkOperatorTaskCompletion(final OperatorTask task) {
-    final String physicalTaskId = getPhysicalTaskId(task.getId());
-    if (allInputPipesEmpty(task) && allParentTasksComplete(task)) {
-      task.getTransform().close();
-      if (hasOutputWriter(task)) {
-        writeToOutputWriter(task);
+  private void prepareInputFromSource() {
+    sourceTasks.forEach(srcTask -> {
+      if (srcTask instanceof BoundedSourceTask) {
+        try {
+          final Readable readable = ((BoundedSourceTask) srcTask).getReadable();
+          final Iterable readData = readable.read();
+          numPartitions++;
+          final String iteratorId = generateIteratorId();
+          idToIteratorMap.putIfAbsent(iteratorId, readData.iterator());
+          iteratorIdToTasksMap.putIfAbsent(iteratorId, new ArrayList<>());
+          iteratorIdToTasksMap.get(iteratorId).add(srcTask);
+          LOG.info("iteratorId : Tasks {}", iteratorIdToTasksMap);
+        } catch (final BlockFetchException ex) {
+          taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
+              Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
+          LOG.info("{} Execution Failed (Recoverable: input read failure)! Exception: {}",
+              taskGroupId, ex.toString());
+        } catch (final Exception e) {
+          taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE,
+              Optional.empty(), Optional.empty());
+          LOG.info("{} Execution Failed! Exception: {}",
+              taskGroupId, e.toString());
+          throw new RuntimeException(e);
+        }
       }
-      taskList.remove(physicalTaskId);
-      LOG.info("log: {} {} Complete!", taskGroupId, physicalTaskId);
-      LOG.info("log: pendingTasks: {}", taskList);
-    }
+      // TODO #XXX: Support other types of source tasks, i. e. InitializedSourceTask
+    });
   }
 
-  private void checkMetricCollectionBarrierTaskCompletion(final MetricCollectionBarrierTask task) {
-    final String physicalTaskId = getPhysicalTaskId(task.getId());
-    if (allInputPipesEmpty(task) && allParentTasksComplete(task)) {
-      if (hasOutputWriter(task)) {
-        writeToOutputWriter(task);
+  private void prepareInputFromOtherStages() {
+    inputReaders.stream()
+        .filter(inputReader -> !inputReader.isSideInputReader())
+        .forEach(inputReader -> {
+          final List<CompletableFuture<Iterator>> futures = inputReader.read();
+          numPartitions += futures.size();  // Aggregate total number of partitions to process
+          // Add consumers which will push the data to the data queue when it ready to the futures.
+          futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
+            if (exception != null) {
+              throw new BlockFetchException(exception);
+            }
+
+            final String iteratorId = generateIteratorId();
+            idToIteratorMap.putIfAbsent(iteratorId, iterator);
+            iteratorIdToTasksMap.putIfAbsent(iteratorId, new ArrayList<>());
+            iteratorIdToTasksMap.get(iteratorId).addAll(inputReaderToTasksMap.get(inputReader));
+            LOG.info("iteratorId : Tasks {}", iteratorIdToTasksMap);
+          }));
+        });
+  }
+
+  private boolean finishedSrcData() {
+    boolean forAllPartitions = (idToIteratorMap.keySet().size() == numPartitions);
+    boolean finished = true;
+    for (Map.Entry<String, Iterator> entry : idToIteratorMap.entrySet()) {
+      Iterator iterator = entry.getValue();
+      if (iterator.hasNext()) {
+        finished = false;
       }
-      logicalTaskIdPutOnHold = RuntimeIdGenerator.getLogicalTaskIdIdFromPhysicalTaskId(physicalTaskId);
-      taskList.remove(physicalTaskId);
-      LOG.info("log: {} {} Complete / ON_HOLD!", taskGroupId, physicalTaskId);
-      LOG.info("log: pendingTasks: {}", taskList);
     }
+    return forAllPartitions && finished;
   }
 
-  // A Task can be marked as 'Complete' when the following two conditions are both met:
-  // - All of its LocalPipes are empty(if has any)
-  // - All of its parent Tasks are complete
-  private void checkTaskCompletion(final Task task) {
-    if (task instanceof BoundedSourceTask) {
-      checkBoundedSourceTaskCompletion((BoundedSourceTask) task);
-    } else if (task instanceof OperatorTask) {
-      checkOperatorTaskCompletion((OperatorTask) task);
-    } else if (task instanceof MetricCollectionBarrierTask) {
-      checkMetricCollectionBarrierTaskCompletion((MetricCollectionBarrierTask) task);
+  private boolean finishedInternalData() {
+    boolean finished = true;
+
+    /*
+    for (Map.Entry<String, PipeImpl> entry : physicalTaskIdToOutputPipeMap.entrySet()) {
+      final String physicalTaskId = entry.getKey();
+      final PipeImpl pipe = entry.getValue();
+      if (!pipe.isEmpty()) {
+        LOG.info("{} Outputpipe of {} isn't empty!", taskGroupId, physicalTaskId);
+        finished = false;
+      }
+    }*/
+
+    for (PipeImpl pipe : pipeToDstTasksMap.keySet()) {
+      if (!pipe.isEmpty()) {
+        finished = false;
+      }
     }
+
+    return finished;
   }
 
-  private boolean allTasksAreComplete() {
-    return taskList.isEmpty();
+  private void initializePipeToDstTasksMap() {
+    iteratorIdToTasksMap.values().forEach(tasks -> {
+      tasks.stream().forEach(task -> {
+        final String physicalTaskId = getPhysicalTaskId(task.getId());
+        final PipeImpl pipe = physicalTaskIdToOutputPipeMap.get(physicalTaskId);
+        final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
+        if (!dstTasks.isEmpty()) {
+          pipeToDstTasksMap.putIfAbsent(pipe, dstTasks);
+          LOG.info("{} pipeToDstTasksMap: [{}'s OutputPipe, {}]", taskGroupId, physicalTaskId, dstTasks);
+        }
+      });
+    });
+  }
+
+  private void updatePipeToDstTasksMap() {
+    // iteratorId : List[Tasks]
+    // for each Tasks in each entry, build a map of
+    // those Task's output pipe : List[those Task's children]
+    Map<PipeImpl, List<Task>> currentMap = pipeToDstTasksMap;
+    Map<PipeImpl, List<Task>> updatedMap = new HashMap<>();
+
+    currentMap.values().forEach(tasks -> {
+      tasks.stream().forEach(task -> {
+        final String physicalTaskId = getPhysicalTaskId(task.getId());
+        final PipeImpl pipe = physicalTaskIdToOutputPipeMap.get(physicalTaskId);
+        final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
+        if (!dstTasks.isEmpty()) {
+          updatedMap.putIfAbsent(pipe, dstTasks);
+          LOG.info("{} pipeToDstTasksMap: [{}'s OutputPipe, {}]", taskGroupId, physicalTaskId, dstTasks);
+        }
+      });
+    });
+
+    pipeToDstTasksMap = updatedMap;
+  }
+
+  private void closeTransforms(final List<Task> tasks) {
+    tasks.stream().forEach(task -> {
+      if (task instanceof OperatorTask) {
+        Transform transform = ((OperatorTask) task).getTransform();
+        transform.close();
+        LOG.info("{} {} Closed transform {}", taskGroupId, getPhysicalTaskId(task.getId()), transform);
+      }
+    });
   }
 
   /**
@@ -375,48 +418,79 @@ public final class TaskGroupExecutor {
     }
 
     taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.EXECUTING, Optional.empty(), Optional.empty());
+    LOG.info("{} Executing!", taskGroupId);
 
-    while (!allTasksAreComplete()) {
-      taskGroupDag.topologicalDo(task -> {
-        final String physicalTaskId = getPhysicalTaskId(task.getId());
-        try {
-          if (taskList.contains(physicalTaskId)) {
-            if (task instanceof BoundedSourceTask) {
-              launchBoundedSourceTask((BoundedSourceTask) task);
-            } else if (task instanceof OperatorTask) {
-              //if (!aggregationNeeded(task)
-              //    || (aggregationNeeded(task) && allParentTasksComplete(task))) {
-                launchOperatorTask((OperatorTask) task);
-              //}
-            } else if (task instanceof MetricCollectionBarrierTask) {
-              launchMetricCollectionBarrierTask((MetricCollectionBarrierTask) task);
-            } else {
-              throw new UnsupportedOperationException(task.toString());
+    // Prepare input data from bounded source.
+    prepareInputFromSource();
+
+    // Prepare input data from other stages.
+    prepareInputFromOtherStages();
+
+    // Execute the TaskGroup DAG.
+    try {
+      // Process source data.
+      // Source data denotes data from SourceTasks or other Stages.
+      while (!finishedSrcData()) {
+        iteratorIdToTasksMap.forEach((iteratorId, tasks) -> {
+              Iterator iterator = idToIteratorMap.get(iteratorId);
+              iterator.forEachRemaining(element -> {
+                for (final Task task : tasks) {
+                  List data = Collections.singletonList(element);
+                  LOG.info("{} {} input to runTask {}", taskGroupId, getPhysicalTaskId(task.getId()), data);
+                  runTask(task, data);
+                }
+              });
             }
+        );
 
-            checkTaskCompletion(task);
+        // Now we're finished with processing source data.
+        // Close OperatorTask transforms if needed.
+        iteratorIdToTasksMap.values().forEach(this::closeTransforms);
+      }
+      LOG.info("{} Finished processing src data!", taskGroupId);
+
+      // Process internal data.
+      // Internal data denotes data from pipes of Tasks.
+      initializePipeToDstTasksMap();
+      while (!finishedInternalData()) {
+        pipeToDstTasksMap.forEach((pipe, dstTasks) -> {
+          // for all data in this pipe
+          while (!pipe.isEmpty()) {
+            // form output
+            final List output;
+            if (!pipe.isEmpty()) {
+              output = Collections.singletonList(pipe.remove()); // intra-TaskGroup data are safe here
+            } else {
+              output = new ArrayList();
+            }
+            // and pass it to the dstTasks
+            for (final Task task : dstTasks) {
+              LOG.info("{} {} input to runTask {}", taskGroupId, getPhysicalTaskId(task.getId()), output);
+              runTask(task, output);
+            }
           }
-        } catch (final BlockFetchException ex) {
-          taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
-              Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
-          LOG.info("{} Execution Failed (Recoverable: input read failure)! Exception: {}",
-              taskGroupId, ex.toString());
-        } catch (final BlockWriteException ex2) {
-          taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
-              Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
-          LOG.info("{} Execution Failed (Recoverable: output write failure)! Exception: {}",
-              taskGroupId, ex2.toString());
-        } catch (final Exception e) {
-          taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE,
-              Optional.empty(), Optional.empty());
-          LOG.info("{} Execution Failed! Exception: {}",
-              taskGroupId, e.toString());
-          throw new RuntimeException(e);
-        }
-      });
-    }
+        });
+        // Now we're finished with this round of processing internal data.
+        // Close OperatorTask transforms if needed.
+        pipeToDstTasksMap.values().forEach(this::closeTransforms);
 
-    closeOutputWriters();
+        updatePipeToDstTasksMap();
+      }
+
+      // Sink tasks write inter-Stage data to OutputWriters and close them.
+      writeAndCloseOutputWriters();
+    } catch (final BlockWriteException ex2) {
+      taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
+          Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
+      LOG.info("{} Execution Failed (Recoverable: output write failure)! Exception: {}",
+          taskGroupId, ex2.toString());
+    } catch (final Exception e) {
+      taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE,
+          Optional.empty(), Optional.empty());
+      LOG.info("{} Execution Failed! Exception: {}",
+          taskGroupId, e.toString());
+      throw new RuntimeException(e);
+    }
 
     if (logicalTaskIdPutOnHold == null) {
       taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), Optional.empty());
@@ -429,52 +503,47 @@ public final class TaskGroupExecutor {
     LOG.info("{} Complete!", taskGroupId);
   }
 
-  /**
-   * Processes a BoundedSourceTask.
-   *
-   * @param boundedSourceTask the bounded source task to execute
-   * @throws Exception occurred during input read.
-   */
-  private void launchBoundedSourceTask(final BoundedSourceTask boundedSourceTask) throws Exception {
-    final Readable readable = boundedSourceTask.getReadable();
-    final String physicalTaskId = getPhysicalTaskId(boundedSourceTask.getId());
-
-    // Writes inter-TaskGroup data
-    if (hasOutputWriter(boundedSourceTask)) {
-      final Iterable readData = readable.read();
-      physicalTaskIdToOutputWriterMap.get(physicalTaskId).forEach(
-          outputWriter -> outputWriter.write(readData));
-    } else {
-      physicalTaskIdToOutputPipeMap.get(physicalTaskId).forEach(outputPipe -> {
-        try {
-          final Iterable readData = readable.read();
-
-          if (((List) readData).contains(null)) {
-            outputPipe.emit(readData);
-          } else {
-            readData.forEach(data -> outputPipe.emit(data));
-          }
-          LOG.info("log: {} {} Write to OutputPipe, edge {}",
-              taskGroupId, physicalTaskId, outputPipe.getRuntimeEdge());
-        } catch (final Exception e) {
-          throw new RuntimeException();
-        }
-      });
-
-      /*
-      // Writes intra-TaskGroup data
-      PipeImpl outputPipe = physicalTaskIdToOutputPipeMap.get(physicalTaskId);
+  private Map<Transform, Object> sideInputFromOtherStages(final Task task, final Map<Transform, Object> sideInputMap) {
+    srcTaskToSideInputReadersMap.get(task).forEach(sideInputReader -> {
       try {
-        if (((List) readData).contains(null)) {
-          outputPipe.emit(readData);
+        final Object sideInput = sideInputReader.getSideInput();
+        final RuntimeEdge inEdge = sideInputReader.getRuntimeEdge();
+        final Transform srcTransform;
+        if (inEdge instanceof PhysicalStageEdge) {
+          srcTransform = ((OperatorVertex) ((PhysicalStageEdge) inEdge).getSrcVertex()).getTransform();
         } else {
-          readData.forEach(data -> outputPipe.emit(data));
+          srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
         }
-      } catch (final Exception e) {
-        throw new RuntimeException();
+        sideInputMap.put(srcTransform, sideInput);
+        LOG.info("log: {} {} read sideInput from InputReader {}",
+            taskGroupId, getPhysicalTaskId(task.getId()), sideInput);
+      } catch (final InterruptedException | ExecutionException e) {
+        throw new BlockFetchException(e);
       }
-      */
-    }
+    });
+
+    return sideInputMap;
+  }
+
+  private Map<Transform, Object> sideInputFromThisStage(final Task task, final Map<Transform, Object> sideInputMap) {
+    final String physicalTaskId = getPhysicalTaskId(task.getId());
+
+    physicalTaskIdToInputPipesMap.get(physicalTaskId).stream().forEach(inputPipe -> {
+      if (inputPipe.hasSideInputFor(physicalTaskId)) {
+        Object sideInput = inputPipe.remove();   // because sideInput is only 1 element in the pipe
+        final RuntimeEdge inEdge = inputPipe.getSideInputRuntimeEdge();
+        final Transform srcTransform;
+        if (inEdge instanceof PhysicalStageEdge) {
+          srcTransform = ((OperatorVertex) ((PhysicalStageEdge) inEdge).getSrcVertex()).getTransform();
+        } else {
+          srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
+        }
+        sideInputMap.put(srcTransform, sideInput);
+        LOG.info("log: {} {} read sideInput from InputPipe {}", taskGroupId, physicalTaskId, sideInput);
+      }
+    });
+
+    return sideInputMap;
   }
 
   /**
@@ -482,201 +551,80 @@ public final class TaskGroupExecutor {
    *
    * @param task to execute
    */
-  private void launchOperatorTask(final OperatorTask task) {
-    final Map<Transform, Object> sideInputMap = new HashMap<>();
+  private void runTask(final Task task, final List<Object> data) {
     final String physicalTaskId = getPhysicalTaskId(task.getId());
 
-    // Check for side inputs
-    if (hasInputReader(task)) {
-      physicalTaskIdToInputReaderMap.get(physicalTaskId).stream().filter(InputReader::isSideInputReader)
-          .forEach(sideInputReader -> {
-            try {
-              final Object sideInput = sideInputReader.getSideInput();
-              final RuntimeEdge inEdge = sideInputReader.getRuntimeEdge();
-              final Transform srcTransform;
-              if (inEdge instanceof PhysicalStageEdge) {
-                srcTransform = ((OperatorVertex) ((PhysicalStageEdge) inEdge).getSrcVertex())
-                    .getTransform();
-              } else {
-                srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
-              }
-              sideInputMap.put(srcTransform, sideInput);
-              LOG.info("log: {} {} sideInput from InputReader {}", taskGroupId, physicalTaskId, sideInput);
-            } catch (final InterruptedException | ExecutionException e) {
-              throw new BlockFetchException(e);
-            }
-          });
+    if (task instanceof BoundedSourceTask) {
+      PipeImpl pipe = physicalTaskIdToOutputPipeMap.get(physicalTaskId);
+
+      if (data.contains(null)) {  // this is [null] used for VoidCoders
+        pipe.emit(data);
+      } else if (data.size() > 0) {
+        data.forEach(dataElement -> {
+          pipe.emit(dataElement);
+          LOG.info("log: {} {} BoundedSourceTask emitting {} to pipe",
+              taskGroupId, physicalTaskId, dataElement);
+        });
+      }
+    } else if (task instanceof OperatorTask) {
+      final Transform transform = ((OperatorTask) task).getTransform();
+
+      if (!preparedTransforms.contains(transform)) {
+        final Map<Transform, Object> sideInputMap = new HashMap<>();
+
+        // Check and collect side inputs.
+        if (srcTaskToSideInputReadersMap.keySet().contains(task)) {
+          sideInputFromOtherStages(task, sideInputMap);
+        }
+        if (hasInputPipe(task)) {
+          sideInputFromThisStage(task, sideInputMap);
+        }
+
+        final Transform.Context transformContext = new ContextImpl(sideInputMap);
+        final PipeImpl outputPipe = physicalTaskIdToOutputPipeMap.get(physicalTaskId);
+        transform.prepare(transformContext, outputPipe);
+
+        preparedTransforms.add(transform);
+      }
+
+      // Consumes the received element from incoming edges.
+      // Calculate the number of inter-TaskGroup data to process.
+      LOG.info("{} {} received data {}", taskGroupId, physicalTaskId, data);
+      int numElements = data.size();
+      LOG.info("log: {} {}: numElements {}", taskGroupId, physicalTaskId, numElements);
+
+      IntStream.range(0, numElements).forEach(dataNum -> {
+        Object dataElement = data.get(dataNum);
+        LOG.info("log: {} {} Input to onData : {}", taskGroupId, physicalTaskId, dataElement);
+        transform.onData(dataElement);
+      });
+    } else if (task instanceof MetricCollectionBarrierTask) {
+      PipeImpl pipe = physicalTaskIdToOutputPipeMap.get(physicalTaskId);
+
+      if (data.contains(null)) {  // this is [null]
+        pipe.emit(data);
+      } else if (data.size() > 0) {
+        data.forEach(dataElement -> {
+          pipe.emit(dataElement);
+          LOG.info("log: {} {} MetricCollectionTask emitting {} to pipe",
+              taskGroupId, physicalTaskId, dataElement);
+        });
+      }
+      setTaskPutOnHold((MetricCollectionBarrierTask) task);
     }
 
-    if (hasInputPipe(task)) {
-      physicalTaskIdToInputPipeMap.get(physicalTaskId).stream().filter(PipeImpl::isSideInput)
-          .forEach(sideInputPipe -> {
-            Object sideInput = sideInputPipe.remove();
-            final RuntimeEdge inEdge = sideInputPipe.getRuntimeEdge();
-            final Transform srcTransform;
-            if (inEdge instanceof PhysicalStageEdge) {
-              srcTransform = ((OperatorVertex) ((PhysicalStageEdge) inEdge).getSrcVertex()).getTransform();
-            } else {
-              srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
-            }
-            sideInputMap.put(srcTransform, sideInput);
-            LOG.info("log: {} {} sideInput from InputPipe {}", taskGroupId, physicalTaskId, sideInput);
-          });
-    }
+    // If this task has children to process, recursively process the input.
+    if (!sinkTasks.contains(task)) {
+      List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
+      PipeImpl pipe = physicalTaskIdToOutputPipeMap.get(physicalTaskId);
+      final List output;
+      if (!pipe.isEmpty()) {
+        output = Collections.singletonList(pipe.remove()); // intra-TaskGroup data are safe here
+      } else {
+        output = new ArrayList();
+      }
 
-    final Transform.Context transformContext = new ContextImpl(sideInputMap);
-    final Transform transform = task.getTransform();
-    final List<PipeImpl> outputPipes = physicalTaskIdToOutputPipeMap.get(physicalTaskId);
-    if (outputPipes.size() > 1) {
-      throw new RuntimeException("Multiple output pipes in OperatorTask");
-    }
-    PipeImpl outputPipe = outputPipes.get(0);
-    transform.prepare(transformContext, outputPipe);
-
-    // Check for non-side inputs.
-    final ArrayDeque<Object> dataQueue = new ArrayDeque<>();
-    if (hasInputReader(task)) {
-      physicalTaskIdToInputReaderMap.get(physicalTaskId).stream()
-          .filter(inputReader -> !inputReader.isSideInputReader())
-          .forEach(inputReader -> {
-            List<CompletableFuture<Iterator>> futures = inputReader.read();
-            /*
-            futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
-              if (exception != null) {
-                throw new BlockFetchException(exception);
-              }
-
-              LOG.info("log: {} {} Entered into InputReader", taskGroupId, physicalTaskId);
-*/
-            futures.forEach(compFuture -> {
-              try {
-                Iterator iterator = compFuture.get();
-                /*if (aggregationNeeded(task)) {
-                  List<Object> iterable = new ArrayList<>();
-                  iterator.forEachRemaining(iterable::add);
-                  dataQueue.add(iterable);
-                  LOG.info("log: {} {} Aggregation needed for creating PCollectionView! Read from InputReader : {}",
-                      taskGroupId, physicalTaskId, iterable);
-                } else {
-                */  iterator.forEachRemaining(data -> {
-                    if (data != null) {
-                      dataQueue.add(data);
-                      LOG.info("log: {} {} Read from InputReader : {}", taskGroupId, task.getId(), data);
-                    } else {
-                      List<Object> iterable = Collections.singletonList(data);
-                      dataQueue.add(iterable);
-                    }
-                  });
-                //}
-              } catch (InterruptedException e) {
-                throw new RuntimeException("Interrupted while waiting for InputReader.readElement()", e);
-              } catch (ExecutionException e1) {
-                throw new RuntimeException("ExecutionException while waiting for InputReader.readElement()", e1);
-              }
-            });
-          });
-    }
-
-    if (hasInputPipe(task)) {
-      physicalTaskIdToInputPipeMap.get(physicalTaskId).stream()
-          .filter(inputPipe -> !inputPipe.isEmpty() && !inputPipe.isSideInput())
-          .forEach(inputPipe -> {
-            /*
-            if (aggregationNeeded(task)) {
-              List<Object> iterable = inputPipe.collectOutputList();
-              dataQueue.add(iterable);
-              LOG.info("log: {} {} Aggregation needed for creating PCollectionView! Read from InputPipe : {}",
-                  taskGroupId, physicalTaskId, iterable);
-            } else {
-            */  Object data = inputPipe.remove();
-              if (data != null) {
-                dataQueue.add(data);
-                LOG.info("log: {} {} Read from InputPipe : {}", taskGroupId, physicalTaskId, data);
-              } else {
-                List<Object> iterable = Collections.singletonList(data);
-                dataQueue.add(iterable);
-              }
-            //}
-          });
-    }
-
-    // Consumes the received element from incoming edges.
-    // Calculate the number of inter-TaskGroup data to process.
-    int numElements = dataQueue.size();
-    LOG.info("log: {} {}: numElements {}", taskGroupId, physicalTaskId, numElements);
-
-    IntStream.range(0, numElements).forEach(dataNum -> {
-      Object data = dataQueue.pop();
-      LOG.info("log: {} {} Input to onData : {}", taskGroupId, physicalTaskId, data);
-      transform.onData(data);
-    });
-  }
-
-  /**
-   * Pass on the data to the following tasks.
-   *
-   * @param task the task to carry on the data.
-   */
-  private void launchMetricCollectionBarrierTask(final MetricCollectionBarrierTask task) {
-    final String physicalTaskId = getPhysicalTaskId(task.getId());
-    final List<PipeImpl> pipes = physicalTaskIdToOutputPipeMap.get(physicalTaskId);
-
-    if (pipes.size() > 1) {
-      throw new RuntimeException("Multiple output pipes in MetricCollectionBarrierTask");
-    }
-    PipeImpl pipe = pipes.get(0);
-
-    // Check for non-side inputs.
-    if (hasInputReader(task)) {
-      physicalTaskIdToInputReaderMap.get(physicalTaskId).stream()
-          .filter(inputReader -> !inputReader.isSideInputReader())
-          .forEach(inputReader -> inputReader.read()
-              .forEach(compFuture -> {
-                compFuture.thenAccept(iterator -> {
-                /*if (aggregationNeeded(task)) {
-                  List<Object> iterable = new ArrayList<>();
-                  iterator.forEachRemaining(iterable::add);
-                  pipe.emit(iterable);
-                  LOG.info("log: {} {} Aggregation needed for creating PCollectionView! Read from InputReader : {}",
-                      taskGroupId, physicalTaskId, iterable);
-                } else {
-                */  iterator.forEachRemaining(data -> {
-                    if (data != null) {
-                      pipe.emit(data);
-                      LOG.info("log: {} {} Read from InputReader : {}",
-                          taskGroupId, physicalTaskId, data);
-                    }
-                    else {
-                      List<Object> iterable = Collections.singletonList(data);
-                      pipe.emit(iterable);
-                    }
-                  });
-                //}
-              });
-              }));
-    }
-
-    if (hasInputPipe(task)) {
-      physicalTaskIdToInputPipeMap.get(physicalTaskId).stream()
-          .filter(inputPipe -> !inputPipe.isEmpty() && !inputPipe.isSideInput())
-          .forEach(inputPipe -> {
-            /*if (aggregationNeeded(task)) {
-              List<Object> iterable = inputPipe.collectOutputList();
-              pipe.emit(iterable);
-              LOG.info("log: {} {} Aggregation needed for creating PCollectionView! Read from InputPipe : {}",
-                  taskGroupId, physicalTaskId, iterable);
-            } else {
-            */  Object data = inputPipe.remove();
-              if (data != null) {
-                pipe.emit(data);
-                LOG.info("log: {} {} Read from InputPipe : {}",
-                    taskGroupId, physicalTaskId, data);
-              } else {
-                List<Object> iterable = Collections.singletonList(data);
-                pipe.emit(iterable);
-              }
-            //}
-          });
+      dstTasks.forEach(dstTask -> runTask(dstTask, output));
     }
   }
 
@@ -686,5 +634,9 @@ public final class TaskGroupExecutor {
    */
   private String getPhysicalTaskId(final String logicalTaskId) {
     return RuntimeIdGenerator.generatePhysicalTaskId(taskGroupIdx, logicalTaskId);
+  }
+
+  private String generateIteratorId() {
+    return ITERATOR_PREFIX + iteratorIdGenerator.getAndIncrement();
   }
 }
