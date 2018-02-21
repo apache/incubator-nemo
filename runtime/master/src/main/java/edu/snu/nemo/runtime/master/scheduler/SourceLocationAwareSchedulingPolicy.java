@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.coral.runtime.master.scheduler;
+package edu.snu.nemo.runtime.master.scheduler;
 
-import edu.snu.coral.common.exception.SchedulingException;
-import edu.snu.coral.common.ir.Readable;
-import edu.snu.coral.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
-import edu.snu.coral.runtime.common.plan.physical.ScheduledTaskGroup;
-import edu.snu.coral.runtime.common.state.TaskGroupState;
-import edu.snu.coral.runtime.master.JobStateManager;
-import edu.snu.coral.runtime.master.resource.ContainerManager;
-import edu.snu.coral.runtime.master.resource.ExecutorRepresenter;
+import edu.snu.nemo.common.exception.SchedulingException;
+import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.nemo.runtime.common.state.TaskGroupState;
+import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.resource.ContainerManager;
+import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +36,7 @@ import java.util.stream.Stream;
 
 /**
  * This policy is same as {@link RoundRobinSchedulingPolicy}, however for TaskGroups
- * with {@link edu.snu.coral.common.ir.vertex.SourceVertex}, it tries to pick one of the executors
+ * with {@link edu.snu.nemo.common.ir.vertex.SourceVertex}, it tries to pick one of the executors
  * where the corresponding data resides.
  */
 @ThreadSafe
