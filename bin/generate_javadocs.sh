@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-echo "./set_hostname.sh remote_hosts_file"
-cat $1 | xargs -n 1 -I '{}' ssh '{}' "sudo bash -c 'echo '{}' > /etc/hostname'"
-echo "Done! Please check /etc/hostname"
+# run this by ./bin/generate_javadocs.sh
+
+echo "mvn javadoc:aggregate"
+mvn javadoc:aggregate
