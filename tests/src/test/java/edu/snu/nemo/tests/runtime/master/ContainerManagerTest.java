@@ -16,6 +16,7 @@
 package edu.snu.nemo.tests.runtime.master;
 
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
@@ -24,6 +25,10 @@ import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorDescriptor;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,11 +52,17 @@ public final class ContainerManagerTest {
   private final int DEFAULT_MEMORY = 10240;
 
   @Before
-  public void setUp() {
+  public void setUp() throws InjectionException {
 
     final MessageEnvironment mockMsgEnv = mock(MessageEnvironment.class);
     when(mockMsgEnv.asyncConnect(anyString(), anyString())).thenReturn(mock(Future.class));
-    containerManager = new ContainerManager(1, mock(EvaluatorRequestor.class), mockMsgEnv);
+    final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(JobConf.ScheduleSerThread.class, "1")
+        .build();
+    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
+    injector.bindVolatileInstance(EvaluatorRequestor.class, mock(EvaluatorRequestor.class));
+    injector.bindVolatileInstance(MessageEnvironment.class, mockMsgEnv);
+    containerManager = injector.getInstance(ContainerManager.class);
   }
 
   @Test(timeout=5000)

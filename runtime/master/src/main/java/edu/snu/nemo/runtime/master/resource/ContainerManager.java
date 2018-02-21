@@ -67,11 +67,6 @@ public final class ContainerManager {
   private final Map<String, List<ExecutorRepresenter>> executorsByContainerType;
 
   /**
-   * A map of failed executor ID to the corresponding failed {@link ExecutorRepresenter}.
-   */
-  private final Map<String, ExecutorRepresenter> failedExecutorRepresenterMap;
-
-  /**
    * Keeps track of evaluator and context requests.
    */
   private final Map<String, ResourceSpecification> pendingContextIdToResourceSpec;
@@ -80,16 +75,15 @@ public final class ContainerManager {
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
   @Inject
-  public ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
-                          final EvaluatorRequestor evaluatorRequestor,
-                          final MessageEnvironment messageEnvironment,
-                          final ExecutorRegistry executorRegistry) {
+  private ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
+                           final EvaluatorRequestor evaluatorRequestor,
+                           final MessageEnvironment messageEnvironment,
+                           final ExecutorRegistry executorRegistry) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.messageEnvironment = messageEnvironment;
     this.executorRegistry = executorRegistry;
     this.persistentConnectionToMasterMap = new PersistentConnectionToMasterMap(messageEnvironment);
     this.executorsByContainerType = new HashMap<>();
-    this.failedExecutorRepresenterMap = new HashMap<>();
     this.pendingContextIdToResourceSpec = new HashMap<>();
     this.pendingContainerRequestsByContainerType = new HashMap<>();
     this.requestLatchByResourceSpecId = new HashMap<>();
@@ -220,13 +214,11 @@ public final class ContainerManager {
   public synchronized void onExecutorRemoved(final String failedExecutorId) {
     LOG.info("[" + failedExecutorId + "] failure reported.");
 
-    final ExecutorRepresenter failedExecutor = executorRegistry.getRepresenter(failedExecutorId);
+    final ExecutorRepresenter failedExecutor = executorRegistry.getRunningExecutorRepresenter(failedExecutorId);
+    executorRegistry.setRepresenterAsFailed(failedExecutorId);
     executorRegistry.deregisterRepresenter(failedExecutorId);
-    failedExecutor.onExecutorFailed();
 
     executorsByContainerType.get(failedExecutor.getContainerType()).remove(failedExecutor);
-
-    failedExecutorRepresenterMap.put(failedExecutorId, failedExecutor);
 
     // Signal RuntimeMaster on CONTAINER_FAILURE type FAILED_RECOVERABLE state
     persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
@@ -240,16 +232,12 @@ public final class ContainerManager {
             .build());
   }
 
-  public synchronized Map<String, ExecutorRepresenter> getFailedExecutorRepresenterMap() {
-    return failedExecutorRepresenterMap;
-  }
-
   /**
    * Shuts down the running executors.
    */
   private void shutdownRunningExecutors() {
-    for (final String executorId : executorRegistry.getExecutorIds()) {
-      final ExecutorRepresenter representer = executorRegistry.getRepresenter(executorId);
+    for (final String executorId : executorRegistry.getRunningExecutorIds()) {
+      final ExecutorRepresenter representer = executorRegistry.getRunningExecutorRepresenter(executorId);
       representer.shutDown();
       executorRegistry.deregisterRepresenter(executorId);
     }
@@ -276,6 +264,6 @@ public final class ContainerManager {
     });
     shutdownRunningExecutors();
     requestLatchByResourceSpecId.clear();
-    return executorRegistry.getExecutorIds().isEmpty();
+    return executorRegistry.getRunningExecutorIds().isEmpty();
   }
 }

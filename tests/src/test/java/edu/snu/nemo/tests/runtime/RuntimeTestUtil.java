@@ -24,7 +24,7 @@ import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.common.state.TaskGroupState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
-import edu.snu.nemo.runtime.master.resource.ContainerManager;
+import edu.snu.nemo.runtime.master.resource.ExecutorRegistry;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.scheduler.PendingTaskGroupQueue;
 import edu.snu.nemo.runtime.master.scheduler.Scheduler;
@@ -77,12 +77,12 @@ public final class RuntimeTestUtil {
    * This replaces executor's task group completion messages for testing purposes.
    * @param jobStateManager for the submitted job.
    * @param scheduler for the submitted job.
-   * @param containerManager used for testing purposes.
+   * @param executorRegistry provides executor representers
    * @param physicalStage for which the states should be marked as complete.
    */
   public static void sendStageCompletionEventToScheduler(final JobStateManager jobStateManager,
                                                          final Scheduler scheduler,
-                                                         final ContainerManager containerManager,
+                                                         final ExecutorRegistry executorRegistry,
                                                          final PhysicalStage physicalStage,
                                                          final int attemptIdx) {
     eventRunnableQueue.add(new Runnable() {
@@ -93,7 +93,7 @@ public final class RuntimeTestUtil {
           physicalStage.getTaskGroupIds().forEach(taskGroupId -> {
             if (jobStateManager.getTaskGroupState(taskGroupId).getStateMachine().getCurrentState()
                 == TaskGroupState.State.EXECUTING) {
-              sendTaskGroupStateEventToScheduler(scheduler, containerManager, taskGroupId,
+              sendTaskGroupStateEventToScheduler(scheduler, executorRegistry, taskGroupId,
                   TaskGroupState.State.COMPLETE, attemptIdx, null);
             }
           });
@@ -106,20 +106,20 @@ public final class RuntimeTestUtil {
    * Sends task group state change event to scheduler.
    * This replaces executor's task group completion messages for testing purposes.
    * @param scheduler for the submitted job.
-   * @param containerManager used for testing purposes.
+   * @param executorRegistry provides executor representers
    * @param taskGroupId for the task group to change the state.
    * @param newState for the task group.
    * @param cause in the case of a recoverable failure.
    */
   public static void sendTaskGroupStateEventToScheduler(final Scheduler scheduler,
-                                                        final ContainerManager containerManager,
+                                                        final ExecutorRegistry executorRegistry,
                                                         final String taskGroupId,
                                                         final TaskGroupState.State newState,
                                                         final int attemptIdx,
                                                         final TaskGroupState.RecoverableFailureCause cause) {
     ExecutorRepresenter scheduledExecutor;
     do {
-      scheduledExecutor = findExecutorForTaskGroup(containerManager, taskGroupId);
+      scheduledExecutor = findExecutorForTaskGroup(executorRegistry, taskGroupId);
     } while (scheduledExecutor == null);
 
     scheduler.onTaskGroupStateChanged(scheduledExecutor.getExecutorId(), taskGroupId,
@@ -127,11 +127,11 @@ public final class RuntimeTestUtil {
   }
 
   public static void sendTaskGroupStateEventToScheduler(final Scheduler scheduler,
-                                                        final ContainerManager containerManager,
+                                                        final ExecutorRegistry executorRegistry,
                                                         final String taskGroupId,
                                                         final TaskGroupState.State newState,
                                                         final int attemptIdx) {
-    sendTaskGroupStateEventToScheduler(scheduler, containerManager, taskGroupId, newState, attemptIdx, null);
+    sendTaskGroupStateEventToScheduler(scheduler, executorRegistry, taskGroupId, newState, attemptIdx, null);
   }
 
   public static void mockSchedulerRunner(final PendingTaskGroupQueue pendingTaskGroupQueue,
@@ -154,13 +154,13 @@ public final class RuntimeTestUtil {
    * Sends partition state changes of a stage to PartitionManager.
    * This replaces executor's partition state messages for testing purposes.
    * @param blockManagerMaster used for testing purposes.
-   * @param containerManager used for testing purposes.
+   * @param executorRegistry provides executor representers
    * @param stageOutgoingEdges to infer partition IDs.
    * @param physicalStage to change the state.
    * @param newState for the task group.
    */
   public static void sendPartitionStateEventForAStage(final BlockManagerMaster blockManagerMaster,
-                                                      final ContainerManager containerManager,
+                                                      final ExecutorRegistry executorRegistry,
                                                       final List<PhysicalStageEdge> stageOutgoingEdges,
                                                       final PhysicalStage physicalStage,
                                                       final BlockState.State newState) {
@@ -173,7 +173,7 @@ public final class RuntimeTestUtil {
           IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
             final String partitionId =
                 RuntimeIdGenerator.generateBlockId(physicalStageEdge.getId(), srcTaskIdx);
-              sendPartitionStateEventToPartitionManager(blockManagerMaster, containerManager, partitionId, newState);
+              sendPartitionStateEventToPartitionManager(blockManagerMaster, executorRegistry, partitionId, newState);
           });
         });
 
@@ -186,7 +186,7 @@ public final class RuntimeTestUtil {
               final String partitionId =
                   RuntimeIdGenerator.generateBlockId(taskRuntimeEdge.getId(),
                       RuntimeIdGenerator.getIndexFromTaskGroupId(taskGroupId));
-              sendPartitionStateEventToPartitionManager(blockManagerMaster, containerManager, partitionId, newState);
+              sendPartitionStateEventToPartitionManager(blockManagerMaster, executorRegistry, partitionId, newState);
             });
           });
         });
@@ -198,12 +198,12 @@ public final class RuntimeTestUtil {
    * Sends partition state change event to PartitionManager.
    * This replaces executor's partition state messages for testing purposes.
    * @param blockManagerMaster used for testing purposes.
-   * @param containerManager used for testing purposes.
+   * @param executorRegistry provides executor representers
    * @param partitionId for the partition to change the state.
    * @param newState for the task group.
    */
   public static void sendPartitionStateEventToPartitionManager(final BlockManagerMaster blockManagerMaster,
-                                                               final ContainerManager containerManager,
+                                                               final ExecutorRegistry executorRegistry,
                                                                final String partitionId,
                                                                final BlockState.State newState) {
     eventRunnableQueue.add(new Runnable() {
@@ -212,7 +212,7 @@ public final class RuntimeTestUtil {
         final Set<String> parentTaskGroupIds = blockManagerMaster.getProducerTaskGroupIds(partitionId);
         if (!parentTaskGroupIds.isEmpty()) {
           parentTaskGroupIds.forEach(taskGroupId -> {
-            final ExecutorRepresenter scheduledExecutor = findExecutorForTaskGroup(containerManager, taskGroupId);
+            final ExecutorRepresenter scheduledExecutor = findExecutorForTaskGroup(executorRegistry, taskGroupId);
 
             if (scheduledExecutor != null) {
               blockManagerMaster.onBlockStateChanged(
@@ -227,12 +227,13 @@ public final class RuntimeTestUtil {
   /**
    * Retrieves the executor to which the given task group was scheduled.
    * @param taskGroupId of the task group to search.
-   * @param containerManager used for testing purposes.
+   * @param executorRegistry provides executor representers
    * @return the {@link ExecutorRepresenter} of the executor the task group was scheduled to.
    */
-  private static ExecutorRepresenter findExecutorForTaskGroup(final ContainerManager containerManager,
+  private static ExecutorRepresenter findExecutorForTaskGroup(final ExecutorRegistry executorRegistry,
                                                               final String taskGroupId) {
-    for (final ExecutorRepresenter executor : containerManager.getExecutorRepresenterMap().values()) {
+    for (final String executorId : executorRegistry.getRunningExecutorIds()) {
+      final ExecutorRepresenter executor = executorRegistry.getRunningExecutorRepresenter(executorId);
       if (executor.getRunningTaskGroups().contains(taskGroupId)
           || executor.getCompleteTaskGroups().contains(taskGroupId)) {
         return executor;
