@@ -67,6 +67,7 @@ public final class BlockManagerWorker {
   private final ExecutorService backgroundExecutorService;
   private final Map<String, AtomicInteger> blockToRemainingRead;
   private final SerializerManager serializerManager;
+  private final Map<String, CompletableFuture<ControlMessage.Message>> pendingBlockLocationRequest;
 
   @Inject
   private BlockManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -88,6 +89,7 @@ public final class BlockManagerWorker {
     this.backgroundExecutorService = Executors.newFixedThreadPool(numThreads);
     this.blockToRemainingRead = new ConcurrentHashMap<>();
     this.serializerManager = serializerManager;
+    this.pendingBlockLocationRequest = new ConcurrentHashMap<>();
   }
 
   /**
@@ -157,7 +159,7 @@ public final class BlockManagerWorker {
    * @param blockId       of the block.
    * @param runtimeEdgeId id of the runtime edge that corresponds to the block.
    * @param blockStore    for the data storage.
-   * @param keyRange     the key range descriptor
+   * @param keyRange      the key range descriptor
    * @return the {@link CompletableFuture} of the block.
    */
   public CompletableFuture<DataUtil.IteratorWithNumBytes> queryBlock(
@@ -166,28 +168,34 @@ public final class BlockManagerWorker {
       final DataStoreProperty.Value blockStore,
       final KeyRange keyRange) {
     // Let's see if a remote worker has it
-    // Ask Master for the location
-    final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = persistentConnectionToMasterMap
-        .getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.RequestBlockLocation)
-                .setRequestBlockLocationMsg(
-                    ControlMessage.RequestBlockLocationMsg.newBuilder()
-                        .setExecutorId(executorId)
-                        .setBlockId(blockId)
-                        .build())
-                .build());
+    final CompletableFuture<ControlMessage.Message> blockLocationFuture =
+        pendingBlockLocationRequest.computeIfAbsent(blockId, blockIdToRequest -> {
+          // Ask Master for the location
+          final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = persistentConnectionToMasterMap
+              .getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
+                  ControlMessage.Message.newBuilder()
+                      .setId(RuntimeIdGenerator.generateMessageId())
+                      .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+                      .setType(ControlMessage.MessageType.RequestBlockLocation)
+                      .setRequestBlockLocationMsg(
+                          ControlMessage.RequestBlockLocationMsg.newBuilder()
+                              .setExecutorId(executorId)
+                              .setBlockId(blockId)
+                              .build())
+                      .build());
+          return responseFromMasterFuture;
+        });
+    blockLocationFuture.whenComplete((message, throwable) -> pendingBlockLocationRequest.remove(blockId));
+
     // Using thenCompose so that fetching block data starts after getting response from master.
-    return responseFromMasterFuture.thenCompose(responseFromMaster -> {
+    return blockLocationFuture.thenCompose(responseFromMaster -> {
       assert (responseFromMaster.getType() == ControlMessage.MessageType.BlockLocationInfo);
       final ControlMessage.BlockLocationInfoMsg blockLocationInfoMsg =
           responseFromMaster.getBlockLocationInfoMsg();
       if (!blockLocationInfoMsg.hasOwnerExecutorId()) {
         throw new BlockFetchException(new Throwable(
-            "Block " + blockId + " not found both in the local storage and the remote storage: The"
-                + "block state is " + blockLocationInfoMsg.getState()));
+            "Block " + blockId + " not found both in any storage: "
+                + "The block state is " + blockLocationInfoMsg.getState()));
       }
       // This is the executor id that we wanted to know
       final String targetExecutorId = blockLocationInfoMsg.getOwnerExecutorId();
