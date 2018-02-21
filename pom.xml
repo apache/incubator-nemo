@@ -59,8 +59,8 @@ limitations under the License.
         <module>examples/beam</module>
         <module>examples/spark</module>
         <module>runtime/common</module>
-    	<module>runtime/executor</module>
-	    <module>runtime/master</module>
+        <module>runtime/executor</module>
+        <module>runtime/master</module>
         <module>runtime/driver</module>
         <module>tests</module>
     </modules>
@@ -229,6 +229,40 @@ limitations under the License.
                         <phase>site</phase>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.rat</groupId>
+                <artifactId>apache-rat-plugin</artifactId>
+                <version>0.12</version>
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <excludes>
+                        <!-- Markdown files such as README.md -->
+                        <exclude>**/*.md</exclude>
+                        <!-- Git files -->
+                        <exclude>.gitattributes</exclude>
+                        <exclude>.gitignore</exclude>
+                        <exclude>.git/**</exclude>
+                        <!-- Intellij idea project files -->
+                        <exclude>**/.idea/**</exclude>
+                        <exclude>**/*.iml</exclude>
+                        <!-- Maven build files -->
+                        <exclude>**/target/**</exclude>
+                        <!-- REEF run files -->
+                        <exclude>**/REEF_LOCAL_RUNTIME/**</exclude>
+                        <!-- Resources under examples -->
+                        <exclude>examples/resources/**</exclude>
+                        <!-- Logs -->
+                        <exclude>**/*.log</exclude>
+                    </excludes>
+                </configuration>
             </plugin>
         </plugins>
     </build>
