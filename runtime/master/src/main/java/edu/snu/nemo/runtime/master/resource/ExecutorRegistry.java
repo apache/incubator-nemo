@@ -25,6 +25,9 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Maintains map between executor id and {@link ExecutorRepresenter}.
+ */
 @DriverSide
 @ThreadSafe
 public final class ExecutorRegistry {
@@ -62,7 +65,8 @@ public final class ExecutorRegistry {
    * @throws DuplicateExecutorIdException on multiple attempts to register same representer,
    *         or different representers with same executor id.
    */
-  public synchronized void registerRepresenter(final ExecutorRepresenter representer) throws DuplicateExecutorIdException {
+  public synchronized void registerRepresenter(final ExecutorRepresenter representer)
+      throws DuplicateExecutorIdException {
     final String executorId = representer.getExecutorId();
     executorRepresenterMap.compute(executorId, (id, existingRepresenter) -> {
       if (existingRepresenter != null) {
