@@ -92,8 +92,9 @@ public final class InputReader extends DataTransfer {
   }
 
   private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
-    final String blockId = RuntimeIdGenerator.generateBlockId(getRealId(), dstTaskIndex);
-    return blockManagerWorker.queryBlock(blockId, getRealId(),
+    final String blockId = RuntimeIdGenerator.generateBlockId(getId(), dstTaskIndex);
+    final String realBlockId = RuntimeIdGenerator.generateBlockId(getRealId(), dstTaskIndex);
+    return blockManagerWorker.queryBlock(blockId, realBlockId, getRealId(),
         (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
         HashRange.all());
   }
@@ -103,8 +104,9 @@ public final class InputReader extends DataTransfer {
 
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockId = RuntimeIdGenerator.generateBlockId(getRealId(), srcTaskIdx);
-      futures.add(blockManagerWorker.queryBlock(blockId, getRealId(),
+      final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
+      final String realBlockId = RuntimeIdGenerator.generateBlockId(getRealId(), srcTaskIdx);
+      futures.add(blockManagerWorker.queryBlock(blockId, realBlockId, getRealId(),
           (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
           HashRange.all()));
     }
@@ -131,9 +133,10 @@ public final class InputReader extends DataTransfer {
     final int numSrcTasks = this.getSourceParallelism();
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockId = RuntimeIdGenerator.generateBlockId(getRealId(), srcTaskIdx);
+      final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
+      final String realBlockId = RuntimeIdGenerator.generateBlockId(getRealId(), srcTaskIdx);
       futures.add(
-          blockManagerWorker.queryBlock(blockId, getRealId(),
+          blockManagerWorker.queryBlock(blockId, realBlockId, getRealId(),
               (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
               hashRangeToRead));
     }

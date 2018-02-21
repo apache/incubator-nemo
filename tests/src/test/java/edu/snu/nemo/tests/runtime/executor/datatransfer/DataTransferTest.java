@@ -263,7 +263,7 @@ public final class DataTransferTest {
     final int testIndex2 = TEST_INDEX.getAndIncrement();
     final String edgeId = String.format(EDGE_PREFIX_TEMPLATE, testIndex);
     final String edgeId2 = String.format(EDGE_PREFIX_TEMPLATE, testIndex2);
-    final Pair<IRVertex, IRVertex> verticesPair = setupVertices(edgeId, sender, receiver);
+    final Pair<IRVertex, IRVertex> verticesPair = setupVertices(edgeId, edgeId2, sender, receiver);
     final IRVertex srcVertex = verticesPair.left();
     final IRVertex dstVertex = verticesPair.right();
 
@@ -285,17 +285,18 @@ public final class DataTransferTest {
     final PhysicalStage dstStage = setupStages("dstStage-" + testIndex);
     dummyEdge = new PhysicalStageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
         srcStage, dstStage, CODER, false);
-    final IRVertex srcMockVertex2 = mock(IRVertex.class);
     final IRVertex dstMockVertex2 = mock(IRVertex.class);
-    final PhysicalStage srcStage2 = setupStages("srcStage-" + testIndex2);
     final PhysicalStage dstStage2 = setupStages("dstStage-" + testIndex2);
-    dummyEdge2 = new PhysicalStageEdge(edgeId2, edgeProperties, srcMockVertex2, dstMockVertex2,
-        srcStage2, dstStage2, CODER, false);
+    dummyEdge2 = new PhysicalStageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2,
+        srcStage, dstStage2, CODER, false);
     // Initialize states in Master
     srcStage.getTaskGroupIds().forEach(srcTaskGroupId -> {
       final String blockId = RuntimeIdGenerator.generateBlockId(
           edgeId, RuntimeIdGenerator.getIndexFromTaskGroupId(srcTaskGroupId));
       master.initializeState(blockId, srcTaskGroupId);
+      final String blockId2 = RuntimeIdGenerator.generateBlockId(
+          edgeId2, RuntimeIdGenerator.getIndexFromTaskGroupId(srcTaskGroupId));
+      master.initializeState(blockId2, srcTaskGroupId);
       master.onProducerTaskGroupScheduled(srcTaskGroupId);
     });
 
@@ -308,6 +309,11 @@ public final class DataTransferTest {
       writer.write(dataWritten);
       writer.close();
       dataWrittenList.add(dataWritten);
+
+      final OutputWriter writer2 = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, srcVertex.getId(), dstVertex,
+          dummyEdge2, sender);
+      writer2.write(dataWritten);
+      writer2.close();
     });
 
     // Read
@@ -369,10 +375,13 @@ public final class DataTransferTest {
   }
 
   private Pair<IRVertex, IRVertex> setupVertices(final String edgeId,
+                                                 final String edgeId2,
                                                  final BlockManagerWorker sender,
                                                  final BlockManagerWorker receiver) {
     serializerManagers.get(sender).register(edgeId, CODER, new ExecutionPropertyMap(""));
     serializerManagers.get(receiver).register(edgeId, CODER, new ExecutionPropertyMap(""));
+    serializerManagers.get(sender).register(edgeId2, CODER, new ExecutionPropertyMap(""));
+    serializerManagers.get(receiver).register(edgeId2, CODER, new ExecutionPropertyMap(""));
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
