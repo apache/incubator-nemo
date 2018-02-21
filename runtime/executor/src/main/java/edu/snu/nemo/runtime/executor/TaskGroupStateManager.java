@@ -261,6 +261,5 @@ public final class TaskGroupStateManager {
 
   // Tentative
   public void getCurrentTaskGroupExecutionState() {
-
   }
 }

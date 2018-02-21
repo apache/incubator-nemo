@@ -40,7 +40,7 @@ public final class OutputWriter extends DataTransfer {
   private final DataStoreProperty.Value blockStoreValue;
   private final Map<PartitionerProperty.Value, Partitioner> partitionerMap;
   private final List<Long> accumulatedPartitionSizeInfo;
-  private long totalWrittenBytes;
+  private final List<Long> writtenBytes;
   private final BlockManagerWorker blockManagerWorker;
 
   public OutputWriter(final int hashRangeMultiplier,
@@ -58,7 +58,7 @@ public final class OutputWriter extends DataTransfer {
     this.blockManagerWorker = blockManagerWorker;
     this.blockStoreValue = runtimeEdge.getProperty(ExecutionProperty.Key.DataStore);
     this.partitionerMap = new HashMap<>();
-    this.totalWrittenBytes = 0;
+    this.writtenBytes = new ArrayList<>();
     // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
     this.accumulatedPartitionSizeInfo = new ArrayList<>();
     partitionerMap.put(PartitionerProperty.Value.IntactPartitioner, new IntactPartitioner());
@@ -115,16 +115,28 @@ public final class OutputWriter extends DataTransfer {
   /**
    * Notifies that all writes for a block is end.
    * Further write about a committed block will throw an exception.
-   *
-   * @return the total written bytes.
    */
-  public long close() {
+  public void close() {
     // Commit block.
     final UsedDataHandlingProperty.Value usedDataHandling =
         runtimeEdge.getProperty(ExecutionProperty.Key.UsedDataHandling);
     blockManagerWorker.commitBlock(blockId, blockStoreValue,
         accumulatedPartitionSizeInfo, srcVertexId, getDstParallelism(), usedDataHandling);
-    return totalWrittenBytes;
+  }
+
+  /**
+   * @return the total written bytes.
+   */
+  public Optional<Long> getWrittenBytes() {
+    if (writtenBytes.isEmpty()) {
+      return Optional.empty(); // no serialized data.
+    } else {
+      long totalWrittenBytes = 0;
+      for (final long writtenPartitionBytes : writtenBytes) {
+        totalWrittenBytes += writtenPartitionBytes;
+      }
+      return Optional.of(totalWrittenBytes);
+    }
   }
 
   private void writeOneToOne(final List<Partition> partitionsToWrite) {
@@ -181,9 +193,7 @@ public final class OutputWriter extends DataTransfer {
    * @param partitionSizeList the list of written partitions.
    */
   private void addWrittenBytes(final List<Long> partitionSizeList) {
-    for (final Long partitionSize : partitionSizeList) {
-      this.totalWrittenBytes += partitionSize;
-    }
+    partitionSizeList.forEach(writtenBytes::add);
   }
 
   /**

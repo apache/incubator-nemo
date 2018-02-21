@@ -24,7 +24,10 @@ def main():
                    vertexIdSuffix = metricKey.split('Task-vertex-')[1]
                    if vertexIdSuffix.find('_') != -1: # physical level metric
                        vertexId = 'vertex-' + vertexIdSuffix.split('_')[0]
-                       for metricDict in metricDictionary[metricKey]:
+                       metricDictList = metricDictionary[metricKey]
+                       if isinstance(metricDictList, dict):
+                           metricDictList = [metricDictList]
+                       for metricDict in metricDictList:
                            for key, value in metricDict.items():
                                if (key != 'EndTime') & (key != 'StartTime'):
                                    vertexMetricDict = vertexToMetricDict.get(vertexId, dict())
@@ -41,7 +44,6 @@ def main():
                for metric in metricDictionary[computationUnitId]:
                    print(metric)
            elif user_input == "2":
-               print ('The "WrittenBytes" metric can be 0 if the data is not serialized and just handled on memory')
                for vertexId, metricDict in sorted(vertexToMetricDict.items()):
                    print(vertexId)
                    metricKeys, valuesMin, valuesMedian, valuesMax, valuesMean, valuesSum = ['Metric'], ['Min'], ['Median'], ['Max'], ['Mean'], ['Total']

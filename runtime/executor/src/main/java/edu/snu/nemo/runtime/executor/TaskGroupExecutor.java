@@ -240,14 +240,16 @@ public final class TaskGroupExecutor {
     final long readEndTime = System.currentTimeMillis();
     metric.put("BoundedSourceReadTime(ms)", readEndTime - readStartTime);
 
-    long writtenBytes = 0;
+    final List<Long> writtenBytesList = new ArrayList<>();
     for (final OutputWriter outputWriter : physicalTaskIdToOutputWriterMap.get(physicalTaskId)) {
       outputWriter.write(readData);
-      writtenBytes += outputWriter.close();
+      outputWriter.close();
+      final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
+      writtenBytes.ifPresent(writtenBytesList::add);
     }
     final long writeEndTime = System.currentTimeMillis();
     metric.put("OutputWriteTime(ms)", writeEndTime - readEndTime);
-    metric.put("WrittenBytes", writtenBytes);
+    putWrittenBytesMetric(writtenBytesList, metric);
     metricCollector.endMeasurement(physicalTaskId, metric);
   }
 
@@ -338,21 +340,23 @@ public final class TaskGroupExecutor {
         transformEndTime - readFutureEndTime - accumulatedWriteTime - accumulatedBlockedReadTime);
 
     // Check whether there is any output data from the transform and write the output of this task to the writer.
-    long writtenBytes = 0;
+    final List<Long> writtenBytesList = new ArrayList<>();
     final List output = outputCollector.collectOutputList();
     if (physicalTaskIdToOutputWriterMap.containsKey(physicalTaskId)) {
       for (final OutputWriter outputWriter : physicalTaskIdToOutputWriterMap.get(physicalTaskId)) {
         if (!output.isEmpty()) {
           outputWriter.write(output);
         }
-        writtenBytes += outputWriter.close();
+        outputWriter.close();
+        final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
+        writtenBytes.ifPresent(writtenBytesList::add);
       }
     } else {
       LOG.info("This is a sink task: {}", physicalTaskId);
     }
     final long writeEndTime = System.currentTimeMillis();
     metric.put("OutputTime(ms)", writeEndTime - transformEndTime + accumulatedWriteTime);
-    metric.put("WrittenBytes", writtenBytes);
+    putWrittenBytesMetric(writtenBytesList, metric);
 
     metricCollector.endMeasurement(physicalTaskId, metric);
   }
@@ -387,14 +391,16 @@ public final class TaskGroupExecutor {
     final long readEndTime = System.currentTimeMillis();
     metric.put("InputReadTime(ms)", readEndTime - readStartTime);
 
-    long writtenBytes = 0;
+    final List<Long> writtenBytesList = new ArrayList<>();
     for (final OutputWriter outputWriter : physicalTaskIdToOutputWriterMap.get(physicalTaskId)) {
       outputWriter.write(data);
-      writtenBytes += outputWriter.close();
+      outputWriter.close();
+      final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
+      writtenBytes.ifPresent(writtenBytesList::add);
     }
     final long writeEndTime  = System.currentTimeMillis();
     metric.put("OutputWriteTime(ms)", writeEndTime - readEndTime);
-    metric.put("WrittenBytes", writtenBytes);
+    putWrittenBytesMetric(writtenBytesList, metric);
     metricCollector.endMeasurement(physicalTaskId, metric);
   }
 
@@ -404,5 +410,22 @@ public final class TaskGroupExecutor {
    */
   private String getPhysicalTaskId(final String logicalTaskId) {
     return RuntimeIdGenerator.generatePhysicalTaskId(taskGroupIdx, logicalTaskId);
+  }
+
+  /**
+   * Puts written bytes metric if the output data size is known.
+   *
+   * @param writtenBytesList the list of written bytes.
+   * @param metricMap        the metric map to put written bytes metric.
+   */
+  private void putWrittenBytesMetric(final List<Long> writtenBytesList,
+                                     final Map<String, Object> metricMap) {
+    if (!writtenBytesList.isEmpty()) {
+      long totalWrittenBytes = 0;
+      for (final Long writtenBytes : writtenBytesList) {
+        totalWrittenBytes += writtenBytes;
+      }
+      metricMap.put("WrittenBytes", totalWrittenBytes);
+    }
   }
 }

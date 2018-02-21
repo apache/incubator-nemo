@@ -17,7 +17,8 @@ package edu.snu.nemo.runtime.executor;
 
 import edu.snu.nemo.runtime.common.metric.MetricDataBuilder;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This metric collector collects metrics and send through {@link MetricMessageSender}.
