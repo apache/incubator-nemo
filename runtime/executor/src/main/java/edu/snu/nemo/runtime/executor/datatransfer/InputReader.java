@@ -29,6 +29,7 @@ import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.exception.UnsupportedCommPatternException;
 import edu.snu.nemo.runtime.common.data.HashRange;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
+import edu.snu.nemo.runtime.executor.data.DataUtil;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -71,7 +72,7 @@ public final class InputReader extends DataTransfer {
    *
    * @return the read data.
    */
-  public List<CompletableFuture<Iterator>> read() {
+  public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read() {
     DataCommunicationPatternProperty.Value comValue =
         (DataCommunicationPatternProperty.Value)
             runtimeEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern);
@@ -89,17 +90,17 @@ public final class InputReader extends DataTransfer {
     }
   }
 
-  private CompletableFuture<Iterator> readOneToOne() {
+  private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
     final String blockId = RuntimeIdGenerator.generateBlockId(getId(), dstTaskIndex);
     return blockManagerWorker.queryBlock(blockId, getId(),
         (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
         HashRange.all());
   }
 
-  private List<CompletableFuture<Iterator>> readBroadcast() {
+  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
     final int numSrcTasks = this.getSourceParallelism();
 
-    final List<CompletableFuture<Iterator>> futures = new ArrayList<>();
+    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
       futures.add(blockManagerWorker.queryBlock(blockId, getId(),
@@ -117,7 +118,7 @@ public final class InputReader extends DataTransfer {
    *
    * @return the list of the completable future of the data.
    */
-  private List<CompletableFuture<Iterator>> readDataInRange() {
+  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
     assert (runtimeEdge instanceof PhysicalStageEdge);
     final KeyRange hashRangeToRead =
         ((PhysicalStageEdge) runtimeEdge).getTaskGroupIdxToKeyRange().get(dstTaskIndex);
@@ -127,7 +128,7 @@ public final class InputReader extends DataTransfer {
     }
 
     final int numSrcTasks = this.getSourceParallelism();
-    final List<CompletableFuture<Iterator>> futures = new ArrayList<>();
+    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
       futures.add(
@@ -154,34 +155,6 @@ public final class InputReader extends DataTransfer {
 
   public boolean isSideInputReader() {
     return Boolean.TRUE.equals(runtimeEdge.isSideInput());
-  }
-
-  public Object getSideInput() throws InterruptedException, ExecutionException {
-    if (!isSideInputReader()) {
-      throw new RuntimeException();
-    }
-    final Iterator iterator = this.read().get(0).get();
-
-    final List copy = new ArrayList();
-    iterator.forEachRemaining(copy::add);
-    if (copy.size() == 1) {
-      return copy.get(0);
-    } else {
-      if (copy.get(0) instanceof Iterable) {
-        final List collect = new ArrayList();
-        copy.forEach(element -> ((Iterable) element).iterator().forEachRemaining(collect::add));
-        return collect;
-      } else if (copy.get(0) instanceof Map) {
-        final Map collect = new HashMap();
-        copy.forEach(element -> {
-          final Set keySet = ((Map) element).keySet();
-          keySet.forEach(key -> collect.put(key, ((Map) element).get(key)));
-        });
-        return collect;
-      } else {
-        return copy;
-      }
-    }
   }
 
   /**
@@ -213,7 +186,7 @@ public final class InputReader extends DataTransfer {
    * @throws InterruptedException when interrupted during getting results from futures.
    */
   @VisibleForTesting
-  public static Iterator combineFutures(final List<CompletableFuture<Iterator>> futures)
+  public static Iterator combineFutures(final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures)
       throws ExecutionException, InterruptedException {
     final List concatStreamBase = new ArrayList<>();
     Stream<Object> concatStream = concatStreamBase.stream();

@@ -1,5 +1,6 @@
 package edu.snu.nemo.runtime.executor.data;
 
+import com.google.common.io.CountingInputStream;
 import edu.snu.nemo.common.DirectByteArrayOutputStream;
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.runtime.executor.data.streamchainer.StreamChainer;
@@ -59,9 +60,11 @@ public final class DataUtil {
                                                             final K key,
                                                             final InputStream inputStream) throws IOException {
     final List deserializedData = new ArrayList();
-    (new InputStreamIterator(Collections.singletonList(inputStream).iterator(), serializer, elementsInPartition))
-        .forEachRemaining(deserializedData::add);
-    return new NonSerializedPartition(key, deserializedData);
+    final InputStreamIterator iterator = new InputStreamIterator(Collections.singletonList(inputStream).iterator(),
+        serializer, elementsInPartition);
+    iterator.forEachRemaining(deserializedData::add);
+    return new NonSerializedPartition(key, deserializedData, iterator.getNumSerializedBytes(),
+        iterator.getNumEncodedBytes());
   }
 
   /**
@@ -166,17 +169,20 @@ public final class DataUtil {
    * An iterator that emits objects from {@link InputStream} using the corresponding {@link Coder}.
    * @param <T> The type of elements.
    */
-  public static final class InputStreamIterator<T> implements Iterator<T> {
+  public static final class InputStreamIterator<T> implements IteratorWithNumBytes<T> {
 
     private final Iterator<InputStream> inputStreams;
     private final Serializer<T> serializer;
     private final long limit;
 
-    private volatile InputStream currentInputStream = null;
+    private volatile CountingInputStream serializedCountingStream = null;
+    private volatile CountingInputStream encodedCountingStream = null;
     private volatile boolean hasNext = false;
     private volatile T next;
     private volatile boolean cannotContinueDecoding = false;
     private volatile long elementsDecoded = 0;
+    private volatile long numSerializedBytes = 0;
+    private volatile long numEncodedBytes = 0;
 
     /**
      * Construct {@link Iterator} from {@link InputStream} and {@link Coder}.
@@ -224,20 +230,31 @@ public final class DataUtil {
       }
       while (true) {
         try {
-          if (currentInputStream == null) {
+          if (encodedCountingStream == null) {
             if (inputStreams.hasNext()) {
-              currentInputStream = buildInputStream(inputStreams.next(), serializer.getStreamChainers());
+              serializedCountingStream = new CountingInputStream(inputStreams.next());
+              encodedCountingStream = new CountingInputStream(buildInputStream(
+                  serializedCountingStream, serializer.getStreamChainers()));
             } else {
               cannotContinueDecoding = true;
               return false;
             }
           }
-          next = serializer.getCoder().decode(currentInputStream);
+        } catch (final IOException e) {
+          // We cannot recover IOException thrown by buildInputStream.
+          throw new RuntimeException(e);
+        }
+        try {
+          next = serializer.getCoder().decode(encodedCountingStream);
           hasNext = true;
           elementsDecoded++;
           return true;
         } catch (final IOException e) {
-          currentInputStream = null;
+          // IOException from decoder indicates EOF event.
+          numSerializedBytes += serializedCountingStream.getCount();
+          numEncodedBytes += encodedCountingStream.getCount();
+          serializedCountingStream = null;
+          encodedCountingStream = null;
         }
       }
     }
@@ -252,6 +269,22 @@ public final class DataUtil {
       } else {
         throw new NoSuchElementException();
       }
+    }
+
+    @Override
+    public long getNumSerializedBytes() {
+      if (hasNext()) {
+        throw new IllegalStateException("Iteration not completed.");
+      }
+      return numSerializedBytes;
+    }
+
+    @Override
+    public long getNumEncodedBytes() {
+      if (hasNext()) {
+        throw new IllegalStateException("Iteration not completed.");
+      }
+      return numEncodedBytes;
     }
   }
 
@@ -289,5 +322,101 @@ public final class DataUtil {
       chained = streamChainer.chainOutput(chained);
     }
     return chained;
+  }
+
+  /**
+   * {@link Iterator} with interface to access to the number of bytes.
+   * @param <T> the type of decoded object
+   */
+  public interface IteratorWithNumBytes<T> extends Iterator<T> {
+    /**
+     * Create an {@link IteratorWithNumBytes}, with no information about the number of bytes.
+     * @param innerIterator {@link Iterator} to wrap
+     * @param <E> the type of decoded object
+     * @return an {@link IteratorWithNumBytes}, with no information about the number of bytes
+     */
+    static <E> IteratorWithNumBytes<E> of(final Iterator<E> innerIterator) {
+      return new IteratorWithNumBytes<E>() {
+        @Override
+        public long getNumSerializedBytes() throws NumBytesNotSupportedException {
+          throw new NumBytesNotSupportedException();
+        }
+
+        @Override
+        public long getNumEncodedBytes() throws NumBytesNotSupportedException {
+          throw new NumBytesNotSupportedException();
+        }
+
+        @Override
+        public boolean hasNext() {
+          return innerIterator.hasNext();
+        }
+
+        @Override
+        public E next() {
+          return innerIterator.next();
+        }
+      };
+    }
+
+    /**
+     * Create an {@link IteratorWithNumBytes}, with the number of bytes in decoded and serialized form.
+     * @param innerIterator {@link Iterator} to wrap
+     * @param numSerializedBytes the number of bytes in serialized form
+     * @param numEncodedBytes the number of bytes in encoded form
+     * @param <E> the type of decoded object
+     * @return an {@link IteratorWithNumBytes}, with the information about the number of bytes
+     */
+    static <E> IteratorWithNumBytes<E> of(final Iterator<E> innerIterator,
+                                          final long numSerializedBytes,
+                                          final long numEncodedBytes) {
+      return new IteratorWithNumBytes<E>() {
+        @Override
+        public long getNumSerializedBytes() {
+          return numSerializedBytes;
+        }
+
+        @Override
+        public long getNumEncodedBytes() {
+          return numEncodedBytes;
+        }
+
+        @Override
+        public boolean hasNext() {
+          return innerIterator.hasNext();
+        }
+
+        @Override
+        public E next() {
+          return innerIterator.next();
+        }
+      };
+    }
+
+    /**
+     * Exception indicates {@link #getNumSerializedBytes()} or {@link #getNumEncodedBytes()} is not supported.
+     */
+    final class NumBytesNotSupportedException extends Exception {
+      /**
+       * Creates {@link NumBytesNotSupportedException}.
+       */
+      public NumBytesNotSupportedException() {
+        super("Getting number of bytes is not supported");
+      }
+    }
+
+    /**
+     * @return the number of bytes in serialized form (which is, for example, encoded and compressed)
+     * @throws NumBytesNotSupportedException when the operation is not supported
+     * @throws IllegalStateException when the information is not ready
+     */
+    long getNumSerializedBytes() throws NumBytesNotSupportedException;
+
+    /**
+     * @return the number of bytes in encoded form (which is ready to be decoded)
+     * @throws NumBytesNotSupportedException when the operation is not supported
+     * @throws IllegalStateException when the information is not ready
+     */
+    long getNumEncodedBytes() throws NumBytesNotSupportedException;
   }
 }
