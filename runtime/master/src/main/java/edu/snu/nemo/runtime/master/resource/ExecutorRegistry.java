@@ -18,6 +18,7 @@ package edu.snu.nemo.runtime.master.resource;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
 
+import javax.annotation.Nonnull;
 import javax.inject.Inject;
 import java.util.Collections;
 import java.util.Map;
@@ -31,7 +32,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @DriverSide
 @ThreadSafe
 public final class ExecutorRegistry {
-  private final Map<String, ExecutorRepresenter> executorRepresenterMap = new ConcurrentHashMap<>();
+  private final Map<String, ExecutorRepresenter> runningExecutorRepresenterMap = new ConcurrentHashMap<>();
+  private final Map<String, ExecutorRepresenter> failedExecutorRepresenterMap = new ConcurrentHashMap<>();
 
   @Inject
   private ExecutorRegistry() {
@@ -39,11 +41,28 @@ public final class ExecutorRegistry {
 
   /**
    * @param executorId the executor id
-   * @return the corresponding {@link ExecutorRepresenter}
+   * @return the corresponding {@link ExecutorRepresenter} that has not failed
    * @throws NoSuchExecutorException when the executor was not found
    */
-  public synchronized ExecutorRepresenter getRepresenter(final String executorId) throws NoSuchExecutorException {
-    final ExecutorRepresenter representer = executorRepresenterMap.get(executorId);
+  @Nonnull
+  public synchronized ExecutorRepresenter getExecutorRepresenter(final String executorId)
+      throws NoSuchExecutorException {
+    try {
+      return getRunningExecutorRepresenter(executorId);
+    } catch (final NoSuchExecutorException e) {
+      return getFailedExecutorRepresenter(executorId);
+    }
+  }
+
+  /**
+   * @param executorId the executor id
+   * @return the corresponding {@link ExecutorRepresenter} that has not failed
+   * @throws NoSuchExecutorException when the executor was not found
+   */
+  @Nonnull
+  public synchronized ExecutorRepresenter getRunningExecutorRepresenter(final String executorId)
+      throws NoSuchExecutorException {
+    final ExecutorRepresenter representer = runningExecutorRepresenterMap.get(executorId);
     if (representer == null) {
       throw new NoSuchExecutorException(executorId);
     }
@@ -51,12 +70,36 @@ public final class ExecutorRegistry {
   }
 
   /**
-   * Returns a {@link Set} of executor ids in the registry.
-   * Note the set is not modifiable. Also, further changes in the registry will not be reflected to the set.
-   * @return a {@link Set} of executor ids in the registry
+   * @param executorId the executor id
+   * @return the corresponding {@link ExecutorRepresenter} that has not failed
+   * @throws NoSuchExecutorException when the executor was not found
    */
-  public synchronized Set<String> getExecutorIds() {
-    return Collections.unmodifiableSet(new TreeSet<>(executorRepresenterMap.keySet()));
+  @Nonnull
+  public synchronized ExecutorRepresenter getFailedExecutorRepresenter(final String executorId)
+      throws NoSuchExecutorException {
+    final ExecutorRepresenter representer = failedExecutorRepresenterMap.get(executorId);
+    if (representer == null) {
+      throw new NoSuchExecutorException(executorId);
+    }
+    return representer;
+  }
+
+  /**
+   * Returns a {@link Set} of running executor ids in the registry.
+   * Note the set is not modifiable. Also, further changes in the registry will not be reflected to the set.
+   * @return a {@link Set} of executor ids for running executors in the registry
+   */
+  public synchronized Set<String> getRunningExecutorIds() {
+    return Collections.unmodifiableSet(new TreeSet<>(runningExecutorRepresenterMap.keySet()));
+  }
+
+  /**
+   * Returns a {@link Set} of failed executor ids in the registry.
+   * Note the set is not modifiable. Also, further changes in the registry will not be reflected to the set.
+   * @return a {@link Set} of failed executor ids
+   */
+  public synchronized Set<String> getFailedExecutorIds() {
+    return Collections.unmodifiableSet(new TreeSet<>(failedExecutorRepresenterMap.keySet()));
   }
 
   /**
@@ -68,7 +111,10 @@ public final class ExecutorRegistry {
   public synchronized void registerRepresenter(final ExecutorRepresenter representer)
       throws DuplicateExecutorIdException {
     final String executorId = representer.getExecutorId();
-    executorRepresenterMap.compute(executorId, (id, existingRepresenter) -> {
+    if (failedExecutorRepresenterMap.get(executorId) != null) {
+      throw new DuplicateExecutorIdException(executorId);
+    }
+    runningExecutorRepresenterMap.compute(executorId, (id, existingRepresenter) -> {
       if (existingRepresenter != null) {
         throw new DuplicateExecutorIdException(id);
       }
@@ -82,9 +128,26 @@ public final class ExecutorRegistry {
    * @throws NoSuchExecutorException when the specified executor id is not registered
    */
   public synchronized void deregisterRepresenter(final String executorId) throws NoSuchExecutorException {
-    if (executorRepresenterMap.remove(executorId) == null) {
+    if (runningExecutorRepresenterMap.remove(executorId) != null) {
+      return;
+    }
+    if (failedExecutorRepresenterMap.remove(executorId) != null) {
+      return;
+    }
+    throw new NoSuchExecutorException(executorId);
+  }
+
+  /**
+   * Moves the representer into the pool of representer of the failed executors.
+   * @param executorId the corresponding executor id
+   * @throws NoSuchExecutorException when the specified executor id is not registered, or already set as failed
+   */
+  public synchronized void setRepresenterAsFailed(final String executorId) throws NoSuchExecutorException {
+    final ExecutorRepresenter representer = runningExecutorRepresenterMap.remove(executorId);
+    if (representer == null) {
       throw new NoSuchExecutorException(executorId);
     }
+    failedExecutorRepresenterMap.put(executorId, representer);
   }
 
   /**

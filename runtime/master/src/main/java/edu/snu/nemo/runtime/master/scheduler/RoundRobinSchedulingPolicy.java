@@ -21,7 +21,7 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.common.state.TaskGroupState;
 import edu.snu.nemo.runtime.master.JobStateManager;
-import edu.snu.nemo.runtime.master.resource.ContainerManager;
+import edu.snu.nemo.runtime.master.resource.ExecutorRegistry;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.Parameter;
@@ -49,9 +49,9 @@ import java.util.stream.Collectors;
 public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(RoundRobinSchedulingPolicy.class.getName());
 
-  private final ContainerManager containerManager;
-
   private final int scheduleTimeoutMs;
+
+  private final ExecutorRegistry executorRegistry;
 
   /**
    * Thread safety is provided by this lock as multiple threads can call the methods in this class concurrently.
@@ -71,25 +71,18 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   private final Map<String, List<String>> executorIdByContainerType;
 
   /**
-   * A copy of {@link ContainerManager#executorRepresenterMap}.
-   * This cached copy is updated when an executor is added or removed.
-   */
-  private final Map<String, ExecutorRepresenter> executorRepresenterMap;
-
-  /**
    * The index of the next executor to be assigned for each container type.
    * This map allows the executor index computation of the RR scheduling.
    */
   private final Map<String, Integer> nextExecutorIndexByContainerType;
 
   @Inject
-  public RoundRobinSchedulingPolicy(final ContainerManager containerManager,
+  public RoundRobinSchedulingPolicy(final ExecutorRegistry executorRegistry,
                                     @Parameter(JobConf.SchedulerTimeoutMs.class) final int scheduleTimeoutMs) {
-    this.containerManager = containerManager;
     this.scheduleTimeoutMs = scheduleTimeoutMs;
+    this.executorRegistry = executorRegistry;
     this.lock = new ReentrantLock();
     this.executorIdByContainerType = new HashMap<>();
-    this.executorRepresenterMap = new HashMap<>();
     this.conditionByContainerType = new HashMap<>();
     this.nextExecutorIndexByContainerType = new HashMap<>();
     initializeContainerTypeIfAbsent(ExecutorPlacementProperty.NONE); // Need this to avoid potential null errors
@@ -152,7 +145,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
         final int index = (nextExecutorIndex + i) % numExecutors;
         final String selectedExecutorId = candidateExecutorIds.get(index);
 
-        final ExecutorRepresenter executor = executorRepresenterMap.get(selectedExecutorId);
+        final ExecutorRepresenter executor = executorRegistry.getRunningExecutorRepresenter(selectedExecutorId);
         if (hasFreeSlot(executor)) {
           nextExecutorIndex = (index + 1) % numExecutors;
           nextExecutorIndexByContainerType.put(containerType, nextExecutorIndex);
@@ -176,7 +169,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
                                  final JobStateManager jobStateManager) {
     jobStateManager.onTaskGroupStateChanged(scheduledTaskGroup.getTaskGroupId(), TaskGroupState.State.EXECUTING);
 
-    final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
+    final ExecutorRepresenter executor = executorRegistry.getRunningExecutorRepresenter(executorId);
     LOG.info("Scheduling {} to {}",
         new Object[]{scheduledTaskGroup.getTaskGroupId(), executorId});
     executor.onTaskGroupScheduled(scheduledTaskGroup);
@@ -211,8 +204,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   public void onExecutorAdded(final String executorId) {
     lock.lock();
     try {
-      updateCachedExecutorRepresenterMap();
-      final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
+      final ExecutorRepresenter executor = executorRegistry.getRunningExecutorRepresenter(executorId);
       final String containerType = executor.getContainerType();
       initializeContainerTypeIfAbsent(containerType);
 
@@ -228,7 +220,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   public Set<String> onExecutorRemoved(final String executorId) {
     lock.lock();
     try {
-      final ExecutorRepresenter executor = containerManager.getFailedExecutorRepresenterMap().get(executorId);
+      final ExecutorRepresenter executor = executorRegistry.getFailedExecutorRepresenter(executorId);
       final String containerType = executor.getContainerType();
 
       final List<String> executorIdList = executorIdByContainerType.get(containerType);
@@ -242,24 +234,17 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
       }
       executorIdList.remove(executorId);
 
-      updateCachedExecutorRepresenterMap();
-
       return Collections.unmodifiableSet(executor.getRunningTaskGroups());
     } finally {
       lock.unlock();
     }
   }
 
-  private void updateCachedExecutorRepresenterMap() {
-    executorRepresenterMap.clear();
-    executorRepresenterMap.putAll(containerManager.getExecutorRepresenterMap());
-  }
-
   @Override
   public void onTaskGroupExecutionComplete(final String executorId, final String taskGroupId) {
     lock.lock();
     try {
-      final ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
+      final ExecutorRepresenter executor = executorRegistry.getRunningExecutorRepresenter(executorId);
       executor.onTaskGroupExecutionComplete(taskGroupId);
       LOG.info("{" + taskGroupId + "} completed in [" + executorId + "]");
 
@@ -275,12 +260,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   public void onTaskGroupExecutionFailed(final String executorId, final String taskGroupId) {
     lock.lock();
     try {
-      ExecutorRepresenter executor = executorRepresenterMap.get(executorId);
-
-      // When this method is called due to container failure and the executor has been moved to the failed map.
-      if (executor == null) {
-        executor = containerManager.getFailedExecutorRepresenterMap().get(executorId);
-      }
+      final ExecutorRepresenter executor = executorRegistry.getExecutorRepresenter(executorId);
 
       executor.onTaskGroupExecutionFailed(taskGroupId);
       LOG.info("{" + taskGroupId + "} failed in [" + executorId + "]");

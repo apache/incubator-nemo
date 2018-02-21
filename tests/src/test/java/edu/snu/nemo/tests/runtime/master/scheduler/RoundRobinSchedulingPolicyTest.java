@@ -22,11 +22,14 @@ import edu.snu.nemo.runtime.common.message.MessageSender;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
+import edu.snu.nemo.runtime.master.resource.ExecutorRegistry;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
 import edu.snu.nemo.runtime.master.scheduler.RoundRobinSchedulingPolicy;
 import edu.snu.nemo.runtime.master.scheduler.SchedulingPolicy;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -54,7 +57,7 @@ public final class RoundRobinSchedulingPolicyTest {
   private static final int TIMEOUT_MS = 1000;
 
   private SchedulingPolicy schedulingPolicy;
-  private ContainerManager containerManager = mock(ContainerManager.class);
+  private ExecutorRegistry executorRegistry;
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
   private JobStateManager jobStateManager = mock(JobStateManager.class);
 
@@ -62,12 +65,10 @@ public final class RoundRobinSchedulingPolicyTest {
   private static final int MAGIC_SCHEDULE_ATTEMPT_INDEX = Integer.MAX_VALUE;
 
   @Before
-  public void setUp() {
-    final Map<String, ExecutorRepresenter> executorRepresenterMap = new HashMap<>();
-    when(containerManager.getExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
-    when(containerManager.getFailedExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
+  public void setUp() throws InjectionException {
+    executorRegistry = Tang.Factory.getTang().newInjector().getInstance(ExecutorRegistry.class);
 
-    schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TIMEOUT_MS);
+    schedulingPolicy = new RoundRobinSchedulingPolicy(executorRegistry, TIMEOUT_MS);
 
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
@@ -86,11 +87,11 @@ public final class RoundRobinSchedulingPolicyTest {
     final ExecutorRepresenter b2 = storageSpecExecutorRepresenterGenerator.apply("b2");
     final ExecutorRepresenter b1 = storageSpecExecutorRepresenterGenerator.apply("b1");
 
-    executorRepresenterMap.put(a1.getExecutorId(), a1);
-    executorRepresenterMap.put(a2.getExecutorId(), a2);
-    executorRepresenterMap.put(a3.getExecutorId(), a3);
-    executorRepresenterMap.put(b1.getExecutorId(), b1);
-    executorRepresenterMap.put(b2.getExecutorId(), b2);
+    executorRegistry.registerRepresenter(a1);
+    executorRegistry.registerRepresenter(a2);
+    executorRegistry.registerRepresenter(a3);
+    executorRegistry.registerRepresenter(b1);
+    executorRegistry.registerRepresenter(b2);
 
     // Add compute nodes
     schedulingPolicy.onExecutorAdded(a3.getExecutorId());
@@ -174,12 +175,12 @@ public final class RoundRobinSchedulingPolicyTest {
     b2 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsB.get(2), jobStateManager);
     assertTrue(b2);
 
-    containerManager.onExecutorRemoved("b1");
+    executorRegistry.setRepresenterAsFailed("b1");
     Set<String> executingTaskGroups = schedulingPolicy.onExecutorRemoved("b1");
     assertEquals(1, executingTaskGroups.size());
     assertEquals(scheduledTaskGroupsB.get(2).getTaskGroupId(), executingTaskGroups.iterator().next());
 
-    containerManager.onExecutorRemoved("a1");
+    executorRegistry.setRepresenterAsFailed("a1");
     executingTaskGroups = schedulingPolicy.onExecutorRemoved("a1");
     assertEquals(1, executingTaskGroups.size());
     assertEquals(scheduledTaskGroupsA.get(3).getTaskGroupId(), executingTaskGroups.iterator().next());

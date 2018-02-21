@@ -21,7 +21,7 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.common.state.TaskGroupState;
 import edu.snu.nemo.runtime.master.JobStateManager;
-import edu.snu.nemo.runtime.master.resource.ContainerManager;
+import edu.snu.nemo.runtime.master.resource.ExecutorRegistry;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
@@ -44,15 +44,14 @@ import java.util.stream.Stream;
 public final class SourceLocationAwareSchedulingPolicy implements SchedulingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(SourceLocationAwareSchedulingPolicy.class);
 
-  private final ContainerManager containerManager;
+  private final ExecutorRegistry executorRegistry;
   private final RoundRobinSchedulingPolicy roundRobinSchedulingPolicy;
   private final long scheduleTimeoutMs;
-  private final Set<String> availableExecutors = new HashSet<>();
 
   @Inject
-  private SourceLocationAwareSchedulingPolicy(final ContainerManager containerManager,
+  private SourceLocationAwareSchedulingPolicy(final ExecutorRegistry executorRegistry,
                                               final RoundRobinSchedulingPolicy roundRobinSchedulingPolicy) {
-    this.containerManager = containerManager;
+    this.executorRegistry = executorRegistry;
     this.roundRobinSchedulingPolicy = roundRobinSchedulingPolicy;
     this.scheduleTimeoutMs = roundRobinSchedulingPolicy.getScheduleTimeoutMs();
   }
@@ -126,13 +125,11 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
 
   @Override
   public synchronized void onExecutorAdded(final String executorId) {
-    availableExecutors.add(executorId);
     roundRobinSchedulingPolicy.onExecutorAdded(executorId);
   }
 
   @Override
   public synchronized Set<String> onExecutorRemoved(final String executorId) {
-    availableExecutors.remove(executorId);
     return roundRobinSchedulingPolicy.onExecutorRemoved(executorId);
   }
 
@@ -154,10 +151,8 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
    */
   private synchronized List<ExecutorRepresenter> selectExecutorByContainerTypeAndNodeNames(
       final String containerType, final Set<String> nodeNames) {
-    final Map<String, ExecutorRepresenter> executorIdToExecutorRepresenter
-        = containerManager.getExecutorRepresenterMap();
-    final Stream<ExecutorRepresenter> localNodesWithSpareCapacity = availableExecutors.stream()
-        .map(executorId -> executorIdToExecutorRepresenter.get(executorId))
+    final Stream<ExecutorRepresenter> localNodesWithSpareCapacity = executorRegistry.getRunningExecutorIds().stream()
+        .map(executorId -> executorRegistry.getRunningExecutorRepresenter(executorId))
         .filter(executor -> executor.getRunningTaskGroups().size() < executor.getExecutorCapacity())
         .filter(executor -> nodeNames.contains(executor.getNodeName()));
     if (containerType.equals(ExecutorPlacementProperty.NONE)) {
