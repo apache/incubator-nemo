@@ -108,9 +108,15 @@ public final class BlockManagerWorker {
   /**
    * Retrieves data from the stored block. A specific hash value range can be designated.
    *
+<<<<<<< HEAD:runtime/executor/src/main/java/edu/snu/nemo/runtime/executor/data/BlockManagerWorker.java
    * @param blockId       of the block.
    * @param blockStore    for the data storage.
    * @param keyRange     the key range descriptor.
+=======
+   * @param blockId    of the block.
+   * @param blockStore for the data storage.
+   * @param keyRange   the key range descriptor.
+>>>>>>> master:runtime/executor/src/main/java/edu/snu/nemo/runtime/executor/data/BlockManagerWorker.java
    * @return the result data in the block.
    */
   private CompletableFuture<Iterator> retrieveDataFromBlock(

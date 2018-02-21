@@ -21,14 +21,10 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import java.io.Serializable;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * A job's physical plan, to be executed by the Runtime.
  */
 public final class PhysicalPlan implements Serializable {
-  private static final Logger LOG = LoggerFactory.getLogger(PhysicalPlan.class.getName());
 
   private final String id;
 
