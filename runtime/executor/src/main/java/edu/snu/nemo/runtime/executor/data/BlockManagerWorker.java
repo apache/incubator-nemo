@@ -111,7 +111,7 @@ public final class BlockManagerWorker {
    * @param keyRange   the key range descriptor.
    * @return the result data in the block.
    */
-  private CompletableFuture<Iterator> retrieveDataFromBlock(
+  private CompletableFuture<DataUtil.IteratorWithNumBytes> retrieveDataFromBlock(
       final String blockId,
       final DataStoreProperty.Value blockStore,
       final KeyRange keyRange) {
@@ -127,8 +127,19 @@ public final class BlockManagerWorker {
 
       // Block resides in this evaluator!
       try {
-        return CompletableFuture.completedFuture(DataUtil.concatNonSerPartitions(optionalResultPartitions.get())
-            .iterator());
+        final Iterator innerIterator = DataUtil.concatNonSerPartitions(optionalResultPartitions.get()).iterator();
+        long numSerializedBytes = 0;
+        long numEncodedBytes = 0;
+        try {
+          for (final NonSerializedPartition partition : optionalResultPartitions.get()) {
+            numSerializedBytes += partition.getNumSerializedBytes();
+            numEncodedBytes += partition.getNumEncodedBytes();
+          }
+          return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator, numSerializedBytes,
+              numEncodedBytes));
+        } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+          return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator));
+        }
       } catch (final IOException e) {
         throw new BlockFetchException(e);
       }
@@ -149,7 +160,7 @@ public final class BlockManagerWorker {
    * @param keyRange     the key range descriptor
    * @return the {@link CompletableFuture} of the block.
    */
-  public CompletableFuture<Iterator> queryBlock(
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> queryBlock(
       final String blockId,
       final String runtimeEdgeId,
       final DataStoreProperty.Value blockStore,
