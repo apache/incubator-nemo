@@ -54,6 +54,7 @@ public final class ContainerManager {
   private final EvaluatorRequestor evaluatorRequestor;
   private final MessageEnvironment messageEnvironment;
   private final ExecutorService serializationExecutorService; // Executor service for scheduling message serialization.
+  private final ExecutorRegistry executorRegistry;
 
   /**
    * A map containing a latch for the container requests for each resource spec ID.
@@ -64,11 +65,6 @@ public final class ContainerManager {
    * A map containing a list of executor representations for each container type.
    */
   private final Map<String, List<ExecutorRepresenter>> executorsByContainerType;
-
-  /**
-   * A map of executor ID to the corresponding {@link ExecutorRepresenter}.
-   */
-  private final Map<String, ExecutorRepresenter> executorRepresenterMap;
 
   /**
    * A map of failed executor ID to the corresponding failed {@link ExecutorRepresenter}.
@@ -86,12 +82,13 @@ public final class ContainerManager {
   @Inject
   public ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
                           final EvaluatorRequestor evaluatorRequestor,
-                          final MessageEnvironment messageEnvironment) {
+                          final MessageEnvironment messageEnvironment,
+                          final ExecutorRegistry executorRegistry) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.messageEnvironment = messageEnvironment;
+    this.executorRegistry = executorRegistry;
     this.persistentConnectionToMasterMap = new PersistentConnectionToMasterMap(messageEnvironment);
     this.executorsByContainerType = new HashMap<>();
-    this.executorRepresenterMap = new HashMap<>();
     this.failedExecutorRepresenterMap = new HashMap<>();
     this.pendingContextIdToResourceSpec = new HashMap<>();
     this.pendingContainerRequestsByContainerType = new HashMap<>();
@@ -215,7 +212,7 @@ public final class ContainerManager {
 
     executorsByContainerType.putIfAbsent(resourceSpec.getContainerType(), new ArrayList<>());
     executorsByContainerType.get(resourceSpec.getContainerType()).add(executorRepresenter);
-    executorRepresenterMap.put(executorId, executorRepresenter);
+    executorRegistry.registerRepresenter(executorRepresenter);
 
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
   }
@@ -223,7 +220,8 @@ public final class ContainerManager {
   public synchronized void onExecutorRemoved(final String failedExecutorId) {
     LOG.info("[" + failedExecutorId + "] failure reported.");
 
-    final ExecutorRepresenter failedExecutor = executorRepresenterMap.remove(failedExecutorId);
+    final ExecutorRepresenter failedExecutor = executorRegistry.getRepresenter(failedExecutorId);
+    executorRegistry.deregisterRepresenter(failedExecutorId);
     failedExecutor.onExecutorFailed();
 
     executorsByContainerType.get(failedExecutor.getContainerType()).remove(failedExecutor);
@@ -242,10 +240,6 @@ public final class ContainerManager {
             .build());
   }
 
-  public synchronized Map<String, ExecutorRepresenter> getExecutorRepresenterMap() {
-    return executorRepresenterMap;
-  }
-
   public synchronized Map<String, ExecutorRepresenter> getFailedExecutorRepresenterMap() {
     return failedExecutorRepresenterMap;
   }
@@ -254,8 +248,11 @@ public final class ContainerManager {
    * Shuts down the running executors.
    */
   private void shutdownRunningExecutors() {
-    executorRepresenterMap.entrySet().forEach(e -> e.getValue().shutDown());
-    executorRepresenterMap.clear();
+    for (final String executorId : executorRegistry.getExecutorIds()) {
+      final ExecutorRepresenter representer = executorRegistry.getRepresenter(executorId);
+      representer.shutDown();
+      executorRegistry.deregisterRepresenter(executorId);
+    }
   }
 
   /**
@@ -279,6 +276,6 @@ public final class ContainerManager {
     });
     shutdownRunningExecutors();
     requestLatchByResourceSpecId.clear();
-    return executorRepresenterMap.isEmpty();
+    return executorRegistry.getExecutorIds().isEmpty();
   }
 }
