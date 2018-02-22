@@ -148,8 +148,8 @@ public final class InputReader extends DataTransfer {
   /**
    * Get block id.
    *
-   * @param taskIdx task index of the block
-   * @return the list of the completable future of the data.
+   * @param  taskIdx task index of the block
+   * @return the block id
    */
   private String getBlockId(final int taskIdx) {
     final Pair<Integer, String> invariantDataProperty =
