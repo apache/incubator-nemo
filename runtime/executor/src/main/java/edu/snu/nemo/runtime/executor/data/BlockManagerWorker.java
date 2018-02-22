@@ -164,7 +164,6 @@ public final class BlockManagerWorker {
    */
   public CompletableFuture<DataUtil.IteratorWithNumBytes> queryBlock(
       final String blockId,
-      final String realBlockId,
       final String runtimeEdgeId,
       final DataStoreProperty.Value blockStore,
       final KeyRange keyRange) {
@@ -204,10 +203,10 @@ public final class BlockManagerWorker {
       final String targetExecutorId = blockLocationInfoMsg.getOwnerExecutorId();
       if (targetExecutorId.equals(executorId) || targetExecutorId.equals(REMOTE_FILE_STORE)) {
         // Block resides in the evaluator
-        return retrieveDataFromBlock(realBlockId, blockStore, keyRange);
+        return retrieveDataFromBlock(blockId, blockStore, keyRange);
       } else {
         final ByteTransferContextDescriptor descriptor = ByteTransferContextDescriptor.newBuilder()
-            .setBlockId(realBlockId)
+            .setBlockId(blockId)
             .setBlockStore(convertBlockStore(blockStore))
             .setRuntimeEdgeId(runtimeEdgeId)
             .setKeyRange(ByteString.copyFrom(SerializationUtils.serialize(keyRange)))

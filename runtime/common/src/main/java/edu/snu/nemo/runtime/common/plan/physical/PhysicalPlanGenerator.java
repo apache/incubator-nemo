@@ -15,7 +15,9 @@
  */
 package edu.snu.nemo.runtime.common.plan.physical;
 
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.edge.executionproperty.InvariantDataProperty;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.dag.DAG;
@@ -62,6 +64,22 @@ public final class PhysicalPlanGenerator
   public DAG<PhysicalStage, PhysicalStageEdge> apply(final DAG<IRVertex, IREdge> irDAG) {
     // first, stage-partition the IR DAG.
     final DAG<Stage, StageEdge> dagOfStages = stagePartitionIrDAG(irDAG);
+
+    final Map<String, List<StageEdge>> invariantIrEdgeMap = new HashMap<>();
+
+    dagOfStages.topologicalDo(irVertex -> dagOfStages.getIncomingEdgesOf(irVertex).stream().forEach(e -> {
+      final Pair<Integer, String> invariantProperty = e.getProperty(ExecutionProperty.Key.InvariantData);
+      if (invariantProperty != null) {
+        invariantIrEdgeMap.computeIfAbsent(invariantProperty.right(), k -> new ArrayList<>()).add(e);
+      }
+    }));
+
+    invariantIrEdgeMap.forEach((id, edges) -> {
+      final StageEdge baseEdge = edges.get(0);
+      final Pair<Integer, String> baseProperty = baseEdge.getProperty(ExecutionProperty.Key.InvariantData);
+      edges.forEach(e ->
+          e.getExecutionProperties().put(InvariantDataProperty.of(Pair.of(baseProperty.left(), baseEdge.getId()))));
+    });
     // for debugging purposes.
     dagOfStages.storeJSON(dagDirectory, "plan-logical", "logical execution plan");
     // then create tasks and make it into a physical execution plan.
