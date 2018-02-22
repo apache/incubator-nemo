@@ -27,6 +27,7 @@ import edu.snu.nemo.runtime.master.scheduler.SourceLocationAwareSchedulingPolicy
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -37,6 +38,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -62,12 +65,18 @@ public final class SourceLocationAwareSchedulingPolicyTest {
   @Before
   public void setup() throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
-    roundRobin = new MockSchedulingPolicyWrapper(RoundRobinSchedulingPolicy.class);
     jobStateManager = new MockJobStateManagerWrapper();
+    roundRobin = new MockSchedulingPolicyWrapper(RoundRobinSchedulingPolicy.class, jobStateManager.get());
     injector.bindVolatileInstance(RoundRobinSchedulingPolicy.class, roundRobin.get());
     injector.bindVolatileInstance(JobStateManager.class, jobStateManager.get());
     sourceLocationAware = injector.getInstance(SourceLocationAwareSchedulingPolicy.class);
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
+  }
+
+  @After
+  public void teardown() {
+    // All expectations should be resolved at this time.
+    roundRobin.ensureNoUnresolvedExpectation();
   }
 
   /**
@@ -78,36 +87,62 @@ public final class SourceLocationAwareSchedulingPolicyTest {
   public void testRoundRobinSchedulerFallback() {
     // Prepare test scenario
     final ScheduledTaskGroup tg0 = CreateScheduledTaskGroup.withoutReadables();
-    final ScheduledTaskGroup tg1 = CreateScheduledTaskGroup.withoutReadables();
-    final ScheduledTaskGroup tg2 = CreateScheduledTaskGroup.withoutReadables();
-    final MockExecutorRepresenterWrapper e0 = new MockExecutorRepresenterWrapper(SITE_0);
-    final MockExecutorRepresenterWrapper e1 = new MockExecutorRepresenterWrapper(SITE_1);
-    addExecutor(new MockExecutorRepresenterWrapper[]{e0, e1});
+    final ScheduledTaskGroup tg1 = CreateScheduledTaskGroup.withReadablesWithoutSourceLocations(2);
+    final ScheduledTaskGroup tg2 = CreateScheduledTaskGroup.withReadablesWhichThrowException(5);
+    addExecutor(new MockExecutorRepresenterWrapper(SITE_0));
+    addExecutor(new MockExecutorRepresenterWrapper(SITE_1));
 
     // Trying to schedule tg0: expected to fall back to RoundRobinSchedulingPolicy
-    roundRobin.expect(tg0);
-    sourceLocationAware.scheduleTaskGroup(tg0, jobStateManager.get());
+    roundRobin.expectSchedulingRequest(tg0);
+    // ...and scheduling attempt must success
+    assertTrue(sourceLocationAware.scheduleTaskGroup(tg0, jobStateManager.get()));
+    // ...thus the TaskGroup should be running
+    jobStateManager.assertTaskGroupState(tg0.getTaskGroupId(), TaskGroupState.State.EXECUTING);
 
     // Trying to schedule tg1: expected to fall back to RoundRobinSchedulingPolicy
-    roundRobin.expect(tg1);
-    sourceLocationAware.scheduleTaskGroup(tg1, jobStateManager.get());
+    roundRobin.expectSchedulingRequest(tg1);
+    // ...and scheduling attempt must success
+    assertTrue(sourceLocationAware.scheduleTaskGroup(tg1, jobStateManager.get()));
+    // ...thus the TaskGroup should be running
+    jobStateManager.assertTaskGroupState(tg1.getTaskGroupId(), TaskGroupState.State.EXECUTING);
 
     // Trying to schedule tg2: expected to fall back to RoundRobinSchedulingPolicy
-    roundRobin.expect(tg2);
-    sourceLocationAware.scheduleTaskGroup(tg2, jobStateManager.get());
+    roundRobin.expectSchedulingRequest(tg2);
+    // ...and scheduling attempt must success
+    assertTrue(sourceLocationAware.scheduleTaskGroup(tg2, jobStateManager.get()));
+    // ...thus the TaskGroup should be running
+    jobStateManager.assertTaskGroupState(tg2.getTaskGroupId(), TaskGroupState.State.EXECUTING);
   }
 
-  private void addExecutor(final MockExecutorRepresenterWrapper[] executors) {
-    for (final MockExecutorRepresenterWrapper executor : executors) {
-      executorRegistry.registerRepresenter(executor.get());
-      sourceLocationAware.onExecutorAdded(executor.get().getExecutorId());
-    }
+  /**
+   * {@link SourceLocationAwareSchedulingPolicy} should fail to schedule a {@link ScheduledTaskGroup} when
+   */
+  @Test
+  public void testSourceLocationAwareSchedulingNotAvailable() {
+    // Prepare test scenario
+    final ScheduledTaskGroup tg = CreateScheduledTaskGroup.withReadablesWithSourceLocations(
+        Collections.singletonList(Collections.singletonList(SITE_0)));
+    final MockExecutorRepresenterWrapper e0 = addExecutor(new MockExecutorRepresenterWrapper(SITE_1));
+    final MockExecutorRepresenterWrapper e1 = addExecutor(new MockExecutorRepresenterWrapper(SITE_1));
+
+    // Attempt to schedule tg must fail
+    assertFalse(sourceLocationAware.scheduleTaskGroup(tg, jobStateManager.get()));
+    // Thus executors should have no running TaskGroups at all
+    e0.assertScheduledTaskGroups(Collections.emptyList());
+    e1.assertScheduledTaskGroups(Collections.emptyList());
+  }
+
+  private MockExecutorRepresenterWrapper addExecutor(final MockExecutorRepresenterWrapper executor) {
+    executorRegistry.registerRepresenter(executor.get());
+    sourceLocationAware.onExecutorAdded(executor.get().getExecutorId());
+    return executor;
   }
 
   /**
    * Utility for creating {@link ScheduledTaskGroup}.
    */
   private static final class CreateScheduledTaskGroup {
+    private static final AtomicInteger taskGroupIndex = new AtomicInteger(0);
     private static final AtomicInteger taskIndex = new AtomicInteger(0);
 
     private static ScheduledTaskGroup doCreate(final Collection<Readable> readables) {
@@ -115,6 +150,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
       final Map<String, Readable> readableMap = new HashMap<>();
       readables.forEach(readable -> readableMap.put(String.format("TASK-%d", taskIndex.getAndIncrement()),
           readable));
+      when(mockInstance.getTaskGroupId()).thenReturn(String.format("TG-%d", taskGroupIndex.getAndIncrement()));
       when(mockInstance.getLogicalTaskIdToReadable()).thenReturn(readableMap);
       return mockInstance;
     }
@@ -139,6 +175,20 @@ public final class SourceLocationAwareSchedulingPolicyTest {
         for (int i = 0; i < numReadables; i++) {
           final Readable readable = mock(Readable.class);
           when(readable.getLocations()).thenReturn(Collections.emptyList());
+          readables.add(readable);
+        }
+        return doCreate(readables);
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    static ScheduledTaskGroup withReadablesWhichThrowException(final int numReadables) {
+      try {
+        final List<Readable> readables = new ArrayList<>();
+        for (int i = 0; i < numReadables; i++) {
+          final Readable readable = mock(Readable.class);
+          when(readable.getLocations()).thenThrow(new Exception("EXCEPTION"));
           readables.add(readable);
         }
         return doCreate(readables);
@@ -172,8 +222,8 @@ public final class SourceLocationAwareSchedulingPolicyTest {
       when(mockInstance.getNodeName()).thenReturn(nodeName);
     }
 
-    List<ScheduledTaskGroup> getScheduledTaskGroups() {
-      return scheduledTaskGroups;
+    void assertScheduledTaskGroups(final List<ScheduledTaskGroup> expected) {
+      assertEquals(expected, scheduledTaskGroups);
     }
 
     ExecutorRepresenter get() {
@@ -190,12 +240,13 @@ public final class SourceLocationAwareSchedulingPolicyTest {
 
     private ScheduledTaskGroup expectedArgument = null;
 
-    MockSchedulingPolicyWrapper(final Class<T> schedulingPolicyClass) {
+    MockSchedulingPolicyWrapper(final Class<T> schedulingPolicyClass, final JobStateManager jobStateManager) {
       mockInstance = mock(schedulingPolicyClass);
       doAnswer(invocationOnMock -> {
         final ScheduledTaskGroup scheduledTaskGroup = invocationOnMock.getArgument(0);
         assertEquals(expectedArgument, scheduledTaskGroup);
         expectedArgument = null;
+        jobStateManager.onTaskGroupStateChanged(scheduledTaskGroup.getTaskGroupId(), TaskGroupState.State.EXECUTING);
         return true;
       }).when(mockInstance).scheduleTaskGroup(any(ScheduledTaskGroup.class), any());
     }
@@ -205,8 +256,13 @@ public final class SourceLocationAwareSchedulingPolicyTest {
      * on this mock object.
      * @param scheduledTaskGroup expected parameter for the task group to schedule
      */
-    void expect(final ScheduledTaskGroup scheduledTaskGroup) {
+    void expectSchedulingRequest(final ScheduledTaskGroup scheduledTaskGroup) {
+      ensureNoUnresolvedExpectation();
       this.expectedArgument = scheduledTaskGroup;
+    }
+
+    void ensureNoUnresolvedExpectation() {
+      assertEquals(null, expectedArgument);
     }
 
     /**
