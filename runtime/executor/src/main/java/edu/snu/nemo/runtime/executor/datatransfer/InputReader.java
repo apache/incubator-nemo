@@ -92,9 +92,8 @@ public final class InputReader extends DataTransfer {
   }
 
   private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
-    final String blockId = RuntimeIdGenerator.generateBlockId(getId(), dstTaskIndex);
-    final String realBlockId = RuntimeIdGenerator.generateBlockId(getRealId(), dstTaskIndex);
-    return blockManagerWorker.queryBlock(blockId, realBlockId, getRealId(),
+    final String blockId = getBlockId(dstTaskIndex);
+    return blockManagerWorker.queryBlock(blockId, getId(),
         (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
         HashRange.all());
   }
@@ -104,9 +103,8 @@ public final class InputReader extends DataTransfer {
 
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
-      final String realBlockId = RuntimeIdGenerator.generateBlockId(getRealId(), srcTaskIdx);
-      futures.add(blockManagerWorker.queryBlock(blockId, realBlockId, getRealId(),
+      final String blockId = getBlockId(srcTaskIdx);
+      futures.add(blockManagerWorker.queryBlock(blockId, getId(),
           (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
           HashRange.all()));
     }
@@ -133,10 +131,9 @@ public final class InputReader extends DataTransfer {
     final int numSrcTasks = this.getSourceParallelism();
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
-      final String realBlockId = RuntimeIdGenerator.generateBlockId(getRealId(), srcTaskIdx);
+      final String blockId = getBlockId(srcTaskIdx);
       futures.add(
-          blockManagerWorker.queryBlock(blockId, realBlockId, getRealId(),
+          blockManagerWorker.queryBlock(blockId, getId(),
               (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
               hashRangeToRead));
     }
@@ -149,17 +146,18 @@ public final class InputReader extends DataTransfer {
   }
 
   /**
-   * Get real edge id.
+   * Get block id.
    *
+   * @param taskIdx task index of the block
    * @return the list of the completable future of the data.
    */
-  private String getRealId() {
+  private String getBlockId(final int taskIdx) {
     final Pair<Integer, String> invariantDataProperty =
         (Pair<Integer, String>) runtimeEdge.getProperty(ExecutionProperty.Key.InvariantData);
     if (invariantDataProperty == null || invariantDataProperty.left() <= 1) {
-      return getId();
+      return RuntimeIdGenerator.generateBlockId(getId(), taskIdx);
     }
-    return invariantDataProperty.right();
+    return RuntimeIdGenerator.generateBlockId(invariantDataProperty.right(), taskIdx);
   }
 
   public String getSrcIrVertexId() {
