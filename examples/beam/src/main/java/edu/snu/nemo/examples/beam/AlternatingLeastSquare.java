@@ -316,6 +316,17 @@ public final class AlternatingLeastSquare {
   }
 
   /**
+   * Pretty skystar.
+   */
+  public static final class PrettyString extends DoFn<KV<Integer, List<Double>>, String> {
+    @ProcessElement
+    public void processElement(final ProcessContext c) throws Exception {
+      c.output(c.element().getKey() + ":" + c.element().getValue());
+    }
+  }
+
+
+    /**
    * Main function for the ALS BEAM program.
    * @param args arguments.
    */
@@ -325,6 +336,7 @@ public final class AlternatingLeastSquare {
     final String inputFilePath = args[0];
     final Integer numFeatures = Integer.parseInt(args[1]);
     final Integer numItr = Integer.parseInt(args[2]);
+    final String outputFilePath = args[3];
     final Double lambda;
     if (args.length > 4) {
       lambda = Double.parseDouble(args[3]);
@@ -381,6 +393,9 @@ public final class AlternatingLeastSquare {
       // NOTE: a single composite transform for the iteration.
       itemMatrix = itemMatrix.apply(new UpdateUserAndItemMatrix(numFeatures, lambda, parsedUserData, parsedItemData));
     }
+
+    final PCollection<String> result = itemMatrix.apply(ParDo.of(new PrettyString()));
+    GenericSourceSink.write(result, outputFilePath);
 
     p.run();
     LOG.info("JCT " + (System.currentTimeMillis() - start));
