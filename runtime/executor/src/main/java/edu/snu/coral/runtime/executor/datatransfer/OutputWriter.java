@@ -83,7 +83,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     // Aggregate element to form the inter-Stage data.
     List<Object> dataToWrite = new ArrayList<>();
     outputQueue.iterator().forEachRemaining(dataToWrite::add);
-    LOG.info("write in OutputWriter: {}", dataToWrite);
+    LOG.info("write in OutputWriter: {}, edge {}", dataToWrite, runtimeEdge.getId());
 
     final Boolean isDataSizeMetricCollectionEdge = MetricCollectionProperty.Value.DataSkewRuntimePass
         .equals(runtimeEdge.getProperty(ExecutionProperty.Key.MetricCollection));

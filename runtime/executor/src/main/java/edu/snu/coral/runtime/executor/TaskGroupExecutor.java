@@ -140,6 +140,8 @@ public final class TaskGroupExecutor {
         if (inputReader.isSideInputReader()) {
           taskToSideInputReadersMap.putIfAbsent(task, new ArrayList<>());
           taskToSideInputReadersMap.get(task).add(inputReader);
+          LOG.info("log: {} {} Added sideInputReader (edge {})",
+              taskGroupId, getPhysicalTaskId(task.getId()), physicalStageEdge.getId());
         } else {
           inputReaders.add(inputReader);
           taskToInputReadersMap.putIfAbsent(task, new ArrayList<>());
@@ -344,13 +346,13 @@ public final class TaskGroupExecutor {
     Map<PipeImpl, List<Task>> updatedMap = new HashMap<>();
 
     currentMap.values().forEach(tasks ->
-      tasks.stream().forEach(task -> {
-        final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
-        PipeImpl pipe = taskToOutputPipeMap.get(task);
-        updatedMap.putIfAbsent(pipe, dstTasks);
-        LOG.info("{} pipeToDstTasksMap: [{}, {}]",
-            taskGroupId, getPhysicalTaskId(task.getId()), dstTasks);
-      })
+        tasks.stream().forEach(task -> {
+          final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
+          PipeImpl pipe = taskToOutputPipeMap.get(task);
+          updatedMap.putIfAbsent(pipe, dstTasks);
+          LOG.info("{} pipeToDstTasksMap: [{}, {}]",
+              taskGroupId, getPhysicalTaskId(task.getId()), dstTasks);
+        })
     );
 
     pipeToDstTasksMap = updatedMap;
@@ -457,7 +459,7 @@ public final class TaskGroupExecutor {
           iterator.forEachRemaining(element -> {
             for (final Task task : tasks) {
               List data = Collections.singletonList(element);
-              LOG.info("{} {} input to runTask {}", taskGroupId, getPhysicalTaskId(task.getId()), data);
+              LOG.info("{} {} read from iterator: {}", taskGroupId, getPhysicalTaskId(task.getId()), data);
               runTask(task, data);
             }
           });
@@ -493,34 +495,31 @@ public final class TaskGroupExecutor {
             LOG.info("{} {} Finished!", taskGroupId, getPhysicalTaskId(pipeOwnerTask.getId()));
           }
 
-          ///// Processing the tasks's data
+          ///// Processing the tasks's data as children tasks' input
 
-          // Process the output of this task as:
-          // 1) Inter-Stage data if this task has OutputWriters.
-          // 2) Input of the children tasks.
-          while (!pipe.isEmpty()) {
-            // form output
-            final Object element = pipe.remove();
-
-            // write element-wise to OutputWriters if any
-            if (hasOutputWriter(pipeOwnerTask)) {
-              List<OutputWriter> outputWritersOfTask = taskToOutputWritersMap.get(pipeOwnerTask);
-              if (!outputWritersOfTask.isEmpty()) {
-                outputWritersOfTask.forEach(outputWriter -> outputWriter.writeElement(element));
-                LOG.info("{} Write to OutputWriter of {} element {}",
-                    taskGroupId, getPhysicalTaskId(pipeOwnerTask.getId()), element);
+          // pass it to the children tasks recursively
+          if (!dstTasks.isEmpty()) {
+            while (!pipe.isEmpty()) {
+              // form output
+              final List input = Collections.singletonList(pipe.remove()); // intra-TaskGroup data are safe here
+              for (final Task task : dstTasks) {
+                LOG.info("{} {} input to runTask {}", taskGroupId, getPhysicalTaskId(task.getId()), input);
+                runTask(task, input);
               }
-            }
-            // and pass it to the children tasks recursively
-            final List internalData = Collections.singletonList(element); // intra-TaskGroup data are safe here
-            for (final Task dstTask : dstTasks) {
-              LOG.info("{} {} input to runTask {}", taskGroupId, getPhysicalTaskId(dstTask.getId()), internalData);
-              runTask(dstTask, internalData);
             }
           }
 
           // Write the whole iterable and close the OutputWriters.
           if (hasOutputWriter(pipeOwnerTask)) {
+            // If pipe isn't empty(if closeTransform produced some output),
+            // write them element-wise to OutputWriters.
+            while (!pipe.isEmpty()) {
+              final Object element = pipe.remove();
+              List<OutputWriter> outputWritersOfTask = taskToOutputWritersMap.get(pipeOwnerTask);
+              outputWritersOfTask.forEach(outputWriter -> outputWriter.writeElement(element));
+              LOG.info("{} {} Write to OutputWriter element {}",
+                  taskGroupId, getPhysicalTaskId(pipeOwnerTask.getId()), element);
+            }
             writeAndCloseOutputWriters(pipeOwnerTask);
           }
         });
@@ -559,6 +558,7 @@ public final class TaskGroupExecutor {
   private void runTask(final Task task, final List<Object> data) {
     final String physicalTaskId = getPhysicalTaskId(task.getId());
 
+    // Process element-wise depending on the Task type
     if (task instanceof BoundedSourceTask) {
       PipeImpl pipe = taskToOutputPipeMap.get(task);
 
@@ -577,13 +577,12 @@ public final class TaskGroupExecutor {
 
       // Consumes the received element from incoming edges.
       // Calculate the number of inter-TaskGroup data to process.
-      LOG.info("{} {} received data {}", taskGroupId, physicalTaskId, data);
       int numElements = data.size();
       LOG.info("log: {} {}: numElements {}", taskGroupId, physicalTaskId, numElements);
 
       IntStream.range(0, numElements).forEach(dataNum -> {
         Object dataElement = data.get(dataNum);
-        LOG.info("log: {} {} Input to onData : {}", taskGroupId, physicalTaskId, dataElement);
+        LOG.info("log: {} {} OperatorTask applying {} to onData", taskGroupId, physicalTaskId, dataElement);
         transform.onData(dataElement);
       });
     } else if (task instanceof MetricCollectionBarrierTask) {
@@ -601,18 +600,28 @@ public final class TaskGroupExecutor {
       setTaskPutOnHold((MetricCollectionBarrierTask) task);
     }
 
-    // If this task has children to process, recursively process the output.
-    if (!taskGroupDag.getChildren(task.getId()).isEmpty()) {
-      List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
-      PipeImpl pipe = taskToOutputPipeMap.get(task);
-      final List output;
-      if (!pipe.isEmpty()) {
-        output = Collections.singletonList(pipe.remove()); // intra-TaskGroup data are safe here
-      } else {
-        output = new ArrayList();
+    // For the produced output
+    PipeImpl pipe = taskToOutputPipeMap.get(task);
+    while (!pipe.isEmpty()) {
+      final Object element = pipe.remove();
+
+      // Write element-wise to OutputWriters if any
+      if (hasOutputWriter(task)) {
+        List<OutputWriter> outputWritersOfTask = taskToOutputWritersMap.get(task);
+        outputWritersOfTask.forEach(outputWriter -> outputWriter.writeElement(element));
+        LOG.info("{} {} Write to OutputWriter element {}",
+            taskGroupId, getPhysicalTaskId(task.getId()), element);
       }
 
-      dstTasks.forEach(dstTask -> runTask(dstTask, output));
+      // If this task has children to process, recursively process the output.
+      List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
+      if (!dstTasks.isEmpty()) {
+        final List output = Collections.singletonList(element); // intra-TaskGroup data are safe here
+        for (final Task dstTask : dstTasks) {
+          LOG.info("{} {} input to runTask {}", taskGroupId, getPhysicalTaskId(dstTask.getId()), output);
+          runTask(dstTask, output);
+        }
+      }
     }
   }
 

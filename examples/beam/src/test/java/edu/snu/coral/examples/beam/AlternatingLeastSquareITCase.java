@@ -61,7 +61,7 @@ public final class AlternatingLeastSquareITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(PadoPolicyParallelsimFive.class.getCanonicalName())
         .build());
   }
 }

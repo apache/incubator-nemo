@@ -209,12 +209,8 @@ public final class AlternatingLeastSquare {
       }
 
       final Map<Integer, List<Double>> fixedMatrix = c.sideInput(fixedMatrixView);
-      LOG.info("log: fixedMatrix: {} whose size is {}, fixedMatrixView: {}", fixedMatrix, fixedMatrix.size(),
-          fixedMatrixView);
       final List<Integer> indexArr = c.element().getValue().left();
       final List<Double> ratingArr = c.element().getValue().right();
-      LOG.info("log: indexArr {}", indexArr);
-      LOG.info("log: ratingArr {}", ratingArr);
 
       final Integer size = indexArr.size();
 
@@ -225,8 +221,6 @@ public final class AlternatingLeastSquare {
         final Integer ratingIndex = indexArr.get(i);
         final Double rating = ratingArr.get(i);
         for (Integer j = 0; j < numFeatures; j++) {
-          LOG.info("log: ratingIndex {} (indexArr.get({})) ", ratingIndex, i);
-          LOG.info("log: fixedMatrix.get(ratingIndex: {}): {} ", ratingIndex, fixedMatrix.get(ratingIndex));
           if (j < fixedMatrix.get(ratingIndex).size()) {
             conf[j] = fixedMatrix.get(ratingIndex).get(j).doubleValue();
           } else {
@@ -263,6 +257,8 @@ public final class AlternatingLeastSquare {
       }
 
       results.add(KV.of(c.element().getKey(), vector));
+      LOG.info("add element {} {}", c.element().getKey(), vector);
+      LOG.info("results {}", results);
     }
 
     /**
@@ -271,7 +267,8 @@ public final class AlternatingLeastSquare {
      */
     @FinishBundle
     public void finishBundle(final FinishBundleContext c) {
-      results.forEach(r -> c.output(r, null, null));
+      KV<Integer, List<Double>> resultElement = results.remove(0);
+      c.output(resultElement, null, null);
     }
   }
 
