@@ -18,6 +18,8 @@ package edu.snu.coral.examples.beam;
 import edu.snu.coral.client.JobLauncher;
 import edu.snu.coral.common.test.ArgBuilder;
 import edu.snu.coral.common.test.ExampleTestUtil;
+import edu.snu.coral.compiler.optimizer.policy.DefaultPolicy;
+import edu.snu.coral.compiler.optimizer.policy.PadoPolicy;
 import edu.snu.coral.examples.beam.policy.DefaultPolicyParallelismFive;
 import edu.snu.coral.examples.beam.policy.PadoPolicyParallelsimFive;
 import org.junit.After;
@@ -47,7 +49,7 @@ public final class BroadcastITCase {
       .addUserArgs(inputFilePath, outputFilePath);
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     builder = new ArgBuilder()
         .addUserMain(Broadcast.class.getCanonicalName())
         .addUserArgs(inputFilePath, outputFilePath);

@@ -247,20 +247,20 @@ public final class TaskGroupExecutorTest {
    */
   private class WriterAnswer implements Answer<OutputWriter> {
     @Override
-    public OutputWriter answer(final InvocationOnMock invocationOnMock) throws Throwable {
+    public OutputWriter answer(final InvocationOnMock invocationOnMock) {
       final Object[] args = invocationOnMock.getArguments();
       final Task dstTask = (Task) args[0];
       final OutputWriter outputWriter = mock(OutputWriter.class);
       doAnswer(new Answer() {
         @Override
-        public Object answer(final InvocationOnMock invocationOnMock) throws Throwable {
+        public Object answer(final InvocationOnMock invocationOnMock) {
           final Object[] args = invocationOnMock.getArguments();
           final Iterable dataToWrite = (Iterable) args[0];
           taskIdToOutputData.computeIfAbsent(dstTask.getId(), emptyTaskId -> new ArrayList<>());
           taskIdToOutputData.get(dstTask.getId()).add(dataToWrite);
           return null;
         }
-      }).when(outputWriter).write(any());
+      }).when(outputWriter).write();
       return outputWriter;
     }
   }

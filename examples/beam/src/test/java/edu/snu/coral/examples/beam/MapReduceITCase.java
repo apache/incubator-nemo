@@ -18,7 +18,7 @@ package edu.snu.coral.examples.beam;
 import edu.snu.coral.client.JobLauncher;
 import edu.snu.coral.common.test.ArgBuilder;
 import edu.snu.coral.common.test.ExampleTestUtil;
-import edu.snu.coral.compiler.optimizer.policy.DefaultPolicy;
+import edu.snu.coral.compiler.optimizer.policy.*;
 import edu.snu.coral.examples.beam.policy.*;
 import org.junit.After;
 import org.junit.Before;
@@ -47,7 +47,7 @@ public final class MapReduceITCase {
       .addUserArgs(inputFilePath, outputFilePath);
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     builder = new ArgBuilder()
         .addUserMain(MapReduce.class.getCanonicalName())
         .addUserArgs(inputFilePath, outputFilePath);
@@ -56,14 +56,14 @@ public final class MapReduceITCase {
   @After
   public void tearDown() throws Exception {
     ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
-    //ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
   }
 
   @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName())
-        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 

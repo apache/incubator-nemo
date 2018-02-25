@@ -123,14 +123,18 @@ public final class TaskGroupStateManager {
       break;
     case FAILED_RECOVERABLE:
       LOG.debug("TaskGroup ID {} failed (recoverable).", this.taskGroupId);
+      /*
       metric.put("ToState", newState);
       endMeasurement(taskGroupId, metric);
+      */
       notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case FAILED_UNRECOVERABLE:
       LOG.debug("TaskGroup ID {} failed (unrecoverable).", this.taskGroupId);
+      /*
       metric.put("ToState", newState);
       endMeasurement(taskGroupId, metric);
+      */
       notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
       break;
     case ON_HOLD:

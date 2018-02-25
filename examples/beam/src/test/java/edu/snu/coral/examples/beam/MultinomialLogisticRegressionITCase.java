@@ -17,6 +17,7 @@ package edu.snu.coral.examples.beam;
 
 import edu.snu.coral.client.JobLauncher;
 import edu.snu.coral.common.test.ArgBuilder;
+import edu.snu.coral.compiler.optimizer.policy.PadoPolicy;
 import edu.snu.coral.examples.beam.policy.PadoPolicyParallelsimFive;
 import org.junit.Before;
 import org.junit.Test;
@@ -61,7 +62,7 @@ public final class MultinomialLogisticRegressionITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicyParallelsimFive.class.getCanonicalName())
+        .addOptimizationPolicy(PadoPolicy.class.getCanonicalName())
         .build());
   }
 }

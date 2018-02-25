@@ -20,7 +20,6 @@ import edu.snu.coral.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.apache.beam.sdk.values.PCollectionViews;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +34,6 @@ import java.util.List;
 public final class CreateViewTransform<I, O> implements Transform<I, O> {
   private static final Logger LOG = LoggerFactory.getLogger(CreateViewTransform.class.getName());
   private final PCollectionView pCollectionView;
-  private final I aggregatedElement;  // This should be the type of CreateViewTransform's I
   private Pipe<O> pipe;
   private List<WindowedValue<I>> windowed;
   private final ViewFn<Iterable<WindowedValue<I>>, O> viewFn;
@@ -48,17 +46,6 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
     this.pCollectionView = pCollectionView;
     this.windowed = new ArrayList<>();
     this.viewFn = this.pCollectionView.getViewFn();
-
-    if (viewFn instanceof PCollectionViews.IterableViewFn
-        || viewFn instanceof PCollectionViews.ListViewFn
-        || viewFn instanceof PCollectionViews.SingletonViewFn) {
-      aggregatedElement = (I) new ArrayList<>();
-    } else if (viewFn instanceof PCollectionViews.MapViewFn) {
-      aggregatedElement = (I) new ArrayList<>();
-    } else {
-      // TODO #xxx: Support MultiMap
-      throw new UnsupportedOperationException("Unsupported viewFn: " + viewFn.getClass());
-    }
   }
 
   @Override
@@ -68,15 +55,9 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void onData(final Object element) {
-    /*
-    if (aggregatedElement instanceof ArrayList) {
-      ((ArrayList) aggregatedElement).add(element);
-    } else if (aggregatedElement instanceof HashMap) {
-      final KV kv = (KV) element;
-      ((HashMap) aggregatedElement).putIfAbsent(kv.getKey(), kv.getValue());
-    }
-    */
-    windowed.add(WindowedValue.valueInGlobalWindow((I) element));
+    WindowedValue<I> data = WindowedValue.valueInGlobalWindow((I) element);
+    windowed.add(data);
+    LOG.info("CreateViewTransform onData {}", data);
   }
 
   /**
@@ -90,7 +71,9 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
   @Override
   public void close() {
     LOG.info("log: pCollectionView {}, viewFn {}", pCollectionView, viewFn);
-    pipe.emit(viewFn.apply(windowed));
+    O output = viewFn.apply(windowed);
+    pipe.emit(output);
+    LOG.info("CreateViewTransform close, emitting {}", output);
   }
 
   @Override
