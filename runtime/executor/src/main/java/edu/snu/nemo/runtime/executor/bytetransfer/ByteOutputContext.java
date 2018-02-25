@@ -19,6 +19,8 @@ import edu.snu.nemo.runtime.executor.data.FileArea;
 import edu.snu.nemo.runtime.executor.data.SerializedPartition;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -35,6 +37,7 @@ import java.nio.file.Paths;
  */
 public final class ByteOutputContext extends ByteTransferContext implements AutoCloseable {
 
+  private static final Logger LOG = LoggerFactory.getLogger(ByteOutputContext.class);
   private final Channel channel;
 
   private volatile ByteOutputStream currentByteOutputStream = null;
@@ -105,8 +108,10 @@ public final class ByteOutputContext extends ByteTransferContext implements Auto
   void ensureNoException() throws IOException {
     if (hasException()) {
       if (getException() == null) {
+        LOG.error("Exception is caught without contents.");
         throw new IOException();
       } else {
+        LOG.error("Exception is caught.", getException());
         throw new IOException(getException());
       }
     }
