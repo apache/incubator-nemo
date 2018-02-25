@@ -34,7 +34,8 @@ public final class PrimitiveCompositePass extends CompositePass {
         new DefaultStagePartitioningPass(),
         new ReviseInterStageEdgeDataStorePass(), // after stage partitioning
         new DefaultEdgeUsedDataHandlingPass(),
-        new ScheduleGroupPass()
+        new ScheduleGroupPass(),
+        new CompressionPass()
     ));
   }
 }
