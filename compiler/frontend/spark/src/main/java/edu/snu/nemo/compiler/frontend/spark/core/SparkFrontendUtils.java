@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.core.java;
+package edu.snu.nemo.compiler.frontend.spark.core;
 
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
@@ -31,9 +31,11 @@ import edu.snu.nemo.compiler.frontend.spark.transform.CollectTransform;
 import edu.snu.nemo.compiler.frontend.spark.transform.GroupByKeyTransform;
 import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform;
 import org.apache.spark.SparkContext;
+import org.apache.spark.api.java.function.Function;
 import org.apache.spark.serializer.JavaSerializer;
 import org.apache.spark.serializer.KryoSerializer;
 import org.apache.spark.serializer.Serializer;
+import scala.Function1;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -54,6 +56,7 @@ public final class SparkFrontendUtils {
 
   /**
    * Derive Spark serializer from a spark context.
+   *
    * @param sparkContext spark context to derive the serializer from.
    * @return the serializer.
    */
@@ -68,11 +71,12 @@ public final class SparkFrontendUtils {
 
   /**
    * Collect data by running the DAG.
-   * @param dag the DAG to execute.
+   *
+   * @param dag             the DAG to execute.
    * @param loopVertexStack loop vertex stack.
-   * @param lastVertex last vertex added to the dag.
-   * @param serializer serializer for the edges.
-   * @param <T> type of the return data.
+   * @param lastVertex      last vertex added to the dag.
+   * @param serializer      serializer for the edges.
+   * @param <T>             type of the return data.
    * @return the data collected.
    */
   public static <T> List<T> collect(final DAG<IRVertex, IREdge> dag, final Stack<LoopVertex> loopVertexStack,
@@ -120,6 +124,7 @@ public final class SparkFrontendUtils {
 
   /**
    * Retrieve communication pattern of the edge.
+   *
    * @param src source vertex.
    * @param dst destination vertex.
    * @return the communication pattern.
@@ -133,5 +138,22 @@ public final class SparkFrontendUtils {
     } else {
       return DataCommunicationPatternProperty.Value.OneToOne;
     }
+  }
+
+  /**
+   * Converts a {@link Function1} to a corresponding {@link Function}.
+   *
+   * @param scalaFunction the scala function to convert.
+   * @param <I>           the type of input.
+   * @param <O>           the type of output.
+   * @return the converted Java function.
+   */
+  static <I, O> Function<I, O> toJavaFunction(final Function1<I, O> scalaFunction) {
+    return new Function<I, O>() {
+      @Override
+      public O call(I v1) throws Exception {
+        return scalaFunction.apply(v1);
+      }
+    };
   }
 }

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.core.java;
+package edu.snu.nemo.compiler.frontend.spark.core;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
@@ -25,7 +25,6 @@ import edu.snu.nemo.common.ir.vertex.LoopVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor;
 import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder;
-import edu.snu.nemo.compiler.frontend.spark.core.RDD;
 import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.function.Function2;
@@ -35,8 +34,6 @@ import scala.reflect.ClassTag$;
 
 import java.util.List;
 import java.util.Stack;
-
-import static edu.snu.nemo.compiler.frontend.spark.core.java.SparkFrontendUtils.getEdgeCommunicationPattern;
 
 /**
  * Java RDD for pairs.
@@ -84,7 +81,7 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
     final IRVertex reduceByKeyVertex = new OperatorVertex(new ReduceByKeyTransform<K, V>(func));
     builder.addVertex(reduceByKeyVertex, loopVertexStack);
 
-    final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, reduceByKeyVertex),
+    final IREdge newEdge = new IREdge(SparkFrontendUtils.getEdgeCommunicationPattern(lastVertex, reduceByKeyVertex),
         lastVertex, reduceByKeyVertex, new SparkCoder(serializer));
     newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
     builder.connectVertices(newEdge);

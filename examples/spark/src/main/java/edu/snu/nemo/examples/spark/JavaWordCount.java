@@ -16,8 +16,8 @@
  */
 package edu.snu.nemo.examples.spark;
 
-import edu.snu.nemo.compiler.frontend.spark.core.java.JavaPairRDD;
-import edu.snu.nemo.compiler.frontend.spark.core.java.JavaRDD;
+import edu.snu.nemo.compiler.frontend.spark.core.JavaPairRDD;
+import edu.snu.nemo.compiler.frontend.spark.core.JavaRDD;
 import edu.snu.nemo.compiler.frontend.spark.sql.SparkSession;
 import scala.Tuple2;
 

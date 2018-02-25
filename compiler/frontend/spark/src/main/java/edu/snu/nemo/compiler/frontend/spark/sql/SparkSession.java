@@ -16,6 +16,7 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.sql;
 
+import edu.snu.nemo.compiler.frontend.spark.core.NemoSparkContext;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
@@ -38,7 +39,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession {
    * @param sparkContext the spark context for the session.
    */
   private SparkSession(final SparkContext sparkContext, final Map<String, String> initialConf) {
-    super(sparkContext);
+    super(new NemoSparkContext(sparkContext));
     this.datasetCommandsList = new LinkedHashMap<>();
     this.initialConf = initialConf;
   }
