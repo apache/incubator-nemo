@@ -60,10 +60,10 @@ public final class MetricManagerWorker implements MetricMessageSender {
 
       final ControlMessage.MetricMsg.Builder metricMsgBuilder = ControlMessage.MetricMsg.newBuilder();
 
-      LOG.info("MetricManagerWorker Size: {}", size);
+      LOG.debug("MetricManagerWorker Size: {}", size);
       for (int i = 0; i < size; i++) {
         final ControlMessage.Metric metric = metricMessageQueue.poll();
-        LOG.info("MetricManagerWorker addMetric: {}, {}, {}", size, i, metric);
+        LOG.debug("MetricManagerWorker addMetric: {}, {}, {}", size, i, metric);
         metricMsgBuilder.addMetric(i, metric);
       }
 
