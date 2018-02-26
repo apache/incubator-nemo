@@ -66,12 +66,12 @@ public final class TaskGroupExecutor {
   private final Map<Task, List<OutputWriter>> taskToOutputWritersMap;
   private final Map<String, List<Task>> iteratorIdToTasksMap;
   private final Map<String, Iterator> idToIteratorMap;
-  private Map<PipeImpl, List<Task>> pipeToDstTasksMap;
-  private boolean isExecutionRequested;
-  private String logicalTaskIdPutOnHold;
+  private volatile Map<PipeImpl, List<Task>> pipeToDstTasksMap;
+  private volatile boolean isExecutionRequested;
+  private volatile String logicalTaskIdPutOnHold;
+  private volatile int numPartitions;
   private final Set<Transform> preparedTransforms;
   private final Set<String> finishedTaskIds;
-  private int numPartitions;
 
   private static final String ITERATOR_PREFIX = "Iterator-";
   private static AtomicInteger iteratorIdGenerator;

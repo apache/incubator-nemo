@@ -18,6 +18,8 @@ package edu.snu.coral.compiler.frontend.spark.transform;
 import edu.snu.coral.common.ir.Pipe;
 import edu.snu.coral.common.ir.vertex.transform.Transform;
 import org.apache.spark.api.java.function.PairFunction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
 /**
@@ -27,6 +29,8 @@ import scala.Tuple2;
  * @param <V> output value type.
  */
 public final class MapToPairTransform<T, K, V> implements Transform<T, Tuple2<K, V>> {
+  private static final Logger LOG = LoggerFactory.getLogger(MapToPairTransform.class.getName());
+
   private final PairFunction<T, K, V> func;
   private Pipe<Tuple2<K, V>> pipe;
 
@@ -46,7 +50,9 @@ public final class MapToPairTransform<T, K, V> implements Transform<T, Tuple2<K,
   @Override
   public void onData(final Object element) {
     try {
-      pipe.emit(func.call((T) element));
+      Tuple2<K, V> data = func.call((T) element);
+      pipe.emit(data);
+      LOG.info("MapToPairTransform onData emitting {}", data);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

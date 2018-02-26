@@ -3,6 +3,8 @@ package edu.snu.coral.compiler.frontend.spark.transform;
 import edu.snu.coral.common.ir.Pipe;
 import edu.snu.coral.common.ir.vertex.transform.Transform;
 import org.apache.spark.api.java.function.Function2;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
 import java.util.*;
@@ -13,6 +15,7 @@ import java.util.*;
  * @param <V> value type.
  */
 public final class ReduceByKeyTransform<K, V> implements Transform<Tuple2<K, V>, Tuple2<K, V>> {
+  private static final Logger LOG = LoggerFactory.getLogger(ReduceByKeyTransform.class.getName());
   private final Map<K, List<V>> keyToValues;
   private final Function2<V, V, V> func;
   private Pipe<Tuple2<K, V>> pipe;
@@ -38,6 +41,7 @@ public final class ReduceByKeyTransform<K, V> implements Transform<Tuple2<K, V>,
 
     keyToValues.putIfAbsent(key, new ArrayList<>());
     keyToValues.get(key).add(value);
+    LOG.info("ReduceByKeyTransform onData adding {} {}", key, value);
   }
 
   @Override
@@ -45,7 +49,10 @@ public final class ReduceByKeyTransform<K, V> implements Transform<Tuple2<K, V>,
     keyToValues.entrySet().stream().map(entry -> {
       final V value = ReduceTransform.reduceIterator(entry.getValue().iterator(), func);
       return new Tuple2<>(entry.getKey(), value);
-    }).forEach(pipe::emit);
+    }).forEach(data -> {
+      pipe.emit(data);
+      LOG.info("ReduceByKeyTransform close emitting {}", data);
+    });
     keyToValues.clear();
   }
 }
