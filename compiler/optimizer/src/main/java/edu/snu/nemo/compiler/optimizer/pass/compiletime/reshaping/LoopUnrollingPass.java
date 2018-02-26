@@ -48,7 +48,11 @@ public final class LoopUnrollingPass extends ReshapingPass {
         }
       } else {
         builder.addVertex(irVertex, dag);
-        dag.getIncomingEdgesOf(irVertex).forEach(builder::connectVertices);
+        dag.getIncomingEdgesOf(irVertex).forEach(e -> {
+          if (!(e.getSrc() instanceof LoopVertex)) {
+            builder.connectVertices(e);
+          }
+        });
       }
     });
 
