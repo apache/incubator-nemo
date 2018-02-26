@@ -33,19 +33,20 @@ public final class AlternatingLeastSquareITCase {
   private static final int TIMEOUT = 180000;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
   private static final String input = fileBasePath + "sample_input_als";
+  private static final String output = fileBasePath + "sample_output_als";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
 
   private static ArgBuilder builder = new ArgBuilder()
       .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
       .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-      .addUserArgs(input, numFeatures, numIteration);
+      .addUserArgs(input, numFeatures, numIteration, output);
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
         .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-        .addUserArgs(input, numFeatures, numIteration);
+        .addUserArgs(input, numFeatures, numIteration, output);
   }
 
 //  @Test (timeout = TIMEOUT)

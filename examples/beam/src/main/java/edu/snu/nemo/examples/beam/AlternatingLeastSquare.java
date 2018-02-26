@@ -325,6 +325,7 @@ public final class AlternatingLeastSquare {
     final String inputFilePath = args[0];
     final Integer numFeatures = Integer.parseInt(args[1]);
     final Integer numItr = Integer.parseInt(args[2]);
+    final String outputFilePath = args[3];
     final Double lambda;
     if (args.length > 4) {
       lambda = Double.parseDouble(args[3]);
@@ -381,6 +382,16 @@ public final class AlternatingLeastSquare {
       // NOTE: a single composite transform for the iteration.
       itemMatrix = itemMatrix.apply(new UpdateUserAndItemMatrix(numFeatures, lambda, parsedUserData, parsedItemData));
     }
+
+    final PCollection<String> result = itemMatrix.apply(MapElements.<KV<Integer, List<Double>>, String>via(
+        new SimpleFunction<KV<Integer, List<Double>>, String>() {
+          @Override
+          public String apply(final KV<Integer, List<Double>> elem) {
+            return elem.getKey() + ":" + elem.getValue().toString();
+          }
+    }));
+
+    GenericSourceSink.write(result, outputFilePath);
 
     p.run();
     LOG.info("JCT " + (System.currentTimeMillis() - start));
