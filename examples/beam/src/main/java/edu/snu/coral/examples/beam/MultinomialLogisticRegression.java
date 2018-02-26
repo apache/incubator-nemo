@@ -220,12 +220,12 @@ public final class MultinomialLogisticRegression {
 
     /**
      * FinishBundle method for BEAM.
-     * @param context Context.
+     * @param c Context.
      */
     @FinishBundle
-    public void finishBundle(final FinishBundleContext context) {
+    public void finishBundle(final FinishBundleContext c) {
       for (Integer i = 0; i < gradients.size(); i++) {
-        context.output(KV.of(i, gradients.get(i)), null, null);
+        c.output(KV.of(i, gradients.get(i)), null, null);
       }
       LOG.info("stats: " + gradients.get(numClasses - 1).toString());
     }
@@ -409,8 +409,6 @@ public final class MultinomialLogisticRegression {
     final Integer numFeatures = Integer.parseInt(args[1]);
     final Integer numClasses = Integer.parseInt(args[2]);
     final Integer numItr = Integer.parseInt(args[3]);
-
-    final Double lambda = 0.0;
 
     final List<Integer> initialModelKeys = new ArrayList<>(numClasses);
     for (Integer i = 0; i < numClasses; i++) {

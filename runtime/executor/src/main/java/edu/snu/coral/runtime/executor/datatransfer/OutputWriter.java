@@ -23,6 +23,7 @@ import edu.snu.coral.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.coral.runtime.common.RuntimeIdGenerator;
 import edu.snu.coral.runtime.common.plan.RuntimeEdge;
 import edu.snu.coral.runtime.executor.data.BlockManagerWorker;
+import edu.snu.coral.runtime.executor.data.NonSerializedPartition;
 import edu.snu.coral.runtime.executor.data.Partition;
 import edu.snu.coral.runtime.executor.data.partitioner.*;
 
@@ -102,6 +103,11 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     final KeyExtractor keyExtractor = runtimeEdge.getProperty(ExecutionProperty.Key.KeyExtractor);
     final List<Partition> partitionsToWrite = partitioner.partition(dataToWrite, dstParallelism, keyExtractor);
 
+    if (partitionsToWrite.get(0) instanceof NonSerializedPartition) {
+      partitionsToWrite.forEach(p -> {
+        LOG.info("partition in OutputWriter: {} {}", p.getKey(), p.getData());
+      });
+    }
     // Write the grouped blocks into partitions.
     // TODO #492: Modularize the data communication pattern.
     final DataCommunicationPatternProperty.Value comValue =
@@ -133,6 +139,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     // Commit block.
     final UsedDataHandlingProperty.Value usedDataHandling =
         runtimeEdge.getProperty(ExecutionProperty.Key.UsedDataHandling);
+    LOG.info("write in OutputWriter at close(), block {}", blockId);
     blockManagerWorker.commitBlock(blockId, blockStoreValue,
         accumulatedPartitionSizeInfo, srcVertexId, getDstParallelism(), usedDataHandling);
   }

@@ -31,6 +31,7 @@ import edu.snu.coral.runtime.executor.datatransfer.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 
 import org.slf4j.Logger;
@@ -295,19 +296,19 @@ public final class TaskGroupExecutor {
 
             final String iteratorId = generateIteratorId();
             idToIteratorMap.putIfAbsent(iteratorId, iterator);
-            iteratorIdToTasksMap.putIfAbsent(iteratorId, new ArrayList<>());
+            iteratorIdToTasksMap.putIfAbsent(iteratorId, new CopyOnWriteArrayList<>());
             iteratorIdToTasksMap.get(iteratorId).addAll(inputReaderToTasksMap.get(inputReader));
-            LOG.info("{} iteratorId : Tasks {}", taskGroupId, iteratorIdToTasksMap);
           }));
         });
   }
 
   private boolean finishedSrcData() {
-    boolean forAllPartitions = (idToIteratorMap.keySet().size() == numPartitions);
+    boolean forAllPartitions = (idToIteratorMap.entrySet().size() == numPartitions);
     boolean finished = true;
 
     for (Map.Entry<String, Iterator> entry : idToIteratorMap.entrySet()) {
       Iterator iterator = entry.getValue();
+      LOG.info("{} finishedSrcData: checking iterator {}", taskGroupId, iterator);
       if (iterator.hasNext()) {
         finished = false;
       }
@@ -473,37 +474,29 @@ public final class TaskGroupExecutor {
       initializePipeToDstTasksMap();
       while (!finishedAllTasks()) {
         pipeToDstTasksMap.forEach((pipe, dstTasks) -> {
-
-          ///// One pipe denotes for one task.
-
-          ///// Finishing the task
-
-          // Task that has this pipe as its output pipe
+          // Get the task that has this pipe as its output pipe
           Task pipeOwnerTask = taskToOutputPipeMap.entrySet().stream()
               .filter(entry -> entry.getValue().equals(pipe))
               .findAny().get().getKey();
           LOG.info("{} pipeOwnerTask {}", taskGroupId, getPhysicalTaskId(pipeOwnerTask.getId()));
 
-          // Before consuming the output of this task as input,
+          // Before consuming the output of pipeOwnerTask as input,
           // close transform if it is OperatorTransform.
           closeTransform(pipeOwnerTask);
 
-          // Set this task as finished.
+          // Set pipeOwnerTask as finished.
           final String physicalTaskId = getPhysicalTaskId(pipeOwnerTask.getId());
           if (!finishedTaskIds.contains(physicalTaskId)) {
             finishedTaskIds.add(physicalTaskId);
             LOG.info("{} {} Finished!", taskGroupId, getPhysicalTaskId(pipeOwnerTask.getId()));
           }
 
-          ///// Processing the tasks's data as children tasks' input
-
-          // pass it to the children tasks recursively
+          // Pass pipeOwnerTask's output to the children tasks recursively if exist.
           if (!dstTasks.isEmpty()) {
             while (!pipe.isEmpty()) {
               // form output
               final List input = Collections.singletonList(pipe.remove()); // intra-TaskGroup data are safe here
               for (final Task task : dstTasks) {
-                LOG.info("{} {} input to runTask {}", taskGroupId, getPhysicalTaskId(task.getId()), input);
                 runTask(task, input);
               }
             }
