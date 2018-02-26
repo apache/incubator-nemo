@@ -33,6 +33,8 @@ import com.github.fommil.netlib.BLAS;
 import com.github.fommil.netlib.LAPACK;
 
 import java.util.*;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -387,7 +389,8 @@ public final class AlternatingLeastSquare {
         new SimpleFunction<KV<Integer, List<Double>>, String>() {
           @Override
           public String apply(final KV<Integer, List<Double>> elem) {
-            return elem.getKey() + ":" + elem.getValue().toString();
+            final List<String> values = elem.getValue().stream().map(e -> e.toString()).collect(Collectors.toList());
+            return elem.getKey() + "," + String.join(",", values);
           }
     }));
 
