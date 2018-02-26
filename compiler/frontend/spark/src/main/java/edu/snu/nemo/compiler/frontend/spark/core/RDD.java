@@ -41,6 +41,8 @@ import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.serializer.Serializer;
+import scala.Array;
+import scala.Function0;
 import scala.Function1;
 import scala.PartialFunction;
 import scala.collection.Iterator;
@@ -231,8 +233,7 @@ public final class RDD<T> extends org.apache.spark.rdd.RDD<T> {
   }
 
   @Override
-  public List<T> collect() {
+  public T[] collect() {
     return SparkFrontendUtils.collect(dag, loopVertexStack, lastVertex, serializer);
   }
-
 }
