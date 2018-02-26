@@ -303,13 +303,17 @@ public final class TaskGroupExecutor {
   }
 
   private boolean finishedSrcData() {
-    boolean forAllPartitions = (idToIteratorMap.entrySet().size() == numPartitions);
+    int iteratorMapSize = idToIteratorMap.entrySet().size();
+    int numPart = numPartitions;
+
+    LOG.info("iteratorMap size {} numPartitions {}", iteratorMapSize, numPart);
+    boolean forAllPartitions = (iteratorMapSize == numPart);
     boolean finished = true;
 
     for (Map.Entry<String, Iterator> entry : idToIteratorMap.entrySet()) {
       Iterator iterator = entry.getValue();
-      LOG.info("{} finishedSrcData: checking iterator {}", taskGroupId, iterator);
       if (iterator.hasNext()) {
+        LOG.info("{} finishedSrcData: iterator {} is not empty", taskGroupId, iterator);
         finished = false;
       }
     }
