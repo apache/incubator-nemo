@@ -75,7 +75,14 @@ public final class LoopExtractionPass extends ReshapingPass {
       final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
       for (IRVertex irVertex : dag.getTopologicalSort()) {
         if (irVertex instanceof SourceVertex) { // Source vertex: no incoming edges
-          builder.addVertex(irVertex, dag);
+          if (dag.isCompositeVertex(irVertex) && dag.getLoopStackDepthOf(irVertex).equals(depth)) {
+            // when src is inside a loop
+            final LoopVertex assignedLoopVertex = dag.getAssignedLoopVertexOf(irVertex);
+            builder.addVertex(assignedLoopVertex, dag);
+            connectElementToLoop(dag, builder, irVertex, assignedLoopVertex);
+          } else {
+            builder.addVertex(irVertex, dag);
+          }
 
         } else if (irVertex instanceof OperatorVertex) { // Operator vertex
           final OperatorVertex operatorVertex = (OperatorVertex) irVertex;
