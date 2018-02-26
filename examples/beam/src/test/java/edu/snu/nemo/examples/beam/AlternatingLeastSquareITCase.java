@@ -40,23 +40,26 @@ public final class AlternatingLeastSquareITCase {
   private static final String testResourceFileName = "test_output_als";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
+  private static final String checkOutput = "true";
 
   private static ArgBuilder builder = new ArgBuilder()
       .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
       .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-      .addUserArgs(input, numFeatures, numIteration, output);
+      .addUserArgs(input, numFeatures, numIteration, "0.05", output, checkOutput);
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
         .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-        .addUserArgs(input, numFeatures, numIteration, output);
+        .addUserArgs(input, numFeatures, numIteration, "0.05", output, checkOutput);
   }
 
   @After
   public void tearDown() throws Exception {
-    ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, testResourceFileName);
-    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    if (Boolean.parseBoolean(checkOutput)) {
+      ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
   }
 
 //  @Test (timeout = TIMEOUT)

@@ -327,12 +327,22 @@ public final class AlternatingLeastSquare {
     final String inputFilePath = args[0];
     final Integer numFeatures = Integer.parseInt(args[1]);
     final Integer numItr = Integer.parseInt(args[2]);
-    final String outputFilePath = args[3];
     final Double lambda;
-    if (args.length > 4) {
+    if (args.length > 3) {
       lambda = Double.parseDouble(args[3]);
     } else {
       lambda = 0.05;
+    }
+    final String outputFilePath;
+    boolean checkOutput = false;
+    if (args.length > 4) {
+      outputFilePath = args[4];
+      if (args.length > 5) {
+        checkOutput = Boolean.parseBoolean(args[5]);
+      }
+    } else {
+      outputFilePath = "";
+      checkOutput = false;
     }
 
     final PipelineOptions options = PipelineOptionsFactory.create();
@@ -394,7 +404,9 @@ public final class AlternatingLeastSquare {
           }
     }));
 
-    GenericSourceSink.write(result, outputFilePath);
+    if (checkOutput) {
+      GenericSourceSink.write(result, outputFilePath);
+    }
 
     p.run();
     LOG.info("JCT " + (System.currentTimeMillis() - start));
