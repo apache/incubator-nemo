@@ -31,6 +31,7 @@ import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.executor.MetricMessageSender;
 import edu.snu.nemo.runtime.executor.TaskGroupExecutor;
 import edu.snu.nemo.runtime.executor.TaskGroupStateManager;
+import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputWriter;
@@ -226,8 +227,8 @@ public final class TaskGroupExecutorTest {
     @Override
     public InputReader answer(final InvocationOnMock invocationOnMock) throws Throwable {
       // Read the data.
-      final List<CompletableFuture<Iterator>> inputFutures = new ArrayList<>();
-      inputFutures.add(CompletableFuture.completedFuture(elements.iterator()));
+      final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> inputFutures = new ArrayList<>();
+      inputFutures.add(CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(elements.iterator())));
       final InputReader inputReader = mock(InputReader.class);
       when(inputReader.read()).thenReturn(inputFutures);
       when(inputReader.isSideInputReader()).thenReturn(false);
@@ -243,11 +244,12 @@ public final class TaskGroupExecutorTest {
   private class InterStageReaderAnswer implements Answer<InputReader> {
     @Override
     public InputReader answer(final InvocationOnMock invocationOnMock) throws Throwable {
-      final List<CompletableFuture<Iterator>> inputFutures = new ArrayList<>(SOURCE_PARALLELISM);
+      final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> inputFutures = new ArrayList<>(SOURCE_PARALLELISM);
       final int elementsPerSource = DATA_SIZE / SOURCE_PARALLELISM;
       for (int i = 0; i < SOURCE_PARALLELISM; i++) {
         inputFutures.add(CompletableFuture.completedFuture(
-            elements.subList(i * elementsPerSource, (i + 1) * elementsPerSource).iterator()));
+            DataUtil.IteratorWithNumBytes.of(elements.subList(i * elementsPerSource, (i + 1) * elementsPerSource)
+                .iterator())));
       }
       final InputReader inputReader = mock(InputReader.class);
       when(inputReader.read()).thenReturn(inputFutures);

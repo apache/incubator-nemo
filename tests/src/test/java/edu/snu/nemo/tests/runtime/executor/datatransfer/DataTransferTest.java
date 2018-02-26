@@ -51,10 +51,12 @@ import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.nemo.runtime.master.RuntimeMaster;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
+import edu.snu.nemo.runtime.master.resource.ExecutorRegistry;
 import edu.snu.nemo.runtime.master.scheduler.*;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.VarIntCoder;
 import org.apache.commons.io.FileUtils;
+import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.io.network.naming.NameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
@@ -121,11 +123,19 @@ public final class DataTransferTest {
     final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
     final LocalMessageEnvironment messageEnvironment =
         new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
-    final ContainerManager containerManager = new ContainerManager(1, null, messageEnvironment);
+    final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(JobConf.ScheduleSerThread.class, "1")
+        .build();
+    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
+    injector.bindVolatileInstance(EvaluatorRequestor.class, mock(EvaluatorRequestor.class));
+    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
+    final ContainerManager containerManager = injector.getInstance(ContainerManager.class);
+
     final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
-    final SchedulingPolicy schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, SCHEDULE_TIMEOUT);
+    final SchedulingPolicy schedulingPolicy = new RoundRobinSchedulingPolicy(
+        injector.getInstance(ExecutorRegistry.class), SCHEDULE_TIMEOUT);
     final PendingTaskGroupQueue taskGroupQueue = new SingleJobTaskGroupQueue();
     final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingPolicy, taskGroupQueue);
     final Scheduler scheduler =

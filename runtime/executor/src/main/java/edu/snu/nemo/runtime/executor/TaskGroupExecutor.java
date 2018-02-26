@@ -28,6 +28,7 @@ import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.physical.*;
 import edu.snu.nemo.runtime.common.state.TaskGroupState;
 import edu.snu.nemo.runtime.common.state.TaskState;
+import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
@@ -42,7 +43,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Executes a task group.
@@ -259,16 +259,30 @@ public final class TaskGroupExecutor {
    */
   private void launchOperatorTask(final OperatorTask operatorTask) {
     final Map<Transform, Object> sideInputMap = new HashMap<>();
+    final List<DataUtil.IteratorWithNumBytes> sideInputIterators = new ArrayList<>();
     final String physicalTaskId = getPhysicalTaskId(operatorTask.getId());
+
     final Map<String, Object> metric = new HashMap<>();
     metricCollector.beginMeasurement(physicalTaskId, metric);
+    long accumulatedBlockedReadTime = 0;
+    long accumulatedWriteTime = 0;
+    long accumulatedSerializedBlockSize = 0;
+    long accumulatedEncodedBlockSize = 0;
+    boolean blockSizeAvailable = true;
 
     final long readStartTime = System.currentTimeMillis();
     // Check for side inputs
     physicalTaskIdToInputReaderMap.get(physicalTaskId).stream().filter(InputReader::isSideInputReader)
         .forEach(inputReader -> {
           try {
-            final Object sideInput = inputReader.getSideInput();
+            if (!inputReader.isSideInputReader()) {
+              // Trying to get sideInput from a reader that does not handle sideInput.
+              // This is probably a bug. We're not trying to recover but ensure a hard fail.
+              throw new RuntimeException("Trying to get sideInput from non-sideInput reader");
+            }
+            final DataUtil.IteratorWithNumBytes sideInputIterator = inputReader.read().get(0).get();
+            final Object sideInput = getSideInput(sideInputIterator);
+
             final RuntimeEdge inEdge = inputReader.getRuntimeEdge();
             final Transform srcTransform;
             if (inEdge instanceof PhysicalStageEdge) {
@@ -278,10 +292,21 @@ public final class TaskGroupExecutor {
               srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
             }
             sideInputMap.put(srcTransform, sideInput);
+            sideInputIterators.add(sideInputIterator);
           } catch (final InterruptedException | ExecutionException e) {
             throw new BlockFetchException(e);
           }
         });
+
+    for (final DataUtil.IteratorWithNumBytes iterator : sideInputIterators) {
+      try {
+        accumulatedSerializedBlockSize += iterator.getNumSerializedBytes();
+        accumulatedEncodedBlockSize += iterator.getNumEncodedBytes();
+      } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+        blockSizeAvailable = false;
+        break;
+      }
+    }
 
     final Transform.Context transformContext = new ContextImpl(sideInputMap);
     final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
@@ -291,11 +316,11 @@ public final class TaskGroupExecutor {
 
     // Check for non-side inputs
     // This blocking queue contains the pairs having data and source vertex ids.
-    final BlockingQueue<Pair<Iterator, String>> dataQueue = new LinkedBlockingQueue<>();
+    final BlockingQueue<Pair<DataUtil.IteratorWithNumBytes, String>> dataQueue = new LinkedBlockingQueue<>();
     final AtomicInteger sourceParallelism = new AtomicInteger(0);
     physicalTaskIdToInputReaderMap.get(physicalTaskId).stream().filter(inputReader -> !inputReader.isSideInputReader())
         .forEach(inputReader -> {
-          final List<CompletableFuture<Iterator>> futures = inputReader.read();
+          final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader.read();
           final String srcIrVtxId = inputReader.getSrcIrVertexId();
           sourceParallelism.getAndAdd(inputReader.getSourceParallelism());
           // Add consumers which will push the data to the data queue when it ready to the futures.
@@ -307,18 +332,23 @@ public final class TaskGroupExecutor {
           }));
         });
     final long readFutureEndTime = System.currentTimeMillis();
-
-    long accumulatedBlockedReadTime = 0;
-    long accumulatedWriteTime = 0;
     // Consumes all of the partitions from incoming edges.
     for (int srcTaskNum = 0; srcTaskNum < sourceParallelism.get(); srcTaskNum++) {
       try {
         // Because the data queue is a blocking queue, we may need to wait some available data to be pushed.
         final long blockedReadStartTime = System.currentTimeMillis();
-        final Pair<Iterator, String> availableData = dataQueue.take();
+        final Pair<DataUtil.IteratorWithNumBytes, String> availableData = dataQueue.take();
         final long blockedReadEndTime = System.currentTimeMillis();
         accumulatedBlockedReadTime += blockedReadEndTime - blockedReadStartTime;
         transform.onData(availableData.left(), availableData.right());
+        if (blockSizeAvailable) {
+          try {
+            accumulatedSerializedBlockSize += availableData.left().getNumSerializedBytes();
+            accumulatedEncodedBlockSize += availableData.left().getNumEncodedBytes();
+          } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+            blockSizeAvailable = false;
+          }
+        }
       } catch (final InterruptedException e) {
         throw new BlockFetchException(e);
       }
@@ -356,6 +386,7 @@ public final class TaskGroupExecutor {
     }
     final long writeEndTime = System.currentTimeMillis();
     metric.put("OutputTime(ms)", writeEndTime - transformEndTime + accumulatedWriteTime);
+    putReadBytesMetric(blockSizeAvailable, accumulatedSerializedBlockSize, accumulatedEncodedBlockSize, metric);
     putWrittenBytesMetric(writtenBytesList, metric);
 
     metricCollector.endMeasurement(physicalTaskId, metric);
@@ -369,9 +400,12 @@ public final class TaskGroupExecutor {
     final String physicalTaskId = getPhysicalTaskId(task.getId());
     final Map<String, Object> metric = new HashMap<>();
     metricCollector.beginMeasurement(physicalTaskId, metric);
+    long accumulatedSerializedBlockSize = 0;
+    long accumulatedEncodedBlockSize = 0;
+    boolean blockSizeAvailable = true;
 
     final long readStartTime = System.currentTimeMillis();
-    final BlockingQueue<Iterator> dataQueue = new LinkedBlockingQueue<>();
+    final BlockingQueue<DataUtil.IteratorWithNumBytes> dataQueue = new LinkedBlockingQueue<>();
     final AtomicInteger sourceParallelism = new AtomicInteger(0);
     physicalTaskIdToInputReaderMap.get(physicalTaskId).stream().filter(inputReader -> !inputReader.isSideInputReader())
         .forEach(inputReader -> {
@@ -380,14 +414,22 @@ public final class TaskGroupExecutor {
         });
 
     final List data = new ArrayList<>();
-    IntStream.range(0, sourceParallelism.get()).forEach(srcTaskNum -> {
+    for (int srcTaskNum = 0; srcTaskNum < sourceParallelism.get(); srcTaskNum++) {
       try {
-        final Iterator availableData = dataQueue.take();
+        final DataUtil.IteratorWithNumBytes availableData = dataQueue.take();
         availableData.forEachRemaining(data::add);
+        if (blockSizeAvailable) {
+          try {
+            accumulatedSerializedBlockSize += availableData.getNumSerializedBytes();
+            accumulatedEncodedBlockSize += availableData.getNumEncodedBytes();
+          } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+            blockSizeAvailable = false;
+          }
+        }
       } catch (final InterruptedException e) {
         throw new BlockFetchException(e);
       }
-    });
+    }
     final long readEndTime = System.currentTimeMillis();
     metric.put("InputReadTime(ms)", readEndTime - readStartTime);
 
@@ -400,6 +442,7 @@ public final class TaskGroupExecutor {
     }
     final long writeEndTime  = System.currentTimeMillis();
     metric.put("OutputWriteTime(ms)", writeEndTime - readEndTime);
+    putReadBytesMetric(blockSizeAvailable, accumulatedSerializedBlockSize, accumulatedEncodedBlockSize, metric);
     putWrittenBytesMetric(writtenBytesList, metric);
     metricCollector.endMeasurement(physicalTaskId, metric);
   }
@@ -413,19 +456,67 @@ public final class TaskGroupExecutor {
   }
 
   /**
+   * Puts read bytes metric if the input data size is known.
+   *
+   * @param available whether input data size is known or not
+   * @param serializedBytes size in serialized (encoded and optionally post-processed (e.g. compressed)) form
+   * @param encodedBytes    size in encoded form
+   * @param metricMap       the metric map to put written bytes metric.
+   */
+  private static void putReadBytesMetric(final boolean available,
+                                         final long serializedBytes,
+                                         final long encodedBytes,
+                                         final Map<String, Object> metricMap) {
+    if (available) {
+      if (serializedBytes != encodedBytes) {
+        metricMap.put("ReadBytes(raw)", serializedBytes);
+      }
+      metricMap.put("ReadBytes", encodedBytes);
+    }
+  }
+
+  /**
    * Puts written bytes metric if the output data size is known.
    *
    * @param writtenBytesList the list of written bytes.
    * @param metricMap        the metric map to put written bytes metric.
    */
-  private void putWrittenBytesMetric(final List<Long> writtenBytesList,
-                                     final Map<String, Object> metricMap) {
+  private static void putWrittenBytesMetric(final List<Long> writtenBytesList,
+                                            final Map<String, Object> metricMap) {
     if (!writtenBytesList.isEmpty()) {
       long totalWrittenBytes = 0;
       for (final Long writtenBytes : writtenBytesList) {
         totalWrittenBytes += writtenBytes;
       }
       metricMap.put("WrittenBytes", totalWrittenBytes);
+    }
+  }
+
+  /**
+   * Get sideInput from data from {@link InputReader}.
+   * @param iterator data from {@link InputReader#read()}
+   * @return The corresponding sideInput
+   */
+  private static Object getSideInput(final DataUtil.IteratorWithNumBytes iterator) {
+    final List copy = new ArrayList();
+    iterator.forEachRemaining(copy::add);
+    if (copy.size() == 1) {
+      return copy.get(0);
+    } else {
+      if (copy.get(0) instanceof Iterable) {
+        final List collect = new ArrayList();
+        copy.forEach(element -> ((Iterable) element).iterator().forEachRemaining(collect::add));
+        return collect;
+      } else if (copy.get(0) instanceof Map) {
+        final Map collect = new HashMap();
+        copy.forEach(element -> {
+          final Set keySet = ((Map) element).keySet();
+          keySet.forEach(key -> collect.put(key, ((Map) element).get(key)));
+        });
+        return collect;
+      } else {
+        return copy;
+      }
     }
   }
 }
