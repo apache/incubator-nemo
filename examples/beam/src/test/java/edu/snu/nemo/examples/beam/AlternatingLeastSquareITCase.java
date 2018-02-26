@@ -17,7 +17,9 @@ package edu.snu.nemo.examples.beam;
 
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
+import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelsimFive;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -33,7 +35,9 @@ public final class AlternatingLeastSquareITCase {
   private static final int TIMEOUT = 180000;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
   private static final String input = fileBasePath + "sample_input_als";
-  private static final String output = fileBasePath + "sample_output_als";
+  private static final String outputFileName = "sample_output_als";
+  private static final String output = fileBasePath + outputFileName;
+  private static final String testResourceFileName = "test_output_als";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
 
@@ -47,6 +51,12 @@ public final class AlternatingLeastSquareITCase {
     builder = new ArgBuilder()
         .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
         .addUserArgs(input, numFeatures, numIteration, output);
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
   }
 
 //  @Test (timeout = TIMEOUT)
