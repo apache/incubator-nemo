@@ -82,27 +82,11 @@ public final class PipeImpl<O> implements Pipe<O> {
     return sideInputRuntimeEdge;
   }
 
-  public boolean isSideInput() {
-    return sideInputReceivers.size() != 0;
-  }
-
   public void setAsSideInput(final String physicalTaskId) {
     sideInputReceivers.add(physicalTaskId);
   }
 
   public boolean hasSideInputFor(final String physicalTaskId) {
     return sideInputReceivers.contains(physicalTaskId);
-  }
-
-  /**
-   * Collects the accumulated output and replace the output list.
-   * Done at once at sink task, which forms the inter-TaskGroup data.
-   * @return the list of output elements.
-   */
-  public List<O> collectOutputList() {
-    LinkedBlockingQueue<O> currentQueue = outputQueue.getAndSet(new LinkedBlockingQueue<>());
-    List<O> outputList = new ArrayList<>();
-    currentQueue.iterator().forEachRemaining(outputList::add);
-    return outputList;
   }
 }

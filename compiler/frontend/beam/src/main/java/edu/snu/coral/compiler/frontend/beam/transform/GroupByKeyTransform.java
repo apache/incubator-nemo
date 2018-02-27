@@ -50,20 +50,12 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
     final KV kv = (KV) element;
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
     keyToValues.get(kv.getKey()).add(kv.getValue());
-
-    //keyToValues.entrySet().stream().map(entry2 -> KV.of(entry2.getKey(), entry2.getValue()))
-    //    .forEach(wv -> System.out.println(String.format("log_gbk: onData(): keyToValues: %s %s",
-    //        wv.getKey(), wv.getValue())));
   }
 
   @Override
   public void close() {
     keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
-        .forEach(wv -> {
-          pipe.emit(wv);
-          LOG.info("log: GBK.close() {}, size {}", wv, wv.getValue().size());
-        }
-        );
+        .forEach(pipe::emit);
     keyToValues.clear();
   }
 

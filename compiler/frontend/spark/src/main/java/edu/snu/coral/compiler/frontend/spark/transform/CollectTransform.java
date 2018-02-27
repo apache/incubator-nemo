@@ -3,8 +3,6 @@ package edu.snu.coral.compiler.frontend.spark.transform;
 import edu.snu.coral.common.ir.vertex.transform.Transform;
 import edu.snu.coral.compiler.frontend.spark.core.java.JavaRDD;
 import edu.snu.coral.common.ir.Pipe;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;
@@ -17,7 +15,6 @@ import java.util.List;
  * @param <T> type of data to collect.
  */
 public final class CollectTransform<T> implements Transform<T, T> {
-  private static final Logger LOG = LoggerFactory.getLogger(CollectTransform.class.getName());
   private String filename;
   private FileOutputStream fos;
   private ObjectOutputStream oos;
@@ -43,7 +40,6 @@ public final class CollectTransform<T> implements Transform<T, T> {
     // Write result to a temporary file.
     // TODO #740: remove this part, and make it properly transfer with executor.
     list.add((T) element);
-    LOG.info("CollectTransform onData {}", element);
   }
 
   @Override

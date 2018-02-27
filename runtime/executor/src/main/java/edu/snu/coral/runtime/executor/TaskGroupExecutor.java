@@ -29,10 +29,7 @@ import edu.snu.coral.runtime.common.state.TaskGroupState;
 import edu.snu.coral.runtime.executor.datatransfer.*;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +71,7 @@ public final class TaskGroupExecutor {
   private final Set<String> finishedTaskIds;
 
   private static final String ITERATOR_PREFIX = "Iterator-";
-  private static AtomicInteger iteratorIdGenerator;
+  private final AtomicInteger iteratorIdGenerator;
 
   private final AtomicInteger completedFutures;
   private int numBoundedSources;
@@ -204,7 +201,7 @@ public final class TaskGroupExecutor {
         final PipeImpl parentOutputPipe = taskToOutputPipeMap.get(parent);
         inputPipes.add(parentOutputPipe);
         LOG.info("log: Added Outputpipe of {} as InputPipe of {} {}",
-           getPhysicalTaskId(parent.getId()), taskGroupId, physicalTaskId);
+            getPhysicalTaskId(parent.getId()), taskGroupId, physicalTaskId);
       });
       taskToInputPipesMap.put(task, inputPipes);
     }
@@ -228,7 +225,7 @@ public final class TaskGroupExecutor {
         outputPipe.setSideInputRuntimeEdge(outEdge);
         outputPipe.setAsSideInput(physicalTaskId);
         LOG.info("log: {} {} Marked as accepting sideInput(edge {})",
-           taskGroupId, physicalTaskId, outEdge.getId());
+            taskGroupId, physicalTaskId, outEdge.getId());
       }
     });
 
@@ -274,7 +271,7 @@ public final class TaskGroupExecutor {
           taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
               Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
           LOG.info("{} Execution Failed (Recoverable: input read failure)! Exception: {}",
-             taskGroupId, ex.toString());
+              taskGroupId, ex.toString());
         } catch (final Exception e) {
           taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE,
               Optional.empty(), Optional.empty());
@@ -287,58 +284,50 @@ public final class TaskGroupExecutor {
   }
 
   private void prepareInputFromOtherStages() {
-    inputReaders.stream()
-        .filter(inputReader -> !inputReader.isSideInputReader())
-        .forEach(inputReader -> {
-          final List<CompletableFuture<Iterator>> futures = inputReader.read();
-          numIterators += futures.size();  // Aggregate total number of partitions to process
-          // Add consumers which will push the data to the iterators when it ready to the futures.
-          futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
-            completedFutures.getAndIncrement();
-            if (exception != null) {
-              LOG.info("{} failed in prepareInputFromOtherSource while fetching blocks", taskGroupId);
-              throw new BlockFetchException(exception);
-            }
+    inputReaders.stream().forEach(inputReader -> {
+      final List<CompletableFuture<Iterator>> futures = inputReader.read();
+      numIterators += futures.size();  // Aggregate total number of partitions to process.
+      // Add consumers which will push the data to the iterators when it ready to the futures.
+      futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
+        if (exception != null) {
+          LOG.info("{} failed in prepareInputFromOtherSource while fetching blocks", taskGroupId);
+          throw new BlockFetchException(exception);
+        }
 
-            final String iteratorId = generateIteratorId();
-            if (idToIteratorMap.containsKey(iteratorId)) {
-              throw new RuntimeException("idToItMap has iter id " + iteratorId + "already!");
-            }
-            idToIteratorMap.putIfAbsent(iteratorId, iterator);
-            if (iteratorIdToTasksMap.containsKey(iteratorId)) {
-              throw new RuntimeException("iteratorIdToTaskMap has iter id " + iteratorId + "already!");
-            }
-            iteratorIdToTasksMap.computeIfAbsent(iteratorId, absentIteratorId -> {
-              final List<Task> list = new CopyOnWriteArrayList<>();
-              list.addAll(inputReaderToTasksMap.get(inputReader));
-              return Collections.unmodifiableList(list);
-            });
-          }));
+        completedFutures.getAndIncrement();
+
+        final String iteratorId = generateIteratorId();
+        idToIteratorMap.putIfAbsent(iteratorId, iterator);
+        iteratorIdToTasksMap.computeIfAbsent(iteratorId, absentIteratorId -> {
+          final List<Task> list = new CopyOnWriteArrayList<>(); //new ArrayList<>();
+          list.addAll(inputReaderToTasksMap.get(inputReader));
+          return Collections.unmodifiableList(list);
         });
+      }));
+    });
   }
 
   private boolean finishedSrcData() {
-    int numItr = numIterators;
     int numInterStageData = completedFutures.get() + numBoundedSources;
-    LOG.info("{} numIterators {} Completed Futures + numBoundedSource {}",
-        taskGroupId, numItr, numInterStageData);
+    boolean receivedAll = (numInterStageData == numIterators);
+    boolean setAll = (numInterStageData == idToIteratorMap.entrySet().size());
 
-    boolean forAllPartitions = numInterStageData == numItr;
-    boolean finished = true;
+    LOG.info("{} numIterators {} numInterStageData {}, itrMap size {}",
+        taskGroupId, numIterators, numInterStageData, idToIteratorMap.entrySet().size());
 
-    if (forAllPartitions) {
-      int numTotalItr = 0;
-      for (Map.Entry<String, Iterator> entry : idToIteratorMap.entrySet()) {
-        numTotalItr++;
-        Iterator iterator = entry.getValue();
-        if (iterator.hasNext()) {
-          finished = false;
-        }
-      }
-      LOG.info("{} numTotalItr {}", taskGroupId, numTotalItr);
+    if (!(receivedAll && setAll)) {
+      return false;
     }
 
-    return forAllPartitions && finished;
+    boolean finishedAll = true;
+    for (Map.Entry<String, Iterator> entry : idToIteratorMap.entrySet()) {
+      Iterator iterator = entry.getValue();
+      if (iterator.hasNext()) {
+        finishedAll = false;
+      }
+    }
+
+    return receivedAll && finishedAll;
   }
 
   private boolean finishedAllTasks() {
@@ -364,9 +353,6 @@ public final class TaskGroupExecutor {
   }
 
   private void updatePipeToDstTasksMap() {
-    // iteratorId : List[Tasks]
-    // For each Tasks in each entry, build a map of
-    // the Task's output pipe : List[the Task's children]
     Map<PipeImpl, List<Task>> currentMap = pipeToDstTasksMap;
     Map<PipeImpl, List<Task>> updatedMap = new HashMap<>();
 
@@ -376,7 +362,7 @@ public final class TaskGroupExecutor {
           PipeImpl pipe = taskToOutputPipeMap.get(task);
           updatedMap.putIfAbsent(pipe, dstTasks);
           LOG.info("{} pipeToDstTasksMap: [{}, {}]",
-             taskGroupId, getPhysicalTaskId(task.getId()), dstTasks);
+              taskGroupId, getPhysicalTaskId(task.getId()), dstTasks);
         })
     );
 
@@ -477,7 +463,7 @@ public final class TaskGroupExecutor {
     // Execute the TaskGroup DAG.
     try {
       // Process source data.
-      // Source data denotes data from SourceTasks or other Stages.
+      // Source data comes from SourceTasks and other stages.
       while (!finishedSrcData()) {
         iteratorIdToTasksMap.forEach((iteratorId, tasks) -> {
           Iterator iterator = idToIteratorMap.get(iteratorId);
@@ -494,8 +480,8 @@ public final class TaskGroupExecutor {
 
       LOG.info("{} Finished processing src data!", taskGroupId);
 
-      // Process internal data.
-      // Internal data denotes data from pipes of Tasks.
+      // Process intra-TaskGroup data.
+      // Intra-TaskGroup data comes from pipes of this TaskGroup's Tasks.
       initializePipeToDstTasksMap();
       while (!finishedAllTasks()) {
         pipeToDstTasksMap.forEach((pipe, dstTasks) -> {
@@ -510,17 +496,14 @@ public final class TaskGroupExecutor {
           closeTransform(pipeOwnerTask);
 
           // Set pipeOwnerTask as finished.
-          final String physicalTaskId = getPhysicalTaskId(pipeOwnerTask.getId());
-          if (!finishedTaskIds.contains(physicalTaskId)) {
-            finishedTaskIds.add(physicalTaskId);
-            LOG.info("{} {} Finished!", taskGroupId, getPhysicalTaskId(pipeOwnerTask.getId()));
-          }
+          finishedTaskIds.add(getPhysicalTaskId(pipeOwnerTask.getId()));
+          LOG.info("{} {} Finished!", taskGroupId, getPhysicalTaskId(pipeOwnerTask.getId()));
 
-          // Pass pipeOwnerTask's output to the children tasks recursively if exist.
+          // Pass pipeOwnerTask's output to its children tasks recursively.
           if (!dstTasks.isEmpty()) {
             while (!pipe.isEmpty()) {
-              // form output
-              final List input = Collections.singletonList(pipe.remove()); // intra-TaskGroup data are safe here
+              // Form input element-wise from the pipe
+              final List input = Collections.singletonList(pipe.remove());
               for (final Task task : dstTasks) {
                 runTask(task, input);
               }
@@ -536,7 +519,7 @@ public final class TaskGroupExecutor {
               List<OutputWriter> outputWritersOfTask = taskToOutputWritersMap.get(pipeOwnerTask);
               outputWritersOfTask.forEach(outputWriter -> outputWriter.writeElement(element));
               LOG.info("{} {} Write to OutputWriter element {}",
-                 taskGroupId, getPhysicalTaskId(pipeOwnerTask.getId()), element);
+                  taskGroupId, getPhysicalTaskId(pipeOwnerTask.getId()), element);
             }
             writeAndCloseOutputWriters(pipeOwnerTask);
           }
@@ -548,7 +531,7 @@ public final class TaskGroupExecutor {
       taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
           Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
       LOG.info("{} Execution Failed (Recoverable: output write failure)! Exception: {}",
-         taskGroupId, ex2.toString());
+          taskGroupId, ex2.toString());
     } catch (final Exception e) {
       taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE,
           Optional.empty(), Optional.empty());
@@ -586,7 +569,7 @@ public final class TaskGroupExecutor {
         data.forEach(dataElement -> {
           pipe.emit(dataElement);
           LOG.info("log: {} {} BoundedSourceTask emitting {} to pipe",
-            taskGroupId, physicalTaskId, dataElement);
+              taskGroupId, physicalTaskId, dataElement);
         });
       }
     } else if (task instanceof OperatorTask) {
@@ -612,7 +595,7 @@ public final class TaskGroupExecutor {
         data.forEach(dataElement -> {
           pipe.emit(dataElement);
           LOG.info("log: {} {} MetricCollectionTask emitting {} to pipe",
-             taskGroupId, physicalTaskId, dataElement);
+              taskGroupId, physicalTaskId, dataElement);
         });
       }
       setTaskPutOnHold((MetricCollectionBarrierTask) task);
@@ -628,10 +611,10 @@ public final class TaskGroupExecutor {
         List<OutputWriter> outputWritersOfTask = taskToOutputWritersMap.get(task);
         outputWritersOfTask.forEach(outputWriter -> outputWriter.writeElement(element));
         LOG.info("{} {} Write to OutputWriter element {}",
-          taskGroupId, getPhysicalTaskId(task.getId()), element);
+            taskGroupId, getPhysicalTaskId(task.getId()), element);
       }
 
-      // If this task has children to process, recursively process the output.
+      // Pass output to its children tasks recursively.
       List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
       if (!dstTasks.isEmpty()) {
         final List output = Collections.singletonList(element); // intra-TaskGroup data are safe here

@@ -72,7 +72,6 @@ public final class JavaWordCount {
       try (BufferedWriter bw = new BufferedWriter(new FileWriter(args[1]))) {
         for (Tuple2<?, ?> tuple : output) {
           bw.write(tuple._1 + ": " + tuple._2 + "\n");
-          System.out.println("Written " + tuple._1 + " " + tuple._2);
         }
       } catch (IOException e) {
         throw new RuntimeException(e);

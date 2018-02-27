@@ -257,8 +257,6 @@ public final class AlternatingLeastSquare {
       }
 
       results.add(KV.of(c.element().getKey(), vector));
-      LOG.info("add element {} {}", c.element().getKey(), vector);
-      LOG.info("results {}", results);
     }
 
     /**

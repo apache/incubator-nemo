@@ -135,7 +135,6 @@ public final class InputReader extends DataTransfer {
     final List<CompletableFuture<Iterator>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
-      LOG.info("log: add future to {} {} ", blockId, getId());
       futures.add(
           blockManagerWorker.queryBlock(blockId, getId(),
               (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),

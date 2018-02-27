@@ -29,6 +29,7 @@ import edu.snu.coral.runtime.common.state.TaskGroupState;
 import edu.snu.coral.runtime.common.metric.MetricDataBuilder;
 
 import java.util.*;
+
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,9 +74,10 @@ public final class TaskGroupStateManager {
 
   /**
    * Updates the state of the task group.
-   * @param newState of the task group.
+   *
+   * @param newState      of the task group.
    * @param taskPutOnHold the logical ID of the tasks put on hold, empty otherwise.
-   * @param cause only provided as non-empty upon recoverable failures.
+   * @param cause         only provided as non-empty upon recoverable failures.
    */
   public synchronized void onTaskGroupStateChanged(final TaskGroupState.State newState,
                                                    final Optional<String> taskPutOnHold,
@@ -83,61 +85,58 @@ public final class TaskGroupStateManager {
     final Map<String, Object> metric = new HashMap<>();
 
     switch (newState) {
-    case EXECUTING:
-      LOG.debug("Executing TaskGroup ID {}...", this.taskGroupId);
-      metric.put("ContainerId", executorId);
-      metric.put("ScheduleAttempt", attemptIdx);
-      metric.put("FromState", newState);
-      beginMeasurement(taskGroupId, metric);
-      break;
-    case COMPLETE:
-      LOG.debug("TaskGroup ID {} complete!", this.taskGroupId);
-      metric.put("ToState", newState);
-      endMeasurement(taskGroupId, metric);
-      notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
-      break;
-    case FAILED_RECOVERABLE:
-      LOG.debug("TaskGroup ID {} failed (recoverable).", this.taskGroupId);
-      /*
-      metric.put("ToState", newState);
-      endMeasurement(taskGroupId, metric);
-      */
-      notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
-      break;
-    case FAILED_UNRECOVERABLE:
-      LOG.debug("TaskGroup ID {} failed (unrecoverable).", this.taskGroupId);
-      /*
-      metric.put("ToState", newState);
-      endMeasurement(taskGroupId, metric);
-      */
-      notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
-      break;
-    case ON_HOLD:
-      LOG.debug("TaskGroup ID {} put on hold.", this.taskGroupId);
-      notifyTaskGroupStateToMaster(newState, taskPutOnHold, cause);
-      break;
-    default:
-      throw new IllegalStateException("Illegal state at this point");
+      case EXECUTING:
+        LOG.debug("Executing TaskGroup ID {}...", this.taskGroupId);
+        metric.put("ContainerId", executorId);
+        metric.put("ScheduleAttempt", attemptIdx);
+        metric.put("FromState", newState);
+        beginMeasurement(taskGroupId, metric);
+        break;
+      case COMPLETE:
+        LOG.debug("TaskGroup ID {} complete!", this.taskGroupId);
+        metric.put("ToState", newState);
+        endMeasurement(taskGroupId, metric);
+        notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
+        break;
+      case FAILED_RECOVERABLE:
+        LOG.debug("TaskGroup ID {} failed (recoverable).", this.taskGroupId);
+        metric.put("ToState", newState);
+        endMeasurement(taskGroupId, metric);
+        notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
+        break;
+      case FAILED_UNRECOVERABLE:
+        LOG.debug("TaskGroup ID {} failed (unrecoverable).", this.taskGroupId);
+        metric.put("ToState", newState);
+        endMeasurement(taskGroupId, metric);
+        notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
+        break;
+      case ON_HOLD:
+        LOG.debug("TaskGroup ID {} put on hold.", this.taskGroupId);
+        notifyTaskGroupStateToMaster(newState, taskPutOnHold, cause);
+        break;
+      default:
+        throw new IllegalStateException("Illegal state at this point");
     }
   }
 
   /**
    * Notifies the change in task group state to master.
-   * @param newState of the task group.
+   *
+   * @param newState      of the task group.
    * @param taskPutOnHold the logical ID of the tasks put on hold, empty otherwise.
-   * @param cause only provided as non-empty upon recoverable failures.
+   * @param cause         only provided as non-empty upon recoverable failures.
    */
   private void notifyTaskGroupStateToMaster(final TaskGroupState.State newState,
                                             final Optional<String> taskPutOnHold,
                                             final Optional<TaskGroupState.RecoverableFailureCause> cause) {
     final ControlMessage.TaskGroupStateChangedMsg.Builder msgBuilder =
         ControlMessage.TaskGroupStateChangedMsg.newBuilder()
-          .setExecutorId(executorId)
-          .setTaskGroupId(taskGroupId)
-          .setAttemptIdx(attemptIdx)
-          .setState(convertState(newState));
+            .setExecutorId(executorId)
+            .setTaskGroupId(taskGroupId)
+            .setAttemptIdx(attemptIdx)
+            .setState(convertState(newState));
     if (taskPutOnHold.isPresent()) {
-          msgBuilder.setTaskPutOnHoldId(taskPutOnHold.get());
+      msgBuilder.setTaskPutOnHoldId(taskPutOnHold.get());
     }
     if (cause.isPresent()) {
       msgBuilder.setFailureCause(convertFailureCause(cause.get()));
@@ -190,7 +189,8 @@ public final class TaskGroupStateManager {
   /**
    * Begins recording the start time of this metric measurement, in addition to the metric given.
    * This method ensures thread-safety by synchronizing its callers.
-   * @param compUnitId to be used as metricKey
+   *
+   * @param compUnitId    to be used as metricKey
    * @param initialMetric metric to add
    */
   private void beginMeasurement(final String compUnitId, final Map<String, Object> initialMetric) {
@@ -202,7 +202,8 @@ public final class TaskGroupStateManager {
   /**
    * Ends this metric measurement, recording the end time in addition to the metric given.
    * This method ensures thread-safety by synchronizing its callers.
-   * @param compUnitId to be used as metricKey
+   *
+   * @param compUnitId  to be used as metricKey
    * @param finalMetric metric to add
    */
   private void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {

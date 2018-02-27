@@ -20,8 +20,6 @@ import edu.snu.coral.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +30,6 @@ import java.util.List;
  * @param <O> output type.
  */
 public final class CreateViewTransform<I, O> implements Transform<I, O> {
-  private static final Logger LOG = LoggerFactory.getLogger(CreateViewTransform.class.getName());
   private final PCollectionView pCollectionView;
   private Pipe<O> pipe;
   private List<WindowedValue<I>> windowed;
@@ -57,7 +54,6 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
   public void onData(final Object element) {
     WindowedValue<I> data = WindowedValue.valueInGlobalWindow((I) element);
     windowed.add(data);
-    LOG.info("CreateViewTransform onData {}", data);
   }
 
   /**
@@ -70,10 +66,8 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void close() {
-    LOG.info("log: pCollectionView {}, viewFn {}", pCollectionView, viewFn);
     O output = viewFn.apply(windowed);
     pipe.emit(output);
-    LOG.info("CreateViewTransform close, emitting {}", output);
   }
 
   @Override
