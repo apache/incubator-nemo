@@ -16,9 +16,12 @@
 package edu.snu.nemo.compiler.frontend.spark.sql;
 
 import edu.snu.nemo.compiler.frontend.spark.core.java.JavaRDD;
+import org.apache.spark.api.java.function.MapFunction;
+import org.apache.spark.api.java.function.MapPartitionsFunction;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Encoder;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.TypedColumn;
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
 import org.apache.spark.storage.StorageLevel;
 
@@ -59,6 +62,11 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
    */
   @Override
   public JavaRDD<T> javaRDD() {
+    return this.toJavaRDD();
+  }
+
+  @Override
+  public JavaRDD<T> toJavaRDD() {
     return JavaRDD.of((SparkSession) super.sparkSession(), this);
   }
 
@@ -115,6 +123,14 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
   public Dataset<T> alias(final scala.Symbol alias) {
     final boolean userTriggered = initializeFunction(alias);
     final Dataset<T> result = from(super.alias(alias));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public <U> Dataset<U> as(final Encoder<U> evidence) {
+    final boolean userTriggered = initializeFunction(evidence);
+    final Dataset<U> result = from(super.as(evidence));
     this.setIsUserTriggered(userTriggered);
     return result;
   }
@@ -377,6 +393,40 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
     return result;
   }
 
+  @Override
+  public <U> Dataset<U> map(final scala.Function1<T, U> func, final Encoder<U> evidence) {
+    final boolean userTriggered = initializeFunction(func, evidence);
+    final Dataset<U> result = from(super.map(func, evidence));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public <U> Dataset<U> map(final MapFunction<T, U> func, final Encoder<U> encoder) {
+    final boolean userTriggered = initializeFunction(func, encoder);
+    final Dataset<U> result = from(super.map(func, encoder));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public <U> Dataset<U> mapPartitions(
+      final scala.Function1<scala.collection.Iterator<T>, scala.collection.Iterator<U>> func,
+      final Encoder<U> evidence) {
+    final boolean userTriggered = initializeFunction(func, evidence);
+    final Dataset<U> result = from(super.mapPartitions(func, evidence));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public <U> Dataset<U> mapPartitions(final MapPartitionsFunction<T, U> f, final Encoder<U> encoder) {
+    final boolean userTriggered = initializeFunction(f, encoder);
+    final Dataset<U> result = from(super.mapPartitions(f, encoder));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
   /**
    * Overrides super.ofRows.
    * @param sparkSession Spark Session.
@@ -541,6 +591,14 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
   public Dataset<Row> select(final String col, final String... cols) {
     final boolean userTriggered = initializeFunction(col, cols);
     final Dataset<Row> result = from(super.select(col, cols));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public <U1> Dataset<U1> select(final TypedColumn<T, U1> c1) {
+    final boolean userTriggered = initializeFunction(c1);
+    final Dataset<U1> result = from(super.select(c1));
     this.setIsUserTriggered(userTriggered);
     return result;
   }
