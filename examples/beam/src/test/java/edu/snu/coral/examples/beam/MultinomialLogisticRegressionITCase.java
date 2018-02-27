@@ -17,8 +17,7 @@ package edu.snu.coral.examples.beam;
 
 import edu.snu.coral.client.JobLauncher;
 import edu.snu.coral.common.test.ArgBuilder;
-import edu.snu.coral.compiler.optimizer.policy.PadoPolicy;
-import edu.snu.coral.examples.beam.policy.PadoPolicyParallelsimFive;
+import edu.snu.coral.examples.beam.policy.PadoPolicyParallelismFive;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -31,7 +30,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class MultinomialLogisticRegressionITCase {
-  private static final int TIMEOUT = 180000;
+  private static final int TIMEOUT = 360000;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
   private static final String input = fileBasePath + "sample_input_mlr";
   private static final String numFeatures = "100";
@@ -62,7 +61,7 @@ public final class MultinomialLogisticRegressionITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicyParallelsimFive.class.getCanonicalName())
+        .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 }

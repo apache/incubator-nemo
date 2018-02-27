@@ -25,10 +25,10 @@ import java.util.List;
 /**
  * A Sailfish policy with fixed parallelism 5 for tests.
  */
-public final class SailfishPolicyParallelsimFive implements Policy {
+public final class SailfishPolicyParallelismFive implements Policy {
   private final Policy policy;
 
-  public SailfishPolicyParallelsimFive() {
+  public SailfishPolicyParallelismFive() {
     this.policy = PolicyTestUtil.overwriteParallelism(5, SailfishPolicy.class.getCanonicalName());
   }
 

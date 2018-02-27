@@ -25,10 +25,10 @@ import java.util.List;
 /**
  * A pado policy with fixed parallelism 5 for tests.
  */
-public final class PadoPolicyParallelsimFive implements Policy {
+public final class PadoPolicyParallelismFive implements Policy {
   private final Policy policy;
 
-  public PadoPolicyParallelsimFive() {
+  public PadoPolicyParallelismFive() {
     this.policy = PolicyTestUtil.overwriteParallelism(5, PadoPolicy.class.getCanonicalName());
   }
 

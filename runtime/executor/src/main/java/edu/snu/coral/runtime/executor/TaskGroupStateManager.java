@@ -26,7 +26,6 @@ import edu.snu.coral.runtime.common.plan.RuntimeEdge;
 import edu.snu.coral.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.coral.runtime.common.plan.physical.Task;
 import edu.snu.coral.runtime.common.state.TaskGroupState;
-import edu.snu.coral.runtime.common.state.TaskState;
 import edu.snu.coral.runtime.common.metric.MetricDataBuilder;
 
 import java.util.*;
@@ -49,11 +48,6 @@ public final class TaskGroupStateManager {
   private final Map<String, MetricDataBuilder> metricDataBuilderMap;
 
   /**
-   * Used to track all task states of this task group, by keeping a map of logical task ids to their states.
-   */
-  private final Map<String, TaskState> logicalIdToTaskStates;
-
-  /**
    * Used to track task group completion status.
    * All task ids are added to the set when the this task group begins executing.
    * Each task id is removed upon completion,
@@ -62,7 +56,6 @@ public final class TaskGroupStateManager {
   private Set<String> currentTaskGroupTaskIds;
 
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
-
 
   public TaskGroupStateManager(final ScheduledTaskGroup scheduledTaskGroup,
                                final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
@@ -75,20 +68,7 @@ public final class TaskGroupStateManager {
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.metricMessageSender = metricMessageSender;
     metricDataBuilderMap = new HashMap<>();
-    logicalIdToTaskStates = new HashMap<>();
     currentTaskGroupTaskIds = new HashSet<>();
-    initializeStates(taskGroupDag);
-  }
-
-  /**
-   * Receives and initializes the states for the task group to manage.
-   * @param taskGroupDag to manage.
-   */
-  private void initializeStates(final DAG<Task, RuntimeEdge<Task>> taskGroupDag) {
-    taskGroupDag.getVertices().forEach(task -> {
-      currentTaskGroupTaskIds.add(task.getId());
-      logicalIdToTaskStates.put(task.getId(), new TaskState());
-    });
   }
 
   /**
@@ -109,11 +89,6 @@ public final class TaskGroupStateManager {
       metric.put("ScheduleAttempt", attemptIdx);
       metric.put("FromState", newState);
       beginMeasurement(taskGroupId, metric);
-      logicalIdToTaskStates.forEach((taskId, state) -> {
-        LOG.debug("Task State Transition: id {} from {} to {}",
-            taskId, state.getStateMachine().getCurrentState(), TaskState.State.PENDING_IN_EXECUTOR);
-        state.getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR);
-      });
       break;
     case COMPLETE:
       LOG.debug("TaskGroup ID {} complete!", this.taskGroupId);

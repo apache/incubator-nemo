@@ -18,10 +18,8 @@ package edu.snu.coral.examples.beam;
 import edu.snu.coral.client.JobLauncher;
 import edu.snu.coral.common.test.ArgBuilder;
 import edu.snu.coral.common.test.ExampleTestUtil;
-import edu.snu.coral.compiler.optimizer.policy.DefaultPolicy;
-import edu.snu.coral.compiler.optimizer.policy.PadoPolicy;
 import edu.snu.coral.examples.beam.policy.DefaultPolicyParallelismFive;
-import edu.snu.coral.examples.beam.policy.PadoPolicyParallelsimFive;
+import edu.snu.coral.examples.beam.policy.PadoPolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -73,7 +71,7 @@ public final class BroadcastITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(BroadcastITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicyParallelsimFive.class.getCanonicalName())
+        .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 }

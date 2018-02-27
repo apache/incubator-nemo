@@ -18,7 +18,6 @@ package edu.snu.coral.examples.beam;
 import edu.snu.coral.client.JobLauncher;
 import edu.snu.coral.common.test.ArgBuilder;
 import edu.snu.coral.common.test.ExampleTestUtil;
-import edu.snu.coral.compiler.optimizer.policy.*;
 import edu.snu.coral.examples.beam.policy.*;
 import org.junit.After;
 import org.junit.Before;
@@ -71,7 +70,7 @@ public final class MapReduceITCase {
   public void testSailfish() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_sailfish")
-        .addOptimizationPolicy(SailfishPolicyParallelsimFive.class.getCanonicalName())
+        .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 
@@ -79,7 +78,7 @@ public final class MapReduceITCase {
   public void testDisagg() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_disagg")
-        .addOptimizationPolicy(DisaggregationPolicyParallelsimFive.class.getCanonicalName())
+        .addOptimizationPolicy(DisaggregationPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 
@@ -87,7 +86,7 @@ public final class MapReduceITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicyParallelsimFive.class.getCanonicalName())
+        .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 
@@ -99,7 +98,7 @@ public final class MapReduceITCase {
   public void testDataSkew() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_dataskew")
-        .addOptimizationPolicy(DataSkewPolicyParallelsimFive.class.getCanonicalName())
+        .addOptimizationPolicy(DataSkewPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 }

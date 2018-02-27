@@ -25,10 +25,10 @@ import java.util.List;
 /**
  * A disaggregation policy with fixed parallelism 5 for tests.
  */
-public final class DisaggregationPolicyParallelsimFive implements Policy {
+public final class DisaggregationPolicyParallelismFive implements Policy {
   private final Policy policy;
 
-  public DisaggregationPolicyParallelsimFive() {
+  public DisaggregationPolicyParallelismFive() {
     this.policy = PolicyTestUtil.overwriteParallelism(5, DisaggregationPolicy.class.getCanonicalName());
   }
 

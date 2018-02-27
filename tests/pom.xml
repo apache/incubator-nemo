@@ -26,7 +26,7 @@ limitations under the License.
     </parent>
 
     <artifactId>coral-tests</artifactId>
-    <name>Coral Unit Tests and Integration Tests</name>
+    <name>Coral Unit Tests</name>
 
     <repositories>
         <repository>
@@ -50,6 +50,11 @@ limitations under the License.
             <groupId>edu.snu.coral</groupId>
             <artifactId>coral-examples-beam</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>1.7.20</version>
         </dependency>
     </dependencies>
 </project>

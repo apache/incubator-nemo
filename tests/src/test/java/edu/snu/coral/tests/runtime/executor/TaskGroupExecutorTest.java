@@ -28,7 +28,6 @@ import edu.snu.coral.runtime.executor.TaskGroupExecutor;
 import edu.snu.coral.runtime.common.RuntimeIdGenerator;
 import edu.snu.coral.runtime.common.plan.RuntimeEdge;
 import edu.snu.coral.runtime.common.plan.physical.*;
-import edu.snu.coral.runtime.common.state.TaskState;
 import edu.snu.coral.runtime.executor.TaskGroupStateManager;
 import edu.snu.coral.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.coral.runtime.executor.datatransfer.InputReader;
@@ -41,6 +40,8 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -63,23 +64,19 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({InputReader.class, OutputWriter.class, DataTransferFactory.class,
     TaskGroupStateManager.class, PhysicalStageEdge.class})
 public final class TaskGroupExecutorTest {
+  private static final Logger LOG = LoggerFactory.getLogger(TaskGroupExecutorTest.class.getName());
+
   private static final int DATA_SIZE = 100;
   private static final String CONTAINER_TYPE = "CONTAINER_TYPE";
   private static final int SOURCE_PARALLELISM = 5;
   private List elements;
-  private Map<String, List<Iterable>> taskIdToOutputData;
+  private Map<String, List<Object>> taskIdToOutputData;
   private DataTransferFactory dataTransferFactory;
   private TaskGroupStateManager taskGroupStateManager;
-  private Map<String, List<TaskState.State>> taskIdToStateList;
-  private List<TaskState.State> expectedTaskStateList;
 
   @Before
   public void setUp() throws Exception {
     elements = getRangedNumList(0, DATA_SIZE);
-    taskIdToStateList = new HashMap<>();
-    expectedTaskStateList = new ArrayList<>();
-    expectedTaskStateList.add(TaskState.State.EXECUTING);
-    expectedTaskStateList.add(TaskState.State.COMPLETE);
 
     // Mock a TaskGroupStateManager. It accumulates the state change into a list.
     taskGroupStateManager = mock(TaskGroupStateManager.class);
@@ -87,9 +84,7 @@ public final class TaskGroupExecutorTest {
     // Mock a DataTransferFactory.
     taskIdToOutputData = new HashMap<>();
     dataTransferFactory = mock(DataTransferFactory.class);
-    when(dataTransferFactory.createLocalReader(anyInt(), any())).then(new IntraStageReaderAnswer());
     when(dataTransferFactory.createReader(anyInt(), any(), any())).then(new InterStageReaderAnswer());
-    when(dataTransferFactory.createLocalWriter(any(), anyInt(), any())).then(new WriterAnswer());
     when(dataTransferFactory.createWriter(any(), anyInt(), any(), any())).then(new WriterAnswer());
   }
 
@@ -130,10 +125,8 @@ public final class TaskGroupExecutorTest {
     taskGroupExecutor.execute();
 
     // Check the output.
-    assertEquals(1, taskIdToOutputData.get(sourceTaskId).size());
-    assertEquals(elements, taskIdToOutputData.get(sourceTaskId).get(0));
-    // Check the state transition.
-    taskIdToStateList.forEach((taskId, taskStateList) -> assertEquals(expectedTaskStateList, taskStateList));
+    assertEquals(100, taskIdToOutputData.get(sourceTaskId).size());
+    assertEquals(elements.get(0), taskIdToOutputData.get(sourceTaskId).get(0));
   }
 
   /**
@@ -188,18 +181,7 @@ public final class TaskGroupExecutorTest {
     taskGroupExecutor.execute();
 
     // Check the output.
-    assertEquals(SOURCE_PARALLELISM, taskIdToOutputData.get(operatorTaskId1).size()); // Multiple output emission.
-    final List<Iterable> outputs = taskIdToOutputData.get(operatorTaskId1);
-    final List concatStreamBase = new ArrayList<>();
-    Stream<Object> concatStream = concatStreamBase.stream();
-    for (int srcIdx = 0; srcIdx < SOURCE_PARALLELISM; srcIdx++) {
-      concatStream = Stream.concat(concatStream, StreamSupport.stream(outputs.get(srcIdx).spliterator(), false));
-    }
-    assertEquals(elements, concatStream.collect(Collectors.toList()));
-    assertEquals(1, taskIdToOutputData.get(operatorTaskId2).size());
-    assertEquals(elements, taskIdToOutputData.get(operatorTaskId2).get(0));
-    // Check the state transition.
-    taskIdToStateList.forEach((taskId, taskStateList) -> assertEquals(expectedTaskStateList, taskStateList));
+    assertEquals(100, taskIdToOutputData.get(operatorTaskId2).size());
   }
 
   /**
@@ -255,12 +237,12 @@ public final class TaskGroupExecutorTest {
         @Override
         public Object answer(final InvocationOnMock invocationOnMock) {
           final Object[] args = invocationOnMock.getArguments();
-          final Iterable dataToWrite = (Iterable) args[0];
+          final Object dataToWrite = args[0];
           taskIdToOutputData.computeIfAbsent(dstTask.getId(), emptyTaskId -> new ArrayList<>());
           taskIdToOutputData.get(dstTask.getId()).add(dataToWrite);
           return null;
         }
-      }).when(outputWriter).write();
+      }).when(outputWriter).writeElement(any());
       return outputWriter;
     }
   }

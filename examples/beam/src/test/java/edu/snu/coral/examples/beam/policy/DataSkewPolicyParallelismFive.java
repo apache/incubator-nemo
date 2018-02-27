@@ -25,10 +25,10 @@ import java.util.List;
 /**
  * A data-skew policy with fixed parallelism 5 for tests.
  */
-public final class DataSkewPolicyParallelsimFive implements Policy {
+public final class DataSkewPolicyParallelismFive implements Policy {
   private final Policy policy;
 
-  public DataSkewPolicyParallelsimFive() {
+  public DataSkewPolicyParallelismFive() {
     this.policy = PolicyTestUtil.overwriteParallelism(5, DataSkewPolicy.class.getCanonicalName());
   }
 
