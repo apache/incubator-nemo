@@ -71,7 +71,7 @@ public final class TaskGroupExecutor {
   private final Set<String> finishedTaskIds;
 
   private static final String ITERATOR_PREFIX = "Iterator-";
-  private final AtomicInteger iteratorIdGenerator;
+  private static final AtomicInteger ITERATORID_GENERATOR = new AtomicInteger(0);
 
   private final AtomicInteger completedFutures;
   private int numBoundedSources;
@@ -106,8 +106,6 @@ public final class TaskGroupExecutor {
     this.numIterators = 0;
     this.completedFutures = new AtomicInteger(0);
     this.numBoundedSources = 0;
-
-    iteratorIdGenerator = new AtomicInteger(0);
 
     initializeDataRead(scheduledTaskGroup.getLogicalTaskIdToReadable());
     initializeDataTransfer();
@@ -635,6 +633,8 @@ public final class TaskGroupExecutor {
   }
 
   private String generateIteratorId() {
-    return ITERATOR_PREFIX + iteratorIdGenerator.getAndIncrement();
+    final String itrID = ITERATOR_PREFIX + ITERATORID_GENERATOR.getAndIncrement();
+    LOG.info("{} generateIteratorId {}", taskGroupId, itrID);
+    return itrID;
   }
 }
