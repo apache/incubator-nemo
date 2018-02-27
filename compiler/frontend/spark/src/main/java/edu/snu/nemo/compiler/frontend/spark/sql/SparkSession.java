@@ -1,12 +1,11 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Copyright (C) 2018 Seoul National University
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,19 +18,28 @@ package edu.snu.nemo.compiler.frontend.spark.sql;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.rdd.RDD;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.sources.BaseRelation;
+import org.apache.spark.sql.types.StructType;
 import scala.Tuple2;
 
 import javax.naming.OperationNotSupportedException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
 
 /**
  * A simple version of the Spark session, containing SparkContext that contains SparkConf.
  */
-public final class SparkSession extends org.apache.spark.sql.SparkSession {
+public final class SparkSession extends org.apache.spark.sql.SparkSession implements NemoSparkUserFacingClass {
   private final LinkedHashMap<String, Object[]> datasetCommandsList;
   private final Map<String, String> initialConf;
+  private final AtomicBoolean isUserTriggered;
 
   /**
    * Constructor.
@@ -41,6 +49,22 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession {
     super(sparkContext);
     this.datasetCommandsList = new LinkedHashMap<>();
     this.initialConf = initialConf;
+    this.isUserTriggered = new AtomicBoolean(true);
+  }
+
+  @Override
+  public boolean getIsUserTriggered() {
+    return isUserTriggered.get();
+  }
+
+  @Override
+  public void setIsUserTriggered(final boolean isUserTriggered) {
+    this.isUserTriggered.set(isUserTriggered);
+  }
+
+  @Override
+  public SparkSession sparkSession() {
+    return this;
   }
 
   /**
@@ -48,7 +72,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession {
    * @param cmd the name of the command to apply. e.g. "SparkSession#read"
    * @param args arguments required for the command.
    */
-  public void appendCommand(final String cmd, final Object... args) {
+  void appendCommand(final String cmd, final Object... args) {
     this.datasetCommandsList.put(cmd, args);
   }
 
@@ -56,7 +80,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession {
    * @return the commands list required to recreate the dataset on separate machines.
    */
   public LinkedHashMap<String, Object[]> getDatasetCommandsList() {
-    return datasetCommandsList;
+    return this.datasetCommandsList;
   }
 
   /**
@@ -80,19 +104,23 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession {
     Object result = spark;
 
     for (Map.Entry<String, Object[]> command: commandList.entrySet()) {
-      final String cmd = command.getKey();
+      final String[] cmd = command.getKey().split("#");
+      final String className = cmd[0];
+      final String methodName = cmd[1];
       final Object[] args = command.getValue();
+      final Class<?>[] argTypes = Stream.of(args).map(o -> o.getClass()).toArray(Class[]::new);
 
-      //TODO#776: support more commands related to initialization of dataset.
-      switch (cmd) {
-        case "SparkSession#read":
-          result = ((SparkSession) result).read();
-          break;
-        case "DataFrameReader#textFile":
-          result = ((DataFrameReader) result).textFile((String) args[0]);
-          break;
-        default:
-          throw new OperationNotSupportedException(cmd + " is not yet supported.");
+      if (!className.equals(SparkSession.class.getName())
+          && !className.equals(DataFrameReader.class.getName())
+          && !className.equals(Dataset.class.getName())) {
+        throw new OperationNotSupportedException(command + " is not yet supported.");
+      }
+
+      try {
+        final Method method = result.getClass().getDeclaredMethod(methodName, argTypes);
+        result = method.invoke(result, args);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
     }
 
@@ -101,8 +129,90 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession {
 
   @Override
   public DataFrameReader read() {
-    appendCommand("SparkSession#read");
-    return new DataFrameReader(this);
+    final boolean userTriggered = initializeFunction();
+    final DataFrameReader result = new DataFrameReader(this);
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public Dataset<Row> baseRelationToDataFrame(final BaseRelation baseRelation) {
+    final boolean userTriggered = initializeFunction(baseRelation);
+    final Dataset<Row> result = Dataset.from(super.baseRelationToDataFrame(baseRelation));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public Dataset<Row> createDataFrame(final JavaRDD<?> rdd, final Class<?> beanClass) {
+    final boolean userTriggered = initializeFunction(rdd, beanClass);
+    final Dataset<Row> result = Dataset.from(super.createDataFrame(rdd, beanClass));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public Dataset<Row> createDataFrame(final JavaRDD<Row> rowRDD, final StructType schema) {
+    final boolean userTriggered = initializeFunction(rowRDD, schema);
+    final Dataset<Row> result = Dataset.from(super.createDataFrame(rowRDD, schema));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public Dataset<Row> createDataFrame(final java.util.List<?> data, final Class<?> beanClass) {
+    final boolean userTriggered = initializeFunction(data, beanClass);
+    final Dataset<Row> result = Dataset.from(super.createDataFrame(data, beanClass));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public Dataset<Row> createDataFrame(final java.util.List<Row> rows, final StructType schema) {
+    final boolean userTriggered = initializeFunction(rows, schema);
+    final Dataset<Row> result = Dataset.from(super.createDataFrame(rows, schema));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public Dataset<Row> createDataFrame(final RDD<?> rdd, final Class<?> beanClass) {
+    final boolean userTriggered = initializeFunction(rdd, beanClass);
+    final Dataset<Row> result = Dataset.from(super.createDataFrame(rdd, beanClass));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public Dataset<Row> createDataFrame(final RDD<Row> rowRDD, final StructType schema) {
+    final boolean userTriggered = initializeFunction(rowRDD, schema);
+    final Dataset<Row> result = Dataset.from(super.createDataFrame(rowRDD, schema));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public Dataset<Row> emptyDataFrame() {
+    final boolean userTriggered = initializeFunction();
+    final Dataset<Row> result = Dataset.from(super.emptyDataFrame());
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public Dataset<Row> sql(final String sqlText) {
+    final boolean userTriggered = initializeFunction(sqlText);
+    final Dataset<Row> result = Dataset.from(super.sql(sqlText));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public Dataset<Row> table(final String tableName) {
+    final boolean userTriggered = initializeFunction(tableName);
+    final Dataset<Row> result = Dataset.from(super.table(tableName));
+    this.setIsUserTriggered(userTriggered);
+    return result;
   }
 
   /**

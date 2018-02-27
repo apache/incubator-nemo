@@ -224,7 +224,7 @@ public final class LoopVertex extends IRVertex {
         final IREdge newIrEdge = new IREdge(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern),
             originalToNewIRVertex.get(srcVertex), edge.getDst(), edge.getCoder(), edge.isSideInput());
         edge.copyExecutionPropertiesTo(newIrEdge);
-        dagBuilder.connectVertices(newIrEdge);
+        dagBuilder.addVertex(edge.getDst()).connectVertices(newIrEdge);
       }));
     }
 

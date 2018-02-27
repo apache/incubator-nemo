@@ -147,8 +147,12 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
       incomingEdges.get(dst).add(edge);
       outgoingEdges.get(src).add(edge);
     } else {
-      throw new IllegalVertexOperationException("The DAG does not contain either src or dst of the edge: "
-          + (src == null ? null : src.getId()) + " -> " + (dst == null ? null : dst.getId()));
+      this.buildWithoutSourceSinkCheck().storeJSON("debug", "errored_ir", "Errored IR");
+      throw new IllegalVertexOperationException("The DAG does not contain"
+          + (vertices.contains(src) ? "" : " [source]") + (vertices.contains(dst) ? "" : " [destination]")
+          + " of the edge: [" + (src == null ? null : src.getId())
+          + "]->[" + (dst == null ? null : dst.getId()) + "] in "
+          + vertices.stream().map(V::getId).collect(Collectors.toSet()));
     }
     return this;
   }
