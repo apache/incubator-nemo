@@ -19,6 +19,9 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
+import edu.snu.nemo.examples.spark.sql.JavaSparkSQLExample;
+import edu.snu.nemo.examples.spark.sql.JavaUserDefinedTypedAggregation;
+import edu.snu.nemo.examples.spark.sql.JavaUserDefinedUntypedAggregation;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -71,5 +74,47 @@ public final class SparkITCase {
         .addUserArgs(numParallelism)
         .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
+  }
+
+  @Test(timeout = TIMEOUT)
+  public void testSparkSQLUserDefinedTypedAggregation() throws Exception {
+    final String inputFileName = "sample_input_employees.json";
+    final String inputFilePath = fileBasePath + inputFileName;
+
+    JobLauncher.main(builder
+        .addJobId(JavaUserDefinedTypedAggregation.class.getSimpleName() + "_test")
+        .addUserMain(JavaUserDefinedTypedAggregation.class.getCanonicalName())
+        .addUserArgs(inputFilePath)
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .build());
+  }
+
+  @Test(timeout = TIMEOUT)
+  public void testSparkSQLUserDefinedUntypedAggregation() throws Exception {
+    final String inputFileName = "sample_input_employees.json";
+    final String inputFilePath = fileBasePath + inputFileName;
+
+    JobLauncher.main(builder
+        .addJobId(JavaUserDefinedUntypedAggregation.class.getSimpleName() + "_test")
+        .addUserMain(JavaUserDefinedUntypedAggregation.class.getCanonicalName())
+        .addUserArgs(inputFilePath)
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .build());
+  }
+
+  @Test(timeout = TIMEOUT)
+  public void testSparkSQLExample() throws Exception {
+    final String peopleJson = "sample_input_people.json";
+    final String peopleTxt = "sample_input_people.txt";
+    final String inputFileJson = fileBasePath + peopleJson;
+    final String inputFileTxt = fileBasePath + peopleTxt;
+
+//    TODO#412: Enable this after implementation of RDDs.
+//    JobLauncher.main(builder
+//        .addJobId(JavaSparkSQLExample.class.getSimpleName() + "_test")
+//        .addUserMain(JavaSparkSQLExample.class.getCanonicalName())
+//        .addUserArgs(inputFileJson, inputFileTxt)
+//        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+//        .build());
   }
 }
