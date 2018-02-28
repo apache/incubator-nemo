@@ -19,14 +19,14 @@ limitations under the License.
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>edu.snu.coral</groupId>
-        <artifactId>coral-project</artifactId>
+        <groupId>edu.snu.nemo</groupId>
+        <artifactId>nemo-project</artifactId>
         <version>0.1-SNAPSHOT</version>
         <relativePath>../</relativePath>
     </parent>
 
-    <artifactId>coral-tests</artifactId>
-    <name>Coral Unit Tests and Integration Tests</name>
+    <artifactId>nemo-tests</artifactId>
+    <name>Nemo Unit Tests and Integration Tests</name>
 
     <repositories>
         <repository>
@@ -37,18 +37,18 @@ limitations under the License.
 
     <dependencies>
         <dependency>
-            <groupId>edu.snu.coral</groupId>
-            <artifactId>coral-conf</artifactId>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-conf</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.coral</groupId>
-            <artifactId>coral-client</artifactId>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-client</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.coral</groupId>
-            <artifactId>coral-examples-beam</artifactId>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-examples-beam</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
