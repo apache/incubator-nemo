@@ -87,7 +87,7 @@ public final class SchedulerRunner {
               schedulingPolicy.scheduleTaskGroup(nextTaskGroupToSchedule.get(), jobStateManager);
 
           if (!isScheduled) {
-            LOG.info("Failed to assign an executor for {} before the timeout: {}",
+            LOG.debug("Failed to assign an executor for {} before the timeout: {}",
                 new Object[]{nextTaskGroupToSchedule.get().getTaskGroupId(),
                     schedulingPolicy.getScheduleTimeoutMs()});
 
