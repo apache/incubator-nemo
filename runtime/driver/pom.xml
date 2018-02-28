@@ -17,15 +17,15 @@ limitations under the License.
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <groupId>edu.snu.coral</groupId>
-        <artifactId>coral-project</artifactId>
+        <groupId>edu.snu.nemo</groupId>
+        <artifactId>nemo-project</artifactId>
         <version>0.1-SNAPSHOT</version>
         <relativePath>../../</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>coral-driver</artifactId>
-    <name>Coral Driver</name>
+    <artifactId>nemo-driver</artifactId>
+    <name>Nemo Driver</name>
 
     <repositories>
         <repository>
@@ -36,38 +36,38 @@ limitations under the License.
 
     <dependencies>
         <dependency>
-            <groupId>edu.snu.coral</groupId>
-            <artifactId>coral-common</artifactId>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.coral</groupId>
-            <artifactId>coral-compiler-backend</artifactId>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-compiler-backend</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.coral</groupId>
-            <artifactId>coral-compiler-optimizer</artifactId>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-compiler-optimizer</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.coral</groupId>
-            <artifactId>coral-runtime-common</artifactId>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-runtime-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.coral</groupId>
-            <artifactId>coral-runtime-executor</artifactId>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-runtime-executor</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.coral</groupId>
-            <artifactId>coral-runtime-master</artifactId>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-runtime-master</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.snu.coral</groupId>
-            <artifactId>coral-conf</artifactId>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-conf</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

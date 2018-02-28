@@ -16,8 +16,8 @@
 #
 
 '''
-json2dot.py: Generates Graphviz representation of Coral DAG::toString
-This file is used as backend for https://service.jangho.io/coral-dag/
+json2dot.py: Generates Graphviz representation of Nemo DAG::toString
+This file is used as backend for https://service.jangho.io/nemo-dag/
 '''
 
 import sys
