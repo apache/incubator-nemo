@@ -20,6 +20,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.rdd.RDD;
+import org.apache.spark.sql.Encoder;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.types.StructType;
@@ -43,6 +44,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
 
   /**
    * Constructor.
+   *
    * @param sparkContext the spark context for the session.
    */
   private SparkSession(final SparkContext sparkContext, final Map<String, String> initialConf) {
@@ -69,7 +71,8 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
 
   /**
    * Append the command to the list of dataset commands.
-   * @param cmd the name of the command to apply. e.g. "SparkSession#read"
+   *
+   * @param cmd  the name of the command to apply. e.g. "SparkSession#read"
    * @param args arguments required for the command.
    */
   void appendCommand(final String cmd, final Object... args) {
@@ -92,9 +95,10 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
 
   /**
    * Method to reproduce the initial Dataset on separate evaluators when reading from sources.
-   * @param spark sparkSession to start from.
+   *
+   * @param spark       sparkSession to start from.
    * @param commandList commands required to setup the dataset.
-   * @param <T> type of the resulting dataset's data.
+   * @param <T>         type of the resulting dataset's data.
    * @return the initialized dataset.
    * @throws OperationNotSupportedException exception when the command is not yet supported.
    */
@@ -103,7 +107,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
       throws OperationNotSupportedException {
     Object result = spark;
 
-    for (Map.Entry<String, Object[]> command: commandList.entrySet()) {
+    for (Map.Entry<String, Object[]> command : commandList.entrySet()) {
       final String[] cmd = command.getKey().split("#");
       final String className = cmd[0];
       final String methodName = cmd[1];
@@ -192,6 +196,30 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
   }
 
   @Override
+  public <T> Dataset<T> createDataset(final java.util.List<T> data, final Encoder<T> evidence) {
+    final boolean userTriggered = initializeFunction(data, evidence);
+    final Dataset<T> result = Dataset.from(super.createDataset(data, evidence));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public <T> Dataset<T> createDataset(final RDD<T> data, final Encoder<T> evidence) {
+    final boolean userTriggered = initializeFunction(data, evidence);
+    final Dataset<T> result = Dataset.from(super.createDataset(data, evidence));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
+  public <T> Dataset<T> createDataset(final scala.collection.Seq<T> data, final Encoder<T> evidence) {
+    final boolean userTriggered = initializeFunction(data, evidence);
+    final Dataset<T> result = Dataset.from(super.createDataset(data, evidence));
+    this.setIsUserTriggered(userTriggered);
+    return result;
+  }
+
+  @Override
   public Dataset<Row> emptyDataFrame() {
     final boolean userTriggered = initializeFunction();
     final Dataset<Row> result = Dataset.from(super.emptyDataFrame());
@@ -217,8 +245,9 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
 
   /**
    * Method to downcast Spark's spark session to our spark session class.
+   *
    * @param sparkSession spark's spark session.
-   * @param initialConf initial configuration of the spark session.
+   * @param initialConf  initial configuration of the spark session.
    * @return our spark session class.
    */
   public static SparkSession from(final org.apache.spark.sql.SparkSession sparkSession,
@@ -228,6 +257,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
 
   /**
    * Get a builder for the session.
+   *
    * @return the session builder.
    */
   public static Builder builder() {
@@ -255,6 +285,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
 
     /**
      * Apply config in the form of Java Map.
+     *
      * @param conf the conf.
      * @return the builder with the conf applied.
      */
