@@ -27,8 +27,8 @@ import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -50,11 +50,11 @@ public final class BlockManagerMasterTest {
     blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
   }
 
-  private static void checkBlockAbsentException(final CompletableFuture<String> future,
+  private static void checkBlockAbsentException(final Future<String> future,
                                                 final String expectedPartitionId,
                                                 final BlockState.State expectedState)
       throws IllegalStateException, InterruptedException {
-    assertTrue(future.isCompletedExceptionally());
+    assertTrue(future.isDone());
     try {
       future.get();
       throw new IllegalStateException("An ExecutionException was expected.");
@@ -66,15 +66,14 @@ public final class BlockManagerMasterTest {
     }
   }
 
-  private static void checkBlockLocation(final CompletableFuture<String> future,
+  private static void checkBlockLocation(final Future<String> future,
                                          final String expectedLocation)
       throws InterruptedException, ExecutionException {
     assertTrue(future.isDone());
-    assertFalse(future.isCompletedExceptionally());
-    assertEquals(expectedLocation, future.get());
+    assertEquals(expectedLocation, future.get()); // must not throw any exception.
   }
 
-  private static void checkPendingFuture(final CompletableFuture<String> future) {
+  private static void checkPendingFuture(final Future<String> future) {
     assertFalse(future.isDone());
   }
 
@@ -92,22 +91,22 @@ public final class BlockManagerMasterTest {
 
     // Initially the block state is READY.
     blockManagerMaster.initializeState(blockId, taskGroupId);
-    checkBlockAbsentException(blockManagerMaster.getBlockLocationFuture(blockId), blockId,
+    checkBlockAbsentException(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), blockId,
         BlockState.State.READY);
 
     // The block is being SCHEDULED.
     blockManagerMaster.onProducerTaskGroupScheduled(taskGroupId);
-    final CompletableFuture<String> future = blockManagerMaster.getBlockLocationFuture(blockId);
+    final Future<String> future = blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture();
     checkPendingFuture(future);
 
     // The block is COMMITTED
     blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.COMMITTED, executorId);
     checkBlockLocation(future, executorId); // A future, previously pending on SCHEDULED state, is now resolved.
-    checkBlockLocation(blockManagerMaster.getBlockLocationFuture(blockId), executorId);
+    checkBlockLocation(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), executorId);
 
     // We LOST the block.
     blockManagerMaster.removeWorker(executorId);
-    checkBlockAbsentException(blockManagerMaster.getBlockLocationFuture(blockId), blockId,
+    checkBlockAbsentException(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), blockId,
         BlockState.State.LOST);
   }
 
@@ -126,7 +125,7 @@ public final class BlockManagerMasterTest {
     // The block is being scheduled.
     blockManagerMaster.initializeState(blockId, taskGroupId);
     blockManagerMaster.onProducerTaskGroupScheduled(taskGroupId);
-    final CompletableFuture<String> future0 = blockManagerMaster.getBlockLocationFuture(blockId);
+    final Future<String> future0 = blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture();
     checkPendingFuture(future0);
 
     // Producer task group fails.
@@ -134,22 +133,22 @@ public final class BlockManagerMasterTest {
 
     // A future, previously pending on SCHEDULED state, is now completed exceptionally.
     checkBlockAbsentException(future0, blockId, BlockState.State.LOST_BEFORE_COMMIT);
-    checkBlockAbsentException(blockManagerMaster.getBlockLocationFuture(blockId), blockId,
+    checkBlockAbsentException(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), blockId,
         BlockState.State.LOST_BEFORE_COMMIT);
 
     // Re-scheduling the taskGroup.
     blockManagerMaster.onProducerTaskGroupScheduled(taskGroupId);
-    final CompletableFuture<String> future1 = blockManagerMaster.getBlockLocationFuture(blockId);
+    final Future<String> future1 = blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture();
     checkPendingFuture(future1);
 
     // Committed.
     blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.COMMITTED, executorId);
     checkBlockLocation(future1, executorId); // A future, previously pending on SCHEDULED state, is now resolved.
-    checkBlockLocation(blockManagerMaster.getBlockLocationFuture(blockId), executorId);
+    checkBlockLocation(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), executorId);
 
     // Then removed.
     blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.REMOVED, executorId);
-    checkBlockAbsentException(blockManagerMaster.getBlockLocationFuture(blockId), blockId,
+    checkBlockAbsentException(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), blockId,
         BlockState.State.REMOVED);
   }
 }

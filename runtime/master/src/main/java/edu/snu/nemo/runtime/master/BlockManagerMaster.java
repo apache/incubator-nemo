@@ -31,6 +31,8 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -120,13 +122,13 @@ public final class BlockManagerMaster {
   }
 
   /**
-   * Returns a {@link CompletableFuture} of block location, which is not yet resolved in {@code SCHEDULED} state.
+   * Returns a handler of block location requests.
    *
    * @param blockId id of the specified block.
-   * @return {@link CompletableFuture} of block location, which completes exceptionally when the block
-   *         is not {@code SCHEDULED} or {@code COMMITTED}.
+   * @return the handler of block location requests, which completes exceptionally when the block
+   * is not {@code SCHEDULED} or {@code COMMITTED}.
    */
-  public CompletableFuture<String> getBlockLocationFuture(final String blockId) {
+  public BlockLocationRequestHandler getBlockLocationHandler(final String blockId) {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
@@ -135,14 +137,14 @@ public final class BlockManagerMaster {
       switch (state) {
         case SCHEDULED:
         case COMMITTED:
-          return blockIdToMetadata.get(blockId).getLocationFuture();
+          return blockIdToMetadata.get(blockId).getLocationHandler();
         case READY:
         case LOST_BEFORE_COMMIT:
         case LOST:
         case REMOVED:
-          final CompletableFuture<String> future = new CompletableFuture<>();
-          future.completeExceptionally(new AbsentBlockException(blockId, state));
-          return future;
+          final BlockLocationRequestHandler handler = new BlockLocationRequestHandler(blockId);
+          handler.completeExceptionally(new AbsentBlockException(blockId, state));
+          return handler;
         default:
           throw new UnsupportedOperationException(state.toString());
       }
@@ -241,9 +243,16 @@ public final class BlockManagerMaster {
     try {
       final Set<String> blockIds = new HashSet<>();
       blockIdToMetadata.values().forEach(blockMetadata -> {
-        final String location = blockMetadata.getLocationFuture().getNow("NOT_COMMITTED");
-        if (location.equals(executorId)) {
-          blockIds.add(blockMetadata.getBlockId());
+        final Future<String> location = blockMetadata.getLocationHandler().getLocationFuture();
+        if (location.isDone()) {
+          try {
+            if (location.get().equals(executorId)) {
+              blockIds.add(blockMetadata.getBlockId());
+            }
+          } catch (final InterruptedException | ExecutionException e) {
+            // Cannot reach here because we check the completion of the future already.
+            LOG.error("Exception while getting the location of a block!", e);
+          }
         }
       });
       return blockIds;
@@ -253,9 +262,8 @@ public final class BlockManagerMaster {
   }
 
   /**
-   * @return the {@link BlockState} of a block.
-   *
    * @param blockId the id of the block.
+   * @return the {@link BlockState} of a block.
    */
   @VisibleForTesting
   BlockState getBlockState(final String blockId) {
@@ -271,10 +279,10 @@ public final class BlockManagerMaster {
   /**
    * Deals with state change of a block.
    *
-   * @param blockId     the id of the block.
-   * @param newState        the new state of the block.
-   * @param location        the location of the block (e.g., worker id, remote store).
-   *                        {@code null} if not committed or lost.
+   * @param blockId  the id of the block.
+   * @param newState the new state of the block.
+   * @param location the location of the block (e.g., worker id, remote store).
+   *                 {@code null} if not committed or lost.
    */
   @VisibleForTesting
   public void onBlockStateChanged(final String blockId,
@@ -303,27 +311,8 @@ public final class BlockManagerMaster {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      final CompletableFuture<String> locationFuture
-          = getBlockLocationFuture(blockId);
-      locationFuture.whenComplete((location, throwable) -> {
-        final ControlMessage.BlockLocationInfoMsg.Builder infoMsgBuilder =
-            ControlMessage.BlockLocationInfoMsg.newBuilder()
-                .setRequestId(requestId)
-                .setBlockId(blockId);
-        if (throwable == null) {
-          infoMsgBuilder.setOwnerExecutorId(location);
-        } else {
-          infoMsgBuilder.setState(
-              convertBlockState(((AbsentBlockException) throwable).getState()));
-        }
-        messageContext.reply(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.BlockLocationInfo)
-                .setBlockLocationInfoMsg(infoMsgBuilder.build())
-                .build());
-      });
+      final BlockLocationRequestHandler locationFuture = getBlockLocationHandler(blockId);
+      locationFuture.registerRequest(requestId, messageContext);
     } finally {
       readLock.unlock();
     }
@@ -366,6 +355,84 @@ public final class BlockManagerMaster {
               new Exception("This message should not be received by "
                   + BlockManagerMaster.class.getName() + ":" + message.getType()));
       }
+    }
+  }
+
+  /**
+   * The handler of block location requests.
+   */
+  @VisibleForTesting
+  public static final class BlockLocationRequestHandler {
+    private final String blockId;
+    private final CompletableFuture<String> locationFuture;
+
+    /**
+     * Constructor.
+     *
+     * @param blockId the ID of the block.
+     */
+    BlockLocationRequestHandler(final String blockId) {
+      this.blockId = blockId;
+      this.locationFuture = new CompletableFuture<>();
+    }
+
+    /**
+     * Completes the block location future.
+     * If there is any pending request, replies with the completed location.
+     *
+     * @param location the location of the block.
+     */
+    void complete(final String location) {
+      locationFuture.complete(location);
+    }
+
+    /**
+     * Completes the block location future with failure.
+     * If there is any pending request, replies with the cause.
+     *
+     * @param throwable the cause of failure.
+     */
+    void completeExceptionally(final Throwable throwable) {
+      locationFuture.completeExceptionally(throwable);
+    }
+
+    /**
+     * Registers a request for the block location.
+     * If the location is already known, reply the location instantly.
+     *
+     * @param requestId      the ID of the block location request.
+     * @param messageContext the message context to reply.
+     */
+    void registerRequest(final long requestId,
+                         final MessageContext messageContext) {
+      final ControlMessage.BlockLocationInfoMsg.Builder infoMsgBuilder =
+          ControlMessage.BlockLocationInfoMsg.newBuilder()
+              .setRequestId(requestId)
+              .setBlockId(blockId);
+
+      locationFuture.whenComplete((location, throwable) -> {
+        if (throwable == null) {
+          infoMsgBuilder.setOwnerExecutorId(location);
+        } else {
+          infoMsgBuilder.setState(
+              convertBlockState(((AbsentBlockException) throwable).getState()));
+        }
+        messageContext.reply(
+            ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdGenerator.generateMessageId())
+                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+                .setType(ControlMessage.MessageType.BlockLocationInfo)
+                .setBlockLocationInfoMsg(infoMsgBuilder.build())
+                .build());
+      });
+    }
+
+    /**
+     * @return the future of the block location.
+     */
+    @VisibleForTesting
+    public Future<String> getLocationFuture() {
+      return locationFuture;
     }
   }
 }

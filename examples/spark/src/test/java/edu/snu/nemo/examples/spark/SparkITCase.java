@@ -19,7 +19,6 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
-import edu.snu.nemo.examples.spark.sql.JavaSparkSQLExample;
 import edu.snu.nemo.examples.spark.sql.JavaUserDefinedTypedAggregation;
 import edu.snu.nemo.examples.spark.sql.JavaUserDefinedUntypedAggregation;
 import org.junit.Before;
@@ -109,12 +108,12 @@ public final class SparkITCase {
     final String inputFileJson = fileBasePath + peopleJson;
     final String inputFileTxt = fileBasePath + peopleTxt;
 
-//    TODO#412: Enable this after implementation of RDDs.
-//    JobLauncher.main(builder
-//        .addJobId(JavaSparkSQLExample.class.getSimpleName() + "_test")
-//        .addUserMain(JavaSparkSQLExample.class.getCanonicalName())
-//        .addUserArgs(inputFileJson, inputFileTxt)
-//        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
-//        .build());
+    //    TODO#412: Enable this after implementation of RDDs.
+    //    JobLauncher.main(builder
+    //        .addJobId(JavaSparkSQLExample.class.getSimpleName() + "_test")
+    //        .addUserMain(JavaSparkSQLExample.class.getCanonicalName())
+    //        .addUserArgs(inputFileJson, inputFileTxt)
+    //        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+    //        .build());
   }
 }
