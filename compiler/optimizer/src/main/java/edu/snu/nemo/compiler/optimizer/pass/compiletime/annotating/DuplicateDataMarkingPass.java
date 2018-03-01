@@ -18,7 +18,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.InvariantDataProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateDataProperty;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
@@ -27,35 +27,35 @@ import java.util.HashMap;
 /**
  * A pass for annotate invariant data for each edge.
  */
-public final class InvariantDataPass extends AnnotatingPass {
+public final class DuplicateDataMarkingPass extends AnnotatingPass {
 
   /**
    * Default constructor.
    */
-  public InvariantDataPass() {
-    super(ExecutionProperty.Key.InvariantData);
+  public DuplicateDataMarkingPass() {
+    super(ExecutionProperty.Key.DuplicateData);
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    final HashMap<String, Integer> idToCountMap = new HashMap<>();
+    final HashMap<String, Integer> duplicateEdgeIdToNumberOfDuplicates = new HashMap<>();
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
         .forEach(e -> {
-          final Pair<Integer, String> invariantDataProperty = e.getProperty(ExecutionProperty.Key.InvariantData);
-          if (invariantDataProperty != null) {
-            final String id = invariantDataProperty.right();
-            final Integer currentCount = idToCountMap.getOrDefault(id, 0);
-            idToCountMap.put(id, currentCount + 1);
+          final Pair<String, Integer> duplicateDataProperty = e.getProperty(ExecutionProperty.Key.DuplicateData);
+          if (duplicateDataProperty != null) {
+            final String id = duplicateDataProperty.left();
+            final Integer currentCount = duplicateEdgeIdToNumberOfDuplicates.getOrDefault(id, 0);
+            duplicateEdgeIdToNumberOfDuplicates.put(id, currentCount + 1);
           }
         }));
 
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
         .forEach(e -> {
-          final Pair<Integer, String> invariantDataProperty = e.getProperty(ExecutionProperty.Key.InvariantData);
-          if (invariantDataProperty != null) {
-            final String id = invariantDataProperty.right();
-            if (idToCountMap.containsKey(id)) {
-              e.setProperty(InvariantDataProperty.of(Pair.of(idToCountMap.get(id), id)));
+          final Pair<String, Integer> duplicateDataProperty = e.getProperty(ExecutionProperty.Key.DuplicateData);
+          if (duplicateDataProperty != null) {
+            final String id = duplicateDataProperty.left();
+            if (duplicateEdgeIdToNumberOfDuplicates.containsKey(id)) {
+              e.setProperty(DuplicateDataProperty.of(Pair.of(id, duplicateEdgeIdToNumberOfDuplicates.get(id))));
             }
           }
         }));

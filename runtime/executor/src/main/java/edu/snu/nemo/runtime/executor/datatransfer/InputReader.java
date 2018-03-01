@@ -152,12 +152,13 @@ public final class InputReader extends DataTransfer {
    * @return the block id
    */
   private String getBlockId(final int taskIdx) {
-    final Pair<Integer, String> invariantDataProperty =
-        (Pair<Integer, String>) runtimeEdge.getProperty(ExecutionProperty.Key.InvariantData);
-    if (invariantDataProperty == null || invariantDataProperty.left() <= 1) {
+    final Pair<String, Integer> duplicateDataProperty =
+        (Pair<String, Integer>) runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateData);
+    if (duplicateDataProperty == null || duplicateDataProperty.right() <= 1) {
       return RuntimeIdGenerator.generateBlockId(getId(), taskIdx);
     }
-    return RuntimeIdGenerator.generateBlockId(invariantDataProperty.right(), taskIdx);
+    final String duplicateEdgeId = duplicateDataProperty.left();
+    return RuntimeIdGenerator.generateBlockId(duplicateEdgeId, taskIdx);
   }
 
   public String getSrcIrVertexId() {

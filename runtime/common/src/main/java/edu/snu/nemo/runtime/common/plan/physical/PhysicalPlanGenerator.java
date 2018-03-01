@@ -17,7 +17,7 @@ package edu.snu.nemo.runtime.common.plan.physical;
 
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.edge.executionproperty.InvariantDataProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateDataProperty;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.dag.DAG;
@@ -65,25 +65,37 @@ public final class PhysicalPlanGenerator
     // first, stage-partition the IR DAG.
     final DAG<Stage, StageEdge> dagOfStages = stagePartitionIrDAG(irDAG);
 
-    final Map<String, List<StageEdge>> invariantIrEdgeMap = new HashMap<>();
+    // this is needed because of DuplicateDataProperty.
+    convertToPhysicalEdgeId(dagOfStages);
 
-    dagOfStages.topologicalDo(irVertex -> dagOfStages.getIncomingEdgesOf(irVertex).stream().forEach(e -> {
-      final Pair<Integer, String> invariantProperty = e.getProperty(ExecutionProperty.Key.InvariantData);
-      if (invariantProperty != null) {
-        invariantIrEdgeMap.computeIfAbsent(invariantProperty.right(), k -> new ArrayList<>()).add(e);
-      }
-    }));
-
-    invariantIrEdgeMap.forEach((id, edges) -> {
-      final StageEdge baseEdge = edges.get(0);
-      final Pair<Integer, String> baseProperty = baseEdge.getProperty(ExecutionProperty.Key.InvariantData);
-      edges.forEach(e ->
-          e.getExecutionProperties().put(InvariantDataProperty.of(Pair.of(baseProperty.left(), baseEdge.getId()))));
-    });
     // for debugging purposes.
     dagOfStages.storeJSON(dagDirectory, "plan-logical", "logical execution plan");
     // then create tasks and make it into a physical execution plan.
     return stagesIntoPlan(dagOfStages);
+  }
+
+  /**
+   * Convert the edge id of {@link DuplicateDataProperty} to physical edge id.
+   *
+   * @param dagOfStages dag to manipulate
+   */
+  private void convertToPhysicalEdgeId(final DAG<Stage, StageEdge> dagOfStages) {
+    final Map<String, List<StageEdge>> duplicateDataIrEdgeMap = new HashMap<>();
+
+    dagOfStages.topologicalDo(irVertex -> dagOfStages.getIncomingEdgesOf(irVertex).forEach(e -> {
+      final Pair<String, Integer> duplicateDataProperty = e.getProperty(ExecutionProperty.Key.DuplicateData);
+      if (duplicateDataProperty != null) {
+        final String duplicateEdgeId = duplicateDataProperty.left();
+        duplicateDataIrEdgeMap.computeIfAbsent(duplicateEdgeId, k -> new ArrayList<>()).add(e);
+      }
+    }));
+
+    duplicateDataIrEdgeMap.forEach((id, edges) -> {
+      final StageEdge baseEdge = edges.get(0);
+      final Pair<String, Integer> baseProperty = baseEdge.getProperty(ExecutionProperty.Key.DuplicateData);
+      edges.forEach(e ->
+          e.getExecutionProperties().put(DuplicateDataProperty.of(Pair.of(baseEdge.getId(), baseProperty.right()))));
+    });
   }
 
   /**

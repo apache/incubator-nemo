@@ -40,23 +40,24 @@ public final class AlternatingLeastSquareITCase {
   private static final String testResourceFileName = "test_output_als";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
-  private static final String checkOutput = "true";
+  // If you don't want to check validity of output, make this variable false.
+  private static final boolean checkOutput = true;
 
   private static ArgBuilder builder = new ArgBuilder()
       .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
       .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-      .addUserArgs(input, numFeatures, numIteration, "0.05", output, checkOutput);
+      .addUserArgs(input, numFeatures, numIteration, "0.05", output);
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
         .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-        .addUserArgs(input, numFeatures, numIteration, "0.05", output, checkOutput);
+        .addUserArgs(input, numFeatures, numIteration, "0.05", output);
   }
 
   @After
   public void tearDown() throws Exception {
-    if (Boolean.parseBoolean(checkOutput)) {
+    if (checkOutput) {
       ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, testResourceFileName);
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }

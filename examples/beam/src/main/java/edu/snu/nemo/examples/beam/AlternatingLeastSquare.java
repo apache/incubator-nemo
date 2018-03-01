@@ -337,12 +337,9 @@ public final class AlternatingLeastSquare {
     boolean checkOutput = false;
     if (args.length > 4) {
       outputFilePath = args[4];
-      if (args.length > 5) {
-        checkOutput = Boolean.parseBoolean(args[5]);
-      }
+      checkOutput = true;
     } else {
       outputFilePath = "";
-      checkOutput = false;
     }
 
     final PipelineOptions options = PipelineOptionsFactory.create();
@@ -395,16 +392,16 @@ public final class AlternatingLeastSquare {
       itemMatrix = itemMatrix.apply(new UpdateUserAndItemMatrix(numFeatures, lambda, parsedUserData, parsedItemData));
     }
 
-    final PCollection<String> result = itemMatrix.apply(MapElements.<KV<Integer, List<Double>>, String>via(
-        new SimpleFunction<KV<Integer, List<Double>>, String>() {
-          @Override
-          public String apply(final KV<Integer, List<Double>> elem) {
-            final List<String> values = elem.getValue().stream().map(e -> e.toString()).collect(Collectors.toList());
-            return elem.getKey() + "," + String.join(",", values);
-          }
-    }));
-
     if (checkOutput) {
+      final PCollection<String> result = itemMatrix.apply(MapElements.<KV<Integer, List<Double>>, String>via(
+          new SimpleFunction<KV<Integer, List<Double>>, String>() {
+            @Override
+            public String apply(final KV<Integer, List<Double>> elem) {
+              final List<String> values = elem.getValue().stream().map(e -> e.toString()).collect(Collectors.toList());
+              return elem.getKey() + "," + String.join(",", values);
+            }
+          }));
+
       GenericSourceSink.write(result, outputFilePath);
     }
 
