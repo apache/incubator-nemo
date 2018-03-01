@@ -431,7 +431,7 @@ public final class BlockManagerMaster {
      * @return the future of the block location.
      */
     @VisibleForTesting
-    public synchronized Future<String> getLocationFuture() {
+    public Future<String> getLocationFuture() {
       return locationFuture;
     }
   }

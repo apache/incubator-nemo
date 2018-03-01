@@ -189,7 +189,9 @@ public final class BlockManagerWorker {
 
     // Using thenCompose so that fetching block data starts after getting response from master.
     return blockLocationFuture.thenCompose(responseFromMaster -> {
-      assert (responseFromMaster.getType() == ControlMessage.MessageType.BlockLocationInfo);
+      if (responseFromMaster.getType() != ControlMessage.MessageType.BlockLocationInfo) {
+        throw new RuntimeException("Response message type mismatch!");
+      }
       final ControlMessage.BlockLocationInfoMsg blockLocationInfoMsg =
           responseFromMaster.getBlockLocationInfoMsg();
       if (!blockLocationInfoMsg.hasOwnerExecutorId()) {
