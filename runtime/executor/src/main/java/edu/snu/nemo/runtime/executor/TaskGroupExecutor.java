@@ -268,8 +268,14 @@ public final class TaskGroupExecutor {
           numIterators++;  // Aggregate total number of partitions to process
           numBoundedSources++;
           final String iteratorId = generateIteratorId();
-          idToIteratorMap.putIfAbsent(iteratorId, readData.iterator());
-          iteratorIdToTasksMap.putIfAbsent(iteratorId, new ArrayList<>());
+          if (idToIteratorMap.containsKey(iteratorId)) {
+            throw new RuntimeException("iterator with id " + iteratorId + " already exists in idToIteratorMap!");
+          }
+          idToIteratorMap.put(iteratorId, readData.iterator());
+          if (iteratorIdToTasksMap.containsKey(iteratorId)) {
+            throw new RuntimeException("iterator with id " + iteratorId + " already exists in iteratorIdToTasksMap!");
+          }
+          iteratorIdToTasksMap.put(iteratorId, new ArrayList<>());
           iteratorIdToTasksMap.get(iteratorId).add(task);
           //LOG.info("iteratorId : Tasks {}", iteratorIdToTasksMap);
         } catch (final BlockFetchException ex) {
