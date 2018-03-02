@@ -81,6 +81,8 @@ public final class TaskGroupExecutor {
   private final AtomicInteger completedFutures;
   private int numBoundedSources;
 
+  private int tmpCount;
+
   public TaskGroupExecutor(final ScheduledTaskGroup scheduledTaskGroup,
                            final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
                            final TaskGroupStateManager taskGroupStateManager,
@@ -116,6 +118,8 @@ public final class TaskGroupExecutor {
 
     initializeDataRead(scheduledTaskGroup.getLogicalTaskIdToReadable());
     initializeDataTransfer();
+
+    tmpCount = 0;
   }
 
   /**
@@ -323,10 +327,12 @@ public final class TaskGroupExecutor {
     boolean receivedAll = (numInterStageData == numIterators);
     boolean setAll = (numInterStageData == idToIteratorMap.entrySet().size());
 
-    LOG.info("{} numIterators {} numInterStageData {}, itrMap size {}",
-        taskGroupId, numIterators, numInterStageData, idToIteratorMap.entrySet().size());
+    LOG.info("{} numIterators {} numInterStageData {}, itrMap size {}, itrTasksMap size {}",
+        taskGroupId, numIterators, numInterStageData, idToIteratorMap.entrySet().size(),
+        iteratorIdToTasksMap.entrySet().size());
 
     if (!(receivedAll && setAll)) {
+      LOG.info("return false because all iterators have not been added");
       return false;
     }
 
@@ -334,10 +340,14 @@ public final class TaskGroupExecutor {
     for (Map.Entry<String, Iterator> entry : idToIteratorMap.entrySet()) {
       Iterator iterator = entry.getValue();
       if (iterator.hasNext()) {
+        LOG.info("return false because there is some remaining data.");
         finishedAll = false;
       }
     }
 
+    if (finishedAll) {
+      LOG.info("return true");
+    }
     return receivedAll && finishedAll;
   }
 
@@ -568,6 +578,7 @@ public final class TaskGroupExecutor {
    * @param task to execute
    */
   private void runTask(final Task task, final List<Object> data) {
+    tmpCount++;
     final String physicalTaskId = getPhysicalTaskId(task.getId());
 
     // Process element-wise depending on the Task type
@@ -579,8 +590,10 @@ public final class TaskGroupExecutor {
       } else {
         data.forEach(dataElement -> {
           pipe.emit(dataElement);
-          //LOG.info("log: {} {} BoundedSourceTask emitting {} to pipe",
-          //    taskGroupId, physicalTaskId, dataElement);
+          if (tmpCount % 10000 == 0) {
+            LOG.info("log: {} {} BoundedSourceTask emitting {} to pipe",
+                taskGroupId, physicalTaskId, dataElement);
+          }
         });
       }
     } else if (task instanceof OperatorTask) {
@@ -594,7 +607,9 @@ public final class TaskGroupExecutor {
 
       IntStream.range(0, numElements).forEach(dataNum -> {
         Object dataElement = data.get(dataNum);
-        //LOG.info("log: {} {} OperatorTask applying {} to onData", taskGroupId, physicalTaskId, dataElement);
+        if (tmpCount % 10000 == 0) {
+          LOG.info("log: {} {} OperatorTask applying {} to onData", taskGroupId, physicalTaskId, dataElement);
+        }
         transform.onData(dataElement);
       });
     } else if (task instanceof MetricCollectionBarrierTask) {
@@ -605,8 +620,10 @@ public final class TaskGroupExecutor {
       } else {
         data.forEach(dataElement -> {
           pipe.emit(dataElement);
-          //LOG.info("log: {} {} MetricCollectionTask emitting {} to pipe",
-          //    taskGroupId, physicalTaskId, dataElement);
+          if (tmpCount % 10000 == 0) {
+            LOG.info("log: {} {} MetricCollectionTask emitting {} to pipe",
+                taskGroupId, physicalTaskId, dataElement);
+          }
         });
       }
       setTaskPutOnHold((MetricCollectionBarrierTask) task);
