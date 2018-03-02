@@ -18,7 +18,7 @@ package edu.snu.nemo.common.ir.edge.executionproperty;
 import java.io.Serializable;
 
 /**
- * Value of DuplicateDataProperty.
+ * Value of DuplicateEdgeGroupProperty.
  * If isRepresentativeEdgeDecided is false, its physical edge id(representativeEdgeId) is not yet discovered.
  * representativeEdgeId is the id of an edge that represents the group with an id of groupId.
  * groupId uniquely defines a group of edges that handle the same data.
@@ -94,6 +94,6 @@ public final class DuplicateEdgeGroupPropertyValue implements Serializable {
 
   @Override
   public String toString() {
-    return String.format("DuplicateData(%s)", representativeEdgeId != null ? representativeEdgeId : "");
+    return String.format("DuplicateEdgeGroup(%s)", representativeEdgeId != null ? representativeEdgeId : "");
   }
 }

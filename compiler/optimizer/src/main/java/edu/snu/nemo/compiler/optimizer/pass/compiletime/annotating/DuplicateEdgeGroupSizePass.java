@@ -26,37 +26,37 @@ import java.util.HashMap;
 /**
  * A pass for annotate duplicate data for each edge.
  */
-public final class DuplicateDataMarkingPass extends AnnotatingPass {
+public final class DuplicateEdgeGroupSizePass extends AnnotatingPass {
 
   /**
    * Default constructor.
    */
-  public DuplicateDataMarkingPass() {
-    super(ExecutionProperty.Key.DuplicateData);
+  public DuplicateEdgeGroupSizePass() {
+    super(ExecutionProperty.Key.DuplicateEdgeGroup);
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    final HashMap<String, Integer> duplicateEdgeIdToNumberOfDuplicates = new HashMap<>();
+    final HashMap<String, Integer> groupIdToGroupSize = new HashMap<>();
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
         .forEach(e -> {
-          final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
-              e.getProperty(ExecutionProperty.Key.DuplicateData);
-          if (duplicateDataProperty != null) {
-            final String groupId = duplicateDataProperty.getGroupId();
-            final Integer currentCount = duplicateEdgeIdToNumberOfDuplicates.getOrDefault(groupId, 0);
-            duplicateEdgeIdToNumberOfDuplicates.put(groupId, currentCount + 1);
+          final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupProperty =
+              e.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
+          if (duplicateEdgeGroupProperty != null) {
+            final String groupId = duplicateEdgeGroupProperty.getGroupId();
+            final Integer currentCount = groupIdToGroupSize.getOrDefault(groupId, 0);
+            groupIdToGroupSize.put(groupId, currentCount + 1);
           }
         }));
 
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
         .forEach(e -> {
-          final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
-              e.getProperty(ExecutionProperty.Key.DuplicateData);
-          if (duplicateDataProperty != null) {
-            final String groupId = duplicateDataProperty.getGroupId();
-            if (duplicateEdgeIdToNumberOfDuplicates.containsKey(groupId)) {
-              duplicateDataProperty.setGroupSize(duplicateEdgeIdToNumberOfDuplicates.get(groupId));
+          final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupProperty =
+              e.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
+          if (duplicateEdgeGroupProperty != null) {
+            final String groupId = duplicateEdgeGroupProperty.getGroupId();
+            if (groupIdToGroupSize.containsKey(groupId)) {
+              duplicateEdgeGroupProperty.setGroupSize(groupIdToGroupSize.get(groupId));
             }
           }
         }));

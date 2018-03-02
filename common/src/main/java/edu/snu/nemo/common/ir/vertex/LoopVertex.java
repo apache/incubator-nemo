@@ -18,7 +18,7 @@ package edu.snu.nemo.common.ir.vertex;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateDataProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * IRVertex that contains a partial DAG that is iterative.
  */
 public final class LoopVertex extends IRVertex {
-  private static int loopDuplicateDataId = 0;
+  private static int duplicateEdgeGroupId = 0;
   private final DAGBuilder<IRVertex, IREdge> builder; // Contains DAG information
   private final String compositeTransformFullName;
 
@@ -188,13 +188,13 @@ public final class LoopVertex extends IRVertex {
   }
 
   /**
-   * Marks duplicate edges with DuplicateDataProperty.
+   * Marks duplicate edges with DuplicateEdgeGroupProperty.
    */
   public void markDuplicateEdges() {
     nonIterativeIncomingEdges.forEach(((irVertex, irEdges) -> irEdges.forEach(irEdge -> {
       irEdge.setProperty(
-          DuplicateDataProperty.of(new DuplicateEdgeGroupPropertyValue(String.valueOf(loopDuplicateDataId))));
-      loopDuplicateDataId++;
+          DuplicateEdgeGroupProperty.of(new DuplicateEdgeGroupPropertyValue(String.valueOf(duplicateEdgeGroupId))));
+      duplicateEdgeGroupId++;
     })));
   }
 

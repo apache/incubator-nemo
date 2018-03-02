@@ -64,8 +64,8 @@ public final class PhysicalPlanGenerator
     // first, stage-partition the IR DAG.
     final DAG<Stage, StageEdge> dagOfStages = stagePartitionIrDAG(irDAG);
 
-    // this is needed because of DuplicateDataProperty.
-    handleDuplicateDataProperty(dagOfStages);
+    // this is needed because of DuplicateEdgeGroupProperty.
+    handleDuplicateEdgeGroupProperty(dagOfStages);
 
     // for debugging purposes.
     dagOfStages.storeJSON(dagDirectory, "plan-logical", "logical execution plan");
@@ -74,29 +74,31 @@ public final class PhysicalPlanGenerator
   }
 
   /**
-   * Convert the edge id of DuplicateDataProperty to physical edge id.
+   * Convert the edge id of DuplicateEdgeGroupProperty to physical edge id.
    *
    * @param dagOfStages dag to manipulate
    */
-  private void handleDuplicateDataProperty(final DAG<Stage, StageEdge> dagOfStages) {
-    final Map<String, List<StageEdge>> duplicateDataIrEdgeMap = new HashMap<>();
+  private void handleDuplicateEdgeGroupProperty(final DAG<Stage, StageEdge> dagOfStages) {
+    final Map<String, List<StageEdge>> edgeGroupToIrEdge = new HashMap<>();
 
     dagOfStages.topologicalDo(irVertex -> dagOfStages.getIncomingEdgesOf(irVertex).forEach(e -> {
-      final DuplicateEdgeGroupPropertyValue duplicateDataProperty = e.getProperty(ExecutionProperty.Key.DuplicateData);
-      if (duplicateDataProperty != null) {
-        final String duplicateEdgeId = duplicateDataProperty.getGroupId();
-        duplicateDataIrEdgeMap.computeIfAbsent(duplicateEdgeId, k -> new ArrayList<>()).add(e);
+      final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupProperty =
+          e.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
+      if (duplicateEdgeGroupProperty != null) {
+        final String duplicateGroupId = duplicateEdgeGroupProperty.getGroupId();
+        edgeGroupToIrEdge.computeIfAbsent(duplicateGroupId, k -> new ArrayList<>()).add(e);
       }
     }));
 
-    duplicateDataIrEdgeMap.forEach((id, edges) -> {
-      final StageEdge baseEdge = edges.get(0);
-      final DuplicateEdgeGroupPropertyValue baseProperty = baseEdge.getProperty(ExecutionProperty.Key.DuplicateData);
+    edgeGroupToIrEdge.forEach((id, edges) -> {
+      final StageEdge representativeEdge = edges.get(0);
+      final DuplicateEdgeGroupPropertyValue representativeProperty =
+          representativeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
       edges.forEach(e -> {
-        final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
-            e.getProperty(ExecutionProperty.Key.DuplicateData);
-        duplicateDataProperty.setRepresentativeEdgeId(baseEdge.getId());
-        duplicateDataProperty.setGroupSize(baseProperty.getGroupSize());
+        final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupProperty =
+            e.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
+        duplicateEdgeGroupProperty.setRepresentativeEdgeId(representativeEdge.getId());
+        duplicateEdgeGroupProperty.setGroupSize(representativeProperty.getGroupSize());
       });
     });
   }

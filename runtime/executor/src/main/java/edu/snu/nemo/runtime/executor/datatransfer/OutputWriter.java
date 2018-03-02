@@ -92,7 +92,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     final List<Partition> partitionsToWrite;
 
     final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
-        runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateData);
+        runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
     if (duplicateDataProperty != null
         && !duplicateDataProperty.getRepresentativeEdgeId().equals(runtimeEdge.getId())
         && duplicateDataProperty.getGroupSize() > 1) {
@@ -131,7 +131,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     final UsedDataHandlingProperty.Value usedDataHandling =
         runtimeEdge.getProperty(ExecutionProperty.Key.UsedDataHandling);
     final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
-        runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateData);
+        runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
     final int multiplier = duplicateDataProperty == null ? 1 : duplicateDataProperty.getGroupSize();
     blockManagerWorker.commitBlock(blockId, blockStoreValue,
         accumulatedPartitionSizeInfo, srcVertexId, getDstParallelism() * multiplier, usedDataHandling);

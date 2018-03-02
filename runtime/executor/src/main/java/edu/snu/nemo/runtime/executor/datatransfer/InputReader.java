@@ -153,7 +153,7 @@ public final class InputReader extends DataTransfer {
    */
   private String getBlockId(final int taskIdx) {
     final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
-        (DuplicateEdgeGroupPropertyValue) runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateData);
+        (DuplicateEdgeGroupPropertyValue) runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
     if (duplicateDataProperty == null || duplicateDataProperty.getGroupSize() <= 1) {
       return RuntimeIdGenerator.generateBlockId(getId(), taskIdx);
     }
