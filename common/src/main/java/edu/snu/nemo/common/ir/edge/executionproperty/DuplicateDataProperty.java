@@ -22,12 +22,12 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
  * Left part of the pair indicates the edge id, and the right part of the pair indicates
  * the count of duplicate edge.
  */
-public final class DuplicateDataProperty extends ExecutionProperty<DuplicateDataPropertyValue> {
+public final class DuplicateDataProperty extends ExecutionProperty<DuplicateEdgeGroupPropertyValue> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private DuplicateDataProperty(final DuplicateDataPropertyValue value) {
+  private DuplicateDataProperty(final DuplicateEdgeGroupPropertyValue value) {
     super(Key.DuplicateData, value);
   }
 
@@ -36,7 +36,7 @@ public final class DuplicateDataProperty extends ExecutionProperty<DuplicateData
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static DuplicateDataProperty of(final DuplicateDataPropertyValue value) {
+  public static DuplicateDataProperty of(final DuplicateEdgeGroupPropertyValue value) {
     return new DuplicateDataProperty(value);
   }
 }

@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.common.plan.physical;
 
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateDataPropertyValue;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.dag.DAG;
@@ -82,20 +82,21 @@ public final class PhysicalPlanGenerator
     final Map<String, List<StageEdge>> duplicateDataIrEdgeMap = new HashMap<>();
 
     dagOfStages.topologicalDo(irVertex -> dagOfStages.getIncomingEdgesOf(irVertex).forEach(e -> {
-      final DuplicateDataPropertyValue duplicateDataProperty = e.getProperty(ExecutionProperty.Key.DuplicateData);
+      final DuplicateEdgeGroupPropertyValue duplicateDataProperty = e.getProperty(ExecutionProperty.Key.DuplicateData);
       if (duplicateDataProperty != null) {
-        final String duplicateEdgeId = duplicateDataProperty.getDataId();
+        final String duplicateEdgeId = duplicateDataProperty.getGroupId();
         duplicateDataIrEdgeMap.computeIfAbsent(duplicateEdgeId, k -> new ArrayList<>()).add(e);
       }
     }));
 
     duplicateDataIrEdgeMap.forEach((id, edges) -> {
       final StageEdge baseEdge = edges.get(0);
-      final DuplicateDataPropertyValue baseProperty = baseEdge.getProperty(ExecutionProperty.Key.DuplicateData);
+      final DuplicateEdgeGroupPropertyValue baseProperty = baseEdge.getProperty(ExecutionProperty.Key.DuplicateData);
       edges.forEach(e -> {
-        final DuplicateDataPropertyValue duplicateDataProperty = e.getProperty(ExecutionProperty.Key.DuplicateData);
-        duplicateDataProperty.setEdgeId(baseEdge.getId());
-        duplicateDataProperty.setDuplicateCount(baseProperty.getDuplicateCount());
+        final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
+            e.getProperty(ExecutionProperty.Key.DuplicateData);
+        duplicateDataProperty.setRepresentativeEdgeId(baseEdge.getId());
+        duplicateDataProperty.setGroupSize(baseProperty.getGroupSize());
       });
     });
   }

@@ -19,7 +19,7 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateDataProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateDataPropertyValue;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 
 import java.io.Serializable;
@@ -193,7 +193,7 @@ public final class LoopVertex extends IRVertex {
   public void markDuplicateEdges() {
     nonIterativeIncomingEdges.forEach(((irVertex, irEdges) -> irEdges.forEach(irEdge -> {
       irEdge.setProperty(
-          DuplicateDataProperty.of(new DuplicateDataPropertyValue(String.valueOf(loopDuplicateDataId))));
+          DuplicateDataProperty.of(new DuplicateEdgeGroupPropertyValue(String.valueOf(loopDuplicateDataId))));
       loopDuplicateDataId++;
     })));
   }

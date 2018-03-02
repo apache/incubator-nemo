@@ -91,11 +91,11 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     final KeyExtractor keyExtractor = runtimeEdge.getProperty(ExecutionProperty.Key.KeyExtractor);
     final List<Partition> partitionsToWrite;
 
-    final DuplicateDataPropertyValue duplicateDataProperty =
+    final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
         runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateData);
     if (duplicateDataProperty != null
-        && !duplicateDataProperty.getEdgeId().equals(runtimeEdge.getId())
-        && duplicateDataProperty.getDuplicateCount() > 1) {
+        && !duplicateDataProperty.getRepresentativeEdgeId().equals(runtimeEdge.getId())
+        && duplicateDataProperty.getGroupSize() > 1) {
       partitionsToWrite = partitioner.partition(Collections.emptyList(), dstParallelism, keyExtractor);
     } else {
       partitionsToWrite = partitioner.partition(dataToWrite, dstParallelism, keyExtractor);
@@ -130,9 +130,9 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     // Commit block.
     final UsedDataHandlingProperty.Value usedDataHandling =
         runtimeEdge.getProperty(ExecutionProperty.Key.UsedDataHandling);
-    final DuplicateDataPropertyValue duplicateDataProperty =
+    final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
         runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateData);
-    final int multiplier = duplicateDataProperty == null ? 1 : duplicateDataProperty.getDuplicateCount();
+    final int multiplier = duplicateDataProperty == null ? 1 : duplicateDataProperty.getGroupSize();
     blockManagerWorker.commitBlock(blockId, blockStoreValue,
         accumulatedPartitionSizeInfo, srcVertexId, getDstParallelism() * multiplier, usedDataHandling);
   }

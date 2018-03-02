@@ -391,10 +391,10 @@ public final class DataTransferTest {
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
     edgeProperties.put(DataCommunicationPatternProperty.of(commPattern));
     edgeProperties.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-    edgeProperties.put(DuplicateDataProperty.of(new DuplicateDataPropertyValue("dummy")));
-    final DuplicateDataPropertyValue duplicateDataProperty = edgeProperties.get(ExecutionProperty.Key.DuplicateData);
-    duplicateDataProperty.setEdgeId(edgeId);
-    duplicateDataProperty.setDuplicateCount(2);
+    edgeProperties.put(DuplicateDataProperty.of(new DuplicateEdgeGroupPropertyValue("dummy")));
+    final DuplicateEdgeGroupPropertyValue duplicateDataProperty = edgeProperties.get(ExecutionProperty.Key.DuplicateData);
+    duplicateDataProperty.setRepresentativeEdgeId(edgeId);
+    duplicateDataProperty.setGroupSize(2);
 
     edgeProperties.put(DataStoreProperty.of(store));
     edgeProperties.put(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
