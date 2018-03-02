@@ -305,7 +305,7 @@ public final class TaskGroupExecutor {
       // Add consumers which will push the data to the iterators when it ready to the futures.
       futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
         if (exception != null) {
-          //LOG.info("{} failed in prepareInputFromOtherSource while fetching blocks", taskGroupId);
+          LOG.info("{} failed in prepareInputFromOtherSource while fetching blocks", taskGroupId);
           throw new BlockFetchException(exception);
         }
 
@@ -487,15 +487,20 @@ public final class TaskGroupExecutor {
       // Source data comes from SourceTasks and other stages.
       while (!finishedSrcData()) {
         iteratorIdToTasksMap.forEach((iteratorId, tasks) -> {
-          Iterator iterator = idToIteratorMap.get(iteratorId);
-          iterator.forEachRemaining(element -> {
+          final Iterator iterator = idToIteratorMap.get(iteratorId);
+          while (iterator.hasNext()) {
+            final Object element = iterator.next();
+            //iterator.forEachRemaining(element -> {
             for (final Task task : tasks) {
               List data = Collections.singletonList(element);
               //LOG.info("{} {} read from {}(total {} iterators): {}",
               //    taskGroupId, getPhysicalTaskId(task.getId()), iteratorId, numIterators, data);
               runTask(task, data);
             }
-          });
+            if (element == null) {
+              break;
+            }
+          }
         });
       }
 
