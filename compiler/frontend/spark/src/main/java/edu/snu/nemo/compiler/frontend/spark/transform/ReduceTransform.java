@@ -15,20 +15,29 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.transform;
 
-import edu.snu.nemo.common.ir.OutputCollector;
+import edu.snu.nemo.common.ir.Pipe;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Output;
+import edu.snu.nemo.compiler.frontend.spark.core.java.JavaRDD;
 import org.apache.spark.api.java.function.Function2;
 
 import javax.annotation.Nullable;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.util.Iterator;
+
 
 /**
  * Reduce Transform for Spark.
+ *
  * @param <T> element type.
  */
 public final class ReduceTransform<T> implements Transform<T, T> {
   private final Function2<T, T, T> func;
-  private OutputCollector<T> oc;
+  private Pipe<T> pipe;
+  private T result;
+  private String filename;
 
   /**
    * Constructor.
@@ -36,20 +45,32 @@ public final class ReduceTransform<T> implements Transform<T, T> {
    */
   public ReduceTransform(final Function2<T, T, T> func) {
     this.func = func;
+    this.result = null;
+    this.filename = filename + JavaRDD.getResultId();
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<T> outputCollector) {
-    this.oc = outputCollector;
+  public void prepare(final Context context, final Pipe<T> p) {
+    this.pipe = p;
   }
 
   @Override
-  public void onData(final Iterator<T> elements, final String srcVertexId) {
-    final T res = reduceIterator(elements, func);
-    if (res == null) { // nothing to be done.
+  public void onData(final Object element) {
+    if (element == null) { // nothing to be done.
       return;
     }
-    oc.emit(res);
+
+    if (result == null) {
+      result = (T) element;
+    }
+
+    try {
+      result = func.call(result, (T) element);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+
+    pipe.emit(result);
   }
 
   /**
@@ -78,5 +99,15 @@ public final class ReduceTransform<T> implements Transform<T, T> {
 
   @Override
   public void close() {
+    // Write result to a temporary file.
+    // TODO #711: remove this part, and make it properly write to sink.
+    try {
+      final Kryo kryo = new Kryo();
+      final Output output = new Output(new FileOutputStream(filename));
+      kryo.writeClassAndObject(output, result);
+      output.close();
+    } catch (FileNotFoundException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

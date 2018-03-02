@@ -23,7 +23,7 @@ import java.io.Serializable;
  * runtime-specific distributed data movement and storage mechanisms.
  * @param <O> output type.
  */
-public interface OutputCollector<O> extends Serializable {
+public interface Pipe<O> extends Serializable {
   /**
    * Single-destination emit.
    * @param output value.

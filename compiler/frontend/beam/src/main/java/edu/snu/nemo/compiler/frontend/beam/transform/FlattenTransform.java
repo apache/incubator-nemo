@@ -15,11 +15,10 @@
  */
 package edu.snu.nemo.compiler.frontend.beam.transform;
 
-import edu.snu.nemo.common.ir.OutputCollector;
+import edu.snu.nemo.common.ir.Pipe;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 
 /**
  * Flatten transform implementation.
@@ -27,7 +26,7 @@ import java.util.Iterator;
  */
 public final class FlattenTransform<T> implements Transform<T, T> {
   private final ArrayList<T> collectedElements;
-  private OutputCollector<T> outputCollector;
+  private Pipe<T> pipe;
 
   /**
    * FlattenTransform Constructor.
@@ -37,18 +36,18 @@ public final class FlattenTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<T> oc) {
-    this.outputCollector = oc;
+  public void prepare(final Context context, final Pipe<T> p) {
+    this.pipe = p;
   }
 
   @Override
-  public void onData(final Iterator<T> elements, final String srcVertexId) {
-    elements.forEachRemaining(collectedElements::add);
+  public void onData(final Object element) {
+    collectedElements.add((T) element);
   }
 
   @Override
   public void close() {
-    collectedElements.forEach(outputCollector::emit);
+    collectedElements.forEach(pipe::emit);
     collectedElements.clear();
   }
 

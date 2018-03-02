@@ -15,14 +15,13 @@
  */
 package edu.snu.nemo.compiler.optimizer.examples;
 
-import edu.snu.nemo.common.ir.OutputCollector;
+import edu.snu.nemo.common.ir.Pipe;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -56,11 +55,11 @@ public class EmptyComponents {
     }
 
     @Override
-    public void prepare(final Context context, final OutputCollector<O> outputCollector) {
+    public void prepare(final Context context, final Pipe<O> pipe) {
     }
 
     @Override
-    public void onData(final Iterator<I> elements, final String srcVertexId) {
+    public void onData(final Object element) {
     }
 
     @Override

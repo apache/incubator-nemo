@@ -15,17 +15,15 @@
  */
 package edu.snu.nemo.common.ir.vertex.transform;
 
-import edu.snu.nemo.common.ir.OutputCollector;
-
-import java.util.Iterator;
+import edu.snu.nemo.common.ir.Pipe;
 
 /**
  * A {@link Transform} relays input data from upstream vertex to downstream vertex promptly.
- * This transform can be used for merging input data into the {@link OutputCollector}.
+ * This transform can be used for merging input data into the {@link Pipe}.
  * @param <T> input/output type.
  */
 public final class RelayTransform<T> implements Transform<T, T> {
-  private OutputCollector<T> outputCollector;
+  private Pipe<T> pipe;
 
   /**
    * Default constructor.
@@ -35,13 +33,13 @@ public final class RelayTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<T> oc) {
-    this.outputCollector = oc;
+  public void prepare(final Context context, final Pipe<T> p) {
+    this.pipe = p;
   }
 
   @Override
-  public void onData(final Iterator<T> elements, final String srcVertexId) {
-    elements.forEachRemaining(element -> outputCollector.emit(element));
+  public void onData(final Object element) {
+    pipe.emit((T) element);
   }
 
   @Override

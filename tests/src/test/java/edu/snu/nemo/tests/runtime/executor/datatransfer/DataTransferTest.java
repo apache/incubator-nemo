@@ -98,7 +98,6 @@ import static org.mockito.Mockito.mock;
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final int EXECUTOR_CAPACITY = 1;
-  private static final int MAX_SCHEDULE_ATTEMPT = 2;
   private static final int SCHEDULE_TIMEOUT = 1000;
   private static final DataStoreProperty.Value MEMORY_STORE = DataStoreProperty.Value.MemoryStore;
   private static final DataStoreProperty.Value SER_MEMORY_STORE = DataStoreProperty.Value.SerializedMemoryStore;
@@ -306,7 +305,8 @@ public final class DataTransferTest {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
       final OutputWriter writer = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, srcVertex.getId(), dstVertex,
           dummyEdge, sender);
-      writer.write(dataWritten);
+      dataWritten.iterator().forEachRemaining(writer::writeElement);
+      writer.write();
       writer.close();
       dataWrittenList.add(dataWritten);
     });

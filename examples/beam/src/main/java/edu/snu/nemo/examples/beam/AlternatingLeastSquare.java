@@ -209,7 +209,6 @@ public final class AlternatingLeastSquare {
       }
 
       final Map<Integer, List<Double>> fixedMatrix = c.sideInput(fixedMatrixView);
-
       final List<Integer> indexArr = c.element().getValue().left();
       final List<Double> ratingArr = c.element().getValue().right();
 
@@ -222,14 +221,12 @@ public final class AlternatingLeastSquare {
         final Integer ratingIndex = indexArr.get(i);
         final Double rating = ratingArr.get(i);
         for (Integer j = 0; j < numFeatures; j++) {
-//          LOG.info("Rating index " + ratingIndex);
           if (j < fixedMatrix.get(ratingIndex).size()) {
             conf[j] = fixedMatrix.get(ratingIndex).get(j).doubleValue();
           } else {
             conf[j] = 0.0;
           }
         }
-
 
         NETLIB_BLAS.dspr("U", numFeatures, 1.0, ArrayUtils.toPrimitive(conf), 1,
             ArrayUtils.toPrimitive(upperTriangularLeftMatrix));
@@ -268,7 +265,8 @@ public final class AlternatingLeastSquare {
      */
     @FinishBundle
     public void finishBundle(final FinishBundleContext c) {
-      results.forEach(r -> c.output(r, null, null));
+      KV<Integer, List<Double>> resultElement = results.remove(0);
+      c.output(resultElement, null, null);
     }
   }
 

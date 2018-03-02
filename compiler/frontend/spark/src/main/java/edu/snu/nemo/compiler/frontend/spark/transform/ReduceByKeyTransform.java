@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.transform;
 
-import edu.snu.nemo.common.ir.OutputCollector;
+import edu.snu.nemo.common.ir.Pipe;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import org.apache.spark.api.java.function.Function2;
 import scala.Tuple2;
@@ -30,7 +30,7 @@ import java.util.*;
 public final class ReduceByKeyTransform<K, V> implements Transform<Tuple2<K, V>, Tuple2<K, V>> {
   private final Map<K, List<V>> keyToValues;
   private final Function2<V, V, V> func;
-  private OutputCollector<Tuple2<K, V>> oc;
+  private Pipe<Tuple2<K, V>> pipe;
 
   /**
    * Constructor.
@@ -42,16 +42,17 @@ public final class ReduceByKeyTransform<K, V> implements Transform<Tuple2<K, V>,
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<Tuple2<K, V>> outputCollector) {
-    this.oc = outputCollector;
+  public void prepare(final Context context, final Pipe<Tuple2<K, V>> p) {
+    this.pipe = p;
   }
 
   @Override
-  public void onData(final Iterator<Tuple2<K, V>> elements, final String srcVertexId) {
-    elements.forEachRemaining(element -> {
-      keyToValues.putIfAbsent(element._1, new ArrayList<>());
-      keyToValues.get(element._1).add(element._2);
-    });
+  public void onData(final Object element) {
+    K key = ((Tuple2<K, V>) element)._1;
+    V value = ((Tuple2<K, V>) element)._2;
+
+    keyToValues.putIfAbsent(key, new ArrayList<>());
+    keyToValues.get(key).add(value);
   }
 
   @Override
@@ -59,7 +60,7 @@ public final class ReduceByKeyTransform<K, V> implements Transform<Tuple2<K, V>,
     keyToValues.entrySet().stream().map(entry -> {
       final V value = ReduceTransform.reduceIterator(entry.getValue().iterator(), func);
       return new Tuple2<>(entry.getKey(), value);
-    }).forEach(oc::emit);
+    }).forEach(pipe::emit);
     keyToValues.clear();
   }
 }

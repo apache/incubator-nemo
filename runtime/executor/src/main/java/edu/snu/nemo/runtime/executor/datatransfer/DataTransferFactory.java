@@ -60,20 +60,6 @@ public final class DataTransferFactory {
   }
 
   /**
-   * Creates an local {@link OutputWriter} between two task in a single task group.
-   *
-   * @param srcTask     the {@link Task} that outputs the data to be written.
-   * @param srcTaskIdx  the index of the source task.
-   * @param runtimeEdge that connects the srcTask to the tasks belonging to dstIRVertex.
-   * @return the {@link OutputWriter} created.
-   */
-  public OutputWriter createLocalWriter(final Task srcTask,
-                                        final int srcTaskIdx,
-                                        final RuntimeEdge<?> runtimeEdge) {
-    return createWriter(srcTask, srcTaskIdx, null, runtimeEdge);
-  }
-
-  /**
    * Creates an {@link InputReader} between two stages.
    *
    * @param dstTaskIdx  the index of the destination task.
@@ -87,17 +73,5 @@ public final class DataTransferFactory {
                                   @Nullable final IRVertex srcIRVertex,
                                   final RuntimeEdge runtimeEdge) {
     return new InputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
-  }
-
-  /**
-   * Creates a local {@link InputReader} between two task in a single task group.
-   *
-   * @param dstTaskIdx  the index of the destination task.
-   * @param runtimeEdge that connects the tasks belonging to srcRuntimeVertex to dstTask.
-   * @return the {@link InputReader} created.
-   */
-  public InputReader createLocalReader(final int dstTaskIdx,
-                                       final RuntimeEdge runtimeEdge) {
-    return createReader(dstTaskIdx, null, runtimeEdge);
   }
 }

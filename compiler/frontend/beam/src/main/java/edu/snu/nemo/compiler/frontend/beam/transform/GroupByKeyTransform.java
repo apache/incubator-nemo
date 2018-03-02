@@ -15,9 +15,11 @@
  */
 package edu.snu.nemo.compiler.frontend.beam.transform;
 
-import edu.snu.nemo.common.ir.OutputCollector;
+import edu.snu.nemo.common.ir.Pipe;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.values.KV;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -26,8 +28,10 @@ import java.util.*;
  * @param <I> input type.
  */
 public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, List>> {
+  private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyTransform.class.getName());
+
   private final Map<Object, List> keyToValues;
-  private OutputCollector<KV<Object, List>> outputCollector;
+  private Pipe<KV<Object, List>> pipe;
 
   /**
    * GroupByKey constructor.
@@ -37,23 +41,21 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<KV<Object, List>> oc) {
-    this.outputCollector = oc;
+  public void prepare(final Context context, final Pipe<KV<Object, List>> p) {
+    this.pipe = p;
   }
 
   @Override
-  public void onData(final Iterator<I> elements, final String srcVertexId) {
-    elements.forEachRemaining(element -> {
-      final KV kv = (KV) element;
-      keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
-      keyToValues.get(kv.getKey()).add(kv.getValue());
-    });
+  public void onData(final Object element) {
+    final KV kv = (KV) element;
+    keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
+    keyToValues.get(kv.getKey()).add(kv.getValue());
   }
 
   @Override
   public void close() {
     keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
-        .forEach(wv -> outputCollector.emit(wv));
+        .forEach(pipe::emit);
     keyToValues.clear();
   }
 

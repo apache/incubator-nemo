@@ -30,7 +30,6 @@ import edu.snu.nemo.compiler.frontend.beam.transform.*;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.*;
 import org.apache.beam.sdk.io.Read;
-import org.apache.beam.sdk.io.WriteFiles;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.runners.TransformHierarchy;
 import org.apache.beam.sdk.transforms.*;
@@ -162,8 +161,6 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
       final WindowTransform transform = new WindowTransform(window.getWindowFn());
       irVertex = new OperatorVertex(transform);
       builder.addVertex(irVertex, loopVertexStack);
-    } else if (beamTransform instanceof WriteFiles) {
-      throw new UnsupportedOperationException(beamTransform.toString());
     } else if (beamTransform instanceof ParDo.SingleOutput) {
       final ParDo.SingleOutput<I, O> parDo = (ParDo.SingleOutput<I, O>) beamTransform;
       final DoTransform transform = new DoTransform(parDo.getFn(), options);

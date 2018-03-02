@@ -47,7 +47,7 @@ public final class BroadcastITCase {
       .addUserArgs(inputFilePath, outputFilePath);
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     builder = new ArgBuilder()
         .addUserMain(Broadcast.class.getCanonicalName())
         .addUserArgs(inputFilePath, outputFilePath);

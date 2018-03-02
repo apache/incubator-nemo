@@ -42,6 +42,7 @@ public final class OutputWriter extends DataTransfer {
   private final List<Long> accumulatedPartitionSizeInfo;
   private final List<Long> writtenBytes;
   private final BlockManagerWorker blockManagerWorker;
+  private final ArrayDeque<Object> outputQueue;
 
   public OutputWriter(final int hashRangeMultiplier,
                       final int srcTaskIdx,
@@ -59,6 +60,7 @@ public final class OutputWriter extends DataTransfer {
     this.blockStoreValue = runtimeEdge.getProperty(ExecutionProperty.Key.DataStore);
     this.partitionerMap = new HashMap<>();
     this.writtenBytes = new ArrayList<>();
+    this.outputQueue = new ArrayDeque<>();
     // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
     this.accumulatedPartitionSizeInfo = new ArrayList<>();
     partitionerMap.put(PartitionerProperty.Value.IntactPartitioner, new IntactPartitioner());
@@ -68,12 +70,18 @@ public final class OutputWriter extends DataTransfer {
     blockManagerWorker.createBlock(blockId, blockStoreValue);
   }
 
+  public void writeElement(final Object element) {
+    outputQueue.add(element);
+  }
+
   /**
    * Writes output data depending on the communication pattern of the edge.
-   *
-   * @param dataToWrite An iterable for the elements to be written.
-   */
-  public void write(final Iterable dataToWrite) {
+   **/
+  public void write() {
+    // Aggregate element to form the inter-Stage data.
+    List<Object> dataToWrite = new ArrayList<>();
+    outputQueue.iterator().forEachRemaining(dataToWrite::add);
+
     final Boolean isDataSizeMetricCollectionEdge = MetricCollectionProperty.Value.DataSkewRuntimePass
         .equals(runtimeEdge.getProperty(ExecutionProperty.Key.MetricCollection));
 
@@ -146,6 +154,10 @@ public final class OutputWriter extends DataTransfer {
     partitionSizeList.ifPresent(this::addWrittenBytes);
   }
 
+  public RuntimeEdge getRuntimeEdge() {
+    return runtimeEdge;
+  }
+
   private void writeBroadcast(final List<Partition> partitionsToWrite) {
     writeOneToOne(partitionsToWrite);
   }
@@ -177,7 +189,6 @@ public final class OutputWriter extends DataTransfer {
    * @param partitionsToWrite a list of the partitions to be written.
    */
   private void dataSkewWrite(final List<Partition> partitionsToWrite) {
-
     // Write data.
     final Optional<List<Long>> partitionSizeList =
         blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);

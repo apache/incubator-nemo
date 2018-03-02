@@ -15,14 +15,13 @@
  */
 package edu.snu.nemo.compiler.frontend.beam.transform;
 
-import edu.snu.nemo.common.ir.OutputCollector;
+import edu.snu.nemo.common.ir.Pipe;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.transforms.ViewFn;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.PCollectionView;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -32,7 +31,7 @@ import java.util.List;
  */
 public final class CreateViewTransform<I, O> implements Transform<I, O> {
   private final PCollectionView pCollectionView;
-  private OutputCollector<O> outputCollector;
+  private Pipe<O> pipe;
   private List<WindowedValue<I>> windowed;
   private final ViewFn<Iterable<WindowedValue<I>>, O> viewFn;
 
@@ -47,13 +46,14 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> oc) {
-    this.outputCollector = oc;
+  public void prepare(final Context context, final Pipe<O> p) {
+    this.pipe = p;
   }
 
   @Override
-  public void onData(final Iterator<I> elements, final String srcVertexId) {
-    elements.forEachRemaining(element -> windowed.add(WindowedValue.valueInGlobalWindow(element)));
+  public void onData(final Object element) {
+    WindowedValue<I> data = WindowedValue.valueInGlobalWindow((I) element);
+    windowed.add(data);
   }
 
   /**
@@ -66,7 +66,8 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void close() {
-    outputCollector.emit(viewFn.apply(windowed));
+    O output = viewFn.apply(windowed);
+    pipe.emit(output);
   }
 
   @Override

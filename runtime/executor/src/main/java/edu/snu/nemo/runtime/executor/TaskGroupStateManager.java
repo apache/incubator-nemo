@@ -18,7 +18,6 @@ package edu.snu.nemo.runtime.executor;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.exception.UnknownFailureCauseException;
-import edu.snu.nemo.common.StateMachine;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
@@ -27,7 +26,6 @@ import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.common.plan.physical.Task;
 import edu.snu.nemo.runtime.common.state.TaskGroupState;
-import edu.snu.nemo.runtime.common.state.TaskState;
 
 import java.util.*;
 
@@ -49,11 +47,6 @@ public final class TaskGroupStateManager {
   private final MetricCollector metricCollector;
 
   /**
-   * Used to track all task states of this task group, by keeping a map of logical task ids to their states.
-   */
-  private final Map<String, TaskState> logicalIdToTaskStates;
-
-  /**
    * Used to track task group completion status.
    * All task ids are added to the set when the this task group begins executing.
    * Each task id is removed upon completion,
@@ -73,27 +66,15 @@ public final class TaskGroupStateManager {
     this.executorId = executorId;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.metricCollector = new MetricCollector(metricMessageSender);
-    logicalIdToTaskStates = new HashMap<>();
     currentTaskGroupTaskIds = new HashSet<>();
-    initializeStates(taskGroupDag);
-  }
-
-  /**
-   * Receives and initializes the states for the task group to manage.
-   * @param taskGroupDag to manage.
-   */
-  private void initializeStates(final DAG<Task, RuntimeEdge<Task>> taskGroupDag) {
-    taskGroupDag.getVertices().forEach(task -> {
-      currentTaskGroupTaskIds.add(task.getId());
-      logicalIdToTaskStates.put(task.getId(), new TaskState());
-    });
   }
 
   /**
    * Updates the state of the task group.
-   * @param newState of the task group.
+   *
+   * @param newState      of the task group.
    * @param taskPutOnHold the logical ID of the tasks put on hold, empty otherwise.
-   * @param cause only provided as non-empty upon recoverable failures.
+   * @param cause         only provided as non-empty upon recoverable failures.
    */
   public synchronized void onTaskGroupStateChanged(final TaskGroupState.State newState,
                                                    final Optional<String> taskPutOnHold,
@@ -101,117 +82,58 @@ public final class TaskGroupStateManager {
     final Map<String, Object> metric = new HashMap<>();
 
     switch (newState) {
-    case EXECUTING:
-      LOG.debug("Executing TaskGroup ID {}...", this.taskGroupId);
-      metric.put("ContainerId", executorId);
-      metric.put("ScheduleAttempt", attemptIdx);
-      metric.put("FromState", newState);
-      metricCollector.beginMeasurement(taskGroupId, metric);
-      logicalIdToTaskStates.forEach((taskId, state) -> {
-        LOG.debug("Task State Transition: id {} from {} to {}",
-            taskId, state.getStateMachine().getCurrentState(), TaskState.State.PENDING_IN_EXECUTOR);
-        state.getStateMachine().setState(TaskState.State.PENDING_IN_EXECUTOR);
-      });
-      break;
-    case COMPLETE:
-      LOG.debug("TaskGroup ID {} complete!", this.taskGroupId);
-      metric.put("ToState", newState);
-      metricCollector.endMeasurement(taskGroupId, metric);
-      notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
-      break;
-    case FAILED_RECOVERABLE:
-      LOG.debug("TaskGroup ID {} failed (recoverable).", this.taskGroupId);
-      metric.put("ToState", newState);
-      metricCollector.endMeasurement(taskGroupId, metric);
-      notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
-      break;
-    case FAILED_UNRECOVERABLE:
-      LOG.debug("TaskGroup ID {} failed (unrecoverable).", this.taskGroupId);
-      metric.put("ToState", newState);
-      metricCollector.endMeasurement(taskGroupId, metric);
-      notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
-      break;
-    case ON_HOLD:
-      LOG.debug("TaskGroup ID {} put on hold.", this.taskGroupId);
-      notifyTaskGroupStateToMaster(newState, taskPutOnHold, cause);
-      break;
-    default:
-      throw new IllegalStateException("Illegal state at this point");
-    }
-  }
-
-  /**
-   * Updates the state of a task.
-   * Task state changes only occur in executor.
-   * @param physicalTaskId of the task.
-   * @param newState of the task.
-   * @param cause only provided as non-empty upon recoverable failures.
-   */
-  public synchronized void onTaskStateChanged(final String physicalTaskId, final TaskState.State newState,
-                                              final Optional<TaskGroupState.RecoverableFailureCause> cause) {
-    final String logicalTaskId = RuntimeIdGenerator.getLogicalTaskIdIdFromPhysicalTaskId(physicalTaskId);
-    final StateMachine taskStateChanged = logicalIdToTaskStates.get(logicalTaskId).getStateMachine();
-    LOG.debug("Task State Transition: id {} from {} to {}",
-        new Object[]{taskGroupId, taskStateChanged.getCurrentState(), newState});
-    taskStateChanged.setState(newState);
-
-    final Map<String, Object> metric = new HashMap<>();
-
-    switch (newState) {
-    case READY:
-      break;
-    case EXECUTING:
-      metric.put("ContainerId", executorId);
-      metric.put("ScheduleAttempt", attemptIdx);
-      metric.put("FromState", newState);
-      metricCollector.beginMeasurement(logicalTaskId, metric);
-      break;
-    case COMPLETE:
-      currentTaskGroupTaskIds.remove(logicalTaskId);
-      if (currentTaskGroupTaskIds.isEmpty()) {
-        onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), cause);
-      }
-      metric.put("ToState", newState);
-      metricCollector.endMeasurement(logicalTaskId, metric);
-      break;
-    case FAILED_RECOVERABLE:
-      onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE, Optional.empty(), cause);
-      metric.put("ToState", newState);
-      metricCollector.endMeasurement(logicalTaskId, metric);
-      break;
-    case FAILED_UNRECOVERABLE:
-      onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE, Optional.empty(), cause);
-      metric.put("ToState", newState);
-      metricCollector.endMeasurement(logicalTaskId, metric);
-      break;
-    case ON_HOLD:
-      currentTaskGroupTaskIds.remove(logicalTaskId);
-      if (currentTaskGroupTaskIds.isEmpty()) {
-        onTaskGroupStateChanged(TaskGroupState.State.ON_HOLD, Optional.of(logicalTaskId), cause);
-      }
-      break;
-    default:
-      throw new IllegalStateException("Illegal state at this point");
+      case EXECUTING:
+        LOG.debug("Executing TaskGroup ID {}...", this.taskGroupId);
+        metric.put("ContainerId", executorId);
+        metric.put("ScheduleAttempt", attemptIdx);
+        metric.put("FromState", newState);
+        metricCollector.beginMeasurement(taskGroupId, metric);
+        break;
+      case COMPLETE:
+        LOG.debug("TaskGroup ID {} complete!", this.taskGroupId);
+        metric.put("ToState", newState);
+        metricCollector.endMeasurement(taskGroupId, metric);
+        notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
+        break;
+      case FAILED_RECOVERABLE:
+        LOG.debug("TaskGroup ID {} failed (recoverable).", this.taskGroupId);
+        metric.put("ToState", newState);
+        metricCollector.endMeasurement(taskGroupId, metric);
+        notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
+        break;
+      case FAILED_UNRECOVERABLE:
+        LOG.debug("TaskGroup ID {} failed (unrecoverable).", this.taskGroupId);
+        metric.put("ToState", newState);
+        metricCollector.endMeasurement(taskGroupId, metric);
+        notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
+        break;
+      case ON_HOLD:
+        LOG.debug("TaskGroup ID {} put on hold.", this.taskGroupId);
+        notifyTaskGroupStateToMaster(newState, taskPutOnHold, cause);
+        break;
+      default:
+        throw new IllegalStateException("Illegal state at this point");
     }
   }
 
   /**
    * Notifies the change in task group state to master.
-   * @param newState of the task group.
+   *
+   * @param newState      of the task group.
    * @param taskPutOnHold the logical ID of the tasks put on hold, empty otherwise.
-   * @param cause only provided as non-empty upon recoverable failures.
+   * @param cause         only provided as non-empty upon recoverable failures.
    */
   private void notifyTaskGroupStateToMaster(final TaskGroupState.State newState,
                                             final Optional<String> taskPutOnHold,
                                             final Optional<TaskGroupState.RecoverableFailureCause> cause) {
     final ControlMessage.TaskGroupStateChangedMsg.Builder msgBuilder =
         ControlMessage.TaskGroupStateChangedMsg.newBuilder()
-          .setExecutorId(executorId)
-          .setTaskGroupId(taskGroupId)
-          .setAttemptIdx(attemptIdx)
-          .setState(convertState(newState));
+            .setExecutorId(executorId)
+            .setTaskGroupId(taskGroupId)
+            .setAttemptIdx(attemptIdx)
+            .setState(convertState(newState));
     if (taskPutOnHold.isPresent()) {
-          msgBuilder.setTaskPutOnHoldId(taskPutOnHold.get());
+      msgBuilder.setTaskPutOnHoldId(taskPutOnHold.get());
     }
     if (cause.isPresent()) {
       msgBuilder.setFailureCause(convertFailureCause(cause.get()));
@@ -227,35 +149,37 @@ public final class TaskGroupStateManager {
             .build());
   }
 
+  // TODO #164: Cleanup Protobuf Usage
   private ControlMessage.TaskGroupStateFromExecutor convertState(final TaskGroupState.State state) {
     switch (state) {
-    case READY:
-      return ControlMessage.TaskGroupStateFromExecutor.READY;
-    case EXECUTING:
-      return ControlMessage.TaskGroupStateFromExecutor.EXECUTING;
-    case COMPLETE:
-      return ControlMessage.TaskGroupStateFromExecutor.COMPLETE;
-    case FAILED_RECOVERABLE:
-      return ControlMessage.TaskGroupStateFromExecutor.FAILED_RECOVERABLE;
-    case FAILED_UNRECOVERABLE:
-      return ControlMessage.TaskGroupStateFromExecutor.FAILED_UNRECOVERABLE;
-    case ON_HOLD:
-      return ControlMessage.TaskGroupStateFromExecutor.ON_HOLD;
-    default:
-      throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
+      case READY:
+        return ControlMessage.TaskGroupStateFromExecutor.READY;
+      case EXECUTING:
+        return ControlMessage.TaskGroupStateFromExecutor.EXECUTING;
+      case COMPLETE:
+        return ControlMessage.TaskGroupStateFromExecutor.COMPLETE;
+      case FAILED_RECOVERABLE:
+        return ControlMessage.TaskGroupStateFromExecutor.FAILED_RECOVERABLE;
+      case FAILED_UNRECOVERABLE:
+        return ControlMessage.TaskGroupStateFromExecutor.FAILED_UNRECOVERABLE;
+      case ON_HOLD:
+        return ControlMessage.TaskGroupStateFromExecutor.ON_HOLD;
+      default:
+        throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
     }
   }
 
+  // TODO #164: Cleanup Protobuf Usage
   private ControlMessage.RecoverableFailureCause convertFailureCause(
-    final TaskGroupState.RecoverableFailureCause cause) {
+      final TaskGroupState.RecoverableFailureCause cause) {
     switch (cause) {
-    case INPUT_READ_FAILURE:
-      return ControlMessage.RecoverableFailureCause.InputReadFailure;
-    case OUTPUT_WRITE_FAILURE:
-      return ControlMessage.RecoverableFailureCause.OutputWriteFailure;
-    default:
-      throw new UnknownFailureCauseException(
-          new Throwable("The failure cause for the recoverable failure is unknown"));
+      case INPUT_READ_FAILURE:
+        return ControlMessage.RecoverableFailureCause.InputReadFailure;
+      case OUTPUT_WRITE_FAILURE:
+        return ControlMessage.RecoverableFailureCause.OutputWriteFailure;
+      default:
+        throw new UnknownFailureCauseException(
+            new Throwable("The failure cause for the recoverable failure is unknown"));
     }
   }
 

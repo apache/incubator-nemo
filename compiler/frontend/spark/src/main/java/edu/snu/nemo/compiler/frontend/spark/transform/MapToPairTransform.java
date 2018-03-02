@@ -15,12 +15,10 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.transform;
 
-import edu.snu.nemo.common.ir.OutputCollector;
+import edu.snu.nemo.common.ir.Pipe;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
-
-import java.util.Iterator;
 
 /**
  * Map elements to Pair elements.
@@ -30,7 +28,7 @@ import java.util.Iterator;
  */
 public final class MapToPairTransform<T, K, V> implements Transform<T, Tuple2<K, V>> {
   private final PairFunction<T, K, V> func;
-  private OutputCollector<Tuple2<K, V>> oc;
+  private Pipe<Tuple2<K, V>> pipe;
 
   /**
    * Constructor.
@@ -41,19 +39,18 @@ public final class MapToPairTransform<T, K, V> implements Transform<T, Tuple2<K,
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<Tuple2<K, V>> outputCollector) {
-    this.oc = outputCollector;
+  public void prepare(final Context context, final Pipe<Tuple2<K, V>> p) {
+    this.pipe = p;
   }
 
   @Override
-  public void onData(final Iterator<T> elements, final String srcVertexId) {
-    elements.forEachRemaining(element -> {
-      try {
-        oc.emit(func.call(element));
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-    });
+  public void onData(final Object element) {
+    try {
+      Tuple2<K, V> data = func.call((T) element);
+      pipe.emit(data);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
