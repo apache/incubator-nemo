@@ -40,19 +40,20 @@ public final class AlternatingLeastSquareITCase {
   private static final String testResourceFileName = "test_output_als";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
+  private static final String lambda = "0.05";
   // If you don't want to check validity of output, make this variable false.
   private static final boolean checkOutput = true;
 
   private static ArgBuilder builder = new ArgBuilder()
       .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
       .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-      .addUserArgs(input, numFeatures, numIteration, "0.05", output);
+      .addUserArgs(input, numFeatures, numIteration, lambda, output);
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
         .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-        .addUserArgs(input, numFeatures, numIteration, "0.05", output);
+        .addUserArgs(input, numFeatures, numIteration, lambda, output);
   }
 
   @After

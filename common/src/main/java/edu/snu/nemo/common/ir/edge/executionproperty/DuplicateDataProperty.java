@@ -15,20 +15,19 @@
  */
 package edu.snu.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 
 /**
- * Invariant data ExecutionProperty. Use to indicate same data edge when unrolling loop vertex.
+ * Duplicate data ExecutionProperty. Use to indicate same data edge when unrolling loop vertex.
  * Left part of the pair indicates the edge id, and the right part of the pair indicates
  * the count of duplicate edge.
  */
-public final class DuplicateDataProperty extends ExecutionProperty<Pair<String, Integer>> {
+public final class DuplicateDataProperty extends ExecutionProperty<DuplicateDataPropertyValue> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private DuplicateDataProperty(final Pair<String, Integer> value) {
+  private DuplicateDataProperty(final DuplicateDataPropertyValue value) {
     super(Key.DuplicateData, value);
   }
 
@@ -37,7 +36,7 @@ public final class DuplicateDataProperty extends ExecutionProperty<Pair<String, 
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static DuplicateDataProperty of(final Pair<String, Integer> value) {
+  public static DuplicateDataProperty of(final DuplicateDataPropertyValue value) {
     return new DuplicateDataProperty(value);
   }
 }

@@ -16,9 +16,9 @@
 package edu.snu.nemo.runtime.executor.datatransfer;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateDataPropertyValue;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
@@ -152,12 +152,12 @@ public final class InputReader extends DataTransfer {
    * @return the block id
    */
   private String getBlockId(final int taskIdx) {
-    final Pair<String, Integer> duplicateDataProperty =
-        (Pair<String, Integer>) runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateData);
-    if (duplicateDataProperty == null || duplicateDataProperty.right() <= 1) {
+    final DuplicateDataPropertyValue duplicateDataProperty =
+        (DuplicateDataPropertyValue) runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateData);
+    if (duplicateDataProperty == null || duplicateDataProperty.getDuplicateCount() <= 1) {
       return RuntimeIdGenerator.generateBlockId(getId(), taskIdx);
     }
-    final String duplicateEdgeId = duplicateDataProperty.left();
+    final String duplicateEdgeId = duplicateDataProperty.getEdgeId();
     return RuntimeIdGenerator.generateBlockId(duplicateEdgeId, taskIdx);
   }
 

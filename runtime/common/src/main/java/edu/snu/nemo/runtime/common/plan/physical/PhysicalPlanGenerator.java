@@ -15,9 +15,8 @@
  */
 package edu.snu.nemo.runtime.common.plan.physical;
 
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateDataProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateDataPropertyValue;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.dag.DAG;
@@ -66,7 +65,7 @@ public final class PhysicalPlanGenerator
     final DAG<Stage, StageEdge> dagOfStages = stagePartitionIrDAG(irDAG);
 
     // this is needed because of DuplicateDataProperty.
-    convertToPhysicalEdgeId(dagOfStages);
+    handleDuplicateDataProperty(dagOfStages);
 
     // for debugging purposes.
     dagOfStages.storeJSON(dagDirectory, "plan-logical", "logical execution plan");
@@ -75,26 +74,29 @@ public final class PhysicalPlanGenerator
   }
 
   /**
-   * Convert the edge id of {@link DuplicateDataProperty} to physical edge id.
+   * Convert the edge id of DuplicateDataProperty to physical edge id.
    *
    * @param dagOfStages dag to manipulate
    */
-  private void convertToPhysicalEdgeId(final DAG<Stage, StageEdge> dagOfStages) {
+  private void handleDuplicateDataProperty(final DAG<Stage, StageEdge> dagOfStages) {
     final Map<String, List<StageEdge>> duplicateDataIrEdgeMap = new HashMap<>();
 
     dagOfStages.topologicalDo(irVertex -> dagOfStages.getIncomingEdgesOf(irVertex).forEach(e -> {
-      final Pair<String, Integer> duplicateDataProperty = e.getProperty(ExecutionProperty.Key.DuplicateData);
+      final DuplicateDataPropertyValue duplicateDataProperty = e.getProperty(ExecutionProperty.Key.DuplicateData);
       if (duplicateDataProperty != null) {
-        final String duplicateEdgeId = duplicateDataProperty.left();
+        final String duplicateEdgeId = duplicateDataProperty.getDataId();
         duplicateDataIrEdgeMap.computeIfAbsent(duplicateEdgeId, k -> new ArrayList<>()).add(e);
       }
     }));
 
     duplicateDataIrEdgeMap.forEach((id, edges) -> {
       final StageEdge baseEdge = edges.get(0);
-      final Pair<String, Integer> baseProperty = baseEdge.getProperty(ExecutionProperty.Key.DuplicateData);
-      edges.forEach(e ->
-          e.getExecutionProperties().put(DuplicateDataProperty.of(Pair.of(baseEdge.getId(), baseProperty.right()))));
+      final DuplicateDataPropertyValue baseProperty = baseEdge.getProperty(ExecutionProperty.Key.DuplicateData);
+      edges.forEach(e -> {
+        final DuplicateDataPropertyValue duplicateDataProperty = e.getProperty(ExecutionProperty.Key.DuplicateData);
+        duplicateDataProperty.setEdgeId(baseEdge.getId());
+        duplicateDataProperty.setDuplicateCount(baseProperty.getDuplicateCount());
+      });
     });
   }
 

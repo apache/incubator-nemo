@@ -15,17 +15,16 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateDataProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateDataPropertyValue;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.util.HashMap;
 
 /**
- * A pass for annotate invariant data for each edge.
+ * A pass for annotate duplicate data for each edge.
  */
 public final class DuplicateDataMarkingPass extends AnnotatingPass {
 
@@ -41,21 +40,21 @@ public final class DuplicateDataMarkingPass extends AnnotatingPass {
     final HashMap<String, Integer> duplicateEdgeIdToNumberOfDuplicates = new HashMap<>();
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
         .forEach(e -> {
-          final Pair<String, Integer> duplicateDataProperty = e.getProperty(ExecutionProperty.Key.DuplicateData);
+          final DuplicateDataPropertyValue duplicateDataProperty = e.getProperty(ExecutionProperty.Key.DuplicateData);
           if (duplicateDataProperty != null) {
-            final String id = duplicateDataProperty.left();
-            final Integer currentCount = duplicateEdgeIdToNumberOfDuplicates.getOrDefault(id, 0);
-            duplicateEdgeIdToNumberOfDuplicates.put(id, currentCount + 1);
+            final String dataId = duplicateDataProperty.getDataId();
+            final Integer currentCount = duplicateEdgeIdToNumberOfDuplicates.getOrDefault(dataId, 0);
+            duplicateEdgeIdToNumberOfDuplicates.put(dataId, currentCount + 1);
           }
         }));
 
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
         .forEach(e -> {
-          final Pair<String, Integer> duplicateDataProperty = e.getProperty(ExecutionProperty.Key.DuplicateData);
+          final DuplicateDataPropertyValue duplicateDataProperty = e.getProperty(ExecutionProperty.Key.DuplicateData);
           if (duplicateDataProperty != null) {
-            final String id = duplicateDataProperty.left();
-            if (duplicateEdgeIdToNumberOfDuplicates.containsKey(id)) {
-              e.setProperty(DuplicateDataProperty.of(Pair.of(id, duplicateEdgeIdToNumberOfDuplicates.get(id))));
+            final String dataId = duplicateDataProperty.getDataId();
+            if (duplicateEdgeIdToNumberOfDuplicates.containsKey(dataId)) {
+              duplicateDataProperty.setDuplicateCount(duplicateEdgeIdToNumberOfDuplicates.get(dataId));
             }
           }
         }));

@@ -16,7 +16,6 @@
 package edu.snu.nemo.runtime.executor.datatransfer;
 
 import edu.snu.nemo.common.KeyExtractor;
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -92,10 +91,11 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     final KeyExtractor keyExtractor = runtimeEdge.getProperty(ExecutionProperty.Key.KeyExtractor);
     final List<Partition> partitionsToWrite;
 
-    final Pair<String, Integer> duplicateDataProperty = runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateData);
+    final DuplicateDataPropertyValue duplicateDataProperty =
+        runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateData);
     if (duplicateDataProperty != null
-        && !duplicateDataProperty.left().equals(runtimeEdge.getId())
-        && duplicateDataProperty.right() > 1) {
+        && !duplicateDataProperty.getEdgeId().equals(runtimeEdge.getId())
+        && duplicateDataProperty.getDuplicateCount() > 1) {
       partitionsToWrite = partitioner.partition(Collections.emptyList(), dstParallelism, keyExtractor);
     } else {
       partitionsToWrite = partitioner.partition(dataToWrite, dstParallelism, keyExtractor);
@@ -130,9 +130,9 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     // Commit block.
     final UsedDataHandlingProperty.Value usedDataHandling =
         runtimeEdge.getProperty(ExecutionProperty.Key.UsedDataHandling);
-    final Pair<String, Integer> duplicateDataProperty =
+    final DuplicateDataPropertyValue duplicateDataProperty =
         runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateData);
-    final int multiplier = duplicateDataProperty == null ? 1 : duplicateDataProperty.right();
+    final int multiplier = duplicateDataProperty == null ? 1 : duplicateDataProperty.getDuplicateCount();
     blockManagerWorker.commitBlock(blockId, blockStoreValue,
         accumulatedPartitionSizeInfo, srcVertexId, getDstParallelism() * multiplier, usedDataHandling);
   }

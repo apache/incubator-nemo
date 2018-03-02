@@ -18,6 +18,7 @@ package edu.snu.nemo.tests.runtime.executor.datatransfer;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
+import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -390,7 +391,10 @@ public final class DataTransferTest {
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
     edgeProperties.put(DataCommunicationPatternProperty.of(commPattern));
     edgeProperties.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-    edgeProperties.put(DuplicateDataProperty.of(Pair.of(edgeId, 2)));
+    edgeProperties.put(DuplicateDataProperty.of(new DuplicateDataPropertyValue("dummy")));
+    final DuplicateDataPropertyValue duplicateDataProperty = edgeProperties.get(ExecutionProperty.Key.DuplicateData);
+    duplicateDataProperty.setEdgeId(edgeId);
+    duplicateDataProperty.setDuplicateCount(2);
 
     edgeProperties.put(DataStoreProperty.of(store));
     edgeProperties.put(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
