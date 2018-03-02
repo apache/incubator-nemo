@@ -317,8 +317,8 @@ public final class TaskGroupExecutor {
     boolean receivedAll = (numInterStageData == numIterators);
     boolean setAll = (numInterStageData == idToIteratorMap.entrySet().size());
 
-    //LOG.info("{} numIterators {} numInterStageData {}, itrMap size {}",
-    //    taskGroupId, numIterators, numInterStageData, idToIteratorMap.entrySet().size());
+    LOG.info("{} numIterators {} numInterStageData {}, itrMap size {}",
+        taskGroupId, numIterators, numInterStageData, idToIteratorMap.entrySet().size());
 
     if (!(receivedAll && setAll)) {
       return false;
