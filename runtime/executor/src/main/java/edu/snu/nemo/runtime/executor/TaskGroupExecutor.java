@@ -334,11 +334,15 @@ public final class TaskGroupExecutor {
           serBlockSize.getAndAdd(iterator.getNumSerializedBytes());
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
           serBlockSize.getAndAdd(0);
+        } catch (final IllegalStateException e) {
+          LOG.error("IllegalState", e);
         }
         try {
           encodedBlockSize.getAndAdd(iterator.getNumEncodedBytes());
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
           encodedBlockSize.getAndAdd(0);
+        } catch (final IllegalStateException e) {
+          LOG.error("IllegalState", e);
         }
       }));
     });
