@@ -280,9 +280,21 @@ public final class TaskGroupExecutor {
 
           final String iteratorId = generateIteratorId();
           final Iterator iterator = readData.iterator();
-          idToSrcIteratorMap.putIfAbsent(iteratorId, iterator);
-          srcIteratorIdToTasksMap.putIfAbsent(iteratorId, new ArrayList<>());
-          srcIteratorIdToTasksMap.get(iteratorId).add(task);
+          if (idToSrcIteratorMap.containsKey(iteratorId)) {
+            throw new RuntimeException("idToSrcIteratorMap already contains " + iteratorId);
+          } else {
+            idToSrcIteratorMap.putIfAbsent(iteratorId, iterator);
+          }
+
+          if (srcIteratorIdToTasksMap.containsKey(iteratorId)) {
+            throw new RuntimeException("srcIteratorIdToTasksMap already contains " + iteratorId);
+          } else {
+            srcIteratorIdToTasksMap.computeIfAbsent(iteratorId, absentIteratorId -> {
+              final List<Task> list = new ArrayList<>();
+              list.add(task);
+              return list;
+            });
+          }
         } catch (final BlockFetchException ex) {
           taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
               Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
@@ -330,7 +342,7 @@ public final class TaskGroupExecutor {
         }
 
         // Collect metrics on block size if possible.
-        try {
+        /*try {
           serBlockSize.getAndAdd(iterator.getNumSerializedBytes());
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
           serBlockSize.getAndAdd(0);
@@ -339,7 +351,7 @@ public final class TaskGroupExecutor {
           encodedBlockSize.getAndAdd(iterator.getNumEncodedBytes());
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
           encodedBlockSize.getAndAdd(0);
-        }
+        }*/
       }));
     });
   }
@@ -442,7 +454,7 @@ public final class TaskGroupExecutor {
         sideInputMap.put(srcTransform, sideInput);
 
         // Collect metrics on block size if possible.
-        try {
+        /*try {
           serBlockSize.getAndAdd(sideInputIterator.getNumSerializedBytes());
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
           serBlockSize.getAndAdd(0);
@@ -451,7 +463,7 @@ public final class TaskGroupExecutor {
           encodedBlockSize.getAndAdd(sideInputIterator.getNumEncodedBytes());
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
           encodedBlockSize.getAndAdd(0);
-        }
+        }*/
 
         LOG.info("log: {} {} read sideInput from InputReader {}",
             taskGroupId, getPhysicalTaskId(task.getId()), sideInput);

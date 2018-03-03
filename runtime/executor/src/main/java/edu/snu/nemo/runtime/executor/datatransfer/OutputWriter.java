@@ -25,6 +25,8 @@ import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.Partition;
 import edu.snu.nemo.runtime.executor.data.partitioner.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -33,6 +35,8 @@ import java.util.*;
  * Represents the output data transfer from a task.
  */
 public final class OutputWriter extends DataTransfer implements AutoCloseable {
+  private static final Logger LOG = LoggerFactory.getLogger(OutputWriter.class.getName());
+
   private final String blockId;
   private final RuntimeEdge<?> runtimeEdge;
   private final String srcVertexId;
@@ -82,6 +86,8 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     List<Object> dataToWrite = new ArrayList<>();
     outputQueue.iterator().forEachRemaining(dataToWrite::add);
 
+    LOG.info("Data to write in OutputWriter: {}, edge {}", dataToWrite, runtimeEdge.getId());
+
     final Boolean isDataSizeMetricCollectionEdge = MetricCollectionProperty.Value.DataSkewRuntimePass
         .equals(runtimeEdge.getProperty(ExecutionProperty.Key.MetricCollection));
 
@@ -98,6 +104,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
 
     final KeyExtractor keyExtractor = runtimeEdge.getProperty(ExecutionProperty.Key.KeyExtractor);
     final List<Partition> partitionsToWrite = partitioner.partition(dataToWrite, dstParallelism, keyExtractor);
+    LOG.info("Partitions to write in OutputWriter: {}", partitionsToWrite);
 
     // Write the grouped blocks into partitions.
     // TODO #492: Modularize the data communication pattern.

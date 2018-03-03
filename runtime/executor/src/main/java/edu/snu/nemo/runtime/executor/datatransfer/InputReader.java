@@ -130,6 +130,8 @@ public final class InputReader extends DataTransfer {
       throw new BlockFetchException(
           new Throwable("The hash range to read is not assigned to " + dstTaskIndex + "'th task"));
     }
+    LOG.info("Read range map is {}, range to read is {}",
+        ((PhysicalStageEdge) runtimeEdge).getTaskGroupIdxToKeyRange(), hashRangeToRead);
 
     final int numSrcTasks = this.getSourceParallelism();
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();

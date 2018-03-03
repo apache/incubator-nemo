@@ -56,6 +56,7 @@ public final class DataUtil {
                                         final OutputStream bytesOutputStream) throws IOException {
     long elementsCount = 0;
     for (final Object element : nonSerializedPartition.getData()) {
+      LOG.info("Element to serialize: {}", element);
       coder.encode(element, bytesOutputStream);
       elementsCount++;
     }
