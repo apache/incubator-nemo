@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -54,29 +55,37 @@ public final class TaskGroupExecutor {
   private final DataTransferFactory channelFactory;
   private final MetricCollector metricCollector;
 
-  // List of this TaskGroup's readers/writers that deals with inter-TaskGroup data.
-  private final List<InputReader> inputReaders;
-  private final Map<InputReader, List<Task>> inputReaderToTasksMap;
   // Map of task ID to its intra-TaskGroup data pipe.
   private final Map<Task, List<PipeImpl>> taskToInputPipesMap;
   private final Map<Task, PipeImpl> taskToOutputPipeMap;  // one and only one Pipe per task
+  // Readers/writers that deals with inter-TaskGroup data.
+  private final List<InputReader> inputReaders;
   private final Map<Task, List<InputReader>> taskToInputReadersMap;
   private final Map<Task, List<InputReader>> taskToSideInputReadersMap;
   private final Map<Task, List<OutputWriter>> taskToOutputWritersMap;
+  private final Map<InputReader, List<Task>> inputReaderToTasksMap;
+
+  private final Map<String, Iterator> idToSrcIteratorMap;
+  private final Map<String, List<Task>> srcIteratorIdToTasksMap;
+
+  private final Map<String, DataUtil.IteratorWithNumBytes> idToIteratorMap;
   private final Map<String, List<Task>> iteratorIdToTasksMap;
-  private final Map<String, Iterator> idToIteratorMap;
   private volatile Map<PipeImpl, List<Task>> pipeToDstTasksMap;
+
   private volatile boolean isExecutionRequested;
   private volatile String logicalTaskIdPutOnHold;
-  private volatile int numIterators;
   private final Set<Transform> preparedTransforms;
   private final Set<String> finishedTaskIds;
-
-  private static final String ITERATOR_PREFIX = "Iterator-";
-  private static final AtomicInteger ITERATORID_GENERATOR = new AtomicInteger(0);
-
   private final AtomicInteger completedFutures;
   private int numBoundedSources;
+  private int numIterators;
+
+  // For metrics
+  private final AtomicLong serBlockSize;
+  private final AtomicLong encodedBlockSize;
+
+  private static final String ITERATORID_PREFIX = "ITERATOR_";
+  private static final AtomicInteger ITERATORID_GENERATOR = new AtomicInteger(0);
 
   public TaskGroupExecutor(final ScheduledTaskGroup scheduledTaskGroup,
                            final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
@@ -98,18 +107,23 @@ public final class TaskGroupExecutor {
     this.taskToInputReadersMap = new HashMap<>();
     this.taskToOutputWritersMap = new HashMap<>();
     this.taskToSideInputReadersMap = new HashMap<>();
+
     this.inputReaderToTasksMap = new ConcurrentHashMap<>();
-    this.iteratorIdToTasksMap = new ConcurrentHashMap<>();
+    this.idToSrcIteratorMap = new HashMap<>();
+    this.srcIteratorIdToTasksMap = new HashMap<>();
     this.idToIteratorMap = new ConcurrentHashMap<>();
+    this.iteratorIdToTasksMap = new ConcurrentHashMap<>();
     this.pipeToDstTasksMap = new HashMap<>();
 
     this.logicalTaskIdPutOnHold = null;
     this.isExecutionRequested = false;
     this.preparedTransforms = new HashSet<>();
     this.finishedTaskIds = new HashSet<>();
-    this.numIterators = 0;
     this.completedFutures = new AtomicInteger(0);
     this.numBoundedSources = 0;
+    this.numIterators = 0;
+    this.serBlockSize = new AtomicLong(0);
+    this.encodedBlockSize = new AtomicLong(0);
 
     initializeDataRead(scheduledTaskGroup.getLogicalTaskIdToReadable());
     initializeDataTransfer();
@@ -151,7 +165,6 @@ public final class TaskGroupExecutor {
           inputReaders.add(inputReader);
           taskToInputReadersMap.putIfAbsent(task, new ArrayList<>());
           taskToInputReadersMap.get(task).add(inputReader);
-
           inputReaderToTasksMap.putIfAbsent(inputReader, new ArrayList<>());
           inputReaderToTasksMap.get(inputReader).add(task);
         }
@@ -171,7 +184,6 @@ public final class TaskGroupExecutor {
       // Add OutputPipe for intra-stage data transfer
       addOutputPipe(task);
     });
-    LOG.info("{} InputReaders: {}", taskGroupId, inputReaders);
   }
 
   // Helper functions to initializes cross-stage edges.
@@ -252,6 +264,7 @@ public final class TaskGroupExecutor {
     taskToOutputWritersMap.get(task).forEach(outputWriter -> {
       LOG.info("Write and close outputWriter of task {}", getPhysicalTaskId(task.getId()));
       outputWriter.write();
+      // Collect accumulatedWriteTime here
       outputWriter.close();
     });
   }
@@ -262,13 +275,14 @@ public final class TaskGroupExecutor {
         try {
           final Readable readable = ((BoundedSourceTask) task).getReadable();
           final Iterable readData = readable.read();
-          numIterators++;  // Aggregate total number of partitions to process
           numBoundedSources++;
+          numIterators++;
+
           final String iteratorId = generateIteratorId();
-          idToIteratorMap.putIfAbsent(iteratorId, readData.iterator());
-          iteratorIdToTasksMap.putIfAbsent(iteratorId, new ArrayList<>());
-          iteratorIdToTasksMap.get(iteratorId).add(task);
-          LOG.info("iteratorId : Tasks {}", iteratorIdToTasksMap);
+          final Iterator iterator = readData.iterator();
+          idToSrcIteratorMap.putIfAbsent(iteratorId, iterator);
+          srcIteratorIdToTasksMap.putIfAbsent(iteratorId, new ArrayList<>());
+          srcIteratorIdToTasksMap.get(iteratorId).add(task);
         } catch (final BlockFetchException ex) {
           taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
               Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
@@ -287,9 +301,10 @@ public final class TaskGroupExecutor {
 
   private void prepareInputFromOtherStages() {
     inputReaders.stream().forEach(inputReader -> {
-      final List<CompletableFuture<Iterator>> futures = inputReader.read();
-      numIterators += futures.size();  // Aggregate total number of partitions to process.
-      // Add consumers which will push the data to the iterators when it ready to the futures.
+      final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader.read();
+      numIterators += futures.size();
+
+      // Add consumers which will push the idToIteratorMap with data when the futures are complete.
       futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
         if (exception != null) {
           LOG.info("{} failed in prepareInputFromOtherSource while fetching blocks", taskGroupId);
@@ -297,39 +312,65 @@ public final class TaskGroupExecutor {
         }
 
         completedFutures.getAndIncrement();
-
         final String iteratorId = generateIteratorId();
-        idToIteratorMap.putIfAbsent(iteratorId, iterator);
-        iteratorIdToTasksMap.computeIfAbsent(iteratorId, absentIteratorId -> {
-          final List<Task> list = new CopyOnWriteArrayList<>(); //new ArrayList<>();
-          list.addAll(inputReaderToTasksMap.get(inputReader));
-          return Collections.unmodifiableList(list);
-        });
+        if (idToIteratorMap.containsKey(iteratorId)) {
+          throw new RuntimeException("idToIteratorMap already contains " + iteratorId);
+        } else {
+          idToIteratorMap.putIfAbsent(iteratorId, iterator);
+        }
+        if (iteratorIdToTasksMap.containsKey(iteratorId)) {
+          throw new RuntimeException("iteratorIdToTasksMap already contains " + iteratorId);
+        } else {
+          iteratorIdToTasksMap.computeIfAbsent(iteratorId, absentIteratorId -> {
+            final List<Task> list = new ArrayList<>();
+            list.addAll(inputReaderToTasksMap.get(inputReader));
+            return Collections.unmodifiableList(list);
+          });
+          LOG.info("{} inside lambda! added iterator {}", taskGroupId, iteratorId);
+        }
+
+        // Collect metrics on block size if possible.
+        try {
+          serBlockSize.getAndAdd(iterator.getNumSerializedBytes());
+        } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+          serBlockSize.getAndAdd(0);
+        }
+        try {
+          encodedBlockSize.getAndAdd(iterator.getNumEncodedBytes());
+        } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+          encodedBlockSize.getAndAdd(0);
+        }
       }));
     });
   }
 
   private boolean finishedSrcData() {
-    int numInterStageData = completedFutures.get() + numBoundedSources;
-    boolean receivedAll = (numInterStageData == numIterators);
-    boolean setAll = (numInterStageData == idToIteratorMap.entrySet().size());
+    boolean getAll = (numIterators == (numBoundedSources + completedFutures.get()));
+    boolean setAll = (completedFutures.get() == iteratorIdToTasksMap.keySet().size());
 
-    LOG.info("{} numIterators {} numInterStageData {}, itrMap size {}",
-        taskGroupId, numIterators, numInterStageData, idToIteratorMap.entrySet().size());
+    LOG.info("{} numIterators {}, completedFutures.get() {}, iteratorIdToTasksMap.keySet() {}",
+        taskGroupId, numIterators, completedFutures.get(), iteratorIdToTasksMap.keySet());
 
-    if (!(receivedAll && setAll)) {
+    if (!(getAll && setAll)) {
       return false;
     }
 
     boolean finishedAll = true;
-    for (Map.Entry<String, Iterator> entry : idToIteratorMap.entrySet()) {
-      Iterator iterator = entry.getValue();
+    for (String srcIteratorId : srcIteratorIdToTasksMap.keySet()) {
+      Iterator srcIterator = idToSrcIteratorMap.get(srcIteratorId);
+      if (srcIterator.hasNext()) {
+        finishedAll = false;
+      }
+    }
+
+    for (String iteratorId : iteratorIdToTasksMap.keySet()) {
+      DataUtil.IteratorWithNumBytes iterator = idToIteratorMap.get(iteratorId);
       if (iterator.hasNext()) {
         finishedAll = false;
       }
     }
 
-    return receivedAll && finishedAll;
+    return finishedAll;
   }
 
   private boolean finishedAllTasks() {
@@ -337,21 +378,28 @@ public final class TaskGroupExecutor {
     int taskNum = taskToOutputPipeMap.keySet().size();
     int finishedTaskNum = finishedTaskIds.size();
 
-    LOG.info("{} Total {} Finished {}", taskGroupId, taskNum, finishedTaskNum);
+    //LOG.info("{} Total {} Finished {}", taskGroupId, taskNum, finishedTaskNum);
 
     return finishedTaskNum == taskNum;
   }
 
   private void initializePipeToDstTasksMap() {
+    srcIteratorIdToTasksMap.values().forEach(tasks ->
+      tasks.forEach(task -> {
+        final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
+        PipeImpl pipe = taskToOutputPipeMap.get(task);
+        pipeToDstTasksMap.putIfAbsent(pipe, dstTasks);
+        LOG.info("{} pipeToDstTasksMap: [{}'s OutputPipe, {}]",
+            taskGroupId, getPhysicalTaskId(task.getId()), dstTasks);
+      }));
     iteratorIdToTasksMap.values().forEach(tasks ->
-        tasks.stream().forEach(task -> {
+        tasks.forEach(task -> {
           final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
           PipeImpl pipe = taskToOutputPipeMap.get(task);
           pipeToDstTasksMap.putIfAbsent(pipe, dstTasks);
           LOG.info("{} pipeToDstTasksMap: [{}'s OutputPipe, {}]",
               taskGroupId, getPhysicalTaskId(task.getId()), dstTasks);
-        })
-    );
+        }));
   }
 
   private void updatePipeToDstTasksMap() {
@@ -359,7 +407,7 @@ public final class TaskGroupExecutor {
     Map<PipeImpl, List<Task>> updatedMap = new HashMap<>();
 
     currentMap.values().forEach(tasks ->
-        tasks.stream().forEach(task -> {
+        tasks.forEach(task -> {
           final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
           PipeImpl pipe = taskToOutputPipeMap.get(task);
           updatedMap.putIfAbsent(pipe, dstTasks);
@@ -379,10 +427,11 @@ public final class TaskGroupExecutor {
     }
   }
 
-  private Map<Transform, Object> sideInputFromOtherStages(final Task task, final Map<Transform, Object> sideInputMap) {
+  private void sideInputFromOtherStages(final Task task, final Map<Transform, Object> sideInputMap) {
     taskToSideInputReadersMap.get(task).forEach(sideInputReader -> {
       try {
-        final Object sideInput = sideInputReader.getSideInput();
+        final DataUtil.IteratorWithNumBytes sideInputIterator = sideInputReader.read().get(0).get();
+        final Object sideInput = getSideInput(sideInputIterator);
         final RuntimeEdge inEdge = sideInputReader.getRuntimeEdge();
         final Transform srcTransform;
         if (inEdge instanceof PhysicalStageEdge) {
@@ -391,20 +440,31 @@ public final class TaskGroupExecutor {
           srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
         }
         sideInputMap.put(srcTransform, sideInput);
+
+        // Collect metrics on block size if possible.
+        try {
+          serBlockSize.getAndAdd(sideInputIterator.getNumSerializedBytes());
+        } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+          serBlockSize.getAndAdd(0);
+        }
+        try {
+          encodedBlockSize.getAndAdd(sideInputIterator.getNumEncodedBytes());
+        } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+          encodedBlockSize.getAndAdd(0);
+        }
+
         LOG.info("log: {} {} read sideInput from InputReader {}",
             taskGroupId, getPhysicalTaskId(task.getId()), sideInput);
       } catch (final InterruptedException | ExecutionException e) {
         throw new BlockFetchException(e);
       }
     });
-
-    return sideInputMap;
   }
 
-  private Map<Transform, Object> sideInputFromThisStage(final Task task, final Map<Transform, Object> sideInputMap) {
+  private void sideInputFromThisStage(final Task task, final Map<Transform, Object> sideInputMap) {
     final String physicalTaskId = getPhysicalTaskId(task.getId());
 
-    taskToInputPipesMap.get(task).stream().forEach(inputPipe -> {
+    taskToInputPipesMap.get(task).forEach(inputPipe -> {
       if (inputPipe.hasSideInputFor(physicalTaskId)) {
         // because sideInput is only 1 element in the pipe
         Object sideInput = inputPipe.remove();
@@ -419,8 +479,6 @@ public final class TaskGroupExecutor {
         LOG.info("log: {} {} read sideInput from InputPipe {}", taskGroupId, physicalTaskId, sideInput);
       }
     });
-
-    return sideInputMap;
   }
 
   private void prepareTransform(final Transform transform, final Task task) {
@@ -447,6 +505,9 @@ public final class TaskGroupExecutor {
    * Executes the task group.
    */
   public void execute() {
+    final Map<String, Object> metric = new HashMap<>();
+    metricCollector.beginMeasurement(taskGroupId, metric);
+
     if (isExecutionRequested) {
       throw new RuntimeException("TaskGroup {" + taskGroupId + "} execution called again!");
     } else {
@@ -465,19 +526,32 @@ public final class TaskGroupExecutor {
     // Execute the TaskGroup DAG.
     try {
       // Process source data.
-      // Source data comes from SourceTasks and other stages.
+      // Source data comes from BoundedSourceTasks and other stages.
       while (!finishedSrcData()) {
-        iteratorIdToTasksMap.forEach((iteratorId, tasks) -> {
-              Iterator iterator = idToIteratorMap.get(iteratorId);
-              iterator.forEachRemaining(element -> {
-                for (final Task task : tasks) {
-                  List data = Collections.singletonList(element);
-                  LOG.info("{} {} read from {}(total {} iterators): {}",
-                      taskGroupId, getPhysicalTaskId(task.getId()), iteratorId, numIterators, data);
-                  runTask(task, data);
-                }
-              });
+        srcIteratorIdToTasksMap.forEach((srcIteratorId, tasks) -> {
+          Iterator iterator = idToSrcIteratorMap.get(srcIteratorId);
+          iterator.forEachRemaining(element -> {
+            for (final Task task : tasks) {
+              List data = Collections.singletonList(element);
+              LOG.info("{} {} read from {}: {}",
+                  taskGroupId, getPhysicalTaskId(task.getId()), srcIteratorId, data);
+              runTask(task, data);
             }
+          });
+        });
+
+        // Consume data from other stages.
+        iteratorIdToTasksMap.forEach((iteratorId, tasks) -> {
+          DataUtil.IteratorWithNumBytes iterator = idToIteratorMap.get(iteratorId);
+          iterator.forEachRemaining(element -> {
+            for (final Task task : tasks) {
+              List data = Collections.singletonList(element);
+              LOG.info("{} {} read from {}: {}",
+                  taskGroupId, getPhysicalTaskId(task.getId()), iteratorId, data);
+              runTask(task, data);
+            }
+          });
+        });
       }
 
       LOG.info("{} Finished processing src data!", taskGroupId);
@@ -541,6 +615,10 @@ public final class TaskGroupExecutor {
           taskGroupId, e.toString());
       throw new RuntimeException(e);
     }
+
+    // Put TaskGroup-unit metrics.
+    putReadBytesMetric(serBlockSize.get(), encodedBlockSize.get(), metric);
+    metricCollector.endMeasurement(taskGroupId, metric);
 
     if (logicalTaskIdPutOnHold == null) {
       taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), Optional.empty());
@@ -637,28 +715,23 @@ public final class TaskGroupExecutor {
   }
 
   private String generateIteratorId() {
-                final String itrID = ITERATOR_PREFIX + ITERATORID_GENERATOR.getAndIncrement();
-                LOG.info("{} generateIteratorId {}", taskGroupId, itrID);
-                return itrID;
-              }
+    return ITERATORID_PREFIX + ITERATORID_GENERATOR.getAndIncrement();
+  }
+
   /**
    * Puts read bytes metric if the input data size is known.
    *
-   * @param available whether input data size is known or not
    * @param serializedBytes size in serialized (encoded and optionally post-processed (e.g. compressed)) form
    * @param encodedBytes    size in encoded form
    * @param metricMap       the metric map to put written bytes metric.
    */
-  private static void putReadBytesMetric(final boolean available,
-                                         final long serializedBytes,
+  private static void putReadBytesMetric(final long serializedBytes,
                                          final long encodedBytes,
                                          final Map<String, Object> metricMap) {
-    if (available) {
-      if (serializedBytes != encodedBytes) {
-        metricMap.put("ReadBytes(raw)", serializedBytes);
-      }
-      metricMap.put("ReadBytes", encodedBytes);
+    if (serializedBytes != encodedBytes) {
+      metricMap.put("ReadBytes(raw)", serializedBytes);
     }
+    metricMap.put("ReadBytes", encodedBytes);
   }
 
   /**
@@ -680,6 +753,7 @@ public final class TaskGroupExecutor {
 
   /**
    * Get sideInput from data from {@link InputReader}.
+   *
    * @param iterator data from {@link InputReader#read()}
    * @return The corresponding sideInput
    */

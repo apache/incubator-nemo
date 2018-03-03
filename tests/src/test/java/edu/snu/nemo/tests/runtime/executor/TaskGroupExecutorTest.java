@@ -198,7 +198,8 @@ public final class TaskGroupExecutorTest {
     public InputReader answer(final InvocationOnMock invocationOnMock) throws Throwable {
       // Read the data.
       final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> inputFutures = new ArrayList<>();
-      inputFutures.add(CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(elements.iterator())));
+      inputFutures.add(CompletableFuture.completedFuture(
+          DataUtil.IteratorWithNumBytes.of(elements.iterator())));
       final InputReader inputReader = mock(InputReader.class);
       when(inputReader.read()).thenReturn(inputFutures);
       when(inputReader.isSideInputReader()).thenReturn(false);

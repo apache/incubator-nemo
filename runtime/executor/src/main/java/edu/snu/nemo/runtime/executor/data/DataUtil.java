@@ -20,6 +20,8 @@ import edu.snu.nemo.common.DirectByteArrayOutputStream;
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.runtime.executor.data.streamchainer.StreamChainer;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
@@ -31,6 +33,8 @@ import java.util.stream.StreamSupport;
  * Utility methods for data handling (e.g., (de)serialization).
  */
 public final class DataUtil {
+  private static final Logger LOG = LoggerFactory.getLogger(DataUtil.class.getName());
+
   /**
    * Empty constructor.
    */
@@ -71,9 +75,10 @@ public final class DataUtil {
    * @throws IOException if fail to deserialize.
    */
   public static <K extends Serializable> NonSerializedPartition deserializePartition(final long elementsInPartition,
-                                                            final Serializer serializer,
-                                                            final K key,
-                                                            final InputStream inputStream) throws IOException {
+                                                                                     final Serializer serializer,
+                                                                                     final K key,
+                                                                                     final InputStream inputStream)
+      throws IOException {
     final List deserializedData = new ArrayList();
     final InputStreamIterator iterator = new InputStreamIterator(Collections.singletonList(inputStream).iterator(),
         serializer, elementsInPartition);
@@ -182,6 +187,7 @@ public final class DataUtil {
 
   /**
    * An iterator that emits objects from {@link InputStream} using the corresponding {@link Coder}.
+   *
    * @param <T> The type of elements.
    */
   public static final class InputStreamIterator<T> implements IteratorWithNumBytes<T> {
@@ -240,6 +246,7 @@ public final class DataUtil {
         return false;
       }
       if (limit != -1 && limit == elementsDecoded) {
+        LOG.info("will result cannotContinueDecoding! All elements are decoded. hasNext() false!");
         cannotContinueDecoding = true;
         return false;
       }
@@ -309,10 +316,10 @@ public final class DataUtil {
    * @param in             the {@link InputStream}.
    * @param streamChainers the list of {@link StreamChainer} to be applied on the stream.
    * @return chained       {@link InputStream}.
-   * @throws IOException   if fail to create new stream.
+   * @throws IOException if fail to create new stream.
    */
   public static InputStream buildInputStream(final InputStream in, final List<StreamChainer> streamChainers)
-  throws IOException {
+      throws IOException {
     InputStream chained = in;
     for (final StreamChainer streamChainer : streamChainers) {
       chained = streamChainer.chainInput(chained);
@@ -326,10 +333,10 @@ public final class DataUtil {
    * @param out            the {@link OutputStream}.
    * @param streamChainers the list of {@link StreamChainer} to be applied on the stream.
    * @return chained       {@link OutputStream}.
-   * @throws IOException   if fail to create new stream.
+   * @throws IOException if fail to create new stream.
    */
   public static OutputStream buildOutputStream(final OutputStream out, final List<StreamChainer> streamChainers)
-  throws IOException {
+      throws IOException {
     OutputStream chained = out;
     final List<StreamChainer> temporaryStreamChainerList = new ArrayList<>(streamChainers);
     Collections.reverse(temporaryStreamChainerList);
@@ -341,13 +348,15 @@ public final class DataUtil {
 
   /**
    * {@link Iterator} with interface to access to the number of bytes.
+   *
    * @param <T> the type of decoded object
    */
   public interface IteratorWithNumBytes<T> extends Iterator<T> {
     /**
      * Create an {@link IteratorWithNumBytes}, with no information about the number of bytes.
+     *
      * @param innerIterator {@link Iterator} to wrap
-     * @param <E> the type of decoded object
+     * @param <E>           the type of decoded object
      * @return an {@link IteratorWithNumBytes}, with no information about the number of bytes
      */
     static <E> IteratorWithNumBytes<E> of(final Iterator<E> innerIterator) {
@@ -376,10 +385,11 @@ public final class DataUtil {
 
     /**
      * Create an {@link IteratorWithNumBytes}, with the number of bytes in decoded and serialized form.
-     * @param innerIterator {@link Iterator} to wrap
+     *
+     * @param innerIterator      {@link Iterator} to wrap
      * @param numSerializedBytes the number of bytes in serialized form
-     * @param numEncodedBytes the number of bytes in encoded form
-     * @param <E> the type of decoded object
+     * @param numEncodedBytes    the number of bytes in encoded form
+     * @param <E>                the type of decoded object
      * @return an {@link IteratorWithNumBytes}, with the information about the number of bytes
      */
     static <E> IteratorWithNumBytes<E> of(final Iterator<E> innerIterator,
@@ -423,14 +433,14 @@ public final class DataUtil {
     /**
      * @return the number of bytes in serialized form (which is, for example, encoded and compressed)
      * @throws NumBytesNotSupportedException when the operation is not supported
-     * @throws IllegalStateException when the information is not ready
+     * @throws IllegalStateException         when the information is not ready
      */
     long getNumSerializedBytes() throws NumBytesNotSupportedException;
 
     /**
      * @return the number of bytes in encoded form (which is ready to be decoded)
      * @throws NumBytesNotSupportedException when the operation is not supported
-     * @throws IllegalStateException when the information is not ready
+     * @throws IllegalStateException         when the information is not ready
      */
     long getNumEncodedBytes() throws NumBytesNotSupportedException;
   }
