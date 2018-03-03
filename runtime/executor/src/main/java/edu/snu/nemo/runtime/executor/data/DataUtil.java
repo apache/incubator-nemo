@@ -431,6 +431,8 @@ public final class DataUtil {
     }
 
     /**
+     * This method should be called after the actual data is taken out of iterator,
+     * since the existence of an iterator does not guarantee that data inside it is ready.
      * @return the number of bytes in serialized form (which is, for example, encoded and compressed)
      * @throws NumBytesNotSupportedException when the operation is not supported
      * @throws IllegalStateException         when the information is not ready
@@ -438,6 +440,8 @@ public final class DataUtil {
     long getNumSerializedBytes() throws NumBytesNotSupportedException;
 
     /**
+     * This method should be called after the actual data is taken out of iterator,
+     * since the existence of an iterator does not guarantee that data inside it is ready.
      * @return the number of bytes in encoded form (which is ready to be decoded)
      * @throws NumBytesNotSupportedException when the operation is not supported
      * @throws IllegalStateException         when the information is not ready
