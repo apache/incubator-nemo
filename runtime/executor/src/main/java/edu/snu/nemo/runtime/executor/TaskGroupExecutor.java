@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.executor;
 
 import edu.snu.nemo.common.ContextImpl;
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.exception.BlockWriteException;
@@ -63,16 +64,11 @@ public final class TaskGroupExecutor {
   private final Map<Task, List<InputReader>> taskToSideInputReadersMap;
   private final Map<Task, List<OutputWriter>> taskToOutputWritersMap;
   private final Map<InputReader, List<Task>> inputReaderToTasksMap;
-
   private final Map<String, Iterator> idToSrcIteratorMap;
   private final Map<String, List<Task>> srcIteratorIdToTasksMap;
-
-  private final Map<String, DataUtil.IteratorWithNumBytes> idToIteratorMap;
   private final Map<String, List<Task>> iteratorIdToTasksMap;
+  private final LinkedBlockingQueue<Pair<String, DataUtil.IteratorWithNumBytes>> iteratorQueue;
   private volatile Map<PipeImpl, List<Task>> pipeToDstTasksMap;
-
-  private volatile boolean isExecutionRequested;
-  private volatile String logicalTaskIdPutOnHold;
   private final Set<Transform> preparedTransforms;
   private final Set<String> finishedTaskIds;
   private final AtomicInteger completedFutures;
@@ -83,6 +79,9 @@ public final class TaskGroupExecutor {
   private long serBlockSize;
   private long encodedBlockSize;
   private long accumulatedBlockedReadTime;
+
+  private volatile boolean isExecutionRequested;
+  private volatile String logicalTaskIdPutOnHold;
 
   private static final String ITERATORID_PREFIX = "ITERATOR_";
   private static final AtomicInteger ITERATORID_GENERATOR = new AtomicInteger(0);
@@ -111,20 +110,22 @@ public final class TaskGroupExecutor {
     this.inputReaderToTasksMap = new ConcurrentHashMap<>();
     this.idToSrcIteratorMap = new HashMap<>();
     this.srcIteratorIdToTasksMap = new HashMap<>();
-    this.idToIteratorMap = new ConcurrentHashMap<>();
     this.iteratorIdToTasksMap = new ConcurrentHashMap<>();
+    this.iteratorQueue = new LinkedBlockingQueue<>();
     this.pipeToDstTasksMap = new HashMap<>();
 
-    this.logicalTaskIdPutOnHold = null;
-    this.isExecutionRequested = false;
     this.preparedTransforms = new HashSet<>();
     this.finishedTaskIds = new HashSet<>();
     this.completedFutures = new AtomicInteger(0);
     this.numBoundedSources = 0;
     this.numIterators = 0;
+
     this.serBlockSize = 0;
     this.encodedBlockSize = 0;
     this.accumulatedBlockedReadTime = 0;
+
+    this.logicalTaskIdPutOnHold = null;
+    this.isExecutionRequested = false;
 
     initializeDataRead(scheduledTaskGroup.getLogicalTaskIdToReadable());
     initializeDataTransfer();
@@ -318,20 +319,14 @@ public final class TaskGroupExecutor {
       numIterators += futures.size();
       final long blockedReadStartTime = System.currentTimeMillis();
 
-      // Add consumers which will push the idToIteratorMap with data when the futures are complete.
+      // Add consumers which will push iterator when the futures are complete.
       futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
         if (exception != null) {
-          LOG.info("{} failed in prepareInputFromOtherSource while fetching blocks", taskGroupId);
           throw new BlockFetchException(exception);
         }
 
         completedFutures.getAndIncrement();
         final String iteratorId = generateIteratorId();
-        if (idToIteratorMap.containsKey(iteratorId)) {
-          throw new RuntimeException("idToIteratorMap already contains " + iteratorId);
-        } else {
-          idToIteratorMap.putIfAbsent(iteratorId, iterator);
-        }
         if (iteratorIdToTasksMap.containsKey(iteratorId)) {
           throw new RuntimeException("iteratorIdToTasksMap already contains " + iteratorId);
         } else {
@@ -340,44 +335,16 @@ public final class TaskGroupExecutor {
             list.addAll(inputReaderToTasksMap.get(inputReader));
             return Collections.unmodifiableList(list);
           });
-          LOG.info("{} inside lambda! added iterator {}", taskGroupId, iteratorId);
+          try {
+            iteratorQueue.put(Pair.of(iteratorId, iterator));
+          } catch (InterruptedException e) {
+            throw new RuntimeException("Interrupted while receiving iterator " + e);
+          }
         }
-
         final long blockedReadEndTime = System.currentTimeMillis();
         accumulatedBlockedReadTime += blockedReadEndTime - blockedReadStartTime;
       }));
     });
-  }
-
-  private boolean finishedSrcData() {
-    boolean getAll = (numIterators == (numBoundedSources + completedFutures.get()));
-    boolean setAll = (completedFutures.get() == iteratorIdToTasksMap.keySet().size());
-
-    LOG.info("{} numIterators {}, completedFutures.get() {}, iteratorIdToTasksMap.keySet() {}",
-        taskGroupId, numIterators, completedFutures.get(), iteratorIdToTasksMap.keySet());
-
-    if (!(getAll && setAll)) {
-      return false;
-    }
-
-    boolean finishedAll = true;
-    for (String srcIteratorId : srcIteratorIdToTasksMap.keySet()) {
-      Iterator srcIterator = idToSrcIteratorMap.get(srcIteratorId);
-      if (srcIterator.hasNext()) {
-        finishedAll = false;
-      }
-    }
-
-    for (String iteratorId : iteratorIdToTasksMap.keySet()) {
-      DataUtil.IteratorWithNumBytes iterator = idToIteratorMap.get(iteratorId);
-      boolean hasNext = iterator.hasNext();
-      LOG.info("Iterator {} hasNext {}", iteratorId, hasNext);
-      if (hasNext) {
-        finishedAll = false;
-      }
-    }
-
-    return finishedAll;
   }
 
   private boolean finishedAllTasks() {
@@ -385,20 +352,18 @@ public final class TaskGroupExecutor {
     int taskNum = taskToOutputPipeMap.keySet().size();
     int finishedTaskNum = finishedTaskIds.size();
 
-    //LOG.info("{} Total {} Finished {}", taskGroupId, taskNum, finishedTaskNum);
-
     return finishedTaskNum == taskNum;
   }
 
   private void initializePipeToDstTasksMap() {
     srcIteratorIdToTasksMap.values().forEach(tasks ->
-      tasks.forEach(task -> {
-        final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
-        PipeImpl pipe = taskToOutputPipeMap.get(task);
-        pipeToDstTasksMap.putIfAbsent(pipe, dstTasks);
-        LOG.info("{} pipeToDstTasksMap: [{}'s OutputPipe, {}]",
-            taskGroupId, getPhysicalTaskId(task.getId()), dstTasks);
-      }));
+        tasks.forEach(task -> {
+          final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
+          PipeImpl pipe = taskToOutputPipeMap.get(task);
+          pipeToDstTasksMap.putIfAbsent(pipe, dstTasks);
+          LOG.info("{} pipeToDstTasksMap: [{}'s OutputPipe, {}]",
+              taskGroupId, getPhysicalTaskId(task.getId()), dstTasks);
+        }));
     iteratorIdToTasksMap.values().forEach(tasks ->
         tasks.forEach(task -> {
           final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
@@ -528,59 +493,60 @@ public final class TaskGroupExecutor {
     taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.EXECUTING, Optional.empty(), Optional.empty());
     LOG.info("{} Executing!", taskGroupId);
 
-    boundedSrcReadStartTime = System.currentTimeMillis();
     // Prepare input data from bounded source.
+    boundedSrcReadStartTime = System.currentTimeMillis();
     prepareInputFromSource();
     boundedSrcReadEndTime = System.currentTimeMillis();
     metric.put("BoundedSourceReadTime(ms)", boundedSrcReadEndTime - boundedSrcReadStartTime);
 
-    inputReadStartTime = System.currentTimeMillis();
     // Prepare input data from other stages.
+    inputReadStartTime = System.currentTimeMillis();
     prepareInputFromOtherStages();
 
     // Execute the TaskGroup DAG.
     try {
-      // Process source data.
-      // Source data comes from BoundedSourceTasks and other stages.
-      while (!finishedSrcData()) {
-        srcIteratorIdToTasksMap.forEach((srcIteratorId, tasks) -> {
-          Iterator iterator = idToSrcIteratorMap.get(srcIteratorId);
-          iterator.forEachRemaining(element -> {
-            for (final Task task : tasks) {
-              List data = Collections.singletonList(element);
-              LOG.info("{} {} read from {}: {}",
-                  taskGroupId, getPhysicalTaskId(task.getId()), srcIteratorId, data);
-              runTask(task, data);
-            }
-          });
-        });
-        // Consume data from other stages.
-        iteratorIdToTasksMap.forEach((iteratorId, tasks) -> {
-          DataUtil.IteratorWithNumBytes iterator = idToIteratorMap.get(iteratorId);
-          iterator.forEachRemaining(element -> {
-            for (final Task task : tasks) {
-              List data = Collections.singletonList(element);
-              LOG.info("{} {} read from {}: {}",
-                  taskGroupId, getPhysicalTaskId(task.getId()), iteratorId, data);
-              runTask(task, data);
-            }
-          });
-          // Collect metrics on block size if possible.
-          try {
-            serBlockSize += iterator.getNumSerializedBytes();
-          } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-            serBlockSize = -1;
-          } catch (final IllegalStateException e) {
-            LOG.error("IllegalState ", e);
-          }
-          try {
-            encodedBlockSize += iterator.getNumEncodedBytes();
-          } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-            encodedBlockSize = -1;
-          } catch (final IllegalStateException e) {
-            LOG.error("IllegalState ", e);
+      // Process data from bounded sources.
+      srcIteratorIdToTasksMap.forEach((srcIteratorId, tasks) -> {
+        Iterator iterator = idToSrcIteratorMap.get(srcIteratorId);
+        iterator.forEachRemaining(element -> {
+          for (final Task task : tasks) {
+            List data = Collections.singletonList(element);
+            runTask(task, data);
           }
         });
+      });
+
+      // Process data from other stages.
+      final int numPartitions = numIterators - numBoundedSources;
+      for (int currPartition = 0; currPartition < numPartitions; currPartition++) {
+        LOG.info("{} Partition {} out of {}", taskGroupId, currPartition, numPartitions);
+
+        Pair<String, DataUtil.IteratorWithNumBytes> idToIteratorPair = iteratorQueue.take();
+        final String iteratorId = idToIteratorPair.left();
+        final DataUtil.IteratorWithNumBytes iterator = idToIteratorPair.right();
+        List<Task> dstTasks = iteratorIdToTasksMap.get(iteratorId);
+        idToIteratorPair.right().forEachRemaining(element -> {
+          for (final Task task : dstTasks) {
+            List data = Collections.singletonList(element);
+            runTask(task, data);
+          }
+        });
+
+        // Collect metrics on block size if possible.
+        try {
+          serBlockSize += iterator.getNumSerializedBytes();
+        } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+          serBlockSize = -1;
+        } catch (final IllegalStateException e) {
+          LOG.error("IllegalState ", e);
+        }
+        try {
+          encodedBlockSize += iterator.getNumEncodedBytes();
+        } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+          encodedBlockSize = -1;
+        } catch (final IllegalStateException e) {
+          LOG.error("IllegalState ", e);
+        }
       }
       inputReadEndTime = System.currentTimeMillis();
       metric.put("InputReadTime(ms)", inputReadEndTime - inputReadStartTime);
@@ -629,7 +595,6 @@ public final class TaskGroupExecutor {
             writeAndCloseOutputWriters(pipeOwnerTask);
           }
         });
-
         updatePipeToDstTasksMap();
       }
     } catch (final BlockWriteException ex2) {
@@ -649,7 +614,6 @@ public final class TaskGroupExecutor {
     final boolean available = serBlockSize >= 0;
     putReadBytesMetric(available, serBlockSize, encodedBlockSize, metric);
     metricCollector.endMeasurement(taskGroupId, metric);
-
     if (logicalTaskIdPutOnHold == null) {
       taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), Optional.empty());
     } else {
@@ -657,7 +621,6 @@ public final class TaskGroupExecutor {
           Optional.of(logicalTaskIdPutOnHold),
           Optional.empty());
     }
-
     LOG.info("{} Complete!", taskGroupId);
   }
 
