@@ -54,9 +54,13 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
 
   @Override
   public void close() {
-    keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
-        .forEach(pipe::emit);
-    keyToValues.clear();
+    if (keyToValues.isEmpty()) {
+      LOG.warn("Beam GroupByKeyTransform received no data!");
+    } else {
+      keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
+          .forEach(pipe::emit);
+      keyToValues.clear();
+    }
   }
 
   @Override
