@@ -365,7 +365,9 @@ public final class TaskGroupExecutor {
 
     for (String iteratorId : iteratorIdToTasksMap.keySet()) {
       DataUtil.IteratorWithNumBytes iterator = idToIteratorMap.get(iteratorId);
-      if (iterator.hasNext()) {
+      boolean hasNext = iterator.hasNext();
+      LOG.info("Iterator {} hasNext {}", iteratorId, hasNext);
+      if (hasNext) {
         finishedAll = false;
       }
     }

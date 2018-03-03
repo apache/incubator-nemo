@@ -20,18 +20,18 @@ import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Pipe implementation that requires synchronization.
+ *
  * @param <O> output type.
  */
 public final class PipeImpl<O> implements Pipe<O> {
   private static final Logger LOG = LoggerFactory.getLogger(PipeImpl.class.getName());
-  private final AtomicReference<LinkedBlockingQueue<O>> outputQueue;
+  private final ArrayDeque<O> outputQueue;
   private RuntimeEdge sideInputRuntimeEdge;
   private List<String> sideInputReceivers;
 
@@ -39,18 +39,14 @@ public final class PipeImpl<O> implements Pipe<O> {
    * Constructor of a new Pipe.
    */
   public PipeImpl() {
-    this.outputQueue = new AtomicReference<>(new LinkedBlockingQueue<>());
+    this.outputQueue = new ArrayDeque<>();
     this.sideInputRuntimeEdge = null;
     this.sideInputReceivers = new ArrayList<>();
   }
 
   @Override
   public void emit(final O output) {
-    try {
-      outputQueue.get().put(output);
-    } catch (InterruptedException e) {
-      throw new RuntimeException("Interrupted during emitting to pipe");
-    }
+    outputQueue.add(output);
   }
 
   @Override
@@ -60,18 +56,19 @@ public final class PipeImpl<O> implements Pipe<O> {
 
   /**
    * Inter-Task data is transferred from sender-side Task's PipeImpl to receiver-side Task.
+   *
    * @return the first element of this list
    */
   public O remove() {
-    return outputQueue.get().remove();
+    return outputQueue.remove();
   }
 
   public boolean isEmpty() {
-    return outputQueue.get().isEmpty();
+    return outputQueue.isEmpty();
   }
 
   public int size() {
-    return outputQueue.get().size();
+    return outputQueue.size();
   }
 
   public void setSideInputRuntimeEdge(final RuntimeEdge edge) {

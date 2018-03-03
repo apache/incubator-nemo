@@ -246,7 +246,6 @@ public final class DataUtil {
         return false;
       }
       if (limit != -1 && limit == elementsDecoded) {
-        LOG.info("will result cannotContinueDecoding! All elements are decoded. hasNext() false!");
         cannotContinueDecoding = true;
         return false;
       }
@@ -270,6 +269,7 @@ public final class DataUtil {
           next = serializer.getCoder().decode(encodedCountingStream);
           hasNext = true;
           elementsDecoded++;
+          LOG.info("Iterator.next {}, elementsDecoded {}", next, elementsDecoded);
           return true;
         } catch (final IOException e) {
           // IOException from decoder indicates EOF event.
