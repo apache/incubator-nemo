@@ -241,7 +241,7 @@ public final class TaskGroupExecutorTest {
         @Override
         public Object answer(final InvocationOnMock invocationOnMock) throws Throwable {
           final Object[] args = invocationOnMock.getArguments();
-          final Iterable dataToWrite = (Iterable) args[0];
+          final Object dataToWrite = args[0];
           taskIdToOutputData.computeIfAbsent(dstTask.getId(), emptyTaskId -> new ArrayList<>());
           taskIdToOutputData.get(dstTask.getId()).add(dataToWrite);
           return null;
