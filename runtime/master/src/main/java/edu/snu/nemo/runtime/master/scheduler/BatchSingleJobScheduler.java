@@ -35,7 +35,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import javax.annotation.concurrent.ThreadSafe;
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -45,11 +45,14 @@ import org.slf4j.Logger;
 import static edu.snu.nemo.runtime.common.state.TaskGroupState.State.ON_HOLD;
 
 /**
+ * (WARNING) Only a single dedicated thread should use the public methods of this class.
+ * (i.e., runtimeMasterThread in RuntimeMaster)
+ *
  * BatchSingleJobScheduler receives a single {@link PhysicalPlan} to execute and schedules the TaskGroups.
  * The policy by which it schedules them is dependent on the implementation of {@link SchedulingPolicy}.
  */
 @DriverSide
-@ThreadSafe
+@NotThreadSafe
 public final class BatchSingleJobScheduler implements Scheduler {
   private static final Logger LOG = LoggerFactory.getLogger(BatchSingleJobScheduler.class.getName());
   private static final int SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE = Integer.MAX_VALUE;
@@ -99,8 +102,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * @param scheduledJobStateManager to keep track of the submitted job's states.
    */
   @Override
-  public synchronized void scheduleJob(final PhysicalPlan jobToSchedule,
-                                       final JobStateManager scheduledJobStateManager) {
+  public void scheduleJob(final PhysicalPlan jobToSchedule, final JobStateManager scheduledJobStateManager) {
     this.physicalPlan = jobToSchedule;
     this.jobStateManager = scheduledJobStateManager;
 
@@ -117,9 +119,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   @Override
-  public synchronized void updateJob(final String jobId,
-                                     final PhysicalPlan newPhysicalPlan,
-                                     final Pair<String, String> taskInfo) {
+  public void updateJob(final String jobId, final PhysicalPlan newPhysicalPlan, final Pair<String, String> taskInfo) {
     // update the job in the scheduler.
     // NOTE: what's already been executed is not modified in the new physical plan.
     this.physicalPlan = newPhysicalPlan;
@@ -137,12 +137,10 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * @param taskPutOnHold the ID of task that are put on hold. It is null otherwise.
    */
   @Override
-  public synchronized void onTaskGroupStateChanged(final String executorId,
-                                                   final String taskGroupId,
-                                                   final TaskGroupState.State newState,
-                                                   final int attemptIdx,
-                                                   @Nullable final String taskPutOnHold,
-                                                   final TaskGroupState.RecoverableFailureCause failureCause) {
+  public void onTaskGroupStateChanged(final String executorId, final String taskGroupId,
+                                      final TaskGroupState.State newState, final int attemptIdx,
+                                      @Nullable final String taskPutOnHold,
+                                      final TaskGroupState.RecoverableFailureCause failureCause) {
     switch (newState) {
     case COMPLETE:
       jobStateManager.onTaskGroupStateChanged(taskGroupId, newState);
@@ -167,12 +165,12 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   @Override
-  public synchronized void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
+  public void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
     schedulingPolicy.onExecutorAdded(executorRepresenter);
   }
 
   @Override
-  public synchronized void onExecutorRemoved(final String executorId) {
+  public void onExecutorRemoved(final String executorId) {
     final Set<String> taskGroupsToReExecute = new HashSet<>();
 
     // TaskGroups for lost blocks
@@ -195,7 +193,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   @Override
-  public synchronized void terminate() {
+  public void terminate() {
     this.schedulerRunner.terminate();
     this.pendingTaskGroupQueue.close();
   }

@@ -24,16 +24,14 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.Nullable;
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.annotation.concurrent.ThreadSafe;
 
 /**
- * (WARNING) Implementations of this interface must be thread-safe.
- *
  * Receives jobs to execute and schedules
  * {@link edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup} to executors.
  */
 @DriverSide
-@ThreadSafe
 @DefaultImplementation(BatchSingleJobScheduler.class)
 public interface Scheduler {
 
