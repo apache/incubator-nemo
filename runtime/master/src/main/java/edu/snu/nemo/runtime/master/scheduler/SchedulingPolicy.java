@@ -20,12 +20,16 @@ import edu.snu.nemo.runtime.master.JobStateManager;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.util.Set;
 
 /**
+ * (WARNING) Implementations of this interface must be thread-safe.
+ *
  * Defines the policy by which {@link BatchSingleJobScheduler} assigns task groups to executors.
  */
 @DriverSide
+@ThreadSafe
 @DefaultImplementation(RoundRobinSchedulingPolicy.class)
 public interface SchedulingPolicy {
 

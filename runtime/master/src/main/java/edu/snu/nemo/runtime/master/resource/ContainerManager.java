@@ -29,6 +29,7 @@ import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.tang.Configuration;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -41,6 +42,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * (WARNING) This class is not thread-safe.
+ * Only a single thread should use the methods of this class.
+ * (i.e., runtimeMasterThread in RuntimeMaster)
+ *
  * Encapsulates REEF's evaluator management for executors.
  * Serves as a single point of container/executor management in Runtime.
  * We define a unit of resource a container (an evaluator in REEF), and launch a single executor on each container.
@@ -48,6 +53,7 @@ import org.slf4j.LoggerFactory;
 // TODO #60: Specify Types in Requesting Containers
 // We need an overall cleanup of this class after #60 is resolved.
 @DriverSide
+@NotThreadSafe
 public final class ContainerManager {
   private static final Logger LOG = LoggerFactory.getLogger(ContainerManager.class.getName());
 
@@ -95,8 +101,7 @@ public final class ContainerManager {
    * @param numToRequest number of containers to request
    * @param resourceSpecification containing the specifications of
    */
-  public synchronized void requestContainer(final int numToRequest,
-                                            final ResourceSpecification resourceSpecification) {
+  public void requestContainer(final int numToRequest, final ResourceSpecification resourceSpecification) {
     if (numToRequest > 0) {
       // Create a list of executor specifications to be used when containers are allocated.
       final List<ResourceSpecification> resourceSpecificationList = new ArrayList<>(numToRequest);
@@ -130,25 +135,9 @@ public final class ContainerManager {
    * @param allocatedContainer the allocated container.
    * @param executorConfiguration executor related configuration.
    */
-  public synchronized void onContainerAllocated(final String executorId,
-                                                final AllocatedEvaluator allocatedContainer,
-                                                final Configuration executorConfiguration) {
-    onContainerAllocated(selectResourceSpecForContainer(), executorId,
-        allocatedContainer, executorConfiguration);
-  }
-
-  // To be exposed as a public synchronized method in place of the above "onContainerAllocated"
-  /**
-   * Launches executor once a container is allocated.
-   * @param resourceSpecification of the executor to be launched.
-   * @param executorId of the executor to be launched.
-   * @param allocatedContainer the allocated container.
-   * @param executorConfiguration executor related configuration.
-   */
-  private void onContainerAllocated(final ResourceSpecification resourceSpecification,
-                                    final String executorId,
-                                    final AllocatedEvaluator allocatedContainer,
-                                    final Configuration executorConfiguration) {
+  public void onContainerAllocated(final String executorId, final AllocatedEvaluator allocatedContainer,
+                                   final Configuration executorConfiguration) {
+    final ResourceSpecification resourceSpecification = selectResourceSpecForContainer();
     LOG.info("Container type (" + resourceSpecification.getContainerType()
         + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
@@ -182,7 +171,7 @@ public final class ContainerManager {
    * A representation of the executor to reside in master is created.
    * @param activeContext for the launched executor.
    */
-  public synchronized void onExecutorLaunched(final ActiveContext activeContext) {
+  public void onExecutorLaunched(final ActiveContext activeContext) {
     // We set contextId = executorId in NemoDriver when we generate executor configuration.
     final String executorId = activeContext.getId();
 
@@ -211,7 +200,7 @@ public final class ContainerManager {
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
   }
 
-  public synchronized void onExecutorRemoved(final String failedExecutorId) {
+  public void onExecutorRemoved(final String failedExecutorId) {
     LOG.info("[" + failedExecutorId + "] failure reported.");
 
     final ExecutorRepresenter failedExecutor = executorRegistry.getRunningExecutorRepresenter(failedExecutorId);
@@ -249,7 +238,7 @@ public final class ContainerManager {
    * and shutdown all of them if any of them is running.
    * @return a future that returns a boolean on whether all requested resources were allocated and released.
    */
-  public synchronized Future<Boolean> terminate() {
+  public Future<Boolean> terminate() {
     shutdownRunningExecutors();
     return Executors.newSingleThreadExecutor().submit(() -> waitForAllRequestedResources());
   }

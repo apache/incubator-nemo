@@ -34,6 +34,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -47,6 +48,7 @@ import static edu.snu.nemo.runtime.common.state.TaskGroupState.State.ON_HOLD;
  * The policy by which it schedules them is dependent on the implementation of {@link SchedulingPolicy}.
  */
 @DriverSide
+@ThreadSafe
 public final class BatchSingleJobScheduler implements Scheduler {
   private static final Logger LOG = LoggerFactory.getLogger(BatchSingleJobScheduler.class.getName());
   private static final int SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE = Integer.MAX_VALUE;
@@ -114,9 +116,9 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   @Override
-  public void updateJob(final String jobId,
-                        final PhysicalPlan newPhysicalPlan,
-                        final Pair<String, String> taskInfo) {
+  public synchronized void updateJob(final String jobId,
+                                     final PhysicalPlan newPhysicalPlan,
+                                     final Pair<String, String> taskInfo) {
     // update the job in the scheduler.
     // NOTE: what's already been executed is not modified in the new physical plan.
     this.physicalPlan = newPhysicalPlan;
@@ -134,12 +136,12 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * @param taskPutOnHold the ID of task that are put on hold. It is null otherwise.
    */
   @Override
-  public void onTaskGroupStateChanged(final String executorId,
-                                      final String taskGroupId,
-                                      final TaskGroupState.State newState,
-                                      final int attemptIdx,
-                                      @Nullable final String taskPutOnHold,
-                                      final TaskGroupState.RecoverableFailureCause failureCause) {
+  public synchronized void onTaskGroupStateChanged(final String executorId,
+                                                   final String taskGroupId,
+                                                   final TaskGroupState.State newState,
+                                                   final int attemptIdx,
+                                                   @Nullable final String taskPutOnHold,
+                                                   final TaskGroupState.RecoverableFailureCause failureCause) {
     switch (newState) {
     case COMPLETE:
       jobStateManager.onTaskGroupStateChanged(taskGroupId, newState);
@@ -160,136 +162,6 @@ public final class BatchSingleJobScheduler implements Scheduler {
       throw new IllegalStateTransitionException(new Exception("The states READY/EXECUTING cannot occur at this point"));
     default:
       throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + newState));
-    }
-  }
-
-  /**
-   * Action after task group execution has been completed, not after it has been put on hold.
-   *
-   * @param executorId  the ID of the executor.
-   * @param taskGroupId the ID pf the task group completed.
-   */
-  private void onTaskGroupExecutionComplete(final String executorId,
-                                            final String taskGroupId) {
-    onTaskGroupExecutionComplete(executorId, taskGroupId, false);
-  }
-
-  /**
-   * Action after task group execution has been completed.
-   * @param executorId id of the executor.
-   * @param taskGroupId the ID of the task group completed.
-   * @param isOnHoldToComplete whether or not if it is switched to complete after it has been on hold.
-   */
-  private void onTaskGroupExecutionComplete(final String executorId,
-                                            final String taskGroupId,
-                                            final Boolean isOnHoldToComplete) {
-    LOG.debug("{} completed in {}", new Object[]{taskGroupId, executorId});
-    if (!isOnHoldToComplete) {
-      schedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroupId);
-    }
-
-    final String stageIdForTaskGroupUponCompletion = RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId);
-    if (jobStateManager.checkStageCompletion(stageIdForTaskGroupUponCompletion)) {
-      // if the stage this task group belongs to is complete,
-      if (!jobStateManager.checkJobTermination()) { // and if the job is not yet complete or failed,
-        scheduleNextStage(stageIdForTaskGroupUponCompletion);
-      }
-    }
-  }
-
-  /**
-   * Action for after task group execution is put on hold.
-   * @param executorId     the ID of the executor.
-   * @param taskGroupId    the ID of the task group.
-   * @param taskPutOnHold  the ID of task that is put on hold.
-   */
-  private void onTaskGroupExecutionOnHold(final String executorId,
-                                          final String taskGroupId,
-                                          final String taskPutOnHold) {
-    LOG.info("{} put on hold in {}", new Object[]{taskGroupId, executorId});
-    schedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroupId);
-    final String stageIdForTaskGroupUponCompletion = RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId);
-
-    final boolean stageComplete =
-        jobStateManager.checkStageCompletion(stageIdForTaskGroupUponCompletion);
-
-    if (stageComplete) {
-      // get optimization vertex from the task.
-      final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
-          getTaskGroupDagById(taskGroupId).getVertices().stream() // get tasks list
-              .filter(task -> task.getId().equals(taskPutOnHold)) // find it
-              .map(physicalPlan::getIRVertexOf) // get the corresponding IRVertex, the MetricCollectionBarrierVertex
-              .filter(irVertex -> irVertex instanceof MetricCollectionBarrierVertex)
-              .distinct()
-              .map(irVertex -> (MetricCollectionBarrierVertex) irVertex) // convert types
-              .findFirst().orElseThrow(() -> new RuntimeException(ON_HOLD.name() // get it
-              + " called with failed task ids by some other task than "
-              + MetricCollectionBarrierTask.class.getSimpleName()));
-      // and we will use this vertex to perform metric collection and dynamic optimization.
-
-      pubSubEventHandlerWrapper.getPubSubEventHandler().onNext(
-          new DynamicOptimizationEvent(physicalPlan, metricCollectionBarrierVertex, Pair.of(executorId, taskGroupId)));
-    } else {
-      onTaskGroupExecutionComplete(executorId, taskGroupId, true);
-    }
-  }
-
-  private void onTaskGroupExecutionFailedRecoverable(final String executorId, final String taskGroupId,
-                                                     final int attemptIdx, final TaskGroupState.State newState,
-                                                     final TaskGroupState.RecoverableFailureCause failureCause) {
-    LOG.info("{} failed in {} by {}", new Object[]{taskGroupId, executorId, failureCause});
-    schedulingPolicy.onTaskGroupExecutionFailed(executorId, taskGroupId);
-
-    final String stageId = RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId);
-    final int attemptIndexForStage =
-        jobStateManager.getAttemptCountForStage(RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId));
-
-    switch (failureCause) {
-    // Previous task group must be re-executed, and incomplete task groups of the belonging stage must be rescheduled.
-    case INPUT_READ_FAILURE:
-      if (attemptIdx == attemptIndexForStage) {
-        jobStateManager.onTaskGroupStateChanged(taskGroupId, newState);
-        LOG.info("All task groups of {} will be made failed_recoverable.", stageId);
-        for (final PhysicalStage stage : physicalPlan.getStageDAG().getTopologicalSort()) {
-          if (stage.getId().equals(stageId)) {
-            LOG.info("Removing TaskGroups for {} before they are scheduled to an executor", stage.getId());
-            pendingTaskGroupQueue.removeTaskGroupsAndDescendants(stage.getId());
-            stage.getTaskGroupIds().forEach(dstTaskGroupId -> {
-              if (jobStateManager.getTaskGroupState(dstTaskGroupId).getStateMachine().getCurrentState()
-                  != TaskGroupState.State.COMPLETE) {
-                jobStateManager.onTaskGroupStateChanged(dstTaskGroupId, TaskGroupState.State.FAILED_RECOVERABLE);
-                blockManagerMaster.onProducerTaskGroupFailed(dstTaskGroupId);
-              }
-            });
-            break;
-          }
-        }
-        // the stage this task group belongs to has become failed recoverable.
-        // it is a good point to start searching for another stage to schedule.
-        scheduleNextStage(stageId);
-      } else if (attemptIdx < attemptIndexForStage) {
-        // if attemptIdx < attemptIndexForStage, we can ignore this late arriving message.
-        LOG.info("{} state change to failed_recoverable arrived late, we will ignore this.", taskGroupId);
-      } else {
-        throw new SchedulingException(new Throwable("AttemptIdx for a task group cannot be greater than its stage"));
-      }
-      break;
-    // The task group executed successfully but there is something wrong with the output store.
-    case OUTPUT_WRITE_FAILURE:
-      jobStateManager.onTaskGroupStateChanged(taskGroupId, newState);
-      LOG.info("Only the failed task group will be retried.");
-
-      // the stage this task group belongs to has become failed recoverable.
-      // it is a good point to start searching for another stage to schedule.
-      blockManagerMaster.onProducerTaskGroupFailed(taskGroupId);
-      scheduleNextStage(stageId);
-      break;
-    case CONTAINER_FAILURE:
-      jobStateManager.onTaskGroupStateChanged(taskGroupId, newState);
-      LOG.info("Only the failed task group will be retried.");
-      break;
-    default:
-      throw new UnknownFailureCauseException(new Throwable("Unknown cause: " + failureCause));
     }
   }
 
@@ -321,7 +193,13 @@ public final class BatchSingleJobScheduler implements Scheduler {
     }
   }
 
-  private synchronized void scheduleRootStages() {
+  @Override
+  public synchronized void terminate() {
+    this.schedulerRunner.terminate();
+    this.pendingTaskGroupQueue.close();
+  }
+
+  private void scheduleRootStages() {
     final List<PhysicalStage> rootStages =
         physicalPlan.getStageDAG().getTopologicalSort().stream().filter(physicalStage ->
             physicalStage.getScheduleGroupIndex() == initialScheduleGroup)
@@ -334,7 +212,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * Schedules the next stage to execute after a stage completion.
    * @param completedStageId the ID of the stage that just completed and triggered this scheduling.
    */
-  private synchronized void scheduleNextStage(final String completedStageId) {
+  private void scheduleNextStage(final String completedStageId) {
     final PhysicalStage completeOrFailedStage = getStageById(completedStageId);
     final Optional<List<PhysicalStage>> nextStagesToSchedule =
         selectNextStagesToSchedule(completeOrFailedStage.getScheduleGroupIndex());
@@ -367,7 +245,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * @return an optional of the (possibly empty) list of next schedulable stages, in the order they should be
    * enqueued to {@link PendingTaskGroupQueue}.
    */
-  private synchronized Optional<List<PhysicalStage>> selectNextStagesToSchedule(final int currentScheduleGroupIndex) {
+  private Optional<List<PhysicalStage>> selectNextStagesToSchedule(final int currentScheduleGroupIndex) {
     if (currentScheduleGroupIndex > initialScheduleGroup) {
       final Optional<List<PhysicalStage>> ancestorStagesFromAScheduleGroup =
           selectNextStagesToSchedule(currentScheduleGroupIndex - 1);
@@ -437,7 +315,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * It adds the list of task groups for the stage where the scheduler thread continuously polls from.
    * @param stageToSchedule the stage to schedule.
    */
-  private synchronized void scheduleStage(final PhysicalStage stageToSchedule) {
+  private void scheduleStage(final PhysicalStage stageToSchedule) {
     final List<PhysicalStageEdge> stageIncomingEdges =
         physicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
     final List<PhysicalStageEdge> stageOutgoingEdges =
@@ -526,8 +404,133 @@ public final class BatchSingleJobScheduler implements Scheduler {
     throw new RuntimeException(new Throwable("This taskGroupId does not exist in the plan"));
   }
 
-  @Override
-  public void terminate() {
-    // nothing to do yet.
+  /**
+   * Action after task group execution has been completed, not after it has been put on hold.
+   *
+   * @param executorId  the ID of the executor.
+   * @param taskGroupId the ID pf the task group completed.
+   */
+  private void onTaskGroupExecutionComplete(final String executorId,
+                                            final String taskGroupId) {
+    onTaskGroupExecutionComplete(executorId, taskGroupId, false);
+  }
+
+  /**
+   * Action after task group execution has been completed.
+   * @param executorId id of the executor.
+   * @param taskGroupId the ID of the task group completed.
+   * @param isOnHoldToComplete whether or not if it is switched to complete after it has been on hold.
+   */
+  private void onTaskGroupExecutionComplete(final String executorId,
+                                            final String taskGroupId,
+                                            final Boolean isOnHoldToComplete) {
+    LOG.debug("{} completed in {}", new Object[]{taskGroupId, executorId});
+    if (!isOnHoldToComplete) {
+      schedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroupId);
+    }
+
+    final String stageIdForTaskGroupUponCompletion = RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId);
+    if (jobStateManager.checkStageCompletion(stageIdForTaskGroupUponCompletion)) {
+      // if the stage this task group belongs to is complete,
+      if (!jobStateManager.checkJobTermination()) { // and if the job is not yet complete or failed,
+        scheduleNextStage(stageIdForTaskGroupUponCompletion);
+      }
+    }
+  }
+
+  /**
+   * Action for after task group execution is put on hold.
+   * @param executorId     the ID of the executor.
+   * @param taskGroupId    the ID of the task group.
+   * @param taskPutOnHold  the ID of task that is put on hold.
+   */
+  private void onTaskGroupExecutionOnHold(final String executorId,
+                                          final String taskGroupId,
+                                          final String taskPutOnHold) {
+    LOG.info("{} put on hold in {}", new Object[]{taskGroupId, executorId});
+    schedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroupId);
+    final String stageIdForTaskGroupUponCompletion = RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId);
+
+    final boolean stageComplete =
+        jobStateManager.checkStageCompletion(stageIdForTaskGroupUponCompletion);
+
+    if (stageComplete) {
+      // get optimization vertex from the task.
+      final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
+          getTaskGroupDagById(taskGroupId).getVertices().stream() // get tasks list
+              .filter(task -> task.getId().equals(taskPutOnHold)) // find it
+              .map(physicalPlan::getIRVertexOf) // get the corresponding IRVertex, the MetricCollectionBarrierVertex
+              .filter(irVertex -> irVertex instanceof MetricCollectionBarrierVertex)
+              .distinct()
+              .map(irVertex -> (MetricCollectionBarrierVertex) irVertex) // convert types
+              .findFirst().orElseThrow(() -> new RuntimeException(ON_HOLD.name() // get it
+              + " called with failed task ids by some other task than "
+              + MetricCollectionBarrierTask.class.getSimpleName()));
+      // and we will use this vertex to perform metric collection and dynamic optimization.
+
+      pubSubEventHandlerWrapper.getPubSubEventHandler().onNext(
+          new DynamicOptimizationEvent(physicalPlan, metricCollectionBarrierVertex, Pair.of(executorId, taskGroupId)));
+    } else {
+      onTaskGroupExecutionComplete(executorId, taskGroupId, true);
+    }
+  }
+
+  private void onTaskGroupExecutionFailedRecoverable(final String executorId, final String taskGroupId,
+                                                     final int attemptIdx, final TaskGroupState.State newState,
+                                                     final TaskGroupState.RecoverableFailureCause failureCause) {
+    LOG.info("{} failed in {} by {}", new Object[]{taskGroupId, executorId, failureCause});
+    schedulingPolicy.onTaskGroupExecutionFailed(executorId, taskGroupId);
+
+    final String stageId = RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId);
+    final int attemptIndexForStage =
+        jobStateManager.getAttemptCountForStage(RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId));
+
+    switch (failureCause) {
+      // Previous task group must be re-executed, and incomplete task groups of the belonging stage must be rescheduled.
+      case INPUT_READ_FAILURE:
+        if (attemptIdx == attemptIndexForStage) {
+          jobStateManager.onTaskGroupStateChanged(taskGroupId, newState);
+          LOG.info("All task groups of {} will be made failed_recoverable.", stageId);
+          for (final PhysicalStage stage : physicalPlan.getStageDAG().getTopologicalSort()) {
+            if (stage.getId().equals(stageId)) {
+              LOG.info("Removing TaskGroups for {} before they are scheduled to an executor", stage.getId());
+              pendingTaskGroupQueue.removeTaskGroupsAndDescendants(stage.getId());
+              stage.getTaskGroupIds().forEach(dstTaskGroupId -> {
+                if (jobStateManager.getTaskGroupState(dstTaskGroupId).getStateMachine().getCurrentState()
+                    != TaskGroupState.State.COMPLETE) {
+                  jobStateManager.onTaskGroupStateChanged(dstTaskGroupId, TaskGroupState.State.FAILED_RECOVERABLE);
+                  blockManagerMaster.onProducerTaskGroupFailed(dstTaskGroupId);
+                }
+              });
+              break;
+            }
+          }
+          // the stage this task group belongs to has become failed recoverable.
+          // it is a good point to start searching for another stage to schedule.
+          scheduleNextStage(stageId);
+        } else if (attemptIdx < attemptIndexForStage) {
+          // if attemptIdx < attemptIndexForStage, we can ignore this late arriving message.
+          LOG.info("{} state change to failed_recoverable arrived late, we will ignore this.", taskGroupId);
+        } else {
+          throw new SchedulingException(new Throwable("AttemptIdx for a task group cannot be greater than its stage"));
+        }
+        break;
+      // The task group executed successfully but there is something wrong with the output store.
+      case OUTPUT_WRITE_FAILURE:
+        jobStateManager.onTaskGroupStateChanged(taskGroupId, newState);
+        LOG.info("Only the failed task group will be retried.");
+
+        // the stage this task group belongs to has become failed recoverable.
+        // it is a good point to start searching for another stage to schedule.
+        blockManagerMaster.onProducerTaskGroupFailed(taskGroupId);
+        scheduleNextStage(stageId);
+        break;
+      case CONTAINER_FAILURE:
+        jobStateManager.onTaskGroupStateChanged(taskGroupId, newState);
+        LOG.info("Only the failed task group will be retried.");
+        break;
+      default:
+        throw new UnknownFailureCauseException(new Throwable("Unknown cause: " + failureCause));
+    }
   }
 }
