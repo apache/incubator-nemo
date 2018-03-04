@@ -80,7 +80,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   public void write() {
     // Aggregate element to form the inter-Stage data.
     List<Object> dataToWrite = new ArrayList<>();
-    while(outputQueue.size() > 0) {
+    while (outputQueue.size() > 0) {
       Object output = outputQueue.remove();
       dataToWrite.add(output);
     }
