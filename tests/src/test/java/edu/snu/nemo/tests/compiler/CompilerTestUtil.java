@@ -61,7 +61,7 @@ public final class CompilerTestUtil {
 
   public static DAG<IRVertex, IREdge> compileMRDAG() throws Exception {
     final String input = rootDir + "/../examples/resources/sample_input_mr";
-    final String output = rootDir + "/../examples-beam/src/main/resources/sample_output";
+    final String output = rootDir + "/../examples/beam/src/main/resources/sample_output";
     final String main = "edu.snu.nemo.examples.beam.MapReduce";
 
     final ArgBuilder mrArgBuilder = new ArgBuilder()
