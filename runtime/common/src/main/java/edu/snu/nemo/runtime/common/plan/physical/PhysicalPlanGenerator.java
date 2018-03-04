@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.common.plan.physical;
 
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.dag.DAG;
@@ -62,10 +63,44 @@ public final class PhysicalPlanGenerator
   public DAG<PhysicalStage, PhysicalStageEdge> apply(final DAG<IRVertex, IREdge> irDAG) {
     // first, stage-partition the IR DAG.
     final DAG<Stage, StageEdge> dagOfStages = stagePartitionIrDAG(irDAG);
+
+    // this is needed because of DuplicateEdgeGroupProperty.
+    handleDuplicateEdgeGroupProperty(dagOfStages);
+
     // for debugging purposes.
     dagOfStages.storeJSON(dagDirectory, "plan-logical", "logical execution plan");
     // then create tasks and make it into a physical execution plan.
     return stagesIntoPlan(dagOfStages);
+  }
+
+  /**
+   * Convert the edge id of DuplicateEdgeGroupProperty to physical edge id.
+   *
+   * @param dagOfStages dag to manipulate
+   */
+  private void handleDuplicateEdgeGroupProperty(final DAG<Stage, StageEdge> dagOfStages) {
+    final Map<String, List<StageEdge>> edgeGroupToIrEdge = new HashMap<>();
+
+    dagOfStages.topologicalDo(irVertex -> dagOfStages.getIncomingEdgesOf(irVertex).forEach(e -> {
+      final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupProperty =
+          e.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
+      if (duplicateEdgeGroupProperty != null) {
+        final String duplicateGroupId = duplicateEdgeGroupProperty.getGroupId();
+        edgeGroupToIrEdge.computeIfAbsent(duplicateGroupId, k -> new ArrayList<>()).add(e);
+      }
+    }));
+
+    edgeGroupToIrEdge.forEach((id, edges) -> {
+      final StageEdge representativeEdge = edges.get(0);
+      final DuplicateEdgeGroupPropertyValue representativeProperty =
+          representativeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
+      edges.forEach(e -> {
+        final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupProperty =
+            e.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
+        duplicateEdgeGroupProperty.setRepresentativeEdgeId(representativeEdge.getId());
+        duplicateEdgeGroupProperty.setGroupSize(representativeProperty.getGroupSize());
+      });
+    });
   }
 
   /**

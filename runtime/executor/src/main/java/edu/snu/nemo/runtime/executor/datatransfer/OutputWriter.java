@@ -89,7 +89,17 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     }
 
     final KeyExtractor keyExtractor = runtimeEdge.getProperty(ExecutionProperty.Key.KeyExtractor);
-    final List<Partition> partitionsToWrite = partitioner.partition(dataToWrite, dstParallelism, keyExtractor);
+    final List<Partition> partitionsToWrite;
+
+    final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
+        runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
+    if (duplicateDataProperty != null
+        && !duplicateDataProperty.getRepresentativeEdgeId().equals(runtimeEdge.getId())
+        && duplicateDataProperty.getGroupSize() > 1) {
+      partitionsToWrite = partitioner.partition(Collections.emptyList(), dstParallelism, keyExtractor);
+    } else {
+      partitionsToWrite = partitioner.partition(dataToWrite, dstParallelism, keyExtractor);
+    }
 
     // Write the grouped blocks into partitions.
     // TODO #492: Modularize the data communication pattern.
@@ -120,8 +130,11 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     // Commit block.
     final UsedDataHandlingProperty.Value usedDataHandling =
         runtimeEdge.getProperty(ExecutionProperty.Key.UsedDataHandling);
+    final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
+        runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
+    final int multiplier = duplicateDataProperty == null ? 1 : duplicateDataProperty.getGroupSize();
     blockManagerWorker.commitBlock(blockId, blockStoreValue,
-        accumulatedPartitionSizeInfo, srcVertexId, getDstParallelism(), usedDataHandling);
+        accumulatedPartitionSizeInfo, srcVertexId, getDstParallelism() * multiplier, usedDataHandling);
   }
 
   /**

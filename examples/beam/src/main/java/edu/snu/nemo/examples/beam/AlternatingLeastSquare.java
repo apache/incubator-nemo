@@ -33,6 +33,8 @@ import com.github.fommil.netlib.BLAS;
 import com.github.fommil.netlib.LAPACK;
 
 import java.util.*;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -326,10 +328,18 @@ public final class AlternatingLeastSquare {
     final Integer numFeatures = Integer.parseInt(args[1]);
     final Integer numItr = Integer.parseInt(args[2]);
     final Double lambda;
-    if (args.length > 4) {
+    if (args.length > 3) {
       lambda = Double.parseDouble(args[3]);
     } else {
       lambda = 0.05;
+    }
+    final String outputFilePath;
+    boolean checkOutput = false;
+    if (args.length > 4) {
+      outputFilePath = args[4];
+      checkOutput = true;
+    } else {
+      outputFilePath = "";
     }
 
     final PipelineOptions options = PipelineOptionsFactory.create();
@@ -380,6 +390,19 @@ public final class AlternatingLeastSquare {
     for (Integer i = 0; i < numItr; i++) {
       // NOTE: a single composite transform for the iteration.
       itemMatrix = itemMatrix.apply(new UpdateUserAndItemMatrix(numFeatures, lambda, parsedUserData, parsedItemData));
+    }
+
+    if (checkOutput) {
+      final PCollection<String> result = itemMatrix.apply(MapElements.<KV<Integer, List<Double>>, String>via(
+          new SimpleFunction<KV<Integer, List<Double>>, String>() {
+            @Override
+            public String apply(final KV<Integer, List<Double>> elem) {
+              final List<String> values = elem.getValue().stream().map(e -> e.toString()).collect(Collectors.toList());
+              return elem.getKey() + "," + String.join(",", values);
+            }
+          }));
+
+      GenericSourceSink.write(result, outputFilePath);
     }
 
     p.run();
