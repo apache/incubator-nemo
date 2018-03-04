@@ -18,6 +18,7 @@ package edu.snu.nemo.tests.runtime.executor.datatransfer;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
+import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -252,6 +253,42 @@ public final class DataTransferTest {
 
     // test ManyToMany different worker (remote file)
     writeAndRead(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
+
+    // test OneToOne same worker with duplicate data
+    writeAndReadWithDuplicateData(worker1, worker1, DataCommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
+
+    // test OneToOne different worker with duplicate data
+    writeAndReadWithDuplicateData(worker1, worker2, DataCommunicationPatternProperty.Value.OneToOne, MEMORY_STORE);
+
+    // test OneToMany same worker with duplicate data
+    writeAndReadWithDuplicateData(worker1, worker1, DataCommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
+
+    // test OneToMany different worker with duplicate data
+    writeAndReadWithDuplicateData(worker1, worker2, DataCommunicationPatternProperty.Value.BroadCast, MEMORY_STORE);
+
+    // test ManyToMany same worker with duplicate data
+    writeAndReadWithDuplicateData(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
+
+    // test ManyToMany different worker with duplicate data
+    writeAndReadWithDuplicateData(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, MEMORY_STORE);
+
+    // test ManyToMany same worker with duplicate data
+    writeAndReadWithDuplicateData(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
+
+    // test ManyToMany different worker with duplicate data
+    writeAndReadWithDuplicateData(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, SER_MEMORY_STORE);
+
+    // test ManyToMany same worker (local file) with duplicate data
+    writeAndReadWithDuplicateData(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
+
+    // test ManyToMany different worker (local file) with duplicate data
+    writeAndReadWithDuplicateData(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, LOCAL_FILE_STORE);
+
+    // test ManyToMany same worker (remote file) with duplicate data
+    writeAndReadWithDuplicateData(worker1, worker1, DataCommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
+
+    // test ManyToMany different worker (remote file) with duplicate data
+    writeAndReadWithDuplicateData(worker1, worker2, DataCommunicationPatternProperty.Value.Shuffle, REMOTE_FILE_STORE);
   }
 
   private void writeAndRead(final BlockManagerWorker sender,
@@ -336,11 +373,157 @@ public final class DataTransferTest {
     }
   }
 
+  private void writeAndReadWithDuplicateData(final BlockManagerWorker sender,
+                                             final BlockManagerWorker receiver,
+                                             final DataCommunicationPatternProperty.Value commPattern,
+                                             final DataStoreProperty.Value store) throws RuntimeException {
+    final int testIndex = TEST_INDEX.getAndIncrement();
+    final int testIndex2 = TEST_INDEX.getAndIncrement();
+    final String edgeId = String.format(EDGE_PREFIX_TEMPLATE, testIndex);
+    final String edgeId2 = String.format(EDGE_PREFIX_TEMPLATE, testIndex2);
+    final Pair<IRVertex, IRVertex> verticesPair = setupVertices(edgeId, edgeId2, sender, receiver);
+    final IRVertex srcVertex = verticesPair.left();
+    final IRVertex dstVertex = verticesPair.right();
+
+    // Edge setup
+    final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex, CODER);
+    dummyIREdge.setProperty(KeyExtractorProperty.of((element -> element)));
+    final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
+    edgeProperties.put(DataCommunicationPatternProperty.of(commPattern));
+    edgeProperties.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+    edgeProperties.put(DuplicateEdgeGroupProperty.of(new DuplicateEdgeGroupPropertyValue("dummy")));
+    final DuplicateEdgeGroupPropertyValue duplicateDataProperty = edgeProperties.get(ExecutionProperty.Key.DuplicateEdgeGroup);
+    duplicateDataProperty.setRepresentativeEdgeId(edgeId);
+    duplicateDataProperty.setGroupSize(2);
+
+    edgeProperties.put(DataStoreProperty.of(store));
+    edgeProperties.put(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
+    final RuntimeEdge dummyEdge, dummyEdge2;
+
+    final IRVertex srcMockVertex = mock(IRVertex.class);
+    final IRVertex dstMockVertex = mock(IRVertex.class);
+    final PhysicalStage srcStage = setupStages("srcStage-" + testIndex);
+    final PhysicalStage dstStage = setupStages("dstStage-" + testIndex);
+    dummyEdge = new PhysicalStageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
+        srcStage, dstStage, CODER, false);
+    final IRVertex dstMockVertex2 = mock(IRVertex.class);
+    final PhysicalStage dstStage2 = setupStages("dstStage-" + testIndex2);
+    dummyEdge2 = new PhysicalStageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2,
+        srcStage, dstStage2, CODER, false);
+    // Initialize states in Master
+    srcStage.getTaskGroupIds().forEach(srcTaskGroupId -> {
+      final String blockId = RuntimeIdGenerator.generateBlockId(
+          edgeId, RuntimeIdGenerator.getIndexFromTaskGroupId(srcTaskGroupId));
+      master.initializeState(blockId, srcTaskGroupId);
+      final String blockId2 = RuntimeIdGenerator.generateBlockId(
+          edgeId2, RuntimeIdGenerator.getIndexFromTaskGroupId(srcTaskGroupId));
+      master.initializeState(blockId2, srcTaskGroupId);
+      master.onProducerTaskGroupScheduled(srcTaskGroupId);
+    });
+
+    // Write
+    final List<List> dataWrittenList = new ArrayList<>();
+    IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
+      final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
+      final OutputWriter writer = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, srcVertex.getId(), dstVertex,
+          dummyEdge, sender);
+      dataWritten.iterator().forEachRemaining(writer::writeElement);
+      writer.write();
+      writer.close();
+      dataWrittenList.add(dataWritten);
+
+      final OutputWriter writer2 = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, srcVertex.getId(), dstVertex,
+          dummyEdge2, sender);
+      dataWritten.iterator().forEachRemaining(writer::writeElement);
+      writer2.write();
+      writer2.close();
+    });
+
+    // Read
+    final List<List> dataReadList = new ArrayList<>();
+    final List<List> dataReadList2 = new ArrayList<>();
+    IntStream.range(0, PARALLELISM_TEN).forEach(dstTaskIndex -> {
+      final InputReader reader =
+          new InputReader(dstTaskIndex, srcVertex, dummyEdge, receiver);
+      final InputReader reader2 =
+          new InputReader(dstTaskIndex, srcVertex, dummyEdge2, receiver);
+
+      if (DataCommunicationPatternProperty.Value.OneToOne.equals(commPattern)) {
+        assertEquals(1, reader.getSourceParallelism());
+      } else {
+        assertEquals(PARALLELISM_TEN, reader.getSourceParallelism());
+      }
+
+      if (DataCommunicationPatternProperty.Value.OneToOne.equals(commPattern)) {
+        assertEquals(1, reader2.getSourceParallelism());
+      } else {
+        assertEquals(PARALLELISM_TEN, reader2.getSourceParallelism());
+      }
+
+      final List dataRead = new ArrayList<>();
+      try {
+        InputReader.combineFutures(reader.read()).forEachRemaining(dataRead::add);
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
+      }
+      dataReadList.add(dataRead);
+
+      final List dataRead2 = new ArrayList<>();
+      try {
+        InputReader.combineFutures(reader2.read()).forEachRemaining(dataRead2::add);
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
+      }
+      dataReadList2.add(dataRead2);
+    });
+
+    // Compare (should be the same)
+    final List flattenedWrittenData = flatten(dataWrittenList);
+    final List flattenedWrittenData2 = flatten(dataWrittenList);
+    final List flattenedReadData = flatten(dataReadList);
+    final List flattenedReadData2 = flatten(dataReadList2);
+    if (DataCommunicationPatternProperty.Value.BroadCast.equals(commPattern)) {
+      final List broadcastedWrittenData = new ArrayList<>();
+      final List broadcastedWrittenData2 = new ArrayList<>();
+      IntStream.range(0, PARALLELISM_TEN).forEach(i -> broadcastedWrittenData.addAll(flattenedWrittenData));
+      IntStream.range(0, PARALLELISM_TEN).forEach(i -> broadcastedWrittenData2.addAll(flattenedWrittenData2));
+      assertEquals(broadcastedWrittenData.size(), flattenedReadData.size());
+      flattenedReadData.forEach(rData -> assertTrue(broadcastedWrittenData.remove(rData)));
+      flattenedReadData2.forEach(rData -> assertTrue(broadcastedWrittenData2.remove(rData)));
+    } else {
+      assertEquals(flattenedWrittenData.size(), flattenedReadData.size());
+      flattenedReadData.forEach(rData -> assertTrue(flattenedWrittenData.remove(rData)));
+      flattenedReadData2.forEach(rData -> assertTrue(flattenedWrittenData2.remove(rData)));
+    }
+  }
+
   private Pair<IRVertex, IRVertex> setupVertices(final String edgeId,
                                                  final BlockManagerWorker sender,
                                                  final BlockManagerWorker receiver) {
     serializerManagers.get(sender).register(edgeId, CODER, new ExecutionPropertyMap(""));
     serializerManagers.get(receiver).register(edgeId, CODER, new ExecutionPropertyMap(""));
+
+    // Src setup
+    final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
+    final ExecutionPropertyMap srcVertexProperties = srcVertex.getExecutionProperties();
+    srcVertexProperties.put(ParallelismProperty.of(PARALLELISM_TEN));
+
+    // Dst setup
+    final SourceVertex dstVertex = new EmptyComponents.EmptySourceVertex("Destination");
+    final ExecutionPropertyMap dstVertexProperties = dstVertex.getExecutionProperties();
+    dstVertexProperties.put(ParallelismProperty.of(PARALLELISM_TEN));
+
+    return Pair.of(srcVertex, dstVertex);
+  }
+
+  private Pair<IRVertex, IRVertex> setupVertices(final String edgeId,
+                                                 final String edgeId2,
+                                                 final BlockManagerWorker sender,
+                                                 final BlockManagerWorker receiver) {
+    serializerManagers.get(sender).register(edgeId, CODER, new ExecutionPropertyMap(""));
+    serializerManagers.get(receiver).register(edgeId, CODER, new ExecutionPropertyMap(""));
+    serializerManagers.get(sender).register(edgeId2, CODER, new ExecutionPropertyMap(""));
+    serializerManagers.get(receiver).register(edgeId2, CODER, new ExecutionPropertyMap(""));
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");

@@ -34,9 +34,10 @@ import java.util.stream.Stream;
 public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements NemoSparkUserFacingClass {
   /**
    * Constructor.
+   *
    * @param sparkSession spark session.
-   * @param logicalPlan spark logical plan.
-   * @param encoder spark encoder.
+   * @param logicalPlan  spark logical plan.
+   * @param encoder      spark encoder.
    */
   private Dataset(final SparkSession sparkSession, final LogicalPlan logicalPlan, final Encoder<T> encoder) {
     super(sparkSession, logicalPlan, encoder);
@@ -44,8 +45,9 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
 
   /**
    * Using the immutable property of datasets, we can downcast spark datasets to our class using this function.
+   *
    * @param dataset the Spark dataset.
-   * @param <U> type of the dataset.
+   * @param <U>     type of the dataset.
    * @return our dataset class.
    */
   public static <U> Dataset<U> from(final org.apache.spark.sql.Dataset<U> dataset) {
@@ -58,6 +60,7 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
 
   /**
    * Create a javaRDD component from this data set.
+   *
    * @return the new javaRDD component.
    */
   @Override
@@ -429,8 +432,9 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
 
   /**
    * Overrides super.ofRows.
+   *
    * @param sparkSession Spark Session.
-   * @param logicalPlan Spark logical plan.
+   * @param logicalPlan  Spark logical plan.
    * @return Dataset of the given rows.
    */
   public static Dataset<Row> ofRows(final org.apache.spark.sql.SparkSession sparkSession,

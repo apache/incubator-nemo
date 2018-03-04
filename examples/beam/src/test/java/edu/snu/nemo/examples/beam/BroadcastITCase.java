@@ -15,12 +15,11 @@
  */
 package edu.snu.nemo.examples.beam;
 
-import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelismFive;
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
-
+import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,7 +47,7 @@ public final class BroadcastITCase {
       .addUserArgs(inputFilePath, outputFilePath);
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     builder = new ArgBuilder()
         .addUserMain(Broadcast.class.getCanonicalName())
         .addUserArgs(inputFilePath, outputFilePath);

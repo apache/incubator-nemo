@@ -18,6 +18,7 @@ package edu.snu.nemo.runtime.executor.datatransfer;
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
@@ -47,7 +48,6 @@ import org.slf4j.LoggerFactory;
  */
 public final class InputReader extends DataTransfer {
   private static final Logger LOG = LoggerFactory.getLogger(InputReader.class.getName());
-
   private final int dstTaskIndex;
   private final BlockManagerWorker blockManagerWorker;
 
@@ -95,7 +95,7 @@ public final class InputReader extends DataTransfer {
   }
 
   private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
-    final String blockId = RuntimeIdGenerator.generateBlockId(getId(), dstTaskIndex);
+    final String blockId = getBlockId(dstTaskIndex);
     return blockManagerWorker.queryBlock(blockId, getId(),
         (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
         HashRange.all());
@@ -106,7 +106,7 @@ public final class InputReader extends DataTransfer {
 
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
+      final String blockId = getBlockId(srcTaskIdx);
       futures.add(blockManagerWorker.queryBlock(blockId, getId(),
           (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
           HashRange.all()));
@@ -134,7 +134,7 @@ public final class InputReader extends DataTransfer {
     final int numSrcTasks = this.getSourceParallelism();
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
-      final String blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
+      final String blockId = getBlockId(srcTaskIdx);
       futures.add(
           blockManagerWorker.queryBlock(blockId, getId(),
               (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
@@ -146,6 +146,22 @@ public final class InputReader extends DataTransfer {
 
   public RuntimeEdge getRuntimeEdge() {
     return runtimeEdge;
+  }
+
+  /**
+   * Get block id.
+   *
+   * @param  taskIdx task index of the block
+   * @return the block id
+   */
+  private String getBlockId(final int taskIdx) {
+    final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
+        (DuplicateEdgeGroupPropertyValue) runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
+    if (duplicateDataProperty == null || duplicateDataProperty.getGroupSize() <= 1) {
+      return RuntimeIdGenerator.generateBlockId(getId(), taskIdx);
+    }
+    final String duplicateEdgeId = duplicateDataProperty.getRepresentativeEdgeId();
+    return RuntimeIdGenerator.generateBlockId(duplicateEdgeId, taskIdx);
   }
 
   public String getSrcIrVertexId() {

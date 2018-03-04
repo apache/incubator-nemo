@@ -21,11 +21,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * Test Utils for Examples.
  */
 public final class ExampleTestUtil {
+  private static final Double ERROR = 1e-8;
   /**
    * Private constructor.
    */
@@ -72,6 +76,52 @@ public final class ExampleTestUtil {
               + "\n===============================";
       throw new RuntimeException(outputMsg);
     }
+  }
+
+  /**
+   * This method test the output validity of AlternatingLeastSquareITCase.
+   * Due to the floating point math error, the output of the test can be different every time.
+   * Thus we cannot compare plain text output, but have to check its numeric error.
+   */
+  public static void ensureALSOutputValidity(final String resourcePath,
+                                             final String outputFileName,
+                                             final String testResourceFileName) throws IOException {
+    final List<List<Double>> testOutput = Files.list(Paths.get(resourcePath))
+        .filter(Files::isRegularFile)
+        .filter(path -> path.getFileName().toString().startsWith(outputFileName))
+        .flatMap(path -> {
+          try {
+            return Files.lines(path);
+          } catch (final IOException e) {
+            throw new RuntimeException(e);
+          }
+        })
+        .sorted()
+        .filter(line -> !line.trim().equals(""))
+        .map(line -> Arrays.asList(line.split("\\s*,\\s*"))
+            .stream().map(s -> Double.valueOf(s)).collect(Collectors.toList()))
+        .collect(Collectors.toList());
+
+    final List<List<Double>> resourceOutput = Files.lines(Paths.get(resourcePath + testResourceFileName))
+        .sorted()
+        .filter(line -> !line.trim().equals(""))
+        .map(line -> Arrays.asList(line.split("\\s*,\\s*"))
+            .stream().map(s -> Double.valueOf(s)).collect(Collectors.toList()))
+        .collect(Collectors.toList());
+
+    if (testOutput.size() != resourceOutput.size()) {
+      throw new RuntimeException("output mismatch");
+    }
+
+    IntStream.range(0, testOutput.size()).forEach(i -> {
+          IntStream.range(0, testOutput.get(i).size()).forEach(j -> {
+            final Double testElement = testOutput.get(i).get(j);
+            final Double resourceElement = resourceOutput.get(i).get(j);
+            if (Math.abs(testElement - resourceElement) / resourceElement > ERROR) {
+              throw new RuntimeException("output mismatch");
+            }
+          });
+        });
   }
 
   /**

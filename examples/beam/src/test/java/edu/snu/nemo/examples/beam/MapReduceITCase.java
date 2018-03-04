@@ -46,7 +46,7 @@ public final class MapReduceITCase {
       .addUserArgs(inputFilePath, outputFilePath);
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     builder = new ArgBuilder()
         .addUserMain(MapReduce.class.getCanonicalName())
         .addUserArgs(inputFilePath, outputFilePath);

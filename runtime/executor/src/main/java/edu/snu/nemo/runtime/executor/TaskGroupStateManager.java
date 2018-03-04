@@ -19,7 +19,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.exception.UnknownFailureCauseException;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
@@ -45,7 +44,6 @@ public final class TaskGroupStateManager {
   private final int attemptIdx;
   private final String executorId;
   private final MetricCollector metricCollector;
-
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
   public TaskGroupStateManager(final ScheduledTaskGroup scheduledTaskGroup,
@@ -62,10 +60,9 @@ public final class TaskGroupStateManager {
 
   /**
    * Updates the state of the task group.
-   *
-   * @param newState      of the task group.
+   * @param newState of the task group.
    * @param taskPutOnHold the logical ID of the tasks put on hold, empty otherwise.
-   * @param cause         only provided as non-empty upon recoverable failures.
+   * @param cause only provided as non-empty upon recoverable failures.
    */
   public synchronized void onTaskGroupStateChanged(final TaskGroupState.State newState,
                                                    final Optional<String> taskPutOnHold,
@@ -109,22 +106,21 @@ public final class TaskGroupStateManager {
 
   /**
    * Notifies the change in task group state to master.
-   *
-   * @param newState      of the task group.
+   * @param newState of the task group.
    * @param taskPutOnHold the logical ID of the tasks put on hold, empty otherwise.
-   * @param cause         only provided as non-empty upon recoverable failures.
+   * @param cause only provided as non-empty upon recoverable failures.
    */
   private void notifyTaskGroupStateToMaster(final TaskGroupState.State newState,
                                             final Optional<String> taskPutOnHold,
                                             final Optional<TaskGroupState.RecoverableFailureCause> cause) {
     final ControlMessage.TaskGroupStateChangedMsg.Builder msgBuilder =
         ControlMessage.TaskGroupStateChangedMsg.newBuilder()
-            .setExecutorId(executorId)
-            .setTaskGroupId(taskGroupId)
-            .setAttemptIdx(attemptIdx)
-            .setState(convertState(newState));
+          .setExecutorId(executorId)
+          .setTaskGroupId(taskGroupId)
+          .setAttemptIdx(attemptIdx)
+          .setState(convertState(newState));
     if (taskPutOnHold.isPresent()) {
-      msgBuilder.setTaskPutOnHoldId(taskPutOnHold.get());
+          msgBuilder.setTaskPutOnHoldId(taskPutOnHold.get());
     }
     if (cause.isPresent()) {
       msgBuilder.setFailureCause(convertFailureCause(cause.get()));
@@ -140,37 +136,35 @@ public final class TaskGroupStateManager {
             .build());
   }
 
-  // TODO #164: Cleanup Protobuf Usage
   private ControlMessage.TaskGroupStateFromExecutor convertState(final TaskGroupState.State state) {
     switch (state) {
-      case READY:
-        return ControlMessage.TaskGroupStateFromExecutor.READY;
-      case EXECUTING:
-        return ControlMessage.TaskGroupStateFromExecutor.EXECUTING;
-      case COMPLETE:
-        return ControlMessage.TaskGroupStateFromExecutor.COMPLETE;
-      case FAILED_RECOVERABLE:
-        return ControlMessage.TaskGroupStateFromExecutor.FAILED_RECOVERABLE;
-      case FAILED_UNRECOVERABLE:
-        return ControlMessage.TaskGroupStateFromExecutor.FAILED_UNRECOVERABLE;
-      case ON_HOLD:
-        return ControlMessage.TaskGroupStateFromExecutor.ON_HOLD;
-      default:
-        throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
+    case READY:
+      return ControlMessage.TaskGroupStateFromExecutor.READY;
+    case EXECUTING:
+      return ControlMessage.TaskGroupStateFromExecutor.EXECUTING;
+    case COMPLETE:
+      return ControlMessage.TaskGroupStateFromExecutor.COMPLETE;
+    case FAILED_RECOVERABLE:
+      return ControlMessage.TaskGroupStateFromExecutor.FAILED_RECOVERABLE;
+    case FAILED_UNRECOVERABLE:
+      return ControlMessage.TaskGroupStateFromExecutor.FAILED_UNRECOVERABLE;
+    case ON_HOLD:
+      return ControlMessage.TaskGroupStateFromExecutor.ON_HOLD;
+    default:
+      throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
     }
   }
 
-  // TODO #164: Cleanup Protobuf Usage
   private ControlMessage.RecoverableFailureCause convertFailureCause(
-      final TaskGroupState.RecoverableFailureCause cause) {
+    final TaskGroupState.RecoverableFailureCause cause) {
     switch (cause) {
-      case INPUT_READ_FAILURE:
-        return ControlMessage.RecoverableFailureCause.InputReadFailure;
-      case OUTPUT_WRITE_FAILURE:
-        return ControlMessage.RecoverableFailureCause.OutputWriteFailure;
-      default:
-        throw new UnknownFailureCauseException(
-            new Throwable("The failure cause for the recoverable failure is unknown"));
+    case INPUT_READ_FAILURE:
+      return ControlMessage.RecoverableFailureCause.InputReadFailure;
+    case OUTPUT_WRITE_FAILURE:
+      return ControlMessage.RecoverableFailureCause.OutputWriteFailure;
+    default:
+      throw new UnknownFailureCauseException(
+          new Throwable("The failure cause for the recoverable failure is unknown"));
     }
   }
 

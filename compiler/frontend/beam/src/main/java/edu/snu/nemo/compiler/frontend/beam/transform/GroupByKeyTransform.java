@@ -29,7 +29,6 @@ import java.util.*;
  */
 public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, List>> {
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyTransform.class.getName());
-
   private final Map<Object, List> keyToValues;
   private Pipe<KV<Object, List>> pipe;
 

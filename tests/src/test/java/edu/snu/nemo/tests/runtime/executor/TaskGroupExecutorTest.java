@@ -27,7 +27,6 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.physical.*;
-import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.executor.MetricMessageSender;
 import edu.snu.nemo.runtime.executor.TaskGroupExecutor;
 import edu.snu.nemo.runtime.executor.TaskGroupStateManager;
@@ -35,7 +34,6 @@ import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputWriter;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -43,11 +41,12 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static edu.snu.nemo.tests.runtime.RuntimeTestUtil.getRangedNumList;
 import static org.junit.Assert.assertEquals;
@@ -63,8 +62,6 @@ import static org.mockito.Mockito.*;
 @PrepareForTest({InputReader.class, OutputWriter.class, DataTransferFactory.class,
     TaskGroupStateManager.class, PhysicalStageEdge.class})
 public final class TaskGroupExecutorTest {
-  private static final Logger LOG = LoggerFactory.getLogger(TaskGroupExecutorTest.class.getName());
-
   private static final int DATA_SIZE = 100;
   private static final String CONTAINER_TYPE = "CONTAINER_TYPE";
   private static final int SOURCE_PARALLELISM = 5;
@@ -236,15 +233,15 @@ public final class TaskGroupExecutorTest {
    */
   private class WriterAnswer implements Answer<OutputWriter> {
     @Override
-    public OutputWriter answer(final InvocationOnMock invocationOnMock) {
+    public OutputWriter answer(final InvocationOnMock invocationOnMock) throws Throwable {
       final Object[] args = invocationOnMock.getArguments();
       final Task dstTask = (Task) args[0];
       final OutputWriter outputWriter = mock(OutputWriter.class);
       doAnswer(new Answer() {
         @Override
-        public Object answer(final InvocationOnMock invocationOnMock) {
+        public Object answer(final InvocationOnMock invocationOnMock) throws Throwable {
           final Object[] args = invocationOnMock.getArguments();
-          final Object dataToWrite = args[0];
+          final Iterable dataToWrite = (Iterable) args[0];
           taskIdToOutputData.computeIfAbsent(dstTask.getId(), emptyTaskId -> new ArrayList<>());
           taskIdToOutputData.get(dstTask.getId()).add(dataToWrite);
           return null;

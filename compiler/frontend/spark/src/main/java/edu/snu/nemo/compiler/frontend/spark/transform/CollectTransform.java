@@ -26,7 +26,6 @@ import java.util.List;
 
 /**
  * Collect transform.
- *
  * @param <T> type of data to collect.
  */
 public final class CollectTransform<T> implements Transform<T, T> {

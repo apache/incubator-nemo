@@ -15,10 +15,12 @@
  */
 package edu.snu.nemo.examples.beam;
 
-import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelismFive;
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
-
+import edu.snu.nemo.common.test.ExampleTestUtil;
+import edu.snu.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
+import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelismFive;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,28 +36,42 @@ public final class AlternatingLeastSquareITCase {
   private static final int TIMEOUT = 180000;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
   private static final String input = fileBasePath + "sample_input_als";
+  private static final String outputFileName = "sample_output_als";
+  private static final String output = fileBasePath + outputFileName;
+  private static final String testResourceFileName = "test_output_als";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
+  private static final String lambda = "0.05";
+  // If you don't want to check validity of output, make this variable false.
+  private static final boolean checkOutput = true;
 
   private static ArgBuilder builder = new ArgBuilder()
       .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
       .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-      .addUserArgs(input, numFeatures, numIteration);
+      .addUserArgs(input, numFeatures, numIteration, lambda, output);
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
         .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-        .addUserArgs(input, numFeatures, numIteration);
+        .addUserArgs(input, numFeatures, numIteration, lambda, output);
   }
 
-//  @Test (timeout = TIMEOUT)
-//  public void test() throws Exception {
-//    JobLauncher.main(builder
-//        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
-//        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-//        .build());
-//  }
+  @After
+  public void tearDown() throws Exception {
+    if (checkOutput) {
+      ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
+  }
+
+  @Test (timeout = TIMEOUT)
+  public void test() throws Exception {
+    JobLauncher.main(builder
+        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
+        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+        .build());
+  }
 
   @Test (timeout = TIMEOUT)
   public void testPado() throws Exception {

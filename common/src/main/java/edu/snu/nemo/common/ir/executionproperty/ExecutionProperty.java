@@ -72,6 +72,7 @@ public abstract class ExecutionProperty<T> implements Serializable {
     KeyExtractor,
     UsedDataHandling,
     Compression,
+    DuplicateEdgeGroup,
 
     // Applies to IRVertex
     DynamicOptimizationType,
@@ -79,6 +80,5 @@ public abstract class ExecutionProperty<T> implements Serializable {
     Parallelism,
     ScheduleGroupIndex,
     StageId,
-
   }
 }
