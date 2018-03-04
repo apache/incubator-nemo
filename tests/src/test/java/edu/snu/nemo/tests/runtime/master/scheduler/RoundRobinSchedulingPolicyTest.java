@@ -93,13 +93,13 @@ public final class RoundRobinSchedulingPolicyTest {
     executorRegistry.registerRepresenter(b2);
 
     // Add compute nodes
-    schedulingPolicy.onExecutorAdded(a3.getExecutorId());
-    schedulingPolicy.onExecutorAdded(a2.getExecutorId());
-    schedulingPolicy.onExecutorAdded(a1.getExecutorId());
+    schedulingPolicy.onExecutorAdded(a3);
+    schedulingPolicy.onExecutorAdded(a2);
+    schedulingPolicy.onExecutorAdded(a1);
 
     // Add storage nodes
-    schedulingPolicy.onExecutorAdded(b2.getExecutorId());
-    schedulingPolicy.onExecutorAdded(b1.getExecutorId());
+    schedulingPolicy.onExecutorAdded(b2);
+    schedulingPolicy.onExecutorAdded(b1);
   }
 
   @Test

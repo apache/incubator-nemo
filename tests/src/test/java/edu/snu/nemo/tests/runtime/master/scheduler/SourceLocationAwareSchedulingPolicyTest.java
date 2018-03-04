@@ -233,7 +233,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
 
   private MockExecutorRepresenterWrapper addExecutor(final MockExecutorRepresenterWrapper executor) {
     executorRegistry.registerRepresenter(executor.get());
-    sourceLocationAware.onExecutorAdded(executor.get().getExecutorId());
+    sourceLocationAware.onExecutorAdded(executor.get());
     return executor;
   }
 

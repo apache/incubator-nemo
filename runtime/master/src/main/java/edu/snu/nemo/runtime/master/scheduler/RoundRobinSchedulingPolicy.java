@@ -145,9 +145,9 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   public Set<String> onExecutorRemoved(final String executorId) {
     lock.lock();
     try {
-      final ExecutorRepresenter executor = executorRegistry.getRunningExecutorRepresenter(executorId);
       executorRegistry.setRepresenterAsFailed(executorId);
-      executorRegistry.deregisterRepresenter(executorId);
+      final ExecutorRepresenter executor = executorRegistry.getFailedExecutorRepresenter(executorId);
+      executor.onExecutorFailed();
 
       final String containerType = executor.getContainerType();
 
@@ -162,7 +162,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
       }
       executorIdList.remove(executorId);
 
-      return Collections.unmodifiableSet(executor.getRunningTaskGroups());
+      return Collections.unmodifiableSet(executor.getFailedTaskGroups());
     } finally {
       lock.unlock();
     }
@@ -206,7 +206,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     for (final String executorId : executorRegistry.getRunningExecutorIds()) {
       final ExecutorRepresenter representer = executorRegistry.getRunningExecutorRepresenter(executorId);
       representer.shutDown();
-      executorRegistry.deregisterRepresenter(executorId);
+      executorRegistry.setRepresenterAsCompleted(executorId);
     }
   }
 

@@ -24,11 +24,14 @@ import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 /**
+ * (WARNING) This class is not thread-safe.
+ *
  * Contains information/state regarding an executor.
  * Such information may include:
  *    a) The executor's resource type.
@@ -37,6 +40,7 @@ import java.util.concurrent.ExecutorService;
  *    d) Name of the physical node which hosts this executor.
  *    e) (Please add other information as we implement more features).
  */
+@NotThreadSafe
 public final class ExecutorRepresenter {
 
   private final String executorId;
@@ -113,6 +117,10 @@ public final class ExecutorRepresenter {
 
   public Set<String> getRunningTaskGroups() {
     return runningTaskGroups;
+  }
+
+  public Set<String> getFailedTaskGroups() {
+    return failedTaskGroups;
   }
 
   public Set<String> getCompleteTaskGroups() {

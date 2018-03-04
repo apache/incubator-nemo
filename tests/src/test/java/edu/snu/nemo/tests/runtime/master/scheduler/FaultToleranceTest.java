@@ -127,7 +127,7 @@ public final class FaultToleranceTest {
     // Add nodes
     for (final ExecutorRepresenter executor : executors) {
       executorRegistry.registerRepresenter(executor);
-      scheduler.onExecutorAdded(executor.getExecutorId());
+      scheduler.onExecutorAdded(executor);
     }
   }
 
