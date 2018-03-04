@@ -20,11 +20,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Argument builder.
  */
 public final class ArgBuilder {
+  private static final List<List<String>> DEFAULT_ARGS = Arrays.asList(Arrays.asList("-executor_json",
+      "../resources/sample_executor_resources.json"));
   private List<List<String>> args = new ArrayList<>();
 
   /**
@@ -80,6 +83,7 @@ public final class ArgBuilder {
   public String[] build() {
     // new String[0] is good for performance
     // see http://stackoverflow.com/questions/4042434/converting-arrayliststring-to-string-in-java
-    return args.stream().flatMap(List::stream).collect(Collectors.toList()).toArray(new String[0]);
+    return Stream.concat(args.stream().flatMap(List::stream), DEFAULT_ARGS.stream().flatMap(List::stream))
+        .collect(Collectors.toList()).toArray(new String[0]);
   }
 }
