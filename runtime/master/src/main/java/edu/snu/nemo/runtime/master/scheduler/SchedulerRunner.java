@@ -68,6 +68,7 @@ public final class SchedulerRunner {
   }
 
   void terminate() {
+    schedulingPolicy.terminate();
     isTerminated = true;
   }
 

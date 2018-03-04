@@ -26,6 +26,7 @@ import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.TaskGroupState;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
+import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
 import edu.snu.nemo.runtime.master.scheduler.Scheduler;
 
@@ -143,21 +144,14 @@ public final class RuntimeMaster {
   public void terminate() {
     runtimeMasterThread.execute(() -> {
 
+      scheduler.terminate();
       try {
-        scheduler.terminate();
         masterMessageEnvironment.close();
-        metricMessageHandler.terminate();
-
-        final Future<Boolean> allExecutorsClosed = containerManager.terminate();
-        if (allExecutorsClosed.get()) {
-          LOG.info("All executors were closed successfully!");
-        } else {
-          LOG.error("Failed to shutdown all executors. See log exceptions for details. Terminating RuntimeMaster.");
-        }
       } catch (Exception e) {
-        new ContainerException(new Throwable("An exception occurred while trying to terminate ContainerManager"));
-        e.printStackTrace();
+        throw new RuntimeException(e);
       }
+      metricMessageHandler.terminate();
+      containerManager.terminate();
 
     });
     runtimeMasterThread.shutdown();
@@ -214,8 +208,8 @@ public final class RuntimeMaster {
    */
   public boolean onExecutorLaunched(final ActiveContext activeContext) {
     final Callable<Boolean> processExecutorLaunchedEvent = () -> {
-      containerManager.onExecutorLaunched(activeContext);
-      scheduler.onExecutorAdded(activeContext.getId());
+      final ExecutorRepresenter executor = containerManager.onContainerLaunched(activeContext);
+      scheduler.onExecutorAdded(executor);
       return (resourceRequestCount.decrementAndGet() == 0);
     };
 
@@ -234,10 +228,8 @@ public final class RuntimeMaster {
    */
   public void onExecutorFailed(final String failedExecutorId) {
     runtimeMasterThread.execute(() -> {
-
-      containerManager.onExecutorRemoved(failedExecutorId);
+      LOG.error(failedExecutorId + " executor failed");
       scheduler.onExecutorRemoved(failedExecutorId);
-
     });
   }
 
@@ -278,16 +270,12 @@ public final class RuntimeMaster {
           convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
       break;
     case ExecutorFailed:
+      // Executor failed due to user code.
       final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
       final String failedExecutorId = executorFailedMsg.getExecutorId();
       final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
       LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
-      containerManager.onExecutorRemoved(failedExecutorId);
       throw new RuntimeException(exception);
-    case ContainerFailed:
-      final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
-      LOG.error(containerFailedMsg.getExecutorId() + " failed");
-      break;
     case DataSizeMetric:
       final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
       // TODO #511: Refactor metric aggregation for (general) run-rime optimization.

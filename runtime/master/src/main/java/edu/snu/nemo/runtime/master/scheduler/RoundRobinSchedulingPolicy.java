@@ -21,7 +21,6 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.common.state.TaskGroupState;
 import edu.snu.nemo.runtime.master.JobStateManager;
-import edu.snu.nemo.runtime.master.resource.ExecutorRegistry;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.Parameter;
@@ -127,15 +126,15 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   @Override
-  public void onExecutorAdded(final String executorId) {
+  public void onExecutorAdded(final ExecutorRepresenter executor) {
     lock.lock();
     try {
-      final ExecutorRepresenter executor = executorRegistry.getRunningExecutorRepresenter(executorId);
+      executorRegistry.registerRepresenter(executor);
       final String containerType = executor.getContainerType();
       initializeContainerTypeIfAbsent(containerType);
 
       executorIdByContainerType.get(containerType)
-          .add(nextExecutorIndexByContainerType.get(containerType), executorId);
+          .add(nextExecutorIndexByContainerType.get(containerType), executor.getExecutorId());
       signalPossiblyWaitingScheduler(containerType);
     } finally {
       lock.unlock();
@@ -146,7 +145,10 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   public Set<String> onExecutorRemoved(final String executorId) {
     lock.lock();
     try {
-      final ExecutorRepresenter executor = executorRegistry.getFailedExecutorRepresenter(executorId);
+      final ExecutorRepresenter executor = executorRegistry.getRunningExecutorRepresenter(executorId);
+      executorRegistry.setRepresenterAsFailed(executorId);
+      executorRegistry.deregisterRepresenter(executorId);
+
       final String containerType = executor.getContainerType();
 
       final List<String> executorIdList = executorIdByContainerType.get(containerType);
@@ -196,6 +198,15 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
       signalPossiblyWaitingScheduler(containerType);
     } finally {
       lock.unlock();
+    }
+  }
+
+  @Override
+  public void terminate() {
+    for (final String executorId : executorRegistry.getRunningExecutorIds()) {
+      final ExecutorRepresenter representer = executorRegistry.getRunningExecutorRepresenter(executorId);
+      representer.shutDown();
+      executorRegistry.deregisterRepresenter(executorId);
     }
   }
 

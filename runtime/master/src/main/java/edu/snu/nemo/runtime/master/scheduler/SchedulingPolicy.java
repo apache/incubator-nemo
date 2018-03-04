@@ -17,6 +17,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
@@ -55,9 +56,9 @@ public interface SchedulingPolicy {
    * Unlocks this policy to schedule a next taskGroup if locked.
    * (Depending on the executor's resource type)
    *
-   * @param executorId for the executor that has been added.
+   * @param executorRepresenter for the executor that has been added.
    */
-  void onExecutorAdded(String executorId);
+  void onExecutorAdded(ExecutorRepresenter executorRepresenter);
 
   /**
    * Deletes the executorId from the pool of available executors.
@@ -88,4 +89,9 @@ public interface SchedulingPolicy {
    * @param taskGroupId whose execution has completed.
    */
   void onTaskGroupExecutionFailed(String executorId, String taskGroupId);
+
+  /**
+   * End of scheduling.
+   */
+  void terminate();
 }

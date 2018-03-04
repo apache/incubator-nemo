@@ -121,6 +121,6 @@ public final class ContainerManagerTest {
 
   private void allocateResource(final ActiveContext mockContext) {
     containerManager.onContainerAllocated(mockContext.getId(), createMockEvaluator(), null);
-    containerManager.onExecutorLaunched(mockContext);
+    containerManager.onContainerLaunched(mockContext);
   }
 }

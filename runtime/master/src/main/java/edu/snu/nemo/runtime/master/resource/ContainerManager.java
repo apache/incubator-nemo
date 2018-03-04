@@ -17,11 +17,8 @@ package edu.snu.nemo.runtime.master.resource;
 
 import edu.snu.nemo.common.exception.ContainerException;
 import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageSender;
-import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -35,7 +32,6 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -46,8 +42,8 @@ import org.slf4j.LoggerFactory;
  * Only a single thread should use the methods of this class.
  * (i.e., runtimeMasterThread in RuntimeMaster)
  *
- * Encapsulates REEF's evaluator management for executors.
- * Serves as a single point of container/executor management in Runtime.
+ * Encapsulates REEF's evaluator management for containers.
+ * Serves as a single point of container management in Runtime.
  * We define a unit of resource a container (an evaluator in REEF), and launch a single executor on each container.
  */
 // TODO #60: Specify Types in Requesting Containers
@@ -60,7 +56,6 @@ public final class ContainerManager {
   private final EvaluatorRequestor evaluatorRequestor;
   private final MessageEnvironment messageEnvironment;
   private final ExecutorService serializationExecutorService; // Executor service for scheduling message serialization.
-  private final ExecutorRegistry executorRegistry;
 
   /**
    * A map containing a latch for the container requests for each resource spec ID.
@@ -68,28 +63,17 @@ public final class ContainerManager {
   private final Map<String, CountDownLatch> requestLatchByResourceSpecId;
 
   /**
-   * A map containing a list of executor representations for each container type.
-   */
-  private final Map<String, List<ExecutorRepresenter>> executorsByContainerType;
-
-  /**
    * Keeps track of evaluator and context requests.
    */
   private final Map<String, ResourceSpecification> pendingContextIdToResourceSpec;
   private final Map<String, List<ResourceSpecification>> pendingContainerRequestsByContainerType;
 
-  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
-
   @Inject
   private ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
                            final EvaluatorRequestor evaluatorRequestor,
-                           final MessageEnvironment messageEnvironment,
-                           final ExecutorRegistry executorRegistry) {
+                           final MessageEnvironment messageEnvironment) {
     this.evaluatorRequestor = evaluatorRequestor;
     this.messageEnvironment = messageEnvironment;
-    this.executorRegistry = executorRegistry;
-    this.persistentConnectionToMasterMap = new PersistentConnectionToMasterMap(messageEnvironment);
-    this.executorsByContainerType = new HashMap<>();
     this.pendingContextIdToResourceSpec = new HashMap<>();
     this.pendingContainerRequestsByContainerType = new HashMap<>();
     this.requestLatchByResourceSpecId = new HashMap<>();
@@ -108,7 +92,6 @@ public final class ContainerManager {
       for (int i = 0; i < numToRequest; i++) {
         resourceSpecificationList.add(resourceSpecification);
       }
-      executorsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>(numToRequest));
 
       // Mark the request as pending with the given specifications.
       pendingContainerRequestsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>());
@@ -146,32 +129,13 @@ public final class ContainerManager {
   }
 
   /**
-   * Selects an executor specification for the executor to be launched on a container.
-   * Important! This is a "hack" to get around the inability to mark evaluators with Node Labels in REEF.
-   * @return the selected executor specification.
-   */
-  private ResourceSpecification selectResourceSpecForContainer() {
-    ResourceSpecification selectedResourceSpec = null;
-    for (final Map.Entry<String, List<ResourceSpecification>> entry
-        : pendingContainerRequestsByContainerType.entrySet()) {
-      if (entry.getValue().size() > 0) {
-        selectedResourceSpec = entry.getValue().remove(0);
-        break;
-      }
-    }
-
-    if (selectedResourceSpec != null) {
-      return selectedResourceSpec;
-    }
-    throw new ContainerException(new Throwable("We never requested for an extra container"));
-  }
-
-  /**
-   * Initializes master's connection to the executor once launched.
+   * Initializes master's connection to the container once launched.
    * A representation of the executor to reside in master is created.
-   * @param activeContext for the launched executor.
+   *
+   * @param activeContext for the launched container.
+   * @return a representation of the executor.
    */
-  public void onExecutorLaunched(final ActiveContext activeContext) {
+  public ExecutorRepresenter onContainerLaunched(final ActiveContext activeContext) {
     // We set contextId = executorId in NemoDriver when we generate executor configuration.
     final String executorId = activeContext.getId();
 
@@ -193,66 +157,32 @@ public final class ContainerManager {
 
     LOG.info("{} is up and running at {}", executorId, executorRepresenter.getNodeName());
 
-    executorsByContainerType.putIfAbsent(resourceSpec.getContainerType(), new ArrayList<>());
-    executorsByContainerType.get(resourceSpec.getContainerType()).add(executorRepresenter);
-    executorRegistry.registerRepresenter(executorRepresenter);
-
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
+    return executorRepresenter;
   }
 
-  public void onExecutorRemoved(final String failedExecutorId) {
-    LOG.info("[" + failedExecutorId + "] failure reported.");
-
-    final ExecutorRepresenter failedExecutor = executorRegistry.getRunningExecutorRepresenter(failedExecutorId);
-    executorRegistry.setRepresenterAsFailed(failedExecutorId);
-    executorRegistry.deregisterRepresenter(failedExecutorId);
-
-    executorsByContainerType.get(failedExecutor.getContainerType()).remove(failedExecutor);
-
-    // Signal RuntimeMaster on CONTAINER_FAILURE type FAILED_RECOVERABLE state
-    persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.ContainerFailed)
-            .setContainerFailedMsg(ControlMessage.ContainerFailedMsg.newBuilder()
-                .setExecutorId(failedExecutorId)
-                .build())
-            .build());
+  public void terminate() {
+    LOG.info("Ignoring pending container requests: {0}", requestLatchByResourceSpecId);
   }
 
   /**
-   * Shuts down the running executors.
+   * Selects an executor specification for the executor to be launched on a container.
+   * Important! This is a "hack" to get around the inability to mark evaluators with Node Labels in REEF.
+   * @return the selected executor specification.
    */
-  private void shutdownRunningExecutors() {
-    for (final String executorId : executorRegistry.getRunningExecutorIds()) {
-      final ExecutorRepresenter representer = executorRegistry.getRunningExecutorRepresenter(executorId);
-      representer.shutDown();
-      executorRegistry.deregisterRepresenter(executorId);
-    }
-  }
-
-  /**
-   * Terminates ContainerManager.
-   * Before we terminate, we must wait for all the executors we requested
-   * and shutdown all of them if any of them is running.
-   * @return a future that returns a boolean on whether all requested resources were allocated and released.
-   */
-  public Future<Boolean> terminate() {
-    shutdownRunningExecutors();
-    return Executors.newSingleThreadExecutor().submit(() -> waitForAllRequestedResources());
-  }
-
-  private boolean waitForAllRequestedResources() {
-    requestLatchByResourceSpecId.forEach((resourceSpecId, latchForRequest) -> {
-      try {
-        latchForRequest.await();
-      } catch (InterruptedException e) {
-        throw new ContainerException(e);
+  private ResourceSpecification selectResourceSpecForContainer() {
+    ResourceSpecification selectedResourceSpec = null;
+    for (final Map.Entry<String, List<ResourceSpecification>> entry
+        : pendingContainerRequestsByContainerType.entrySet()) {
+      if (entry.getValue().size() > 0) {
+        selectedResourceSpec = entry.getValue().remove(0);
+        break;
       }
-    });
-    shutdownRunningExecutors();
-    requestLatchByResourceSpecId.clear();
-    return executorRegistry.getRunningExecutorIds().isEmpty();
+    }
+
+    if (selectedResourceSpec != null) {
+      return selectedResourceSpec;
+    }
+    throw new ContainerException(new Throwable("We never requested for an extra container"));
   }
 }

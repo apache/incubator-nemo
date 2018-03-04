@@ -30,6 +30,7 @@ import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.common.state.TaskGroupState;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.LoggerFactory;
 
@@ -166,8 +167,8 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   @Override
-  public synchronized void onExecutorAdded(final String executorId) {
-    schedulingPolicy.onExecutorAdded(executorId);
+  public synchronized void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
+    schedulingPolicy.onExecutorAdded(executorRepresenter);
   }
 
   @Override

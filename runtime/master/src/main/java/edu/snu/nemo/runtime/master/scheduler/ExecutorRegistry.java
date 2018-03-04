@@ -13,26 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.resource;
+package edu.snu.nemo.runtime.master.scheduler;
 
-import net.jcip.annotations.ThreadSafe;
+import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.annotation.Nonnull;
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 
 /**
+ * (WARNING) This class is not thread-safe.
+ * (i.e., Only a SchedulingPolicy accesses this class)
+ *
  * Maintains map between executor id and {@link ExecutorRepresenter}.
  */
 @DriverSide
-@ThreadSafe
+@NotThreadSafe
 public final class ExecutorRegistry {
-  private final Map<String, ExecutorRepresenter> runningExecutors = new HashMap<>();
-  private final Map<String, ExecutorRepresenter> failedExecutors = new HashMap<>();
+  private final Map<String, ExecutorRepresenter> runningExecutors;
+  private final Map<String, ExecutorRepresenter> failedExecutors;
 
   @Inject
   private ExecutorRegistry() {
+    this.runningExecutors = new HashMap<>();
+    this.failedExecutors = new HashMap<>();
   }
 
   /**
@@ -41,7 +47,7 @@ public final class ExecutorRegistry {
    * @throws NoSuchExecutorException when the executor was not found
    */
   @Nonnull
-  public synchronized ExecutorRepresenter getExecutorRepresenter(final String executorId)
+  public ExecutorRepresenter getExecutorRepresenter(final String executorId)
       throws NoSuchExecutorException {
     try {
       return getRunningExecutorRepresenter(executorId);
@@ -56,7 +62,7 @@ public final class ExecutorRegistry {
    * @throws NoSuchExecutorException when the executor was not found
    */
   @Nonnull
-  public synchronized ExecutorRepresenter getRunningExecutorRepresenter(final String executorId)
+  public ExecutorRepresenter getRunningExecutorRepresenter(final String executorId)
       throws NoSuchExecutorException {
     final ExecutorRepresenter representer = runningExecutors.get(executorId);
     if (representer == null) {
@@ -71,7 +77,7 @@ public final class ExecutorRegistry {
    * @throws NoSuchExecutorException when the executor was not found
    */
   @Nonnull
-  public synchronized ExecutorRepresenter getFailedExecutorRepresenter(final String executorId)
+  public ExecutorRepresenter getFailedExecutorRepresenter(final String executorId)
       throws NoSuchExecutorException {
     final ExecutorRepresenter representer = failedExecutors.get(executorId);
     if (representer == null) {
@@ -85,7 +91,7 @@ public final class ExecutorRegistry {
    * Note the set is not modifiable. Also, further changes in the registry will not be reflected to the set.
    * @return a {@link Set} of executor ids for running executors in the registry
    */
-  public synchronized Set<String> getRunningExecutorIds() {
+  public Set<String> getRunningExecutorIds() {
     return Collections.unmodifiableSet(new TreeSet<>(runningExecutors.keySet()));
   }
 
@@ -94,7 +100,7 @@ public final class ExecutorRegistry {
    * Note the set is not modifiable. Also, further changes in the registry will not be reflected to the set.
    * @return a {@link Set} of failed executor ids
    */
-  public synchronized Set<String> getFailedExecutorIds() {
+  public Set<String> getFailedExecutorIds() {
     return Collections.unmodifiableSet(new TreeSet<>(failedExecutors.keySet()));
   }
 
@@ -104,7 +110,7 @@ public final class ExecutorRegistry {
    * @throws DuplicateExecutorIdException on multiple attempts to register same representer,
    *         or different representers with same executor id.
    */
-  public synchronized void registerRepresenter(final ExecutorRepresenter representer)
+  public void registerRepresenter(final ExecutorRepresenter representer)
       throws DuplicateExecutorIdException {
     final String executorId = representer.getExecutorId();
     if (failedExecutors.get(executorId) != null) {
@@ -123,7 +129,7 @@ public final class ExecutorRegistry {
    * @param executorId the executor id
    * @throws NoSuchExecutorException when the specified executor id is not registered
    */
-  public synchronized void deregisterRepresenter(final String executorId) throws NoSuchExecutorException {
+  public void deregisterRepresenter(final String executorId) throws NoSuchExecutorException {
     if (runningExecutors.remove(executorId) != null) {
       return;
     }
@@ -138,7 +144,7 @@ public final class ExecutorRegistry {
    * @param executorId the corresponding executor id
    * @throws NoSuchExecutorException when the specified executor id is not registered, or already set as failed
    */
-  public synchronized void setRepresenterAsFailed(final String executorId) throws NoSuchExecutorException {
+  public void setRepresenterAsFailed(final String executorId) throws NoSuchExecutorException {
     final ExecutorRepresenter representer = runningExecutors.remove(executorId);
     if (representer == null) {
       throw new NoSuchExecutorException(executorId);

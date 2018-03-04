@@ -21,7 +21,6 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.common.state.TaskGroupState;
 import edu.snu.nemo.runtime.master.JobStateManager;
-import edu.snu.nemo.runtime.master.resource.ExecutorRegistry;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
@@ -124,8 +123,8 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
   }
 
   @Override
-  public synchronized void onExecutorAdded(final String executorId) {
-    roundRobinSchedulingPolicy.onExecutorAdded(executorId);
+  public synchronized void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
+    roundRobinSchedulingPolicy.onExecutorAdded(executorRepresenter);
   }
 
   @Override
@@ -134,13 +133,18 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
   }
 
   @Override
-  public void onTaskGroupExecutionComplete(final String executorId, final String taskGroupId) {
+  public synchronized void onTaskGroupExecutionComplete(final String executorId, final String taskGroupId) {
     roundRobinSchedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroupId);
   }
 
   @Override
-  public void onTaskGroupExecutionFailed(final String executorId, final String taskGroupId) {
+  public synchronized void onTaskGroupExecutionFailed(final String executorId, final String taskGroupId) {
     roundRobinSchedulingPolicy.onTaskGroupExecutionFailed(executorId, taskGroupId);
+  }
+
+  @Override
+  public synchronized void terminate() {
+    roundRobinSchedulingPolicy.terminate();
   }
 
   /**
