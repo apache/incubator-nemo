@@ -130,12 +130,6 @@ public final class BatchSingleJobSchedulerTest {
     final ExecutorRepresenter b2 = storageSpecExecutorRepresenterGenerator.apply("b2");
     final ExecutorRepresenter b1 = storageSpecExecutorRepresenterGenerator.apply("b1");
 
-    executorRegistry.registerRepresenter(a1);
-    executorRegistry.registerRepresenter(a2);
-    executorRegistry.registerRepresenter(a3);
-    executorRegistry.registerRepresenter(b1);
-    executorRegistry.registerRepresenter(b2);
-
     // Add compute nodes
     scheduler.onExecutorAdded(a1);
     scheduler.onExecutorAdded(a2);

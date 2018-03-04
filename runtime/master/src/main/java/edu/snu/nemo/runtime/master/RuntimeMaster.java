@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.master;
 
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -114,31 +115,26 @@ public final class RuntimeMaster {
    * @param plan to execute.
    * @param maxScheduleAttempt the max number of times this plan/sub-part of the plan should be attempted.
    */
-  public void execute(final PhysicalPlan plan,
-                      final int maxScheduleAttempt) {
-    runtimeMasterThread.execute(() -> {
-
+  public Pair<JobStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
+                                                                 final int maxScheduleAttempt) {
+    final Callable<Pair<JobStateManager, ScheduledExecutorService>> jobExecutionCallable = () -> {
       this.irVertices.addAll(plan.getTaskIRVertexMap().values());
       try {
         final JobStateManager jobStateManager =
             new JobStateManager(plan, blockManagerMaster, metricMessageHandler, maxScheduleAttempt);
-
         scheduler.scheduleJob(plan, jobStateManager);
-
-        // Schedule dag logging thread
         final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(jobStateManager);
-
-        // Wait for the job to finish and stop logging
-        jobStateManager.waitUntilFinish();
-        dagLoggingExecutor.shutdown();
-
-        jobStateManager.storeJSON(dagDirectory, "final");
-        LOG.info("{} is complete!", plan.getId());
+        return Pair.of(jobStateManager, dagLoggingExecutor);
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
-    });
+    };
 
+    try {
+      return runtimeMasterThread.submit(jobExecutionCallable).get();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public void terminate() {
@@ -154,7 +150,8 @@ public final class RuntimeMaster {
       containerManager.terminate();
 
     });
-    runtimeMasterThread.shutdown();
+
+    // Do not shutdown runtimeMasterThread. We need it to clean things up.
   }
 
   public void requestContainer(final String resourceSpecificationString) {
@@ -208,9 +205,13 @@ public final class RuntimeMaster {
    */
   public boolean onExecutorLaunched(final ActiveContext activeContext) {
     final Callable<Boolean> processExecutorLaunchedEvent = () -> {
-      final ExecutorRepresenter executor = containerManager.onContainerLaunched(activeContext);
-      scheduler.onExecutorAdded(executor);
-      return (resourceRequestCount.decrementAndGet() == 0);
+      final Optional<ExecutorRepresenter> executor = containerManager.onContainerLaunched(activeContext);
+      if (executor.isPresent()) {
+        scheduler.onExecutorAdded(executor.get());
+        return (resourceRequestCount.decrementAndGet() == 0);
+      } else {
+        return false;
+      }
     };
 
     final boolean eventResult;

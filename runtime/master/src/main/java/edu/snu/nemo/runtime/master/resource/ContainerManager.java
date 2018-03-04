@@ -53,6 +53,8 @@ import org.slf4j.LoggerFactory;
 public final class ContainerManager {
   private static final Logger LOG = LoggerFactory.getLogger(ContainerManager.class.getName());
 
+  private boolean isTerminated;
+
   private final EvaluatorRequestor evaluatorRequestor;
   private final MessageEnvironment messageEnvironment;
   private final ExecutorService serializationExecutorService; // Executor service for scheduling message serialization.
@@ -72,6 +74,7 @@ public final class ContainerManager {
   private ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
                            final EvaluatorRequestor evaluatorRequestor,
                            final MessageEnvironment messageEnvironment) {
+    this.isTerminated = false;
     this.evaluatorRequestor = evaluatorRequestor;
     this.messageEnvironment = messageEnvironment;
     this.pendingContextIdToResourceSpec = new HashMap<>();
@@ -86,6 +89,11 @@ public final class ContainerManager {
    * @param resourceSpecification containing the specifications of
    */
   public void requestContainer(final int numToRequest, final ResourceSpecification resourceSpecification) {
+    if (isTerminated) {
+      LOG.info("ContainerManager is terminated, ignoring {}", resourceSpecification.toString());
+      return;
+    }
+
     if (numToRequest > 0) {
       // Create a list of executor specifications to be used when containers are allocated.
       final List<ResourceSpecification> resourceSpecificationList = new ArrayList<>(numToRequest);
@@ -120,6 +128,12 @@ public final class ContainerManager {
    */
   public void onContainerAllocated(final String executorId, final AllocatedEvaluator allocatedContainer,
                                    final Configuration executorConfiguration) {
+    if (isTerminated) {
+      LOG.info("ContainerManager is terminated, closing {}", allocatedContainer.getId());
+      allocatedContainer.close();
+      return;
+    }
+
     final ResourceSpecification resourceSpecification = selectResourceSpecForContainer();
     LOG.info("Container type (" + resourceSpecification.getContainerType()
         + ") allocated, will be used for [" + executorId + "]");
@@ -133,9 +147,15 @@ public final class ContainerManager {
    * A representation of the executor to reside in master is created.
    *
    * @param activeContext for the launched container.
-   * @return a representation of the executor.
+   * @return a representation of the executor. (return an empty Optional if terminated)
    */
-  public ExecutorRepresenter onContainerLaunched(final ActiveContext activeContext) {
+  public Optional<ExecutorRepresenter> onContainerLaunched(final ActiveContext activeContext) {
+    if (isTerminated) {
+      LOG.info("ContainerManager is terminated, closing {}", activeContext.getId());
+      activeContext.close();
+      return Optional.empty();
+    }
+
     // We set contextId = executorId in NemoDriver when we generate executor configuration.
     final String executorId = activeContext.getId();
 
@@ -158,11 +178,14 @@ public final class ContainerManager {
     LOG.info("{} is up and running at {}", executorId, executorRepresenter.getNodeName());
 
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
-    return executorRepresenter;
+    return Optional.of(executorRepresenter);
   }
 
   public void terminate() {
-    LOG.info("Ignoring pending container requests: {0}", requestLatchByResourceSpecId);
+    if (isTerminated) {
+      throw new IllegalStateException("Cannot terminate twice");
+    }
+    isTerminated = true;
   }
 
   /**

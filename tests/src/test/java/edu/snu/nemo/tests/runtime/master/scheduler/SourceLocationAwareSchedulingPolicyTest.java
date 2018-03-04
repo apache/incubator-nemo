@@ -62,7 +62,6 @@ public final class SourceLocationAwareSchedulingPolicyTest {
   private SourceLocationAwareSchedulingPolicy sourceLocationAware;
   private MockSchedulingPolicyWrapper<RoundRobinSchedulingPolicy> roundRobin;
   private MockJobStateManagerWrapper jobStateManager;
-  private ExecutorRegistry executorRegistry;
 
   @Before
   public void setup() throws InjectionException {
@@ -72,7 +71,6 @@ public final class SourceLocationAwareSchedulingPolicyTest {
     injector.bindVolatileInstance(RoundRobinSchedulingPolicy.class, roundRobin.get());
     injector.bindVolatileInstance(JobStateManager.class, jobStateManager.get());
     sourceLocationAware = injector.getInstance(SourceLocationAwareSchedulingPolicy.class);
-    executorRegistry = injector.getInstance(ExecutorRegistry.class);
   }
 
   @After
@@ -232,7 +230,6 @@ public final class SourceLocationAwareSchedulingPolicyTest {
   }
 
   private MockExecutorRepresenterWrapper addExecutor(final MockExecutorRepresenterWrapper executor) {
-    executorRegistry.registerRepresenter(executor.get());
     sourceLocationAware.onExecutorAdded(executor.get());
     return executor;
   }

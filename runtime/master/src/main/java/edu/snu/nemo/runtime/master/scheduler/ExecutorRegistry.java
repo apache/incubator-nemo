@@ -43,6 +43,18 @@ public final class ExecutorRegistry {
     this.completedExecutors = new HashMap<>();
   }
 
+  @Override
+  public String toString() {
+    final StringBuffer sb = new StringBuffer();
+    sb.append("Running: ");
+    sb.append(runningExecutors.toString());
+    sb.append("/ Failed: ");
+    sb.append(failedExecutors.toString());
+    sb.append("/ Completed: ");
+    sb.append(completedExecutors.toString());
+    return sb.toString();
+  }
+
   /**
    * @param executorId the executor id
    * @return the corresponding {@link ExecutorRepresenter} that has not failed

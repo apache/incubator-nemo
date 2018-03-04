@@ -86,12 +86,6 @@ public final class RoundRobinSchedulingPolicyTest {
     final ExecutorRepresenter b2 = storageSpecExecutorRepresenterGenerator.apply("b2");
     final ExecutorRepresenter b1 = storageSpecExecutorRepresenterGenerator.apply("b1");
 
-    executorRegistry.registerRepresenter(a1);
-    executorRegistry.registerRepresenter(a2);
-    executorRegistry.registerRepresenter(a3);
-    executorRegistry.registerRepresenter(b1);
-    executorRegistry.registerRepresenter(b2);
-
     // Add compute nodes
     schedulingPolicy.onExecutorAdded(a3);
     schedulingPolicy.onExecutorAdded(a2);
@@ -174,12 +168,10 @@ public final class RoundRobinSchedulingPolicyTest {
     b2 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsB.get(2), jobStateManager);
     assertTrue(b2);
 
-    executorRegistry.setRepresenterAsFailed("b1");
     Set<String> executingTaskGroups = schedulingPolicy.onExecutorRemoved("b1");
     assertEquals(1, executingTaskGroups.size());
     assertEquals(scheduledTaskGroupsB.get(2).getTaskGroupId(), executingTaskGroups.iterator().next());
 
-    executorRegistry.setRepresenterAsFailed("a1");
     executingTaskGroups = schedulingPolicy.onExecutorRemoved("a1");
     assertEquals(1, executingTaskGroups.size());
     assertEquals(scheduledTaskGroupsA.get(3).getTaskGroupId(), executingTaskGroups.iterator().next());

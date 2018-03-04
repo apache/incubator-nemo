@@ -126,7 +126,6 @@ public final class FaultToleranceTest {
 
     // Add nodes
     for (final ExecutorRepresenter executor : executors) {
-      executorRegistry.registerRepresenter(executor);
       scheduler.onExecutorAdded(executor);
     }
   }
@@ -220,7 +219,6 @@ public final class FaultToleranceTest {
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
 
         // Due to round robin scheduling, "a2" is assured to have a running TaskGroup.
-        executorRegistry.setRepresenterAsFailed("a2");
         scheduler.onExecutorRemoved("a2");
 
         while (jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState() != EXECUTING) {
@@ -243,7 +241,6 @@ public final class FaultToleranceTest {
           // When a TaskGroup fails while the siblings are still in the queue,
           if (first) {
             // Due to round robin scheduling, "a3" is assured to have a running TaskGroup.
-            executorRegistry.setRepresenterAsFailed("a3");
             scheduler.onExecutorRemoved("a3");
             first = false;
           } else {
@@ -409,7 +406,6 @@ public final class FaultToleranceTest {
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 
     scheduler.scheduleJob(plan, jobStateManager);
-    executorRegistry.setRepresenterAsFailed("a2");
     scheduler.onExecutorRemoved("a2");
 
     final List<PhysicalStage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
