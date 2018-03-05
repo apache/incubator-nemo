@@ -26,6 +26,10 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 import javax.annotation.Nullable;
 
 /**
+ * Only two threads call scheduling code: RuntimeMaster thread (RMT), and SchedulerThread(ST).
+ * RMT and ST meet only at two points: SchedulingPolicy, and PendingTaskGroupQueue, which are synchronized(ThreadSafe).
+ * Other scheduler-related classes that are accessed by only one of the two threads are not synchronized(NotThreadSafe).
+ *
  * Receives jobs to execute and schedules
  * {@link edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup} to executors.
  */
