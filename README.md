@@ -7,7 +7,7 @@ A Data Processing System for Flexible Employment With Different Deployment Chara
 ## Online Documentation
 
 Details about Nemo and its development can be found in:
-* Our website: http://nemo.apache.org/
+* Our website: https://nemo.apache.org/
 * Our project wiki: https://cwiki.apache.org/confluence/display/NEMO/
 
 ## Nemo prerequisites and setup
