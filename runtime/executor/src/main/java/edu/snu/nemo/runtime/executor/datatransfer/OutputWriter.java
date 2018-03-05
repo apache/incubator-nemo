@@ -42,7 +42,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   private final List<Long> accumulatedPartitionSizeInfo;
   private final List<Long> writtenBytes;
   private final BlockManagerWorker blockManagerWorker;
-  private final ArrayDeque<Object> outputQueue;
+  private final List<Object> outputList;
 
   public OutputWriter(final int hashRangeMultiplier,
                       final int srcTaskIdx,
@@ -59,7 +59,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     this.blockManagerWorker = blockManagerWorker;
     this.blockStoreValue = runtimeEdge.getProperty(ExecutionProperty.Key.DataStore);
     this.partitionerMap = new HashMap<>();
-    this.outputQueue = new ArrayDeque<>();
+    this.outputList = new ArrayList<>();
     this.writtenBytes = new ArrayList<>();
     // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
     this.accumulatedPartitionSizeInfo = new ArrayList<>();
@@ -71,7 +71,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   }
 
   public void writeElement(final Object element) {
-    outputQueue.add(element);
+    outputList.add(element);
   }
 
   /**
@@ -79,12 +79,6 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    **/
   public void write() {
     // Aggregate element to form the inter-Stage data.
-    List<Object> dataToWrite = new ArrayList<>();
-    while (outputQueue.size() > 0) {
-      Object output = outputQueue.remove();
-      dataToWrite.add(output);
-    }
-
     final Boolean isDataSizeMetricCollectionEdge = MetricCollectionProperty.Value.DataSkewRuntimePass
         .equals(runtimeEdge.getProperty(ExecutionProperty.Key.MetricCollection));
 
@@ -109,7 +103,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
         && duplicateDataProperty.getGroupSize() > 1) {
       partitionsToWrite = partitioner.partition(Collections.emptyList(), dstParallelism, keyExtractor);
     } else {
-      partitionsToWrite = partitioner.partition(dataToWrite, dstParallelism, keyExtractor);
+      partitionsToWrite = partitioner.partition(outputList, dstParallelism, keyExtractor);
     }
 
     // Write the grouped blocks into partitions.

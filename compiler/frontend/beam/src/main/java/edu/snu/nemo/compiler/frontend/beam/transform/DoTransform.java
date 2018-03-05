@@ -47,6 +47,10 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   private final String serializedOptions;
   private Map<PCollectionView, Object> sideInputs;
   private Pipe<O> pipe;
+  private StartBundleContext startBundleContext;
+  private FinishBundleContext finishBundleContext;
+  private ProcessContext processContext;
+  private DoFnInvoker invoker;
 
   /**
    * DoTransform Constructor.
@@ -68,14 +72,14 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     this.pipe = p;
     this.sideInputs = new HashMap<>();
     context.getSideInputs().forEach((k, v) -> this.sideInputs.put(((CreateViewTransform) k).getTag(), v));
+    this.startBundleContext = new StartBundleContext(doFn, serializedOptions);
+    this.finishBundleContext = new FinishBundleContext(doFn, pipe, serializedOptions);
+    this.processContext = new ProcessContext(doFn, pipe, sideInputs, serializedOptions);
+    this.invoker = DoFnInvokers.invokerFor(doFn);
   }
 
   @Override
   public void onData(final Object data) {
-    final StartBundleContext startBundleContext = new StartBundleContext(doFn, serializedOptions);
-    final FinishBundleContext finishBundleContext = new FinishBundleContext(doFn, pipe, serializedOptions);
-    final ProcessContext processContext = new ProcessContext(doFn, pipe, sideInputs, serializedOptions);
-    final DoFnInvoker invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
     if (data instanceof Iterable) {
@@ -93,9 +97,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void close() {
-    // do nothing
   }
-
 
   @Override
   public String toString() {

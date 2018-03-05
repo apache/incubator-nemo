@@ -483,13 +483,11 @@ public final class TaskGroupExecutor {
     long boundedSrcReadEndTime = 0;
     long inputReadStartTime = 0;
     long inputReadEndTime = 0;
-
     if (isExecutionRequested) {
       throw new RuntimeException("TaskGroup {" + taskGroupId + "} execution called again!");
     } else {
       isExecutionRequested = true;
     }
-
     taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.EXECUTING, Optional.empty(), Optional.empty());
     LOG.info("{} Executing!", taskGroupId);
 
