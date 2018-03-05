@@ -68,7 +68,7 @@ public final class TaskGroupExecutor {
   private final Map<String, List<Task>> srcIteratorIdToTasksMap;
   private final Map<String, List<Task>> iteratorIdToTasksMap;
   private final LinkedBlockingQueue<Pair<String, DataUtil.IteratorWithNumBytes>> iteratorQueue;
-  private volatile Map<PipeImpl, List<Task>> pipeToDstTasksMap;
+  private volatile Map<String, List<Task>> pipeToDstTasksMap;
   private final Set<Transform> preparedTransforms;
   private final Set<String> finishedTaskIds;
   private final AtomicInteger completedFutures;
@@ -360,7 +360,7 @@ public final class TaskGroupExecutor {
         tasks.forEach(task -> {
           final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
           PipeImpl pipe = taskToOutputPipeMap.get(task);
-          pipeToDstTasksMap.putIfAbsent(pipe, dstTasks);
+          pipeToDstTasksMap.putIfAbsent(pipe.getId(), dstTasks);
           LOG.info("{} pipeToDstTasksMap: [{}'s OutputPipe, {}]",
               taskGroupId, getPhysicalTaskId(task.getId()), dstTasks);
         }));
@@ -368,21 +368,21 @@ public final class TaskGroupExecutor {
         tasks.forEach(task -> {
           final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
           PipeImpl pipe = taskToOutputPipeMap.get(task);
-          pipeToDstTasksMap.putIfAbsent(pipe, dstTasks);
+          pipeToDstTasksMap.putIfAbsent(pipe.getId(), dstTasks);
           LOG.info("{} pipeToDstTasksMap: [{}'s OutputPipe, {}]",
               taskGroupId, getPhysicalTaskId(task.getId()), dstTasks);
         }));
   }
 
   private void updatePipeToDstTasksMap() {
-    Map<PipeImpl, List<Task>> currentMap = pipeToDstTasksMap;
-    Map<PipeImpl, List<Task>> updatedMap = new HashMap<>();
+    Map<String, List<Task>> currentMap = pipeToDstTasksMap;
+    Map<String, List<Task>> updatedMap = new HashMap<>();
 
     currentMap.values().forEach(tasks ->
         tasks.forEach(task -> {
           final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
           PipeImpl pipe = taskToOutputPipeMap.get(task);
-          updatedMap.putIfAbsent(pipe, dstTasks);
+          updatedMap.putIfAbsent(pipe.getId(), dstTasks);
           LOG.info("{} pipeToDstTasksMap: [{}, {}]",
               taskGroupId, getPhysicalTaskId(task.getId()), dstTasks);
         })
@@ -525,7 +525,7 @@ public final class TaskGroupExecutor {
         final String iteratorId = idToIteratorPair.left();
         final DataUtil.IteratorWithNumBytes iterator = idToIteratorPair.right();
         List<Task> dstTasks = iteratorIdToTasksMap.get(iteratorId);
-        idToIteratorPair.right().forEachRemaining(element -> {
+        iterator.forEachRemaining(element -> {
           for (final Task task : dstTasks) {
             List data = Collections.singletonList(element);
             runTask(task, data);
@@ -556,10 +556,14 @@ public final class TaskGroupExecutor {
       // Intra-TaskGroup data comes from pipes of this TaskGroup's Tasks.
       initializePipeToDstTasksMap();
       while (!finishedAllTasks()) {
-        pipeToDstTasksMap.forEach((pipe, dstTasks) -> {
+        pipeToDstTasksMap.forEach((pipeId, dstTasks) -> {
+          PipeImpl pipe = taskToOutputPipeMap.values().stream()
+              .filter(p -> p.getId() == pipeId)
+              .findFirst().get();
+
           // Get the task that has this pipe as its output pipe
           Task pipeOwnerTask = taskToOutputPipeMap.entrySet().stream()
-              .filter(entry -> entry.getValue().equals(pipe))
+              .filter(entry -> entry.getValue().getId() == pipeId)
               .findAny().get().getKey();
           LOG.info("{} pipeOwnerTask {}", taskGroupId, getPhysicalTaskId(pipeOwnerTask.getId()));
 

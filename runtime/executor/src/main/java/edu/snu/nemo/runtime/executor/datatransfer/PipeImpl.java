@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Pipe implementation that requires synchronization.
@@ -31,6 +32,10 @@ import java.util.List;
  */
 public final class PipeImpl<O> implements Pipe<O> {
   private static final Logger LOG = LoggerFactory.getLogger(PipeImpl.class.getName());
+  private static final String PIPEID_PREFIX = "PIPE_";
+  private static final AtomicInteger PIPEID_GENERATOR = new AtomicInteger(0);
+
+  private final String id;
   private final ArrayDeque<O> outputQueue;
   private RuntimeEdge sideInputRuntimeEdge;
   private List<String> sideInputReceivers;
@@ -39,6 +44,7 @@ public final class PipeImpl<O> implements Pipe<O> {
    * Constructor of a new Pipe.
    */
   public PipeImpl() {
+    this.id = PIPEID_PREFIX + PIPEID_GENERATOR.getAndIncrement();
     this.outputQueue = new ArrayDeque<>();
     this.sideInputRuntimeEdge = null;
     this.sideInputReceivers = new ArrayList<>();
@@ -85,5 +91,9 @@ public final class PipeImpl<O> implements Pipe<O> {
 
   public boolean hasSideInputFor(final String physicalTaskId) {
     return sideInputReceivers.contains(physicalTaskId);
+  }
+
+  public String getId() {
+    return id;
   }
 }
