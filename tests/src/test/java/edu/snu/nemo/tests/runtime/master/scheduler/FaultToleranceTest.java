@@ -96,7 +96,6 @@ public final class FaultToleranceTest {
 
   @Before
   public void setUp() throws Exception {
-    RuntimeTestUtil.initialize();
     irDAGBuilder = new DAGBuilder<>();
 
     metricMessageHandler = mock(MetricMessageHandler.class);
@@ -252,8 +251,6 @@ public final class FaultToleranceTest {
         }
       }
     }
-
-    RuntimeTestUtil.cleanup();
   }
 
   /**
@@ -314,8 +311,6 @@ public final class FaultToleranceTest {
         });
       }
     }
-
-    RuntimeTestUtil.cleanup();
   }
 
   /**
@@ -375,8 +370,6 @@ public final class FaultToleranceTest {
         });
       }
     }
-
-    RuntimeTestUtil.cleanup();
   }
 
   /**
@@ -425,7 +418,5 @@ public final class FaultToleranceTest {
       }
     }
     assertTrue(jobStateManager.checkJobTermination());
-
-    RuntimeTestUtil.cleanup();
   }
 }

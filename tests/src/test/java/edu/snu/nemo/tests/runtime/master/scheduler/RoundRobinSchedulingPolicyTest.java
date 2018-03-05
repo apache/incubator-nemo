@@ -53,7 +53,7 @@ import static org.mockito.Mockito.*;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobStateManager.class)
 public final class RoundRobinSchedulingPolicyTest {
-  private static final int TIMEOUT_MS = 1000;
+  private static final int TIMEOUT_MS = 500;
 
   private SchedulingPolicy schedulingPolicy;
   private ExecutorRegistry executorRegistry;

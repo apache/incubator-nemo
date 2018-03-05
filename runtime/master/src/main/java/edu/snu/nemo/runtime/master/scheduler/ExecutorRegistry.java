@@ -37,7 +37,7 @@ public final class ExecutorRegistry {
   private final Map<String, ExecutorRepresenter> completedExecutors;
 
   @Inject
-  private ExecutorRegistry() {
+  public ExecutorRegistry() {
     this.runningExecutors = new HashMap<>();
     this.failedExecutors = new HashMap<>();
     this.completedExecutors = new HashMap<>();

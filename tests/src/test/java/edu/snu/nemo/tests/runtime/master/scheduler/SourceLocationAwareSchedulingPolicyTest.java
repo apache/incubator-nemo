@@ -44,9 +44,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Test cases for
@@ -58,18 +56,25 @@ public final class SourceLocationAwareSchedulingPolicyTest {
   private static final String SITE_0 = "SEOUL";
   private static final String SITE_1 = "JINJU";
   private static final String SITE_2 = "BUSAN";
+  private static final int SCHEDULER_TIMEOUT_MS = 500;
 
   private SourceLocationAwareSchedulingPolicy sourceLocationAware;
-  private MockSchedulingPolicyWrapper<RoundRobinSchedulingPolicy> roundRobin;
+  private SpiedSchedulingPolicyWrapper<RoundRobinSchedulingPolicy> roundRobin;
   private MockJobStateManagerWrapper jobStateManager;
 
   @Before
   public void setup() throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
     jobStateManager = new MockJobStateManagerWrapper();
-    roundRobin = new MockSchedulingPolicyWrapper(RoundRobinSchedulingPolicy.class, jobStateManager.get());
+
+    final ExecutorRegistry executorRegistry = new ExecutorRegistry();
+    final RoundRobinSchedulingPolicy roundRobinSchedulingPolicy =
+        new RoundRobinSchedulingPolicy(executorRegistry, SCHEDULER_TIMEOUT_MS);
+    roundRobin = new SpiedSchedulingPolicyWrapper(roundRobinSchedulingPolicy, jobStateManager.get());
+
     injector.bindVolatileInstance(RoundRobinSchedulingPolicy.class, roundRobin.get());
     injector.bindVolatileInstance(JobStateManager.class, jobStateManager.get());
+    injector.bindVolatileInstance(ExecutorRegistry.class, executorRegistry);
     sourceLocationAware = injector.getInstance(SourceLocationAwareSchedulingPolicy.class);
   }
 
@@ -337,28 +342,27 @@ public final class SourceLocationAwareSchedulingPolicyTest {
   }
 
   /**
-   * Wrapper for mock {@link SchedulingPolicy}.
-   * @param <T> the class of the mocked instance
+   * Wrapper for spied {@link SchedulingPolicy}.
+   * @param <T> the class of the spied instance
    */
-  private static final class MockSchedulingPolicyWrapper<T extends SchedulingPolicy> {
-    private final T mockInstance;
-
+  private static final class SpiedSchedulingPolicyWrapper<T extends SchedulingPolicy> {
+    private final T spiedInstance;
     private ScheduledTaskGroup expectedArgument = null;
 
-    MockSchedulingPolicyWrapper(final Class<T> schedulingPolicyClass, final JobStateManager jobStateManager) {
-      mockInstance = mock(schedulingPolicyClass);
+    SpiedSchedulingPolicyWrapper(final T schedulingPolicy, final JobStateManager jobStateManager) {
+      spiedInstance = spy(schedulingPolicy);
       doAnswer(invocationOnMock -> {
         final ScheduledTaskGroup scheduledTaskGroup = invocationOnMock.getArgument(0);
         assertEquals(expectedArgument, scheduledTaskGroup);
         expectedArgument = null;
         jobStateManager.onTaskGroupStateChanged(scheduledTaskGroup.getTaskGroupId(), TaskGroupState.State.EXECUTING);
         return true;
-      }).when(mockInstance).scheduleTaskGroup(any(ScheduledTaskGroup.class), any());
+      }).when(spiedInstance).scheduleTaskGroup(any(ScheduledTaskGroup.class), any());
     }
 
     /**
      * Sets expected {@link SchedulingPolicy#scheduleTaskGroup(ScheduledTaskGroup, JobStateManager)} invocation
-     * on this mock object.
+     * on this spied object.
      * @param scheduledTaskGroup expected parameter for the task group to schedule
      */
     void expectSchedulingRequest(final ScheduledTaskGroup scheduledTaskGroup) {
@@ -371,10 +375,10 @@ public final class SourceLocationAwareSchedulingPolicyTest {
     }
 
     /**
-     * @return mock instance for {@link SchedulingPolicy}.
+     * @return spied instance for {@link SchedulingPolicy}.
      */
     T get() {
-      return mockInstance;
+      return spiedInstance;
     }
   }
 
