@@ -114,8 +114,6 @@ public final class InputReader extends DataTransfer {
 
   /**
    * Read data in the assigned range of hash value.
-   * Constraint: If a block is written by {@link OutputWriter#dataSkewWrite(List)}
-   * or {@link OutputWriter#writeShuffle(List)}, it must be read using this method.
    *
    * @return the list of the completable future of the data.
    */

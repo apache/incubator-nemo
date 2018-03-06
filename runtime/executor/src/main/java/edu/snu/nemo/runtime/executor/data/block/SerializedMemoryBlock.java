@@ -17,16 +17,14 @@ package edu.snu.nemo.runtime.executor.data.block;
 
 import edu.snu.nemo.runtime.common.data.KeyRange;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
-import edu.snu.nemo.runtime.executor.data.NonSerializedPartition;
-import edu.snu.nemo.runtime.executor.data.SerializedPartition;
+import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
+import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * This class represents a block which is serialized and stored in local memory.
@@ -36,6 +34,7 @@ import java.util.Optional;
 public final class SerializedMemoryBlock<K extends Serializable> implements Block<K> {
 
   private final List<SerializedPartition<K>> serializedPartitions;
+  private final Map<K, SerializedPartition<K>> nonCommittedPartitionsMap;
   private final Serializer serializer;
   private volatile boolean committed;
 
@@ -45,9 +44,33 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    * @param serializer the {@link Serializer}.
    */
   public SerializedMemoryBlock(final Serializer serializer) {
+    this.serializedPartitions = new ArrayList<>();
+    this.nonCommittedPartitionsMap = new HashMap<>();
     this.serializer = serializer;
-    serializedPartitions = new ArrayList<>();
-    committed = false;
+    this.committed = false;
+  }
+
+  /**
+   * Writes an element to non-committed block.
+   * Invariant: This should not be invoked after this block is committed.
+   *
+   * @param key     the key.
+   * @param element the element to write.
+   * @throws IOException if this block is already committed.
+   */
+  @Override
+  public synchronized void write(final K key,
+                                 final Object element) throws IOException {
+    if (committed) {
+      throw new IOException("The partition is already committed!");
+    } else {
+      SerializedPartition<K> partition = nonCommittedPartitionsMap.get(key);
+      if (partition == null) {
+        partition = new SerializedPartition<>(key, serializer);
+        nonCommittedPartitionsMap.put(key, partition);
+      }
+      partition.write(element);
+    }
   }
 
   /**
@@ -55,16 +78,15 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    * Invariant: This should not be invoked after this block is committed.
    *
    * @param partitions the {@link NonSerializedPartition}s to store.
-   * @return the size of the data per partition.
    * @throws IOException if fail to store.
    */
   @Override
-  public synchronized Optional<List<Long>> putPartitions(final Iterable<NonSerializedPartition<K>> partitions)
+  public synchronized void writePartitions(final Iterable<NonSerializedPartition<K>> partitions)
       throws IOException {
     if (!committed) {
       final Iterable<SerializedPartition<K>> convertedPartitions = DataUtil.convertToSerPartitions(
           serializer, partitions);
-      return Optional.of(putSerializedPartitions(convertedPartitions));
+      writeSerializedPartitions(convertedPartitions);
     } else {
       throw new IOException("Cannot append partitions to the committed block");
     }
@@ -78,16 +100,10 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    * @throws IOException if fail to store.
    */
   @Override
-  public synchronized List<Long> putSerializedPartitions(final Iterable<SerializedPartition<K>> partitions)
+  public synchronized void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions)
       throws IOException {
     if (!committed) {
-      final List<Long> partitionSizeList = new ArrayList<>();
-      partitions.forEach(serializedPartition -> {
-        partitionSizeList.add((long) serializedPartition.getLength());
-        serializedPartitions.add(serializedPartition);
-      });
-
-      return partitionSizeList;
+      partitions.forEach(serializedPartitions::add);
     } else {
       throw new IOException("Cannot append partitions to the committed block");
     }
@@ -103,8 +119,8 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    * @throws IOException if failed to retrieve.
    */
   @Override
-  public Iterable<NonSerializedPartition<K>> getPartitions(final KeyRange keyRange) throws IOException {
-    return DataUtil.convertToNonSerPartitions(serializer, getSerializedPartitions(keyRange));
+  public Iterable<NonSerializedPartition<K>> readPartitions(final KeyRange keyRange) throws IOException {
+    return DataUtil.convertToNonSerPartitions(serializer, readSerializedPartitions(keyRange));
   }
 
   /**
@@ -116,7 +132,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    * @throws IOException if failed to retrieve.
    */
   @Override
-  public Iterable<SerializedPartition<K>> getSerializedPartitions(final KeyRange keyRange) throws IOException {
+  public Iterable<SerializedPartition<K>> readSerializedPartitions(final KeyRange keyRange) throws IOException {
     if (committed) {
       final List<SerializedPartition<K>> partitionsInRange = new ArrayList<>();
       serializedPartitions.forEach(serializedPartition -> {
@@ -135,9 +151,24 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
 
   /**
    * Commits this block to prevent further write.
+   *
+   * @return the size of each partition.
+   * @throws IOException if failed to commit.
    */
   @Override
-  public synchronized void commit() {
-    committed = true;
+  public synchronized Optional<Iterable<Long>> commit() throws IOException {
+    if (!committed) {
+      for (final SerializedPartition<K> partition : nonCommittedPartitionsMap.values()) {
+        partition.commit();
+        serializedPartitions.add(partition);
+      }
+      nonCommittedPartitionsMap.clear();
+      committed = true;
+    }
+    final List<Long> partitionSizes = new ArrayList<>(serializedPartitions.size());
+    for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
+      partitionSizes.add((long) serializedPartition.getLength());
+    }
+    return Optional.of(partitionSizes);
   }
 }

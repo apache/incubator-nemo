@@ -21,6 +21,8 @@ import edu.snu.nemo.common.exception.BlockWriteException;
 import edu.snu.nemo.runtime.common.data.KeyRange;
 import edu.snu.nemo.runtime.executor.data.*;
 import edu.snu.nemo.runtime.executor.data.block.Block;
+import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
+import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.nemo.runtime.executor.data.metadata.RemoteFileMetadata;
 import edu.snu.nemo.runtime.executor.data.block.FileBlock;
@@ -83,37 +85,53 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   }
 
   /**
-   * @see BlockStore#putPartitions(String, Iterable)
+   * @see BlockStore#write(String, Serializable, Object).
    */
   @Override
-  public <K extends Serializable>
-  Optional<List<Long>> putPartitions(final String blockId,
-                                     final Iterable<NonSerializedPartition<K>> partitions)
-      throws BlockWriteException {
+  public <K extends Serializable> void write(final String blockId,
+                                             final K key,
+                                             final Object element) throws BlockWriteException {
     try {
       final Block<K> block = blockMap.get(blockId);
       if (block == null) {
         throw new BlockWriteException(new Throwable("The block " + blockId + "is not created yet."));
       }
-      return block.putPartitions(partitions);
+      block.write(key, element);
     } catch (final IOException e) {
       throw new BlockWriteException(new Throwable("Failed to store partitions to this block."));
     }
   }
 
   /**
-   * @see BlockStore#putSerializedPartitions(String, Iterable)
+   * @see BlockStore#writePartitions(String, Iterable)
    */
   @Override
-  public <K extends Serializable>
-  List<Long> putSerializedPartitions(final String blockId,
-                                     final Iterable<SerializedPartition<K>> partitions) {
+  public <K extends Serializable> void writePartitions(final String blockId,
+                                                       final Iterable<NonSerializedPartition<K>> partitions)
+      throws BlockWriteException {
     try {
       final Block<K> block = blockMap.get(blockId);
       if (block == null) {
         throw new BlockWriteException(new Throwable("The block " + blockId + "is not created yet."));
       }
-      return block.putSerializedPartitions(partitions);
+      block.writePartitions(partitions);
+    } catch (final IOException e) {
+      throw new BlockWriteException(new Throwable("Failed to store partitions to this block."));
+    }
+  }
+
+  /**
+   * @see BlockStore#writeSerializedPartitions(String, Iterable)
+   */
+  @Override
+  public <K extends Serializable> void writeSerializedPartitions(final String blockId,
+                                                                 final Iterable<SerializedPartition<K>> partitions) {
+    try {
+      final Block<K> block = blockMap.get(blockId);
+      if (block == null) {
+        throw new BlockWriteException(new Throwable("The block " + blockId + "is not created yet."));
+      }
+      block.writeSerializedPartitions(partitions);
     } catch (final IOException e) {
       throw new BlockWriteException(new Throwable("Failed to store partitions to this block."));
     }
@@ -122,10 +140,10 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   /**
    * Retrieves {@link NonSerializedPartition}s in a specific {@link KeyRange} from a block.
    *
-   * @see BlockStore#getPartitions(String, KeyRange)
+   * @see BlockStore#readPartitions(String, KeyRange)
    */
   @Override
-  public <K extends Serializable> Optional<Iterable<NonSerializedPartition<K>>> getPartitions(
+  public <K extends Serializable> Optional<Iterable<NonSerializedPartition<K>>> readPartitions(
       final String blockId,
       final KeyRange<K> keyRange) throws BlockFetchException {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
@@ -135,7 +153,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
       // Deserialize the target data in the corresponding file.
       try {
         final FileBlock<K> block = getBlockFromFile(blockId);
-        final Iterable<NonSerializedPartition<K>> partitionsInRange = block.getPartitions(keyRange);
+        final Iterable<NonSerializedPartition<K>> partitionsInRange = block.readPartitions(keyRange);
         return Optional.of(partitionsInRange);
       } catch (final IOException e) {
         throw new BlockFetchException(e);
@@ -144,18 +162,19 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
   }
 
   /**
-   * @see BlockStore#getSerializedPartitions(String, KeyRange)
+   * @see BlockStore#readSerializedPartitions(String, KeyRange)
    */
   @Override
   public <K extends Serializable>
-  Optional<Iterable<SerializedPartition<K>>> getSerializedPartitions(final String blockId, final KeyRange<K> keyRange) {
+  Optional<Iterable<SerializedPartition<K>>> readSerializedPartitions(final String blockId,
+                                                                      final KeyRange<K> keyRange) {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
     if (!new File(filePath).isFile()) {
       return Optional.empty();
     } else {
       try {
         final FileBlock<K> block = getBlockFromFile(blockId);
-        final Iterable<SerializedPartition<K>> partitionsInRange = block.getSerializedPartitions(keyRange);
+        final Iterable<SerializedPartition<K>> partitionsInRange = block.readSerializedPartitions(keyRange);
         return Optional.of(partitionsInRange);
       } catch (final IOException e) {
         throw new BlockFetchException(e);
@@ -169,13 +188,15 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    * this store does not have to maintain any information about the block.
    *
    * @param blockId the ID of the block to commit.
+   * @return the size of each partition.
    */
   @Override
-  public void commitBlock(final String blockId) throws BlockWriteException {
+  public Optional<Iterable<Long>> commitBlock(final String blockId) throws BlockWriteException {
     final Block block = blockMap.get(blockId);
+    final Optional<Iterable<Long>> partitionSizes;
     if (block != null) {
       try {
-        block.commit();
+        partitionSizes = block.commit();
       } catch (final IOException e) {
         throw new BlockWriteException(e);
       }
@@ -183,6 +204,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
       throw new BlockWriteException(new Throwable("There isn't any block with id " + blockId));
     }
     blockMap.remove(blockId);
+    return partitionSizes;
   }
 
   /**
@@ -192,7 +214,7 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    * @return whether the block exists or not.
    */
   @Override
-  public Boolean removeBlock(final String blockId) throws BlockFetchException {
+  public boolean removeBlock(final String blockId) throws BlockFetchException {
     final String filePath = DataUtil.blockIdToFilePath(blockId, fileDirectory);
 
     try {

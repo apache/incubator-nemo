@@ -75,7 +75,7 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
    * @return whether the block exists or not.
    */
   @Override
-  public Boolean removeBlock(final String blockId) throws BlockFetchException {
+  public boolean removeBlock(final String blockId) throws BlockFetchException {
     final FileBlock fileBlock = (FileBlock) getBlockMap().remove(blockId);
     if (fileBlock == null) {
       return false;

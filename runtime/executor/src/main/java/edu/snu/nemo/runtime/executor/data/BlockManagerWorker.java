@@ -33,6 +33,8 @@ import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import edu.snu.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import edu.snu.nemo.runtime.executor.bytetransfer.ByteTransfer;
+import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
+import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 import edu.snu.nemo.runtime.executor.data.stores.BlockStore;
 import edu.snu.nemo.runtime.executor.data.stores.*;
 import org.apache.commons.lang3.SerializationUtils;
@@ -41,6 +43,7 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -122,7 +125,7 @@ public final class BlockManagerWorker {
 
     // First, try to fetch the block from local BlockStore.
     final Optional<Iterable<NonSerializedPartition>> optionalResultPartitions =
-        store.getPartitions(blockId, keyRange);
+        store.readPartitions(blockId, keyRange);
 
     if (optionalResultPartitions.isPresent()) {
       handleUsedData(blockStore, blockId);
@@ -219,25 +222,26 @@ public final class BlockManagerWorker {
     });
   }
 
-  /**
-   * Store an iterable of data partitions to a block in the target {@code BlockStore}.
-   * Invariant: This should not be invoked after a block is committed.
-   * Invariant: This method may not support concurrent write for a single block.
-   * Only one thread have to write at once.
-   *
-   * @param blockId            of the block.
-   * @param partitions         to save to a block.
-   * @param blockStore         to store the block.
-   * @return a {@link Optional} of the size of each written block.
-   */
-  public Optional<List<Long>> putPartitions(final String blockId,
-                                            final Iterable<Partition> partitions,
-                                            final DataStoreProperty.Value blockStore) {
-    LOG.info("PutPartitions: {}", blockId);
-    final BlockStore store = getBlockStore(blockStore);
 
+  /**
+   * Writes an element to a block in the target {@code BlockStore}.
+   * Invariant: This should not be invoked after the block is committed.
+   * Invariant: This method may not support concurrent write for a single block.
+   *            Only one thread have to write at once.
+   *
+   * @param blockId    the ID of the block to write.
+   * @param key        the key of the partition in the block to write the element.
+   * @param element    the element to write.
+   * @param blockStore the store contains the target block.
+   * @param <K>        the key type of the block to write.
+   */
+  public <K extends Serializable> void write(final String blockId,
+                                             final K key,
+                                             final Object element,
+                                             final DataStoreProperty.Value blockStore) {
+    final BlockStore store = getBlockStore(blockStore);
     try {
-      return store.putPartitions(blockId, (Iterable) partitions);
+      store.write(blockId, key, element);
     } catch (final Exception e) {
       throw new BlockWriteException(e);
     }
@@ -248,17 +252,18 @@ public final class BlockManagerWorker {
    *
    * @param blockId           the ID of the block.
    * @param blockStore        the store to save the block.
-   * @param partitionSizeInfo the size metric of partitions.
+   * @param reportPartitionSizes whether report the size of partitions to master or not.
    * @param srcIRVertexId     the IR vertex ID of the source task.
    * @param expectedReadTotal the expected number of read for this block.
    * @param usedDataHandling  how to handle the used block.
+   * @return a {@link Optional} of the size of each written block.
    */
-  public void commitBlock(final String blockId,
-                          final DataStoreProperty.Value blockStore,
-                          final List<Long> partitionSizeInfo,
-                          final String srcIRVertexId,
-                          final int expectedReadTotal,
-                          final UsedDataHandlingProperty.Value usedDataHandling) {
+  public Optional<Long> commitBlock(final String blockId,
+                                    final DataStoreProperty.Value blockStore,
+                                    final boolean reportPartitionSizes,
+                                    final String srcIRVertexId,
+                                    final int expectedReadTotal,
+                                    final UsedDataHandlingProperty.Value usedDataHandling) {
     LOG.info("CommitBlock: {}", blockId);
     switch (usedDataHandling) {
       case Discard:
@@ -272,7 +277,7 @@ public final class BlockManagerWorker {
     }
 
     final BlockStore store = getBlockStore(blockStore);
-    store.commitBlock(blockId);
+    final Optional<Iterable<Long>> partitionSizes = store.commitBlock(blockId);
     final ControlMessage.BlockStateChangedMsg.Builder blockStateChangedMsgBuilder =
         ControlMessage.BlockStateChangedMsg.newBuilder()
             .setExecutorId(executorId)
@@ -293,8 +298,8 @@ public final class BlockManagerWorker {
             .setBlockStateChangedMsg(blockStateChangedMsgBuilder.build())
             .build());
 
-    if (!partitionSizeInfo.isEmpty()) {
-      // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
+    if (reportPartitionSizes && partitionSizes.isPresent()) {
+      // TODO #4: Refactor metric aggregation for (general) run-rime optimization.
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
           .send(ControlMessage.Message.newBuilder()
               .setId(RuntimeIdGenerator.generateMessageId())
@@ -303,9 +308,20 @@ public final class BlockManagerWorker {
               .setDataSizeMetricMsg(ControlMessage.DataSizeMetricMsg.newBuilder()
                   .setBlockId(blockId)
                   .setSrcIRVertexId(srcIRVertexId)
-                  .addAllPartitionSizeInfo(partitionSizeInfo)
+                  .addAllPartitionSizeInfo(partitionSizes.get())
               )
               .build());
+    }
+
+    // Return the total size of the committed block.
+    if (partitionSizes.isPresent()) {
+      long blockSizeTotal = 0;
+      for (final long partitionSize : partitionSizes.get()) {
+        blockSizeTotal += partitionSize;
+      }
+      return Optional.of(blockSizeTotal);
+    } else {
+      return Optional.empty();
     }
   }
 
@@ -319,8 +335,7 @@ public final class BlockManagerWorker {
                           final DataStoreProperty.Value blockStore) {
     LOG.info("RemoveBlock: {}", blockId);
     final BlockStore store = getBlockStore(blockStore);
-    final boolean exist;
-    exist = store.removeBlock(blockId);
+    final boolean exist = store.removeBlock(blockId);
 
     if (exist) {
       final ControlMessage.BlockStateChangedMsg.Builder blockStateChangedMsgBuilder =
@@ -370,6 +385,11 @@ public final class BlockManagerWorker {
     } // If null, just keep the data in the store.
   }
 
+  /**
+   * Gets the {@link BlockStore} from annotated value of {@link DataStoreProperty}.
+   * @param blockStore the annotated value of {@link DataStoreProperty}.
+   * @return the block store.
+   */
   private BlockStore getBlockStore(final DataStoreProperty.Value blockStore) {
     switch (blockStore) {
       case MemoryStore:
@@ -413,7 +433,7 @@ public final class BlockManagerWorker {
             }
           } else {
             final Optional<Iterable<SerializedPartition>> optionalResult = getBlockStore(blockStore)
-                .getSerializedPartitions(blockId, keyRange);
+                .readSerializedPartitions(blockId, keyRange);
             for (final SerializedPartition partition : optionalResult.get()) {
               outputContext.newOutputStream().writeSerializedPartition(partition).close();
             }

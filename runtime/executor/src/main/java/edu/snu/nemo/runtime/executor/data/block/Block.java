@@ -16,12 +16,11 @@
 package edu.snu.nemo.runtime.executor.data.block;
 
 import edu.snu.nemo.runtime.common.data.KeyRange;
-import edu.snu.nemo.runtime.executor.data.NonSerializedPartition;
-import edu.snu.nemo.runtime.executor.data.SerializedPartition;
+import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
+import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -31,24 +30,32 @@ import java.util.Optional;
 public interface Block<K extends Serializable> {
 
   /**
+   * Writes an element to non-committed block.
+   * Invariant: This should not be invoked after this block is committed.
+   *
+   * @param key     the key.
+   * @param element the element to write.
+   * @throws IOException if this block is already committed.
+   */
+  void write(K key, Object element) throws IOException;
+
+  /**
    * Stores {@link NonSerializedPartition}s to this block.
    * Invariant: This should not be invoked after this block is committed.
    *
    * @param partitions the {@link NonSerializedPartition}s to store.
-   * @return the size of the data per partition (only when the data is serialized in this method).
    * @throws IOException if fail to store.
    */
-  Optional<List<Long>> putPartitions(final Iterable<NonSerializedPartition<K>> partitions) throws IOException;
+  void writePartitions(Iterable<NonSerializedPartition<K>> partitions) throws IOException;
 
   /**
    * Stores {@link SerializedPartition}s to this block.
    * Invariant: This should not be invoked after this block is committed.
    *
    * @param partitions the {@link SerializedPartition}s to store.
-   * @return the size of the data per partition.
    * @throws IOException if fail to store.
    */
-  List<Long> putSerializedPartitions(final Iterable<SerializedPartition<K>> partitions) throws IOException;
+  void writeSerializedPartitions(Iterable<SerializedPartition<K>> partitions) throws IOException;
 
   /**
    * Retrieves the {@link NonSerializedPartition}s in a specific key range from this block.
@@ -59,7 +66,7 @@ public interface Block<K extends Serializable> {
    * @return an iterable of {@link NonSerializedPartition}s.
    * @throws IOException if failed to retrieve.
    */
-  Iterable<NonSerializedPartition<K>> getPartitions(final KeyRange<K> keyRange) throws IOException;
+  Iterable<NonSerializedPartition<K>> readPartitions(KeyRange<K> keyRange) throws IOException;
 
   /**
    * Retrieves the {@link SerializedPartition}s in a specific key range.
@@ -69,12 +76,13 @@ public interface Block<K extends Serializable> {
    * @return an iterable of {@link SerializedPartition}s.
    * @throws IOException if failed to retrieve.
    */
-  Iterable<SerializedPartition<K>> getSerializedPartitions(final KeyRange<K> keyRange) throws IOException;
+  Iterable<SerializedPartition<K>> readSerializedPartitions(KeyRange<K> keyRange) throws IOException;
 
   /**
    * Commits this block to prevent further write.
    *
+   * @return the size of each partition if the data in the block is serialized.
    * @throws IOException if failed to commit.
    */
-  void commit() throws IOException;
+  Optional<Iterable<Long>> commit() throws IOException;
 }

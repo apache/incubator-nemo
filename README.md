@@ -1,7 +1,14 @@
 # Nemo
 
-[![Build Status](https://travis-ci.org/snuspl/nemo.svg?branch=master)](https://travis-ci.org/snuspl/nemo)
-[![Build Status](https://cmsbuild.snu.ac.kr/buildStatus/icon?job=Nemo-master)](https://cmsbuild.snu.ac.kr/job/Nemo-master/)
+[![Build Status](https://travis-ci.org/apache/incubator-nemo.svg?branch=master)](https://travis-ci.org/apache/incubator-nemo)
+
+A Data Processing System for Flexible Employment With Different Deployment Characteristics.
+
+## Online Documentation
+
+Details about Nemo and its development can be found in:
+* Our website: https://nemo.apache.org/
+* Our project wiki: https://cwiki.apache.org/confluence/display/NEMO/
 
 ## Nemo prerequisites and setup
 

@@ -23,7 +23,6 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
-import edu.snu.nemo.runtime.executor.data.Partition;
 import edu.snu.nemo.runtime.executor.data.partitioner.*;
 
 import javax.annotation.Nullable;
@@ -38,11 +37,20 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   private final String srcVertexId;
   @Nullable private final IRVertex dstIrVertex;
   private final DataStoreProperty.Value blockStoreValue;
-  private final Map<PartitionerProperty.Value, Partitioner> partitionerMap;
-  private final List<Long> accumulatedPartitionSizeInfo;
-  private final List<Long> writtenBytes;
+  private Optional<Long> writtenBytes;
   private final BlockManagerWorker blockManagerWorker;
+  private final Partitioner partitioner;
 
+  /**
+   * Constructor.
+   *
+   * @param hashRangeMultiplier the {@link edu.snu.nemo.conf.JobConf.HashRangeMultiplier}.
+   * @param srcTaskIdx          the index of the source task.
+   * @param srcRuntimeVertexId  the ID of the source vertex.
+   * @param dstIrVertex         the destination IR vertex.
+   * @param runtimeEdge         the {@link RuntimeEdge}.
+   * @param blockManagerWorker  the {@link BlockManagerWorker}.
+   */
   public OutputWriter(final int hashRangeMultiplier,
                       final int srcTaskIdx,
                       final String srcRuntimeVertexId,
@@ -57,14 +65,27 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     this.dstIrVertex = dstIrVertex;
     this.blockManagerWorker = blockManagerWorker;
     this.blockStoreValue = runtimeEdge.getProperty(ExecutionProperty.Key.DataStore);
-    this.partitionerMap = new HashMap<>();
-    this.writtenBytes = new ArrayList<>();
-    // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-    this.accumulatedPartitionSizeInfo = new ArrayList<>();
-    partitionerMap.put(PartitionerProperty.Value.IntactPartitioner, new IntactPartitioner());
-    partitionerMap.put(PartitionerProperty.Value.HashPartitioner, new HashPartitioner());
-    partitionerMap.put(PartitionerProperty.Value.DataSkewHashPartitioner,
-        new DataSkewHashPartitioner(hashRangeMultiplier));
+    this.writtenBytes = Optional.empty();
+
+    // Setup partitioner
+    final int dstParallelism = getDstParallelism();
+    final KeyExtractor keyExtractor = runtimeEdge.getProperty(ExecutionProperty.Key.KeyExtractor);
+    final PartitionerProperty.Value partitionerPropertyValue =
+        runtimeEdge.getProperty(ExecutionProperty.Key.Partitioner);
+    switch (partitionerPropertyValue) {
+      case IntactPartitioner:
+        this.partitioner = new IntactPartitioner();
+        break;
+      case HashPartitioner:
+        this.partitioner = new HashPartitioner(dstParallelism, keyExtractor);
+        break;
+      case DataSkewHashPartitioner:
+        this.partitioner = new DataSkewHashPartitioner(hashRangeMultiplier, dstParallelism, keyExtractor);
+        break;
+      default:
+        throw new UnsupportedPartitionerException(
+            new Throwable("Partitioner " + partitionerPropertyValue + " is not supported."));
+    }
     blockManagerWorker.createBlock(blockId, blockStoreValue);
   }
 
@@ -74,52 +95,15 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    * @param dataToWrite An iterable for the elements to be written.
    */
   public void write(final Iterable dataToWrite) {
-    final Boolean isDataSizeMetricCollectionEdge = MetricCollectionProperty.Value.DataSkewRuntimePass
-        .equals(runtimeEdge.getProperty(ExecutionProperty.Key.MetricCollection));
-
-    // Group the data into blocks.
-    final PartitionerProperty.Value partitionerPropertyValue =
-        runtimeEdge.getProperty(ExecutionProperty.Key.Partitioner);
-    final int dstParallelism = getDstParallelism();
-
-    final Partitioner partitioner = partitionerMap.get(partitionerPropertyValue);
-    if (partitioner == null) {
-      throw new UnsupportedPartitionerException(
-          new Throwable("Partitioner " + partitionerPropertyValue + " is not supported."));
-    }
-
-    final KeyExtractor keyExtractor = runtimeEdge.getProperty(ExecutionProperty.Key.KeyExtractor);
-    final List<Partition> partitionsToWrite;
-
     final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
         runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
-    if (duplicateDataProperty != null
-        && !duplicateDataProperty.getRepresentativeEdgeId().equals(runtimeEdge.getId())
-        && duplicateDataProperty.getGroupSize() > 1) {
-      partitionsToWrite = partitioner.partition(Collections.emptyList(), dstParallelism, keyExtractor);
-    } else {
-      partitionsToWrite = partitioner.partition(dataToWrite, dstParallelism, keyExtractor);
-    }
-
-    // Write the grouped blocks into partitions.
-    // TODO #492: Modularize the data communication pattern.
-    final DataCommunicationPatternProperty.Value comValue =
-        runtimeEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern);
-
-    if (DataCommunicationPatternProperty.Value.OneToOne.equals(comValue)) {
-      writeOneToOne(partitionsToWrite);
-    } else if (DataCommunicationPatternProperty.Value.BroadCast.equals(comValue)) {
-      writeBroadcast(partitionsToWrite);
-    } else if (DataCommunicationPatternProperty.Value.Shuffle.equals(comValue)) {
-      // If the dynamic optimization which detects data skew is enabled, sort the data and write it.
-      if (isDataSizeMetricCollectionEdge) {
-        dataSkewWrite(partitionsToWrite);
-      } else {
-        writeShuffle(partitionsToWrite);
-      }
-    } else {
-      throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
-    }
+    if (duplicateDataProperty == null
+        || duplicateDataProperty.getRepresentativeEdgeId().equals(runtimeEdge.getId())
+        || duplicateDataProperty.getGroupSize() <= 1) {
+      dataToWrite.forEach(element -> {
+        blockManagerWorker.write(blockId, partitioner.partition(element), element, blockStoreValue);
+      });
+    } // If else, does not need to write because the data is duplicated.
   }
 
   /**
@@ -133,80 +117,19 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
         runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
     final int multiplier = duplicateDataProperty == null ? 1 : duplicateDataProperty.getGroupSize();
-    blockManagerWorker.commitBlock(blockId, blockStoreValue,
-        accumulatedPartitionSizeInfo, srcVertexId, getDstParallelism() * multiplier, usedDataHandling);
+
+    final boolean isDataSizeMetricCollectionEdge = MetricCollectionProperty.Value.DataSkewRuntimePass
+        .equals(runtimeEdge.getProperty(ExecutionProperty.Key.MetricCollection));
+    this.writtenBytes = blockManagerWorker.commitBlock(
+        blockId, blockStoreValue, isDataSizeMetricCollectionEdge, srcVertexId,
+        getDstParallelism() * multiplier, usedDataHandling);
   }
 
   /**
    * @return the total written bytes.
    */
   public Optional<Long> getWrittenBytes() {
-    if (writtenBytes.isEmpty()) {
-      return Optional.empty(); // no serialized data.
-    } else {
-      long totalWrittenBytes = 0;
-      for (final long writtenPartitionBytes : writtenBytes) {
-        totalWrittenBytes += writtenPartitionBytes;
-      }
-      return Optional.of(totalWrittenBytes);
-    }
-  }
-
-  private void writeOneToOne(final List<Partition> partitionsToWrite) {
-    // Write data.
-    final Optional<List<Long>> partitionSizeList =
-        blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
-    partitionSizeList.ifPresent(this::addWrittenBytes);
-  }
-
-  private void writeBroadcast(final List<Partition> partitionsToWrite) {
-    writeOneToOne(partitionsToWrite);
-  }
-
-  private void writeShuffle(final List<Partition> partitionsToWrite) {
-    final int dstParallelism = getDstParallelism();
-    if (partitionsToWrite.size() != dstParallelism) {
-      throw new BlockWriteException(
-          new Throwable("The number of given blocks are not matched with the destination parallelism."));
-    }
-
-    // Write data.
-    final Optional<List<Long>> partitionSizeList =
-        blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
-    partitionSizeList.ifPresent(this::addWrittenBytes);
-  }
-
-  /**
-   * Writes partitions in a single block and collects the size of each partition.
-   * This function will be called only when we need to split or recombine an output data from a task after it is stored
-   * (e.g., dynamic data skew handling).
-   * We extend the hash range with the factor {@link edu.snu.nemo.conf.JobConf.HashRangeMultiplier} in advance
-   * to prevent the extra deserialize - rehash - serialize process.
-   * Each data of this block having same key hash value will be collected as a single partition.
-   * This partition will be the unit of retrieval and recombination of this block.
-   * Constraint: If a block is written by this method, it have to be read by {@link InputReader#readDataInRange()}.
-   * TODO #378: Elaborate block construction during data skew pass
-   *
-   * @param partitionsToWrite a list of the partitions to be written.
-   */
-  private void dataSkewWrite(final List<Partition> partitionsToWrite) {
-
-    // Write data.
-    final Optional<List<Long>> partitionSizeList =
-        blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
-    partitionSizeList.ifPresent(partitionsSize -> {
-      addWrittenBytes(partitionsSize);
-      this.accumulatedPartitionSizeInfo.addAll(partitionsSize);
-    });
-  }
-
-  /**
-   * Accumulates the size of written partitions.
-   *
-   * @param partitionSizeList the list of written partitions.
-   */
-  private void addWrittenBytes(final List<Long> partitionSizeList) {
-    partitionSizeList.forEach(writtenBytes::add);
+    return writtenBytes;
   }
 
   /**

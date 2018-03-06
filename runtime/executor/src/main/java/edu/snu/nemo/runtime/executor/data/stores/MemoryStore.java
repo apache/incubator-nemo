@@ -51,7 +51,7 @@ public final class MemoryStore extends LocalBlockStore {
    * @see BlockStore#removeBlock(String)
    */
   @Override
-  public Boolean removeBlock(final String blockId) {
+  public boolean removeBlock(final String blockId) {
     return getBlockMap().remove(blockId) != null;
   }
 }

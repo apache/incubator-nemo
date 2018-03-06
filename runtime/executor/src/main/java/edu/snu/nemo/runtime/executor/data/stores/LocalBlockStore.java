@@ -19,13 +19,12 @@ import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.exception.BlockWriteException;
 import edu.snu.nemo.runtime.common.data.KeyRange;
 import edu.snu.nemo.runtime.executor.data.SerializerManager;
-import edu.snu.nemo.runtime.executor.data.NonSerializedPartition;
-import edu.snu.nemo.runtime.executor.data.SerializedPartition;
+import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
+import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 import edu.snu.nemo.runtime.executor.data.block.Block;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,53 +49,70 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   }
 
   /**
-   * @see BlockStore#putPartitions(String, Iterable)
+   * @see BlockStore#write(String, Serializable, Object).
    */
   @Override
-  public final <K extends Serializable>
-  Optional<List<Long>> putPartitions(final String blockId,
-                                     final Iterable<NonSerializedPartition<K>> partitions)
+  public final <K extends Serializable> void write(final String blockId,
+                                                   final K key,
+                                                   final Object element) throws BlockWriteException {
+    try {
+      final Block<K> block = blockMap.get(blockId);
+      if (block == null) {
+        throw new BlockWriteException(new Throwable("The block " + blockId + "is not created yet."));
+      }
+      block.write(key, element);
+    } catch (final IOException e) {
+      throw new BlockWriteException(new Throwable("Failed to store partitions to this block."));
+    }
+  }
+
+  /**
+   * @see BlockStore#writePartitions(String, Iterable)
+   */
+  @Override
+  public final <K extends Serializable> void writePartitions(final String blockId,
+                                                             final Iterable<NonSerializedPartition<K>> partitions)
       throws BlockWriteException {
     try {
       final Block<K> block = blockMap.get(blockId);
       if (block == null) {
         throw new BlockWriteException(new Throwable("The block " + blockId + "is not created yet."));
       }
-      return block.putPartitions(partitions);
+      block.writePartitions(partitions);
     } catch (final IOException e) {
       throw new BlockWriteException(new Throwable("Failed to store partitions to this block."));
     }
   }
 
   /**
-   * @see BlockStore#putSerializedPartitions(String, Iterable)
+   * @see BlockStore#writeSerializedPartitions(String, Iterable)
    */
   @Override
   public final <K extends Serializable>
-  List<Long> putSerializedPartitions(final String blockId,
-                                     final Iterable<SerializedPartition<K>> partitions) {
+  void writeSerializedPartitions(final String blockId,
+                                 final Iterable<SerializedPartition<K>> partitions) {
     try {
       final Block<K> block = blockMap.get(blockId);
       if (block == null) {
         throw new BlockWriteException(new Throwable("The block " + blockId + "is not created yet."));
       }
-      return block.putSerializedPartitions(partitions);
+      block.writeSerializedPartitions(partitions);
     } catch (final IOException e) {
       throw new BlockWriteException(new Throwable("Failed to store partitions to this block."));
     }
   }
 
   /**
-   * @see BlockStore#getPartitions(String, KeyRange)
+   * @see BlockStore#readPartitions(String, KeyRange)
    */
   @Override
   public final <K extends Serializable>
-  Optional<Iterable<NonSerializedPartition<K>>> getPartitions(final String blockId, final KeyRange<K> keyRange) {
+  Optional<Iterable<NonSerializedPartition<K>>> readPartitions(final String blockId, final KeyRange<K> keyRange) {
     final Block<K> block = blockMap.get(blockId);
 
     if (block != null) {
       try {
-        final Iterable<NonSerializedPartition<K>> partitionsInRange = block.getPartitions(keyRange);
+        final Iterable<NonSerializedPartition<K>> partitionsInRange = block.readPartitions(keyRange);
         return Optional.of(partitionsInRange);
       } catch (final IOException e) {
         throw new BlockFetchException(e);
@@ -107,16 +123,17 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   }
 
   /**
-   * @see BlockStore#getSerializedPartitions(String, edu.snu.nemo.runtime.common.data.KeyRange)
+   * @see BlockStore#readSerializedPartitions(String, edu.snu.nemo.runtime.common.data.KeyRange)
    */
   @Override
   public final <K extends Serializable>
-  Optional<Iterable<SerializedPartition<K>>> getSerializedPartitions(final String blockId, final KeyRange<K> keyRange) {
+  Optional<Iterable<SerializedPartition<K>>> readSerializedPartitions(final String blockId,
+                                                                      final KeyRange<K> keyRange) {
     final Block<K> block = blockMap.get(blockId);
 
     if (block != null) {
       try {
-        final Iterable<SerializedPartition<K>> partitionsInRange = block.getSerializedPartitions(keyRange);
+        final Iterable<SerializedPartition<K>> partitionsInRange = block.readSerializedPartitions(keyRange);
         return Optional.of(partitionsInRange);
       } catch (final IOException e) {
         throw new BlockFetchException(e);
@@ -130,11 +147,11 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
    * @see BlockStore#commitBlock(String)
    */
   @Override
-  public final void commitBlock(final String blockId) {
+  public final Optional<Iterable<Long>> commitBlock(final String blockId) {
     final Block block = blockMap.get(blockId);
     if (block != null) {
       try {
-        block.commit();
+        return block.commit();
       } catch (final IOException e) {
         throw new BlockWriteException(e);
       }
@@ -146,7 +163,7 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
   /**
    * @return the map between the IDs and {@link Block}.
    */
-  public final Map<String, Block> getBlockMap() {
+  protected final Map<String, Block> getBlockMap() {
     return blockMap;
   }
 }
