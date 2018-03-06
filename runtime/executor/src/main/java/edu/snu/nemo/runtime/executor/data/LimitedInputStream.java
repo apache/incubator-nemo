@@ -32,7 +32,6 @@ public final class LimitedInputStream extends InputStream {
    *
    * @param in    {@link InputStream} that should be limited.
    * @param limit bytes to limit.
-   * @throws IOException if failed to read stream.
    */
   public LimitedInputStream(final InputStream in, final long limit) {
     this.in = in;

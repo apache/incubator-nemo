@@ -32,6 +32,7 @@ public final class DuplicateEdgeGroupPropertyValue implements Serializable {
 
   /**
    * Constructor.
+   * @param groupId Group ID.
    */
   public DuplicateEdgeGroupPropertyValue(final String groupId) {
     this.isRepresentativeEdgeDecided = false;
@@ -44,7 +45,7 @@ public final class DuplicateEdgeGroupPropertyValue implements Serializable {
    * @param representativeEdgeId physical edge id of representative edge.
    */
   public void setRepresentativeEdgeId(final String representativeEdgeId) {
-    if (isRepresentativeEdgeDecided) {
+    if (isRepresentativeEdgeDecided && !this.representativeEdgeId.equals(representativeEdgeId)) {
       throw new RuntimeException("edge id is already decided");
     }
     this.isRepresentativeEdgeDecided = true;
