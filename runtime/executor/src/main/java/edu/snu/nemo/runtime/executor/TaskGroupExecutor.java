@@ -56,8 +56,8 @@ public final class TaskGroupExecutor {
   private final MetricCollector metricCollector;
 
   // Map of task ID to its intra-TaskGroup data pipe.
-  private final Map<Task, List<PipeImpl>> taskToInputPipesMap;
-  private final Map<Task, PipeImpl> taskToOutputPipeMap;  // one and only one Pipe per task
+  private final Map<Task, List<LocalPipe>> taskToInputPipesMap;
+  private final Map<Task, LocalPipe> taskToOutputPipeMap;  // one and only one Pipe per task
   // Readers/writers that deals with inter-TaskGroup data.
   private final List<InputReader> inputReaders;
   private final Map<Task, List<InputReader>> taskToInputReadersMap;
@@ -208,13 +208,13 @@ public final class TaskGroupExecutor {
    * @param task the Task to add input pipes to.
    */
   private void addInputPipe(final Task task) {
-    List<PipeImpl> inputPipes = new ArrayList<>();
+    List<LocalPipe> inputPipes = new ArrayList<>();
     List<Task> parentTasks = taskGroupDag.getParents(task.getId());
     final String physicalTaskId = getPhysicalTaskId(task.getId());
 
     if (parentTasks != null) {
       parentTasks.forEach(parent -> {
-        final PipeImpl parentOutputPipe = taskToOutputPipeMap.get(parent);
+        final LocalPipe parentOutputPipe = taskToOutputPipeMap.get(parent);
         inputPipes.add(parentOutputPipe);
         LOG.info("log: Added Outputpipe of {} as InputPipe of {} {}",
             getPhysicalTaskId(parent.getId()), taskGroupId, physicalTaskId);
@@ -232,7 +232,7 @@ public final class TaskGroupExecutor {
    * @param task the Task to add output pipes to.
    */
   private void addOutputPipe(final Task task) {
-    final PipeImpl outputPipe = new PipeImpl();
+    final LocalPipe outputPipe = new LocalPipe();
     final String physicalTaskId = getPhysicalTaskId(task.getId());
     final List<RuntimeEdge<Task>> outEdges = taskGroupDag.getOutgoingEdgesOf(task);
 
@@ -359,7 +359,7 @@ public final class TaskGroupExecutor {
     srcIteratorIdToTasksMap.values().forEach(tasks ->
         tasks.forEach(task -> {
           final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
-          PipeImpl pipe = taskToOutputPipeMap.get(task);
+          LocalPipe pipe = taskToOutputPipeMap.get(task);
           pipeIdToDstTasksMap.putIfAbsent(pipe.getId(), dstTasks);
           LOG.info("{} pipeIdToDstTasksMap: [{}'s OutputPipe, {}]",
               taskGroupId, getPhysicalTaskId(task.getId()), dstTasks);
@@ -367,7 +367,7 @@ public final class TaskGroupExecutor {
     iteratorIdToTasksMap.values().forEach(tasks ->
         tasks.forEach(task -> {
           final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
-          PipeImpl pipe = taskToOutputPipeMap.get(task);
+          LocalPipe pipe = taskToOutputPipeMap.get(task);
           pipeIdToDstTasksMap.putIfAbsent(pipe.getId(), dstTasks);
           LOG.info("{} pipeIdToDstTasksMap: [{}'s OutputPipe, {}]",
               taskGroupId, getPhysicalTaskId(task.getId()), dstTasks);
@@ -381,7 +381,7 @@ public final class TaskGroupExecutor {
     currentMap.values().forEach(tasks ->
         tasks.forEach(task -> {
           final List<Task> dstTasks = taskGroupDag.getChildren(task.getId());
-          PipeImpl pipe = taskToOutputPipeMap.get(task);
+          LocalPipe pipe = taskToOutputPipeMap.get(task);
           updatedMap.putIfAbsent(pipe.getId(), dstTasks);
           LOG.info("{} pipeIdToDstTasksMap: [{}, {}]",
               taskGroupId, getPhysicalTaskId(task.getId()), dstTasks);
@@ -466,7 +466,7 @@ public final class TaskGroupExecutor {
       }
 
       final Transform.Context transformContext = new ContextImpl(sideInputMap);
-      final PipeImpl outputPipe = taskToOutputPipeMap.get(task);
+      final LocalPipe outputPipe = taskToOutputPipeMap.get(task);
       transform.prepare(transformContext, outputPipe);
 
       preparedTransforms.add(transform);
@@ -555,7 +555,7 @@ public final class TaskGroupExecutor {
       initializePipeToDstTasksMap();
       while (!finishedAllTasks()) {
         pipeIdToDstTasksMap.forEach((pipeId, dstTasks) -> {
-          PipeImpl pipe = taskToOutputPipeMap.values().stream()
+          LocalPipe pipe = taskToOutputPipeMap.values().stream()
               .filter(p -> p.getId() == pipeId)
               .findFirst().get();
 
@@ -636,7 +636,7 @@ public final class TaskGroupExecutor {
 
     // Process element-wise depending on the Task type
     if (task instanceof BoundedSourceTask) {
-      PipeImpl pipe = taskToOutputPipeMap.get(task);
+      LocalPipe pipe = taskToOutputPipeMap.get(task);
 
       if (data.contains(null)) {  // data is [null] used for VoidCoders
         pipe.emit(data);
@@ -662,7 +662,7 @@ public final class TaskGroupExecutor {
         transform.onData(dataElement);
       });
     } else if (task instanceof MetricCollectionBarrierTask) {
-      PipeImpl pipe = taskToOutputPipeMap.get(task);
+      LocalPipe pipe = taskToOutputPipeMap.get(task);
 
       if (data.contains(null)) {  // data is [null] used for VoidCoders
         pipe.emit(data);
@@ -677,7 +677,7 @@ public final class TaskGroupExecutor {
     }
 
     // For the produced output
-    PipeImpl pipe = taskToOutputPipeMap.get(task);
+    LocalPipe pipe = taskToOutputPipeMap.get(task);
     while (!pipe.isEmpty()) {
       final Object element = pipe.remove();
 

@@ -26,14 +26,14 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Pipe implementation that requires synchronization.
+ * Local pipe implementation.
  *
  * @param <O> output type.
  */
-public final class PipeImpl<O> implements Pipe<O> {
-  private static final Logger LOG = LoggerFactory.getLogger(PipeImpl.class.getName());
-  private static final String PIPEID_PREFIX = "PIPE_";
-  private static final AtomicInteger PIPEID_GENERATOR = new AtomicInteger(0);
+public final class LocalPipe<O> implements Pipe<O> {
+  private static final Logger LOG = LoggerFactory.getLogger(LocalPipe.class.getName());
+  private static final String LOCALPIPEID_PREFIX = "LOCALPIPE_";
+  private static final AtomicInteger LOCALPIPEID_GENERATOR = new AtomicInteger(0);
 
   private final String id;
   private final ArrayDeque<O> outputQueue;
@@ -43,8 +43,8 @@ public final class PipeImpl<O> implements Pipe<O> {
   /**
    * Constructor of a new Pipe.
    */
-  public PipeImpl() {
-    this.id = PIPEID_PREFIX + PIPEID_GENERATOR.getAndIncrement();
+  public LocalPipe() {
+    this.id = LOCALPIPEID_PREFIX + LOCALPIPEID_GENERATOR.getAndIncrement();
     this.outputQueue = new ArrayDeque<>();
     this.sideInputRuntimeEdge = null;
     this.sideInputReceivers = new ArrayList<>();
@@ -57,11 +57,11 @@ public final class PipeImpl<O> implements Pipe<O> {
 
   @Override
   public void emit(final String dstVertexId, final Object output) {
-    throw new UnsupportedOperationException("emit(dstVertexId, output) in PipeImpl.");
+    throw new UnsupportedOperationException("emit(dstVertexId, output) in LocalPipe.");
   }
 
   /**
-   * Inter-Task data is transferred from sender-side Task's PipeImpl to receiver-side Task.
+   * Inter-Task data is transferred from sender-side Task's LocalPipe to receiver-side Task.
    *
    * @return the first element of this list
    */
