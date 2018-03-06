@@ -16,11 +16,12 @@
 # .travis.yml
 # For maven builds
 language: java
-after_script: "mvn verify -B"
+script: mvn verify -B
 
 notifications:
-  slack: snuspl:owgt4d5uZwww5nGovPAMgvZB
+  slack:
+    secure: I2cpGDp7widdqSpKAa8qOSGyMqBfDvZqw8WDSa4TzgACbvSDIENodAwdCUEExKVyy6SG2yg8psHEtuklAhmsVAifk4akiBPw6X/6M0d4ugKF4Azdx1qYBItrKiYHkPqS1nmpHaoag1qCcq5nwSWTZ1xmCoDO1B8qdCyYnzagf4AA3kHKMa08WjV19Qs2zgXX8mcmeICrRwOULLYz3BOFzKLtyCResyVH9cDGan/K44jUys7840Mm1vdURXQH45wBqOXwW+JZn7Z/tbm6Qmu9VDNLPpNMeBI99QBdzprKeLkmv9ddmKVA7dOE++5P2vi4Z6CpYu/i0gQpTOS8NDuA0di+Zemgp3US3i29pxwpaZGJ2iiw5HqNEyEKuWkapGS3SG8JOJH5EdoBynnxAHrCM7tnJOfP08dQKMQ2fYUukDguhp9hIBILZ4gOZlzddWMMs+lpkkbQIYfJDJna8zhwNt8ylPiDMP5vwFn/xmVSVpRWURVpNJ5ON8X617diKsiu5KzpyizLFNGJhdIqSTzJXLNp1A3Z8KuBSUKhLs630YvxPSRXUjzK5OaLC3yA85gariTS936/UeWv4oHQOKSDGhElQ/V0Goes5JF/EXvtNW+uzfEj19m+YCnP9/99SQUBJvOlUTCvVOA8HrY6DdJxW/Muj78ieu8dPk5rYMyQ2FU=
 
 cache:
   directories:
-  - $HOME/.m2
+  - "$HOME/.m2"
