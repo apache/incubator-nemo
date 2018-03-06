@@ -17,7 +17,7 @@ package edu.snu.nemo.examples.beam;
 
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
-import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelsimFive;
+import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -40,7 +40,7 @@ public final class MultinomialLogisticRegressionITCase {
   }
 
   @Test (timeout = TIMEOUT)
-  public void testMLRPado() throws Exception {
+  public void test() throws Exception {
     final String input = fileBasePath + "sample_input_mlr";
     final String numFeatures = "100";
     final String numClasses = "5";
@@ -50,7 +50,7 @@ public final class MultinomialLogisticRegressionITCase {
         .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName() + "_pado")
         .addUserMain(MultinomialLogisticRegression.class.getCanonicalName())
         .addUserArgs(input, numFeatures, numClasses, numIteration)
-        .addOptimizationPolicy(PadoPolicyParallelsimFive.class.getCanonicalName())
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
   }
 }
