@@ -47,7 +47,7 @@ public final class MultinomialLogisticRegressionITCase {
     final String numIteration = "3";
 
     JobLauncher.main(builder
-        .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName() + "_pado")
+        .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName())
         .addUserMain(MultinomialLogisticRegression.class.getCanonicalName())
         .addUserArgs(input, numFeatures, numClasses, numIteration)
         .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())

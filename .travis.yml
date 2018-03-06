@@ -16,7 +16,7 @@
 # .travis.yml
 # For maven builds
 language: java
-script: mvn verify -q -ff -Dsurefire.useFile=false -DLOG_LEVEL=WARN
+script: mvn verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=warn
 
 notifications:
   slack:
