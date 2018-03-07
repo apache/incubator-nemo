@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.transform;
 
-import edu.snu.nemo.common.ir.Pipe;
+import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.spark.core.java.JavaRDD;
 
@@ -45,7 +45,7 @@ public final class CollectTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final Pipe<T> p) {
+  public void prepare(final Context context, final OutputCollector<T> p) {
     this.filename = filename + JavaRDD.getResultId();
   }
 

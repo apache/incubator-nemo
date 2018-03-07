@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.tests.runtime.executor;
 
-import edu.snu.nemo.common.ir.Pipe;
+import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
@@ -44,9 +44,6 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import static edu.snu.nemo.tests.runtime.RuntimeTestUtil.getRangedNumList;
 import static org.junit.Assert.assertEquals;
@@ -266,16 +263,16 @@ public final class TaskGroupExecutorTest {
    * @param <T> input/output type.
    */
   private class SimpleTransform<T> implements Transform<T, T> {
-    private Pipe<T> pipe;
+    private OutputCollector<T> outputCollector;
 
     @Override
-    public void prepare(final Context context, final Pipe<T> pipe) {
-      this.pipe = pipe;
+    public void prepare(final Context context, final OutputCollector<T> outputCollector) {
+      this.outputCollector = outputCollector;
     }
 
     @Override
     public void onData(final Object element) {
-      pipe.emit((T) element);
+      outputCollector.emit((T) element);
     }
 
     @Override

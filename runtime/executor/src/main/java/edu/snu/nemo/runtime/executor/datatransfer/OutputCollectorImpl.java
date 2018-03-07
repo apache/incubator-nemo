@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.runtime.executor.datatransfer;
 
-import edu.snu.nemo.common.ir.Pipe;
+import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,14 +26,14 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Local pipe implementation.
+ * OutputCollector implementation.
  *
  * @param <O> output type.
  */
-public final class LocalPipe<O> implements Pipe<O> {
-  private static final Logger LOG = LoggerFactory.getLogger(LocalPipe.class.getName());
-  private static final String LOCALPIPEID_PREFIX = "LOCALPIPE_";
-  private static final AtomicInteger LOCALPIPEID_GENERATOR = new AtomicInteger(0);
+public final class OutputCollectorImpl<O> implements OutputCollector<O> {
+  private static final Logger LOG = LoggerFactory.getLogger(OutputCollectorImpl.class.getName());
+  private static final String OUTPUTCOLLECTORID_PREFIX = "OUTPUTCOLLECTOR_";
+  private static final AtomicInteger OUTPUTCOLLECTORID_GENERATOR = new AtomicInteger(0);
 
   private final String id;
   private final ArrayDeque<O> outputQueue;
@@ -41,10 +41,10 @@ public final class LocalPipe<O> implements Pipe<O> {
   private List<String> sideInputReceivers;
 
   /**
-   * Constructor of a new Pipe.
+   * Constructor of a new OutputCollectorImpl.
    */
-  public LocalPipe() {
-    this.id = LOCALPIPEID_PREFIX + LOCALPIPEID_GENERATOR.getAndIncrement();
+  public OutputCollectorImpl() {
+    this.id = OUTPUTCOLLECTORID_PREFIX + OUTPUTCOLLECTORID_GENERATOR.getAndIncrement();
     this.outputQueue = new ArrayDeque<>();
     this.sideInputRuntimeEdge = null;
     this.sideInputReceivers = new ArrayList<>();
@@ -57,11 +57,11 @@ public final class LocalPipe<O> implements Pipe<O> {
 
   @Override
   public void emit(final String dstVertexId, final Object output) {
-    throw new UnsupportedOperationException("emit(dstVertexId, output) in LocalPipe.");
+    throw new UnsupportedOperationException("emit(dstVertexId, output) in OutputCollectorImpl.");
   }
 
   /**
-   * Inter-Task data is transferred from sender-side Task's LocalPipe to receiver-side Task.
+   * Inter-Task data is transferred from sender-side Task's OutputCollectorImpl to receiver-side Task.
    *
    * @return the first element of this list
    */
@@ -85,7 +85,7 @@ public final class LocalPipe<O> implements Pipe<O> {
     return sideInputRuntimeEdge;
   }
 
-  public void setAsSideInput(final String physicalTaskId) {
+  public void setAsSideInputFor(final String physicalTaskId) {
     sideInputReceivers.add(physicalTaskId);
   }
 

@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.transform;
 
-import edu.snu.nemo.common.ir.Pipe;
+import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import scala.Tuple2;
 
@@ -28,7 +28,7 @@ import java.util.*;
  */
 public final class GroupByKeyTransform<K, V> implements Transform<Tuple2<K, V>, Tuple2<K, Iterable<V>>> {
   private final Map<K, List<V>> keyToValues;
-  private Pipe<Tuple2<K, Iterable<V>>> pipe;
+  private OutputCollector<Tuple2<K, Iterable<V>>> outputCollector;
 
   /**
    * Constructor.
@@ -38,8 +38,8 @@ public final class GroupByKeyTransform<K, V> implements Transform<Tuple2<K, V>, 
   }
 
   @Override
-  public void prepare(final Transform.Context context, final Pipe<Tuple2<K, Iterable<V>>> p) {
-    this.pipe = p;
+  public void prepare(final Transform.Context context, final OutputCollector<Tuple2<K, Iterable<V>>> p) {
+    this.outputCollector = p;
   }
 
   @Override
@@ -54,7 +54,7 @@ public final class GroupByKeyTransform<K, V> implements Transform<Tuple2<K, V>, 
   @Override
   public void close() {
     keyToValues.entrySet().stream().map(entry -> new Tuple2<>(entry.getKey(), (Iterable<V>) entry.getValue()))
-        .forEach(pipe::emit);
+        .forEach(outputCollector::emit);
     keyToValues.clear();
   }
 }

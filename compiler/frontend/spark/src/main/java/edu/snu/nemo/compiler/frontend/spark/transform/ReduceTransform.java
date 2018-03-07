@@ -17,7 +17,7 @@ package edu.snu.nemo.compiler.frontend.spark.transform;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
-import edu.snu.nemo.common.ir.Pipe;
+import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.spark.core.java.JavaRDD;
 import org.apache.spark.api.java.function.Function2;
@@ -35,7 +35,7 @@ import java.util.Iterator;
  */
 public final class ReduceTransform<T> implements Transform<T, T> {
   private final Function2<T, T, T> func;
-  private Pipe<T> pipe;
+  private OutputCollector<T> outputCollector;
   private T result;
   private String filename;
 
@@ -50,8 +50,8 @@ public final class ReduceTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final Pipe<T> p) {
-    this.pipe = p;
+  public void prepare(final Context context, final OutputCollector<T> p) {
+    this.outputCollector = p;
   }
 
   @Override
@@ -70,7 +70,7 @@ public final class ReduceTransform<T> implements Transform<T, T> {
       throw new RuntimeException(e);
     }
 
-    pipe.emit(result);
+    outputCollector.emit(result);
   }
 
   /**

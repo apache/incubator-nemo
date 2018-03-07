@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.compiler.optimizer.examples;
 
-import edu.snu.nemo.common.ir.Pipe;
+import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
@@ -55,7 +55,7 @@ public class EmptyComponents {
     }
 
     @Override
-    public void prepare(final Context context, final Pipe<O> pipe) {
+    public void prepare(final Context context, final OutputCollector<O> outputCollector) {
     }
 
     @Override

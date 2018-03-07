@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.common.ir.vertex.transform;
 
-import edu.snu.nemo.common.ir.Pipe;
+import edu.snu.nemo.common.ir.OutputCollector;
 import java.io.Serializable;
 import java.util.Map;
 
@@ -30,9 +30,9 @@ public interface Transform<I, O> extends Serializable {
   /**
    * Prepare the transform.
    * @param context of the transform.
-   * @param pipe that collects outputs.
+   * @param outputCollector that collects outputs.
    */
-  void prepare(Context context, Pipe<O> pipe);
+  void prepare(Context context, OutputCollector<O> outputCollector);
 
   /**
    * On data received.

@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.compiler.frontend.beam.transform;
 
-import edu.snu.nemo.common.ir.Pipe;
+import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.transforms.windowing.WindowFn;
 
@@ -27,7 +27,7 @@ import org.apache.beam.sdk.transforms.windowing.WindowFn;
  */
 public final class WindowTransform<T> implements Transform<T, T> {
   private final WindowFn windowFn;
-  private Pipe<T> pipe;
+  private OutputCollector<T> outputCollector;
 
   /**
    * Default Constructor.
@@ -38,14 +38,14 @@ public final class WindowTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final Pipe<T> p) {
-    this.pipe = p;
+  public void prepare(final Context context, final OutputCollector<T> p) {
+    this.outputCollector = p;
   }
 
   @Override
   public void onData(final Object element) {
     // TODO #36: Actually assign windows
-    pipe.emit((T) element);
+    outputCollector.emit((T) element);
   }
 
   @Override

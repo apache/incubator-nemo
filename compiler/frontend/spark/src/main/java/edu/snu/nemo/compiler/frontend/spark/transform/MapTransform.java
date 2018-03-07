@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.transform;
 
-import edu.snu.nemo.common.ir.Pipe;
+import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import org.apache.spark.api.java.function.Function;
 
@@ -26,7 +26,7 @@ import org.apache.spark.api.java.function.Function;
  */
 public final class MapTransform<I, O> implements Transform<I, O> {
   private final Function<I, O> func;
-  private Pipe<O> pipe;
+  private OutputCollector<O> outputCollector;
 
   /**
    * Constructor.
@@ -37,13 +37,13 @@ public final class MapTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final Pipe<O> p) {
-    this.pipe = p;
+  public void prepare(final Context context, final OutputCollector<O> p) {
+    this.outputCollector = p;
   }
 
   public void onData(final Object element) {
       try {
-        pipe.emit(func.call((I) element));
+        outputCollector.emit(func.call((I) element));
       } catch (Exception e) {
         throw new RuntimeException(e);
       }

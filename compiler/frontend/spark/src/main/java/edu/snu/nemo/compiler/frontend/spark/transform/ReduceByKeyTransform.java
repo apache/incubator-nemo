@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.transform;
 
-import edu.snu.nemo.common.ir.Pipe;
+import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import org.apache.spark.api.java.function.Function2;
 import org.slf4j.Logger;
@@ -34,7 +34,7 @@ public final class ReduceByKeyTransform<K, V> implements Transform<Tuple2<K, V>,
 
   private final Map<K, List<V>> keyToValues;
   private final Function2<V, V, V> func;
-  private Pipe<Tuple2<K, V>> pipe;
+  private OutputCollector<Tuple2<K, V>> outputCollector;
 
   /**
    * Constructor.
@@ -46,8 +46,8 @@ public final class ReduceByKeyTransform<K, V> implements Transform<Tuple2<K, V>,
   }
 
   @Override
-  public void prepare(final Context context, final Pipe<Tuple2<K, V>> p) {
-    this.pipe = p;
+  public void prepare(final Context context, final OutputCollector<Tuple2<K, V>> p) {
+    this.outputCollector = p;
   }
 
   @Override
@@ -67,7 +67,7 @@ public final class ReduceByKeyTransform<K, V> implements Transform<Tuple2<K, V>,
       keyToValues.entrySet().stream().map(entry -> {
         final V value = ReduceTransform.reduceIterator(entry.getValue().iterator(), func);
         return new Tuple2<>(entry.getKey(), value);
-      }).forEach(pipe::emit);
+      }).forEach(outputCollector::emit);
       keyToValues.clear();
     }
   }

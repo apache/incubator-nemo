@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.compiler.frontend.beam.transform;
 
-import edu.snu.nemo.common.ir.Pipe;
+import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import org.apache.beam.sdk.values.KV;
 import org.slf4j.Logger;
@@ -30,7 +30,7 @@ import java.util.*;
 public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, List>> {
   private static final Logger LOG = LoggerFactory.getLogger(GroupByKeyTransform.class.getName());
   private final Map<Object, List> keyToValues;
-  private Pipe<KV<Object, List>> pipe;
+  private OutputCollector<KV<Object, List>> outputCollector;
 
   /**
    * GroupByKey constructor.
@@ -40,8 +40,8 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
   }
 
   @Override
-  public void prepare(final Context context, final Pipe<KV<Object, List>> p) {
-    this.pipe = p;
+  public void prepare(final Context context, final OutputCollector<KV<Object, List>> p) {
+    this.outputCollector = p;
   }
 
   @Override
@@ -57,7 +57,7 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
       LOG.warn("Beam GroupByKeyTransform received no data!");
     } else {
       keyToValues.entrySet().stream().map(entry -> KV.of(entry.getKey(), entry.getValue()))
-          .forEach(pipe::emit);
+          .forEach(outputCollector::emit);
       keyToValues.clear();
     }
   }
