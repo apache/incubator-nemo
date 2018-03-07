@@ -96,7 +96,7 @@ public final class RuntimeMaster {
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
-    this.runtimeMasterThread = Executors.newSingleThreadExecutor();
+    this.runtimeMasterThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster"));
     this.scheduler = scheduler;
     this.containerManager = containerManager;
     this.blockManagerMaster = blockManagerMaster;

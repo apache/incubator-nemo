@@ -49,12 +49,6 @@ public final class RuntimeTestUtil {
                                                          final int attemptIdx) {
     // Loop until the stage completes.
     while (true) {
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-
       final Enum stageState = jobStateManager.getStageState(physicalStage.getId()).getStateMachine().getCurrentState();
       if (StageState.State.COMPLETE == stageState) {
         // Stage has completed, so we break out of the loop.

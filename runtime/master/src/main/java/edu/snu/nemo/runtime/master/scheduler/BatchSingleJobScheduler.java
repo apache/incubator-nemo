@@ -198,6 +198,9 @@ public final class BatchSingleJobScheduler implements Scheduler {
     this.pendingTaskGroupQueue.close();
   }
 
+  /**
+   * Schedule stages in initial schedule group, in reverse-topological order.
+   */
   private void scheduleRootStages() {
     final List<PhysicalStage> rootStages =
         physicalPlan.getStageDAG().getTopologicalSort().stream().filter(physicalStage ->
@@ -474,6 +477,14 @@ public final class BatchSingleJobScheduler implements Scheduler {
     }
   }
 
+  /**
+   * Action for after task group execution has failed but it's recoverable.
+   * @param executorId    the ID of the executor
+   * @param taskGroupId   the ID of the task group
+   * @param attemptIdx    the attempt index
+   * @param newState      the state this situation
+   * @param failureCause  the cause of failure
+   */
   private void onTaskGroupExecutionFailedRecoverable(final String executorId, final String taskGroupId,
                                                      final int attemptIdx, final TaskGroupState.State newState,
                                                      final TaskGroupState.RecoverableFailureCause failureCause) {

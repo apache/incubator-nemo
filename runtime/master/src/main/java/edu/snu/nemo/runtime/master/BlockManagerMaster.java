@@ -436,7 +436,11 @@ public final class BlockManagerMaster {
     }
   }
 
-
+  /**
+   * Return the corresponding {@link BlockState.State} for the specified {@link ControlMessage.BlockStateFromExecutor}.
+   * @param state {@link ControlMessage.BlockStateFromExecutor}
+   * @return the corresponding {@link BlockState.State}
+   */
   public static BlockState.State convertBlockState(final ControlMessage.BlockStateFromExecutor state) {
     switch (state) {
       case BLOCK_READY:
@@ -456,6 +460,11 @@ public final class BlockManagerMaster {
     }
   }
 
+  /**
+   * Return the corresponding {@link ControlMessage.BlockStateFromExecutor} for the specified {@link BlockState.State}.
+   * @param state {@link BlockState.State}
+   * @return the corresponding {@link ControlMessage.BlockStateFromExecutor}
+   */
   public static ControlMessage.BlockStateFromExecutor convertBlockState(final BlockState.State state) {
     switch (state) {
       case READY:

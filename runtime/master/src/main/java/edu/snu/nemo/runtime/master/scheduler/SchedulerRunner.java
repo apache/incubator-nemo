@@ -50,11 +50,15 @@ public final class SchedulerRunner {
     this.jobStateManagers = new HashMap<>();
     this.pendingTaskGroupQueue = pendingTaskGroupQueue;
     this.schedulingPolicy = schedulingPolicy;
-    this.schedulerThread = Executors.newSingleThreadExecutor();
+    this.schedulerThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "SchedulerRunner"));
     this.initialJobScheduled = false;
     this.isTerminated = false;
   }
 
+  /**
+   * Begin scheduling a job.
+   * @param jobStateManager the corresponding {@link JobStateManager}
+   */
   void scheduleJob(final JobStateManager jobStateManager) {
     if (!isTerminated) {
       jobStateManagers.put(jobStateManager.getJobId(), jobStateManager);

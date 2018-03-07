@@ -112,5 +112,9 @@ public class EmptyComponents {
     public Iterable<T> read() {
       return new ArrayList<>();
     }
+    @Override
+    public List<String> getLocations() {
+      throw new UnsupportedOperationException();
+    }
   }
 }

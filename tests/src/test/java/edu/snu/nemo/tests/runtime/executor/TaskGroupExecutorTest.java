@@ -128,6 +128,10 @@ public final class TaskGroupExecutorTest {
       public Iterable read() throws Exception {
         return elements;
       }
+      @Override
+      public List<String> getLocations() {
+        throw new UnsupportedOperationException();
+      }
     };
     final Map<String, Readable> logicalIdToReadable = new HashMap<>();
     logicalIdToReadable.put(sourceTaskId, readable);
