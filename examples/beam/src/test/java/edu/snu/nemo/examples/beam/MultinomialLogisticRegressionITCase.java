@@ -17,7 +17,7 @@ package edu.snu.nemo.examples.beam;
 
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
-import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelsimFive;
+import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -30,38 +30,27 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class MultinomialLogisticRegressionITCase {
-  private static final int TIMEOUT = 180000;
+  private static final int TIMEOUT = 240000;
+  private static ArgBuilder builder = new ArgBuilder();
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
-  private static final String input = fileBasePath + "sample_input_mlr";
-  private static final String numFeatures = "100";
-  private static final String numClasses = "5";
-  private static final String numIteration = "3";
-
-  private static ArgBuilder builder = new ArgBuilder()
-      .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName())
-      .addUserMain(MultinomialLogisticRegression.class.getCanonicalName())
-      .addUserArgs(input, numFeatures, numClasses, numIteration);
 
   @Before
   public void setUp() throws Exception {
-    builder = new ArgBuilder()
-        .addUserMain(MultinomialLogisticRegression.class.getCanonicalName())
-        .addUserArgs(input, numFeatures, numClasses, numIteration);
+    builder = new ArgBuilder();
   }
 
-//  @Test (timeout = TIMEOUT)
-//  public void test() throws Exception {
-//    JobLauncher.main(builder
-//        .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName())
-//        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-//        .build());
-//  }
-
   @Test (timeout = TIMEOUT)
-  public void testPado() throws Exception {
+  public void test() throws Exception {
+    final String input = fileBasePath + "sample_input_mlr";
+    final String numFeatures = "100";
+    final String numClasses = "5";
+    final String numIteration = "3";
+
     JobLauncher.main(builder
-        .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicyParallelsimFive.class.getCanonicalName())
+        .addJobId(MultinomialLogisticRegressionITCase.class.getSimpleName())
+        .addUserMain(MultinomialLogisticRegression.class.getCanonicalName())
+        .addUserArgs(input, numFeatures, numClasses, numIteration)
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
   }
 }
