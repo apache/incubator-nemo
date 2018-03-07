@@ -16,7 +16,6 @@
 package edu.snu.nemo.common.ir;
 
 import java.io.Serializable;
-import java.util.Collections;
 import java.util.List;
 
 /**
