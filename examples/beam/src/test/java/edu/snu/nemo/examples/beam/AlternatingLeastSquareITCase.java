@@ -33,8 +33,10 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class AlternatingLeastSquareITCase {
-  private static final int TIMEOUT = 180000;
+  private static final int TIMEOUT = 240000;
+  private static ArgBuilder builder = new ArgBuilder();
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
+
   private static final String input = fileBasePath + "sample_input_als";
   private static final String outputFileName = "sample_output_als";
   private static final String output = fileBasePath + outputFileName;
@@ -42,33 +44,24 @@ public final class AlternatingLeastSquareITCase {
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
   private static final String lambda = "0.05";
-  // If you don't want to check validity of output, make this variable false.
-  private static final boolean checkOutput = true;
-
-  private static ArgBuilder builder = new ArgBuilder()
-      .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
-      .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-      .addUserArgs(input, numFeatures, numIteration, lambda, output);
 
   @Before
   public void setUp() throws Exception {
-    builder = new ArgBuilder()
-        .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-        .addUserArgs(input, numFeatures, numIteration, lambda, output);
+    builder = new ArgBuilder();
   }
 
   @After
   public void tearDown() throws Exception {
-    if (checkOutput) {
-      ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, testResourceFileName);
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
-    }
+    ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
   }
 
   @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
         .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
+        .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
+        .addUserArgs(input, numFeatures, numIteration, lambda, output)
         .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
@@ -77,6 +70,8 @@ public final class AlternatingLeastSquareITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_pado")
+        .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
+        .addUserArgs(input, numFeatures, numIteration, lambda, output)
         .addOptimizationPolicy(PadoPolicyParallelsimFive.class.getCanonicalName())
         .build());
   }

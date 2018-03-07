@@ -32,6 +32,7 @@ public final class DuplicateEdgeGroupPropertyValue implements Serializable {
 
   /**
    * Constructor.
+   * @param groupId Group ID.
    */
   public DuplicateEdgeGroupPropertyValue(final String groupId) {
     this.isRepresentativeEdgeDecided = false;

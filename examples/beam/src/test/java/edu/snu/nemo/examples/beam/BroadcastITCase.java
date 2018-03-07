@@ -34,23 +34,18 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class BroadcastITCase {
   private static final int TIMEOUT = 180000;
+  private static ArgBuilder builder = new ArgBuilder();
+  private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
+
   private static final String inputFileName = "sample_input_mr";
   private static final String outputFileName = "sample_output_broadcast";
   private static final String testResourceFileName = "test_output_broadcast";
-  private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
 
-  private static ArgBuilder builder = new ArgBuilder()
-      .addJobId(BroadcastITCase.class.getSimpleName())
-      .addUserMain(Broadcast.class.getCanonicalName())
-      .addUserArgs(inputFilePath, outputFilePath);
-
   @Before
   public void setUp() throws Exception {
-    builder = new ArgBuilder()
-        .addUserMain(Broadcast.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath);
+    builder = new ArgBuilder();
   }
 
   @After
@@ -63,6 +58,8 @@ public final class BroadcastITCase {
   public void test() throws Exception {
     JobLauncher.main(builder
         .addJobId(BroadcastITCase.class.getSimpleName())
+        .addUserMain(Broadcast.class.getCanonicalName())
+        .addUserArgs(inputFilePath, outputFilePath)
         .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
@@ -71,6 +68,8 @@ public final class BroadcastITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(BroadcastITCase.class.getSimpleName() + "_pado")
+        .addUserMain(Broadcast.class.getCanonicalName())
+        .addUserArgs(inputFilePath, outputFilePath)
         .addOptimizationPolicy(PadoPolicyParallelsimFive.class.getCanonicalName())
         .build());
   }

@@ -20,7 +20,7 @@ import edu.snu.nemo.common.coder.Coder;
 import java.util.List;
 
 /**
- * class that contains {@link Coder} and {@link List< StreamChainer >}.
+ * class that contains {@link Coder} and {@link List} of {@link StreamChainer}.
  * @param <T> coder element type.
  */
 public final class Serializer<T> {

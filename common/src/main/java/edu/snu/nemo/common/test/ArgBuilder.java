@@ -19,16 +19,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.StringJoiner;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Argument builder.
  */
 public final class ArgBuilder {
-  private static final List<List<String>> DEFAULT_ARGS = Arrays.asList(Arrays.asList("-executor_json",
-      "../resources/sample_executor_resources.json"));
-  private List<List<String>> args = new ArrayList<>();
+  private List<List<String>> args;
+
+  /**
+   * Constructor with default values.
+   */
+  public ArgBuilder() {
+    this.args = new ArrayList<>();
+    this.args.add(Arrays.asList("-executor_json", "../resources/sample_executor_resources.json"));
+  }
 
   /**
    * @param jobId job id.
@@ -81,9 +85,6 @@ public final class ArgBuilder {
    * @return the built arguments.
    */
   public String[] build() {
-    // new String[0] is good for performance
-    // see http://stackoverflow.com/questions/4042434/converting-arrayliststring-to-string-in-java
-    return Stream.concat(args.stream().flatMap(List::stream), DEFAULT_ARGS.stream().flatMap(List::stream))
-        .collect(Collectors.toList()).toArray(new String[0]);
+    return args.stream().flatMap(List::stream).toArray(String[]::new);
   }
 }
