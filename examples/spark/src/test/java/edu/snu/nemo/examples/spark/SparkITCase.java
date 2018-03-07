@@ -28,6 +28,8 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.util.Optional;
+
 /**
  * Test Spark programs with JobLauncher.
  */
@@ -59,8 +61,12 @@ public final class SparkITCase {
         .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
 
-    ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFilename);
+    final Optional<String> errorMsg =
+        ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFilename);
     ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    if (errorMsg.isPresent()) {
+      throw new RuntimeException(errorMsg.get());
+    }
   }
 
   @Test(timeout = TIMEOUT)

@@ -27,6 +27,8 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.util.Optional;
+
 /**
  * Test Alternating Least Square program with JobLauncher.
  */
@@ -52,8 +54,12 @@ public final class AlternatingLeastSquareITCase {
 
   @After
   public void tearDown() throws Exception {
-    ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+    final Optional<String> errorMsg =
+        ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, testResourceFileName);
     ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    if (errorMsg.isPresent()) {
+      throw new RuntimeException(errorMsg.get());
+    }
   }
 
   @Test (timeout = TIMEOUT)

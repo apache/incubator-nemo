@@ -21,6 +21,7 @@ import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -84,5 +85,5 @@ public interface Block<K extends Serializable> {
    * @return the size of each partition if the data in the block is serialized.
    * @throws IOException if failed to commit.
    */
-  Optional<Iterable<Long>> commit() throws IOException;
+  Optional<Map<K, Long>> commit() throws IOException;
 }

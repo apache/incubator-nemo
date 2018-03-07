@@ -27,6 +27,8 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.util.Optional;
+
 /**
  * Test Broadcast program with JobLauncher.
  */
@@ -50,8 +52,12 @@ public final class BroadcastITCase {
 
   @After
   public void tearDown() throws Exception {
-    ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+    final Optional<String> errorMsg =
+        ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
     ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    if (errorMsg.isPresent()) {
+      throw new RuntimeException(errorMsg.get());
+    }
   }
 
   @Test (timeout = TIMEOUT)

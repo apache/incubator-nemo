@@ -154,7 +154,7 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
    * @return empty optional because the data is not serialized.
    */
   @Override
-  public synchronized Optional<Iterable<Long>> commit() {
+  public synchronized Optional<Map<K, Long>> commit() {
     if (!committed) {
       nonCommittedPartitionsMap.forEach((key, partition) -> {
         partition.commit();

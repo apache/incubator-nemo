@@ -156,7 +156,7 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
    * @throws IOException if failed to commit.
    */
   @Override
-  public synchronized Optional<Iterable<Long>> commit() throws IOException {
+  public synchronized Optional<Map<K, Long>> commit() throws IOException {
     if (!committed) {
       for (final SerializedPartition<K> partition : nonCommittedPartitionsMap.values()) {
         partition.commit();
@@ -165,9 +165,16 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
       nonCommittedPartitionsMap.clear();
       committed = true;
     }
-    final List<Long> partitionSizes = new ArrayList<>(serializedPartitions.size());
+    final Map<K, Long> partitionSizes = new HashMap<>(serializedPartitions.size());
     for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
-      partitionSizes.add((long) serializedPartition.getLength());
+      final K key = serializedPartition.getKey();
+      final long partitionSize = serializedPartition.getLength();
+      if (partitionSizes.containsKey(key)) {
+        partitionSizes.compute(key,
+            (existingKey, existingValue) -> existingValue + partitionSize);
+      } else {
+        partitionSizes.put(key, partitionSize);
+      }
     }
     return Optional.of(partitionSizes);
   }

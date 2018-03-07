@@ -250,12 +250,12 @@ public final class BlockManagerWorker {
   /**
    * Notifies that all writes for a block is end.
    *
-   * @param blockId           the ID of the block.
-   * @param blockStore        the store to save the block.
+   * @param blockId              the ID of the block.
+   * @param blockStore           the store to save the block.
    * @param reportPartitionSizes whether report the size of partitions to master or not.
-   * @param srcIRVertexId     the IR vertex ID of the source task.
-   * @param expectedReadTotal the expected number of read for this block.
-   * @param usedDataHandling  how to handle the used block.
+   * @param srcIRVertexId        the IR vertex ID of the source task.
+   * @param expectedReadTotal    the expected number of read for this block.
+   * @param usedDataHandling     how to handle the used block.
    * @return a {@link Optional} of the size of each written block.
    */
   public Optional<Long> commitBlock(final String blockId,
@@ -277,7 +277,7 @@ public final class BlockManagerWorker {
     }
 
     final BlockStore store = getBlockStore(blockStore);
-    final Optional<Iterable<Long>> partitionSizes = store.commitBlock(blockId);
+    final Optional<Map<Integer, Long>> partitionSizeMap = store.commitBlock(blockId);
     final ControlMessage.BlockStateChangedMsg.Builder blockStateChangedMsgBuilder =
         ControlMessage.BlockStateChangedMsg.newBuilder()
             .setExecutorId(executorId)
@@ -298,7 +298,16 @@ public final class BlockManagerWorker {
             .setBlockStateChangedMsg(blockStateChangedMsgBuilder.build())
             .build());
 
-    if (reportPartitionSizes && partitionSizes.isPresent()) {
+    if (reportPartitionSizes && partitionSizeMap.isPresent()) {
+      final List<ControlMessage.PartitionSizeEntry> partitionSizeEntries = new ArrayList<>();
+      partitionSizeMap.get().forEach((key, size) ->
+          partitionSizeEntries.add(
+              ControlMessage.PartitionSizeEntry.newBuilder()
+                  .setKey(key)
+                  .setSize(size)
+                  .build())
+      );
+
       // TODO #4: Refactor metric aggregation for (general) run-rime optimization.
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
           .send(ControlMessage.Message.newBuilder()
@@ -308,15 +317,15 @@ public final class BlockManagerWorker {
               .setDataSizeMetricMsg(ControlMessage.DataSizeMetricMsg.newBuilder()
                   .setBlockId(blockId)
                   .setSrcIRVertexId(srcIRVertexId)
-                  .addAllPartitionSizeInfo(partitionSizes.get())
+                  .addAllPartitionSize(partitionSizeEntries)
               )
               .build());
     }
 
     // Return the total size of the committed block.
-    if (partitionSizes.isPresent()) {
+    if (partitionSizeMap.isPresent()) {
       long blockSizeTotal = 0;
-      for (final long partitionSize : partitionSizes.get()) {
+      for (final long partitionSize : partitionSizeMap.get().values()) {
         blockSizeTotal += partitionSize;
       }
       return Optional.of(blockSizeTotal);

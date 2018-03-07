@@ -191,9 +191,10 @@ public final class GlusterFileStore extends AbstractBlockStore implements Remote
    * @return the size of each partition.
    */
   @Override
-  public Optional<Iterable<Long>> commitBlock(final String blockId) throws BlockWriteException {
+  public <K extends Serializable>
+  Optional<Map<K, Long>> commitBlock(final String blockId) throws BlockWriteException {
     final Block block = blockMap.get(blockId);
-    final Optional<Iterable<Long>> partitionSizes;
+    final Optional<Map<K, Long>> partitionSizes;
     if (block != null) {
       try {
         partitionSizes = block.commit();

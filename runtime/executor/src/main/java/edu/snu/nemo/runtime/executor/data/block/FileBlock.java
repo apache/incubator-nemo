@@ -279,7 +279,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
    * @throws IOException if failed to commit.
    */
   @Override
-  public synchronized Optional<Iterable<Long>> commit() throws IOException {
+  public synchronized Optional<Map<K, Long>> commit() throws IOException {
     if (!metadata.isCommitted()) {
       final List<SerializedPartition<K>> partitions = new ArrayList<>();
       for (final SerializedPartition<K> partition : nonCommittedPartitionsMap.values()) {
@@ -291,9 +291,16 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
       metadata.commitBlock();
     }
     final List<PartitionMetadata<K>> partitionMetadatas = metadata.getPartitionMetadataList();
-    final List<Long> partitionSizes = new ArrayList<>(partitionMetadatas.size());
+    final Map<K, Long> partitionSizes = new HashMap<>(partitionMetadatas.size());
     for (final PartitionMetadata<K> partitionMetadata : partitionMetadatas) {
-      partitionSizes.add((long) partitionMetadata.getPartitionSize());
+      final K key = partitionMetadata.getKey();
+      final long partitionSize = partitionMetadata.getPartitionSize();
+      if (partitionSizes.containsKey(key)) {
+        partitionSizes.compute(key,
+            (existingKey, existingValue) -> existingValue + partitionSize);
+      } else {
+        partitionSizes.put(key, partitionSize);
+      }
     }
     return Optional.of(partitionSizes);
   }

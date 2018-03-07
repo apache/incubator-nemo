@@ -147,7 +147,7 @@ public abstract class LocalBlockStore extends AbstractBlockStore {
    * @see BlockStore#commitBlock(String)
    */
   @Override
-  public final Optional<Iterable<Long>> commitBlock(final String blockId) {
+  public final <K extends Serializable> Optional<Map<K, Long>> commitBlock(final String blockId) {
     final Block block = blockMap.get(blockId);
     if (block != null) {
       try {

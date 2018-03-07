@@ -136,7 +136,6 @@ public final class DataUtil {
                new ByteArrayInputStream(partitionToConvert.getData())) {
         final NonSerializedPartition<K> deserializePartition = deserializePartition(
             partitionToConvert.getElementsCount(), serializer, key, byteArrayInputStream);
-        System.out.println("convertToNonSerPartitions: des partition " + deserializePartition.getData());
         nonSerializedPartitions.add(deserializePartition);
       }
     }

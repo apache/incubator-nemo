@@ -22,6 +22,7 @@ import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 
 import java.io.Serializable;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -34,25 +35,25 @@ public interface BlockStore {
    *
    * @param blockId the ID of the block to create.
    * @throws BlockWriteException for any error occurred while trying to create a block.
-   *         (This exception will be thrown to the scheduler
-   *          through {@link edu.snu.nemo.runtime.executor.Executor} and
-   *          have to be handled by the scheduler with fault tolerance mechanism.)
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
   void createBlock(String blockId) throws BlockWriteException;
 
   /**
    * Writes an element to non-committed block.
    * Invariant: This method may not support concurrent write for a single block.
-   *            Only one thread have to write at once.
+   * Only one thread have to write at once.
    *
    * @param blockId the ID of the block to write element.
    * @param key     the key.
    * @param element the element to write.
    * @param <K>     the key type of the partitions.
    * @throws BlockWriteException for any error occurred while trying to write a block.
-   *         (This exception will be thrown to the scheduler
-   *          through {@link edu.snu.nemo.runtime.executor.Executor} and
-   *          have to be handled by the scheduler with fault tolerance mechanism.)
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
   <K extends Serializable> void write(String blockId,
                                       K key,
@@ -62,15 +63,15 @@ public interface BlockStore {
    * Writes an iterable of {@link NonSerializedPartition}s to a block.
    * If the block exists already, appends the data to it.
    * Invariant: This method may not support concurrent write for a single block.
-   *            Only one thread have to write at once.
+   * Only one thread have to write at once.
    *
    * @param blockId    of the block.
    * @param partitions to save to a block.
    * @param <K>        the key type of the partitions.
    * @throws BlockWriteException for any error occurred while trying to write a block.
-   *         (This exception will be thrown to the scheduler
-   *          through {@link edu.snu.nemo.runtime.executor.Executor} and
-   *          have to be handled by the scheduler with fault tolerance mechanism.)
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
   <K extends Serializable> void writePartitions(String blockId,
                                                 Iterable<NonSerializedPartition<K>> partitions)
@@ -80,15 +81,15 @@ public interface BlockStore {
    * Writes an iterable of {@link SerializedPartition}s to a block.
    * If the block exists already, appends the data to it.
    * Invariant: This method may not support concurrent write for a single block.
-   *            Only one thread have to write at once.
+   * Only one thread have to write at once.
    *
    * @param blockId    of the block.
    * @param partitions to save to a block.
    * @param <K>        the key type of the partitions.
    * @throws BlockWriteException for any error occurred while trying to write a block.
-   *         (This exception will be thrown to the scheduler
-   *          through {@link edu.snu.nemo.runtime.executor.Executor} and
-   *          have to be handled by the scheduler with fault tolerance mechanism.)
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
   <K extends Serializable> void writeSerializedPartitions(String blockId,
                                                           Iterable<SerializedPartition<K>> partitions)
@@ -103,9 +104,9 @@ public interface BlockStore {
    * @param <K>      the key type of the partitions.
    * @return the result elements from the target block (if the target block exists).
    * @throws BlockFetchException for any error occurred while trying to fetch a block.
-   *         (This exception will be thrown to the scheduler
-   *          through {@link edu.snu.nemo.runtime.executor.Executor} and
-   *          have to be handled by the scheduler with fault tolerance mechanism.)
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
   <K extends Serializable> Optional<Iterable<NonSerializedPartition<K>>> readPartitions(String blockId,
                                                                                         KeyRange<K> keyRange)
@@ -114,14 +115,14 @@ public interface BlockStore {
   /**
    * Retrieves {@link SerializedPartition}s in a specific {@link KeyRange} from a block.
    *
-   * @param blockId   of the target block.
+   * @param blockId  of the target block.
    * @param keyRange the key range.
-   * @param <K> the key type of the partitions.
+   * @param <K>      the key type of the partitions.
    * @return the result elements from the target block (if the target block exists).
    * @throws BlockFetchException for any error occurred while trying to fetch a partition.
-   *         (This exception will be thrown to the scheduler
-   *          through {@link edu.snu.nemo.runtime.executor.Executor} and
-   *          have to be handled by the scheduler with fault tolerance mechanism.)
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
   <K extends Serializable> Optional<Iterable<SerializedPartition<K>>> readSerializedPartitions(String blockId,
                                                                                                KeyRange<K> keyRange)
@@ -131,13 +132,14 @@ public interface BlockStore {
    * Notifies that all writes for a block is end.
    *
    * @param blockId of the block.
+   * @param <K>     the key type of the partitions.
    * @return the size of each partition if the data in the block is serialized.
    * @throws BlockWriteException if fail to commit.
-   *         (This exception will be thrown to the scheduler
-   *          through {@link edu.snu.nemo.runtime.executor.Executor} and
-   *          have to be handled by the scheduler with fault tolerance mechanism.)
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  Optional<Iterable<Long>> commitBlock(String blockId) throws BlockWriteException;
+  <K extends Serializable> Optional<Map<K, Long>> commitBlock(String blockId) throws BlockWriteException;
 
   /**
    * Removes a block of data.
@@ -145,9 +147,9 @@ public interface BlockStore {
    * @param blockId of the block.
    * @return whether the partition exists or not.
    * @throws BlockFetchException for any error occurred while trying to remove a block.
-   *         (This exception will be thrown to the scheduler
-   *          through {@link edu.snu.nemo.runtime.executor.Executor} and
-   *          have to be handled by the scheduler with fault tolerance mechanism.)
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
   boolean removeBlock(String blockId);
 }
