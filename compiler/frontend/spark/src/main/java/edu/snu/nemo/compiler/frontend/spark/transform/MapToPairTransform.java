@@ -44,9 +44,9 @@ public final class MapToPairTransform<T, K, V> implements Transform<T, Tuple2<K,
   }
 
   @Override
-  public void onData(final Object element) {
+  public void onData(final T element) {
     try {
-      Tuple2<K, V> data = func.call((T) element);
+      Tuple2<K, V> data = func.call(element);
       outputCollector.emit(data);
     } catch (Exception e) {
       throw new RuntimeException(e);

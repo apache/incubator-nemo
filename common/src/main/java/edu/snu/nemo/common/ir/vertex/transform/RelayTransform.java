@@ -38,8 +38,8 @@ public final class RelayTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void onData(final Object element) {
-    outputCollector.emit((T) element);
+  public void onData(final T element) {
+    outputCollector.emit(element);
   }
 
   @Override

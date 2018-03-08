@@ -50,10 +50,10 @@ public final class CollectTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void onData(final Object element) {
+  public void onData(final T element) {
     // Write result to a temporary file.
     // TODO #740: remove this part, and make it properly transfer with executor.
-    list.add((T) element);
+    list.add(element);
   }
 
   @Override

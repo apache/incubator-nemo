@@ -79,7 +79,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void onData(final Object data) {
+  public void onData(final I data) {
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
     if (data instanceof Iterable) {

@@ -38,7 +38,7 @@ public interface Transform<I, O> extends Serializable {
    * On data received.
    * @param element data received.
    */
-  void onData(Object element);
+  void onData(I element);
 
   /**
    * Close the transform.

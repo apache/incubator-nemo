@@ -269,6 +269,7 @@ public final class AlternatingLeastSquare {
      */
     @FinishBundle
     public void finishBundle(final FinishBundleContext c) {
+      // results.forEach(r -> c.output(r, null, null));
       KV<Integer, List<Double>> resultElement = results.remove(0);
       c.output(resultElement, null, null);
     }

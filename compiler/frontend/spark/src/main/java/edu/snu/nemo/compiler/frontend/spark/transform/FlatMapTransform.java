@@ -42,9 +42,9 @@ public final class FlatMapTransform<T, U> implements Transform<T, U> {
   }
 
   @Override
-  public void onData(final Object element) {
+  public void onData(final T element) {
     try {
-      func.call((T) element).forEachRemaining(outputCollector::emit);
+      func.call(element).forEachRemaining(outputCollector::emit);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

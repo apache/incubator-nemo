@@ -51,8 +51,8 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void onData(final Object element) {
-    WindowedValue<I> data = WindowedValue.valueInGlobalWindow((I) element);
+  public void onData(final I element) {
+    WindowedValue<I> data = WindowedValue.valueInGlobalWindow(element);
     windowed.add(data);
   }
 

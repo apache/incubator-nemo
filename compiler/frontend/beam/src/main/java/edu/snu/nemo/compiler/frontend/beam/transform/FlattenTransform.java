@@ -41,8 +41,8 @@ public final class FlattenTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void onData(final Object element) {
-    collectedElements.add((T) element);
+  public void onData(final T element) {
+    collectedElements.add(element);
   }
 
   @Override

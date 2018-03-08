@@ -30,57 +30,40 @@ public final class TaskDataHandler {
 
   public TaskDataHandler(final Task task) {
     this.task = task;
-    this.outputCollector = null;
-    this.outputWriters = new ArrayList<>();
+    this.children = new ArrayList<>();
     this.inputFromThisStage = new ArrayList<>();
     this.sideInputFromOtherStages = new ArrayList<>();
     this.sideInputFromThisStage = new ArrayList<>();
+    this.outputCollector = null;
+    this.outputWriters = new ArrayList<>();
   }
 
   private final Task task;
-  private OutputCollectorImpl outputCollector;
-  private final List<OutputWriter> outputWriters;
+  private List<TaskDataHandler> children;
+  private final List<OutputCollectorImpl> inputFromThisStage;
   private final List<InputReader> sideInputFromOtherStages;
   private final List<OutputCollectorImpl> sideInputFromThisStage;
-  private final List<OutputCollectorImpl> inputFromThisStage;
+  private OutputCollectorImpl outputCollector;
+  private final List<OutputWriter> outputWriters;
 
   public Task getTask() {
     return task;
+  }
+
+  public List<TaskDataHandler> getChildren() {
+    return children;
   }
 
   public List<OutputCollectorImpl> getInputFromThisStage() {
     return inputFromThisStage;
   }
 
-  public void addSideInputFromThisStage(final OutputCollectorImpl ocAsSideInput) {
-    sideInputFromThisStage.add(ocAsSideInput);
-  }
-
-  public List<OutputCollectorImpl> getSideInputFromThisStage() {
-    return sideInputFromThisStage;
-  }
-
   public List<InputReader> getSideInputFromOtherStages() {
     return sideInputFromOtherStages;
   }
 
-  public void addSideInputFromOtherStages(final InputReader sideInputReader) {
-    sideInputFromOtherStages.add(sideInputReader);
-  }
-
-  // Add OutputCollectors of parent tasks.
-  public void addInputFromThisStages(final OutputCollectorImpl input) {
-    inputFromThisStage.add(input);
-  }
-
-  public void addOutputWriters(final OutputWriter outputWriter) {
-    outputWriters.add(outputWriter);
-  }
-
-  // Set OutputCollector of this task.
-  // Mark if the data from this OutputCollector is used as side input.
-  public void setOutputCollector(final OutputCollectorImpl oc) {
-    outputCollector = oc;
+  public List<OutputCollectorImpl> getSideInputFromThisStage() {
+    return sideInputFromThisStage;
   }
 
   public OutputCollectorImpl getOutputCollector() {
@@ -91,4 +74,30 @@ public final class TaskDataHandler {
     return outputWriters;
   }
 
+  public void setChildrenDataHandler(final List<TaskDataHandler> childrenDataHandler) {
+    children = childrenDataHandler;
+  }
+
+  // Add OutputCollectors of parent tasks.
+  public void addInputFromThisStages(final OutputCollectorImpl input) {
+    inputFromThisStage.add(input);
+  }
+
+  public void addSideInputFromOtherStages(final InputReader sideInputReader) {
+    sideInputFromOtherStages.add(sideInputReader);
+  }
+
+  public void addSideInputFromThisStage(final OutputCollectorImpl ocAsSideInput) {
+    sideInputFromThisStage.add(ocAsSideInput);
+  }
+
+  // Set OutputCollector of this task.
+  // Mark if the data from this OutputCollector is used as side input.
+  public void setOutputCollector(final OutputCollectorImpl oc) {
+    outputCollector = oc;
+  }
+
+  public void addOutputWriters(final OutputWriter outputWriter) {
+    outputWriters.add(outputWriter);
+  }
 }

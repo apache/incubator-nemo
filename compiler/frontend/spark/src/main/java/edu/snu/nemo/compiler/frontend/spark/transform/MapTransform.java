@@ -41,9 +41,9 @@ public final class MapTransform<I, O> implements Transform<I, O> {
     this.outputCollector = p;
   }
 
-  public void onData(final Object element) {
+  public void onData(final I element) {
       try {
-        outputCollector.emit(func.call((I) element));
+        outputCollector.emit(func.call(element));
       } catch (Exception e) {
         throw new RuntimeException(e);
       }

@@ -27,7 +27,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.util.Iterator;
 
-
 /**
  * Reduce Transform for Spark.
  *
@@ -55,17 +54,17 @@ public final class ReduceTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void onData(final Object element) {
+  public void onData(final T element) {
     if (element == null) { // nothing to be done.
       return;
     }
 
-    if (result == null) {
-      result = (T) element;
-    }
-
     try {
-      result = func.call(result, (T) element);
+      if (result == null) {
+        result = element;
+      }
+
+      result = func.call(result, element);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
