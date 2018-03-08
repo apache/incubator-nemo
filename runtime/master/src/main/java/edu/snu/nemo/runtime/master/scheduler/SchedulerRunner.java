@@ -27,12 +27,14 @@ import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 
 /**
  * Takes a TaskGroup from the pending queue and schedules it to an executor.
  */
 @DriverSide
+@NotThreadSafe
 public final class SchedulerRunner {
   private static final Logger LOG = LoggerFactory.getLogger(SchedulerRunner.class.getName());
   private final Map<String, JobStateManager> jobStateManagers;
@@ -48,12 +50,16 @@ public final class SchedulerRunner {
     this.jobStateManagers = new HashMap<>();
     this.pendingTaskGroupQueue = pendingTaskGroupQueue;
     this.schedulingPolicy = schedulingPolicy;
-    this.schedulerThread = Executors.newSingleThreadExecutor();
+    this.schedulerThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "SchedulerRunner"));
     this.initialJobScheduled = false;
     this.isTerminated = false;
   }
 
-  public synchronized void scheduleJob(final JobStateManager jobStateManager) {
+  /**
+   * Begin scheduling a job.
+   * @param jobStateManager the corresponding {@link JobStateManager}
+   */
+  void scheduleJob(final JobStateManager jobStateManager) {
     if (!isTerminated) {
       jobStateManagers.put(jobStateManager.getJobId(), jobStateManager);
 
@@ -65,7 +71,8 @@ public final class SchedulerRunner {
     } // else ignore new incoming jobs when terminated.
   }
 
-  public synchronized void terminate() {
+  void terminate() {
+    schedulingPolicy.terminate();
     isTerminated = true;
   }
 

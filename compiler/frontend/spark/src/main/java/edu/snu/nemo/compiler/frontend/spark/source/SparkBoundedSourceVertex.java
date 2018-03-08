@@ -108,5 +108,10 @@ public final class SparkBoundedSourceVertex<T> extends SourceVertex<T> {
       return () -> JavaConverters.asJavaIteratorConverter(
           rdd.iterator(rdd.getPartitions()[partitionIndex], TaskContext$.MODULE$.empty())).asJava();
     }
+
+    @Override
+    public List<String> getLocations() {
+      throw new UnsupportedOperationException();
+    }
   }
 }

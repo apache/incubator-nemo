@@ -15,16 +15,11 @@
  */
 package edu.snu.nemo.tests.runtime;
 
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
-import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.physical.*;
-import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.common.state.TaskGroupState;
 import edu.snu.nemo.runtime.master.JobStateManager;
-import edu.snu.nemo.runtime.master.BlockManagerMaster;
-import edu.snu.nemo.runtime.master.resource.ContainerManager;
+import edu.snu.nemo.runtime.master.scheduler.ExecutorRegistry;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.scheduler.PendingTaskGroupQueue;
 import edu.snu.nemo.runtime.master.scheduler.Scheduler;
@@ -32,10 +27,6 @@ import edu.snu.nemo.runtime.master.scheduler.SchedulingPolicy;
 import org.apache.beam.sdk.values.KV;
 
 import java.util.*;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -43,83 +34,62 @@ import java.util.stream.IntStream;
  * Utility class for runtime unit tests.
  */
 public final class RuntimeTestUtil {
-  private static ExecutorService completionEventThreadPool;
-  private static BlockingDeque<Runnable> eventRunnableQueue;
-  private static boolean testComplete;
-
-  public static void initialize() {
-    testComplete = false;
-    completionEventThreadPool = Executors.newFixedThreadPool(5);
-
-    eventRunnableQueue = new LinkedBlockingDeque<>();
-
-    for (int i = 0; i < 5; i++) {
-      completionEventThreadPool.execute(() -> {
-        while (!testComplete || !eventRunnableQueue.isEmpty()) {
-          try {
-            final Runnable event = eventRunnableQueue.takeFirst();
-            event.run();
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-        }
-      });
-    }
-    completionEventThreadPool.shutdown();
-  }
-
-  public static void cleanup() {
-    testComplete = true;
-  }
-
   /**
-   * Sends a stage's completion event to scheduler, with all its task groups marked as complete as well.
-   * This replaces executor's task group completion messages for testing purposes.
+   * Complete the stage by completing all of its TaskGroups.
    * @param jobStateManager for the submitted job.
    * @param scheduler for the submitted job.
-   * @param containerManager used for testing purposes.
+   * @param executorRegistry provides executor representers
    * @param physicalStage for which the states should be marked as complete.
    */
-  public static void sendStageCompletionEventToScheduler(final JobStateManager jobStateManager,
-                                                         final Scheduler scheduler,
-                                                         final ContainerManager containerManager,
-                                                         final PhysicalStage physicalStage,
-                                                         final int attemptIdx) {
-    eventRunnableQueue.add(new Runnable() {
-      @Override
-      public void run() {
-        while (jobStateManager.getStageState(physicalStage.getId()).getStateMachine().getCurrentState()
-            == StageState.State.EXECUTING) {
-          physicalStage.getTaskGroupIds().forEach(taskGroupId -> {
-            if (jobStateManager.getTaskGroupState(taskGroupId).getStateMachine().getCurrentState()
-                == TaskGroupState.State.EXECUTING) {
-              sendTaskGroupStateEventToScheduler(scheduler, containerManager, taskGroupId,
-                  TaskGroupState.State.COMPLETE, attemptIdx, null);
-            }
-          });
-        }
+  public static void completeStage(final JobStateManager jobStateManager,
+                                   final Scheduler scheduler,
+                                   final ExecutorRegistry executorRegistry,
+                                   final PhysicalStage physicalStage,
+                                   final int attemptIdx) {
+    // Loop until the stage completes.
+    while (true) {
+      final Enum stageState = jobStateManager.getStageState(physicalStage.getId()).getStateMachine().getCurrentState();
+      if (StageState.State.COMPLETE == stageState) {
+        // Stage has completed, so we break out of the loop.
+        break;
+      } else if (StageState.State.EXECUTING == stageState) {
+        physicalStage.getTaskGroupIds().forEach(taskGroupId -> {
+          final Enum tgState = jobStateManager.getTaskGroupState(taskGroupId).getStateMachine().getCurrentState();
+          if (TaskGroupState.State.EXECUTING == tgState) {
+            sendTaskGroupStateEventToScheduler(scheduler, executorRegistry, taskGroupId,
+                TaskGroupState.State.COMPLETE, attemptIdx, null);
+          } else if (TaskGroupState.State.READY == tgState || TaskGroupState.State.COMPLETE == tgState) {
+            // Skip READY (try in the next loop and see if it becomes EXECUTING) and COMPLETE.
+          } else {
+            throw new IllegalStateException(tgState.toString());
+          }
+        });
+      } else if (StageState.State.READY == stageState) {
+        // Skip and retry in the next loop.
+      } else {
+        throw new IllegalStateException(stageState.toString());
       }
-    });
+    }
   }
 
   /**
    * Sends task group state change event to scheduler.
    * This replaces executor's task group completion messages for testing purposes.
    * @param scheduler for the submitted job.
-   * @param containerManager used for testing purposes.
+   * @param executorRegistry provides executor representers
    * @param taskGroupId for the task group to change the state.
    * @param newState for the task group.
    * @param cause in the case of a recoverable failure.
    */
   public static void sendTaskGroupStateEventToScheduler(final Scheduler scheduler,
-                                                        final ContainerManager containerManager,
+                                                        final ExecutorRegistry executorRegistry,
                                                         final String taskGroupId,
                                                         final TaskGroupState.State newState,
                                                         final int attemptIdx,
                                                         final TaskGroupState.RecoverableFailureCause cause) {
     ExecutorRepresenter scheduledExecutor;
     do {
-      scheduledExecutor = findExecutorForTaskGroup(containerManager, taskGroupId);
+      scheduledExecutor = findExecutorForTaskGroup(executorRegistry, taskGroupId);
     } while (scheduledExecutor == null);
 
     scheduler.onTaskGroupStateChanged(scheduledExecutor.getExecutorId(), taskGroupId,
@@ -127,11 +97,11 @@ public final class RuntimeTestUtil {
   }
 
   public static void sendTaskGroupStateEventToScheduler(final Scheduler scheduler,
-                                                        final ContainerManager containerManager,
+                                                        final ExecutorRegistry executorRegistry,
                                                         final String taskGroupId,
                                                         final TaskGroupState.State newState,
                                                         final int attemptIdx) {
-    sendTaskGroupStateEventToScheduler(scheduler, containerManager, taskGroupId, newState, attemptIdx, null);
+    sendTaskGroupStateEventToScheduler(scheduler, executorRegistry, taskGroupId, newState, attemptIdx, null);
   }
 
   public static void mockSchedulerRunner(final PendingTaskGroupQueue pendingTaskGroupQueue,
@@ -151,88 +121,15 @@ public final class RuntimeTestUtil {
   }
 
   /**
-   * Sends partition state changes of a stage to PartitionManager.
-   * This replaces executor's partition state messages for testing purposes.
-   * @param blockManagerMaster used for testing purposes.
-   * @param containerManager used for testing purposes.
-   * @param stageOutgoingEdges to infer partition IDs.
-   * @param physicalStage to change the state.
-   * @param newState for the task group.
-   */
-  public static void sendPartitionStateEventForAStage(final BlockManagerMaster blockManagerMaster,
-                                                      final ContainerManager containerManager,
-                                                      final List<PhysicalStageEdge> stageOutgoingEdges,
-                                                      final PhysicalStage physicalStage,
-                                                      final BlockState.State newState) {
-    eventRunnableQueue.add(new Runnable() {
-      @Override
-      public void run() {
-                // Initialize states for blocks of inter-stage edges
-        stageOutgoingEdges.forEach(physicalStageEdge -> {
-          final int srcParallelism = physicalStage.getTaskGroupIds().size();
-          IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-            final String partitionId =
-                RuntimeIdGenerator.generateBlockId(physicalStageEdge.getId(), srcTaskIdx);
-              sendPartitionStateEventToPartitionManager(blockManagerMaster, containerManager, partitionId, newState);
-          });
-        });
-
-        // Initialize states for blocks of stage internal edges
-        physicalStage.getTaskGroupIds().forEach(taskGroupId -> {
-          final DAG<Task, RuntimeEdge<Task>> taskGroupInternalDag = physicalStage.getTaskGroupDag();
-          taskGroupInternalDag.getVertices().forEach(task -> {
-            final List<RuntimeEdge<Task>> internalOutgoingEdges = taskGroupInternalDag.getOutgoingEdgesOf(task);
-            internalOutgoingEdges.forEach(taskRuntimeEdge -> {
-              final String partitionId =
-                  RuntimeIdGenerator.generateBlockId(taskRuntimeEdge.getId(),
-                      RuntimeIdGenerator.getIndexFromTaskGroupId(taskGroupId));
-              sendPartitionStateEventToPartitionManager(blockManagerMaster, containerManager, partitionId, newState);
-            });
-          });
-        });
-      }
-    });
-  }
-
-  /**
-   * Sends partition state change event to PartitionManager.
-   * This replaces executor's partition state messages for testing purposes.
-   * @param blockManagerMaster used for testing purposes.
-   * @param containerManager used for testing purposes.
-   * @param partitionId for the partition to change the state.
-   * @param newState for the task group.
-   */
-  public static void sendPartitionStateEventToPartitionManager(final BlockManagerMaster blockManagerMaster,
-                                                               final ContainerManager containerManager,
-                                                               final String partitionId,
-                                                               final BlockState.State newState) {
-    eventRunnableQueue.add(new Runnable() {
-      @Override
-      public void run() {
-        final Set<String> parentTaskGroupIds = blockManagerMaster.getProducerTaskGroupIds(partitionId);
-        if (!parentTaskGroupIds.isEmpty()) {
-          parentTaskGroupIds.forEach(taskGroupId -> {
-            final ExecutorRepresenter scheduledExecutor = findExecutorForTaskGroup(containerManager, taskGroupId);
-
-            if (scheduledExecutor != null) {
-              blockManagerMaster.onBlockStateChanged(
-                  partitionId, newState, scheduledExecutor.getExecutorId());
-            }
-          });
-        }
-      }
-    });
-  }
-
-  /**
    * Retrieves the executor to which the given task group was scheduled.
    * @param taskGroupId of the task group to search.
-   * @param containerManager used for testing purposes.
+   * @param executorRegistry provides executor representers
    * @return the {@link ExecutorRepresenter} of the executor the task group was scheduled to.
    */
-  private static ExecutorRepresenter findExecutorForTaskGroup(final ContainerManager containerManager,
+  private static ExecutorRepresenter findExecutorForTaskGroup(final ExecutorRegistry executorRegistry,
                                                               final String taskGroupId) {
-    for (final ExecutorRepresenter executor : containerManager.getExecutorRepresenterMap().values()) {
+    for (final String executorId : executorRegistry.getRunningExecutorIds()) {
+      final ExecutorRepresenter executor = executorRegistry.getRunningExecutorRepresenter(executorId);
       if (executor.getRunningTaskGroups().contains(taskGroupId)
           || executor.getCompleteTaskGroups().contains(taskGroupId)) {
         return executor;
