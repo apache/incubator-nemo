@@ -128,7 +128,7 @@ public final class RoundRobinSchedulingPolicyTest {
 
   @Test
   public void testNoneContainerType() {
-    final int slots = 5;
+    final int slots = 6;
     final List<ScheduledTaskGroup> scheduledTaskGroups =
         convertToScheduledTaskGroups(slots + 1, new byte[0], "Stage A", ExecutorPlacementProperty.NONE);
 
