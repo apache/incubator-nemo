@@ -82,8 +82,13 @@ public final class InitializedSourceVertex<T> extends SourceVertex<T> {
     }
 
     @Override
-    public Iterable<T> read() throws Exception {
+    public Iterable<T> read() {
       return this.initializedSourceData;
+    }
+
+    @Override
+    public List<String> getLocations() {
+      throw new UnsupportedOperationException();
     }
   }
 }

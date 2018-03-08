@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.driver;
 
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
@@ -26,6 +27,7 @@ import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.RuntimeMaster;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.Injector;
@@ -35,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.Base64;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * Compiles and runs User application.
@@ -98,7 +101,19 @@ public final class UserApplicationRunner implements Runnable {
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
 
       physicalPlan.getStageDAG().storeJSON(dagDirectory, "plan", "physical execution plan by compiler");
-      runtimeMaster.execute(physicalPlan, maxScheduleAttempt);
+
+      // Execute!
+      final Pair<JobStateManager, ScheduledExecutorService> executionResult =
+          runtimeMaster.execute(physicalPlan, maxScheduleAttempt);
+
+      // Wait for the job to finish and stop logging
+      final JobStateManager jobStateManager = executionResult.left();
+      final ScheduledExecutorService dagLoggingExecutor = executionResult.right();
+      jobStateManager.waitUntilFinish();
+      dagLoggingExecutor.shutdown();
+
+      jobStateManager.storeJSON(dagDirectory, "final");
+      LOG.info("{} is complete!", physicalPlan.getId());
       runtimeMaster.terminate();
     } catch (final Exception e) {
       throw new RuntimeException(e);

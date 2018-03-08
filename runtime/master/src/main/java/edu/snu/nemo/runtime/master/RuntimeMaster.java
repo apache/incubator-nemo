@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.master;
 
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -24,13 +25,11 @@ import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.common.state.TaskGroupState;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
-import edu.snu.nemo.runtime.master.scheduler.PendingTaskGroupQueue;
+import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
 import edu.snu.nemo.runtime.master.scheduler.Scheduler;
-import edu.snu.nemo.runtime.master.scheduler.SchedulerRunner;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -42,24 +41,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.TreeNode;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import javax.inject.Inject;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
 
 import static edu.snu.nemo.runtime.common.state.TaskGroupState.State.COMPLETE;
 import static edu.snu.nemo.runtime.common.state.TaskGroupState.State.ON_HOLD;
 
 /**
+ * (WARNING) Use runtimeMasterThread for all public methods to avoid race conditions.
+ *
  * Runtime Master is the central controller of Runtime.
  * Compiler submits an {@link PhysicalPlan} to Runtime Master to execute a job.
  * Runtime Master handles:
- *    a) Scheduling the job with {@link Scheduler}, {@link SchedulerRunner}, {@link PendingTaskGroupQueue}.
+ *    a) Scheduling the job with {@link Scheduler}.
  *    b) Managing resources with {@link ContainerManager}.
  *    c) Managing blocks with {@link BlockManagerMaster}.
  *    d) Receiving and sending control messages with {@link MessageEnvironment}.
@@ -70,11 +68,9 @@ public final class RuntimeMaster {
   private static final Logger LOG = LoggerFactory.getLogger(RuntimeMaster.class.getName());
   private static final int DAG_LOGGING_PERIOD = 3000;
 
-  private final ExecutorService masterControlEventExecutor;
+  private final ExecutorService runtimeMasterThread;
 
   private final Scheduler scheduler;
-  private final SchedulerRunner schedulerRunner;
-  private final PendingTaskGroupQueue pendingTaskGroupQueue;
   private final ContainerManager containerManager;
   private final BlockManagerMaster blockManagerMaster;
   private final MetricMessageHandler metricMessageHandler;
@@ -91,21 +87,17 @@ public final class RuntimeMaster {
 
   @Inject
   public RuntimeMaster(final Scheduler scheduler,
-                       final SchedulerRunner schedulerRunner,
-                       final PendingTaskGroupQueue pendingTaskGroupQueue,
                        final ContainerManager containerManager,
                        final BlockManagerMaster blockManagerMaster,
                        final MetricMessageHandler metricMessageHandler,
                        final MessageEnvironment masterMessageEnvironment,
                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
-    // We would like to keep the master event thread pool single threaded
+    // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
-    this.masterControlEventExecutor = Executors.newSingleThreadExecutor();
+    this.runtimeMasterThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster"));
     this.scheduler = scheduler;
-    this.schedulerRunner = schedulerRunner;
-    this.pendingTaskGroupQueue = pendingTaskGroupQueue;
     this.containerManager = containerManager;
     this.blockManagerMaster = blockManagerMaster;
     this.metricMessageHandler = metricMessageHandler;
@@ -123,53 +115,47 @@ public final class RuntimeMaster {
    * @param plan to execute.
    * @param maxScheduleAttempt the max number of times this plan/sub-part of the plan should be attempted.
    */
-  public void execute(final PhysicalPlan plan,
-                      final int maxScheduleAttempt) {
-    this.irVertices.addAll(plan.getTaskIRVertexMap().values());
+  public Pair<JobStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
+                                                                 final int maxScheduleAttempt) {
+    final Callable<Pair<JobStateManager, ScheduledExecutorService>> jobExecutionCallable = () -> {
+      this.irVertices.addAll(plan.getTaskIRVertexMap().values());
+      try {
+        final JobStateManager jobStateManager =
+            new JobStateManager(plan, blockManagerMaster, metricMessageHandler, maxScheduleAttempt);
+        scheduler.scheduleJob(plan, jobStateManager);
+        final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(jobStateManager);
+        return Pair.of(jobStateManager, dagLoggingExecutor);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    };
+
     try {
-      final JobStateManager jobStateManager =
-          new JobStateManager(plan, blockManagerMaster, metricMessageHandler, maxScheduleAttempt);
-
-      scheduler.scheduleJob(plan, jobStateManager);
-
-      // Schedule dag logging thread
-      final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(jobStateManager);
-
-      // Wait for the job to finish and stop logging
-      jobStateManager.waitUntilFinish();
-      dagLoggingExecutor.shutdown();
-
-      jobStateManager.storeJSON(dagDirectory, "final");
-      LOG.info("{} is complete!", plan.getId());
+      return runtimeMasterThread.submit(jobExecutionCallable).get();
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
 
   public void terminate() {
-    try {
-      masterControlEventExecutor.shutdown();
+    runtimeMasterThread.execute(() -> {
 
       scheduler.terminate();
-      schedulerRunner.terminate();
-      pendingTaskGroupQueue.close();
-      masterMessageEnvironment.close();
-      metricMessageHandler.terminate();
-
-      final Future<Boolean> allExecutorsClosed = containerManager.terminate();
-      if (allExecutorsClosed.get()) {
-        LOG.info("All executors were closed successfully!");
-      } else {
-        LOG.error("Failed to shutdown all executors. See log exceptions for details. Terminating RuntimeMaster.");
+      try {
+        masterMessageEnvironment.close();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
       }
-    } catch (Exception e) {
-      new ContainerException(new Throwable("An exception occurred while trying to terminate ContainerManager"));
-      e.printStackTrace();
-    }
+      metricMessageHandler.terminate();
+      containerManager.terminate();
+
+    });
+
+    // Do not shutdown runtimeMasterThread. We need it to clean things up.
   }
 
   public void requestContainer(final String resourceSpecificationString) {
-    final Future<?> containerRequestEventResult = masterControlEventExecutor.submit(() -> {
+    final Future<?> containerRequestEventResult = runtimeMasterThread.submit(() -> {
       try {
         final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
 
@@ -205,8 +191,11 @@ public final class RuntimeMaster {
   public void onContainerAllocated(final String executorId,
                                    final AllocatedEvaluator allocatedEvaluator,
                                    final Configuration executorConfiguration) {
-    masterControlEventExecutor.execute(() ->
-      containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration));
+    runtimeMasterThread.execute(() -> {
+
+      containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration);
+
+    });
   }
 
   /**
@@ -216,14 +205,18 @@ public final class RuntimeMaster {
    */
   public boolean onExecutorLaunched(final ActiveContext activeContext) {
     final Callable<Boolean> processExecutorLaunchedEvent = () -> {
-      containerManager.onExecutorLaunched(activeContext);
-      scheduler.onExecutorAdded(activeContext.getId());
-      return (resourceRequestCount.decrementAndGet() == 0);
+      final Optional<ExecutorRepresenter> executor = containerManager.onContainerLaunched(activeContext);
+      if (executor.isPresent()) {
+        scheduler.onExecutorAdded(executor.get());
+        return (resourceRequestCount.decrementAndGet() == 0);
+      } else {
+        return false;
+      }
     };
 
     final boolean eventResult;
     try {
-      eventResult = masterControlEventExecutor.submit(processExecutorLaunchedEvent).get();
+      eventResult = runtimeMasterThread.submit(processExecutorLaunchedEvent).get();
     } catch (final Exception e) {
       throw new ContainerException(e);
     }
@@ -235,8 +228,8 @@ public final class RuntimeMaster {
    * @param failedExecutorId of the failed executor.
    */
   public void onExecutorFailed(final String failedExecutorId) {
-    masterControlEventExecutor.execute(() -> {
-      containerManager.onExecutorRemoved(failedExecutorId);
+    runtimeMasterThread.execute(() -> {
+      LOG.error(failedExecutorId + " executor failed");
       scheduler.onExecutorRemoved(failedExecutorId);
     });
   }
@@ -247,7 +240,11 @@ public final class RuntimeMaster {
   public final class MasterControlMessageReceiver implements MessageListener<ControlMessage.Message> {
     @Override
     public void onMessage(final ControlMessage.Message message) {
-      masterControlEventExecutor.execute(() -> handleControlMessage(message));
+      runtimeMasterThread.execute(() -> {
+
+        handleControlMessage(message);
+
+      });
     }
 
     @Override
@@ -274,16 +271,12 @@ public final class RuntimeMaster {
           convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
       break;
     case ExecutorFailed:
+      // Executor failed due to user code.
       final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
       final String failedExecutorId = executorFailedMsg.getExecutorId();
       final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
       LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
-      containerManager.onExecutorRemoved(failedExecutorId);
       throw new RuntimeException(exception);
-    case ContainerFailed:
-      final ControlMessage.ContainerFailedMsg containerFailedMsg = message.getContainerFailedMsg();
-      LOG.error(containerFailedMsg.getExecutorId() + " failed");
-      break;
     case DataSizeMetric:
       final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
       // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
@@ -311,7 +304,7 @@ public final class RuntimeMaster {
    * @param srcVertexId   the ID of the source vertex.
    * @param blockId       the ID of the block.
    */
-  public void accumulateBarrierMetric(final List<Long> blockSizeInfo,
+  private void accumulateBarrierMetric(final List<Long> blockSizeInfo,
                                       final String srcVertexId,
                                       final String blockId) {
     final IRVertex vertexToSendMetricDataTo = irVertices.stream()
@@ -347,44 +340,6 @@ public final class RuntimeMaster {
     }
   }
 
-  public static BlockState.State convertBlockState(final ControlMessage.BlockStateFromExecutor state) {
-    switch (state) {
-    case BLOCK_READY:
-      return BlockState.State.READY;
-    case SCHEDULED:
-      return BlockState.State.SCHEDULED;
-    case COMMITTED:
-      return BlockState.State.COMMITTED;
-    case LOST_BEFORE_COMMIT:
-      return BlockState.State.LOST_BEFORE_COMMIT;
-    case LOST:
-      return BlockState.State.LOST;
-    case REMOVED:
-      return BlockState.State.REMOVED;
-    default:
-      throw new UnknownExecutionStateException(new Exception("This BlockState is unknown: " + state));
-    }
-  }
-
-  public static ControlMessage.BlockStateFromExecutor convertBlockState(final BlockState.State state) {
-    switch (state) {
-      case READY:
-        return ControlMessage.BlockStateFromExecutor.BLOCK_READY;
-      case SCHEDULED:
-        return ControlMessage.BlockStateFromExecutor.SCHEDULED;
-      case COMMITTED:
-        return ControlMessage.BlockStateFromExecutor.COMMITTED;
-      case LOST_BEFORE_COMMIT:
-        return ControlMessage.BlockStateFromExecutor.LOST_BEFORE_COMMIT;
-      case LOST:
-        return ControlMessage.BlockStateFromExecutor.LOST;
-      case REMOVED:
-        return ControlMessage.BlockStateFromExecutor.REMOVED;
-      default:
-        throw new UnknownExecutionStateException(new Exception("This BlockState is unknown: " + state));
-    }
-  }
-
   private TaskGroupState.RecoverableFailureCause convertFailureCause(
       final ControlMessage.RecoverableFailureCause cause) {
     switch (cause) {
@@ -416,21 +371,5 @@ public final class RuntimeMaster {
     }, DAG_LOGGING_PERIOD, DAG_LOGGING_PERIOD, TimeUnit.MILLISECONDS);
 
     return dagLoggingExecutor;
-  }
-
-  /**
-   * Map function that converts a json string to a java map object.
-   */
-  final class JsonStringToMapFunction implements Function<String, Map<String, Object>> {
-    @Override
-    public Map<String, Object> apply(final String s) {
-      try {
-        return objectMapper.readValue(s, new TypeReference<Map<String, String>>() { });
-      } catch (final IOException e) {
-        e.printStackTrace();
-        throw new IllegalMessageException(
-            new Exception("The metric message format is incorrect. It should be in Json format: " + s));
-      }
-    }
   }
 }
