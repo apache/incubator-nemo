@@ -16,12 +16,11 @@
 package edu.snu.nemo.runtime.master;
 
 import edu.snu.nemo.common.exception.IllegalMessageException;
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
+import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.runtime.common.exception.AbsentBlockException;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
-import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.state.BlockState;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -42,7 +41,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static edu.snu.nemo.runtime.common.state.BlockState.State.SCHEDULED;
-import static edu.snu.nemo.runtime.master.RuntimeMaster.convertBlockState;
 
 /**
  * Master-side block manager.
@@ -331,7 +329,7 @@ public final class BlockManagerMaster {
             final ControlMessage.BlockStateChangedMsg blockStateChangedMsg =
                 message.getBlockStateChangedMsg();
             final String blockId = blockStateChangedMsg.getBlockId();
-            onBlockStateChanged(blockId, RuntimeMaster.convertBlockState(blockStateChangedMsg.getState()),
+            onBlockStateChanged(blockId, convertBlockState(blockStateChangedMsg.getState()),
                 blockStateChangedMsg.getLocation());
             break;
           default:
@@ -435,4 +433,53 @@ public final class BlockManagerMaster {
       return locationFuture;
     }
   }
+
+  /**
+   * Return the corresponding {@link BlockState.State} for the specified {@link ControlMessage.BlockStateFromExecutor}.
+   * @param state {@link ControlMessage.BlockStateFromExecutor}
+   * @return the corresponding {@link BlockState.State}
+   */
+  public static BlockState.State convertBlockState(final ControlMessage.BlockStateFromExecutor state) {
+    switch (state) {
+      case BLOCK_READY:
+        return BlockState.State.READY;
+      case SCHEDULED:
+        return BlockState.State.SCHEDULED;
+      case COMMITTED:
+        return BlockState.State.COMMITTED;
+      case LOST_BEFORE_COMMIT:
+        return BlockState.State.LOST_BEFORE_COMMIT;
+      case LOST:
+        return BlockState.State.LOST;
+      case REMOVED:
+        return BlockState.State.REMOVED;
+      default:
+        throw new UnknownExecutionStateException(new Exception("This BlockState is unknown: " + state));
+    }
+  }
+
+  /**
+   * Return the corresponding {@link ControlMessage.BlockStateFromExecutor} for the specified {@link BlockState.State}.
+   * @param state {@link BlockState.State}
+   * @return the corresponding {@link ControlMessage.BlockStateFromExecutor}
+   */
+  public static ControlMessage.BlockStateFromExecutor convertBlockState(final BlockState.State state) {
+    switch (state) {
+      case READY:
+        return ControlMessage.BlockStateFromExecutor.BLOCK_READY;
+      case SCHEDULED:
+        return ControlMessage.BlockStateFromExecutor.SCHEDULED;
+      case COMMITTED:
+        return ControlMessage.BlockStateFromExecutor.COMMITTED;
+      case LOST_BEFORE_COMMIT:
+        return ControlMessage.BlockStateFromExecutor.LOST_BEFORE_COMMIT;
+      case LOST:
+        return ControlMessage.BlockStateFromExecutor.LOST;
+      case REMOVED:
+        return ControlMessage.BlockStateFromExecutor.REMOVED;
+      default:
+        throw new UnknownExecutionStateException(new Exception("This BlockState is unknown: " + state));
+    }
+  }
+
 }

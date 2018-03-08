@@ -82,6 +82,11 @@ public final class ExampleTestUtil {
    * This method test the output validity of AlternatingLeastSquareITCase.
    * Due to the floating point math error, the output of the test can be different every time.
    * Thus we cannot compare plain text output, but have to check its numeric error.
+   *
+   * @param resourcePath path to resources.
+   * @param outputFileName name of output file.
+   * @param testResourceFileName name of the file to compare the outputs to.
+   * @throws IOException exception.
    */
   public static void ensureALSOutputValidity(final String resourcePath,
                                              final String outputFileName,

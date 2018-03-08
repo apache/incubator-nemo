@@ -17,11 +17,8 @@ package edu.snu.nemo.runtime.master.resource;
 
 import edu.snu.nemo.common.exception.ContainerException;
 import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageSender;
-import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -29,27 +26,34 @@ import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.tang.Configuration;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Encapsulates REEF's evaluator management for executors.
- * Serves as a single point of container/executor management in Runtime.
+ * (WARNING) This class is not thread-safe.
+ * Only a single thread should use the methods of this class.
+ * (i.e., runtimeMasterThread in RuntimeMaster)
+ *
+ * Encapsulates REEF's evaluator management for containers.
+ * Serves as a single point of container management in Runtime.
  * We define a unit of resource a container (an evaluator in REEF), and launch a single executor on each container.
  */
 // TODO #60: Specify Types in Requesting Containers
 // We need an overall cleanup of this class after #60 is resolved.
 @DriverSide
+@NotThreadSafe
 public final class ContainerManager {
   private static final Logger LOG = LoggerFactory.getLogger(ContainerManager.class.getName());
+
+  private boolean isTerminated;
 
   private final EvaluatorRequestor evaluatorRequestor;
   private final MessageEnvironment messageEnvironment;
@@ -61,38 +65,18 @@ public final class ContainerManager {
   private final Map<String, CountDownLatch> requestLatchByResourceSpecId;
 
   /**
-   * A map containing a list of executor representations for each container type.
-   */
-  private final Map<String, List<ExecutorRepresenter>> executorsByContainerType;
-
-  /**
-   * A map of executor ID to the corresponding {@link ExecutorRepresenter}.
-   */
-  private final Map<String, ExecutorRepresenter> executorRepresenterMap;
-
-  /**
-   * A map of failed executor ID to the corresponding failed {@link ExecutorRepresenter}.
-   */
-  private final Map<String, ExecutorRepresenter> failedExecutorRepresenterMap;
-
-  /**
    * Keeps track of evaluator and context requests.
    */
   private final Map<String, ResourceSpecification> pendingContextIdToResourceSpec;
   private final Map<String, List<ResourceSpecification>> pendingContainerRequestsByContainerType;
 
-  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
-
   @Inject
-  public ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
-                          final EvaluatorRequestor evaluatorRequestor,
-                          final MessageEnvironment messageEnvironment) {
+  private ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
+                           final EvaluatorRequestor evaluatorRequestor,
+                           final MessageEnvironment messageEnvironment) {
+    this.isTerminated = false;
     this.evaluatorRequestor = evaluatorRequestor;
     this.messageEnvironment = messageEnvironment;
-    this.persistentConnectionToMasterMap = new PersistentConnectionToMasterMap(messageEnvironment);
-    this.executorsByContainerType = new HashMap<>();
-    this.executorRepresenterMap = new HashMap<>();
-    this.failedExecutorRepresenterMap = new HashMap<>();
     this.pendingContextIdToResourceSpec = new HashMap<>();
     this.pendingContainerRequestsByContainerType = new HashMap<>();
     this.requestLatchByResourceSpecId = new HashMap<>();
@@ -104,15 +88,18 @@ public final class ContainerManager {
    * @param numToRequest number of containers to request
    * @param resourceSpecification containing the specifications of
    */
-  public synchronized void requestContainer(final int numToRequest,
-                                            final ResourceSpecification resourceSpecification) {
+  public void requestContainer(final int numToRequest, final ResourceSpecification resourceSpecification) {
+    if (isTerminated) {
+      LOG.info("ContainerManager is terminated, ignoring {}", resourceSpecification.toString());
+      return;
+    }
+
     if (numToRequest > 0) {
       // Create a list of executor specifications to be used when containers are allocated.
       final List<ResourceSpecification> resourceSpecificationList = new ArrayList<>(numToRequest);
       for (int i = 0; i < numToRequest; i++) {
         resourceSpecificationList.add(resourceSpecification);
       }
-      executorsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>(numToRequest));
 
       // Mark the request as pending with the given specifications.
       pendingContainerRequestsByContainerType.putIfAbsent(resourceSpecification.getContainerType(), new ArrayList<>());
@@ -139,30 +126,66 @@ public final class ContainerManager {
    * @param allocatedContainer the allocated container.
    * @param executorConfiguration executor related configuration.
    */
-  public synchronized void onContainerAllocated(final String executorId,
-                                                final AllocatedEvaluator allocatedContainer,
-                                                final Configuration executorConfiguration) {
-    onContainerAllocated(selectResourceSpecForContainer(), executorId,
-        allocatedContainer, executorConfiguration);
-  }
+  public void onContainerAllocated(final String executorId, final AllocatedEvaluator allocatedContainer,
+                                   final Configuration executorConfiguration) {
+    if (isTerminated) {
+      LOG.info("ContainerManager is terminated, closing {}", allocatedContainer.getId());
+      allocatedContainer.close();
+      return;
+    }
 
-  // To be exposed as a public synchronized method in place of the above "onContainerAllocated"
-  /**
-   * Launches executor once a container is allocated.
-   * @param resourceSpecification of the executor to be launched.
-   * @param executorId of the executor to be launched.
-   * @param allocatedContainer the allocated container.
-   * @param executorConfiguration executor related configuration.
-   */
-  private void onContainerAllocated(final ResourceSpecification resourceSpecification,
-                                    final String executorId,
-                                    final AllocatedEvaluator allocatedContainer,
-                                    final Configuration executorConfiguration) {
+    final ResourceSpecification resourceSpecification = selectResourceSpecForContainer();
     LOG.info("Container type (" + resourceSpecification.getContainerType()
         + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
 
     allocatedContainer.submitContext(executorConfiguration);
+  }
+
+  /**
+   * Initializes master's connection to the container once launched.
+   * A representation of the executor to reside in master is created.
+   *
+   * @param activeContext for the launched container.
+   * @return a representation of the executor. (return an empty Optional if terminated)
+   */
+  public Optional<ExecutorRepresenter> onContainerLaunched(final ActiveContext activeContext) {
+    if (isTerminated) {
+      LOG.info("ContainerManager is terminated, closing {}", activeContext.getId());
+      activeContext.close();
+      return Optional.empty();
+    }
+
+    // We set contextId = executorId in NemoDriver when we generate executor configuration.
+    final String executorId = activeContext.getId();
+
+    final ResourceSpecification resourceSpec = pendingContextIdToResourceSpec.remove(executorId);
+
+    // Connect to the executor and initiate Master side's executor representation.
+    final MessageSender messageSender;
+    try {
+      messageSender =
+          messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
+
+    // Create the executor representation.
+    final ExecutorRepresenter executorRepresenter =
+        new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext, serializationExecutorService,
+            activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
+
+    LOG.info("{} is up and running at {}", executorId, executorRepresenter.getNodeName());
+
+    requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
+    return Optional.of(executorRepresenter);
+  }
+
+  public void terminate() {
+    if (isTerminated) {
+      throw new IllegalStateException("Cannot terminate twice");
+    }
+    isTerminated = true;
   }
 
   /**
@@ -184,100 +207,5 @@ public final class ContainerManager {
       return selectedResourceSpec;
     }
     throw new ContainerException(new Throwable("We never requested for an extra container"));
-  }
-
-  /**
-   * Initializes master's connection to the executor once launched.
-   * A representation of the executor to reside in master is created.
-   * @param activeContext for the launched executor.
-   */
-  public synchronized void onExecutorLaunched(final ActiveContext activeContext) {
-    // We set contextId = executorId in NemoDriver when we generate executor configuration.
-    final String executorId = activeContext.getId();
-
-    LOG.info("[" + executorId + "] is up and running");
-
-    final ResourceSpecification resourceSpec = pendingContextIdToResourceSpec.remove(executorId);
-
-    // Connect to the executor and initiate Master side's executor representation.
-    final MessageSender messageSender;
-    try {
-      messageSender =
-          messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
-    } catch (final Exception e) {
-      throw new RuntimeException(e);
-    }
-
-    // Create the executor representation.
-    final ExecutorRepresenter executorRepresenter =
-        new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext, serializationExecutorService);
-
-    executorsByContainerType.putIfAbsent(resourceSpec.getContainerType(), new ArrayList<>());
-    executorsByContainerType.get(resourceSpec.getContainerType()).add(executorRepresenter);
-    executorRepresenterMap.put(executorId, executorRepresenter);
-
-    requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
-  }
-
-  public synchronized void onExecutorRemoved(final String failedExecutorId) {
-    LOG.info("[" + failedExecutorId + "] failure reported.");
-
-    final ExecutorRepresenter failedExecutor = executorRepresenterMap.remove(failedExecutorId);
-    failedExecutor.onExecutorFailed();
-
-    executorsByContainerType.get(failedExecutor.getContainerType()).remove(failedExecutor);
-
-    failedExecutorRepresenterMap.put(failedExecutorId, failedExecutor);
-
-    // Signal RuntimeMaster on CONTAINER_FAILURE type FAILED_RECOVERABLE state
-    persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-        ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.ContainerFailed)
-            .setContainerFailedMsg(ControlMessage.ContainerFailedMsg.newBuilder()
-                .setExecutorId(failedExecutorId)
-                .build())
-            .build());
-  }
-
-  public synchronized Map<String, ExecutorRepresenter> getExecutorRepresenterMap() {
-    return executorRepresenterMap;
-  }
-
-  public synchronized Map<String, ExecutorRepresenter> getFailedExecutorRepresenterMap() {
-    return failedExecutorRepresenterMap;
-  }
-
-  /**
-   * Shuts down the running executors.
-   */
-  private void shutdownRunningExecutors() {
-    executorRepresenterMap.entrySet().forEach(e -> e.getValue().shutDown());
-    executorRepresenterMap.clear();
-  }
-
-  /**
-   * Terminates ContainerManager.
-   * Before we terminate, we must wait for all the executors we requested
-   * and shutdown all of them if any of them is running.
-   * @return a future that returns a boolean on whether all requested resources were allocated and released.
-   */
-  public synchronized Future<Boolean> terminate() {
-    shutdownRunningExecutors();
-    return Executors.newSingleThreadExecutor().submit(() -> waitForAllRequestedResources());
-  }
-
-  private boolean waitForAllRequestedResources() {
-    requestLatchByResourceSpecId.forEach((resourceSpecId, latchForRequest) -> {
-      try {
-        latchForRequest.await();
-      } catch (InterruptedException e) {
-        throw new ContainerException(e);
-      }
-    });
-    shutdownRunningExecutors();
-    requestLatchByResourceSpecId.clear();
-    return executorRepresenterMap.isEmpty();
   }
 }

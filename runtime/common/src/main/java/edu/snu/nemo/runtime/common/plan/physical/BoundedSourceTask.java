@@ -44,9 +44,8 @@ public final class BoundedSourceTask<O> extends Task {
 
   /**
    * @return the readable of source data.
-   * @throws Exception if fail to get.
    */
-  public Readable<O> getReadable() throws Exception {
+  public Readable<O> getReadable() {
     return readable;
   }
 }

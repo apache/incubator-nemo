@@ -27,8 +27,7 @@ enum MessageType {
     RequestBlockLocation = 4;
     BlockLocationInfo = 5;
     ExecutorFailed = 6;
-    ContainerFailed = 7;
-    MetricMessageReceived = 8;
+    MetricMessageReceived = 7;
 }
 
 message Message {

@@ -29,6 +29,7 @@ import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.nemo.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.nemo.conf.JobConf;
+import edu.snu.nemo.runtime.master.scheduler.ExecutorRegistry;
 import edu.snu.nemo.tests.runtime.RuntimeTestUtil;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageSender;
@@ -38,7 +39,6 @@ import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.MetricMessageHandler;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
-import edu.snu.nemo.runtime.master.resource.ContainerManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
 import edu.snu.nemo.runtime.master.scheduler.*;
@@ -46,6 +46,7 @@ import edu.snu.nemo.tests.compiler.optimizer.policy.TestPolicy;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -58,6 +59,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 import static edu.snu.nemo.runtime.common.state.StageState.State.COMPLETE;
 import static edu.snu.nemo.runtime.common.state.StageState.State.EXECUTING;
@@ -65,13 +67,12 @@ import static junit.framework.TestCase.assertFalse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Tests fault tolerance.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ContainerManager.class, BlockManagerMaster.class, SchedulerRunner.class,
+@PrepareForTest({BlockManagerMaster.class, SchedulerRunner.class,
     PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
 public final class FaultToleranceTest {
   private static final Logger LOG = LoggerFactory.getLogger(FaultToleranceTest.class.getName());
@@ -79,7 +80,7 @@ public final class FaultToleranceTest {
   private Scheduler scheduler;
   private SchedulingPolicy schedulingPolicy;
   private SchedulerRunner schedulerRunner;
-  private ContainerManager containerManager;
+  private ExecutorRegistry executorRegistry;
 
   private MetricMessageHandler metricMessageHandler;
   private PendingTaskGroupQueue pendingTaskGroupQueue;
@@ -95,7 +96,6 @@ public final class FaultToleranceTest {
 
   @Before
   public void setUp() throws Exception {
-    RuntimeTestUtil.initialize();
     irDAGBuilder = new DAGBuilder<>();
 
     metricMessageHandler = mock(MetricMessageHandler.class);
@@ -107,15 +107,12 @@ public final class FaultToleranceTest {
     physicalPlanGenerator = injector.getInstance(PhysicalPlanGenerator.class);
   }
 
-  private void setUpExecutors(final Map<String, ExecutorRepresenter> executorRepresenterMap,
-                              final Map<String, ExecutorRepresenter> failedexecutorRepresenterMap,
-                              final boolean useMockSchedulerRunner) {
-    containerManager = mock(ContainerManager.class);
-    when(containerManager.getExecutorRepresenterMap()).thenReturn(executorRepresenterMap);
-    when(containerManager.getFailedExecutorRepresenterMap()).thenReturn(failedexecutorRepresenterMap);
+  private void setUpExecutors(final Collection<ExecutorRepresenter> executors,
+                              final boolean useMockSchedulerRunner) throws InjectionException {
+    executorRegistry = Tang.Factory.getTang().newInjector().getInstance(ExecutorRegistry.class);
 
     pendingTaskGroupQueue = new SingleJobTaskGroupQueue();
-    schedulingPolicy = new RoundRobinSchedulingPolicy(containerManager, TEST_TIMEOUT_MS);
+    schedulingPolicy = new RoundRobinSchedulingPolicy(executorRegistry, TEST_TIMEOUT_MS);
 
     if (useMockSchedulerRunner) {
       schedulerRunner = mock(SchedulerRunner.class);
@@ -127,7 +124,9 @@ public final class FaultToleranceTest {
             blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler);
 
     // Add nodes
-    executorRepresenterMap.keySet().forEach(executorId -> scheduler.onExecutorAdded(executorId));
+    for (final ExecutorRepresenter executor : executors) {
+      scheduler.onExecutorAdded(executor);
+    }
   }
 
   private PhysicalPlan buildPlan() throws Exception {
@@ -186,23 +185,18 @@ public final class FaultToleranceTest {
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
-    final ExecutorRepresenter a3 =
-        new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext, serExecutorService);
-    final ExecutorRepresenter a2 =
-        new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext, serExecutorService);
-    final ExecutorRepresenter a1 =
-        new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final Function<String, ExecutorRepresenter> executorRepresenterGenerator = executorId ->
+        new ExecutorRepresenter(executorId, computeSpec, mockMsgSender, activeContext, serExecutorService, executorId);
+    final ExecutorRepresenter a3 = executorRepresenterGenerator.apply("a3");
+    final ExecutorRepresenter a2 = executorRepresenterGenerator.apply("a2");
+    final ExecutorRepresenter a1 = executorRepresenterGenerator.apply("a1");
 
-    final Map<String, ExecutorRepresenter> executorMap = new HashMap<>();
-    executorMap.put("a1", a1);
-    executorMap.put("a2", a2);
-    executorMap.put("a3", a3);
+    final List<ExecutorRepresenter> executors = new ArrayList<>();
+    executors.add(a1);
+    executors.add(a2);
+    executors.add(a3);
 
-    final Map<String, ExecutorRepresenter> failedExecutorMap = new HashMap<>();
-    failedExecutorMap.put("a2", a2);
-    failedExecutorMap.put("a3", a2);
-
-    setUpExecutors(executorMap, failedExecutorMap, true);
+    setUpExecutors(executors, true);
     final PhysicalPlan plan = buildPlan();
     final JobStateManager jobStateManager =
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
@@ -217,7 +211,7 @@ public final class FaultToleranceTest {
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
-          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
               taskGroupId, TaskGroupState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
@@ -234,7 +228,7 @@ public final class FaultToleranceTest {
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
-          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
               taskGroupId, TaskGroupState.State.COMPLETE, 1));
       } else {
         // There are 2 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 2.
@@ -257,8 +251,6 @@ public final class FaultToleranceTest {
         }
       }
     }
-
-    RuntimeTestUtil.cleanup();
   }
 
   /**
@@ -270,18 +262,17 @@ public final class FaultToleranceTest {
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
-    final ExecutorRepresenter a3 =
-        new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext, serExecutorService);
-    final ExecutorRepresenter a2 =
-        new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext, serExecutorService);
-    final ExecutorRepresenter a1 =
-        new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final Function<String, ExecutorRepresenter> executorRepresenterGenerator = executorId ->
+        new ExecutorRepresenter(executorId, computeSpec, mockMsgSender, activeContext, serExecutorService, executorId);
+    final ExecutorRepresenter a3 = executorRepresenterGenerator.apply("a3");
+    final ExecutorRepresenter a2 = executorRepresenterGenerator.apply("a2");
+    final ExecutorRepresenter a1 = executorRepresenterGenerator.apply("a1");
 
-    final Map<String, ExecutorRepresenter> executorMap = new HashMap<>();
-    executorMap.put("a1", a1);
-    executorMap.put("a2", a2);
-    executorMap.put("a3", a3);
-    setUpExecutors(executorMap, Collections.emptyMap(), true);
+    final List<ExecutorRepresenter> executors = new ArrayList<>();
+    executors.add(a1);
+    executors.add(a2);
+    executors.add(a3);
+    setUpExecutors(executors, true);
 
     final PhysicalPlan plan = buildPlan();
     final JobStateManager jobStateManager =
@@ -297,14 +288,14 @@ public final class FaultToleranceTest {
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
-          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
               taskGroupId, TaskGroupState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
-          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
               taskGroupId, TaskGroupState.State.FAILED_RECOVERABLE, 1,
               TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
 
@@ -320,8 +311,6 @@ public final class FaultToleranceTest {
         });
       }
     }
-
-    RuntimeTestUtil.cleanup();
   }
 
   /**
@@ -333,18 +322,17 @@ public final class FaultToleranceTest {
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
-    final ExecutorRepresenter a3 =
-        new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext, serExecutorService);
-    final ExecutorRepresenter a2 =
-        new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext, serExecutorService);
-    final ExecutorRepresenter a1 =
-        new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final Function<String, ExecutorRepresenter> executorRepresenterGenerator = executorId ->
+        new ExecutorRepresenter(executorId, computeSpec, mockMsgSender, activeContext, serExecutorService, executorId);
+    final ExecutorRepresenter a3 = executorRepresenterGenerator.apply("a3");
+    final ExecutorRepresenter a2 = executorRepresenterGenerator.apply("a2");
+    final ExecutorRepresenter a1 = executorRepresenterGenerator.apply("a1");
 
-    final Map<String, ExecutorRepresenter> executorMap = new HashMap<>();
-    executorMap.put("a1", a1);
-    executorMap.put("a2", a2);
-    executorMap.put("a3", a3);
-    setUpExecutors(executorMap, Collections.emptyMap(), true);
+    final List<ExecutorRepresenter> executors = new ArrayList<>();
+    executors.add(a1);
+    executors.add(a2);
+    executors.add(a3);
+    setUpExecutors(executors, true);
 
     final PhysicalPlan plan = buildPlan();
     final JobStateManager jobStateManager =
@@ -360,14 +348,14 @@ public final class FaultToleranceTest {
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
         assertTrue(pendingTaskGroupQueue.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
-          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
               taskGroupId, TaskGroupState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
 
         stage.getTaskGroupIds().forEach(taskGroupId ->
-          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
               taskGroupId, TaskGroupState.State.FAILED_RECOVERABLE, 1,
               TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
 
@@ -382,8 +370,6 @@ public final class FaultToleranceTest {
         });
       }
     }
-
-    RuntimeTestUtil.cleanup();
   }
 
   /**
@@ -395,23 +381,19 @@ public final class FaultToleranceTest {
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
-    final ExecutorRepresenter a3 =
-        new ExecutorRepresenter("a3", computeSpec, mockMsgSender, activeContext, serExecutorService);
-    final ExecutorRepresenter a2 =
-        new ExecutorRepresenter("a2", computeSpec, mockMsgSender, activeContext, serExecutorService);
-    final ExecutorRepresenter a1 =
-        new ExecutorRepresenter("a1", computeSpec, mockMsgSender, activeContext, serExecutorService);
+    final Function<String, ExecutorRepresenter> executorRepresenterGenerator = executorId ->
+        new ExecutorRepresenter(executorId, computeSpec, mockMsgSender, activeContext, serExecutorService, executorId);
+    final ExecutorRepresenter a3 = executorRepresenterGenerator.apply("a3");
+    final ExecutorRepresenter a2 = executorRepresenterGenerator.apply("a2");
+    final ExecutorRepresenter a1 = executorRepresenterGenerator.apply("a1");
 
-    final Map<String, ExecutorRepresenter> executorMap = new HashMap<>();
-    executorMap.put("a1", a1);
-    executorMap.put("a2", a2);
-    executorMap.put("a3", a3);
+    final List<ExecutorRepresenter> executors = new ArrayList<>();
+    executors.add(a1);
+    executors.add(a2);
+    executors.add(a3);
 
-    final Map<String, ExecutorRepresenter> failedExecutorMap = new HashMap<>();
-    failedExecutorMap.put("a2", a2);
-    failedExecutorMap.put("a3", a2);
+    setUpExecutors(executors, false);
 
-    setUpExecutors(executorMap, failedExecutorMap, false);
     final PhysicalPlan plan = buildPlan();
     final JobStateManager jobStateManager =
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
@@ -427,16 +409,14 @@ public final class FaultToleranceTest {
         final Set<String> a3RunningTaskGroups = new HashSet<>(a3.getRunningTaskGroups());
 
         a1RunningTaskGroups.forEach(taskGroupId ->
-            RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+            RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
                 taskGroupId, TaskGroupState.State.COMPLETE, 1));
 
         a3RunningTaskGroups.forEach(taskGroupId ->
-            RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, containerManager,
+            RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
                 taskGroupId, TaskGroupState.State.COMPLETE, 1));
       }
     }
     assertTrue(jobStateManager.checkJobTermination());
-
-    RuntimeTestUtil.cleanup();
   }
 }
