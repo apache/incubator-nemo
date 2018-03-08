@@ -21,16 +21,18 @@ import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 
-import javax.annotation.concurrent.ThreadSafe;
+import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
 
 /**
  * This class represents a block which is stored in local memory and not serialized.
+ * Concurrent read is supported, but concurrent write is not supported.
+ *
  * @param <K> the key type of its partitions.
  */
-@ThreadSafe
+@NotThreadSafe
 public final class NonSerializedMemoryBlock<K extends Serializable> implements Block<K> {
 
   private final List<NonSerializedPartition<K>> nonSerializedPartitions;
@@ -53,14 +55,15 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
   /**
    * Writes an element to non-committed block.
    * Invariant: This should not be invoked after this block is committed.
+   * Invariant: This method does not support concurrent write.
    *
    * @param key     the key.
    * @param element the element to write.
    * @throws IOException if this block is already committed.
    */
   @Override
-  public synchronized void write(final K key,
-                                 final Object element) throws IOException {
+  public void write(final K key,
+                    final Object element) throws IOException {
     if (committed) {
       throw new IOException("The partition is already committed!");
     } else {
@@ -73,13 +76,13 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
   /**
    * Stores {@link NonSerializedPartition}s to this block.
    * Invariant: This should not be invoked after this block is committed.
+   * Invariant: This method does not support concurrent write.
    *
    * @param partitions the {@link NonSerializedPartition}s to store.
    * @throws IOException if fail to store.
    */
   @Override
-  public synchronized void writePartitions(final Iterable<NonSerializedPartition<K>> partitions)
-      throws IOException {
+  public void writePartitions(final Iterable<NonSerializedPartition<K>> partitions) throws IOException {
     if (!committed) {
       partitions.forEach(nonSerializedPartitions::add);
     } else {
@@ -92,13 +95,13 @@ public final class NonSerializedMemoryBlock<K extends Serializable> implements B
    * Because all data in this block is stored in a non-serialized form,
    * the data in these partitions have to be deserialized.
    * Invariant: This should not be invoked after this block is committed.
+   * Invariant: This method does not support concurrent write.
    *
    * @param partitions the {@link SerializedPartition}s to store.
    * @throws IOException if fail to store.
    */
   @Override
-  public synchronized void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions)
-      throws IOException {
+  public void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions) throws IOException {
     if (!committed) {
       final Iterable<NonSerializedPartition<K>> convertedPartitions =
           DataUtil.convertToNonSerPartitions(serializer, partitions);

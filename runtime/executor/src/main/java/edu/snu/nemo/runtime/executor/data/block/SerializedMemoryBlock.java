@@ -28,6 +28,8 @@ import java.util.*;
 
 /**
  * This class represents a block which is serialized and stored in local memory.
+ * Concurrent read is supported, but concurrent write is not supported.
+ *
  * @param <K> the key type of its partitions.
  */
 @ThreadSafe
@@ -53,14 +55,15 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
   /**
    * Writes an element to non-committed block.
    * Invariant: This should not be invoked after this block is committed.
+   * Invariant: This method does not support concurrent write.
    *
    * @param key     the key.
    * @param element the element to write.
    * @throws IOException if this block is already committed.
    */
   @Override
-  public synchronized void write(final K key,
-                                 final Object element) throws IOException {
+  public void write(final K key,
+                    final Object element) throws IOException {
     if (committed) {
       throw new IOException("The partition is already committed!");
     } else {
@@ -76,13 +79,13 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
   /**
    * Serialized and stores {@link NonSerializedPartition}s to this block.
    * Invariant: This should not be invoked after this block is committed.
+   * Invariant: This method does not support concurrent write.
    *
    * @param partitions the {@link NonSerializedPartition}s to store.
    * @throws IOException if fail to store.
    */
   @Override
-  public synchronized void writePartitions(final Iterable<NonSerializedPartition<K>> partitions)
-      throws IOException {
+  public void writePartitions(final Iterable<NonSerializedPartition<K>> partitions) throws IOException {
     if (!committed) {
       final Iterable<SerializedPartition<K>> convertedPartitions = DataUtil.convertToSerPartitions(
           serializer, partitions);
@@ -95,13 +98,13 @@ public final class SerializedMemoryBlock<K extends Serializable> implements Bloc
   /**
    * Stores {@link SerializedPartition}s to this block.
    * Invariant: This should not be invoked after this block is committed.
+   * Invariant: This method does not support concurrent write.
    *
    * @param partitions the {@link SerializedPartition}s to store.
    * @throws IOException if fail to store.
    */
   @Override
-  public synchronized void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions)
-      throws IOException {
+  public void writeSerializedPartitions(final Iterable<SerializedPartition<K>> partitions) throws IOException {
     if (!committed) {
       partitions.forEach(serializedPartitions::add);
     } else {

@@ -26,6 +26,7 @@ import java.util.Optional;
 
 /**
  * This interface represents a block, which is the output of a specific task.
+ *
  * @param <K> the key type of its partitions.
  */
 public interface Block<K extends Serializable> {
@@ -33,6 +34,7 @@ public interface Block<K extends Serializable> {
   /**
    * Writes an element to non-committed block.
    * Invariant: This should not be invoked after this block is committed.
+   * Invariant: This method may not support concurrent write.
    *
    * @param key     the key.
    * @param element the element to write.
@@ -43,6 +45,7 @@ public interface Block<K extends Serializable> {
   /**
    * Stores {@link NonSerializedPartition}s to this block.
    * Invariant: This should not be invoked after this block is committed.
+   * Invariant: This method may not support concurrent write.
    *
    * @param partitions the {@link NonSerializedPartition}s to store.
    * @throws IOException if fail to store.
@@ -52,6 +55,7 @@ public interface Block<K extends Serializable> {
   /**
    * Stores {@link SerializedPartition}s to this block.
    * Invariant: This should not be invoked after this block is committed.
+   * Invariant: This method may not support concurrent write.
    *
    * @param partitions the {@link SerializedPartition}s to store.
    * @throws IOException if fail to store.
