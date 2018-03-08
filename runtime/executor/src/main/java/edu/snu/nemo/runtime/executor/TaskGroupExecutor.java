@@ -159,8 +159,6 @@ public final class TaskGroupExecutor {
         // For InputReaders that have side input, collect them separately.
         if (inputReader.isSideInputReader()) {
           dataHandler.addSideInputFromOtherStages(inputReader);
-          LOG.info("log: {} {} Added sideInputReader (edge {})",
-              taskGroupId, getPhysicalTaskId(task.getId()), physicalStageEdge.getId());
         } else {
           inputReaders.add(inputReader);
           inputReaderToDataHandlersMap.putIfAbsent(inputReader, new ArrayList<>());
@@ -233,8 +231,6 @@ public final class TaskGroupExecutor {
           dataHandler.addSideInputFromThisStage(parentOutputCollector);
         } else {
           dataHandler.addInputFromThisStages(parentOutputCollector);
-          LOG.info("log: Added Output outputCollector of {} as InputPipe of {} {}",
-              getPhysicalTaskId(parent.getId()), taskGroupId, physicalTaskId);
         }
       });
     }
@@ -256,13 +252,10 @@ public final class TaskGroupExecutor {
       if (outEdge.isSideInput()) {
         outputCollector.setSideInputRuntimeEdge(outEdge);
         outputCollector.setAsSideInputFor(physicalTaskId);
-        LOG.info("log: {} {} Marked as accepting sideInput(edge {})",
-            taskGroupId, physicalTaskId, outEdge.getId());
       }
     });
 
     dataHandler.setOutputCollector(outputCollector);
-    LOG.info("log: {} {} Added OutputPipe", taskGroupId, physicalTaskId);
   }
 
   private boolean hasOutputWriter(final Task task) {
@@ -282,7 +275,6 @@ public final class TaskGroupExecutor {
     final long writeStartTime = System.currentTimeMillis();
 
     getTaskDataHandler(task).getOutputWriters().forEach(outputWriter -> {
-      LOG.info("Write and close outputWriter of task {}", getPhysicalTaskId(task.getId()));
       outputWriter.write();
       outputWriter.close();
       final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
@@ -359,14 +351,10 @@ public final class TaskGroupExecutor {
     srcIteratorIdToDataHandlersMap.values().forEach(dataHandlers ->
         dataHandlers.forEach(dataHandler -> {
           outputToChildrenDataHandlersMap.putIfAbsent(dataHandler.getOutputCollector(), dataHandler.getChildren());
-          LOG.info("{} outputToChildrenDataHandlersMap: [{}'s OutputPipe, {}]",
-              taskGroupId, getPhysicalTaskId(dataHandler.getTask().getId()), dataHandler.getChildren());
         }));
     iteratorIdToDataHandlersMap.values().forEach(dataHandlers ->
         dataHandlers.forEach(dataHandler -> {
           outputToChildrenDataHandlersMap.putIfAbsent(dataHandler.getOutputCollector(), dataHandler.getChildren());
-          LOG.info("{} outputToChildrenDataHandlersMap: [{}'s OutputPipe, {}]",
-              taskGroupId, getPhysicalTaskId(dataHandler.getTask().getId()), dataHandler.getChildren());
         }));
   }
 
@@ -377,8 +365,6 @@ public final class TaskGroupExecutor {
     currentMap.values().forEach(dataHandlers ->
         dataHandlers.forEach(dataHandler -> {
           updatedMap.putIfAbsent(dataHandler.getOutputCollector(), dataHandler.getChildren());
-          LOG.info("{} outputToChildrenDataHandlersMap: [{}, {}]",
-              taskGroupId, getPhysicalTaskId(dataHandler.getTask().getId()), dataHandler.getChildren());
         })
     );
 
@@ -389,7 +375,6 @@ public final class TaskGroupExecutor {
     if (task instanceof OperatorTask) {
       Transform transform = ((OperatorTask) task).getTransform();
       transform.close();
-      LOG.info("{} {} Closed Transform {}!", taskGroupId, getPhysicalTaskId(task.getId()), transform);
     }
   }
 
@@ -418,9 +403,6 @@ public final class TaskGroupExecutor {
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
           encodedBlockSize = -1;
         }
-
-        LOG.info("log: {} {} read sideInput from InputReader {}",
-            taskGroupId, getPhysicalTaskId(task.getId()), sideInput);
       } catch (final InterruptedException | ExecutionException e) {
         throw new BlockFetchException(e);
       }
@@ -440,7 +422,6 @@ public final class TaskGroupExecutor {
         srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
       }
       sideInputMap.put(srcTransform, sideInput);
-      LOG.info("log: {} {} read sideInput from InputPipe {}", taskGroupId, physicalTaskId, sideInput);
     });
   }
 
@@ -485,8 +466,6 @@ public final class TaskGroupExecutor {
 
       // Process data from other stages.
       for (int currPartition = 0; currPartition < numPartitions; currPartition++) {
-        LOG.info("{} Partition {} out of {}", taskGroupId, currPartition, numPartitions);
-
         Pair<String, DataUtil.IteratorWithNumBytes> idToIteratorPair = partitionQueue.take();
         final String iteratorId = idToIteratorPair.left();
         final DataUtil.IteratorWithNumBytes iterator = idToIteratorPair.right();
@@ -515,7 +494,6 @@ public final class TaskGroupExecutor {
       }
       inputReadEndTime = System.currentTimeMillis();
       metric.put("InputReadTime(ms)", inputReadEndTime - inputReadStartTime);
-      LOG.info("{} Finished processing src data!", taskGroupId);
 
       // Process intra-TaskGroup data.
       // Intra-TaskGroup data comes from outputCollectors of this TaskGroup's Tasks.
@@ -526,7 +504,6 @@ public final class TaskGroupExecutor {
           Task outputCollectorOwnerTask = taskDataHandlers.stream()
               .filter(dataHandler -> dataHandler.getOutputCollector() == outputCollector)
               .findFirst().get().getTask();
-          LOG.info("{} outputCollectorOwnerTask {}", taskGroupId, getPhysicalTaskId(outputCollectorOwnerTask.getId()));
 
           // Before consuming the output of outputCollectorOwnerTask as input,
           // close transform if it is OperatorTransform.
@@ -552,8 +529,6 @@ public final class TaskGroupExecutor {
               List<OutputWriter> outputWritersOfTask =
                   getTaskDataHandler(outputCollectorOwnerTask).getOutputWriters();
               outputWritersOfTask.forEach(outputWriter -> outputWriter.writeElement(element));
-              LOG.info("{} {} Write to OutputWriter element {}",
-                  taskGroupId, getPhysicalTaskId(outputCollectorOwnerTask.getId()), element);
             }
           }
 
@@ -607,21 +582,16 @@ public final class TaskGroupExecutor {
         outputCollector.emit(nullForVoidCoder);
       } else {
         outputCollector.emit(dataElement);
-        LOG.info("log: {} {} BoundedSourceTask emitting {} to outputCollector",
-            taskGroupId, physicalTaskId, dataElement);
       }
     } else if (task instanceof OperatorTask) {
       final Transform transform = ((OperatorTask) task).getTransform();
       transform.onData(dataElement);
-      LOG.info("log: {} {} OperatorTask applying {} to onData", taskGroupId, physicalTaskId, dataElement);
     } else if (task instanceof MetricCollectionBarrierTask) {
       if (dataElement == null) { // null used for Beam VoidCoders
         final List<Object> nullForVoidCoder = Collections.singletonList(dataElement);
         outputCollector.emit(nullForVoidCoder);
       } else {
         outputCollector.emit(dataElement);
-        LOG.info("log: {} {} BoundedSourceTask emitting {} to outputCollector",
-            taskGroupId, physicalTaskId, dataElement);
       }
       setTaskPutOnHold((MetricCollectionBarrierTask) task);
     } else {
@@ -636,8 +606,6 @@ public final class TaskGroupExecutor {
       List<TaskDataHandler> childrenDataHandlers = dataHandler.getChildren();
       if (!childrenDataHandlers.isEmpty()) {
         for (final TaskDataHandler childDataHandler : childrenDataHandlers) {
-          LOG.info("{} {} input to runTask {}",
-              taskGroupId, getPhysicalTaskId(childDataHandler.getTask().getId()), element);
           runTask(childDataHandler, element);
         }
       }
@@ -646,8 +614,6 @@ public final class TaskGroupExecutor {
       if (hasOutputWriter(task)) {
         List<OutputWriter> outputWritersOfTask = dataHandler.getOutputWriters();
         outputWritersOfTask.forEach(outputWriter -> outputWriter.writeElement(element));
-        LOG.info("{} {} Write to OutputWriter element {}",
-            taskGroupId, getPhysicalTaskId(task.getId()), element);
       }
     }
   }
