@@ -185,6 +185,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
   public void onTaskGroupExecutionFailed(final String executorId, final String taskGroupId) {
     lock.lock();
     try {
+      moreExecutorsAvailableCondition.signal();
       roundRobinSchedulingPolicy.onTaskGroupExecutionFailed(executorId, taskGroupId);
     } finally {
       lock.unlock();
