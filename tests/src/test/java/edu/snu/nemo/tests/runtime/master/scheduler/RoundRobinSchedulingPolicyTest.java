@@ -62,6 +62,7 @@ public final class RoundRobinSchedulingPolicyTest {
 
   // This schedule index will make sure that task group events are not ignored
   private static final int MAGIC_SCHEDULE_ATTEMPT_INDEX = Integer.MAX_VALUE;
+  private static final String RESERVED_EXECUTOR_ID = "RESERVED";
 
   @Before
   public void setUp() throws InjectionException {
@@ -86,6 +87,11 @@ public final class RoundRobinSchedulingPolicyTest {
     final ExecutorRepresenter b2 = storageSpecExecutorRepresenterGenerator.apply("b2");
     final ExecutorRepresenter b1 = storageSpecExecutorRepresenterGenerator.apply("b1");
 
+    final ResourceSpecification reservedSpec = new ResourceSpecification(ExecutorPlacementProperty.RESERVED, 1, 0);
+    final Function<String, ExecutorRepresenter> reservedSpecExecutorRepresenterGenerator = executorId ->
+        new ExecutorRepresenter(executorId, reservedSpec, mockMsgSender, activeContext, serExecutorService, executorId);
+    final ExecutorRepresenter r = reservedSpecExecutorRepresenterGenerator.apply(RESERVED_EXECUTOR_ID);
+
     // Add compute nodes
     schedulingPolicy.onExecutorAdded(a3);
     schedulingPolicy.onExecutorAdded(a2);
@@ -94,23 +100,25 @@ public final class RoundRobinSchedulingPolicyTest {
     // Add storage nodes
     schedulingPolicy.onExecutorAdded(b2);
     schedulingPolicy.onExecutorAdded(b1);
+
+    // Add reserved node
+    schedulingPolicy.onExecutorAdded(r);
   }
 
   @Test
-  public void testWakeupFromAwaitByExecutorAddition() {
+  public void testWakeupFromAwaitByTaskGroupCompletion() {
     final Timer timer = new Timer();
     final List<ScheduledTaskGroup> scheduledTaskGroups =
-        convertToScheduledTaskGroups(5, new byte[0], "Stage", ExecutorPlacementProperty.COMPUTE);
+        convertToScheduledTaskGroups(5, new byte[0], "Stage", ExecutorPlacementProperty.RESERVED);
     assertTrue(schedulingPolicy.scheduleTaskGroup(scheduledTaskGroups.get(0), jobStateManager));
-    assertTrue(schedulingPolicy.scheduleTaskGroup(scheduledTaskGroups.get(1), jobStateManager));
-    assertTrue(schedulingPolicy.scheduleTaskGroup(scheduledTaskGroups.get(2), jobStateManager));
     timer.schedule(new TimerTask() {
       @Override
       public void run() {
-        schedulingPolicy.onTaskGroupExecutionComplete("DUMMY_ID", scheduledTaskGroups.get(0).getTaskGroupId());
+        schedulingPolicy.onTaskGroupExecutionComplete(RESERVED_EXECUTOR_ID,
+            scheduledTaskGroups.get(0).getTaskGroupId());
       }
     }, 1000);
-    assertTrue(schedulingPolicy.scheduleTaskGroup(scheduledTaskGroups.get(3), jobStateManager));
+    assertTrue(schedulingPolicy.scheduleTaskGroup(scheduledTaskGroups.get(1), jobStateManager));
   }
 
   @Test
