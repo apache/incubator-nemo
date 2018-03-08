@@ -26,12 +26,10 @@ import java.util.Set;
 
 /**
  * (WARNING) Implementations of this interface must be thread-safe.
- *
- * Defines the policy by which {@link BatchSingleJobScheduler} assigns task groups to executors.
  */
 @DriverSide
 @ThreadSafe
-@DefaultImplementation(RoundRobinSchedulingPolicy.class)
+@DefaultImplementation(SourceLocationAwareSchedulingPolicy.class)
 public interface SchedulingPolicy {
 
   /**

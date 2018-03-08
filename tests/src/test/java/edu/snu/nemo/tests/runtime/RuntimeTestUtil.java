@@ -35,18 +35,17 @@ import java.util.stream.IntStream;
  */
 public final class RuntimeTestUtil {
   /**
-   * Sends a stage's completion event to scheduler, with all its task groups marked as complete as well.
-   * This replaces executor's task group completion messages for testing purposes.
+   * Complete the stage by completing all of its TaskGroups.
    * @param jobStateManager for the submitted job.
    * @param scheduler for the submitted job.
    * @param executorRegistry provides executor representers
    * @param physicalStage for which the states should be marked as complete.
    */
-  public static void sendStageCompletionEventToScheduler(final JobStateManager jobStateManager,
-                                                         final Scheduler scheduler,
-                                                         final ExecutorRegistry executorRegistry,
-                                                         final PhysicalStage physicalStage,
-                                                         final int attemptIdx) {
+  public static void completeStage(final JobStateManager jobStateManager,
+                                   final Scheduler scheduler,
+                                   final ExecutorRegistry executorRegistry,
+                                   final PhysicalStage physicalStage,
+                                   final int attemptIdx) {
     // Loop until the stage completes.
     while (true) {
       final Enum stageState = jobStateManager.getStageState(physicalStage.getId()).getStateMachine().getCurrentState();

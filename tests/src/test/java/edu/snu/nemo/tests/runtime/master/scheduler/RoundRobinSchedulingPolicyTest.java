@@ -53,7 +53,7 @@ import static org.mockito.Mockito.*;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobStateManager.class)
 public final class RoundRobinSchedulingPolicyTest {
-  private static final int TIMEOUT_MS = 500;
+  private static final int TIMEOUT_MS = 2000;
 
   private SchedulingPolicy schedulingPolicy;
   private ExecutorRegistry executorRegistry;
@@ -94,6 +94,23 @@ public final class RoundRobinSchedulingPolicyTest {
     // Add storage nodes
     schedulingPolicy.onExecutorAdded(b2);
     schedulingPolicy.onExecutorAdded(b1);
+  }
+
+  @Test
+  public void testWakeupFromAwaitByExecutorAddition() {
+    final Timer timer = new Timer();
+    final List<ScheduledTaskGroup> scheduledTaskGroups =
+        convertToScheduledTaskGroups(5, new byte[0], "Stage", ExecutorPlacementProperty.COMPUTE);
+    assertTrue(schedulingPolicy.scheduleTaskGroup(scheduledTaskGroups.get(0), jobStateManager));
+    assertTrue(schedulingPolicy.scheduleTaskGroup(scheduledTaskGroups.get(1), jobStateManager));
+    assertTrue(schedulingPolicy.scheduleTaskGroup(scheduledTaskGroups.get(2), jobStateManager));
+    timer.schedule(new TimerTask() {
+      @Override
+      public void run() {
+        schedulingPolicy.onTaskGroupExecutionComplete("DUMMY_ID", scheduledTaskGroups.get(0).getTaskGroupId());
+      }
+    }, 1000);
+    assertTrue(schedulingPolicy.scheduleTaskGroup(scheduledTaskGroups.get(3), jobStateManager));
   }
 
   @Test

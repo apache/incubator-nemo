@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.SchedulingException;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
@@ -76,6 +77,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   private final Map<String, Integer> nextExecutorIndexByContainerType;
 
   @Inject
+  @VisibleForTesting
   public RoundRobinSchedulingPolicy(final ExecutorRegistry executorRegistry,
                                     @Parameter(JobConf.SchedulerTimeoutMs.class) final int scheduleTimeoutMs) {
     this.scheduleTimeoutMs = scheduleTimeoutMs;

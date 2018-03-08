@@ -234,7 +234,7 @@ public final class BatchSingleJobSchedulerTest {
       });
 
       stages.forEach(physicalStage -> {
-        RuntimeTestUtil.sendStageCompletionEventToScheduler(
+        RuntimeTestUtil.completeStage(
             jobStateManager, scheduler, executorRegistry, physicalStage, MAGIC_SCHEDULE_ATTEMPT_INDEX);
       });
     }

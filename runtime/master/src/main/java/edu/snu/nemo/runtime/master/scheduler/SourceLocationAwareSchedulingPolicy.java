@@ -30,7 +30,6 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -99,16 +98,21 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
         return roundRobinSchedulingPolicy.scheduleTaskGroup(scheduledTaskGroup, jobStateManager);
       }
 
-      if (scheduleToLocalNode(scheduledTaskGroup, jobStateManager, sourceLocations)) {
-        return true;
-      } else {
+      long timeoutInNanoseconds = scheduleTimeoutMs * 1000000;
+      while (timeoutInNanoseconds > 0) {
+        if (scheduleToLocalNode(scheduledTaskGroup, jobStateManager, sourceLocations)) {
+          return true;
+        }
         try {
-          moreExecutorsAvailableCondition.await(scheduleTimeoutMs, TimeUnit.MILLISECONDS);
+          timeoutInNanoseconds = moreExecutorsAvailableCondition.awaitNanos(timeoutInNanoseconds);
+          // Signals on this condition does not necessarily guarantee that the added executor helps scheduling the
+          // TaskGroup we are interested in. We need to await again if the consequent scheduling attempt still fails,
+          // until we spend the time budget specified.
         } catch (final InterruptedException e) {
           throw new SchedulingException(e);
         }
-        return scheduleToLocalNode(scheduledTaskGroup, jobStateManager, sourceLocations);
       }
+      return false;
     } finally {
       lock.unlock();
     }
@@ -170,6 +174,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
   public void onTaskGroupExecutionComplete(final String executorId, final String taskGroupId) {
     lock.lock();
     try {
+      moreExecutorsAvailableCondition.signal();
       roundRobinSchedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroupId);
     } finally {
       lock.unlock();
