@@ -186,8 +186,9 @@ public final class AlternatingLeastSquare {
 
     /**
      * Constructor for CalculateNextMatrix DoFn class.
-     * @param numFeatures number of features.
-     * @param lambda lambda.
+     *
+     * @param numFeatures     number of features.
+     * @param lambda          lambda.
      * @param fixedMatrixView a PCollectionView of the fixed matrix (item / user matrix).
      */
     CalculateNextMatrix(final Integer numFeatures, final Double lambda,
@@ -201,6 +202,7 @@ public final class AlternatingLeastSquare {
 
     /**
      * ProcessElement method for BEAM.
+     *
      * @param c ProcessContext.
      * @throws Exception Exception on the way.
      */
@@ -265,13 +267,12 @@ public final class AlternatingLeastSquare {
 
     /**
      * FinishBundle method for BEAM.
+     *
      * @param c Context.
      */
     @FinishBundle
     public void finishBundle(final FinishBundleContext c) {
-      // results.forEach(r -> c.output(r, null, null));
-      KV<Integer, List<Double>> resultElement = results.remove(0);
-      c.output(resultElement, null, null);
+      results.forEach(r -> c.output(r, null, null));
     }
   }
 
