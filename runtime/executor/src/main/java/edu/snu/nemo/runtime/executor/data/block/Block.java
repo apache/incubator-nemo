@@ -15,11 +15,12 @@
  */
 package edu.snu.nemo.runtime.executor.data.block;
 
+import edu.snu.nemo.common.exception.BlockFetchException;
+import edu.snu.nemo.common.exception.BlockWriteException;
 import edu.snu.nemo.runtime.common.data.KeyRange;
 import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Optional;
@@ -38,9 +39,12 @@ public interface Block<K extends Serializable> {
    *
    * @param key     the key.
    * @param element the element to write.
-   * @throws IOException if this block is already committed.
+   * @throws BlockWriteException for any error occurred while trying to write a block.
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  void write(K key, Object element) throws IOException;
+  void write(K key, Object element) throws BlockWriteException;
 
   /**
    * Stores {@link NonSerializedPartition}s to this block.
@@ -48,9 +52,12 @@ public interface Block<K extends Serializable> {
    * Invariant: This method may not support concurrent write.
    *
    * @param partitions the {@link NonSerializedPartition}s to store.
-   * @throws IOException if fail to store.
+   * @throws BlockWriteException for any error occurred while trying to write a block.
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  void writePartitions(Iterable<NonSerializedPartition<K>> partitions) throws IOException;
+  void writePartitions(Iterable<NonSerializedPartition<K>> partitions) throws BlockWriteException;
 
   /**
    * Stores {@link SerializedPartition}s to this block.
@@ -58,9 +65,12 @@ public interface Block<K extends Serializable> {
    * Invariant: This method may not support concurrent write.
    *
    * @param partitions the {@link SerializedPartition}s to store.
-   * @throws IOException if fail to store.
+   * @throws BlockWriteException for any error occurred while trying to write a block.
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  void writeSerializedPartitions(Iterable<SerializedPartition<K>> partitions) throws IOException;
+  void writeSerializedPartitions(Iterable<SerializedPartition<K>> partitions) throws BlockWriteException;
 
   /**
    * Retrieves the {@link NonSerializedPartition}s in a specific key range from this block.
@@ -69,9 +79,12 @@ public interface Block<K extends Serializable> {
    *
    * @param keyRange the key range to retrieve.
    * @return an iterable of {@link NonSerializedPartition}s.
-   * @throws IOException if failed to retrieve.
+   * @throws BlockFetchException for any error occurred while trying to fetch a block.
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  Iterable<NonSerializedPartition<K>> readPartitions(KeyRange<K> keyRange) throws IOException;
+  Iterable<NonSerializedPartition<K>> readPartitions(KeyRange<K> keyRange) throws BlockFetchException;
 
   /**
    * Retrieves the {@link SerializedPartition}s in a specific key range.
@@ -79,15 +92,31 @@ public interface Block<K extends Serializable> {
    *
    * @param keyRange the hash range to retrieve.
    * @return an iterable of {@link SerializedPartition}s.
-   * @throws IOException if failed to retrieve.
+   * @throws BlockFetchException for any error occurred while trying to fetch a block.
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  Iterable<SerializedPartition<K>> readSerializedPartitions(KeyRange<K> keyRange) throws IOException;
+  Iterable<SerializedPartition<K>> readSerializedPartitions(KeyRange<K> keyRange) throws BlockFetchException;
 
   /**
    * Commits this block to prevent further write.
    *
    * @return the size of each partition if the data in the block is serialized.
-   * @throws IOException if failed to commit.
+   * @throws BlockWriteException for any error occurred while trying to write a block.
+   *                             (This exception will be thrown to the scheduler
+   *                             through {@link edu.snu.nemo.runtime.executor.Executor} and
+   *                             have to be handled by the scheduler with fault tolerance mechanism.)
    */
-  Optional<Map<K, Long>> commit() throws IOException;
+  Optional<Map<K, Long>> commit() throws BlockWriteException;
+
+  /**
+   * @return the ID of this block.
+   */
+  String getId();
+
+  /**
+   * @return whether this block is committed or not.
+   */
+  boolean isCommitted();
 }

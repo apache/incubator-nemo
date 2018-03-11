@@ -27,6 +27,7 @@ import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.executor.data.*;
+import edu.snu.nemo.runtime.executor.data.block.Block;
 import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 import edu.snu.nemo.runtime.executor.data.streamchainer.CompressionStreamChainer;
@@ -319,12 +320,13 @@ public final class BlockStoreTest {
           public Boolean call() {
             try {
               final String blockId = blockIdList.get(writeTaskIdx);
-              writerSideStore.createBlock(blockId);
+              final Block block = writerSideStore.createBlock(blockId);
               for (final NonSerializedPartition<Integer> partition : partitionsPerBlock.get(writeTaskIdx)) {
                 final Iterable data = partition.getData();
-                data.forEach(element -> writerSideStore.write(blockId, partition.getKey(), element));
+                data.forEach(element -> block.write(partition.getKey(), element));
               }
-              writerSideStore.commitBlock(blockId);
+              block.commit();
+              writerSideStore.writeBlock(block);
               blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.COMMITTED,
                   "Writer side of the shuffle edge");
               return true;
@@ -374,9 +376,9 @@ public final class BlockStoreTest {
 
     // Remove all blocks
     blockIdList.forEach(blockId -> {
-      final boolean exist = readerSideStore.removeBlock(blockId);
+      final boolean exist = readerSideStore.deleteBlock(blockId);
       if (!exist) {
-        throw new RuntimeException("The result of removeBlock(" + blockId + ") is false");
+        throw new RuntimeException("The result of deleteBlock(" + blockId + ") is false");
       }
     });
 
@@ -413,9 +415,11 @@ public final class BlockStoreTest {
       @Override
       public Boolean call() {
         try {
-          writerSideStore.createBlock(concBlockId);
-          writerSideStore.writePartitions(concBlockId, Collections.singleton(concBlockPartition));
-          writerSideStore.commitBlock(concBlockId);
+          final Block block = writerSideStore.createBlock(concBlockId);
+          final Iterable data = concBlockPartition.getData();
+          data.forEach(element -> block.write(concBlockPartition.getKey(), element));
+          block.commit();
+          writerSideStore.writeBlock(block);
           blockManagerMaster.onBlockStateChanged(
               concBlockId, BlockState.State.COMMITTED, "Writer side of the concurrent read edge");
           return true;
@@ -459,9 +463,9 @@ public final class BlockStoreTest {
     });
 
     // Remove the block
-    final boolean exist = writerSideStore.removeBlock(concBlockId);
+    final boolean exist = writerSideStore.deleteBlock(concBlockId);
     if (!exist) {
-      throw new RuntimeException("The result of removeBlock(" + concBlockId + ") is false");
+      throw new RuntimeException("The result of deleteBlock(" + concBlockId + ") is false");
     }
     final long readEndNano = System.nanoTime();
 
@@ -498,9 +502,13 @@ public final class BlockStoreTest {
           public Boolean call() {
             try {
               final String blockId = hashedBlockIdList.get(writeTaskIdx);
-              writerSideStore.createBlock(blockId);
-              writerSideStore.writePartitions(blockId, hashedBlockPartitionList.get(writeTaskIdx));
-              writerSideStore.commitBlock(blockId);
+              final Block block = writerSideStore.createBlock(blockId);
+              for (final NonSerializedPartition<Integer> partition : hashedBlockPartitionList.get(writeTaskIdx)) {
+                final Iterable data = partition.getData();
+                data.forEach(element -> block.write(partition.getKey(), element));
+              }
+              block.commit();
+              writerSideStore.writeBlock(block);
               blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.COMMITTED,
                   "Writer side of the shuffle in hash range edge");
               return true;
@@ -553,9 +561,9 @@ public final class BlockStoreTest {
 
     // Remove stored blocks
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writer -> {
-      final boolean exist = writerSideStore.removeBlock(hashedBlockIdList.get(writer));
+      final boolean exist = writerSideStore.deleteBlock(hashedBlockIdList.get(writer));
       if (!exist) {
-        throw new RuntimeException("The result of removeBlock(" +
+        throw new RuntimeException("The result of deleteBlock(" +
             hashedBlockIdList.get(writer) + ") is false");
       }
     });
@@ -584,22 +592,13 @@ public final class BlockStoreTest {
                                final KeyRange hashRange,
                                final BlockStore blockStore,
                                final Iterable expectedResult) throws IOException {
-    final Optional<Iterable<SerializedPartition<Integer>>> optionalSerResult =
-        blockStore.readSerializedPartitions(blockId, hashRange);
-    if (!optionalSerResult.isPresent()) {
-      throw new IOException("The (serialized) result of get block" + blockId + " in range " +
-          hashRange + " is empty.");
+    final Optional<Block> optionalBlock = blockStore.readBlock(blockId);
+    if (!optionalBlock.isPresent()) {
+      throw new IOException("The result block " + blockId + " is empty.");
     }
-    final Iterable<SerializedPartition<Integer>> serializedResult = optionalSerResult.get();
-    final Optional<Iterable<NonSerializedPartition>> optionalNonSerResult =
-        blockStore.readPartitions(blockId, hashRange);
-    if (!optionalSerResult.isPresent()) {
-      throw new IOException("The (non-serialized) result of get block" + blockId + " in range " +
-          hashRange + " is empty.");
-    }
-    final Iterable<NonSerializedPartition> nonSerializedResult = optionalNonSerResult.get();
+    final Iterable<NonSerializedPartition> nonSerializedResult = optionalBlock.get().readPartitions(hashRange);
     final Iterable serToNonSerialized = DataUtil.convertToNonSerPartitions(
-        SERIALIZER, serializedResult);
+        SERIALIZER, optionalBlock.get().readSerializedPartitions(hashRange));
 
     assertEquals(expectedResult, DataUtil.concatNonSerPartitions(nonSerializedResult));
     assertEquals(expectedResult, DataUtil.concatNonSerPartitions(serToNonSerialized));

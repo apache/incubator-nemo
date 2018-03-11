@@ -33,6 +33,8 @@ import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.executor.bytetransfer.ByteInputContext;
 import edu.snu.nemo.runtime.executor.bytetransfer.ByteOutputContext;
 import edu.snu.nemo.runtime.executor.bytetransfer.ByteTransfer;
+import edu.snu.nemo.runtime.executor.data.block.Block;
+import edu.snu.nemo.runtime.executor.data.block.FileBlock;
 import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 import edu.snu.nemo.runtime.executor.data.stores.BlockStore;
@@ -43,7 +45,6 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -72,6 +73,19 @@ public final class BlockManagerWorker {
   private final SerializerManager serializerManager;
   private final Map<String, CompletableFuture<ControlMessage.Message>> pendingBlockLocationRequest;
 
+  /**
+   * Constructor.
+   *
+   * @param executorId                      the executor ID.
+   * @param numThreads                      the number of threads to be used for background IO request handling.
+   * @param memoryStore                     the memory store.
+   * @param serializedMemoryStore           the serialized memory store.
+   * @param localFileStore                  the local file store.
+   * @param remoteFileStore                 the remote file store.
+   * @param persistentConnectionToMasterMap the connection map.
+   * @param byteTransfer                    the byte transfer.
+   * @param serializerManager               the serializer manager.
+   */
   @Inject
   private BlockManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
                              @Parameter(JobConf.IORequestHandleThreadsTotal.class) final int numThreads,
@@ -97,15 +111,16 @@ public final class BlockManagerWorker {
 
   /**
    * Creates a new block.
-   * A stale data created by previous failed task should be handled during the creation of new block.
    *
-   * @param blockId    the ID of the block to create.
+   * @param blockId the ID of the block to create.
    * @param blockStore the store to place the block.
+   * @return the created block.
+   * @throws BlockWriteException for any error occurred while trying to create a block.
    */
-  public void createBlock(final String blockId,
-                          final DataStoreProperty.Value blockStore) {
+  public Block createBlock(final String blockId,
+                           final DataStoreProperty.Value blockStore) throws BlockWriteException {
     final BlockStore store = getBlockStore(blockStore);
-    store.createBlock(blockId);
+    return store.createBlock(blockId);
   }
 
   /**
@@ -124,19 +139,19 @@ public final class BlockManagerWorker {
     final BlockStore store = getBlockStore(blockStore);
 
     // First, try to fetch the block from local BlockStore.
-    final Optional<Iterable<NonSerializedPartition>> optionalResultPartitions =
-        store.readPartitions(blockId, keyRange);
+    final Optional<Block> optionalBlock = store.readBlock(blockId);
 
-    if (optionalResultPartitions.isPresent()) {
+    if (optionalBlock.isPresent()) {
+      final Iterable<NonSerializedPartition> partitions = optionalBlock.get().readPartitions(keyRange);
       handleUsedData(blockStore, blockId);
 
       // Block resides in this evaluator!
       try {
-        final Iterator innerIterator = DataUtil.concatNonSerPartitions(optionalResultPartitions.get()).iterator();
+        final Iterator innerIterator = DataUtil.concatNonSerPartitions(partitions).iterator();
         long numSerializedBytes = 0;
         long numEncodedBytes = 0;
         try {
-          for (final NonSerializedPartition partition : optionalResultPartitions.get()) {
+          for (final NonSerializedPartition partition : partitions) {
             numSerializedBytes += partition.getNumSerializedBytes();
             numEncodedBytes += partition.getNumEncodedBytes();
           }
@@ -222,52 +237,30 @@ public final class BlockManagerWorker {
     });
   }
 
-
   /**
-   * Writes an element to a block in the target {@code BlockStore}.
-   * Invariant: This should not be invoked after the block is committed.
-   * Invariant: This method may not support concurrent write for a single block.
-   *            Only one thread have to write at once.
+   * Writes a block to a store.
    *
-   * @param blockId    the ID of the block to write.
-   * @param key        the key of the partition in the block to write the element.
-   * @param element    the element to write.
-   * @param blockStore the store contains the target block.
-   * @param <K>        the key type of the block to write.
-   */
-  public <K extends Serializable> void write(final String blockId,
-                                             final K key,
-                                             final Object element,
-                                             final DataStoreProperty.Value blockStore) {
-    final BlockStore store = getBlockStore(blockStore);
-    try {
-      store.write(blockId, key, element);
-    } catch (final Exception e) {
-      throw new BlockWriteException(e);
-    }
-  }
-
-  /**
-   * Notifies that all writes for a block is end.
-   *
-   * @param blockId              the ID of the block.
+   * @param block                the block to write.
    * @param blockStore           the store to save the block.
    * @param reportPartitionSizes whether report the size of partitions to master or not.
+   * @param partitionSizeMap     the map of partition keys and sizes to report.
    * @param srcIRVertexId        the IR vertex ID of the source task.
    * @param expectedReadTotal    the expected number of read for this block.
    * @param usedDataHandling     how to handle the used block.
-   * @return a {@link Optional} of the size of each written block.
    */
-  public Optional<Long> commitBlock(final String blockId,
-                                    final DataStoreProperty.Value blockStore,
-                                    final boolean reportPartitionSizes,
-                                    final String srcIRVertexId,
-                                    final int expectedReadTotal,
-                                    final UsedDataHandlingProperty.Value usedDataHandling) {
+  public void writeBlock(final Block block,
+                         final DataStoreProperty.Value blockStore,
+                         final boolean reportPartitionSizes,
+                         final Map<Integer, Long> partitionSizeMap,
+                         final String srcIRVertexId,
+                         final int expectedReadTotal,
+                         final UsedDataHandlingProperty.Value usedDataHandling) {
+    final String blockId = block.getId();
     LOG.info("CommitBlock: {}", blockId);
+
     switch (usedDataHandling) {
       case Discard:
-        blockToRemainingRead.put(blockId, new AtomicInteger(expectedReadTotal));
+        blockToRemainingRead.put(block.getId(), new AtomicInteger(expectedReadTotal));
         break;
       case Keep:
         // Do nothing but just keep the data.
@@ -277,7 +270,7 @@ public final class BlockManagerWorker {
     }
 
     final BlockStore store = getBlockStore(blockStore);
-    final Optional<Map<Integer, Long>> partitionSizeMap = store.commitBlock(blockId);
+    store.writeBlock(block);
     final ControlMessage.BlockStateChangedMsg.Builder blockStateChangedMsgBuilder =
         ControlMessage.BlockStateChangedMsg.newBuilder()
             .setExecutorId(executorId)
@@ -298,9 +291,9 @@ public final class BlockManagerWorker {
             .setBlockStateChangedMsg(blockStateChangedMsgBuilder.build())
             .build());
 
-    if (reportPartitionSizes && partitionSizeMap.isPresent()) {
+    if (reportPartitionSizes) {
       final List<ControlMessage.PartitionSizeEntry> partitionSizeEntries = new ArrayList<>();
-      partitionSizeMap.get().forEach((key, size) ->
+      partitionSizeMap.forEach((key, size) ->
           partitionSizeEntries.add(
               ControlMessage.PartitionSizeEntry.newBuilder()
                   .setKey(key)
@@ -321,17 +314,6 @@ public final class BlockManagerWorker {
               )
               .build());
     }
-
-    // Return the total size of the committed block.
-    if (partitionSizeMap.isPresent()) {
-      long blockSizeTotal = 0;
-      for (final long partitionSize : partitionSizeMap.get().values()) {
-        blockSizeTotal += partitionSize;
-      }
-      return Optional.of(blockSizeTotal);
-    } else {
-      return Optional.empty();
-    }
   }
 
   /**
@@ -344,7 +326,7 @@ public final class BlockManagerWorker {
                           final DataStoreProperty.Value blockStore) {
     LOG.info("RemoveBlock: {}", blockId);
     final BlockStore store = getBlockStore(blockStore);
-    final boolean exist = store.removeBlock(blockId);
+    final boolean exist = store.deleteBlock(blockId);
 
     if (exist) {
       final ControlMessage.BlockStateChangedMsg.Builder blockStateChangedMsgBuilder =
@@ -436,14 +418,15 @@ public final class BlockManagerWorker {
         try {
           if (DataStoreProperty.Value.LocalFileStore.equals(blockStore)
               || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
-            final FileStore fileStore = (FileStore) getBlockStore(blockStore);
-            for (final FileArea fileArea : fileStore.getFileAreas(blockId, keyRange)) {
+            final List<FileArea> fileAreas = ((FileBlock) getBlockStore(blockStore)
+                .readBlock(blockId).get()).asFileAreas(keyRange);
+            for (final FileArea fileArea : fileAreas) {
               outputContext.newOutputStream().writeFileArea(fileArea).close();
             }
           } else {
-            final Optional<Iterable<SerializedPartition>> optionalResult = getBlockStore(blockStore)
-                .readSerializedPartitions(blockId, keyRange);
-            for (final SerializedPartition partition : optionalResult.get()) {
+            final Iterable<SerializedPartition> partitions = getBlockStore(blockStore)
+                .readBlock(blockId).get().readSerializedPartitions(keyRange);
+            for (final SerializedPartition partition : partitions) {
               outputContext.newOutputStream().writeSerializedPartition(partition).close();
             }
           }
