@@ -18,7 +18,7 @@
 language: java
 script:
   # the following command line builds the project, runs the tests with coverage and then execute the SonarCloud analysis
-  - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent verify sonar:sonar -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=warn
+  - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent post-integration-test sonar:sonar -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=warn
 
 notifications:
   slack:
@@ -26,11 +26,11 @@ notifications:
 
 cache:
   directories:
-  - '$HOME/.m2'
+  - '$HOME/.m2/repository'
   - '$HOME/.sonar/cache'
 
 addons:
   sonarcloud:
-    organization:
+    organization: "apache-nemo"
     token:
       secure: "TNXHtv8c1wnollkqX7Cq3yGBescotMM1Za1lYVeOxWtOJrwJV2/xoIs1NBu9DG7UzE4cXH66tgZK4hFxS7n+mVqoSywMNENR/u7hP/nJRvGuTyubBiRliVoQwsDNfdbGCsAhOeXXkpmpOeZSrsdC/MJzq2//+VaH07g8wE1AoMj9jt24rc8O6heyxlYd/ong0HnyTpyPDtsEiMiZ4+1Tzok5fuuKIJ1Ecn24kINreAIjFPNKP9ImFBjsAfC6RtFI0MfFrp8yhwDRkc0sFFjo87ZTHNFXr2oCZgln2alVdQyjiA6lITZIhapSx95n1jiKvOfvSHXG5qV8oR4/Q7KQnMpmOTqXhK+Owo1CjxXSi/2TsMBQ/MP+jgjPc5FWaeejElcgQ/NGqprXV/2f1C2JXaM/+MV+5hyjaN8fdo6Nwq1fYxNd+dzJ3prnnI6nnAvADwhoVPYo77fXm2a5+l+lvUeJyP5thIcu5bRnkNVUP5+djcMC+4RUn9mUePGbx6ClWJKi6kjorkPrZMh+BfU4wuxJAGVSw+47PjAkkpz3EsaUEXTYVQyBebd1Hz2VWXE9J/iLS0xW70IR+f+lKSRZrEG9CC6f2qSN+5bdbK+1nIdtt7MIeYTQbEmnnnwsx3mClf8Yci8uHsaliMas+bOYPDNuR8qXtpv0V/XXelePc+s="
