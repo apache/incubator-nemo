@@ -16,6 +16,7 @@
 # .travis.yml
 # For maven builds
 language: java
+sudo: required
 script:
   # the following command line builds the project, runs the tests with coverage and then execute the SonarCloud analysis
   - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent verify sonar:sonar -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info
