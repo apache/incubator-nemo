@@ -86,40 +86,59 @@ public final class TaskDataHandler {
   }
 
   /**
-   * Get OutputCollector
-   * @return
+   * Get OutputCollector of this task.
+   * @return OutputCollector of this task.
    */
   public OutputCollectorImpl getOutputCollector() {
     return outputCollector;
   }
 
+  /**
+   * Get OutputWriters of this task.
+   * @return OutputWriters of this task.
+   */
   public List<OutputWriter> getOutputWriters() {
     return outputWriters;
   }
 
+  /**
+   * Set a DAG of children tasks' DataHandlers.
+   */
   public void setChildrenDataHandler(final List<TaskDataHandler> childrenDataHandler) {
     children = childrenDataHandler;
   }
 
-  // Add OutputCollectors of parent tasks.
+  /**
+   * Add OutputCollector of a parent task.
+   */
   public void addInputFromThisStages(final OutputCollectorImpl input) {
     inputFromThisStage.add(input);
   }
 
+  /**
+   * Add InputReader that contains side input from other TaskGroup.
+   */
   public void addSideInputFromOtherStages(final InputReader sideInputReader) {
     sideInputFromOtherStages.add(sideInputReader);
   }
 
+  /**
+   * Add parent OutputCollector that contains side input from the parent task.
+   */
   public void addSideInputFromThisStage(final OutputCollectorImpl ocAsSideInput) {
     sideInputFromThisStage.add(ocAsSideInput);
   }
 
-  // Set OutputCollector of this task.
-  // Mark if the data from this OutputCollector is used as side input.
+  /**
+   * Set OutputCollector of this task.
+   */
   public void setOutputCollector(final OutputCollectorImpl oc) {
     outputCollector = oc;
   }
 
+  /**
+   * Add OutputWriter of this task.
+   */
   public void addOutputWriters(final OutputWriter outputWriter) {
     outputWriters.add(outputWriter);
   }
