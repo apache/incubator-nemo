@@ -46,8 +46,8 @@ public final class CreateViewTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> p) {
-    this.outputCollector = p;
+  public void prepare(final Context context, final OutputCollector<O> oc) {
+    this.outputCollector = oc;
   }
 
   @Override

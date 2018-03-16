@@ -38,8 +38,8 @@ public final class GroupByKeyTransform<K, V> implements Transform<Tuple2<K, V>, 
   }
 
   @Override
-  public void prepare(final Transform.Context context, final OutputCollector<Tuple2<K, Iterable<V>>> p) {
-    this.outputCollector = p;
+  public void prepare(final Transform.Context context, final OutputCollector<Tuple2<K, Iterable<V>>> oc) {
+    this.outputCollector = oc;
   }
 
   @Override

@@ -39,8 +39,8 @@ public final class MapToPairTransform<T, K, V> implements Transform<T, Tuple2<K,
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<Tuple2<K, V>> p) {
-    this.outputCollector = p;
+  public void prepare(final Context context, final OutputCollector<Tuple2<K, V>> oc) {
+    this.outputCollector = oc;
   }
 
   @Override

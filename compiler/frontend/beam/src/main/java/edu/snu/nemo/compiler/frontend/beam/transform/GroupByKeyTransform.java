@@ -40,8 +40,8 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<KV<Object, List>> p) {
-    this.outputCollector = p;
+  public void prepare(final Context context, final OutputCollector<KV<Object, List>> oc) {
+    this.outputCollector = oc;
   }
 
   @Override

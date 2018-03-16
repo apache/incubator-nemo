@@ -36,8 +36,8 @@ public final class FlattenTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<T> p) {
-    this.outputCollector = p;
+  public void prepare(final Context context, final OutputCollector<T> oc) {
+    this.outputCollector = oc;
   }
 
   @Override

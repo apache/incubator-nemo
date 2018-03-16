@@ -70,8 +70,8 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> p) {
-    this.outputCollector = p;
+  public void prepare(final Context context, final OutputCollector<O> oc) {
+    this.outputCollector = oc;
     this.sideInputs = new HashMap<>();
     context.getSideInputs().forEach((k, v) -> this.sideInputs.put(((CreateViewTransform) k).getTag(), v));
     this.startBundleContext = new StartBundleContext(doFn, serializedOptions);

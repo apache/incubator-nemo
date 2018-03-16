@@ -68,6 +68,11 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     blockManagerWorker.createBlock(blockId, blockStoreValue);
   }
 
+  /**
+   * Collects output element-wise in memory.
+   *
+   * * @param element
+   */
   public void writeElement(final Object element) {
     outputList.add(element);
   }

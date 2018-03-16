@@ -46,14 +46,14 @@ public final class ReduceByKeyTransform<K, V> implements Transform<Tuple2<K, V>,
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<Tuple2<K, V>> p) {
-    this.outputCollector = p;
+  public void prepare(final Context context, final OutputCollector<Tuple2<K, V>> oc) {
+    this.outputCollector = oc;
   }
 
   @Override
   public void onData(final Tuple2<K, V> element) {
-    K key = element._1;
-    V value = element._2;
+    final K key = element._1;
+    final V value = element._2;
 
     keyToValues.putIfAbsent(key, new ArrayList<>());
     keyToValues.get(key).add(value);

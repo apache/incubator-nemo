@@ -37,8 +37,8 @@ public final class FlatMapTransform<T, U> implements Transform<T, U> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<U> p) {
-    this.outputCollector = p;
+  public void prepare(final Context context, final OutputCollector<U> oc) {
+    this.outputCollector = oc;
   }
 
   @Override

@@ -24,6 +24,9 @@ import java.util.List;
 
 /**
  * Per-Task data handler.
+ * This is a wrapper class that handles data transfer of a Task.
+ * As TaskGroup input is processed element-wise, Task output element percolates down
+ * through the DAG of children TaskDataHandlers.
  */
 public final class TaskDataHandler {
   private static final Logger LOG = LoggerFactory.getLogger(TaskDataHandler.class.getName());
@@ -54,18 +57,38 @@ public final class TaskDataHandler {
     return children;
   }
 
+  /**
+   * Get intra-TaskGroup input from parent tasks.
+   * We keep parent tasks' OutputCollectors, as they're the place where parent task output
+   * becomes available element-wise.
+   * @return OutputCollectors of all parent tasks.
+   */
   public List<OutputCollectorImpl> getInputFromThisStage() {
     return inputFromThisStage;
   }
 
+  /**
+   * Get side input from other TaskGroup.
+   * @return InputReader that has side input.
+   */
   public List<InputReader> getSideInputFromOtherStages() {
     return sideInputFromOtherStages;
   }
 
+  /**
+   * Get intra-TaskGroup side input from parent tasks.
+   * Just like normal intra-TaskGroup inputs, intra-TaskGroup side inputs are
+   * collected in parent tasks' OutputCollectors.
+   * @return OutputCollectors of all parent tasks which are marked as having side input.
+   */
   public List<OutputCollectorImpl> getSideInputFromThisStage() {
     return sideInputFromThisStage;
   }
 
+  /**
+   * Get OutputCollector
+   * @return
+   */
   public OutputCollectorImpl getOutputCollector() {
     return outputCollector;
   }

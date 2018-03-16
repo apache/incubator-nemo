@@ -45,7 +45,7 @@ public final class CollectTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<T> p) {
+  public void prepare(final Context context, final OutputCollector<T> oc) {
     this.filename = filename + JavaRDD.getResultId();
   }
 

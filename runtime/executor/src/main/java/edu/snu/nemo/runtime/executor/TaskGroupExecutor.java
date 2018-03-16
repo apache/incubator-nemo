@@ -34,10 +34,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * Executes a task group.
@@ -313,7 +311,7 @@ public final class TaskGroupExecutor {
   }
 
   private void prepareInputFromOtherStages() {
-    inputReaders.stream().forEach(inputReader -> {
+    inputReaderToDataHandlersMap.forEach((inputReader, dataHandlers) -> {
       final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader.read();
       numPartitions += futures.size();
 
@@ -327,8 +325,7 @@ public final class TaskGroupExecutor {
         if (iteratorIdToDataHandlersMap.containsKey(iteratorId)) {
           throw new RuntimeException("iteratorIdToDataHandlersMap already contains " + iteratorId);
         } else {
-          iteratorIdToDataHandlersMap.computeIfAbsent(iteratorId,
-              absentIteratorId -> inputReaderToDataHandlersMap.get(inputReader));
+          iteratorIdToDataHandlersMap.computeIfAbsent(iteratorId, absentIteratorId -> dataHandlers);
           try {
             partitionQueue.put(Pair.of(iteratorId, iterator));
           } catch (InterruptedException e) {

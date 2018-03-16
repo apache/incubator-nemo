@@ -37,8 +37,8 @@ public final class MapTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> p) {
-    this.outputCollector = p;
+  public void prepare(final Context context, final OutputCollector<O> oc) {
+    this.outputCollector = oc;
   }
 
   public void onData(final I element) {
