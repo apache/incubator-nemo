@@ -104,17 +104,18 @@ public final class SchedulerRunner {
     @Override
     public void run() {
       while (!isTerminated) {
-        try {
-          final ScheduledTaskGroup nextTaskGroupToSchedule = pollFromPendingTaskGroupQueue(pendingTaskGroupQueue);
-
+        final ScheduledTaskGroup headTaskGroupInQueue = pollFromPendingTaskGroupQueue(pendingTaskGroupQueue);
+        ScheduledTaskGroup nextTaskGroupToSchedule = headTaskGroupInQueue;
+        do {
+          if (nextTaskGroupToSchedule == null) {
+            // TaskGroup queue is empty
+            break;
+          }
           final JobStateManager jobStateManager = jobStateManagers.get(nextTaskGroupToSchedule.getJobId());
           final boolean isScheduled =
               schedulingPolicy.scheduleTaskGroup(nextTaskGroupToSchedule, jobStateManager);
 
-          if (isScheduled) {
-            // There may be other scheduling opportunities
-            mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
-          } else {
+          if (!isScheduled) {
             LOG.info("Failed to assign an executor for {} before the timeout: {}",
                 new Object[]{nextTaskGroupToSchedule.getTaskGroupId(),
                     schedulingPolicy.getScheduleTimeoutMs()});
@@ -122,10 +123,8 @@ public final class SchedulerRunner {
             // Put this TaskGroup back to the queue since we failed to schedule it.
             pendingTaskGroupQueue.enqueue(nextTaskGroupToSchedule);
           }
-        } catch (final Exception e) {
-          e.printStackTrace();
-          throw e;
-        }
+          nextTaskGroupToSchedule = pollFromPendingTaskGroupQueue(pendingTaskGroupQueue);
+        } while (headTaskGroupInQueue != nextTaskGroupToSchedule);
         mustCheckSchedulingAvailabilityOrSchedulerTerminated.await();
       }
       jobStateManagers.values().forEach(jobStateManager -> {
@@ -140,8 +139,11 @@ public final class SchedulerRunner {
   }
 
   private static ScheduledTaskGroup pollFromPendingTaskGroupQueue(final PendingTaskGroupQueue queue) {
-    Optional<ScheduledTaskGroup> scheduledTaskGroupOptional = Optional.of();
+    Optional<ScheduledTaskGroup> scheduledTaskGroupOptional = Optional.empty();
     while (!scheduledTaskGroupOptional.isPresent()) {
+      if (queue.isEmpty()) {
+        return null;
+      }
       scheduledTaskGroupOptional = queue.dequeue();
     }
     return scheduledTaskGroupOptional.get();
