@@ -23,6 +23,9 @@ import org.apache.reef.annotations.audience.DriverSide;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +46,9 @@ public final class SchedulerRunner {
   private final ExecutorService schedulerThread;
   private boolean initialJobScheduled;
   private boolean isTerminated;
+  private final Lock lock = new ReentrantLock();
+  private final Condition taskGroupAvailable = lock.newCondition();
+  private final Condition executorAvailable = lock.newCondition();
 
   @Inject
   public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
@@ -53,6 +59,20 @@ public final class SchedulerRunner {
     this.schedulerThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "SchedulerRunner"));
     this.initialJobScheduled = false;
     this.isTerminated = false;
+  }
+
+  /**
+   * Signals to the condition on executor availability.
+   */
+  public void onAnExecutorAvailable() {
+    executorAvailable.signal();
+  }
+
+  /**
+   * Signals to the condition on TaskGroup availability.
+   */
+  public void onATaskGroupAvailable() {
+    taskGroupAvailable.signal();
   }
 
   /**
