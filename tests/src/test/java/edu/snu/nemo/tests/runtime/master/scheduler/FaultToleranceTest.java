@@ -91,7 +91,6 @@ public final class FaultToleranceTest {
   private final ExecutorService serExecutorService = Executors.newSingleThreadExecutor();
   private PhysicalPlanGenerator physicalPlanGenerator;
 
-  private static final int TEST_TIMEOUT_MS = 500;
   private static final int MAX_SCHEDULE_ATTEMPT = 3;
 
   @Before
@@ -112,7 +111,7 @@ public final class FaultToleranceTest {
     executorRegistry = Tang.Factory.getTang().newInjector().getInstance(ExecutorRegistry.class);
 
     pendingTaskGroupQueue = new SingleJobTaskGroupQueue();
-    schedulingPolicy = new RoundRobinSchedulingPolicy(executorRegistry, TEST_TIMEOUT_MS);
+    schedulingPolicy = new RoundRobinSchedulingPolicy(executorRegistry);
 
     if (useMockSchedulerRunner) {
       schedulerRunner = mock(SchedulerRunner.class);

@@ -142,13 +142,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Scheduler timeout in ms.
-   */
-  @NamedParameter(doc = "Scheduler timeout in ms", short_name = "scheduler_timeout_ms", default_value = "50")
-  public final class SchedulerTimeoutMs implements Name<Integer> {
-  }
-
-  /**
    * Max number of attempts for task group scheduling.
    */
   @NamedParameter(doc = "Max number of schedules", short_name = "max_schedule_attempt", default_value = "3")

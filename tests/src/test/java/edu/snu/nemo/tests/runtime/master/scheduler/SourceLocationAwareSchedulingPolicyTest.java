@@ -61,13 +61,14 @@ public final class SourceLocationAwareSchedulingPolicyTest {
   private SpiedSchedulingPolicyWrapper<RoundRobinSchedulingPolicy> roundRobin;
   private MockJobStateManagerWrapper jobStateManager;
 
-  private void setup(final int schedulerTimeoutMs) {
+  @Before
+  public void setup() {
     final Injector injector = Tang.Factory.getTang().newInjector();
     jobStateManager = new MockJobStateManagerWrapper();
 
     final ExecutorRegistry executorRegistry = new ExecutorRegistry();
     final RoundRobinSchedulingPolicy roundRobinSchedulingPolicy =
-        new RoundRobinSchedulingPolicy(executorRegistry, schedulerTimeoutMs);
+        new RoundRobinSchedulingPolicy(executorRegistry);
     roundRobin = new SpiedSchedulingPolicyWrapper(roundRobinSchedulingPolicy, jobStateManager.get());
 
     injector.bindVolatileInstance(RoundRobinSchedulingPolicy.class, roundRobin.get());
@@ -92,8 +93,6 @@ public final class SourceLocationAwareSchedulingPolicyTest {
    */
   @Test
   public void testRoundRobinSchedulerFallback() {
-    setup(500);
-
     // Prepare test scenario
     final ScheduledTaskGroup tg0 = CreateScheduledTaskGroup.withoutReadables(ExecutorPlacementProperty.NONE);
     final ScheduledTaskGroup tg1 = CreateScheduledTaskGroup.withReadablesWithoutSourceLocations(2,
@@ -131,8 +130,6 @@ public final class SourceLocationAwareSchedulingPolicyTest {
    */
   @Test
   public void testSourceLocationAwareSchedulingNotAvailable() {
-    setup(500);
-
     // Prepare test scenario
     final ScheduledTaskGroup tg = CreateScheduledTaskGroup.withReadablesWithSourceLocations(
         Collections.singletonList(Collections.singletonList(SITE_0)), ExecutorPlacementProperty.NONE);
@@ -156,8 +153,6 @@ public final class SourceLocationAwareSchedulingPolicyTest {
    */
   @Test
   public void testSourceLocationAwareSchedulingWithContainerType() {
-    setup(500);
-
     // Prepare test scenario
     final ScheduledTaskGroup tg = CreateScheduledTaskGroup.withReadablesWithSourceLocations(
         Collections.singletonList(Collections.singletonList(SITE_0)), CONTAINER_TYPE_A);
@@ -190,8 +185,6 @@ public final class SourceLocationAwareSchedulingPolicyTest {
    */
   @Test
   public void testSourceLocationAwareSchedulingDoesNotOverSchedule() {
-    setup(500);
-
     // Prepare test scenario
     final ScheduledTaskGroup tg0 = CreateScheduledTaskGroup.withReadablesWithSourceLocations(
         Collections.singletonList(Collections.singletonList(SITE_0)), CONTAINER_TYPE_A);
@@ -221,8 +214,6 @@ public final class SourceLocationAwareSchedulingPolicyTest {
    */
   @Test
   public void testSourceLocationAwareSchedulingWithMultiSource() {
-    setup(500);
-
     // Prepare test scenario
     final ScheduledTaskGroup tg0 = CreateScheduledTaskGroup.withReadablesWithSourceLocations(
         Collections.singletonList(Collections.singletonList(SITE_1)), CONTAINER_TYPE_A);
@@ -245,62 +236,6 @@ public final class SourceLocationAwareSchedulingPolicyTest {
 
     // Expected executor status
     e.assertScheduledTaskGroups(Arrays.asList(tg0, tg1, tg2, tg3));
-  }
-
-  /**
-   * If there are no appropriate executors available, {@link SourceLocationAwareSchedulingPolicy} should await
-   * for the given amount of time, immediately waking up on executor addition.
-   */
-  @Test
-  public void testWakeupFromAwaitByExecutorAddition() {
-    // We need timeout value which is long enough.
-    setup(20000);
-    final Timer timer = new Timer();
-
-    // Prepare test scenario
-    final ScheduledTaskGroup tg = CreateScheduledTaskGroup.withReadablesWithSourceLocations(
-        Collections.singletonList(Collections.singletonList(SITE_1)), CONTAINER_TYPE_A);
-    final MockExecutorRepresenterWrapper e = new MockExecutorRepresenterWrapper(SITE_1, CONTAINER_TYPE_A, 1);
-
-    // The executor will be available in 1000ms.
-    timer.schedule(new TimerTask() {
-      @Override
-      public void run() {
-        addExecutor(e);
-      }
-    }, 1000);
-    // Attempt to schedule TG must success
-    assertTrue(sourceLocationAware.scheduleTaskGroup(tg, jobStateManager.get()));
-  }
-
-  /**
-   * If there are no appropriate executors available, {@link SourceLocationAwareSchedulingPolicy} should await
-   * for the given amount of time, immediately waking up on TaskGroup completion.
-   */
-  @Test
-  public void testWakeupFromAwaitByTaskGroupCompletion() {
-    // We need timeout value which is long enough.
-    setup(20000);
-    final Timer timer = new Timer();
-
-    // Prepare test scenario
-    final ScheduledTaskGroup tg0 = CreateScheduledTaskGroup.withReadablesWithSourceLocations(
-        Collections.singletonList(Collections.singletonList(SITE_1)), CONTAINER_TYPE_A);
-    final ScheduledTaskGroup tg1 = CreateScheduledTaskGroup.withReadablesWithSourceLocations(
-        Collections.singletonList(Collections.singletonList(SITE_1)), CONTAINER_TYPE_A);
-    final MockExecutorRepresenterWrapper e = addExecutor(new MockExecutorRepresenterWrapper(SITE_1, CONTAINER_TYPE_A, 1));
-
-    // Attempt to schedule TG must success
-    assertTrue(sourceLocationAware.scheduleTaskGroup(tg0, jobStateManager.get()));
-    // The TaskGroup will be completed in 1000ms.
-    timer.schedule(new TimerTask() {
-      @Override
-      public void run() {
-        sourceLocationAware.onTaskGroupExecutionComplete(e.get().getExecutorId(), tg0.getTaskGroupId());
-      }
-    }, 1000);
-    // Attempt to schedule TG must success
-    assertTrue(sourceLocationAware.scheduleTaskGroup(tg1, jobStateManager.get()));
   }
 
   private MockExecutorRepresenterWrapper addExecutor(final MockExecutorRepresenterWrapper executor) {

@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import edu.snu.nemo.common.exception.SchedulingException;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
@@ -48,7 +47,6 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
 
   private final ExecutorRegistry executorRegistry;
   private final RoundRobinSchedulingPolicy roundRobinSchedulingPolicy;
-  private final long scheduleTimeoutMs;
   private final Lock lock = new ReentrantLock();
   private final Condition moreExecutorsAvailableCondition = lock.newCondition();
 
@@ -62,12 +60,6 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
                                               final RoundRobinSchedulingPolicy roundRobinSchedulingPolicy) {
     this.executorRegistry = executorRegistry;
     this.roundRobinSchedulingPolicy = roundRobinSchedulingPolicy;
-    this.scheduleTimeoutMs = roundRobinSchedulingPolicy.getScheduleTimeoutMs();
-  }
-
-  @Override
-  public long getScheduleTimeoutMs() {
-    return scheduleTimeoutMs;
   }
 
   /**
@@ -98,21 +90,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
         return roundRobinSchedulingPolicy.scheduleTaskGroup(scheduledTaskGroup, jobStateManager);
       }
 
-      long timeoutInNanoseconds = scheduleTimeoutMs * 1000000;
-      while (timeoutInNanoseconds > 0) {
-        if (scheduleToLocalNode(scheduledTaskGroup, jobStateManager, sourceLocations)) {
-          return true;
-        }
-        try {
-          timeoutInNanoseconds = moreExecutorsAvailableCondition.awaitNanos(timeoutInNanoseconds);
-          // Signals on this condition does not necessarily guarantee that the added executor helps scheduling the
-          // TaskGroup we are interested in. We need to await again if the consequent scheduling attempt still fails,
-          // until we spend the time budget specified.
-        } catch (final InterruptedException e) {
-          throw new SchedulingException(e);
-        }
-      }
-      return false;
+      return scheduleToLocalNode(scheduledTaskGroup, jobStateManager, sourceLocations);
     } finally {
       lock.unlock();
     }

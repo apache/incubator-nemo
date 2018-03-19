@@ -100,7 +100,6 @@ public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final int EXECUTOR_CAPACITY = 1;
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
-  private static final int SCHEDULE_TIMEOUT = 1000;
   private static final DataStoreProperty.Value MEMORY_STORE = DataStoreProperty.Value.MemoryStore;
   private static final DataStoreProperty.Value SER_MEMORY_STORE = DataStoreProperty.Value.SerializedMemoryStore;
   private static final DataStoreProperty.Value LOCAL_FILE_STORE = DataStoreProperty.Value.LocalFileStore;
@@ -136,7 +135,7 @@ public final class DataTransferTest {
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     final SchedulingPolicy schedulingPolicy = new RoundRobinSchedulingPolicy(
-        injector.getInstance(ExecutorRegistry.class), SCHEDULE_TIMEOUT);
+        injector.getInstance(ExecutorRegistry.class));
     final PendingTaskGroupQueue taskGroupQueue = new SingleJobTaskGroupQueue();
     final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingPolicy, taskGroupQueue);
     final Scheduler scheduler =

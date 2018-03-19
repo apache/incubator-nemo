@@ -16,7 +16,6 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.SchedulingException;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
@@ -24,12 +23,10 @@ import edu.snu.nemo.runtime.common.state.TaskGroupState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -48,8 +45,6 @@ import java.util.stream.Collectors;
 @DriverSide
 public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(RoundRobinSchedulingPolicy.class.getName());
-
-  private final int scheduleTimeoutMs;
 
   private final ExecutorRegistry executorRegistry;
 
@@ -78,19 +73,13 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
 
   @Inject
   @VisibleForTesting
-  public RoundRobinSchedulingPolicy(final ExecutorRegistry executorRegistry,
-                                    @Parameter(JobConf.SchedulerTimeoutMs.class) final int scheduleTimeoutMs) {
-    this.scheduleTimeoutMs = scheduleTimeoutMs;
+  public RoundRobinSchedulingPolicy(final ExecutorRegistry executorRegistry) {
     this.executorRegistry = executorRegistry;
     this.lock = new ReentrantLock();
     this.executorIdByContainerType = new HashMap<>();
     this.conditionByContainerType = new HashMap<>();
     this.nextExecutorIndexByContainerType = new HashMap<>();
     initializeContainerTypeIfAbsent(ExecutorPlacementProperty.NONE); // Need this to avoid potential null errors
-  }
-
-  public long getScheduleTimeoutMs() {
-    return scheduleTimeoutMs;
   }
 
   @Override
@@ -103,18 +92,6 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
 
       Optional<String> executorId = selectExecutorByRR(containerType);
       if (!executorId.isPresent()) { // If there is no available executor to schedule this task group now,
-        // TODO #696 Sleep Time Per Container Type in Scheduling Policy
-        final boolean executorAvailable =
-            conditionByContainerType.get(containerType).await(scheduleTimeoutMs, TimeUnit.MILLISECONDS);
-        if (executorAvailable) { // if an executor has become available before scheduleTimeoutMs,
-          executorId = selectExecutorByRR(containerType);
-          if (executorId.isPresent()) {
-            scheduleTaskGroup(selectExecutorByRR(containerType).get(), scheduledTaskGroup, jobStateManager);
-            return true;
-          } else {
-            throw new SchedulingException(new Throwable("An executor must be available at this point"));
-          }
-        }
         return false;
       } else {
         scheduleTaskGroup(executorId.get(), scheduledTaskGroup, jobStateManager);

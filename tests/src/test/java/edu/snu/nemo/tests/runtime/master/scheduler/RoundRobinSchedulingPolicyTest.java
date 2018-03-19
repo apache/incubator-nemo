@@ -41,10 +41,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.*;
 
 /**
@@ -53,8 +51,6 @@ import static org.mockito.Mockito.*;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobStateManager.class)
 public final class RoundRobinSchedulingPolicyTest {
-  private static final int TIMEOUT_MS = 2000;
-
   private SchedulingPolicy schedulingPolicy;
   private ExecutorRegistry executorRegistry;
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
@@ -68,7 +64,7 @@ public final class RoundRobinSchedulingPolicyTest {
   public void setUp() throws InjectionException {
     executorRegistry = Tang.Factory.getTang().newInjector().getInstance(ExecutorRegistry.class);
 
-    schedulingPolicy = new RoundRobinSchedulingPolicy(executorRegistry, TIMEOUT_MS);
+    schedulingPolicy = new RoundRobinSchedulingPolicy(executorRegistry);
 
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
@@ -106,27 +102,6 @@ public final class RoundRobinSchedulingPolicyTest {
   }
 
   @Test
-  public void testWakeupFromAwaitByTaskGroupCompletion() {
-    final Timer timer = new Timer();
-    final List<ScheduledTaskGroup> scheduledTaskGroups =
-        convertToScheduledTaskGroups(5, new byte[0], "Stage", ExecutorPlacementProperty.RESERVED);
-    assertTrue(schedulingPolicy.scheduleTaskGroup(scheduledTaskGroups.get(0), jobStateManager));
-    timer.schedule(new TimerTask() {
-      @Override
-      public void run() {
-        schedulingPolicy.onTaskGroupExecutionComplete(RESERVED_EXECUTOR_ID,
-            scheduledTaskGroups.get(0).getTaskGroupId());
-      }
-    }, 1000);
-    assertTrue(schedulingPolicy.scheduleTaskGroup(scheduledTaskGroups.get(1), jobStateManager));
-  }
-
-  @Test
-  public void checkScheduleTimeout() {
-    assertEquals(schedulingPolicy.getScheduleTimeoutMs(), TIMEOUT_MS);
-  }
-
-  @Test
   public void testNoneContainerType() {
     final int slots = 6;
     final List<ScheduledTaskGroup> scheduledTaskGroups =
@@ -141,67 +116,6 @@ public final class RoundRobinSchedulingPolicyTest {
     // No more slot
     isScheduled = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroups.get(slots), jobStateManager);
     assertFalse(isScheduled);
-  }
-
-  @Test
-  public void testSingleCoreTwoTypesOfExecutors() {
-    final List<ScheduledTaskGroup> scheduledTaskGroupsA =
-        convertToScheduledTaskGroups(5, new byte[0], "Stage A", ExecutorPlacementProperty.COMPUTE);
-    final List<ScheduledTaskGroup> scheduledTaskGroupsB =
-        convertToScheduledTaskGroups(3, new byte[0], "Stage B", ExecutorPlacementProperty.TRANSIENT);
-
-
-    boolean a0 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsA.get(0), jobStateManager);
-    assertTrue(a0);
-
-    boolean a1 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsA.get(1), jobStateManager);
-    assertTrue(a1);
-
-    boolean a2 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsA.get(2), jobStateManager);
-    assertTrue(a2);
-
-    boolean a3 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsA.get(3), jobStateManager);
-    // After 2000 ms
-    assertFalse(a3);
-
-    schedulingPolicy.onTaskGroupExecutionComplete("a1", scheduledTaskGroupsA.get(0).getTaskGroupId());
-
-    a3 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsA.get(3), jobStateManager);
-    assertTrue(a3);
-
-    boolean a4 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsA.get(4), jobStateManager);
-    // After 2000 ms
-    assertFalse(a4);
-
-    schedulingPolicy.onTaskGroupExecutionComplete("a3", scheduledTaskGroupsA.get(2).getTaskGroupId());
-
-    a4 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsA.get(4), jobStateManager);
-    assertTrue(a4);
-
-    boolean b0 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsB.get(0), jobStateManager);
-    assertTrue(b0);
-
-    boolean b1 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsB.get(1), jobStateManager);
-    assertTrue(b1);
-
-    boolean b2 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsB.get(2), jobStateManager);
-    // After 2000 ms
-    assertFalse(b2);
-
-    schedulingPolicy.onTaskGroupExecutionComplete("b1", scheduledTaskGroupsB.get(0).getTaskGroupId());
-
-    b2 = schedulingPolicy.scheduleTaskGroup(scheduledTaskGroupsB.get(2), jobStateManager);
-    assertTrue(b2);
-
-    Set<String> executingTaskGroups = schedulingPolicy.onExecutorRemoved("b1");
-    assertEquals(1, executingTaskGroups.size());
-    assertEquals(scheduledTaskGroupsB.get(2).getTaskGroupId(), executingTaskGroups.iterator().next());
-
-    executingTaskGroups = schedulingPolicy.onExecutorRemoved("a1");
-    assertEquals(1, executingTaskGroups.size());
-    assertEquals(scheduledTaskGroupsA.get(3).getTaskGroupId(), executingTaskGroups.iterator().next());
-
-    verify(mockMsgSender, times(8)).send(anyObject());
   }
 
   /**

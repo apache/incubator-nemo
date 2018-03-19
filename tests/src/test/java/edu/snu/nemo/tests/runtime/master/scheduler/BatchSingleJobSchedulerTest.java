@@ -88,8 +88,6 @@ public final class BatchSingleJobSchedulerTest {
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
   private PhysicalPlanGenerator physicalPlanGenerator;
 
-  private static final int TEST_TIMEOUT_MS = 500;
-
   private static final int EXECUTOR_CAPACITY = 20;
 
   // This schedule index will make sure that task group events are not ignored
@@ -104,7 +102,7 @@ public final class BatchSingleJobSchedulerTest {
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
     metricMessageHandler = mock(MetricMessageHandler.class);
     pendingTaskGroupQueue = new SingleJobTaskGroupQueue();
-    schedulingPolicy = new RoundRobinSchedulingPolicy(executorRegistry, TEST_TIMEOUT_MS);
+    schedulingPolicy = new RoundRobinSchedulingPolicy(executorRegistry);
     schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskGroupQueue);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
