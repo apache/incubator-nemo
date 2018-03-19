@@ -47,7 +47,7 @@ public final class SchedulerRunner {
   private final ExecutorService schedulerThread;
   private boolean initialJobScheduled;
   private boolean isTerminated;
-  private final SignalQueueingCondition taskGroupOrExecutorAvailable = new SignalQueueingCondition();
+  private final SignalQueueingCondition taskGroupOrExecutorAvailableOrTerminated = new SignalQueueingCondition();
 
   @Inject
   public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
@@ -64,14 +64,14 @@ public final class SchedulerRunner {
    * Signals to the condition on executor availability.
    */
   public void onAnExecutorAvailable() {
-    taskGroupOrExecutorAvailable.signal();
+    taskGroupOrExecutorAvailableOrTerminated.signal();
   }
 
   /**
    * Signals to the condition on TaskGroup availability.
    */
   public void onATaskGroupAvailable() {
-    taskGroupOrExecutorAvailable.signal();
+    taskGroupOrExecutorAvailableOrTerminated.signal();
   }
 
   /**
@@ -93,6 +93,7 @@ public final class SchedulerRunner {
   void terminate() {
     schedulingPolicy.terminate();
     isTerminated = true;
+    taskGroupOrExecutorAvailableOrTerminated.signal();
   }
 
   /**
@@ -124,7 +125,7 @@ public final class SchedulerRunner {
           e.printStackTrace();
           throw e;
         }
-        // taskGroupOrExecutorAvailable.await();
+        taskGroupOrExecutorAvailableOrTerminated.await();
       }
       jobStateManagers.values().forEach(jobStateManager -> {
         if (jobStateManager.getJobState().getStateMachine().getCurrentState() == JobState.State.COMPLETE) {
