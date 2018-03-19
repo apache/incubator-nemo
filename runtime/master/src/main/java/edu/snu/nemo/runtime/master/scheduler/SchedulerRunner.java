@@ -124,7 +124,7 @@ public final class SchedulerRunner {
           e.printStackTrace();
           throw e;
         }
-        taskGroupOrExecutorAvailable.await();
+        // taskGroupOrExecutorAvailable.await();
       }
       jobStateManagers.values().forEach(jobStateManager -> {
         if (jobStateManager.getJobState().getStateMachine().getCurrentState() == JobState.State.COMPLETE) {

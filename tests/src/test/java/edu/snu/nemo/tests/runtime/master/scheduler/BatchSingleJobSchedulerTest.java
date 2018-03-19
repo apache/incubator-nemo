@@ -47,6 +47,7 @@ import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.runtime.master.scheduler.*;
 import edu.snu.nemo.tests.compiler.optimizer.policy.TestPolicy;
 import org.apache.reef.driver.context.ActiveContext;
+import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -103,9 +104,12 @@ public final class BatchSingleJobSchedulerTest {
     irDAGBuilder = initializeDAGBuilder();
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
     metricMessageHandler = mock(MetricMessageHandler.class);
-    pendingTaskGroupQueue = new SingleJobTaskGroupQueue();
+    final Injector schedulerRunnerInjector = Tang.Factory.getTang().newInjector();
+    pendingTaskGroupQueue = new SingleJobTaskGroupQueue(new InjectionFuture<>(schedulerRunnerInjector,
+        SchedulerRunner.class));
     schedulingPolicy = new RoundRobinSchedulingPolicy(executorRegistry, TEST_TIMEOUT_MS);
     schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskGroupQueue);
+    schedulerRunnerInjector.bindVolatileInstance(SchedulerRunner.class, schedulerRunner);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     scheduler =

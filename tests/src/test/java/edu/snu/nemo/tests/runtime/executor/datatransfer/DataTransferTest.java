@@ -62,6 +62,7 @@ import org.apache.reef.io.network.naming.NameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServer;
 import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -137,8 +138,11 @@ public final class DataTransferTest {
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     final SchedulingPolicy schedulingPolicy = new RoundRobinSchedulingPolicy(
         injector.getInstance(ExecutorRegistry.class), SCHEDULE_TIMEOUT);
-    final PendingTaskGroupQueue taskGroupQueue = new SingleJobTaskGroupQueue();
+    final Injector schedulerRunnerInjector = Tang.Factory.getTang().newInjector();
+    final PendingTaskGroupQueue taskGroupQueue = new SingleJobTaskGroupQueue(new InjectionFuture<>(
+        schedulerRunnerInjector, SchedulerRunner.class));
     final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingPolicy, taskGroupQueue);
+    schedulerRunnerInjector.bindVolatileInstance(SchedulerRunner.class, schedulerRunner);
     final Scheduler scheduler =
         new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, taskGroupQueue, master,
             pubSubEventHandler, updatePhysicalPlanEventHandler);
