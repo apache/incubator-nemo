@@ -105,25 +105,22 @@ public final class SchedulerRunner {
     public void run() {
       while (!isTerminated) {
         try {
-          Optional<ScheduledTaskGroup> nextTaskGroupToSchedule;
-          do {
-            nextTaskGroupToSchedule = pendingTaskGroupQueue.dequeue();
-          } while (!nextTaskGroupToSchedule.isPresent());
+          final ScheduledTaskGroup nextTaskGroupToSchedule = pollFromPendingTaskGroupQueue(pendingTaskGroupQueue);
 
-          final JobStateManager jobStateManager = jobStateManagers.get(nextTaskGroupToSchedule.get().getJobId());
+          final JobStateManager jobStateManager = jobStateManagers.get(nextTaskGroupToSchedule.getJobId());
           final boolean isScheduled =
-              schedulingPolicy.scheduleTaskGroup(nextTaskGroupToSchedule.get(), jobStateManager);
+              schedulingPolicy.scheduleTaskGroup(nextTaskGroupToSchedule, jobStateManager);
 
           if (isScheduled) {
             // There may be other scheduling opportunities
             mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
           } else {
             LOG.info("Failed to assign an executor for {} before the timeout: {}",
-                new Object[]{nextTaskGroupToSchedule.get().getTaskGroupId(),
+                new Object[]{nextTaskGroupToSchedule.getTaskGroupId(),
                     schedulingPolicy.getScheduleTimeoutMs()});
 
             // Put this TaskGroup back to the queue since we failed to schedule it.
-            pendingTaskGroupQueue.enqueue(nextTaskGroupToSchedule.get());
+            pendingTaskGroupQueue.enqueue(nextTaskGroupToSchedule);
           }
         } catch (final Exception e) {
           e.printStackTrace();
@@ -140,6 +137,13 @@ public final class SchedulerRunner {
       });
       LOG.info("SchedulerRunner Terminated!");
     }
+  }
+
+  private static ScheduledTaskGroup pollFromPendingTaskGroupQueue(final PendingTaskGroupQueue queue) {
+    Optional<ScheduledTaskGroup> scheduledTaskGroupOptional;
+    while (!(scheduledTaskGroupOptional = queue.dequeue()).isPresent()) {
+    }
+    return scheduledTaskGroupOptional.get();
   }
 
   /**
