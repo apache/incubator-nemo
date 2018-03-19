@@ -16,7 +16,9 @@
 # .travis.yml
 # For maven builds
 language: java
-script: mvn verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=warn
+script:
+  # the following command line builds the project, runs the tests with coverage and then execute the SonarCloud analysis
+  - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent verify sonar:sonar -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info
 
 notifications:
   slack:
@@ -24,4 +26,11 @@ notifications:
 
 cache:
   directories:
-  - "$HOME/.m2"
+  - '$HOME/.m2/repository'
+  - '$HOME/.sonar/cache'
+
+addons:
+  sonarcloud:
+    organization: "apache-nemo"
+    token:
+      secure: "ZCt/oEtyomXzNtJIZUeTVuCN3tjJRqZ29OkLg/U3DJTHIqWcaLfaY4MRFJR4DLRwthB24le0UTcGhFZnzZcZU3ji+ADpF/21sIqMDZgPSaqnb45NBCcLRhDUxM6VmU+DevTU7ob6aGRatEGO+C49logQOQbWM6g3KTKeaCR/pds/6isEUJg8Yqj/Poorqy+DbcpaavHBRrg3Zyxi8xwR1teYo8b7lVVMyXvtEVg+YAPuRPMy7c01zGm0MDzngSL1Sv8Q3YmHsbO3SrIueo+Ik0umuTSKMU4pkRj9jIunpGV1UQ3h5LQHzU/9VnhlgTnK2Ut6fThDx9no7rJwUCfy3LTP0z0dN2hAgK43ZSxuM47lP/Bm4hDRCY7KFNNVxEVhA/5DboWhTQq+iPW0Cc0SztOTLR+j76Yh6qmHmN39OWF22UG34D2JFGGgqfWfXwOBxW4cXVxtFQVzsuBcbJ/5zw0gtuvcQhB9MOFewi2bH1DDu2H3QOjq/vp+V4FigQyMSXRbPYInpF/nUmtSZdroOmOJRt7Ov0Vku4eBVnKbol+npcMbX/pgLZzzaZhB5QVqKrkpY2AKE0jM1deCGb6ABdt/Slizp/ovtzWlF5xCnLvVgVDhsYR4Qo8ZeWbldsbFQBu4y+1SlBdVRHV6QNBsBDyqM9WL4mVhKZaar19HJTw="
