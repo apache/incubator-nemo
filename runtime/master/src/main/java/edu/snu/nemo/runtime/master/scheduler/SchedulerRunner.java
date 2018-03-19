@@ -140,8 +140,9 @@ public final class SchedulerRunner {
   }
 
   private static ScheduledTaskGroup pollFromPendingTaskGroupQueue(final PendingTaskGroupQueue queue) {
-    Optional<ScheduledTaskGroup> scheduledTaskGroupOptional;
-    while (!(scheduledTaskGroupOptional = queue.dequeue()).isPresent()) {
+    Optional<ScheduledTaskGroup> scheduledTaskGroupOptional = Optional.of();
+    while (!scheduledTaskGroupOptional.isPresent()) {
+      scheduledTaskGroupOptional = queue.dequeue();
     }
     return scheduledTaskGroupOptional.get();
   }
