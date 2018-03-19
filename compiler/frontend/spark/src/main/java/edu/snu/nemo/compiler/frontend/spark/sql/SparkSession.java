@@ -22,14 +22,8 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.Encoder;
 import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSessionExtensions;
-import org.apache.spark.sql.internal.SessionState;
-import org.apache.spark.sql.internal.SharedState;
 import org.apache.spark.sql.sources.BaseRelation;
 import org.apache.spark.sql.types.StructType;
-import scala.None$;
-import scala.Option;
-import scala.Some$;
 import scala.Tuple2;
 
 import javax.naming.OperationNotSupportedException;
@@ -52,6 +46,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
    * Constructor.
    *
    * @param sparkContext the spark context for the session.
+   * @param initialConf initial spark session configuration.
    */
   private SparkSession(final SparkContext sparkContext, final Map<String, String> initialConf) {
     super(sparkContext);
