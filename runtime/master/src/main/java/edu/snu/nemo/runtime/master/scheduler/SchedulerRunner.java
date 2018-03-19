@@ -47,7 +47,8 @@ public final class SchedulerRunner {
   private final ExecutorService schedulerThread;
   private boolean initialJobScheduled;
   private boolean isTerminated;
-  private final SignalQueueingCondition taskGroupOrExecutorAvailableOrTerminated = new SignalQueueingCondition();
+  private final SignalQueueingCondition mustCheckSchedulingAvailabilityOrSchedulerTerminated
+      = new SignalQueueingCondition();
 
   @Inject
   public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
@@ -64,14 +65,14 @@ public final class SchedulerRunner {
    * Signals to the condition on executor availability.
    */
   public void onAnExecutorAvailable() {
-    taskGroupOrExecutorAvailableOrTerminated.signal();
+    mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
   }
 
   /**
    * Signals to the condition on TaskGroup availability.
    */
   public void onATaskGroupAvailable() {
-    taskGroupOrExecutorAvailableOrTerminated.signal();
+    mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
   }
 
   /**
@@ -93,7 +94,7 @@ public final class SchedulerRunner {
   void terminate() {
     schedulingPolicy.terminate();
     isTerminated = true;
-    taskGroupOrExecutorAvailableOrTerminated.signal();
+    mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
   }
 
   /**
@@ -113,7 +114,10 @@ public final class SchedulerRunner {
           final boolean isScheduled =
               schedulingPolicy.scheduleTaskGroup(nextTaskGroupToSchedule.get(), jobStateManager);
 
-          if (!isScheduled) {
+          if (isScheduled) {
+            // There may be other scheduling opportunities
+            mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
+          } else {
             LOG.info("Failed to assign an executor for {} before the timeout: {}",
                 new Object[]{nextTaskGroupToSchedule.get().getTaskGroupId(),
                     schedulingPolicy.getScheduleTimeoutMs()});
@@ -125,7 +129,7 @@ public final class SchedulerRunner {
           e.printStackTrace();
           throw e;
         }
-        taskGroupOrExecutorAvailableOrTerminated.await();
+        mustCheckSchedulingAvailabilityOrSchedulerTerminated.await();
       }
       jobStateManagers.values().forEach(jobStateManager -> {
         if (jobStateManager.getJobState().getStateMachine().getCurrentState() == JobState.State.COMPLETE) {

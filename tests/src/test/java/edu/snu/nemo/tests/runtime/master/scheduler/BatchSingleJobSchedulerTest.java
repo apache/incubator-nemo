@@ -215,7 +215,7 @@ public final class BatchSingleJobSchedulerTest {
     return dagBuilder;
   }
 
-  private void scheduleAndCheckJobTermination(final DAG<IRVertex, IREdge> irDAG) {
+  private void scheduleAndCheckJobTermination(final DAG<IRVertex, IREdge> irDAG) throws InjectionException {
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     final PhysicalPlan plan = new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap());
@@ -244,8 +244,8 @@ public final class BatchSingleJobSchedulerTest {
     }
 
     LOG.debug("Waiting for job termination after sending stage completion events");
-    jobStateManager.waitUntilFinish();
-    scheduler.terminate();
+    while (!jobStateManager.checkJobTermination()) {
+    }
     assertTrue(jobStateManager.checkJobTermination());
   }
 
