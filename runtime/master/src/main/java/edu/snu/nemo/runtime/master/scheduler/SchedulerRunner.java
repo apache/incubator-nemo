@@ -23,6 +23,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -46,9 +47,7 @@ public final class SchedulerRunner {
   private final ExecutorService schedulerThread;
   private boolean initialJobScheduled;
   private boolean isTerminated;
-  private final Lock lock = new ReentrantLock();
-  private final Condition taskGroupAvailable = lock.newCondition();
-  private final Condition executorAvailable = lock.newCondition();
+  private final SignalQueueingCondition taskGroupOrExecutorAvailable = new SignalQueueingCondition();
 
   @Inject
   public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
@@ -65,14 +64,14 @@ public final class SchedulerRunner {
    * Signals to the condition on executor availability.
    */
   public void onAnExecutorAvailable() {
-    executorAvailable.signal();
+    taskGroupOrExecutorAvailable.signal();
   }
 
   /**
    * Signals to the condition on TaskGroup availability.
    */
   public void onATaskGroupAvailable() {
-    taskGroupAvailable.signal();
+    taskGroupOrExecutorAvailable.signal();
   }
 
   /**
@@ -125,6 +124,7 @@ public final class SchedulerRunner {
           e.printStackTrace();
           throw e;
         }
+        taskGroupOrExecutorAvailable.await();
       }
       jobStateManagers.values().forEach(jobStateManager -> {
         if (jobStateManager.getJobState().getStateMachine().getCurrentState() == JobState.State.COMPLETE) {
@@ -134,6 +134,39 @@ public final class SchedulerRunner {
         }
       });
       LOG.info("SchedulerRunner Terminated!");
+    }
+  }
+
+  /**
+   * A {@link Condition} primitive that 'queues' signal.
+   */
+  private final class SignalQueueingCondition {
+    private final AtomicBoolean hasQueuedSignal = new AtomicBoolean(false);
+    private final Lock lock = new ReentrantLock();
+    private final Condition condition = lock.newCondition();
+
+    public void signal() {
+      lock.lock();
+      try {
+        hasQueuedSignal.set(true);
+        condition.signal();
+      } finally {
+        lock.unlock();
+      }
+    }
+
+    public void await() {
+      lock.lock();
+      try {
+        if (!hasQueuedSignal.get()) {
+          condition.await();
+        }
+        hasQueuedSignal.set(false);
+      } catch (final InterruptedException e) {
+        throw new RuntimeException(e);
+      } finally {
+        lock.unlock();
+      }
     }
   }
 }
