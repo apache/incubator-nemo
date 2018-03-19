@@ -18,7 +18,8 @@
 language: java
 script:
   # the following command line builds the project, runs the tests with coverage and then execute the SonarCloud analysis
-  - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent verify sonar:sonar -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info
+  - $TRAVIS_BRANCH == "master" && mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent verify sonar:sonar -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info
+  - $TRAVIS_BRANCH != "master" && mvn clean verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info
 
 notifications:
   slack:
