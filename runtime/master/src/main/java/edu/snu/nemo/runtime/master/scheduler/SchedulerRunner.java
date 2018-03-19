@@ -115,14 +115,19 @@ public final class SchedulerRunner {
           final boolean isScheduled =
               schedulingPolicy.scheduleTaskGroup(nextTaskGroupToSchedule, jobStateManager);
 
-          if (!isScheduled) {
-            LOG.info("Failed to assign an executor for {} before the timeout: {}",
-                new Object[]{nextTaskGroupToSchedule.getTaskGroupId(),
-                    schedulingPolicy.getScheduleTimeoutMs()});
-
-            // Put this TaskGroup back to the queue since we failed to schedule it.
-            pendingTaskGroupQueue.enqueue(nextTaskGroupToSchedule);
+          if (isScheduled) {
+            // There may be other scheduling opportunities
+            mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
+            // Breaking the inner loop, as headTaskGroupInQueue must be updated
+            break;
           }
+
+          LOG.info("Failed to assign an executor for {} before the timeout: {}",
+              new Object[]{nextTaskGroupToSchedule.getTaskGroupId(),
+                  schedulingPolicy.getScheduleTimeoutMs()});
+
+          // Put this TaskGroup back to the queue since we failed to schedule it.
+          pendingTaskGroupQueue.enqueue(nextTaskGroupToSchedule);
           nextTaskGroupToSchedule = pollFromPendingTaskGroupQueue(pendingTaskGroupQueue);
         } while (headTaskGroupInQueue != nextTaskGroupToSchedule);
         mustCheckSchedulingAvailabilityOrSchedulerTerminated.await();
@@ -138,10 +143,10 @@ public final class SchedulerRunner {
     }
   }
 
-  private static ScheduledTaskGroup pollFromPendingTaskGroupQueue(final PendingTaskGroupQueue queue) {
+  private ScheduledTaskGroup pollFromPendingTaskGroupQueue(final PendingTaskGroupQueue queue) {
     Optional<ScheduledTaskGroup> scheduledTaskGroupOptional = Optional.empty();
     while (!scheduledTaskGroupOptional.isPresent()) {
-      if (queue.isEmpty()) {
+      if (queue.isEmpty() || isTerminated) {
         return null;
       }
       scheduledTaskGroupOptional = queue.dequeue();
