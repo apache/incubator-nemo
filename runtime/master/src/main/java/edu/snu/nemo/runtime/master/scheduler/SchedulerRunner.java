@@ -115,7 +115,6 @@ public final class SchedulerRunner {
           final boolean isScheduled =
               schedulingPolicy.scheduleTaskGroup(nextTaskGroupToSchedule, jobStateManager);
           if (!isScheduled) {
-            LOG.info("Failed to assign an executor for {}", new Object[]{nextTaskGroupToSchedule.getTaskGroupId()});
             // Put this TaskGroup back to the queue since we failed to schedule it.
             visitedTaskGroups.add(nextTaskGroupToSchedule);
           }
