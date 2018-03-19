@@ -29,17 +29,12 @@ import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.physical.*;
-import edu.snu.nemo.runtime.master.scheduler.SchedulerRunner;
 import edu.snu.nemo.runtime.master.scheduler.SingleJobTaskGroupQueue;
 import edu.snu.nemo.tests.compiler.optimizer.policy.TestPolicy;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.Collections;
 import java.util.List;
@@ -55,8 +50,6 @@ import static org.mockito.Mockito.mock;
 /**
  * Tests {@link SingleJobTaskGroupQueue}.
  */
-@RunWith(PowerMockRunner.class)
-@PrepareForTest(SchedulerRunner.class)
 public final class SingleTaskGroupQueueTest {
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
   private SingleJobTaskGroupQueue pendingTaskGroupPriorityQueue;
@@ -70,7 +63,7 @@ public final class SingleTaskGroupQueueTest {
   @Before
   public void setUp() throws Exception{
     irDAGBuilder = new DAGBuilder<>();
-    pendingTaskGroupPriorityQueue = new SingleJobTaskGroupQueue(new InjectionFuture<>(mock(SchedulerRunner.class)));
+    pendingTaskGroupPriorityQueue = new SingleJobTaskGroupQueue();
     executorService = Executors.newFixedThreadPool(2);
 
     final Injector injector = Tang.Factory.getTang().newInjector();

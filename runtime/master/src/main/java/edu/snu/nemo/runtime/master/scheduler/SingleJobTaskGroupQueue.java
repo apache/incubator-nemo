@@ -24,7 +24,6 @@ import edu.snu.nemo.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.tang.InjectionFuture;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -53,13 +52,10 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
    */
   private final BlockingDeque<String> schedulableStages;
 
-  private final InjectionFuture<SchedulerRunner> schedulerRunner;
-
   @Inject
-  public SingleJobTaskGroupQueue(final InjectionFuture<SchedulerRunner> schedulerRunner) {
+  public SingleJobTaskGroupQueue() {
     stageIdToPendingTaskGroups = new ConcurrentHashMap<>();
     schedulableStages = new LinkedBlockingDeque<>();
-    this.schedulerRunner = schedulerRunner;
   }
 
   @Override
@@ -84,7 +80,6 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
             }
           });
     }
-    schedulerRunner.get().onATaskGroupAvailable();
   }
 
   /**

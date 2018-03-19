@@ -44,7 +44,6 @@ import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
 import edu.snu.nemo.runtime.master.scheduler.*;
 import edu.snu.nemo.tests.compiler.optimizer.policy.TestPolicy;
 import org.apache.reef.driver.context.ActiveContext;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -112,9 +111,7 @@ public final class FaultToleranceTest {
                               final boolean useMockSchedulerRunner) throws InjectionException {
     executorRegistry = Tang.Factory.getTang().newInjector().getInstance(ExecutorRegistry.class);
 
-    final Injector schedulerRunnerInjector = Tang.Factory.getTang().newInjector();
-    pendingTaskGroupQueue = new SingleJobTaskGroupQueue(new InjectionFuture<>(schedulerRunnerInjector,
-        SchedulerRunner.class));
+    pendingTaskGroupQueue = new SingleJobTaskGroupQueue();
     schedulingPolicy = new RoundRobinSchedulingPolicy(executorRegistry, TEST_TIMEOUT_MS);
 
     if (useMockSchedulerRunner) {
@@ -122,7 +119,6 @@ public final class FaultToleranceTest {
     } else {
       schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskGroupQueue);
     }
-    schedulerRunnerInjector.bindVolatileInstance(SchedulerRunner.class, schedulerRunner);
     scheduler =
         new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, pendingTaskGroupQueue,
             blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler);

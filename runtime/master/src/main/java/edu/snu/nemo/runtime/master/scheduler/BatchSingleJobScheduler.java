@@ -381,6 +381,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           stageToSchedule.getSerializedTaskGroupDag(), taskGroupId, stageIncomingEdges, stageOutgoingEdges, attemptIdx,
           stageToSchedule.getContainerType(), logicalTaskIdToReadables.get(taskGroupIdx)));
     });
+    schedulerRunner.onATaskGroupAvailable();
   }
 
   /**
