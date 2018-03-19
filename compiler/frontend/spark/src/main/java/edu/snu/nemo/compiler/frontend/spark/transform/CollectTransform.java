@@ -49,13 +49,12 @@ public final class CollectTransform<T> implements Transform<T, T> {
   public void onData(final Iterator<T> elements, final String srcVertexId) {
     // Write result to a temporary file.
     // TODO #740: remove this part, and make it properly transfer with executor.
-    try {
-      final FileOutputStream fos = new FileOutputStream(filename);
-      final ObjectOutputStream oos = new ObjectOutputStream(fos);
-      final List<T> list = new ArrayList<>();
-      elements.forEachRemaining(list::add);
-      oos.writeObject(list);
-      oos.close();
+    try (final FileOutputStream fos = new FileOutputStream(filename)) {
+      try (final ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+        final ArrayList<T> list = new ArrayList<>();
+        elements.forEachRemaining(list::add);
+        oos.writeObject(list);
+      }
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
