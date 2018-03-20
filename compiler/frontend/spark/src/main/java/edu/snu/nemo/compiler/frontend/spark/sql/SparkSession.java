@@ -46,6 +46,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
    * Constructor.
    *
    * @param sparkContext the spark context for the session.
+   * @param initialConf initial spark session configuration.
    */
   private SparkSession(final SparkContext sparkContext, final Map<String, String> initialConf) {
     super(sparkContext);
@@ -112,11 +113,11 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
       final String className = cmd[0];
       final String methodName = cmd[1];
       final Object[] args = command.getValue();
-      final Class<?>[] argTypes = Stream.of(args).map(o -> o.getClass()).toArray(Class[]::new);
+      final Class<?>[] argTypes = Stream.of(args).map(Object::getClass).toArray(Class[]::new);
 
-      if (!className.equals(SparkSession.class.getName())
-          && !className.equals(DataFrameReader.class.getName())
-          && !className.equals(Dataset.class.getName())) {
+      if (!SparkSession.class.getName().equals(className)
+          && !DataFrameReader.class.getName().equals(className)
+          && !Dataset.class.getName().equals(className)) {
         throw new OperationNotSupportedException(command + " is not yet supported.");
       }
 
