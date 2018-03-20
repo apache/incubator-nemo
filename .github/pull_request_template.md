@@ -11,3 +11,5 @@ JIRA: [NEMO-##: TITLE](https://issues.apache.org/jira/projects/NEMO/issues/NEMO-
 
 **Other comments:**
 - 
+
+resolves [NEMO-##](https://issues.apache.org/jira/projects/NEMO/issues/NEMO-##)
