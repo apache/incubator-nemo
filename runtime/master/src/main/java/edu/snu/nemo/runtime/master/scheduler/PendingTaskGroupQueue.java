@@ -22,6 +22,7 @@ import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import java.util.Collection;
 import java.util.Optional;
 
 /**
@@ -42,10 +43,15 @@ public interface PendingTaskGroupQueue {
 
   /**
    * Dequeues the next TaskGroup to be scheduled.
-   * @return an optional of the the next TaskGroup to be scheduled,
-   * an empty optional if no such TaskGroup exists.
+   * @return an optional of the the next TaskGroup to be scheduled, or {@link Optional#empty()} if the queue is empty
    */
   Optional<ScheduledTaskGroup> dequeue();
+
+  /**
+   * Dequeues TaskGroups that can be scheduled according to job dependency priority.
+   * @return TaskGroups that can be scheduled, or {@link Optional#empty()} if the queue is empty
+   */
+  Optional<Collection<ScheduledTaskGroup>> dequeueSchedulableTaskGroups();
 
   /**
    * Registers a job to this queue in case the queue needs to understand the topology of the job DAG.
