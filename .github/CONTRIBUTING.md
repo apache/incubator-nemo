@@ -18,7 +18,9 @@ When you contribute code, you affirm that the contribution is your original work
 - [Our Docs](http://nemo.apache.org/docs/home/)
 - [Apache Beam](https://beam.apache.org/)
 - [Apache Spark](http://spark.apache.org/)
+- [HDFS](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/HdfsUserGuide.html)
 - [Apache REEF](http://reef.apache.org/)
+- Big Data Workloads like [MR](https://en.wikipedia.org/wiki/MapReduce), [PageRank](https://en.wikipedia.org/wiki/PageRank), [Multinomial Logistic Regression](https://en.wikipedia.org/wiki/Multinomial_logistic_regression)..
 
 ## How to contribute
 
