@@ -10,6 +10,8 @@ Details about Nemo and its development can be found in:
 * Our website: https://nemo.apache.org/
 * Our project wiki: https://cwiki.apache.org/confluence/display/NEMO/
 
+Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contribute to our project.
+
 ## Nemo prerequisites and setup
 
 ### Prerequisites
