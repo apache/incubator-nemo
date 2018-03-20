@@ -7,7 +7,7 @@ This project and everyone participating in it is governed by the [Code of Conduc
 Before contributing to our project, keep in mind that we go through the following simple steps:
 
 - Identify the change required for the project.
-- Search and check for existing, related [JIRAs](https://issues.apache.org/jira/projects/NEMO/issues) and [pull requests](https://github.com/apache/incubator-nemo/pulls). Make a new JIRA if the problem is not pointed out.
+- Search and check for existing, related [JIRA tickets](https://issues.apache.org/jira/projects/NEMO/issues) and [pull requests](https://github.com/apache/incubator-nemo/pulls). Make a new JIRA ticket if the problem is not pointed out.
 - Make sure that the change is important and ready enough for the community to spend time reviewing
 - Open the pull request following the [PR template](.github/pull_request_template.md), clearly explaining and motivating the change.
 
@@ -27,7 +27,7 @@ When you contribute code, you affirm that the contribution is your original work
 - Reporting Bugs
 - Suggesting Enhancements
 - Reviewing Pull Requests and Changes
-- Documentation Changes
+- Documentation Changes (website documentations can be changed through the links on our [website](http://nemo.apache.org/))
 - JIRA Maintenance
 - Code Contribution
 
@@ -39,6 +39,6 @@ When you contribute code, you affirm that the contribution is your original work
 4. Consider whether documentations or tests are needed as part of the change, and add them if needed.
 5. Run `mvn clean install` to verify that the code runs and tests pass.
 6. [Open a pull request](https://github.com/apache/incubator-nemo/pull/new/master) following the [PR template](.github/pull_request_template.md).
-  - the PR title should be of form `[NEMO-##] Title`, specifying the relevant JIRA number, and a short description of the change.
+  - the PR title should be of form `[NEMO-##] Title`, specifying the relevant JIRA ticket number, and a short description of the change.
   - if the PR is still a work in progress and is not ready to be merged, add `[WIP]` before the title.
   - Consider identifying the reviewer of the PR, with the suggestions provided by GitHub.
