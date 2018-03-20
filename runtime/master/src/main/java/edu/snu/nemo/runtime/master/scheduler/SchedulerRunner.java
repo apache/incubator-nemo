@@ -103,24 +103,47 @@ public final class SchedulerRunner {
   private final class SchedulerThread implements Runnable {
     @Override
     public void run() {
+      // Run the first iteration unconditionally
+      mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
+
       while (!isTerminated) {
-        final Queue<ScheduledTaskGroup> visitedTaskGroups = new ArrayDeque<>();
-        while (true) {
-          final ScheduledTaskGroup nextTaskGroupToSchedule = pollFromPendingTaskGroupQueue(pendingTaskGroupQueue);
-          if (nextTaskGroupToSchedule == null) {
-            // TaskGroup queue is empty
-            break;
-          }
-          final JobStateManager jobStateManager = jobStateManagers.get(nextTaskGroupToSchedule.getJobId());
+        // Iteration guard
+        mustCheckSchedulingAvailabilityOrSchedulerTerminated.await();
+
+        final Collection<ScheduledTaskGroup> schedulableTaskGroups = pendingTaskGroupQueue
+            .dequeueSchedulableTaskGroups().orElse(null);
+        if (schedulableTaskGroups == null) {
+          // TaskGroup queue is empty
+          continue;
+        }
+        final List<ScheduledTaskGroup> notScheduledTaskGroups = new ArrayList<>();
+
+        for (final ScheduledTaskGroup schedulableTaskGroup : schedulableTaskGroups) {
+          final JobStateManager jobStateManager = jobStateManagers.get(schedulableTaskGroup.getJobId());
           final boolean isScheduled =
-              schedulingPolicy.scheduleTaskGroup(nextTaskGroupToSchedule, jobStateManager);
+              schedulingPolicy.scheduleTaskGroup(schedulableTaskGroup, jobStateManager);
           if (!isScheduled) {
-            // Put this TaskGroup back to the queue since we failed to schedule it.
-            visitedTaskGroups.add(nextTaskGroupToSchedule);
+            notScheduledTaskGroups.add(schedulableTaskGroup);
           }
         }
-        visitedTaskGroups.forEach(pendingTaskGroupQueue::enqueue);
-        mustCheckSchedulingAvailabilityOrSchedulerTerminated.await();
+
+        if (notScheduledTaskGroups.isEmpty()) {
+          // Immediately run next iteration to check whether there is another schedulable stage
+          mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
+        } else {
+          // Re-enqueue TaskGroups to pendingTaskGroupQueue
+          final List<ScheduledTaskGroup> otherTaskGroups = new ArrayList<>();
+          while (!pendingTaskGroupQueue.isEmpty()) {
+            otherTaskGroups.add(pendingTaskGroupQueue.dequeue().get());
+          }
+          for (final ScheduledTaskGroup scheduledTaskGroup : notScheduledTaskGroups) {
+            // Put this TaskGroup back to the queue since we failed to schedule it.
+            pendingTaskGroupQueue.enqueue(scheduledTaskGroup);
+          }
+          for (final ScheduledTaskGroup scheduledTaskGroup : otherTaskGroups) {
+            pendingTaskGroupQueue.enqueue(scheduledTaskGroup);
+          }
+        }
       }
       jobStateManagers.values().forEach(jobStateManager -> {
         if (jobStateManager.getJobState().getStateMachine().getCurrentState() == JobState.State.COMPLETE) {
@@ -131,17 +154,6 @@ public final class SchedulerRunner {
       });
       LOG.info("SchedulerRunner Terminated!");
     }
-  }
-
-  private ScheduledTaskGroup pollFromPendingTaskGroupQueue(final PendingTaskGroupQueue queue) {
-    Optional<ScheduledTaskGroup> scheduledTaskGroupOptional = Optional.empty();
-    while (!scheduledTaskGroupOptional.isPresent()) {
-      if (queue.isEmpty() || isTerminated) {
-        return null;
-      }
-      scheduledTaskGroupOptional = queue.dequeue();
-    }
-    return scheduledTaskGroupOptional.get();
   }
 
   /**

@@ -210,14 +210,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
 
   @Override
   public boolean isEmpty() {
-    synchronized (stageIdToPendingTaskGroups) {
-      for (final String stageId : schedulableStages) {
-        if (!stageIdToPendingTaskGroups.get(stageId).isEmpty()) {
-          return false;
-        }
-      }
-      return true;
-    }
+    return schedulableStages.isEmpty();
   }
 
   @Override
