@@ -2,14 +2,14 @@
 
 :tada: Thanks for taking the time to contribute! :tada:
 
-This project and everyone participating in it is governed by the [Code of Conduct](.github/CODE_OF_CONDUCT.md).
+This project and everyone participating in it is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 Before contributing to our project, keep in mind that we go through the following simple steps:
 
 - Identify the change required for the project.
 - Search and check for existing, related [JIRA tickets](https://issues.apache.org/jira/projects/NEMO/issues) and [pull requests](https://github.com/apache/incubator-nemo/pulls). Make a new JIRA ticket if the problem is not pointed out.
 - Make sure that the change is important and ready enough for the community to spend time reviewing
-- Open the pull request following the [PR template](.github/pull_request_template.md), clearly explaining and motivating the change.
+- Open the pull request following the [PR template](ㄱpull_request_template.md), clearly explaining and motivating the change.
 
 When you contribute code, you affirm that the contribution is your original work and that you license the work to the project under the project's open source license. Whether or not you state this explicitly, by submitting any copyrighted material via pull request, email, or other means you agree to license the material under the project's open source license and warrant that you have the legal authority to do so.
 
@@ -38,7 +38,7 @@ When you contribute code, you affirm that the contribution is your original work
 3. Clone your fork, create a new branch like `ISSUE#-SHORT_TITLE` (e.g. `25-WebUI`), push commits to the branch.
 4. Consider whether documentations or tests are needed as part of the change, and add them if needed.
 5. Run `mvn clean install` to verify that the code runs and tests pass.
-6. [Open a pull request](https://github.com/apache/incubator-nemo/pull/new/master) following the [PR template](.github/pull_request_template.md).
+6. [Open a pull request](https://github.com/apache/incubator-nemo/pull/new/master) following the [PR template](pull_request_template.md).
   - the PR title should be of form `[NEMO-##] Title`, specifying the relevant JIRA ticket number, and a short description of the change.
   - if the PR is still a work in progress and is not ready to be merged, add `[WIP]` before the title.
   - Consider identifying the reviewer of the PR, with the suggestions provided by GitHub.
