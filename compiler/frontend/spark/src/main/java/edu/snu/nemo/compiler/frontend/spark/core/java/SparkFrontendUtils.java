@@ -102,14 +102,16 @@ public final class SparkFrontendUtils {
       // TODO #740: remove this part, and make it properly transfer with executor.
       File file = new File(resultFile + i);
       while (file.exists()) {
-        final FileInputStream fin = new FileInputStream(file);
-        final ObjectInputStream ois = new ObjectInputStream(fin);
-        result.addAll((List<T>) ois.readObject());
-        ois.close();
+        try (final FileInputStream fin = new FileInputStream(file)) {
+          try (final ObjectInputStream ois = new ObjectInputStream(fin)) {
+            result.addAll((List<T>) ois.readObject());
+          }
+        }
 
         // Delete temporary file
-        file.delete();
-        file = new File(resultFile + ++i);
+        if (file.delete()) {
+          file = new File(resultFile + ++i);
+        }
       }
       return result;
     } catch (Exception e) {
