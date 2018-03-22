@@ -109,7 +109,8 @@ public final class RuntimeTestUtil {
                                          final JobStateManager jobStateManager,
                                          final boolean isPartialSchedule) {
     while (!pendingTaskGroupQueue.isEmpty()) {
-      final ScheduledTaskGroup taskGroupToSchedule = pendingTaskGroupQueue.dequeue().get();
+      final ScheduledTaskGroup taskGroupToSchedule = pendingTaskGroupQueue.remove(
+          pendingTaskGroupQueue.peekSchedulableTaskGroups().get().iterator().next().getTaskGroupId());
 
       schedulingPolicy.scheduleTaskGroup(taskGroupToSchedule, jobStateManager);
 

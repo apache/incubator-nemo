@@ -27,7 +27,6 @@ import org.apache.reef.annotations.audience.DriverSide;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.function.BiFunction;
 
 /**
  * Keep tracks of all pending task groups.
@@ -44,7 +43,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
   /**
    * Pending TaskGroups awaiting to be scheduled for each stage.
    */
-  private final ConcurrentMap<String, Deque<ScheduledTaskGroup>> stageIdToPendingTaskGroups;
+  private final ConcurrentMap<String, Map<String, ScheduledTaskGroup>> stageIdToPendingTaskGroups;
 
   /**
    * Stages with TaskGroups that have not yet been scheduled.
@@ -58,79 +57,74 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
   }
 
   @Override
-  public void enqueue(final ScheduledTaskGroup scheduledTaskGroup) {
+  public void add(final ScheduledTaskGroup scheduledTaskGroup) {
     final String stageId = RuntimeIdGenerator.getStageIdFromTaskGroupId(scheduledTaskGroup.getTaskGroupId());
 
     synchronized (stageIdToPendingTaskGroups) {
-      stageIdToPendingTaskGroups.compute(stageId,
-          new BiFunction<String, Deque<ScheduledTaskGroup>, Deque<ScheduledTaskGroup>>() {
-            @Override
-            public Deque<ScheduledTaskGroup> apply(final String s,
-                                                   final Deque<ScheduledTaskGroup> scheduledTaskGroups) {
-              if (scheduledTaskGroups == null) {
-                final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = new ArrayDeque<>();
-                pendingTaskGroupsForStage.add(scheduledTaskGroup);
-                updateSchedulableStages(stageId, scheduledTaskGroup.getContainerType());
-                return pendingTaskGroupsForStage;
-              } else {
-                scheduledTaskGroups.add(scheduledTaskGroup);
-                return scheduledTaskGroups;
-              }
-            }
-          });
+      stageIdToPendingTaskGroups.compute(stageId, (s, taskGroupIdToTaskGroup) -> {
+        if (taskGroupIdToTaskGroup == null) {
+          final Map<String, ScheduledTaskGroup> taskGroupIdToTaskGroupMap = new HashMap<>();
+          taskGroupIdToTaskGroupMap.put(scheduledTaskGroup.getTaskGroupId(), scheduledTaskGroup);
+          updateSchedulableStages(stageId, scheduledTaskGroup.getContainerType());
+          return taskGroupIdToTaskGroupMap;
+        } else {
+          taskGroupIdToTaskGroup.put(scheduledTaskGroup.getTaskGroupId(), scheduledTaskGroup);
+          return taskGroupIdToTaskGroup;
+        }
+      });
     }
   }
 
   /**
-   * Dequeues the next TaskGroup to be scheduled according to job dependency priority.
-   * @return the next TaskGroup to be scheduled, or {@link Optional#empty()} if the queue is empty
+   * {@inheritDoc}
    */
   @Override
-  public Optional<ScheduledTaskGroup> dequeue() {
-    final String stageId = schedulableStages.pollFirst();
+  public ScheduledTaskGroup remove(final String taskGroupId) throws NoSuchElementException {
+    final String stageId = schedulableStages.peekFirst();
     if (stageId == null) {
-      return Optional.empty();
+      throw new NoSuchElementException("No schedulable stage in TaskGroup queue");
     }
 
     synchronized (stageIdToPendingTaskGroups) {
-      final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = stageIdToPendingTaskGroups.get(stageId);
+      final Map<String, ScheduledTaskGroup> pendingTaskGroupsForStage = stageIdToPendingTaskGroups.get(stageId);
 
       if (pendingTaskGroupsForStage == null) {
-        throw new RuntimeException(String.format("Stage %s not found in stageIdToPendingTaskGroups map", stageId));
+        throw new RuntimeException(String.format("Stage %s not found in TaskGroup queue", stageId));
       }
-      final ScheduledTaskGroup taskGroupToSchedule = pendingTaskGroupsForStage.poll();
+      final ScheduledTaskGroup taskGroupToSchedule = pendingTaskGroupsForStage.remove(taskGroupId);
+      if (taskGroupToSchedule == null) {
+        throw new NoSuchElementException(String.format("TaskGroup %s not found in TaskGroup queue", taskGroupId));
+      }
       if (pendingTaskGroupsForStage.isEmpty()) {
+        if (!schedulableStages.pollFirst().equals(stageId)) {
+          throw new RuntimeException(String.format("Expected stage %s to be polled", stageId));
+        }
         stageIdToPendingTaskGroups.remove(stageId);
-        stageIdToPendingTaskGroups.forEach((scheduledStageId, taskGroupList) ->
-            updateSchedulableStages(scheduledStageId, taskGroupList.getFirst().getContainerType()));
-      } else {
-        schedulableStages.addLast(stageId);
+        stageIdToPendingTaskGroups.forEach((scheduledStageId, taskGroups) ->
+            updateSchedulableStages(scheduledStageId, taskGroups.values().iterator().next().getContainerType()));
       }
 
-      return Optional.of(taskGroupToSchedule);
+      return taskGroupToSchedule;
     }
   }
 
   /**
-   * Dequeues TaskGroups that can be scheduled according to job dependency priority.
+   * Peeks TaskGroups that can be scheduled according to job dependency priority.
    * @return TaskGroups to be scheduled, or {@link Optional#empty()} if the queue is empty
    */
   @Override
-  public Optional<Collection<ScheduledTaskGroup>> dequeueSchedulableTaskGroups() {
-    final String stageId = schedulableStages.pollFirst();
+  public Optional<Collection<ScheduledTaskGroup>> peekSchedulableTaskGroups() {
+    final String stageId = schedulableStages.peekFirst();
     if (stageId == null) {
       return Optional.empty();
     }
 
     synchronized (stageIdToPendingTaskGroups) {
-      final Deque<ScheduledTaskGroup> pendingTaskGroupsForStage = stageIdToPendingTaskGroups.remove(stageId);
-
+      final Map<String, ScheduledTaskGroup> pendingTaskGroupsForStage = stageIdToPendingTaskGroups.get(stageId);
       if (pendingTaskGroupsForStage == null) {
         throw new RuntimeException(String.format("Stage %s not found in stageIdToPendingTaskGroups map", stageId));
       }
-      stageIdToPendingTaskGroups.forEach((scheduledStageId, taskGroupList) ->
-          updateSchedulableStages(scheduledStageId, taskGroupList.getFirst().getContainerType()));
-      return Optional.of(pendingTaskGroupsForStage);
+      return Optional.of(Collections.unmodifiableCollection(pendingTaskGroupsForStage.values()));
     }
   }
 

@@ -36,6 +36,7 @@ import org.apache.reef.tang.Tang;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -131,12 +132,12 @@ public final class SingleTaskGroupQueueTest {
     executorService.execute(() -> {
       try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
-        final ScheduledTaskGroup dequeuedTaskGroup = pendingTaskGroupPriorityQueue.dequeue().get();
+        final ScheduledTaskGroup dequeuedTaskGroup = dequeue();
         assertEquals(RuntimeIdGenerator.getStageIdFromTaskGroupId(dequeuedTaskGroup.getTaskGroupId()),
             dagOf2Stages.get(1).getId());
 
-        // Let's say we fail to schedule, and enqueue this TaskGroup back.
-        pendingTaskGroupPriorityQueue.enqueue(dequeuedTaskGroup);
+        // Let's say we fail to schedule, and add this TaskGroup back.
+        pendingTaskGroupPriorityQueue.add(dequeuedTaskGroup);
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
 
         // Now that we've dequeued all of the children TaskGroups, we should now start getting the parents.
@@ -210,12 +211,12 @@ public final class SingleTaskGroupQueueTest {
     executorService.execute(() -> {
       try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
-        final ScheduledTaskGroup dequeuedTaskGroup = pendingTaskGroupPriorityQueue.dequeue().get();
+        final ScheduledTaskGroup dequeuedTaskGroup = dequeue();
         assertEquals(RuntimeIdGenerator.getStageIdFromTaskGroupId(dequeuedTaskGroup.getTaskGroupId()),
             dagOf2Stages.get(0).getId());
 
-        // Let's say we fail to schedule, and enqueue this TaskGroup back.
-        pendingTaskGroupPriorityQueue.enqueue(dequeuedTaskGroup);
+        // Let's say we fail to schedule, and add this TaskGroup back.
+        pendingTaskGroupPriorityQueue.add(dequeuedTaskGroup);
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
 
         // Now that we've dequeued all of the children TaskGroups, we should now schedule children.
@@ -314,7 +315,7 @@ public final class SingleTaskGroupQueueTest {
    */
   private void scheduleStage(final PhysicalStage stage) {
     stage.getTaskGroupIds().forEach(taskGroupId ->
-        pendingTaskGroupPriorityQueue.enqueue(new ScheduledTaskGroup(
+        pendingTaskGroupPriorityQueue.add(new ScheduledTaskGroup(
             "TestPlan", stage.getSerializedTaskGroupDag(), taskGroupId, Collections.emptyList(),
             Collections.emptyList(), 0, stage.getContainerType(), Collections.emptyMap())));
   }
@@ -324,7 +325,17 @@ public final class SingleTaskGroupQueueTest {
    * @return the stage name of the dequeued task group.
    */
   private String dequeueAndGetStageId() {
-    final ScheduledTaskGroup scheduledTaskGroup = pendingTaskGroupPriorityQueue.dequeue().get();
+    final ScheduledTaskGroup scheduledTaskGroup = dequeue();
     return RuntimeIdGenerator.getStageIdFromTaskGroupId(scheduledTaskGroup.getTaskGroupId());
+  }
+
+  /**
+   * Dequeues a scheduled task group from the task group priority queue.
+   * @return the TaskGroup dequeued
+   */
+  private ScheduledTaskGroup dequeue() {
+    final Collection<ScheduledTaskGroup> scheduledTaskGroups
+        = pendingTaskGroupPriorityQueue.peekSchedulableTaskGroups().get();
+    return pendingTaskGroupPriorityQueue.remove(scheduledTaskGroups.iterator().next().getTaskGroupId());
   }
 }

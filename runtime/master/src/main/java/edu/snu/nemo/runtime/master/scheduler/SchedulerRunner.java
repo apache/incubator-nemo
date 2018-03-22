@@ -111,38 +111,30 @@ public final class SchedulerRunner {
         mustCheckSchedulingAvailabilityOrSchedulerTerminated.await();
 
         final Collection<ScheduledTaskGroup> schedulableTaskGroups = pendingTaskGroupQueue
-            .dequeueSchedulableTaskGroups().orElse(null);
+            .peekSchedulableTaskGroups().orElse(null);
         if (schedulableTaskGroups == null) {
           // TaskGroup queue is empty
           continue;
         }
-        final List<ScheduledTaskGroup> notScheduledTaskGroups = new ArrayList<>();
+        final List<ScheduledTaskGroup> scheduledTaskGroups = new ArrayList<>();
 
         for (final ScheduledTaskGroup schedulableTaskGroup : schedulableTaskGroups) {
           final JobStateManager jobStateManager = jobStateManagers.get(schedulableTaskGroup.getJobId());
           final boolean isScheduled =
               schedulingPolicy.scheduleTaskGroup(schedulableTaskGroup, jobStateManager);
-          if (!isScheduled) {
-            notScheduledTaskGroups.add(schedulableTaskGroup);
+          if (isScheduled) {
+            scheduledTaskGroups.add(schedulableTaskGroup);
           }
         }
 
-        if (notScheduledTaskGroups.isEmpty()) {
+        for (final ScheduledTaskGroup scheduledTaskGroup : scheduledTaskGroups) {
+          pendingTaskGroupQueue.remove(scheduledTaskGroup.getTaskGroupId());
+        }
+
+        if (scheduledTaskGroups.size() == schedulableTaskGroups.size()) {
+          // Scheduled all TaskGroups in the stage
           // Immediately run next iteration to check whether there is another schedulable stage
           mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
-        } else {
-          // Re-enqueue TaskGroups to pendingTaskGroupQueue
-          final List<ScheduledTaskGroup> otherTaskGroups = new ArrayList<>();
-          while (!pendingTaskGroupQueue.isEmpty()) {
-            otherTaskGroups.add(pendingTaskGroupQueue.dequeue().get());
-          }
-          for (final ScheduledTaskGroup scheduledTaskGroup : notScheduledTaskGroups) {
-            // Put this TaskGroup back to the queue since we failed to schedule it.
-            pendingTaskGroupQueue.enqueue(scheduledTaskGroup);
-          }
-          for (final ScheduledTaskGroup scheduledTaskGroup : otherTaskGroups) {
-            pendingTaskGroupQueue.enqueue(scheduledTaskGroup);
-          }
         }
       }
       jobStateManagers.values().forEach(jobStateManager -> {
