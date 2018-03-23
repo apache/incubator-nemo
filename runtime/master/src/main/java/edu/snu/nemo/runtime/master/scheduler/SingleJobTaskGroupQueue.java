@@ -119,7 +119,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
     if (pendingTaskGroupsForStage == null) {
       throw new RuntimeException(String.format("Stage %s not found in stageIdToPendingTaskGroups map", stageId));
     }
-    return Optional.of(Collections.unmodifiableCollection(pendingTaskGroupsForStage.values()));
+    return Optional.of(new ArrayList<>(pendingTaskGroupsForStage.values()));
   }
 
   /**

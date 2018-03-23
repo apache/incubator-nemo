@@ -125,10 +125,10 @@ public final class SchedulerRunner {
           final boolean isScheduled =
               schedulingPolicy.scheduleTaskGroup(schedulableTaskGroup, jobStateManager);
           if (isScheduled) {
-            LOG.info("Successfully scheduled {}...", schedulableTaskGroup.getTaskGroupId());
+            LOG.info("Successfully scheduled {}", schedulableTaskGroup.getTaskGroupId());
             scheduledTaskGroups.add(schedulableTaskGroup);
           } else {
-            LOG.info("Failed to schedule {}...", schedulableTaskGroup.getTaskGroupId());
+            LOG.info("Failed to schedule {}", schedulableTaskGroup.getTaskGroupId());
           }
         }
 

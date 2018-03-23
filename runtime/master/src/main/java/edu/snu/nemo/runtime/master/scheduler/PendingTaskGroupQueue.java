@@ -53,6 +53,7 @@ public interface PendingTaskGroupQueue {
 
   /**
    * Peeks TaskGroups that can be scheduled according to job dependency priority.
+   * Changes to the queue must not reflected to the returned collection to avoid concurrent modification.
    * @return TaskGroups that can be scheduled, or {@link Optional#empty()} if the queue is empty
    */
   Optional<Collection<ScheduledTaskGroup>> peekSchedulableTaskGroups();
