@@ -118,7 +118,7 @@ public final class SingleTaskGroupQueueTest {
     final AtomicBoolean passed = new AtomicBoolean(true);
 
     // This mimics Batch Scheduler's behavior
-    executorService.execute(() -> {
+    executorService.submit(() -> {
       // First schedule the children TaskGroups (since it is push).
       // BatchSingleJobScheduler will schedule TaskGroups in this order as well.
       scheduleStage(dagOf2Stages.get(1));
@@ -126,10 +126,10 @@ public final class SingleTaskGroupQueueTest {
       scheduleStage(dagOf2Stages.get(0));
 
       countDownLatch.countDown();
-    });
+    }).get();
 
     // This mimics SchedulerRunner's behavior
-    executorService.execute(() -> {
+    executorService.submit(() -> {
       try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
         final ScheduledTaskGroup dequeuedTaskGroup = dequeue();
@@ -149,7 +149,7 @@ public final class SingleTaskGroupQueueTest {
       } finally {
         countDownLatch.countDown();
       }
-    });
+    }).get();
 
     countDownLatch.await();
     assertTrue(passed.get());
@@ -200,15 +200,15 @@ public final class SingleTaskGroupQueueTest {
     final CountDownLatch countDownLatch = new CountDownLatch(2);
 
     // This mimics Batch Scheduler's behavior
-    executorService.execute(() -> {
+    executorService.submit(() -> {
       // First schedule the parent TaskGroups (since it is pull).
       // BatchSingleJobScheduler will schedule TaskGroups in this order as well.
       scheduleStage(dagOf2Stages.get(0));
       countDownLatch.countDown();
-    });
+    }).get();
 
     // This mimics SchedulerRunner's behavior
-    executorService.execute(() -> {
+    executorService.submit(() -> {
       try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
         final ScheduledTaskGroup dequeuedTaskGroup = dequeue();
@@ -229,7 +229,7 @@ public final class SingleTaskGroupQueueTest {
       } finally {
         countDownLatch.countDown();
       }
-    });
+    }).get();
 
     countDownLatch.await();
   }
@@ -240,7 +240,7 @@ public final class SingleTaskGroupQueueTest {
    * while concurrently scheduling TaskGroups that have dependencies, but are of different container types.
    */
   @Test
-  public void testContainerTypeAwareness() throws Exception {
+  public void testWithDifferentContainerType() throws Exception {
     final Transform t = mock(Transform.class);
     final IRVertex v1 = new OperatorVertex(t);
     v1.setProperty(ParallelismProperty.of(3));
@@ -287,14 +287,13 @@ public final class SingleTaskGroupQueueTest {
     countDownLatch.countDown();
 
     // This mimics SchedulerRunner's behavior.
-    executorService.execute(() -> {
+    executorService.submit(() -> {
       try {
-        // Since Stage-0 and Stage-1 have different container types, they should simply alternate turns in scheduling.
+        assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
+
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
 
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
-
-        assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
 
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
 
@@ -304,7 +303,7 @@ public final class SingleTaskGroupQueueTest {
       } finally {
         countDownLatch.countDown();
       }
-    });
+    }).get();
 
     countDownLatch.await();
   }
