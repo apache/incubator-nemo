@@ -114,31 +114,31 @@ public final class SchedulerRunner {
             .peekSchedulableTaskGroups().orElse(null);
         if (schedulableTaskGroups == null) {
           // TaskGroup queue is empty
-          LOG.info("PendingTaskGroupQueue is empty. Awaiting for more TaskGroups...");
+          LOG.debug("PendingTaskGroupQueue is empty. Awaiting for more TaskGroups...");
           continue;
         }
 
         int numScheduledTaskGroups = 0;
         for (final ScheduledTaskGroup schedulableTaskGroup : schedulableTaskGroups) {
           final JobStateManager jobStateManager = jobStateManagers.get(schedulableTaskGroup.getJobId());
-          LOG.info("Trying to schedule {}...", schedulableTaskGroup.getTaskGroupId());
+          LOG.debug("Trying to schedule {}...", schedulableTaskGroup.getTaskGroupId());
           final boolean isScheduled =
               schedulingPolicy.scheduleTaskGroup(schedulableTaskGroup, jobStateManager);
           if (isScheduled) {
-            LOG.info("Successfully scheduled {}", schedulableTaskGroup.getTaskGroupId());
+            LOG.debug("Successfully scheduled {}", schedulableTaskGroup.getTaskGroupId());
             pendingTaskGroupQueue.remove(schedulableTaskGroup.getTaskGroupId());
             numScheduledTaskGroups++;
           } else {
-            LOG.info("Failed to schedule {}", schedulableTaskGroup.getTaskGroupId());
+            LOG.debug("Failed to schedule {}", schedulableTaskGroup.getTaskGroupId());
           }
         }
 
-        LOG.info("Examined {} TaskGroups, scheduled {} TaskGroups",
+        LOG.debug("Examined {} TaskGroups, scheduled {} TaskGroups",
             schedulableTaskGroups.size(), numScheduledTaskGroups);
         if (schedulableTaskGroups.size() == numScheduledTaskGroups) {
           // Scheduled all TaskGroups in the stage
           // Immediately run next iteration to check whether there is another schedulable stage
-          LOG.info("Trying to schedule next Stage in the ScheduleGroup (if any)...");
+          LOG.debug("Trying to schedule next Stage in the ScheduleGroup (if any)...");
           mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
         }
       }
