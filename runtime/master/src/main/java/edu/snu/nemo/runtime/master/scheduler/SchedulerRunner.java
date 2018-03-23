@@ -132,6 +132,10 @@ public final class SchedulerRunner {
           }
         }
 
+        for (final ScheduledTaskGroup scheduledTaskGroup : scheduledTaskGroups) {
+          pendingTaskGroupQueue.remove(scheduledTaskGroup.getTaskGroupId());
+        }
+
         LOG.info("Examined {} TaskGroups, scheduled {} TaskGroups",
             schedulableTaskGroups.size(), scheduledTaskGroups.size());
         if (scheduledTaskGroups.size() == schedulableTaskGroups.size()) {
@@ -139,10 +143,6 @@ public final class SchedulerRunner {
           // Immediately run next iteration to check whether there is another schedulable stage
           LOG.info("Trying to schedule next Stage in the ScheduleGroup (if any)...");
           mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
-        }
-
-        for (final ScheduledTaskGroup scheduledTaskGroup : scheduledTaskGroups) {
-          pendingTaskGroupQueue.remove(scheduledTaskGroup.getTaskGroupId());
         }
       }
       jobStateManagers.values().forEach(jobStateManager -> {
