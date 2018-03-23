@@ -95,7 +95,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   /**
    * Nemo driver memory.
    */
-  @NamedParameter(doc = "Nemo driver memory", short_name = "driver_mem_mb", default_value = "256")
+  @NamedParameter(doc = "Nemo driver memory", short_name = "driver_mem_mb", default_value = "1024")
   public final class DriverMemMb implements Name<Integer> {
   }
 
