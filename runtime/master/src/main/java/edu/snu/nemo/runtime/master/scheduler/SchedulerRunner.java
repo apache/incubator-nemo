@@ -114,16 +114,21 @@ public final class SchedulerRunner {
             .peekSchedulableTaskGroups().orElse(null);
         if (schedulableTaskGroups == null) {
           // TaskGroup queue is empty
+          LOG.info("PendingTaskGroupQueue is empty. Awaiting for more TaskGroups...");
           continue;
         }
         final List<ScheduledTaskGroup> scheduledTaskGroups = new ArrayList<>();
 
         for (final ScheduledTaskGroup schedulableTaskGroup : schedulableTaskGroups) {
           final JobStateManager jobStateManager = jobStateManagers.get(schedulableTaskGroup.getJobId());
+          LOG.info("Trying to schedule {}...", schedulableTaskGroup.getTaskGroupId());
           final boolean isScheduled =
               schedulingPolicy.scheduleTaskGroup(schedulableTaskGroup, jobStateManager);
           if (isScheduled) {
+            LOG.info("Successfully scheduled {}...", schedulableTaskGroup.getTaskGroupId());
             scheduledTaskGroups.add(schedulableTaskGroup);
+          } else {
+            LOG.info("Failed to schedule {}...", schedulableTaskGroup.getTaskGroupId());
           }
         }
 
@@ -131,9 +136,12 @@ public final class SchedulerRunner {
           pendingTaskGroupQueue.remove(scheduledTaskGroup.getTaskGroupId());
         }
 
+        LOG.info("Examined {} TaskGroups, scheduled {} TaskGroups",
+            schedulableTaskGroups.size(), scheduledTaskGroups.size());
         if (scheduledTaskGroups.size() == schedulableTaskGroups.size()) {
           // Scheduled all TaskGroups in the stage
           // Immediately run next iteration to check whether there is another schedulable stage
+          LOG.info("Trying to schedule next Stage in the ScheduleGroup (if any)...");
           mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
         }
       }
