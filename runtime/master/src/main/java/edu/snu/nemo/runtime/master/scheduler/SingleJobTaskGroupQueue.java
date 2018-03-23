@@ -106,6 +106,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
 
   /**
    * Peeks TaskGroups that can be scheduled according to job dependency priority.
+   * Changes in the queue will be reflected to the returned collection of TaskGroups.
    * @return TaskGroups to be scheduled, or {@link Optional#empty()} if the queue is empty
    */
   @Override
