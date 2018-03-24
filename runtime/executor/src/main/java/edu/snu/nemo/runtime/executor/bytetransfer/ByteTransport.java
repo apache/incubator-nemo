@@ -125,6 +125,7 @@ final class ByteTransport implements AutoCloseable {
             break;
           }
         } catch (final InterruptedException e) {
+          Thread.currentThread().interrupt();
           LOG.debug(String.format("Interrupted while binding to %s:%d", host, candidatePort), e);
         }
       }
