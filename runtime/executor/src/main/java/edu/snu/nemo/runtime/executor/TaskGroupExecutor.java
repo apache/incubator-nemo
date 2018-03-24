@@ -207,11 +207,13 @@ public final class TaskGroupExecutor {
             Optional.of(TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
         LOG.warn("{} Execution Failed (Recoverable)! Exception: {}",
             new Object[] {taskGroupId, ex.toString()});
+        Thread.currentThread().interrupt();
       } catch (final BlockWriteException ex2) {
         taskGroupStateManager.onTaskStateChanged(physicalTaskId, TaskState.State.FAILED_RECOVERABLE,
             Optional.of(TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
         LOG.warn("{} Execution Failed (Recoverable)! Exception: {}",
             new Object[] {taskGroupId, ex2.toString()});
+        Thread.currentThread().interrupt();
       } catch (final Exception e) {
         taskGroupStateManager.onTaskStateChanged(
             physicalTaskId, TaskState.State.FAILED_UNRECOVERABLE, Optional.empty());
@@ -290,7 +292,10 @@ public final class TaskGroupExecutor {
             }
             sideInputMap.put(srcTransform, sideInput);
             sideInputIterators.add(sideInputIterator);
-          } catch (final InterruptedException | ExecutionException e) {
+          } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BlockFetchException(e);
+          } catch (final ExecutionException e) {
             throw new BlockFetchException(e);
           }
         });
@@ -347,6 +352,7 @@ public final class TaskGroupExecutor {
           }
         }
       } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
         throw new BlockFetchException(e);
       }
 
@@ -424,6 +430,7 @@ public final class TaskGroupExecutor {
           }
         }
       } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
         throw new BlockFetchException(e);
       }
     }
