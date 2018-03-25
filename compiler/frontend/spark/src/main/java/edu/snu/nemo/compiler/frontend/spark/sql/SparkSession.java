@@ -115,9 +115,9 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
       final Object[] args = command.getValue();
       final Class<?>[] argTypes = Stream.of(args).map(Object::getClass).toArray(Class[]::new);
 
-      if (!SparkSession.class.getName().equals(className)
-          && !DataFrameReader.class.getName().equals(className)
-          && !Dataset.class.getName().equals(className)) {
+      if (!className.contains("SparkSession")
+          && !className.contains("DataFrameReader")
+          && !className.contains("Dataset")) {
         throw new OperationNotSupportedException(command + " is not yet supported.");
       }
 

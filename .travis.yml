@@ -23,8 +23,8 @@ jdk:
   - oraclejdk8
 script:
   # the following command line builds the project, runs the tests with coverage and then execute the SonarCloud analysis
-  - if [ "$TRAVIS_PULL_REQUEST" == false ]; then mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent verify sonar:sonar -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info; fi
-  - if [ "$TRAVIS_PULL_REQUEST" != false ]; then mvn clean verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info; fi
+  - if [ "$TRAVIS_PULL_REQUEST" == false ]; then travis_retry mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent verify sonar:sonar -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info; fi
+  - if [ "$TRAVIS_PULL_REQUEST" != false ]; then travis_retry mvn clean verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info; fi
 
 notifications:
   slack:
