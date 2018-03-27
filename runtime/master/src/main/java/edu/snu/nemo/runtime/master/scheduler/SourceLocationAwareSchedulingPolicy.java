@@ -75,8 +75,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
     } catch (final UnsupportedOperationException e) {
       // do nothing
     } catch (final Exception e) {
-      LOG.warn(String.format("Exception while trying to get source location for %s",
-          scheduledTaskGroup.getTaskGroupId()), e);
+      throw new RuntimeException(e);
     }
     if (sourceLocations.size() == 0) {
       // No source location information found, fall back to the RoundRobinSchedulingPolicy
