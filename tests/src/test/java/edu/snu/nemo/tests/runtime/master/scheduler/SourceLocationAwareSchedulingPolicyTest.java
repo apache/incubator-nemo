@@ -297,7 +297,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
         final List<Readable> readables = new ArrayList<>();
         for (int i = 0; i < numReadables; i++) {
           final Readable readable = mock(Readable.class);
-          when(readable.getLocations()).thenThrow(new Exception("EXCEPTION"));
+          when(readable.getLocations()).thenThrow(new UnsupportedOperationException());
           readables.add(readable);
         }
         return doCreate(readables, containerType);
