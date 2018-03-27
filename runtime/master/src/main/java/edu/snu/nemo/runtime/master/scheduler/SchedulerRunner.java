@@ -47,8 +47,8 @@ public final class SchedulerRunner {
   private final ExecutorService schedulerThread;
   private boolean initialJobScheduled;
   private boolean isTerminated;
-  private final SignalQueueingCondition mustCheckSchedulingAvailabilityOrSchedulerTerminated
-      = new SignalQueueingCondition();
+  private final DelayedSignalingCondition mustCheckSchedulingAvailabilityOrSchedulerTerminated
+      = new DelayedSignalingCondition();
 
   @Inject
   public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
@@ -154,30 +154,38 @@ public final class SchedulerRunner {
   }
 
   /**
-   * A {@link Condition} primitive that 'queues' signal.
+   * A {@link Condition} that allows 'delayed' signaling.
    */
-  private final class SignalQueueingCondition {
-    private final AtomicBoolean hasQueuedSignal = new AtomicBoolean(false);
+  private final class DelayedSignalingCondition {
+    private final AtomicBoolean hasDelayedSignal = new AtomicBoolean(false);
     private final Lock lock = new ReentrantLock();
     private final Condition condition = lock.newCondition();
 
+    /**
+     * Signals to this condition. If no thread is awaiting for this condition,
+     * signaling is delayed until the first next {@link #await} invocation.
+     */
     public void signal() {
       lock.lock();
       try {
-        hasQueuedSignal.set(true);
+        hasDelayedSignal.set(true);
         condition.signal();
       } finally {
         lock.unlock();
       }
     }
 
+    /**
+     * Awaits to this condition. The thread will awake when there is a delayed signal,
+     * or the next first {@link #signal} invocation.
+     */
     public void await() {
       lock.lock();
       try {
-        if (!hasQueuedSignal.get()) {
+        if (!hasDelayedSignal.get()) {
           condition.await();
         }
-        hasQueuedSignal.set(false);
+        hasDelayedSignal.set(false);
       } catch (final InterruptedException e) {
         throw new RuntimeException(e);
       } finally {
