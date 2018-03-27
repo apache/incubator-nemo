@@ -43,7 +43,7 @@ public final class SchedulerRunner {
   private static final Logger LOG = LoggerFactory.getLogger(SchedulerRunner.class.getName());
   private final Map<String, JobStateManager> jobStateManagers;
   private final SchedulingPolicy schedulingPolicy;
-  private final PendingTaskGroupQueue pendingTaskGroupQueue;
+  private final PendingTaskGroupCollection pendingTaskGroupCollection;
   private final ExecutorService schedulerThread;
   private boolean initialJobScheduled;
   private boolean isTerminated;
@@ -52,9 +52,9 @@ public final class SchedulerRunner {
 
   @Inject
   public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
-                         final PendingTaskGroupQueue pendingTaskGroupQueue) {
+                         final PendingTaskGroupCollection pendingTaskGroupCollection) {
     this.jobStateManagers = new HashMap<>();
-    this.pendingTaskGroupQueue = pendingTaskGroupQueue;
+    this.pendingTaskGroupCollection = pendingTaskGroupCollection;
     this.schedulingPolicy = schedulingPolicy;
     this.schedulerThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "SchedulerRunner"));
     this.initialJobScheduled = false;
@@ -110,11 +110,11 @@ public final class SchedulerRunner {
         // Iteration guard
         mustCheckSchedulingAvailabilityOrSchedulerTerminated.await();
 
-        final Collection<ScheduledTaskGroup> schedulableTaskGroups = pendingTaskGroupQueue
+        final Collection<ScheduledTaskGroup> schedulableTaskGroups = pendingTaskGroupCollection
             .peekSchedulableTaskGroups().orElse(null);
         if (schedulableTaskGroups == null) {
           // TaskGroup queue is empty
-          LOG.debug("PendingTaskGroupQueue is empty. Awaiting for more TaskGroups...");
+          LOG.debug("PendingTaskGroupCollection is empty. Awaiting for more TaskGroups...");
           continue;
         }
 
@@ -126,7 +126,7 @@ public final class SchedulerRunner {
               schedulingPolicy.scheduleTaskGroup(schedulableTaskGroup, jobStateManager);
           if (isScheduled) {
             LOG.debug("Successfully scheduled {}", schedulableTaskGroup.getTaskGroupId());
-            pendingTaskGroupQueue.remove(schedulableTaskGroup.getTaskGroupId());
+            pendingTaskGroupCollection.remove(schedulableTaskGroup.getTaskGroupId());
             numScheduledTaskGroups++;
           } else {
             LOG.debug("Failed to schedule {}", schedulableTaskGroup.getTaskGroupId());

@@ -134,7 +134,7 @@ public final class DataTransferTest {
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     final SchedulingPolicy schedulingPolicy = new RoundRobinSchedulingPolicy(
         injector.getInstance(ExecutorRegistry.class));
-    final PendingTaskGroupQueue taskGroupQueue = new SingleJobTaskGroupQueue();
+    final PendingTaskGroupCollection taskGroupQueue = new SingleJobTaskGroupCollection();
     final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingPolicy, taskGroupQueue);
     final Scheduler scheduler =
         new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, taskGroupQueue, master,

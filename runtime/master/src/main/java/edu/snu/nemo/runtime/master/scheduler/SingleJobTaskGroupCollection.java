@@ -29,15 +29,13 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * Keep tracks of all pending task groups.
- * This class provides two-level queue scheduling by prioritizing TaskGroups of certain stages to be scheduled first.
- * Stages that are mutually independent alternate turns in scheduling each of their TaskGroups.
- * This PQ assumes that stages/task groups of higher priorities are never enqueued without first removing
- * those of lower priorities (which is how Scheduler behaves) for simplicity.
+ * {@link PendingTaskGroupCollection} implementation.
+ * This class provides two-level scheduling by keeping track of schedulable stages and stage-TaskGroup membership.
+ * {@link #peekSchedulableTaskGroups()} returns collection of TaskGroups which belong to one of the schedulable stages.
  */
 @ThreadSafe
 @DriverSide
-public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
+public final class SingleJobTaskGroupCollection implements PendingTaskGroupCollection {
   private PhysicalPlan physicalPlan;
 
   /**
@@ -51,7 +49,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
   private final BlockingDeque<String> schedulableStages;
 
   @Inject
-  public SingleJobTaskGroupQueue() {
+  public SingleJobTaskGroupCollection() {
     stageIdToPendingTaskGroups = new ConcurrentHashMap<>();
     schedulableStages = new LinkedBlockingDeque<>();
   }
@@ -74,7 +72,13 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
   }
 
   /**
-   * {@inheritDoc}
+   * Removes the specified TaskGroup to be scheduled.
+   * The specified TaskGroup should belong to the collection from {@link #peekSchedulableTaskGroups()}.
+   * @param taskGroupId id of the TaskGroup
+   * @return the specified TaskGroup
+   * @throws NoSuchElementException if the specified TaskGroup is not in the queue,
+   *                                or removing this TaskGroup breaks scheduling order
+   *                                (i.e. does not belong to the collection from {@link #peekSchedulableTaskGroups()}.
    */
   @Override
   public synchronized ScheduledTaskGroup remove(final String taskGroupId) throws NoSuchElementException {
@@ -105,8 +109,10 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
   }
 
   /**
-   * Peeks TaskGroups that can be scheduled according to job dependency priority.
+   * Peeks TaskGroups that can be scheduled.
    * @return TaskGroups to be scheduled, or {@link Optional#empty()} if the queue is empty
+   * @return collection of TaskGroups which belong to one of the schedulable stages
+   *         or {@link Optional#empty} if the queue is empty
    */
   @Override
   public synchronized Optional<Collection<ScheduledTaskGroup>> peekSchedulableTaskGroups() {
@@ -144,7 +150,7 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
   }
 
   /**
-   * Updates the two-level PQ by examining a new candidate stage.
+   * Updates the two-level data structure by examining a new candidate stage.
    * If there are no stages with higher priority, the candidate can be made schedulable.
    *
    * NOTE: This method provides the "line up" between stages, by assigning priorities,

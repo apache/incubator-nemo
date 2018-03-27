@@ -21,7 +21,7 @@ import edu.snu.nemo.runtime.common.state.TaskGroupState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.scheduler.ExecutorRegistry;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
-import edu.snu.nemo.runtime.master.scheduler.PendingTaskGroupQueue;
+import edu.snu.nemo.runtime.master.scheduler.PendingTaskGroupCollection;
 import edu.snu.nemo.runtime.master.scheduler.Scheduler;
 import edu.snu.nemo.runtime.master.scheduler.SchedulingPolicy;
 import org.apache.beam.sdk.values.KV;
@@ -104,13 +104,13 @@ public final class RuntimeTestUtil {
     sendTaskGroupStateEventToScheduler(scheduler, executorRegistry, taskGroupId, newState, attemptIdx, null);
   }
 
-  public static void mockSchedulerRunner(final PendingTaskGroupQueue pendingTaskGroupQueue,
+  public static void mockSchedulerRunner(final PendingTaskGroupCollection pendingTaskGroupCollection,
                                          final SchedulingPolicy schedulingPolicy,
                                          final JobStateManager jobStateManager,
                                          final boolean isPartialSchedule) {
-    while (!pendingTaskGroupQueue.isEmpty()) {
-      final ScheduledTaskGroup taskGroupToSchedule = pendingTaskGroupQueue.remove(
-          pendingTaskGroupQueue.peekSchedulableTaskGroups().get().iterator().next().getTaskGroupId());
+    while (!pendingTaskGroupCollection.isEmpty()) {
+      final ScheduledTaskGroup taskGroupToSchedule = pendingTaskGroupCollection.remove(
+          pendingTaskGroupCollection.peekSchedulableTaskGroups().get().iterator().next().getTaskGroupId());
 
       schedulingPolicy.scheduleTaskGroup(taskGroupToSchedule, jobStateManager);
 

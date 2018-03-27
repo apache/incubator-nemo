@@ -33,21 +33,21 @@ import java.util.Optional;
  */
 @ThreadSafe
 @DriverSide
-@DefaultImplementation(SingleJobTaskGroupQueue.class)
-public interface PendingTaskGroupQueue {
+@DefaultImplementation(SingleJobTaskGroupCollection.class)
+public interface PendingTaskGroupCollection {
 
   /**
-   * Enqueues a TaskGroup to this PQ.
+   * Adds a TaskGroup to this collection.
    * @param scheduledTaskGroup to add.
    */
   void add(final ScheduledTaskGroup scheduledTaskGroup);
 
   /**
-   * Remove the specified TaskGroup to be scheduled.
+   * Removes the specified TaskGroup to be scheduled.
    * @param taskGroupId id of the TaskGroup
    * @return the specified TaskGroup
    * @throws NoSuchElementException if the specified TaskGroup is not in the queue,
-   *                                or dequeuing this TaskGroup breaks scheduling order
+   *                                or removing this TaskGroup breaks scheduling order
    */
   ScheduledTaskGroup remove(final String taskGroupId) throws NoSuchElementException;
 

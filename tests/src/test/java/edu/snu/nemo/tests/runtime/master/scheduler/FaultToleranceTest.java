@@ -83,7 +83,7 @@ public final class FaultToleranceTest {
   private ExecutorRegistry executorRegistry;
 
   private MetricMessageHandler metricMessageHandler;
-  private PendingTaskGroupQueue pendingTaskGroupQueue;
+  private PendingTaskGroupCollection pendingTaskGroupCollection;
   private PubSubEventHandlerWrapper pubSubEventHandler;
   private UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler;
   private BlockManagerMaster blockManagerMaster = mock(BlockManagerMaster.class);
@@ -110,16 +110,16 @@ public final class FaultToleranceTest {
                               final boolean useMockSchedulerRunner) throws InjectionException {
     executorRegistry = Tang.Factory.getTang().newInjector().getInstance(ExecutorRegistry.class);
 
-    pendingTaskGroupQueue = new SingleJobTaskGroupQueue();
+    pendingTaskGroupCollection = new SingleJobTaskGroupCollection();
     schedulingPolicy = new RoundRobinSchedulingPolicy(executorRegistry);
 
     if (useMockSchedulerRunner) {
       schedulerRunner = mock(SchedulerRunner.class);
     } else {
-      schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskGroupQueue);
+      schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskGroupCollection);
     }
     scheduler =
-        new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, pendingTaskGroupQueue,
+        new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, pendingTaskGroupCollection,
             blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler);
 
     // Add nodes
@@ -207,14 +207,14 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
-        assertTrue(pendingTaskGroupQueue.isEmpty());
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager, false);
+        assertTrue(pendingTaskGroupCollection.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
               taskGroupId, TaskGroupState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager, false);
 
         // Due to round robin scheduling, "a2" is assured to have a running TaskGroup.
         scheduler.onExecutorRemoved("a2");
@@ -224,15 +224,15 @@ public final class FaultToleranceTest {
         }
         assertEquals(jobStateManager.getAttemptCountForStage(stage.getId()), 2);
 
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
-        assertTrue(pendingTaskGroupQueue.isEmpty());
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager, false);
+        assertTrue(pendingTaskGroupCollection.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
               taskGroupId, TaskGroupState.State.COMPLETE, 1));
       } else {
         // There are 2 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 2.
         // Schedule only the first TaskGroup
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, true);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager, true);
 
         boolean first = true;
         for (final String taskGroupId : stage.getTaskGroupIds()) {
@@ -284,15 +284,15 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
-        assertTrue(pendingTaskGroupQueue.isEmpty());
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager, false);
+        assertTrue(pendingTaskGroupCollection.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
               taskGroupId, TaskGroupState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
-        assertTrue(pendingTaskGroupQueue.isEmpty());
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager, false);
+        assertTrue(pendingTaskGroupCollection.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
               taskGroupId, TaskGroupState.State.FAILED_RECOVERABLE, 1,
@@ -303,7 +303,7 @@ public final class FaultToleranceTest {
         }
 
         assertEquals(jobStateManager.getAttemptCountForStage(stage.getId()), 3);
-        assertFalse(pendingTaskGroupQueue.isEmpty());
+        assertFalse(pendingTaskGroupCollection.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId -> {
           assertEquals(jobStateManager.getTaskGroupState(taskGroupId).getStateMachine().getCurrentState(),
               TaskGroupState.State.READY);
@@ -344,14 +344,14 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
-        assertTrue(pendingTaskGroupQueue.isEmpty());
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager, false);
+        assertTrue(pendingTaskGroupCollection.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
               taskGroupId, TaskGroupState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupQueue, schedulingPolicy, jobStateManager, false);
+        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager, false);
 
         stage.getTaskGroupIds().forEach(taskGroupId ->
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,

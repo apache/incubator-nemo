@@ -38,6 +38,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import edu.snu.nemo.runtime.master.scheduler.PendingTaskGroupCollection;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -180,7 +181,7 @@ public final class BlockManagerMaster {
   /**
    * To be called when a potential producer task group is scheduled.
    * To be precise, it is called when the task group is enqueued to
-   * {@link edu.snu.nemo.runtime.master.scheduler.PendingTaskGroupQueue}.
+   * {@link PendingTaskGroupCollection}.
    *
    * @param scheduledTaskGroupId the ID of the scheduled task group.
    */
