@@ -84,7 +84,7 @@ Details about Nemo and its development can be found in:
 ### Examples
 ```bash
 ## MapReduce example
-./bin/run.sh \
+./bin/run_beam.sh \
 	-job_id mr_default \
 	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
 	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy \
@@ -92,7 +92,7 @@ Details about Nemo and its development can be found in:
 	-user_args "`pwd`/examples/resources/sample_input_mr `pwd`/examples/resources/sample_output_mr"
 
 ## YARN cluster example
-./bin/run.sh \
+./bin/run_beam.sh \
 	-deploy_mode yarn \
   	-job_id mr_pado \
 	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
@@ -140,7 +140,7 @@ Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
 
 ### Examples
 ```bash
-./bin/run.sh \
+./bin/run_beam.sh \
 	-job_id als \
 	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
   	-user_main edu.snu.nemo.examples.beam.AlternatingLeastSquare \
