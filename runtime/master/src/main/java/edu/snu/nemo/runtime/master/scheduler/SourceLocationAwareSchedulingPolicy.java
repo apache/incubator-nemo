@@ -109,6 +109,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
           // TaskGroup we are interested in. We need to await again if the consequent scheduling attempt still fails,
           // until we spend the time budget specified.
         } catch (final InterruptedException e) {
+          Thread.currentThread().interrupt();
           throw new SchedulingException(e);
         }
       }

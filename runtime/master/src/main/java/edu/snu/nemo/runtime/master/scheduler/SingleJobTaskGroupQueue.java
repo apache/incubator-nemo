@@ -24,6 +24,8 @@ import edu.snu.nemo.runtime.common.plan.physical.PhysicalStageEdge;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -40,6 +42,9 @@ import java.util.function.BiFunction;
 @ThreadSafe
 @DriverSide
 public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
+
+  private static final Logger LOG = LoggerFactory.getLogger(SingleJobTaskGroupQueue.class);
+
   private PhysicalPlan physicalPlan;
 
   /**
@@ -93,7 +98,8 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
     try {
       stageId = schedulableStages.takeFirst();
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      LOG.error("Interrupted while removing TaskGroup", e);
+      Thread.currentThread().interrupt();
       throw new SchedulingException(new Throwable("An exception occurred while trying to dequeue the next TaskGroup"));
     }
 
@@ -134,7 +140,9 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
    * @param stageId for the stage to begin the removal recursively.
    */
   private void removeStageAndChildren(final String stageId) {
-    schedulableStages.remove(stageId);
+    if (!schedulableStages.remove(stageId)) {
+      throw new NoSuchElementException(String.format("Stage %s not in the head of the Deque", stageId));
+    }
     stageIdToPendingTaskGroups.remove(stageId);
 
     physicalPlan.getStageDAG().getChildren(stageId).forEach(
@@ -159,7 +167,10 @@ public final class SingleJobTaskGroupQueue implements PendingTaskGroupQueue {
         if (schedulableStages.contains(ancestorStage.getId())) {
           // Remove the ancestor stage if it is of the same container type.
           if (candidateStageContainerType.equals(ancestorStage.getContainerType())) {
-            schedulableStages.remove(ancestorStage.getId());
+            if (!schedulableStages.remove(ancestorStage.getId())) {
+              throw new RuntimeException(String.format("Stage %s not in the head of the Deque",
+                  ancestorStage.getId()));
+            }
           }
         }
       });

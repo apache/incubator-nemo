@@ -102,7 +102,7 @@ public final class SchedulerRunner {
             pendingTaskGroupQueue.enqueue(nextTaskGroupToSchedule.get());
           }
         } catch (final Exception e) {
-          e.printStackTrace();
+          LOG.error("Exception while running SchedulerThread iteration", e);
           throw e;
         }
       }

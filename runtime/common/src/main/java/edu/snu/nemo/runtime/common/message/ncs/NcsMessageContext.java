@@ -49,13 +49,11 @@ final class NcsMessageContext implements MessageContext {
   @Override
   public <U> void reply(final U replyMessage) {
     LOG.debug("[REPLY]: {}", replyMessage);
-    final Connection connection = connectionFactory.newConnection(idFactory.getNewInstance(senderId));
-    try {
+    try (final Connection connection = connectionFactory.newConnection(idFactory.getNewInstance(senderId))) {
       connection.open();
+      connection.write(replyMessage);
     } catch (final NetworkException e) {
       throw new RuntimeException("Cannot connect to " + senderId, e);
     }
-
-    connection.write(replyMessage);
   }
 }
