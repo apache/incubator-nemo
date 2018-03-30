@@ -15,7 +15,13 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.sql;
 
+import edu.snu.nemo.client.JobLauncher;
+import edu.snu.nemo.compiler.frontend.spark.SparkLauncher;
+import edu.snu.nemo.conf.JobConf;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaRDD;
@@ -27,6 +33,7 @@ import org.apache.spark.sql.types.StructType;
 import scala.Tuple2;
 
 import javax.naming.OperationNotSupportedException;
+import java.io.File;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -316,6 +323,39 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
       }
 
       UserGroupInformation.setLoginUser(UserGroupInformation.createRemoteUser("ubuntu"));
+
+      // get and override configurations from JobLauncher.
+      final Configuration configurations = JobLauncher.getConfigurations();
+      final Injector injector = Tang.Factory.getTang().newInjector(configurations);
+
+      final String appName = injector.getNamedInstance(JobConf.JobId.class);
+//      final String mainClass;
+      final String[] appArgs = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
+      final File fileDirectory = injector.getNamedInstance(JobConf.FileDirectory.class);
+      final String master = injector.getNamedInstance(JobConf.DeployMode.class);
+      final String deployMode = master.equals("yarn") ? "cluster" : "client"; // client or cluster
+//      final String javaHome;
+//      final String sparkHome;
+//      final String driverMemory;
+//      final String executorMemory;
+//      final String executorCores;
+
+      // SparkLauncher for setting up spark environments. This doesn't call actual program.
+      final SparkLauncher launcher = (SparkLauncher) new SparkLauncher()
+          .setAppName(appName)
+//          .setMainClass(mainClass)
+          .addAppArgs(appArgs)
+          .directory(fileDirectory)
+          .setMaster(master)
+          .setDeployMode(deployMode)
+//          .setJavaHome(javaHome)
+//          .setSparkHome(sparkHome)
+//          .addSparkArg("--driver-memory", driverMemory)
+//          .addSparkArg("--executor-memory", executorMemory)
+//          .addSparkArg("--executor-cores", executorCores)
+          .setVerbose(true);
+      launcher.setUpEnvironments();
+
       return SparkSession.from(super.getOrCreate(), this.options);
     }
   }
