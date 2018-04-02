@@ -22,6 +22,8 @@ import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import java.util.Collection;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 /**
@@ -31,21 +33,30 @@ import java.util.Optional;
  */
 @ThreadSafe
 @DriverSide
-@DefaultImplementation(SingleJobTaskGroupQueue.class)
-public interface PendingTaskGroupQueue {
+@DefaultImplementation(SingleJobTaskGroupCollection.class)
+public interface PendingTaskGroupCollection {
 
   /**
-   * Enqueues a TaskGroup to this PQ.
-   * @param scheduledTaskGroup to enqueue.
+   * Adds a TaskGroup to this collection.
+   * @param scheduledTaskGroup to add.
    */
-  void enqueue(final ScheduledTaskGroup scheduledTaskGroup);
+  void add(final ScheduledTaskGroup scheduledTaskGroup);
 
   /**
-   * Dequeues the next TaskGroup to be scheduled.
-   * @return an optional of the the next TaskGroup to be scheduled,
-   * an empty optional if no such TaskGroup exists.
+   * Removes the specified TaskGroup to be scheduled.
+   * @param taskGroupId id of the TaskGroup
+   * @return the specified TaskGroup
+   * @throws NoSuchElementException if the specified TaskGroup is not in the queue,
+   *                                or removing this TaskGroup breaks scheduling order
    */
-  Optional<ScheduledTaskGroup> dequeue();
+  ScheduledTaskGroup remove(final String taskGroupId) throws NoSuchElementException;
+
+  /**
+   * Peeks TaskGroups that can be scheduled according to job dependency priority.
+   * Changes to the queue must not reflected to the returned collection to avoid concurrent modification.
+   * @return TaskGroups that can be scheduled, or {@link Optional#empty()} if the queue is empty
+   */
+  Optional<Collection<ScheduledTaskGroup>> peekSchedulableTaskGroups();
 
   /**
    * Registers a job to this queue in case the queue needs to understand the topology of the job DAG.

@@ -180,7 +180,7 @@ public final class BlockManagerMaster {
   /**
    * To be called when a potential producer task group is scheduled.
    * To be precise, it is called when the task group is enqueued to
-   * {@link edu.snu.nemo.runtime.master.scheduler.PendingTaskGroupQueue}.
+   * {@link edu.snu.nemo.runtime.master.scheduler.PendingTaskGroupCollection}.
    *
    * @param scheduledTaskGroupId the ID of the scheduled task group.
    */
