@@ -187,6 +187,7 @@ public final class SchedulerRunner {
         }
         hasDelayedSignal.set(false);
       } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
         throw new RuntimeException(e);
       } finally {
         lock.unlock();
