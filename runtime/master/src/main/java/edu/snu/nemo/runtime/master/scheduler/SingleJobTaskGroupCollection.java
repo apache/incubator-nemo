@@ -142,8 +142,9 @@ public final class SingleJobTaskGroupCollection implements PendingTaskGroupColle
    * @param stageId for the stage to begin the removal recursively.
    */
   private synchronized void removeStageAndChildren(final String stageId) {
-    schedulableStages.remove(stageId);
-    stageIdToPendingTaskGroups.remove(stageId);
+    if (schedulableStages.remove(stageId)) {
+      stageIdToPendingTaskGroups.remove(stageId);
+    }
 
     physicalPlan.getStageDAG().getChildren(stageId).forEach(
         physicalStage -> removeStageAndChildren(physicalStage.getId()));
@@ -165,10 +166,11 @@ public final class SingleJobTaskGroupCollection implements PendingTaskGroupColle
     if (isSchedulable(candidateStageId, candidateStageContainerType)) {
       // Check for ancestor stages that became schedulable due to candidateStage's absence from the queue.
       jobDAG.getAncestors(candidateStageId).forEach(ancestorStage -> {
-        if (schedulableStages.contains(ancestorStage.getId())) {
-          // Remove the ancestor stage if it is of the same container type.
-          if (candidateStageContainerType.equals(ancestorStage.getContainerType())) {
-            schedulableStages.remove(ancestorStage.getId());
+        // Remove the ancestor stage if it is of the same container type.
+        if (schedulableStages.contains(ancestorStage.getId())
+            && candidateStageContainerType.equals(ancestorStage.getContainerType())) {
+          if (!schedulableStages.remove(ancestorStage.getId())) {
+            throw new RuntimeException(String.format("No such stage: %s", ancestorStage.getId()));
           }
         }
       });
