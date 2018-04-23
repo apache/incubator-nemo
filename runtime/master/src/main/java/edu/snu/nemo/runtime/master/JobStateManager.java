@@ -372,6 +372,7 @@ public final class JobStateManager {
       }
     } catch (final InterruptedException e) {
       LOG.warn("Interrupted during waiting the finish of Job ID {}", jobId);
+      Thread.currentThread().interrupt();
     } finally {
       finishLock.unlock();
     }
@@ -390,10 +391,13 @@ public final class JobStateManager {
     finishLock.lock();
     try {
       if (!checkJobTermination()) {
-        jobFinishedCondition.await(timeout, unit);
+        if (!jobFinishedCondition.await(timeout, unit)) {
+          LOG.warn("Timeout during waiting the finish of Job ID {}", jobId);
+        }
       }
     } catch (final InterruptedException e) {
       LOG.warn("Interrupted during waiting the finish of Job ID {}", jobId);
+      Thread.currentThread().interrupt();
     } finally {
       finishLock.unlock();
     }
@@ -466,13 +470,11 @@ public final class JobStateManager {
 
     final File file = new File(directory, jobId + "-" + suffix + ".json");
     file.getParentFile().mkdirs();
-    try {
-      final PrintWriter printWriter = new PrintWriter(file);
+    try (final PrintWriter printWriter = new PrintWriter(file)) {
       printWriter.println(toStringWithPhysicalPlan());
-      printWriter.close();
       LOG.debug(String.format("JSON representation of job state for %s(%s) was saved to %s",
           jobId, suffix, file.getPath()));
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOG.warn(String.format("Cannot store JSON representation of job state for %s(%s) to %s: %s",
           jobId, suffix, file.getPath(), e.toString()));
     }

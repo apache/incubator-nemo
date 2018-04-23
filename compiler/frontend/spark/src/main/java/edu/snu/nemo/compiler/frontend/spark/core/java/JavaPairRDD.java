@@ -25,8 +25,10 @@ import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor;
 import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder;
 import edu.snu.nemo.compiler.frontend.spark.core.RDD;
+import edu.snu.nemo.compiler.frontend.spark.transform.MapTransform;
 import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform;
 import org.apache.spark.SparkContext;
+import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.serializer.Serializer;
 import scala.Tuple2;
@@ -89,6 +91,21 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
     builder.connectVertices(newEdge);
 
     return new JavaPairRDD<>(this.sparkContext, builder.buildWithoutSourceSinkCheck(), reduceByKeyVertex);
+  }
+
+  @Override
+  public <R> JavaRDD<R> map(final Function<Tuple2<K, V>, R> f) {
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
+
+    final IRVertex mapVertex = new OperatorVertex(new MapTransform<>(f));
+    builder.addVertex(mapVertex, loopVertexStack);
+
+    final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, mapVertex),
+        lastVertex, mapVertex, new SparkCoder(serializer));
+    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
+    builder.connectVertices(newEdge);
+
+    return new JavaRDD<>(this.sparkContext, builder.buildWithoutSourceSinkCheck(), mapVertex);
   }
 
   /////////////// ACTIONS ///////////////

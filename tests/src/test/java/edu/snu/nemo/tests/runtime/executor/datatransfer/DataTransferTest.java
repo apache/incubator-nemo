@@ -98,7 +98,6 @@ import static org.mockito.Mockito.mock;
     SourceVertex.class})
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
-  private static final int SCHEDULE_TIMEOUT = 1000;
   private static final DataStoreProperty.Value MEMORY_STORE = DataStoreProperty.Value.MemoryStore;
   private static final DataStoreProperty.Value SER_MEMORY_STORE = DataStoreProperty.Value.SerializedMemoryStore;
   private static final DataStoreProperty.Value LOCAL_FILE_STORE = DataStoreProperty.Value.LocalFileStore;
@@ -134,8 +133,8 @@ public final class DataTransferTest {
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     final SchedulingPolicy schedulingPolicy = new RoundRobinSchedulingPolicy(
-        injector.getInstance(ExecutorRegistry.class), SCHEDULE_TIMEOUT);
-    final PendingTaskGroupQueue taskGroupQueue = new SingleJobTaskGroupQueue();
+        injector.getInstance(ExecutorRegistry.class));
+    final PendingTaskGroupCollection taskGroupQueue = new SingleJobTaskGroupCollection();
     final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingPolicy, taskGroupQueue);
     final Scheduler scheduler =
         new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, taskGroupQueue, master,

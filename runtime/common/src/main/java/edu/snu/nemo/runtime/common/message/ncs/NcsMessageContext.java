@@ -47,15 +47,17 @@ final class NcsMessageContext implements MessageContext {
   }
 
   @Override
+  @SuppressWarnings("squid:S2095")
   public <U> void reply(final U replyMessage) {
     LOG.debug("[REPLY]: {}", replyMessage);
     final Connection connection = connectionFactory.newConnection(idFactory.getNewInstance(senderId));
     try {
       connection.open();
+      connection.write(replyMessage);
+      // We do not call connection.close since NCS caches connection.
+      // Disabling Sonar warning (squid:S2095)
     } catch (final NetworkException e) {
       throw new RuntimeException("Cannot connect to " + senderId, e);
     }
-
-    connection.write(replyMessage);
   }
 }

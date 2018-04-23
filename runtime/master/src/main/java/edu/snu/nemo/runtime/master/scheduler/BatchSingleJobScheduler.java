@@ -62,7 +62,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    */
   private final SchedulingPolicy schedulingPolicy;
   private final SchedulerRunner schedulerRunner;
-  private final PendingTaskGroupQueue pendingTaskGroupQueue;
+  private final PendingTaskGroupCollection pendingTaskGroupCollection;
 
   /**
    * Other necessary components of this {@link edu.snu.nemo.runtime.master.RuntimeMaster}.
@@ -80,13 +80,13 @@ public final class BatchSingleJobScheduler implements Scheduler {
   @Inject
   public BatchSingleJobScheduler(final SchedulingPolicy schedulingPolicy,
                                  final SchedulerRunner schedulerRunner,
-                                 final PendingTaskGroupQueue pendingTaskGroupQueue,
+                                 final PendingTaskGroupCollection pendingTaskGroupCollection,
                                  final BlockManagerMaster blockManagerMaster,
                                  final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                                  final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler) {
     this.schedulingPolicy = schedulingPolicy;
     this.schedulerRunner = schedulerRunner;
-    this.pendingTaskGroupQueue = pendingTaskGroupQueue;
+    this.pendingTaskGroupCollection = pendingTaskGroupCollection;
     this.blockManagerMaster = blockManagerMaster;
     this.pubSubEventHandlerWrapper = pubSubEventHandlerWrapper;
     updatePhysicalPlanEventHandler.setScheduler(this);
@@ -107,7 +107,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     this.jobStateManager = scheduledJobStateManager;
 
     schedulerRunner.scheduleJob(scheduledJobStateManager);
-    pendingTaskGroupQueue.onJobScheduled(physicalPlan);
+    pendingTaskGroupCollection.onJobScheduled(physicalPlan);
 
     LOG.info("Job to schedule: {}", jobToSchedule.getId());
 
@@ -167,6 +167,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   @Override
   public void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
     schedulingPolicy.onExecutorAdded(executorRepresenter);
+    schedulerRunner.onAnExecutorAvailable();
   }
 
   @Override
@@ -195,7 +196,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   @Override
   public void terminate() {
     this.schedulerRunner.terminate();
-    this.pendingTaskGroupQueue.close();
+    this.pendingTaskGroupCollection.close();
   }
 
   /**
@@ -229,7 +230,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   /**
-   * Selects the list of stages to schedule, in the order they must be added to {@link PendingTaskGroupQueue}.
+   * Selects the list of stages to schedule, in the order they must be added to {@link PendingTaskGroupCollection}.
    *
    * This is a recursive function that decides which schedule group to schedule upon a stage completion, or a failure.
    * It takes the currentScheduleGroupIndex as a reference point to begin looking for the stages to execute:
@@ -245,7 +246,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * @param currentScheduleGroupIndex
    *      the index of the schedule group that is executing/has executed when this method is called.
    * @return an optional of the (possibly empty) list of next schedulable stages, in the order they should be
-   * enqueued to {@link PendingTaskGroupQueue}.
+   * enqueued to {@link PendingTaskGroupCollection}.
    */
   private Optional<List<PhysicalStage>> selectNextStagesToSchedule(final int currentScheduleGroupIndex) {
     if (currentScheduleGroupIndex > initialScheduleGroup) {
@@ -376,10 +377,11 @@ public final class BatchSingleJobScheduler implements Scheduler {
       blockManagerMaster.onProducerTaskGroupScheduled(taskGroupId);
       final int taskGroupIdx = RuntimeIdGenerator.getIndexFromTaskGroupId(taskGroupId);
       LOG.debug("Enquing {}", taskGroupId);
-      pendingTaskGroupQueue.enqueue(new ScheduledTaskGroup(physicalPlan.getId(),
+      pendingTaskGroupCollection.add(new ScheduledTaskGroup(physicalPlan.getId(),
           stageToSchedule.getSerializedTaskGroupDag(), taskGroupId, stageIncomingEdges, stageOutgoingEdges, attemptIdx,
           stageToSchedule.getContainerType(), logicalTaskIdToReadables.get(taskGroupIdx)));
     });
+    schedulerRunner.onATaskGroupAvailable();
   }
 
   /**
@@ -438,6 +440,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
         scheduleNextStage(stageIdForTaskGroupUponCompletion);
       }
     }
+    schedulerRunner.onAnExecutorAvailable();
   }
 
   /**
@@ -475,6 +478,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     } else {
       onTaskGroupExecutionComplete(executorId, taskGroupId, true);
     }
+    schedulerRunner.onAnExecutorAvailable();
   }
 
   /**
@@ -504,7 +508,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           for (final PhysicalStage stage : physicalPlan.getStageDAG().getTopologicalSort()) {
             if (stage.getId().equals(stageId)) {
               LOG.info("Removing TaskGroups for {} before they are scheduled to an executor", stage.getId());
-              pendingTaskGroupQueue.removeTaskGroupsAndDescendants(stage.getId());
+              pendingTaskGroupCollection.removeTaskGroupsAndDescendants(stage.getId());
               stage.getTaskGroupIds().forEach(dstTaskGroupId -> {
                 if (jobStateManager.getTaskGroupState(dstTaskGroupId).getStateMachine().getCurrentState()
                     != TaskGroupState.State.COMPLETE) {
@@ -542,5 +546,6 @@ public final class BatchSingleJobScheduler implements Scheduler {
       default:
         throw new UnknownFailureCauseException(new Throwable("Unknown cause: " + failureCause));
     }
+    schedulerRunner.onAnExecutorAvailable();
   }
 }
