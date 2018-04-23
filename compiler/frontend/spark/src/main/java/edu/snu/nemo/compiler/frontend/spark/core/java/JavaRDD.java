@@ -15,12 +15,14 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.core.java;
 
+import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor;
 import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder;
 import edu.snu.nemo.compiler.frontend.spark.core.RDD;
@@ -208,6 +210,27 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   @Override
   public List<T> collect() {
     return SparkFrontendUtils.collect(dag, loopVertexStack, lastVertex, serializer);
+  }
+
+  @Override
+  public void saveAsTextFile(final String path) {
+
+    // Check if given path is HDFS path.
+    final boolean isHDFSPath = path.startsWith("hdfs://") || path.startsWith("s3a://") || path.startsWith("file://");
+    final Transform textFileTransform = isHDFSPath
+        ? new HDFSTextFileTransform(path) : new LocalTextFileTransform(path);
+
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
+
+    final IRVertex flatMapVertex = new OperatorVertex(textFileTransform);
+    builder.addVertex(flatMapVertex, loopVertexStack);
+
+    final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, flatMapVertex),
+        lastVertex, flatMapVertex, new SparkCoder(serializer));
+    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
+    builder.connectVertices(newEdge);
+
+    JobLauncher.launchDAG(builder.build());
   }
 
   /////////////// UNSUPPORTED TRANSFORMATIONS ///////////////
@@ -515,11 +538,6 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   @Override
   public void saveAsObjectFile(final String path) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
-  }
-
-  @Override
-  public void saveAsTextFile(final String path) {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 

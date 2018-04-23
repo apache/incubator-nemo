@@ -64,6 +64,25 @@ public final class SparkITCase {
   }
 
   @Test(timeout = TIMEOUT)
+  public void testSparkMapReduce() throws Exception {
+    final String inputFileName = "sample_input_mr";
+    final String outputFileName = "sample_output_mr";
+    final String testResourceFileName = "test_output_mr";
+    final String inputFilePath =  fileBasePath + inputFileName;
+    final String outputFilePath =  fileBasePath + outputFileName;
+
+    JobLauncher.main(builder
+        .addJobId(JavaMapReduce.class.getSimpleName() + "_test")
+        .addUserMain(JavaMapReduce.class.getCanonicalName())
+        .addUserArgs(inputFilePath, outputFilePath)
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .build());
+
+    ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+  }
+
+  @Test(timeout = TIMEOUT)
   public void testSparkPi() throws Exception {
     final String numParallelism = "3";
 
