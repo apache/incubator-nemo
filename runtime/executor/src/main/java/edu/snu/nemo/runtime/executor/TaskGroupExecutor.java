@@ -199,13 +199,24 @@ public final class TaskGroupExecutor {
     });
   }
 
-  // Helper functions to initializes cross-stage edges.
+  /**
+   * Collect all inter-stage incoming edges of this task.
+   *
+   * @param task the Task whose inter-stage incoming edges to be collected.
+   * @return the collected incoming edges.
+   */
   private Set<PhysicalStageEdge> getInEdgesFromOtherStages(final Task task) {
     return stageIncomingEdges.stream().filter(
         stageInEdge -> stageInEdge.getDstVertex().getId().equals(task.getIrVertexId()))
         .collect(Collectors.toSet());
   }
 
+  /**
+   * Collect all inter-stage outgoing edges of this task.
+   *
+   * @param task the Task whose inter-stage outgoing edges to be collected.
+   * @return the collected outgoing edges.
+   */
   private Set<PhysicalStageEdge> getOutEdgesToOtherStages(final Task task) {
     return stageOutgoingEdges.stream().filter(
         stageInEdge -> stageInEdge.getSrcVertex().getId().equals(task.getIrVertexId()))
@@ -256,15 +267,35 @@ public final class TaskGroupExecutor {
     dataHandler.setOutputCollector(outputCollector);
   }
 
+  /**
+   * Check that this task has OutputWriter for inter-stage data.
+   *
+   * @param task the task to check whether it has OutputWriters.
+   * @return true if the task has OutputWriters.
+   */
   private boolean hasOutputWriter(final Task task) {
     return !getTaskDataHandler(task).getOutputWriters().isEmpty();
   }
 
+  /**
+   * If the given task is MetricCollectionBarrierTask,
+   * set task as put on hold and use it to decide TaskGroup state when TaskGroup finishes.
+   *
+   * @param task the task to check whether it has OutputWriters.
+   * @return true if the task has OutputWriters.
+   */
   private void setTaskPutOnHold(final MetricCollectionBarrierTask task) {
     final String physicalTaskId = getPhysicalTaskId(task.getId());
     logicalTaskIdPutOnHold = RuntimeIdGenerator.getLogicalTaskIdIdFromPhysicalTaskId(physicalTaskId);
   }
 
+  /**
+   * Finalize the output write of this TaskGroup.
+   * As element-wise output write is done and the block is in memory,
+   * flush the block into the designated data store and commit it.
+   *
+   * @param task the task with OutputWriter to flush and commit output block.
+   */
   private void writeAndCloseOutputWriters(final Task task) {
     final String physicalTaskId = getPhysicalTaskId(task.getId());
     final List<Long> writtenBytesList = new ArrayList<>();
@@ -285,6 +316,9 @@ public final class TaskGroupExecutor {
     metricCollector.endMeasurement(physicalTaskId, metric);
   }
 
+  /**
+   * Get input iterator from BoundedSource and bind it with id.
+   */
   private void prepareInputFromSource() {
     taskGroupDag.topologicalDo(task -> {
       if (task instanceof BoundedSourceTask) {
@@ -310,6 +344,10 @@ public final class TaskGroupExecutor {
     });
   }
 
+  /**
+   * Get input iterator from other stages received in the form of CompletableFuture
+   * and bind it with id.
+   */
   private void prepareInputFromOtherStages() {
     inputReaderToDataHandlersMap.forEach((inputReader, dataHandlers) -> {
       final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader.read();
@@ -336,6 +374,11 @@ public final class TaskGroupExecutor {
     });
   }
 
+  /**
+   * Check whether all tasks in this TaskGroup are finished.
+   *
+   * @return true if all tasks are finished.
+   */
   private boolean finishedAllTasks() {
     // Total number of Tasks in this TaskGroup
     int taskNum = taskDataHandlers.size();
@@ -344,6 +387,11 @@ public final class TaskGroupExecutor {
     return finishedTaskNum == taskNum;
   }
 
+  /**
+   * Initialize the very first map of OutputCollector-children task DAG.
+   * In each map entry, the OutputCollector contains input data to be propagated through
+   * the children task DAG.
+   */
   private void initializeOutputToChildrenDataHandlersMap() {
     srcIteratorIdToDataHandlersMap.values().forEach(dataHandlers ->
         dataHandlers.forEach(dataHandler -> {
@@ -355,6 +403,9 @@ public final class TaskGroupExecutor {
         }));
   }
 
+  /**
+   * Update the map of OutputCollector-children task DAG.
+   */
   private void updateOutputToChildrenDataHandlersMap() {
     Map<OutputCollectorImpl, List<TaskDataHandler>> currentMap = outputToChildrenDataHandlersMap;
     Map<OutputCollectorImpl, List<TaskDataHandler>> updatedMap = new HashMap<>();
@@ -368,6 +419,11 @@ public final class TaskGroupExecutor {
     outputToChildrenDataHandlersMap = updatedMap;
   }
 
+  /**
+   * Update the map of OutputCollector-children task DAG.
+   *
+   * @param task the Task with the transform to close.
+   */
   private void closeTransform(final Task task) {
     if (task instanceof OperatorTask) {
       Transform transform = ((OperatorTask) task).getTransform();
@@ -375,6 +431,13 @@ public final class TaskGroupExecutor {
     }
   }
 
+  /**
+   * As a preprocessing of side input data, get inter stage side input
+   * and form a map of source transform-side input.
+   *
+   * @param task the task which receives side input from other stages.
+   * @param sideInputMap the map of source transform-side input to build.
+   */
   private void sideInputFromOtherStages(final Task task, final Map<Transform, Object> sideInputMap) {
     getTaskDataHandler(task).getSideInputFromOtherStages().forEach(sideInputReader -> {
       try {
@@ -406,8 +469,16 @@ public final class TaskGroupExecutor {
     });
   }
 
+  /**
+   * As a preprocessing of side input data, get intra stage side input
+   * and form a map of source transform-side input.
+   * Assumption:  intra stage side input denotes a data element initially received
+   *              via side input reader from other stages.
+   *
+   * @param task the task which receives the data element marked as side input.
+   * @param sideInputMap the map of source transform-side input to build.
+   */
   private void sideInputFromThisStage(final Task task, final Map<Transform, Object> sideInputMap) {
-    final String physicalTaskId = getPhysicalTaskId(task.getId());
     getTaskDataHandler(task).getSideInputFromThisStage().forEach(input -> {
       // because sideInput is only 1 element in the outputCollector
       Object sideInput = input.remove();
@@ -479,14 +550,14 @@ public final class TaskGroupExecutor {
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
           serBlockSize = -1;
         } catch (final IllegalStateException e) {
-          LOG.error("IllegalState ", e);
+          LOG.error("Failed to get the number of bytes of serialized data - the data is not ready yet ", e);
         }
         try {
           encodedBlockSize += iterator.getNumEncodedBytes();
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
           encodedBlockSize = -1;
         } catch (final IllegalStateException e) {
-          LOG.error("IllegalState ", e);
+          LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
         }
       }
       inputReadEndTime = System.currentTimeMillis();
@@ -563,9 +634,10 @@ public final class TaskGroupExecutor {
   }
 
   /**
-   * Processes an OperatorTask.
+   * Recursively executes a task with the input data element.
    *
    * @param dataHandler TaskDataHandler of a task to execute.
+   * @param dataElement input data element to process.
    */
   private void runTask(final TaskDataHandler dataHandler, final Object dataElement) {
     final Task task = dataHandler.getTask();
@@ -616,6 +688,8 @@ public final class TaskGroupExecutor {
   }
 
   /**
+   * Get the matching physical task id of the given logical task id.
+   *
    * @param logicalTaskId the logical task id.
    * @return the physical task id.
    */
@@ -623,6 +697,11 @@ public final class TaskGroupExecutor {
     return RuntimeIdGenerator.generatePhysicalTaskId(taskGroupIdx, logicalTaskId);
   }
 
+  /**
+   * Generate a unique iterator id.
+   *
+   * @return the iterator id.
+   */
   private String generateIteratorId() {
     return ITERATORID_PREFIX + ITERATORID_GENERATOR.getAndIncrement();
   }

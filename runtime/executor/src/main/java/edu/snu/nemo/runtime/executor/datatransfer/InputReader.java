@@ -37,15 +37,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Represents the input data transfer to a task.
  * TODO #492: Modularize the data communication pattern.
  */
 public final class InputReader extends DataTransfer {
-  private static final Logger LOG = LoggerFactory.getLogger(InputReader.class.getName());
   private final int dstTaskIndex;
   private final BlockManagerWorker blockManagerWorker;
 

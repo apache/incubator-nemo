@@ -17,13 +17,10 @@ package edu.snu.nemo.runtime.executor.datatransfer;
 
 import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * OutputCollector implementation.
@@ -31,11 +28,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @param <O> output type.
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
-  private static final Logger LOG = LoggerFactory.getLogger(OutputCollectorImpl.class.getName());
-  private static final String OUTPUTCOLLECTORID_PREFIX = "OUTPUTCOLLECTOR_";
-  private static final AtomicInteger OUTPUTCOLLECTORID_GENERATOR = new AtomicInteger(0);
-
-  private final String id;
   private final ArrayDeque<O> outputQueue;
   private RuntimeEdge sideInputRuntimeEdge;
   private List<String> sideInputReceivers;
@@ -44,7 +36,6 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    * Constructor of a new OutputCollectorImpl.
    */
   public OutputCollectorImpl() {
-    this.id = OUTPUTCOLLECTORID_PREFIX + OUTPUTCOLLECTORID_GENERATOR.getAndIncrement();
     this.outputQueue = new ArrayDeque<>();
     this.sideInputRuntimeEdge = null;
     this.sideInputReceivers = new ArrayList<>();
@@ -61,7 +52,8 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   }
 
   /**
-   * Inter-Task data is transferred from sender-side Task's OutputCollectorImpl to receiver-side Task.
+   * Inter-Task data is transferred from sender-side Task's OutputCollectorImpl
+   * to receiver-side Task.
    *
    * @return the first element of this list
    */
@@ -77,6 +69,12 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     return outputQueue.size();
   }
 
+  /**
+   * Mark this edge as side input so that TaskGroupExecutor can retrieve
+   * source transform using it.
+   *
+   * @param edge the RuntimeEdge to mark as side input.
+   */
   public void setSideInputRuntimeEdge(final RuntimeEdge edge) {
     sideInputRuntimeEdge = edge;
   }
@@ -85,15 +83,16 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     return sideInputRuntimeEdge;
   }
 
+  /**
+   * Set this OutputCollector as having side input for the given child task.
+   *
+   * @param physicalTaskId the id of child task whose side input will be put into this OutputCollector.
+   */
   public void setAsSideInputFor(final String physicalTaskId) {
     sideInputReceivers.add(physicalTaskId);
   }
 
   public boolean hasSideInputFor(final String physicalTaskId) {
     return sideInputReceivers.contains(physicalTaskId);
-  }
-
-  public String getId() {
-    return id;
   }
 }
