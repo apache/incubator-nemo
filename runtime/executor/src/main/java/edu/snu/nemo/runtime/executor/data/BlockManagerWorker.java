@@ -409,13 +409,21 @@ public final class BlockManagerWorker {
               || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
             final FileStore fileStore = (FileStore) getBlockStore(blockStore);
             for (final FileArea fileArea : fileStore.getFileAreas(blockId, keyRange)) {
-              outputContext.newOutputStream().writeFileArea(fileArea).close();
+              try (final ByteOutputContext.ByteOutputStream stream = outputContext.newOutputStream()) {
+                stream.writeFileArea(fileArea);
+              }
             }
           } else {
             final Optional<Iterable<SerializedPartition>> optionalResult = getBlockStore(blockStore)
                 .getSerializedPartitions(blockId, keyRange);
-            for (final SerializedPartition partition : optionalResult.get()) {
-              outputContext.newOutputStream().writeSerializedPartition(partition).close();
+            if (optionalResult.isPresent()) {
+              for (final SerializedPartition partition : optionalResult.get()) {
+                try (final ByteOutputContext.ByteOutputStream stream = outputContext.newOutputStream()) {
+                  stream.writeSerializedPartition(partition);
+                }
+              }
+            } else {
+              throw new IOException("Block is not found!");
             }
           }
           handleUsedData(blockStore, blockId);

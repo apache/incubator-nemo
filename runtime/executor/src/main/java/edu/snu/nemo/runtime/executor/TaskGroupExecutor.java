@@ -366,8 +366,9 @@ public final class TaskGroupExecutor {
           iteratorIdToDataHandlersMap.computeIfAbsent(iteratorId, absentIteratorId -> dataHandlers);
           try {
             partitionQueue.put(Pair.of(iteratorId, iterator));
-          } catch (InterruptedException e) {
-            throw new RuntimeException("Interrupted while receiving iterator " + e);
+          } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BlockFetchException(e);
           }
         }
       }));
@@ -463,8 +464,11 @@ public final class TaskGroupExecutor {
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
           encodedBlockSize = -1;
         }
-      } catch (final InterruptedException | ExecutionException e) {
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
         throw new BlockFetchException(e);
+      } catch (final ExecutionException e1) {
+        throw new RuntimeException("Failed while reading side input from other stages " + e1);
       }
     });
   }
@@ -642,7 +646,6 @@ public final class TaskGroupExecutor {
   private void runTask(final TaskDataHandler dataHandler, final Object dataElement) {
     final Task task = dataHandler.getTask();
     final OutputCollectorImpl outputCollector = dataHandler.getOutputCollector();
-    final String physicalTaskId = getPhysicalTaskId(task.getId());
 
     // Process element-wise depending on the Task type
     if (task instanceof BoundedSourceTask) {

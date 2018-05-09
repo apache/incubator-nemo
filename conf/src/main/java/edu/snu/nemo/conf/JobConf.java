@@ -142,13 +142,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Scheduler timeout in ms.
-   */
-  @NamedParameter(doc = "Scheduler timeout in ms", short_name = "scheduler_timeout_ms", default_value = "50")
-  public final class SchedulerTimeoutMs implements Name<Integer> {
-  }
-
-  /**
    * Max number of attempts for task group scheduling.
    */
   @NamedParameter(doc = "Max number of schedules", short_name = "max_schedule_attempt", default_value = "3")
@@ -234,14 +227,12 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();
-  public static final OptionalParameter<Integer> EXECUTOR_CAPACITY = new OptionalParameter<>();
   public static final RequiredParameter<String> JOB_ID = new RequiredParameter<>();
   public static final OptionalParameter<String> LOCAL_DISK_DIRECTORY = new OptionalParameter<>();
   public static final OptionalParameter<String> GLUSTER_DISK_DIRECTORY = new OptionalParameter<>();
 
   public static final ConfigurationModule EXECUTOR_CONF = new JobConf()
       .bindNamedParameter(ExecutorId.class, EXECUTOR_ID)
-      .bindNamedParameter(ExecutorCapacity.class, EXECUTOR_CAPACITY)
       .bindNamedParameter(JobId.class, JOB_ID)
       .bindNamedParameter(FileDirectory.class, LOCAL_DISK_DIRECTORY)
       .bindNamedParameter(GlusterVolumeDirectory.class, GLUSTER_DISK_DIRECTORY)

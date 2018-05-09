@@ -228,7 +228,7 @@ public final class AlternatingLeastSquare {
         for (Integer j = 0; j < numFeatures; j++) {
 //          LOG.info("Rating index " + ratingIndex);
           if (j < fixedMatrix.get(ratingIndex).size()) {
-            conf[j] = fixedMatrix.get(ratingIndex).get(j).doubleValue();
+            conf[j] = fixedMatrix.get(ratingIndex).get(j);
           } else {
             conf[j] = 0.0;
           }

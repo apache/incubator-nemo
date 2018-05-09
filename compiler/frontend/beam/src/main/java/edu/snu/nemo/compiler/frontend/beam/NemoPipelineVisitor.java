@@ -148,7 +148,8 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
       // Since outgoing PValues for CreateViewTransform is PCollectionView, we cannot use PCollection::getCoder to
       // obtain coders.
       final Coder beamInputCoder = beamNode.getInputs().values().stream()
-          .filter(v -> v instanceof PCollection).findFirst().map(v -> (PCollection) v).get().getCoder();
+          .filter(v -> v instanceof PCollection).map(v -> (PCollection) v).findFirst()
+          .orElseThrow(() -> new RuntimeException("No inputs provided to " + beamNode.getFullName())).getCoder();
       beamNode.getOutputs().values().stream()
           .forEach(output -> pValueToCoder.put(output, getCoderForView(view.getView().getViewFn(), beamInputCoder)));
     } else if (beamTransform instanceof Window) {
