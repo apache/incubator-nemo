@@ -439,7 +439,7 @@ public final class DataTransferTest {
 
       final OutputWriter writer2 = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, srcVertex.getId(), dstVertex,
           dummyEdge2, sender);
-      dataWritten.iterator().forEachRemaining(writer::write);
+      dataWritten.iterator().forEachRemaining(writer2::write);
       writer2.close();
     });
 
