@@ -29,7 +29,7 @@ import javax.annotation.concurrent.ThreadSafe;
  */
 @ThreadSafe
 final class BlockMetadata {
-  private static final Logger LOG = LoggerFactory.getLogger(BlockManagerMaster.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(BlockMetadata.class.getName());
   private final String blockId;
   private final BlockState blockState;
   private volatile BlockManagerMaster.BlockLocationRequestHandler locationHandler;

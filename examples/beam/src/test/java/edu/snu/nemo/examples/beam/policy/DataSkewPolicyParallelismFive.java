@@ -16,20 +16,20 @@
 package edu.snu.nemo.examples.beam.policy;
 
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.nemo.compiler.optimizer.policy.DataSkewPolicy;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
-import edu.snu.nemo.compiler.optimizer.policy.SailfishPolicy;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
 
 /**
- * A Sailfish policy with fixed parallelism 5 for tests.
+ * A data-skew policy with fixed parallelism 5 for tests.
  */
-public final class SailfishPolicyParallelsimFive implements Policy {
+public final class DataSkewPolicyParallelismFive implements Policy {
   private final Policy policy;
 
-  public SailfishPolicyParallelsimFive() {
-    this.policy = PolicyTestUtil.overwriteParallelism(5, SailfishPolicy.class.getCanonicalName());
+  public DataSkewPolicyParallelismFive() {
+    this.policy = PolicyTestUtil.overwriteParallelism(5, DataSkewPolicy.class.getCanonicalName());
   }
 
   @Override

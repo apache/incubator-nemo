@@ -33,10 +33,12 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.joda.time.Instant;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * DoFn transform implementation.
+ *
  * @param <I> input type.
  * @param <O> output type.
  */
@@ -46,10 +48,15 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   private final String serializedOptions;
   private Map<PCollectionView, Object> sideInputs;
   private OutputCollector<O> outputCollector;
+  private StartBundleContext startBundleContext;
+  private FinishBundleContext finishBundleContext;
+  private ProcessContext processContext;
+  private DoFnInvoker invoker;
 
   /**
    * DoTransform Constructor.
-   * @param doFn doFn.
+   *
+   * @param doFn    doFn.
    * @param options Pipeline options.
    */
   public DoTransform(final DoFn doFn, final PipelineOptions options) {
@@ -67,29 +74,25 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     this.outputCollector = oc;
     this.sideInputs = new HashMap<>();
     context.getSideInputs().forEach((k, v) -> this.sideInputs.put(((CreateViewTransform) k).getTag(), v));
+    this.startBundleContext = new StartBundleContext(doFn, serializedOptions);
+    this.finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
+    this.processContext = new ProcessContext(doFn, outputCollector, sideInputs, serializedOptions);
+    this.invoker = DoFnInvokers.invokerFor(doFn);
+    invoker.invokeSetup();
+    invoker.invokeStartBundle(startBundleContext);
   }
 
   @Override
-  public void onData(final Iterator<I> elements, final String srcVertexId) {
-    final StartBundleContext startBundleContext = new StartBundleContext(doFn, serializedOptions);
-    final FinishBundleContext finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
-    final ProcessContext processContext = new ProcessContext(doFn, outputCollector, sideInputs, serializedOptions);
-    final DoFnInvoker invoker = DoFnInvokers.invokerFor(doFn);
-    invoker.invokeSetup();
-    invoker.invokeStartBundle(startBundleContext);
-    elements.forEachRemaining(element -> { // No need to check for input index, since it is always 0 for DoTransform
-      processContext.setElement(element);
-      invoker.invokeProcessElement(processContext);
-    });
-    invoker.invokeFinishBundle(finishBundleContext);
-    invoker.invokeTeardown();
+  public void onData(final I data) {
+    processContext.setElement(data);
+    invoker.invokeProcessElement(processContext);
   }
 
   @Override
   public void close() {
-    // do nothing
+    invoker.invokeFinishBundle(finishBundleContext);
+    invoker.invokeTeardown();
   }
-
 
   @Override
   public String toString() {
@@ -100,6 +103,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
   /**
    * StartBundleContext.
+   *
    * @param <I> input type.
    * @param <O> output type.
    */
@@ -109,7 +113,8 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     /**
      * StartBundleContext.
-     * @param fn DoFn.
+     *
+     * @param fn                DoFn.
      * @param serializedOptions serialized options of the DoTransform.
      */
     StartBundleContext(final DoFn<I, O> fn,
@@ -131,6 +136,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
   /**
    * FinishBundleContext.
+   *
    * @param <I> input type.
    * @param <O> output type.
    */
@@ -141,8 +147,9 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     /**
      * Constructor.
-     * @param fn DoFn.
-     * @param outputCollector output collector of the DoTransform.
+     *
+     * @param fn                DoFn.
+     * @param outputCollector   outputCollector of the DoTransform.
      * @param serializedOptions serialized options of the DoTransform.
      */
     FinishBundleContext(final DoFn<I, O> fn,
@@ -180,6 +187,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
   /**
    * ProcessContext class. Reference: SimpleDoFnRunner.DoFnProcessContext in BEAM.
+   *
    * @param <I> input type.
    * @param <O> output type.
    */
@@ -193,9 +201,10 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     /**
      * ProcessContext Constructor.
-     * @param fn Dofn.
-     * @param outputCollector OutputCollector.
-     * @param sideInputs Map for SideInputs.
+     *
+     * @param fn                Dofn.
+     * @param outputCollector   OutputCollector.
+     * @param sideInputs        Map for SideInputs.
      * @param serializedOptions Options, serialized.
      */
     ProcessContext(final DoFn<I, O> fn,
@@ -215,6 +224,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     /**
      * Setter for input element.
+     *
      * @param in input element.
      */
     void setElement(final I in) {
@@ -293,13 +303,13 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public DoFn.ProcessContext
-        processContext(final DoFn<I, O> doFn) {
+    processContext(final DoFn<I, O> doFn) {
       return this;
     }
 
     @Override
     public DoFn.OnTimerContext
-        onTimerContext(final DoFn<I, O> doFn) {
+    onTimerContext(final DoFn<I, O> doFn) {
       throw new UnsupportedOperationException("onTimerContext() in ProcessContext under DoTransform");
     }
 

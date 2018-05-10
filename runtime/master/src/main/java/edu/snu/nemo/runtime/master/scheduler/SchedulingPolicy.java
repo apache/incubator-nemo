@@ -33,12 +33,6 @@ import java.util.Set;
 public interface SchedulingPolicy {
 
   /**
-   * Returns this scheduling policy's timeout before an executor assignment.
-   * @return the timeout in milliseconds.
-   */
-  long getScheduleTimeoutMs();
-
-  /**
    * Attempts to schedule the given taskGroup to an executor according to this policy.
    * If there is no executor available for the taskGroup, it waits for an executor to be assigned before it times out.
    * (Depending on the executor's resource type)

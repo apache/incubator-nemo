@@ -17,9 +17,9 @@ package edu.snu.nemo.runtime.master;
 
 import edu.snu.nemo.common.exception.IllegalMessageException;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
+import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.exception.AbsentBlockException;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
-import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
@@ -180,7 +180,7 @@ public final class BlockManagerMaster {
   /**
    * To be called when a potential producer task group is scheduled.
    * To be precise, it is called when the task group is enqueued to
-   * {@link edu.snu.nemo.runtime.master.scheduler.PendingTaskGroupQueue}.
+   * {@link edu.snu.nemo.runtime.master.scheduler.PendingTaskGroupCollection}.
    *
    * @param scheduledTaskGroupId the ID of the scheduled task group.
    */

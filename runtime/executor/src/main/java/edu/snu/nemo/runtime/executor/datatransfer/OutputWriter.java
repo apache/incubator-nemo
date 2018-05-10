@@ -26,7 +26,6 @@ import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.block.Block;
 import edu.snu.nemo.runtime.executor.data.partitioner.*;
 
-import javax.annotation.Nullable;
 import java.util.*;
 
 /**
@@ -36,12 +35,13 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   private final String blockId;
   private final RuntimeEdge<?> runtimeEdge;
   private final String srcVertexId;
-  @Nullable private final IRVertex dstIrVertex;
+  private final IRVertex dstIrVertex;
   private final DataStoreProperty.Value blockStoreValue;
-  private long writtenBytes;
   private final BlockManagerWorker blockManagerWorker;
-  private final Partitioner partitioner;
+  private final boolean nonDummyBlock;
   private final Block blockToWrite;
+  private long writtenBytes;
+  private Partitioner partitioner;
 
   /**
    * Constructor.
@@ -56,8 +56,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   public OutputWriter(final int hashRangeMultiplier,
                       final int srcTaskIdx,
                       final String srcRuntimeVertexId,
-                      // TODO #717: Remove nullable. (If the destination is not an IR vertex, do not make OutputWriter.)
-                      @Nullable final IRVertex dstIrVertex, // Null if it is not an IR vertex.
+                      final IRVertex dstIrVertex,
                       final RuntimeEdge<?> runtimeEdge,
                       final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
@@ -88,22 +87,22 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
             new Throwable("Partitioner " + partitionerPropertyValue + " is not supported."));
     }
     blockToWrite = blockManagerWorker.createBlock(blockId, blockStoreValue);
+
+    final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
+        runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
+    nonDummyBlock = duplicateDataProperty == null
+        || duplicateDataProperty.getRepresentativeEdgeId().equals(runtimeEdge.getId())
+        || duplicateDataProperty.getGroupSize() <= 1;
   }
 
   /**
-   * Writes output data depending on the communication pattern of the edge.
+   * Writes output element depending on the communication pattern of the edge.
    *
-   * @param dataToWrite An iterable for the elements to be written.
+   * @param element the element to write.
    */
-  public void write(final Iterable dataToWrite) {
-    final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
-        runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
-    if (duplicateDataProperty == null
-        || duplicateDataProperty.getRepresentativeEdgeId().equals(runtimeEdge.getId())
-        || duplicateDataProperty.getGroupSize() <= 1) {
-      dataToWrite.forEach(element -> {
-        blockToWrite.write(partitioner.partition(element), element);
-      });
+  public void write(final Object element) {
+    if (nonDummyBlock) {
+      blockToWrite.write(partitioner.partition(element), element);
     } // If else, does not need to write because the data is duplicated.
   }
 
@@ -155,7 +154,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    * @return the parallelism of the destination task.
    */
   private int getDstParallelism() {
-    return dstIrVertex == null || DataCommunicationPatternProperty.Value.OneToOne.equals(
+    return DataCommunicationPatternProperty.Value.OneToOne.equals(
         runtimeEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))
         ? 1 : dstIrVertex.getProperty(ExecutionProperty.Key.Parallelism);
   }

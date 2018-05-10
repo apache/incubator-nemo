@@ -16,9 +16,7 @@
 package edu.snu.nemo.common.ir.vertex.transform;
 
 import edu.snu.nemo.common.ir.OutputCollector;
-
 import java.io.Serializable;
-import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -38,10 +36,9 @@ public interface Transform<I, O> extends Serializable {
 
   /**
    * On data received.
-   * @param elements data received.
-   * @param srcVertexId sender of the data.
+   * @param element data received.
    */
-  void onData(Iterator<I> elements, String srcVertexId);
+  void onData(I element);
 
   /**
    * Close the transform.

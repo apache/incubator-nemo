@@ -16,28 +16,34 @@
 package edu.snu.nemo.runtime.executor.datatransfer;
 
 import edu.snu.nemo.common.ir.OutputCollector;
+import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Output Collector Implementation.
+ * OutputCollector implementation.
+ *
  * @param <O> output type.
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
-  private AtomicReference<List<O>> outputList;
+  private final ArrayDeque<O> outputQueue;
+  private RuntimeEdge sideInputRuntimeEdge;
+  private List<String> sideInputReceivers;
 
   /**
-   * Constructor of a new OutputCollector.
+   * Constructor of a new OutputCollectorImpl.
    */
   public OutputCollectorImpl() {
-    outputList = new AtomicReference<>(new ArrayList<>());
+    this.outputQueue = new ArrayDeque<>();
+    this.sideInputRuntimeEdge = null;
+    this.sideInputReceivers = new ArrayList<>();
   }
 
   @Override
   public void emit(final O output) {
-    outputList.get().add(output);
+    outputQueue.add(output);
   }
 
   @Override
@@ -46,11 +52,67 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   }
 
   /**
-   * Collects the accumulated output and replace the output list.
+   * Inter-Task data is transferred from sender-side Task's OutputCollectorImpl
+   * to receiver-side Task.
    *
-   * @return the list of output elements.
+   * @return the first element of this list
    */
-  public List<O> collectOutputList() {
-    return outputList.getAndSet(new ArrayList<>());
+  public O remove() {
+    return outputQueue.remove();
+  }
+
+  /**
+   * Check if this OutputCollector is empty.
+   *
+   * @return true if this OutputCollector is empty.
+   */
+  public boolean isEmpty() {
+    return outputQueue.isEmpty();
+  }
+
+  /**
+   * Return the size of this OutputCollector.
+   *
+   * @return the total number of elements in this OutputCollector.
+   */
+  public int size() {
+    return outputQueue.size();
+  }
+
+  /**
+   * Mark this edge as side input so that TaskGroupExecutor can retrieve
+   * source transform using it.
+   *
+   * @param edge the RuntimeEdge to mark as side input.
+   */
+  public void setSideInputRuntimeEdge(final RuntimeEdge edge) {
+    sideInputRuntimeEdge = edge;
+  }
+
+  /**
+   * Get the RuntimeEdge marked as side input.
+   *
+   * @return the RuntimeEdge marked as side input.
+   */
+  public RuntimeEdge getSideInputRuntimeEdge() {
+    return sideInputRuntimeEdge;
+  }
+
+  /**
+   * Set this OutputCollector as having side input for the given child task.
+   *
+   * @param physicalTaskId the id of child task whose side input will be put into this OutputCollector.
+   */
+  public void setAsSideInputFor(final String physicalTaskId) {
+    sideInputReceivers.add(physicalTaskId);
+  }
+
+  /**
+   * Check if this OutputCollector has side input for the given child task.
+   *
+   * @return true if it contains side input for child task of the given id.
+   */
+  public boolean hasSideInputFor(final String physicalTaskId) {
+    return sideInputReceivers.contains(physicalTaskId);
   }
 }

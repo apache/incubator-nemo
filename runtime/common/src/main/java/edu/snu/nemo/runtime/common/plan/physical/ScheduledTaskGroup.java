@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A ScheduledTaskGroup is a grouping of {@link Task} that belong to a stage.
+ * A ScheduledTaskGroup is a grouping of {@link Task}s that belong to a stage.
  * Executors receive units of ScheduledTaskGroups during job execution,
  * and thus the resource type of all tasks of a ScheduledTaskGroup must be identical.
  * A stage contains a list of IDs of TaskGroups whose length corresponds to stage/operator parallelism.

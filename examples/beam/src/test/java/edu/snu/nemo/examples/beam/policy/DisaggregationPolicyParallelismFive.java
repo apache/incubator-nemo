@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.examples.beam.policy;
 
+
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.policy.DisaggregationPolicy;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
@@ -25,10 +26,10 @@ import java.util.List;
 /**
  * A disaggregation policy with fixed parallelism 5 for tests.
  */
-public final class DisaggregationPolicyParallelsimFive implements Policy {
+public final class DisaggregationPolicyParallelismFive implements Policy {
   private final Policy policy;
 
-  public DisaggregationPolicyParallelsimFive() {
+  public DisaggregationPolicyParallelismFive() {
     this.policy = PolicyTestUtil.overwriteParallelism(5, DisaggregationPolicy.class.getCanonicalName());
   }
 

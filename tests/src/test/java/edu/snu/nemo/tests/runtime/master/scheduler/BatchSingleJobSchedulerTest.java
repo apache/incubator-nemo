@@ -81,14 +81,12 @@ public final class BatchSingleJobSchedulerTest {
   private SchedulerRunner schedulerRunner;
   private ExecutorRegistry executorRegistry;
   private MetricMessageHandler metricMessageHandler;
-  private PendingTaskGroupQueue pendingTaskGroupQueue;
+  private PendingTaskGroupCollection pendingTaskGroupCollection;
   private PubSubEventHandlerWrapper pubSubEventHandler;
   private UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler;
   private BlockManagerMaster blockManagerMaster = mock(BlockManagerMaster.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
   private PhysicalPlanGenerator physicalPlanGenerator;
-
-  private static final int TEST_TIMEOUT_MS = 500;
 
   private static final int EXECUTOR_CAPACITY = 20;
 
@@ -103,13 +101,13 @@ public final class BatchSingleJobSchedulerTest {
     irDAGBuilder = initializeDAGBuilder();
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
     metricMessageHandler = mock(MetricMessageHandler.class);
-    pendingTaskGroupQueue = new SingleJobTaskGroupQueue();
-    schedulingPolicy = new RoundRobinSchedulingPolicy(executorRegistry, TEST_TIMEOUT_MS);
-    schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskGroupQueue);
+    pendingTaskGroupCollection = new SingleJobTaskGroupCollection();
+    schedulingPolicy = new RoundRobinSchedulingPolicy(executorRegistry);
+    schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskGroupCollection);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     scheduler =
-        new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, pendingTaskGroupQueue,
+        new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, pendingTaskGroupCollection,
             blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler);
 
     final ActiveContext activeContext = mock(ActiveContext.class);

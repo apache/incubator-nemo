@@ -76,7 +76,7 @@ public final class MapReduceITCase {
         .addJobId(MapReduceITCase.class.getSimpleName() + "_sailfish")
         .addUserMain(MapReduce.class.getCanonicalName())
         .addUserArgs(inputFilePath, outputFilePath)
-        .addOptimizationPolicy(SailfishPolicyParallelsimFive.class.getCanonicalName())
+        .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 
@@ -86,7 +86,7 @@ public final class MapReduceITCase {
         .addJobId(MapReduceITCase.class.getSimpleName() + "_disagg")
         .addUserMain(MapReduce.class.getCanonicalName())
         .addUserArgs(inputFilePath, outputFilePath)
-        .addOptimizationPolicy(DisaggregationPolicyParallelsimFive.class.getCanonicalName())
+        .addOptimizationPolicy(DisaggregationPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 
@@ -96,7 +96,7 @@ public final class MapReduceITCase {
         .addJobId(MapReduceITCase.class.getSimpleName() + "_pado")
         .addUserMain(MapReduce.class.getCanonicalName())
         .addUserArgs(inputFilePath, outputFilePath)
-        .addOptimizationPolicy(PadoPolicyParallelsimFive.class.getCanonicalName())
+        .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 
@@ -110,7 +110,7 @@ public final class MapReduceITCase {
         .addJobId(MapReduceITCase.class.getSimpleName() + "_dataskew")
         .addUserMain(MapReduce.class.getCanonicalName())
         .addUserArgs(inputFilePath, outputFilePath)
-        .addOptimizationPolicy(DataSkewPolicyParallelsimFive.class.getCanonicalName())
+        .addOptimizationPolicy(DataSkewPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 }
