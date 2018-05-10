@@ -71,7 +71,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   /**
    * Collects output element-wise in memory.
    *
-   * * @param element
+   * @param element
    */
   public void writeElement(final Object element) {
     outputList.add(element);

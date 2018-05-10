@@ -61,10 +61,20 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     return outputQueue.remove();
   }
 
+  /**
+   * Check if this OutputCollector is empty.
+   *
+   * @return true if this OutputCollector is empty.
+   */
   public boolean isEmpty() {
     return outputQueue.isEmpty();
   }
 
+  /**
+   * Return the size of this OutputCollector.
+   *
+   * @return the total number of elements in this OutputCollector.
+   */
   public int size() {
     return outputQueue.size();
   }
@@ -79,6 +89,11 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     sideInputRuntimeEdge = edge;
   }
 
+  /**
+   * Get the RuntimeEdge marked as side input.
+   *
+   * @return the RuntimeEdge marked as side input.
+   */
   public RuntimeEdge getSideInputRuntimeEdge() {
     return sideInputRuntimeEdge;
   }
@@ -92,6 +107,11 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     sideInputReceivers.add(physicalTaskId);
   }
 
+  /**
+   * Check if this OutputCollector has side input for the given child task.
+   *
+   * @return true if it contains side input for child task of the given id.
+   */
   public boolean hasSideInputFor(final String physicalTaskId) {
     return sideInputReceivers.contains(physicalTaskId);
   }

@@ -30,8 +30,6 @@ import java.util.List;
  */
 public final class CollectTransform<T> implements Transform<T, T> {
   private String filename;
-  private FileOutputStream fos;
-  private ObjectOutputStream oos;
   private final List<T> list;
 
   /**
@@ -58,9 +56,10 @@ public final class CollectTransform<T> implements Transform<T, T> {
 
   @Override
   public void close() {
-    try {
-      fos = new FileOutputStream(filename);
-      oos = new ObjectOutputStream(fos);
+    try (
+        FileOutputStream fos = new FileOutputStream(filename);
+        ObjectOutputStream oos = new ObjectOutputStream(fos)
+    ) {
       oos.writeObject(list);
       oos.close();
     } catch (Exception e) {

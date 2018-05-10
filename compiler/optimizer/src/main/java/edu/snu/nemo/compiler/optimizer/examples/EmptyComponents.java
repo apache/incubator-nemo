@@ -59,7 +59,7 @@ public class EmptyComponents {
     }
 
     @Override
-    public void onData(final Object element) {
+    public void onData(final I element) {
     }
 
     @Override

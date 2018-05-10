@@ -168,7 +168,7 @@ public final class TaskGroupExecutor {
       outEdgesToOtherStages.forEach(physicalStageEdge -> {
         final OutputWriter outputWriter = channelFactory.createWriter(
             task, taskGroupIdx, physicalStageEdge.getDstVertex(), physicalStageEdge);
-        dataHandler.addOutputWriters(outputWriter);
+        dataHandler.addOutputWriter(outputWriter);
       });
 
       // Add InputPipes for intra-stage data transfer
@@ -331,16 +331,15 @@ public final class TaskGroupExecutor {
         } catch (final BlockFetchException ex) {
           taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
               Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
-          LOG.info("{} Execution Failed (Recoverable: input read failure)! Exception: {}",
+          LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}",
               taskGroupId, ex.toString());
         } catch (final Exception e) {
           taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE,
               Optional.empty(), Optional.empty());
-          LOG.info("{} Execution Failed! Exception: {}", taskGroupId, e.toString());
+          LOG.error("{} Execution Failed! Exception: {}", taskGroupId, e.toString());
           throw new RuntimeException(e);
         }
       }
-      // TODO #XXX: Support other types of source tasks, i. e. InitializedSourceTask
     });
   }
 
@@ -613,12 +612,12 @@ public final class TaskGroupExecutor {
     } catch (final BlockWriteException ex2) {
       taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
           Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
-      LOG.info("{} Execution Failed (Recoverable: output write failure)! Exception: {}",
+      LOG.error("{} Execution Failed (Recoverable: output write failure)! Exception: {}",
           taskGroupId, ex2.toString());
     } catch (final Exception e) {
       taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE,
           Optional.empty(), Optional.empty());
-      LOG.info("{} Execution Failed! Exception: {}",
+      LOG.error("{} Execution Failed! Exception: {}",
           taskGroupId, e.toString());
       throw new RuntimeException(e);
     }

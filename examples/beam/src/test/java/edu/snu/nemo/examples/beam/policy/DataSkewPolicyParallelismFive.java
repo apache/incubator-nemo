@@ -25,7 +25,7 @@ import java.util.List;
 /**
  * A data-skew policy with fixed parallelism 5 for tests.
  */
-public final class DataSkewPolicyParallelismFive implements Policy{
+public final class DataSkewPolicyParallelismFive implements Policy {
   private final Policy policy;
 
   public DataSkewPolicyParallelismFive() {

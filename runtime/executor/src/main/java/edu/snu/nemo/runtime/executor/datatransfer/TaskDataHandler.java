@@ -16,8 +16,6 @@
 package edu.snu.nemo.runtime.executor.datatransfer;
 
 import edu.snu.nemo.runtime.common.plan.physical.Task;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,8 +27,19 @@ import java.util.List;
  * through the DAG of children TaskDataHandlers.
  */
 public final class TaskDataHandler {
-  private static final Logger LOG = LoggerFactory.getLogger(TaskDataHandler.class.getName());
+  private final Task task;
+  private List<TaskDataHandler> children;
+  private final List<OutputCollectorImpl> inputFromThisStage;
+  private final List<InputReader> sideInputFromOtherStages;
+  private final List<OutputCollectorImpl> sideInputFromThisStage;
+  private OutputCollectorImpl outputCollector;
+  private final List<OutputWriter> outputWriters;
 
+  /**
+   * TaskDataHandler Constructor.
+   *
+   * @param task Task of this TaskDataHandler.
+   */
   public TaskDataHandler(final Task task) {
     this.task = task;
     this.children = new ArrayList<>();
@@ -41,34 +50,27 @@ public final class TaskDataHandler {
     this.outputWriters = new ArrayList<>();
   }
 
-  private final Task task;
-  private List<TaskDataHandler> children;
-  private final List<OutputCollectorImpl> inputFromThisStage;
-  private final List<InputReader> sideInputFromOtherStages;
-  private final List<OutputCollectorImpl> sideInputFromThisStage;
-  private OutputCollectorImpl outputCollector;
-  private final List<OutputWriter> outputWriters;
-
+  /**
+   * Get the task that owns this TaskDataHandler.
+   *
+   * @return task of this TaskDataHandler.
+   */
   public Task getTask() {
     return task;
   }
 
+  /**
+   * Get a DAG of children tasks' TaskDataHandlers.
+   *
+   * @return DAG of children tasks' TaskDataHandlers.
+   */
   public List<TaskDataHandler> getChildren() {
     return children;
   }
 
   /**
-   * Get intra-TaskGroup input from parent tasks.
-   * We keep parent tasks' OutputCollectors, as they're the place where parent task output
-   * becomes available element-wise.
-   * @return OutputCollectors of all parent tasks.
-   */
-  public List<OutputCollectorImpl> getInputFromThisStage() {
-    return inputFromThisStage;
-  }
-
-  /**
    * Get side input from other TaskGroup.
+   *
    * @return InputReader that has side input.
    */
   public List<InputReader> getSideInputFromOtherStages() {
@@ -79,6 +81,7 @@ public final class TaskDataHandler {
    * Get intra-TaskGroup side input from parent tasks.
    * Just like normal intra-TaskGroup inputs, intra-TaskGroup side inputs are
    * collected in parent tasks' OutputCollectors.
+   *
    * @return OutputCollectors of all parent tasks which are marked as having side input.
    */
   public List<OutputCollectorImpl> getSideInputFromThisStage() {
@@ -87,6 +90,7 @@ public final class TaskDataHandler {
 
   /**
    * Get OutputCollector of this task.
+   *
    * @return OutputCollector of this task.
    */
   public OutputCollectorImpl getOutputCollector() {
@@ -95,6 +99,7 @@ public final class TaskDataHandler {
 
   /**
    * Get OutputWriters of this task.
+   *
    * @return OutputWriters of this task.
    */
   public List<OutputWriter> getOutputWriters() {
@@ -103,27 +108,35 @@ public final class TaskDataHandler {
 
   /**
    * Set a DAG of children tasks' DataHandlers.
+   *
+   * @param childrenDataHandler list of children TaskDataHandlers.
    */
   public void setChildrenDataHandler(final List<TaskDataHandler> childrenDataHandler) {
     children = childrenDataHandler;
   }
 
   /**
-   * Add OutputCollector of a parent task.
+   * Add OutputCollector of a parent task that will provide intra-stage input.
+   *
+   * @param input OutputCollector of a parent task.
    */
   public void addInputFromThisStages(final OutputCollectorImpl input) {
     inputFromThisStage.add(input);
   }
 
   /**
-   * Add InputReader that contains side input from other TaskGroup.
+   * Add InputReader that will provide inter-stage side input.
+   *
+   * @param sideInputReader InputReader that will provide inter-stage side input.
    */
   public void addSideInputFromOtherStages(final InputReader sideInputReader) {
     sideInputFromOtherStages.add(sideInputReader);
   }
 
   /**
-   * Add parent OutputCollector that contains side input from the parent task.
+   * Add OutputCollector of a parent task that will provide intra-stage side input.
+   *
+   * @param ocAsSideInput OutputCollector of a parent task with side input.
    */
   public void addSideInputFromThisStage(final OutputCollectorImpl ocAsSideInput) {
     sideInputFromThisStage.add(ocAsSideInput);
@@ -131,6 +144,8 @@ public final class TaskDataHandler {
 
   /**
    * Set OutputCollector of this task.
+   *
+   * @param oc OutputCollector of this task.
    */
   public void setOutputCollector(final OutputCollectorImpl oc) {
     outputCollector = oc;
@@ -138,8 +153,10 @@ public final class TaskDataHandler {
 
   /**
    * Add OutputWriter of this task.
+   *
+   * @param outputWriter OutputWriter of this task.
    */
-  public void addOutputWriters(final OutputWriter outputWriter) {
+  public void addOutputWriter(final OutputWriter outputWriter) {
     outputWriters.add(outputWriter);
   }
 }
