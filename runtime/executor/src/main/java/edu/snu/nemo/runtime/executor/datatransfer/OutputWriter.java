@@ -26,7 +26,6 @@ import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.Partition;
 import edu.snu.nemo.runtime.executor.data.partitioner.*;
 
-import javax.annotation.Nullable;
 import java.util.*;
 
 /**
@@ -36,18 +35,18 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   private final String blockId;
   private final RuntimeEdge<?> runtimeEdge;
   private final String srcVertexId;
-  @Nullable private final IRVertex dstIrVertex;
+  private final IRVertex dstIrVertex;
   private final DataStoreProperty.Value blockStoreValue;
   private final Map<PartitionerProperty.Value, Partitioner> partitionerMap;
   private final List<Long> accumulatedPartitionSizeInfo;
   private final List<Long> writtenBytes;
   private final BlockManagerWorker blockManagerWorker;
+  private final List<Object> outputList;
 
   public OutputWriter(final int hashRangeMultiplier,
                       final int srcTaskIdx,
                       final String srcRuntimeVertexId,
-                      // TODO #717: Remove nullable. (If the destination is not an IR vertex, do not make OutputWriter.)
-                      @Nullable final IRVertex dstIrVertex, // Null if it is not an IR vertex.
+                      final IRVertex dstIrVertex,
                       final RuntimeEdge<?> runtimeEdge,
                       final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
@@ -58,6 +57,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     this.blockManagerWorker = blockManagerWorker;
     this.blockStoreValue = runtimeEdge.getProperty(ExecutionProperty.Key.DataStore);
     this.partitionerMap = new HashMap<>();
+    this.outputList = new ArrayList<>();
     this.writtenBytes = new ArrayList<>();
     // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
     this.accumulatedPartitionSizeInfo = new ArrayList<>();
@@ -69,11 +69,19 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   }
 
   /**
-   * Writes output data depending on the communication pattern of the edge.
+   * Collects output element-wise in memory.
    *
-   * @param dataToWrite An iterable for the elements to be written.
+   * @param element
    */
-  public void write(final Iterable dataToWrite) {
+  public void writeElement(final Object element) {
+    outputList.add(element);
+  }
+
+  /**
+   * Writes output data depending on the communication pattern of the edge.
+   **/
+  public void write() {
+    // Aggregate element to form the inter-Stage data.
     final Boolean isDataSizeMetricCollectionEdge = MetricCollectionProperty.Value.DataSkewRuntimePass
         .equals(runtimeEdge.getProperty(ExecutionProperty.Key.MetricCollection));
 
@@ -98,7 +106,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
         && duplicateDataProperty.getGroupSize() > 1) {
       partitionsToWrite = partitioner.partition(Collections.emptyList(), dstParallelism, keyExtractor);
     } else {
-      partitionsToWrite = partitioner.partition(dataToWrite, dstParallelism, keyExtractor);
+      partitionsToWrite = partitioner.partition(outputList, dstParallelism, keyExtractor);
     }
 
     // Write the grouped blocks into partitions.
@@ -190,7 +198,6 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    * @param partitionsToWrite a list of the partitions to be written.
    */
   private void dataSkewWrite(final List<Partition> partitionsToWrite) {
-
     // Write data.
     final Optional<List<Long>> partitionSizeList =
         blockManagerWorker.putPartitions(blockId, partitionsToWrite, blockStoreValue);
@@ -215,7 +222,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    * @return the parallelism of the destination task.
    */
   private int getDstParallelism() {
-    return dstIrVertex == null || DataCommunicationPatternProperty.Value.OneToOne.equals(
+    return DataCommunicationPatternProperty.Value.OneToOne.equals(
         runtimeEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))
         ? 1 : dstIrVertex.getProperty(ExecutionProperty.Key.Parallelism);
   }

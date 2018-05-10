@@ -19,8 +19,6 @@ import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import org.apache.spark.api.java.function.FlatMapFunction;
 
-import java.util.Iterator;
-
 /**
  * Flatmap Transform that flattens each output element after mapping each elements to an iterator.
  * @param <T> input type.
@@ -28,7 +26,7 @@ import java.util.Iterator;
  */
 public final class FlatMapTransform<T, U> implements Transform<T, U> {
   private final FlatMapFunction<T, U> func;
-  private OutputCollector<U> oc;
+  private OutputCollector<U> outputCollector;
 
   /**
    * Constructor.
@@ -39,19 +37,17 @@ public final class FlatMapTransform<T, U> implements Transform<T, U> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<U> outputCollector) {
-    this.oc = outputCollector;
+  public void prepare(final Context context, final OutputCollector<U> oc) {
+    this.outputCollector = oc;
   }
 
   @Override
-  public void onData(final Iterator<T> elements, final String srcVertexId) {
-    elements.forEachRemaining(element -> {
-      try {
-        func.call(element).forEachRemaining(oc::emit);
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-    });
+  public void onData(final T element) {
+    try {
+      func.call(element).forEachRemaining(outputCollector::emit);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

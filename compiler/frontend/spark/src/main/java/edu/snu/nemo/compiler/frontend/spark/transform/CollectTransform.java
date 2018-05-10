@@ -22,7 +22,7 @@ import edu.snu.nemo.compiler.frontend.spark.core.java.JavaRDD;
 import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.List;
 
 /**
  * Collect transform.
@@ -30,36 +30,40 @@ import java.util.Iterator;
  */
 public final class CollectTransform<T> implements Transform<T, T> {
   private String filename;
+  private final List<T> list;
 
   /**
    * Constructor.
+   *
    * @param filename file to keep the result in.
    */
   public CollectTransform(final String filename) {
     this.filename = filename;
+    this.list = new ArrayList<>();
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<T> outputCollector) {
+  public void prepare(final Context context, final OutputCollector<T> oc) {
     this.filename = filename + JavaRDD.getResultId();
   }
 
   @Override
-  public void onData(final Iterator<T> elements, final String srcVertexId) {
+  public void onData(final T element) {
     // Write result to a temporary file.
     // TODO #740: remove this part, and make it properly transfer with executor.
-    try (final FileOutputStream fos = new FileOutputStream(filename)) {
-      try (final ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-        final ArrayList<T> list = new ArrayList<>();
-        elements.forEachRemaining(list::add);
-        oos.writeObject(list);
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    list.add(element);
   }
 
   @Override
   public void close() {
+    try (
+        FileOutputStream fos = new FileOutputStream(filename);
+        ObjectOutputStream oos = new ObjectOutputStream(fos)
+    ) {
+      oos.writeObject(list);
+      oos.close();
+    } catch (Exception e) {
+      throw new RuntimeException("Exception while file closing in CollectTransform " + e);
+    }
   }
 }
