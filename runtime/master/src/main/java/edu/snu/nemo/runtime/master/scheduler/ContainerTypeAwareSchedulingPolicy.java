@@ -15,44 +15,29 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
-import org.apache.reef.annotations.audience.DriverSide;
 
-import javax.annotation.concurrent.ThreadSafe;
-import java.util.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * {@inheritDoc}
- * A Round-Robin implementation used by {@link BatchSingleJobScheduler}.
- *
- * This policy keeps a list of available {@link ExecutorRepresenter} for each type of container.
- * The RR policy is used for each container type when trying to schedule a task group.
+ * This policy find executors which has corresponding container type.
  */
-@ThreadSafe
-@DriverSide
-public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
-  private static final Logger LOG = LoggerFactory.getLogger(RoundRobinSchedulingPolicy.class.getName());
-
+public final class ContainerTypeAwareSchedulingPolicy implements SchedulingPolicy {
   @Override
   public List<ExecutorRepresenter> filterExecutorRepresenters(final List<ExecutorRepresenter> executorRepresenterList,
                                                               final ScheduledTaskGroup scheduledTaskGroup) {
-    final OptionalInt minOccupancy =
-        executorRepresenterList.stream()
-        .map(executor -> executor.getRunningTaskGroups().size())
-        .mapToInt(i -> i).min();
 
-    if (!minOccupancy.isPresent()) {
-      return Collections.emptyList();
+    if (scheduledTaskGroup.getContainerType().equals(ExecutorPlacementProperty.NONE)) {
+      return executorRepresenterList;
     }
 
     final List<ExecutorRepresenter> candidateExecutors =
         executorRepresenterList.stream()
-        .filter(executor -> executor.getRunningTaskGroups().size() == minOccupancy.getAsInt())
-        .collect(Collectors.toList());
+            .filter(executor -> executor.getContainerType().equals(scheduledTaskGroup.getContainerType()))
+            .collect(Collectors.toList());
 
     return candidateExecutors;
   }

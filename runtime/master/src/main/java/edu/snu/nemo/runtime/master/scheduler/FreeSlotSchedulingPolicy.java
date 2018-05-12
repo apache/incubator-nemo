@@ -17,20 +17,22 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
-import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.tang.annotations.DefaultImplementation;
 
-import javax.annotation.concurrent.ThreadSafe;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
- * (WARNING) Implementations of this interface must be thread-safe.
+ * This policy finds executor that has free slot for a TaskGroup.
  */
-@DriverSide
-@ThreadSafe
-@FunctionalInterface
-@DefaultImplementation(SourceLocationAwareSchedulingPolicy.class)
-public interface SchedulingPolicy {
-  List<ExecutorRepresenter> filterExecutorRepresenters(final List<ExecutorRepresenter> executorRepresenterList,
-                                                       final ScheduledTaskGroup scheduledTaskGroup);
+public final class FreeSlotSchedulingPolicy implements SchedulingPolicy {
+  @Override
+  public List<ExecutorRepresenter> filterExecutorRepresenters(final List<ExecutorRepresenter> executorRepresenterList,
+                                                              final ScheduledTaskGroup scheduledTaskGroup) {
+    final List<ExecutorRepresenter> candidateExecutors =
+        executorRepresenterList.stream()
+            .filter(executor -> executor.getRunningTaskGroups().size() < executor.getExecutorCapacity())
+            .collect(Collectors.toList());
+
+    return candidateExecutors;
+  }
 }

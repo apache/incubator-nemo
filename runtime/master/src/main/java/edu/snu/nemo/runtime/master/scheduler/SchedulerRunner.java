@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.common.state.JobState;
+import edu.snu.nemo.runtime.common.state.TaskGroupState;
 import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.*;
@@ -27,6 +29,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,16 +52,22 @@ public final class SchedulerRunner {
   private boolean isTerminated;
   private final DelayedSignalingCondition mustCheckSchedulingAvailabilityOrSchedulerTerminated
       = new DelayedSignalingCondition();
+  private ExecutorRegistry executorRegistry;
+  private CompositeSchedulingPolicy compositeSchedulingPolicy;
 
   @Inject
   public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
-                         final PendingTaskGroupCollection pendingTaskGroupCollection) {
+                         final PendingTaskGroupCollection pendingTaskGroupCollection,
+                         final ExecutorRegistry executorRegistry,
+                         final CompositeSchedulingPolicy compositeSchedulingPolicy) {
     this.jobStateManagers = new HashMap<>();
     this.pendingTaskGroupCollection = pendingTaskGroupCollection;
     this.schedulingPolicy = schedulingPolicy;
     this.schedulerThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "SchedulerRunner"));
     this.initialJobScheduled = false;
     this.isTerminated = false;
+    this.executorRegistry = executorRegistry;
+    this.compositeSchedulingPolicy = compositeSchedulingPolicy;
   }
 
   /**
@@ -92,7 +101,11 @@ public final class SchedulerRunner {
   }
 
   void terminate() {
-    schedulingPolicy.terminate();
+    for (final String executorId : executorRegistry.getRunningExecutorIds()) {
+      final ExecutorRepresenter representer = executorRegistry.getRunningExecutorRepresenter(executorId);
+      representer.shutDown();
+      executorRegistry.setRepresenterAsCompleted(executorId);
+    }
     isTerminated = true;
     mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
   }
@@ -122,10 +135,23 @@ public final class SchedulerRunner {
         for (final ScheduledTaskGroup schedulableTaskGroup : schedulableTaskGroups) {
           final JobStateManager jobStateManager = jobStateManagers.get(schedulableTaskGroup.getJobId());
           LOG.debug("Trying to schedule {}...", schedulableTaskGroup.getTaskGroupId());
-          final boolean isScheduled =
-              schedulingPolicy.scheduleTaskGroup(schedulableTaskGroup, jobStateManager);
-          if (isScheduled) {
+
+          final List<ExecutorRepresenter> runningExecutorRepresenter =
+              executorRegistry.getRunningExecutorIds().stream()
+              .map(executorId -> executorRegistry.getExecutorRepresenter(executorId))
+              .collect(Collectors.toList());
+
+          final List<ExecutorRepresenter> candidateExecutors =
+              compositeSchedulingPolicy.filterExecutorRepresenters(runningExecutorRepresenter, schedulableTaskGroup);
+
+          if (candidateExecutors.size() != 0) {
             LOG.debug("Successfully scheduled {}", schedulableTaskGroup.getTaskGroupId());
+
+            jobStateManager.onTaskGroupStateChanged(schedulableTaskGroup.getTaskGroupId(),
+                TaskGroupState.State.EXECUTING);
+            final ExecutorRepresenter executor = candidateExecutors.get(0);
+            executor.onTaskGroupScheduled(schedulableTaskGroup);
+
             pendingTaskGroupCollection.remove(schedulableTaskGroup.getTaskGroupId());
             numScheduledTaskGroups++;
           } else {
