@@ -22,6 +22,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -86,4 +87,7 @@ public interface SchedulingPolicy {
    * End of scheduling.
    */
   void terminate();
+
+  List<ExecutorRepresenter> filterExecutorRepresenters(List<ExecutorRepresenter> executorRepresenterList,
+                                                       ScheduledTaskGroup scheduledTaskGroup);
 }
