@@ -215,7 +215,8 @@ public final class FaultToleranceTest {
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
               taskGroupId, TaskGroupState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 1) {
-        // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
+        scheduler.onExecutorRemoved("a3");
+        // There are 2 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
             executorRegistry, false);
 
@@ -234,25 +235,10 @@ public final class FaultToleranceTest {
           RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
               taskGroupId, TaskGroupState.State.COMPLETE, 1));
       } else {
-        // There are 2 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 2.
+        // There are 1 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 2.
         // Schedule only the first TaskGroup
         RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
             executorRegistry, true);
-
-        boolean first = true;
-        for (final String taskGroupId : stage.getTaskGroupIds()) {
-          // When a TaskGroup fails while the siblings are still in the queue,
-          if (first) {
-            // Due to round robin scheduling, "a3" is assured to have a running TaskGroup.
-            scheduler.onExecutorRemoved("a3");
-            first = false;
-          } else {
-            // Test that the sibling TaskGroup state remains unchanged.
-            assertEquals(
-                TaskGroupState.State.READY,
-                jobStateManager.getTaskGroupState(taskGroupId).getStateMachine().getCurrentState());
-          }
-        }
       }
     }
   }
