@@ -19,6 +19,7 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
+import javax.inject.Inject;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,6 +27,11 @@ import java.util.stream.Collectors;
  * This policy find executors which has corresponding container type.
  */
 public final class ContainerTypeAwareSchedulingPolicy implements SchedulingPolicy {
+
+  @Inject
+  public ContainerTypeAwareSchedulingPolicy() {
+  }
+
   @Override
   public List<ExecutorRepresenter> filterExecutorRepresenters(final List<ExecutorRepresenter> executorRepresenterList,
                                                               final ScheduledTaskGroup scheduledTaskGroup) {

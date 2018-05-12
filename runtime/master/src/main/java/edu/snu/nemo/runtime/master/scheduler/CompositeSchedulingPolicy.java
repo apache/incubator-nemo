@@ -20,23 +20,25 @@ import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * Temporary class to implement stacked scheduling policy.
  */
 public final class CompositeSchedulingPolicy implements SchedulingPolicy {
-  private final List<SchedulingPolicy> schedulingPolicies = new ArrayList<>();
+  private final List<SchedulingPolicy> schedulingPolicies;
 
   @Inject
   private CompositeSchedulingPolicy(final SourceLocationAwareSchedulingPolicy sourceLocationAwareSchedulingPolicy,
                                     final RoundRobinSchedulingPolicy roundRobinSchedulingPolicy,
                                     final FreeSlotSchedulingPolicy freeSlotSchedulingPolicy,
                                     final ContainerTypeAwareSchedulingPolicy containerTypeAwareSchedulingPolicy) {
-    schedulingPolicies.add(freeSlotSchedulingPolicy);
-    schedulingPolicies.add(containerTypeAwareSchedulingPolicy);
-    schedulingPolicies.add(sourceLocationAwareSchedulingPolicy);
-    schedulingPolicies.add(roundRobinSchedulingPolicy);
+    schedulingPolicies = Arrays.asList(
+        freeSlotSchedulingPolicy,
+        containerTypeAwareSchedulingPolicy,
+        sourceLocationAwareSchedulingPolicy,
+        roundRobinSchedulingPolicy);
   }
 
   @Override

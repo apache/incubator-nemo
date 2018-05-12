@@ -18,6 +18,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
+import javax.inject.Inject;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,6 +26,10 @@ import java.util.stream.Collectors;
  * This policy finds executor that has free slot for a TaskGroup.
  */
 public final class FreeSlotSchedulingPolicy implements SchedulingPolicy {
+  @Inject
+  public FreeSlotSchedulingPolicy() {
+  }
+
   @Override
   public List<ExecutorRepresenter> filterExecutorRepresenters(final List<ExecutorRepresenter> executorRepresenterList,
                                                               final ScheduledTaskGroup scheduledTaskGroup) {

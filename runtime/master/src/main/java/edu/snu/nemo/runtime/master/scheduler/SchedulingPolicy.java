@@ -29,7 +29,7 @@ import java.util.List;
 @DriverSide
 @ThreadSafe
 @FunctionalInterface
-@DefaultImplementation(SourceLocationAwareSchedulingPolicy.class)
+@DefaultImplementation(CompositeSchedulingPolicy.class)
 public interface SchedulingPolicy {
   List<ExecutorRepresenter> filterExecutorRepresenters(final List<ExecutorRepresenter> executorRepresenterList,
                                                        final ScheduledTaskGroup scheduledTaskGroup);

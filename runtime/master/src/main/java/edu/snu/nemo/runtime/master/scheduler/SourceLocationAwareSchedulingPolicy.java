@@ -37,19 +37,8 @@ import java.util.stream.Collectors;
 public final class SourceLocationAwareSchedulingPolicy implements SchedulingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(SourceLocationAwareSchedulingPolicy.class);
 
-  private final ExecutorRegistry executorRegistry;
-  private final RoundRobinSchedulingPolicy roundRobinSchedulingPolicy;
-
-  /**
-   * Injectable constructor for {@link SourceLocationAwareSchedulingPolicy}.
-   * @param executorRegistry provides catalog of available executors
-   * @param roundRobinSchedulingPolicy provides fallback for TaskGroups with no input source information
-   */
   @Inject
-  private SourceLocationAwareSchedulingPolicy(final ExecutorRegistry executorRegistry,
-                                              final RoundRobinSchedulingPolicy roundRobinSchedulingPolicy) {
-    this.executorRegistry = executorRegistry;
-    this.roundRobinSchedulingPolicy = roundRobinSchedulingPolicy;
+  public SourceLocationAwareSchedulingPolicy() {
   }
 
   /**
@@ -83,7 +72,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
 
     final List<ExecutorRepresenter> candidateExecutors =
             executorRepresenterList.stream()
-            .filter(executor -> sourceLocations.contains(executor.getExecutorId()))
+            .filter(executor -> sourceLocations.contains(executor.getNodeName()))
             .collect(Collectors.toList());
 
     return candidateExecutors;

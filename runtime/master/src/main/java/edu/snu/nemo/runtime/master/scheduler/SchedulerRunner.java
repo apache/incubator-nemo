@@ -45,7 +45,6 @@ import javax.inject.Inject;
 public final class SchedulerRunner {
   private static final Logger LOG = LoggerFactory.getLogger(SchedulerRunner.class.getName());
   private final Map<String, JobStateManager> jobStateManagers;
-  private final SchedulingPolicy schedulingPolicy;
   private final PendingTaskGroupCollection pendingTaskGroupCollection;
   private final ExecutorService schedulerThread;
   private boolean initialJobScheduled;
@@ -53,21 +52,19 @@ public final class SchedulerRunner {
   private final DelayedSignalingCondition mustCheckSchedulingAvailabilityOrSchedulerTerminated
       = new DelayedSignalingCondition();
   private ExecutorRegistry executorRegistry;
-  private CompositeSchedulingPolicy compositeSchedulingPolicy;
+  private SchedulingPolicy schedulingPolicy;
 
   @Inject
   public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
                          final PendingTaskGroupCollection pendingTaskGroupCollection,
-                         final ExecutorRegistry executorRegistry,
-                         final CompositeSchedulingPolicy compositeSchedulingPolicy) {
+                         final ExecutorRegistry executorRegistry) {
     this.jobStateManagers = new HashMap<>();
     this.pendingTaskGroupCollection = pendingTaskGroupCollection;
-    this.schedulingPolicy = schedulingPolicy;
     this.schedulerThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "SchedulerRunner"));
     this.initialJobScheduled = false;
     this.isTerminated = false;
     this.executorRegistry = executorRegistry;
-    this.compositeSchedulingPolicy = compositeSchedulingPolicy;
+    this.schedulingPolicy = schedulingPolicy;
   }
 
   /**
@@ -142,7 +139,7 @@ public final class SchedulerRunner {
               .collect(Collectors.toList());
 
           final List<ExecutorRepresenter> candidateExecutors =
-              compositeSchedulingPolicy.filterExecutorRepresenters(runningExecutorRepresenter, schedulableTaskGroup);
+              schedulingPolicy.filterExecutorRepresenters(runningExecutorRepresenter, schedulableTaskGroup);
 
           if (candidateExecutors.size() != 0) {
             LOG.debug("Successfully scheduled {}", schedulableTaskGroup.getTaskGroupId());

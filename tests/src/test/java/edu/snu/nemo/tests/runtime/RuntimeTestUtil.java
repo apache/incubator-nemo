@@ -107,12 +107,24 @@ public final class RuntimeTestUtil {
   public static void mockSchedulerRunner(final PendingTaskGroupCollection pendingTaskGroupCollection,
                                          final SchedulingPolicy schedulingPolicy,
                                          final JobStateManager jobStateManager,
+                                         final ExecutorRegistry executorRegistry,
                                          final boolean isPartialSchedule) {
     while (!pendingTaskGroupCollection.isEmpty()) {
       final ScheduledTaskGroup taskGroupToSchedule = pendingTaskGroupCollection.remove(
           pendingTaskGroupCollection.peekSchedulableTaskGroups().get().iterator().next().getTaskGroupId());
 
-      schedulingPolicy.scheduleTaskGroup(taskGroupToSchedule, jobStateManager);
+      final List<ExecutorRepresenter> runningExecutorRepresenter =
+          executorRegistry.getRunningExecutorIds().stream()
+              .map(executorId -> executorRegistry.getExecutorRepresenter(executorId))
+              .collect(Collectors.toList());
+      final List<ExecutorRepresenter> candidateExecutors =
+          schedulingPolicy.filterExecutorRepresenters(runningExecutorRepresenter, taskGroupToSchedule);
+      if (candidateExecutors.size() > 0) {
+        jobStateManager.onTaskGroupStateChanged(taskGroupToSchedule.getTaskGroupId(),
+            TaskGroupState.State.EXECUTING);
+        final ExecutorRepresenter executor = candidateExecutors.get(0);
+        executor.onTaskGroupScheduled(taskGroupToSchedule);
+      }
 
       // Schedule only the first task group.
       if (isPartialSchedule) {
