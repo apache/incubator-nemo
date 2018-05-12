@@ -113,16 +113,16 @@ public final class RuntimeTestUtil {
       final ScheduledTaskGroup taskGroupToSchedule = pendingTaskGroupCollection.remove(
           pendingTaskGroupCollection.peekSchedulableTaskGroups().get().iterator().next().getTaskGroupId());
 
-      final List<ExecutorRepresenter> runningExecutorRepresenter =
+      final Set<ExecutorRepresenter> runningExecutorRepresenter =
           executorRegistry.getRunningExecutorIds().stream()
               .map(executorId -> executorRegistry.getExecutorRepresenter(executorId))
-              .collect(Collectors.toList());
-      final List<ExecutorRepresenter> candidateExecutors =
+              .collect(Collectors.toSet());
+      final Set<ExecutorRepresenter> candidateExecutors =
           schedulingPolicy.filterExecutorRepresenters(runningExecutorRepresenter, taskGroupToSchedule);
       if (candidateExecutors.size() > 0) {
         jobStateManager.onTaskGroupStateChanged(taskGroupToSchedule.getTaskGroupId(),
             TaskGroupState.State.EXECUTING);
-        final ExecutorRepresenter executor = candidateExecutors.get(0);
+        final ExecutorRepresenter executor = candidateExecutors.stream().findFirst().get();
         executor.onTaskGroupScheduled(taskGroupToSchedule);
       }
 

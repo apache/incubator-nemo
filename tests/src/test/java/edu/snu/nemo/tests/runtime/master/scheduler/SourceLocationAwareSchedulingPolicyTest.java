@@ -61,7 +61,8 @@ public final class SourceLocationAwareSchedulingPolicyTest {
     final ExecutorRepresenter e0 = mockExecutorRepresenter(SITE_1);
     final ExecutorRepresenter e1 = mockExecutorRepresenter(SITE_1);
 
-    assertEquals(Collections.emptyList(), schedulingPolicy.filterExecutorRepresenters(Arrays.asList(e0, e1), tg));
+    assertEquals(Collections.emptySet(),
+        schedulingPolicy.filterExecutorRepresenters(new HashSet<>(Arrays.asList(e0, e1)), tg));
   }
 
   /**
@@ -83,9 +84,9 @@ public final class SourceLocationAwareSchedulingPolicyTest {
             Arrays.asList(SITE_0, SITE_2)));
 
     final ExecutorRepresenter e = mockExecutorRepresenter(SITE_1);
-    for (final ScheduledTaskGroup tg : Arrays.asList(tg0, tg1, tg2, tg3)) {
-      assertEquals(Collections.singletonList(e), schedulingPolicy.filterExecutorRepresenters(
-          Collections.singletonList(e), tg));
+    for (final ScheduledTaskGroup tg : new HashSet<>(Arrays.asList(tg0, tg1, tg2, tg3))) {
+      assertEquals(new HashSet<>(Collections.singletonList(e)), schedulingPolicy.filterExecutorRepresenters(
+          new HashSet<>(Collections.singletonList(e)), tg));
     }
   }
 

@@ -55,7 +55,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
   }
 
   @Override
-  public List<ExecutorRepresenter> filterExecutorRepresenters(final List<ExecutorRepresenter> executorRepresenterList,
+  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterList,
                                                               final ScheduledTaskGroup scheduledTaskGroup) {
     final Set<String> sourceLocations;
     try {
@@ -70,10 +70,10 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
       return executorRepresenterList;
     }
 
-    final List<ExecutorRepresenter> candidateExecutors =
+    final Set<ExecutorRepresenter> candidateExecutors =
             executorRepresenterList.stream()
             .filter(executor -> sourceLocations.contains(executor.getNodeName()))
-            .collect(Collectors.toList());
+            .collect(Collectors.toSet());
 
     return candidateExecutors;
   }

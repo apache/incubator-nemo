@@ -53,23 +53,23 @@ public final class ContainerTypeAwareSchedulingPolicyTest {
     final ScheduledTaskGroup scheduledTaskGroup1 = mock(ScheduledTaskGroup.class);
     when(scheduledTaskGroup1.getContainerType()).thenReturn(ExecutorPlacementProperty.RESERVED);
 
-    final List<ExecutorRepresenter> executorRepresenterList1 = Arrays.asList(a0, a1, a2);
+    final Set<ExecutorRepresenter> executorRepresenterList1 = new HashSet<>(Arrays.asList(a0, a1, a2));
 
-    final List<ExecutorRepresenter> candidateExecutors1 =
+    final Set<ExecutorRepresenter> candidateExecutors1 =
         schedulingPolicy.filterExecutorRepresenters(executorRepresenterList1, scheduledTaskGroup1);
 
-    final List<ExecutorRepresenter> expectedExecutors1 = Arrays.asList(a1);
+    final Set<ExecutorRepresenter> expectedExecutors1 = new HashSet<>(Arrays.asList(a1));
     assertEquals(expectedExecutors1, candidateExecutors1);
 
     final ScheduledTaskGroup scheduledTaskGroup2 = mock(ScheduledTaskGroup.class);
     when(scheduledTaskGroup2.getContainerType()).thenReturn(ExecutorPlacementProperty.NONE);
 
-    final List<ExecutorRepresenter> executorRepresenterList2 = Arrays.asList(a0, a1, a2);
+    final Set<ExecutorRepresenter> executorRepresenterList2 = new HashSet<>(Arrays.asList(a0, a1, a2));
 
-    final List<ExecutorRepresenter> candidateExecutors2 =
+    final Set<ExecutorRepresenter> candidateExecutors2 =
         schedulingPolicy.filterExecutorRepresenters(executorRepresenterList2, scheduledTaskGroup2);
 
-    final List<ExecutorRepresenter> expectedExecutors2 = Arrays.asList(a0, a1, a2);
+    final Set<ExecutorRepresenter> expectedExecutors2 = new HashSet<>(Arrays.asList(a0, a1, a2));
     assertEquals(expectedExecutors2, candidateExecutors2);
   }
 }

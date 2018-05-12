@@ -21,7 +21,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.List;
+import java.util.Set;
 
 /**
  * (WARNING) Implementations of this interface must be thread-safe.
@@ -31,6 +31,6 @@ import java.util.List;
 @FunctionalInterface
 @DefaultImplementation(CompositeSchedulingPolicy.class)
 public interface SchedulingPolicy {
-  List<ExecutorRepresenter> filterExecutorRepresenters(final List<ExecutorRepresenter> executorRepresenterList,
-                                                       final ScheduledTaskGroup scheduledTaskGroup);
+  Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterList,
+                                                      final ScheduledTaskGroup scheduledTaskGroup);
 }

@@ -133,12 +133,12 @@ public final class SchedulerRunner {
           final JobStateManager jobStateManager = jobStateManagers.get(schedulableTaskGroup.getJobId());
           LOG.debug("Trying to schedule {}...", schedulableTaskGroup.getTaskGroupId());
 
-          final List<ExecutorRepresenter> runningExecutorRepresenter =
+          final Set<ExecutorRepresenter> runningExecutorRepresenter =
               executorRegistry.getRunningExecutorIds().stream()
               .map(executorId -> executorRegistry.getExecutorRepresenter(executorId))
-              .collect(Collectors.toList());
+              .collect(Collectors.toSet());
 
-          final List<ExecutorRepresenter> candidateExecutors =
+          final Set<ExecutorRepresenter> candidateExecutors =
               schedulingPolicy.filterExecutorRepresenters(runningExecutorRepresenter, schedulableTaskGroup);
 
           if (candidateExecutors.size() != 0) {
@@ -146,7 +146,7 @@ public final class SchedulerRunner {
 
             jobStateManager.onTaskGroupStateChanged(schedulableTaskGroup.getTaskGroupId(),
                 TaskGroupState.State.EXECUTING);
-            final ExecutorRepresenter executor = candidateExecutors.get(0);
+            final ExecutorRepresenter executor = candidateExecutors.stream().findFirst().get();
             executor.onTaskGroupScheduled(schedulableTaskGroup);
 
             pendingTaskGroupCollection.remove(schedulableTaskGroup.getTaskGroupId());

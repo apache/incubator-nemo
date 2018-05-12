@@ -19,7 +19,7 @@ import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
 import javax.inject.Inject;
-import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -31,12 +31,12 @@ public final class FreeSlotSchedulingPolicy implements SchedulingPolicy {
   }
 
   @Override
-  public List<ExecutorRepresenter> filterExecutorRepresenters(final List<ExecutorRepresenter> executorRepresenterList,
+  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterList,
                                                               final ScheduledTaskGroup scheduledTaskGroup) {
-    final List<ExecutorRepresenter> candidateExecutors =
+    final Set<ExecutorRepresenter> candidateExecutors =
         executorRepresenterList.stream()
             .filter(executor -> executor.getRunningTaskGroups().size() < executor.getExecutorCapacity())
-            .collect(Collectors.toList());
+            .collect(Collectors.toSet());
 
     return candidateExecutors;
   }

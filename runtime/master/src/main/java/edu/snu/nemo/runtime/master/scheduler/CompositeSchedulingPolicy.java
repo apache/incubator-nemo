@@ -21,6 +21,7 @@ import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import javax.inject.Inject;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Temporary class to implement stacked scheduling policy.
@@ -41,9 +42,9 @@ public final class CompositeSchedulingPolicy implements SchedulingPolicy {
   }
 
   @Override
-  public List<ExecutorRepresenter> filterExecutorRepresenters(final List<ExecutorRepresenter> executorRepresenterList,
+  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterList,
                                                               final ScheduledTaskGroup scheduledTaskGroup) {
-    List<ExecutorRepresenter> candidates = executorRepresenterList;
+    Set<ExecutorRepresenter> candidates = executorRepresenterList;
     for (final SchedulingPolicy schedulingPolicy : schedulingPolicies) {
       candidates = schedulingPolicy.filterExecutorRepresenters(candidates, scheduledTaskGroup);
     }

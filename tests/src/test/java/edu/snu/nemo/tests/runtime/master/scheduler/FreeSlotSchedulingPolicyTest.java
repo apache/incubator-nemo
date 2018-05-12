@@ -55,12 +55,12 @@ public final class FreeSlotSchedulingPolicyTest {
 
     final ScheduledTaskGroup scheduledTaskGroup = mock(ScheduledTaskGroup.class);
 
-    final List<ExecutorRepresenter> executorRepresenterList = Arrays.asList(a0, a1);
+    final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1));
 
-    final List<ExecutorRepresenter> candidateExecutors =
+    final Set<ExecutorRepresenter> candidateExecutors =
         schedulingPolicy.filterExecutorRepresenters(executorRepresenterList, scheduledTaskGroup);
 
-    final List<ExecutorRepresenter> expectedExecutors = Arrays.asList(a1);
+    final Set<ExecutorRepresenter> expectedExecutors = new HashSet<>(Arrays.asList(a1));
     assertEquals(expectedExecutors, candidateExecutors);
   }
 }

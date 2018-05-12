@@ -44,7 +44,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   }
 
   @Override
-  public List<ExecutorRepresenter> filterExecutorRepresenters(final List<ExecutorRepresenter> executorRepresenterList,
+  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterList,
                                                               final ScheduledTaskGroup scheduledTaskGroup) {
     final OptionalInt minOccupancy =
         executorRepresenterList.stream()
@@ -52,13 +52,13 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
         .mapToInt(i -> i).min();
 
     if (!minOccupancy.isPresent()) {
-      return Collections.emptyList();
+      return Collections.emptySet();
     }
 
-    final List<ExecutorRepresenter> candidateExecutors =
+    final Set<ExecutorRepresenter> candidateExecutors =
         executorRepresenterList.stream()
         .filter(executor -> executor.getRunningTaskGroups().size() == minOccupancy.getAsInt())
-        .collect(Collectors.toList());
+        .collect(Collectors.toSet());
 
     return candidateExecutors;
   }
