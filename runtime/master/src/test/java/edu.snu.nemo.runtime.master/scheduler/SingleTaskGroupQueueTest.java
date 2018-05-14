@@ -26,6 +26,8 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.physical.*;
+import edu.snu.nemo.runtime.master.physicalplans.BasicPullPolicy;
+import edu.snu.nemo.runtime.master.physicalplans.BasicPushPolicy;
 import edu.snu.nemo.runtime.master.physicalplans.TestPlanGenerator;
 import org.junit.Before;
 import org.junit.Test;
@@ -89,7 +91,8 @@ public final class SingleTaskGroupQueueTest {
     final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v2, v3, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e2);
 
-    final PhysicalPlan physicalPlan = TestPlanGenerator.getSimplePullPlan();
+    final PhysicalPlan physicalPlan =
+        TestPlanGenerator.convertIRToPhysical(irDAGBuilder.buildWithoutSourceSinkCheck(), new BasicPushPolicy());
     pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
     final List<PhysicalStage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
 
@@ -166,7 +169,8 @@ public final class SingleTaskGroupQueueTest {
     final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v2, v3, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e2);
 
-    final PhysicalPlan physicalPlan = TestPlanGenerator.getSimplePullPlan();
+    final PhysicalPlan physicalPlan =
+        TestPlanGenerator.convertIRToPhysical(irDAGBuilder.buildWithoutSourceSinkCheck(), new BasicPullPolicy());
     pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
     final List<PhysicalStage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
 
@@ -240,7 +244,8 @@ public final class SingleTaskGroupQueueTest {
     final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v2, v3, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e2);
 
-    final PhysicalPlan physicalPlan = TestPlanGenerator.getSimplePullPlan();
+    final PhysicalPlan physicalPlan =
+        TestPlanGenerator.convertIRToPhysical(irDAGBuilder.buildWithoutSourceSinkCheck(), new BasicPushPolicy());
     pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
     final List<PhysicalStage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
 

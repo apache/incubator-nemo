@@ -65,7 +65,7 @@ public final class TestPlanGenerator {
    * @throws Exception exception
    */
   public static PhysicalPlan getSimplePushPlan() throws Exception {
-    return getSimplePlan(new BasicPushPolicy());
+    return convertIRToPhysical(buildSimpleIRDAG(), new BasicPushPolicy());
   }
 
   /**
@@ -73,19 +73,20 @@ public final class TestPlanGenerator {
    * @throws Exception exception
    */
   public static PhysicalPlan getSimplePullPlan() throws Exception {
-    return getSimplePlan(new BasicPullPolicy());
+    return convertIRToPhysical(buildSimpleIRDAG(), new BasicPullPolicy());
   }
 
   /**
-   * @param policy
-   * @return a simple plan given the policy
+   * @param irDAG irDAG
+   * @param policy policy
+   * @return convert an IR into a physical plan using the given policy
    * @throws Exception exception
    */
-  private static PhysicalPlan getSimplePlan(final Policy policy) throws Exception {
-    final DAG<IRVertex, IREdge> simpleIRDAG = buildSimpleIRDAG();
-    final DAG<IRVertex, IREdge> irDAG = CompiletimeOptimizer.optimize(simpleIRDAG, policy, EMPTY_DAG_DIRECTORY);
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(PLAN_GENERATOR);
-    return new PhysicalPlan("SimplePlan", physicalDAG, PLAN_GENERATOR.getTaskIRVertexMap());
+  public static PhysicalPlan convertIRToPhysical(final DAG<IRVertex, IREdge> irDAG,
+                                                  final Policy policy) throws Exception {
+    final DAG<IRVertex, IREdge> optimized = CompiletimeOptimizer.optimize(irDAG, policy, EMPTY_DAG_DIRECTORY);
+    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = optimized.convert(PLAN_GENERATOR);
+    return new PhysicalPlan("Plan", physicalDAG, PLAN_GENERATOR.getTaskIRVertexMap());
   }
 
   /**
@@ -96,12 +97,12 @@ public final class TestPlanGenerator {
 
     final Transform t = new EmptyComponents.EmptyTransform("empty");
     final IRVertex v1 = new OperatorVertex(t);
-    v1.setProperty(ParallelismProperty.of(5));
+    v1.setProperty(ParallelismProperty.of(3));
     v1.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     dagBuilder.addVertex(v1);
 
     final IRVertex v2 = new OperatorVertex(t);
-    v2.setProperty(ParallelismProperty.of(4));
+    v2.setProperty(ParallelismProperty.of(2));
     v2.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     dagBuilder.addVertex(v2);
 
@@ -116,8 +117,8 @@ public final class TestPlanGenerator {
     dagBuilder.addVertex(v4);
 
     final IRVertex v5 = new OperatorVertex(t);
-    v5.setProperty(ParallelismProperty.of(4));
-    v5.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.TRANSIENT));
+    v5.setProperty(ParallelismProperty.of(2));
+    v5.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
     dagBuilder.addVertex(v5);
 
     final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2, Coder.DUMMY_CODER);
