@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.tests.runtime.master.scheduler;
+package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.common.coder.Coder;
-import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.ir.edge.IREdge;
@@ -25,14 +24,9 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
-import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.physical.*;
-import edu.snu.nemo.runtime.master.scheduler.SingleJobTaskGroupCollection;
-import edu.snu.nemo.tests.compiler.optimizer.policy.TestPolicy;
-import org.apache.reef.tang.Injector;
-import org.apache.reef.tang.Tang;
+import edu.snu.nemo.runtime.master.physicalplans.TestPlanGenerator;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -54,7 +48,6 @@ import static org.mockito.Mockito.mock;
 public final class SingleTaskGroupQueueTest {
   private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
   private SingleJobTaskGroupCollection pendingTaskGroupPriorityQueue;
-  private PhysicalPlanGenerator physicalPlanGenerator;
 
   /**
    * To be used for a thread pool to execute task groups.
@@ -66,10 +59,6 @@ public final class SingleTaskGroupQueueTest {
     irDAGBuilder = new DAGBuilder<>();
     pendingTaskGroupPriorityQueue = new SingleJobTaskGroupCollection();
     executorService = Executors.newFixedThreadPool(2);
-
-    final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
-    physicalPlanGenerator = injector.getInstance(PhysicalPlanGenerator.class);
   }
 
   /**
@@ -100,15 +89,9 @@ public final class SingleTaskGroupQueueTest {
     final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v2, v3, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e2);
 
-    final DAG<IRVertex, IREdge> irDAG = CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
-        new TestPolicy(true), "");
-
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
-
-    pendingTaskGroupPriorityQueue.onJobScheduled(
-        new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()));
-
-    final List<PhysicalStage> dagOf2Stages = physicalDAG.getTopologicalSort();
+    final PhysicalPlan physicalPlan = TestPlanGenerator.getSimplePullPlan();
+    pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
+    final List<PhysicalStage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
 
     // Make sure that ScheduleGroups have been assigned to satisfy PendingPQ's requirements.
     assertEquals(dagOf2Stages.get(0).getScheduleGroupIndex(), dagOf2Stages.get(1).getScheduleGroupIndex());
@@ -183,15 +166,9 @@ public final class SingleTaskGroupQueueTest {
     final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v2, v3, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e2);
 
-    final DAG<IRVertex, IREdge> irDAG = CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
-        new TestPolicy(), "");
-
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
-
-    pendingTaskGroupPriorityQueue.onJobScheduled(
-        new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()));
-
-    final List<PhysicalStage> dagOf2Stages = physicalDAG.getTopologicalSort();
+    final PhysicalPlan physicalPlan = TestPlanGenerator.getSimplePullPlan();
+    pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
+    final List<PhysicalStage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
 
     // Make sure that ScheduleGroups have been assigned to satisfy PendingPQ's requirements.
     assertEquals(dagOf2Stages.get(0).getScheduleGroupIndex(), 0);
@@ -263,15 +240,9 @@ public final class SingleTaskGroupQueueTest {
     final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v2, v3, Coder.DUMMY_CODER);
     irDAGBuilder.connectVertices(e2);
 
-    final DAG<IRVertex, IREdge> irDAG = CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
-        new TestPolicy(true), "");
-
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
-
-    pendingTaskGroupPriorityQueue.onJobScheduled(
-        new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap()));
-
-    final List<PhysicalStage> dagOf2Stages = physicalDAG.getTopologicalSort();
+    final PhysicalPlan physicalPlan = TestPlanGenerator.getSimplePullPlan();
+    pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
+    final List<PhysicalStage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
 
     // Make sure that ScheduleGroups have been assigned to satisfy PendingPQ's requirements.
     assertEquals(dagOf2Stages.get(0).getScheduleGroupIndex(), dagOf2Stages.get(1).getScheduleGroupIndex());
