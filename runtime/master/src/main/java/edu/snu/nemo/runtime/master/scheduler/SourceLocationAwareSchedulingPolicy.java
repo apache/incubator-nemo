@@ -56,7 +56,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
 
   @Override
   public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterList,
-                                                              final ScheduledTaskGroup scheduledTaskGroup) {
+                                                             final ScheduledTaskGroup scheduledTaskGroup) {
     final Set<String> sourceLocations;
     try {
       sourceLocations = getSourceLocations(scheduledTaskGroup.getLogicalTaskIdToReadable().values());

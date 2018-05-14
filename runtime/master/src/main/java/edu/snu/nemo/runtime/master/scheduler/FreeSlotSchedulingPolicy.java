@@ -32,7 +32,7 @@ public final class FreeSlotSchedulingPolicy implements SchedulingPolicy {
 
   @Override
   public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterList,
-                                                              final ScheduledTaskGroup scheduledTaskGroup) {
+                                                             final ScheduledTaskGroup scheduledTaskGroup) {
     final Set<ExecutorRepresenter> candidateExecutors =
         executorRepresenterList.stream()
             .filter(executor -> executor.getRunningTaskGroups().size() < executor.getExecutorCapacity())

@@ -43,7 +43,7 @@ public final class CompositeSchedulingPolicy implements SchedulingPolicy {
 
   @Override
   public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterList,
-                                                              final ScheduledTaskGroup scheduledTaskGroup) {
+                                                             final ScheduledTaskGroup scheduledTaskGroup) {
     Set<ExecutorRepresenter> candidates = executorRepresenterList;
     for (final SchedulingPolicy schedulingPolicy : schedulingPolicies) {
       candidates = schedulingPolicy.filterExecutorRepresenters(candidates, scheduledTaskGroup);
