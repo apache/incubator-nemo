@@ -21,7 +21,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -42,13 +41,12 @@ public final class ExampleTestUtil {
    * @param resourcePath root folder for both resources.
    * @param outputFileName output file name.
    * @param testResourceFileName the test result file name.
-   * @return error message if the output is invalid.
+   * @throws RuntimeException if the output is invalid.
    * @throws IOException IOException while testing.
    */
-  public static Optional<String> ensureOutputValidity(final String resourcePath,
-                                                      final String outputFileName,
-                                                      final String testResourceFileName)
-  throws IOException {
+  public static void ensureOutputMismatch(final String resourcePath,
+                                          final String outputFileName,
+                                          final String testResourceFileName) throws IOException {
     final String testOutput = Files.list(Paths.get(resourcePath))
         .filter(Files::isRegularFile)
         .filter(path -> path.getFileName().toString().startsWith(outputFileName))
@@ -75,9 +73,8 @@ public final class ExampleTestUtil {
               + "\n=============" + testResourceFileName + "=================="
               + resourceOutput
               + "\n===============================";
-      return Optional.of(outputMsg);
+      throw new RuntimeException(outputMsg);
     }
-    return Optional.empty();
   }
 
   /**
@@ -88,12 +85,12 @@ public final class ExampleTestUtil {
    * @param resourcePath path to resources.
    * @param outputFileName name of output file.
    * @param testResourceFileName name of the file to compare the outputs to.
-   * @return error message if the output is invalid.
+   * @throws RuntimeException if the output is invalid.
    * @throws IOException exception.
    */
-  public static Optional<String> ensureALSOutputValidity(final String resourcePath,
-                                                         final String outputFileName,
-                                                         final String testResourceFileName) throws IOException {
+  public static void ensureALSOutputValidity(final String resourcePath,
+                                             final String outputFileName,
+                                             final String testResourceFileName) throws IOException {
     final List<List<Double>> testOutput = Files.list(Paths.get(resourcePath))
         .filter(Files::isRegularFile)
         .filter(path -> path.getFileName().toString().startsWith(outputFileName))
@@ -118,7 +115,7 @@ public final class ExampleTestUtil {
         .collect(Collectors.toList());
 
     if (testOutput.size() != resourceOutput.size()) {
-      return Optional.of("output mismatch");
+      throw new RuntimeException("output mismatch");
     }
 
     for (int i = 0; i < testOutput.size(); i++) {
@@ -126,11 +123,10 @@ public final class ExampleTestUtil {
         final Double testElement = testOutput.get(i).get(j);
         final Double resourceElement = resourceOutput.get(i).get(j);
         if (Math.abs(testElement - resourceElement) / resourceElement > ERROR) {
-          return Optional.of("output mismatch");
+          throw new RuntimeException("output mismatch");
         }
       }
     }
-    return Optional.empty();
   }
 
   /**

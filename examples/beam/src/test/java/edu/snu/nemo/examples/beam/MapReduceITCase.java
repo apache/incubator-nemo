@@ -52,11 +52,10 @@ public final class MapReduceITCase {
 
   @After
   public void tearDown() throws Exception {
-    final Optional<String> errorMsg =
-        ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
-    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
-    if (errorMsg.isPresent()) {
-      throw new RuntimeException(errorMsg.get());
+    try {
+      ExampleTestUtil.ensureOutputMismatch(fileBasePath, outputFileName, testResourceFileName);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
 

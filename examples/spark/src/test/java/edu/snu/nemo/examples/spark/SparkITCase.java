@@ -61,11 +61,10 @@ public final class SparkITCase {
         .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
 
-    final Optional<String> errorMsg =
-        ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFilename);
-    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
-    if (errorMsg.isPresent()) {
-      throw new RuntimeException(errorMsg.get());
+    try {
+      ExampleTestUtil.ensureOutputMismatch(fileBasePath, outputFileName, testResourceFilename);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
 
