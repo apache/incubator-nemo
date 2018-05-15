@@ -186,8 +186,9 @@ public final class AlternatingLeastSquare {
 
     /**
      * Constructor for CalculateNextMatrix DoFn class.
-     * @param numFeatures number of features.
-     * @param lambda lambda.
+     *
+     * @param numFeatures     number of features.
+     * @param lambda          lambda.
      * @param fixedMatrixView a PCollectionView of the fixed matrix (item / user matrix).
      */
     CalculateNextMatrix(final Integer numFeatures, final Double lambda,
@@ -201,6 +202,7 @@ public final class AlternatingLeastSquare {
 
     /**
      * ProcessElement method for BEAM.
+     *
      * @param c ProcessContext.
      * @throws Exception Exception on the way.
      */
@@ -231,7 +233,6 @@ public final class AlternatingLeastSquare {
             conf[j] = 0.0;
           }
         }
-
 
         NETLIB_BLAS.dspr("U", numFeatures, 1.0, ArrayUtils.toPrimitive(conf), 1,
             ArrayUtils.toPrimitive(upperTriangularLeftMatrix));
@@ -266,6 +267,7 @@ public final class AlternatingLeastSquare {
 
     /**
      * FinishBundle method for BEAM.
+     *
      * @param c Context.
      */
     @FinishBundle

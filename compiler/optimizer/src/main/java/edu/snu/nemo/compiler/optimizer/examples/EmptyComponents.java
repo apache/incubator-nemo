@@ -22,7 +22,6 @@ import edu.snu.nemo.common.ir.vertex.transform.Transform;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -60,7 +59,7 @@ public class EmptyComponents {
     }
 
     @Override
-    public void onData(final Iterator<I> elements, final String srcVertexId) {
+    public void onData(final I element) {
     }
 
     @Override

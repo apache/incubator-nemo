@@ -15,10 +15,10 @@
  */
 package edu.snu.nemo.tests.runtime.executor;
 
+import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
-import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
@@ -27,7 +27,6 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.physical.*;
-import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.executor.MetricMessageSender;
 import edu.snu.nemo.runtime.executor.TaskGroupExecutor;
 import edu.snu.nemo.runtime.executor.TaskGroupStateManager;
@@ -45,9 +44,6 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import static edu.snu.nemo.tests.runtime.RuntimeTestUtil.getRangedNumList;
 import static org.junit.Assert.assertEquals;
@@ -67,41 +63,22 @@ public final class TaskGroupExecutorTest {
   private static final String CONTAINER_TYPE = "CONTAINER_TYPE";
   private static final int SOURCE_PARALLELISM = 5;
   private List elements;
-  private Map<String, List<Iterable>> taskIdToOutputData;
+  private Map<String, List<Object>> taskIdToOutputData;
   private DataTransferFactory dataTransferFactory;
   private TaskGroupStateManager taskGroupStateManager;
-  private Map<String, List<TaskState.State>> taskIdToStateList;
-  private List<TaskState.State> expectedTaskStateList;
   private MetricMessageSender metricMessageSender;
 
   @Before
   public void setUp() throws Exception {
     elements = getRangedNumList(0, DATA_SIZE);
-    taskIdToStateList = new HashMap<>();
-    expectedTaskStateList = new ArrayList<>();
-    expectedTaskStateList.add(TaskState.State.EXECUTING);
-    expectedTaskStateList.add(TaskState.State.COMPLETE);
 
     // Mock a TaskGroupStateManager. It accumulates the state change into a list.
     taskGroupStateManager = mock(TaskGroupStateManager.class);
-    doAnswer(new Answer() {
-      @Override
-      public Object answer(final InvocationOnMock invocationOnMock) throws Throwable {
-        final Object[] args = invocationOnMock.getArguments();
-        final String taskId = (String) args[0];
-        final TaskState.State taskState = (TaskState.State) args[1];
-        taskIdToStateList.computeIfAbsent(taskId, absentTaskId -> new ArrayList<>());
-        taskIdToStateList.get(taskId).add(taskState);
-        return null;
-      }
-    }).when(taskGroupStateManager).onTaskStateChanged(any(), any(), any());
 
     // Mock a DataTransferFactory.
     taskIdToOutputData = new HashMap<>();
     dataTransferFactory = mock(DataTransferFactory.class);
-    when(dataTransferFactory.createLocalReader(anyInt(), any())).then(new IntraStageReaderAnswer());
     when(dataTransferFactory.createReader(anyInt(), any(), any())).then(new InterStageReaderAnswer());
-    when(dataTransferFactory.createLocalWriter(any(), anyInt(), any())).then(new WriterAnswer());
     when(dataTransferFactory.createWriter(any(), anyInt(), any(), any())).then(new WriterAnswer());
 
     // Mock a MetricMessageSender.
@@ -151,10 +128,8 @@ public final class TaskGroupExecutorTest {
     taskGroupExecutor.execute();
 
     // Check the output.
-    assertEquals(1, taskIdToOutputData.get(sourceTaskId).size());
-    assertEquals(elements, taskIdToOutputData.get(sourceTaskId).get(0));
-    // Check the state transition.
-    taskIdToStateList.forEach((taskId, taskStateList) -> assertEquals(expectedTaskStateList, taskStateList));
+    assertEquals(100, taskIdToOutputData.get(sourceTaskId).size());
+    assertEquals(elements.get(0), taskIdToOutputData.get(sourceTaskId).get(0));
   }
 
   /**
@@ -209,18 +184,7 @@ public final class TaskGroupExecutorTest {
     taskGroupExecutor.execute();
 
     // Check the output.
-    assertEquals(SOURCE_PARALLELISM, taskIdToOutputData.get(operatorTaskId1).size()); // Multiple output emission.
-    final List<Iterable> outputs = taskIdToOutputData.get(operatorTaskId1);
-    final List concatStreamBase = new ArrayList<>();
-    Stream<Object> concatStream = concatStreamBase.stream();
-    for (int srcIdx = 0; srcIdx < SOURCE_PARALLELISM; srcIdx++) {
-      concatStream = Stream.concat(concatStream, StreamSupport.stream(outputs.get(srcIdx).spliterator(), false));
-    }
-    assertEquals(elements, concatStream.collect(Collectors.toList()));
-    assertEquals(1, taskIdToOutputData.get(operatorTaskId2).size());
-    assertEquals(elements, taskIdToOutputData.get(operatorTaskId2).get(0));
-    // Check the state transition.
-    taskIdToStateList.forEach((taskId, taskStateList) -> assertEquals(expectedTaskStateList, taskStateList));
+    assertEquals(100, taskIdToOutputData.get(operatorTaskId2).size());
   }
 
   /**
@@ -232,7 +196,8 @@ public final class TaskGroupExecutorTest {
     public InputReader answer(final InvocationOnMock invocationOnMock) throws Throwable {
       // Read the data.
       final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> inputFutures = new ArrayList<>();
-      inputFutures.add(CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(elements.iterator())));
+      inputFutures.add(CompletableFuture.completedFuture(
+          DataUtil.IteratorWithNumBytes.of(elements.iterator())));
       final InputReader inputReader = mock(InputReader.class);
       when(inputReader.read()).thenReturn(inputFutures);
       when(inputReader.isSideInputReader()).thenReturn(false);
@@ -277,12 +242,12 @@ public final class TaskGroupExecutorTest {
         @Override
         public Object answer(final InvocationOnMock invocationOnMock) throws Throwable {
           final Object[] args = invocationOnMock.getArguments();
-          final Iterable dataToWrite = (Iterable) args[0];
+          final Object dataToWrite = args[0];
           taskIdToOutputData.computeIfAbsent(dstTask.getId(), emptyTaskId -> new ArrayList<>());
           taskIdToOutputData.get(dstTask.getId()).add(dataToWrite);
           return null;
         }
-      }).when(outputWriter).write(any());
+      }).when(outputWriter).writeElement(any());
       return outputWriter;
     }
   }
@@ -310,8 +275,8 @@ public final class TaskGroupExecutorTest {
     }
 
     @Override
-    public void onData(final Iterator<T> elements, final String srcVertexId) {
-      elements.forEachRemaining(element -> outputCollector.emit(element));
+    public void onData(final Object element) {
+      outputCollector.emit((T) element);
     }
 
     @Override

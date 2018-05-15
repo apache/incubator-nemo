@@ -20,6 +20,8 @@ import edu.snu.nemo.common.DirectByteArrayOutputStream;
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.runtime.executor.data.streamchainer.StreamChainer;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
@@ -31,6 +33,8 @@ import java.util.stream.StreamSupport;
  * Utility methods for data handling (e.g., (de)serialization).
  */
 public final class DataUtil {
+  private static final Logger LOG = LoggerFactory.getLogger(DataUtil.class.getName());
+
   /**
    * Empty constructor.
    */
@@ -421,16 +425,20 @@ public final class DataUtil {
     }
 
     /**
+     * This method should be called after the actual data is taken out of iterator,
+     * since the existence of an iterator does not guarantee that data inside it is ready.
      * @return the number of bytes in serialized form (which is, for example, encoded and compressed)
      * @throws NumBytesNotSupportedException when the operation is not supported
-     * @throws IllegalStateException when the information is not ready
+     * @throws IllegalStateException         when the information is not ready
      */
     long getNumSerializedBytes() throws NumBytesNotSupportedException;
 
     /**
+     * This method should be called after the actual data is taken out of iterator,
+     * since the existence of an iterator does not guarantee that data inside it is ready.
      * @return the number of bytes in encoded form (which is ready to be decoded)
      * @throws NumBytesNotSupportedException when the operation is not supported
-     * @throws IllegalStateException when the information is not ready
+     * @throws IllegalStateException         when the information is not ready
      */
     long getNumEncodedBytes() throws NumBytesNotSupportedException;
   }

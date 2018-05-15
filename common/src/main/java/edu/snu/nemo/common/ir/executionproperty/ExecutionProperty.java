@@ -80,6 +80,5 @@ public abstract class ExecutionProperty<T> implements Serializable {
     Parallelism,
     ScheduleGroupIndex,
     StageId,
-
   }
 }

@@ -19,8 +19,6 @@ import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import org.apache.spark.api.java.function.Function;
 
-import java.util.Iterator;
-
 /**
  * Map Transform for Spark.
  * @param <I> input type.
@@ -28,7 +26,7 @@ import java.util.Iterator;
  */
 public final class MapTransform<I, O> implements Transform<I, O> {
   private final Function<I, O> func;
-  private OutputCollector<O> oc;
+  private OutputCollector<O> outputCollector;
 
   /**
    * Constructor.
@@ -39,19 +37,16 @@ public final class MapTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> outputCollector) {
-    this.oc = outputCollector;
+  public void prepare(final Context context, final OutputCollector<O> oc) {
+    this.outputCollector = oc;
   }
 
-  @Override
-  public void onData(final Iterator<I> elements, final String srcVertexId) {
-    elements.forEachRemaining(element -> {
+  public void onData(final I element) {
       try {
-        oc.emit(func.call(element));
+        outputCollector.emit(func.call(element));
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
-    });
   }
 
   @Override

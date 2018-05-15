@@ -28,7 +28,7 @@ import java.util.*;
  */
 public final class GroupByKeyTransform<K, V> implements Transform<Tuple2<K, V>, Tuple2<K, Iterable<V>>> {
   private final Map<K, List<V>> keyToValues;
-  private OutputCollector<Tuple2<K, Iterable<V>>> oc;
+  private OutputCollector<Tuple2<K, Iterable<V>>> outputCollector;
 
   /**
    * Constructor.
@@ -38,22 +38,23 @@ public final class GroupByKeyTransform<K, V> implements Transform<Tuple2<K, V>, 
   }
 
   @Override
-  public void prepare(final Transform.Context context, final OutputCollector<Tuple2<K, Iterable<V>>> outputCollector) {
-    this.oc = outputCollector;
+  public void prepare(final Transform.Context context, final OutputCollector<Tuple2<K, Iterable<V>>> oc) {
+    this.outputCollector = oc;
   }
 
   @Override
-  public void onData(final Iterator<Tuple2<K, V>> elements, final String srcVertexId) {
-    elements.forEachRemaining(element -> {
-      keyToValues.putIfAbsent(element._1, new ArrayList<>());
-      keyToValues.get(element._1).add(element._2);
-    });
+  public void onData(final Tuple2<K, V> element) {
+    K key = element._1;
+    V value = element._2;
+
+    keyToValues.putIfAbsent(key, new ArrayList<>());
+    keyToValues.get(key).add(value);
   }
 
   @Override
   public void close() {
     keyToValues.entrySet().stream().map(entry -> new Tuple2<>(entry.getKey(), (Iterable<V>) entry.getValue()))
-        .forEach(oc::emit);
+        .forEach(outputCollector::emit);
     keyToValues.clear();
   }
 }

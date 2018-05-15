@@ -25,14 +25,12 @@ import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.data.KeyRange;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalStageEdge;
-import edu.snu.nemo.runtime.common.plan.physical.Task;
 import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.exception.UnsupportedCommPatternException;
 import edu.snu.nemo.runtime.common.data.HashRange;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 
-import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -51,14 +49,11 @@ public final class InputReader extends DataTransfer {
   /**
    * Attributes that specify how we should read the input.
    */
-  @Nullable
   private final IRVertex srcVertex;
   private final RuntimeEdge runtimeEdge;
 
   public InputReader(final int dstTaskIndex,
-                     // TODO #717: Remove nullable.
-                     // (If the source is not an IR vertex, do not make InputReader.)
-                     @Nullable final IRVertex srcVertex, // null if the source vertex is not an IR vertex.
+                     final IRVertex srcVertex,
                      final RuntimeEdge runtimeEdge,
                      final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
@@ -162,12 +157,7 @@ public final class InputReader extends DataTransfer {
   }
 
   public String getSrcIrVertexId() {
-    // this src vertex can be either a real vertex or a task. we must check!
-    if (srcVertex != null) {
-      return srcVertex.getId();
-    }
-
-    return ((Task) runtimeEdge.getSrc()).getIrVertexId();
+    return srcVertex.getId();
   }
 
   public boolean isSideInputReader() {
@@ -180,17 +170,12 @@ public final class InputReader extends DataTransfer {
    * @return the parallelism of the source task.
    */
   public int getSourceParallelism() {
-    if (srcVertex != null) {
-      if (DataCommunicationPatternProperty.Value.OneToOne
-          .equals(runtimeEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
-        return 1;
-      } else {
-        final Integer numSrcTasks = srcVertex.getProperty(ExecutionProperty.Key.Parallelism);
-        return numSrcTasks;
-      }
-    } else {
-      // Memory input reader
+    if (DataCommunicationPatternProperty.Value.OneToOne
+        .equals(runtimeEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
       return 1;
+    } else {
+      final Integer numSrcTasks = srcVertex.getProperty(ExecutionProperty.Key.Parallelism);
+      return numSrcTasks;
     }
   }
 

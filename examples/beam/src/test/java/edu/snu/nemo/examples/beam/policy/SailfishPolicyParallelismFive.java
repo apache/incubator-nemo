@@ -16,20 +16,20 @@
 package edu.snu.nemo.examples.beam.policy;
 
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.compiler.optimizer.policy.PadoPolicy;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
+import edu.snu.nemo.compiler.optimizer.policy.SailfishPolicy;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
 import java.util.List;
 
 /**
- * A pado policy with fixed parallelism 5 for tests.
+ * A Sailfish policy with fixed parallelism 5 for tests.
  */
-public final class PadoPolicyParallelsimFive implements Policy {
+public final class SailfishPolicyParallelismFive implements Policy {
   private final Policy policy;
 
-  public PadoPolicyParallelsimFive() {
-    this.policy = PolicyTestUtil.overwriteParallelism(5, PadoPolicy.class.getCanonicalName());
+  public SailfishPolicyParallelismFive() {
+    this.policy = PolicyTestUtil.overwriteParallelism(5, SailfishPolicy.class.getCanonicalName());
   }
 
   @Override
