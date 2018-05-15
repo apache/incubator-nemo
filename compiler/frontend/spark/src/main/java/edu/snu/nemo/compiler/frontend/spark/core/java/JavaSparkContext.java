@@ -22,7 +22,6 @@ import java.util.List;
 /**
  * Spark context wrapper for Java.
  */
-//public final class JavaSparkContext extends org.apache.spark.api.java.JavaSparkContext {
 public final class JavaSparkContext {
   private final SparkContext sparkContext;
 
@@ -34,10 +33,23 @@ public final class JavaSparkContext {
     this.sparkContext = sparkContext;
   }
 
+  /**
+   * Create a String {@link JavaRDD} from a text file path.
+   *
+   * @param path the path to read.
+   * @return the RDD.
+   */
   public JavaRDD<String> textFile(final String path) {
     return this.textFile(path, 1);
   }
 
+  /**
+   * Create a String {@link JavaRDD} from a text file path with specific minimum parallelism.
+   *
+   * @param path          the path to read.
+   * @param minPartitions the minimum parallelism.
+   * @return the RDD.
+   */
   public JavaRDD<String> textFile(final String path, final int minPartitions) {
     return JavaRDD.of(sparkContext, minPartitions, path);
   }
