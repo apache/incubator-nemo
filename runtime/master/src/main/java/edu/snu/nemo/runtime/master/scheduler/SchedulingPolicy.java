@@ -31,6 +31,6 @@ import java.util.Set;
 @FunctionalInterface
 @DefaultImplementation(CompositeSchedulingPolicy.class)
 public interface SchedulingPolicy {
-  Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterList,
+  Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
                                                       final ScheduledTaskGroup scheduledTaskGroup);
 }

@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -37,6 +38,7 @@ import java.util.stream.Collectors;
 public final class SourceLocationAwareSchedulingPolicy implements SchedulingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(SourceLocationAwareSchedulingPolicy.class);
 
+  @VisibleForTesting
   @Inject
   public SourceLocationAwareSchedulingPolicy() {
   }
@@ -54,24 +56,30 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
     return new HashSet<>(sourceLocations);
   }
 
+  /**
+   * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by source location.
+   *                               If there is no source locations, will return original set.
+   * @param scheduledTaskGroup {@link ScheduledTaskGroup} to be scheduled.
+   * @return filtered Set of {@link ExecutorRepresenter}.
+   */
   @Override
-  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterList,
+  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
                                                              final ScheduledTaskGroup scheduledTaskGroup) {
     final Set<String> sourceLocations;
     try {
       sourceLocations = getSourceLocations(scheduledTaskGroup.getLogicalTaskIdToReadable().values());
     } catch (final UnsupportedOperationException e) {
-      return executorRepresenterList;
+      return executorRepresenterSet;
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
 
     if (sourceLocations.size() == 0) {
-      return executorRepresenterList;
+      return executorRepresenterSet;
     }
 
     final Set<ExecutorRepresenter> candidateExecutors =
-            executorRepresenterList.stream()
+            executorRepresenterSet.stream()
             .filter(executor -> sourceLocations.contains(executor.getNodeName()))
             .collect(Collectors.toSet());
 

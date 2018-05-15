@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
@@ -26,15 +27,22 @@ import java.util.stream.Collectors;
  * This policy finds executor that has free slot for a TaskGroup.
  */
 public final class FreeSlotSchedulingPolicy implements SchedulingPolicy {
+  @VisibleForTesting
   @Inject
   public FreeSlotSchedulingPolicy() {
   }
 
+  /**
+   * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by the free slot of executors.
+   *                               Executors that do not have any free slots will be filtered by this policy.
+   * @param scheduledTaskGroup {@link ScheduledTaskGroup} to be scheduled.
+   * @return filtered Set of {@link ExecutorRepresenter}.
+   */
   @Override
-  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterList,
+  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
                                                              final ScheduledTaskGroup scheduledTaskGroup) {
     final Set<ExecutorRepresenter> candidateExecutors =
-        executorRepresenterList.stream()
+        executorRepresenterSet.stream()
             .filter(executor -> executor.getRunningTaskGroups().size() < executor.getExecutorCapacity())
             .collect(Collectors.toSet());
 

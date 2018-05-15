@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.common.state.JobState;
 import edu.snu.nemo.runtime.common.state.TaskGroupState;
@@ -54,6 +55,7 @@ public final class SchedulerRunner {
   private ExecutorRegistry executorRegistry;
   private SchedulingPolicy schedulingPolicy;
 
+  @VisibleForTesting
   @Inject
   public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
                          final PendingTaskGroupCollection pendingTaskGroupCollection,
@@ -142,8 +144,6 @@ public final class SchedulerRunner {
               schedulingPolicy.filterExecutorRepresenters(runningExecutorRepresenter, schedulableTaskGroup);
 
           if (candidateExecutors.size() != 0) {
-            LOG.debug("Successfully scheduled {}", schedulableTaskGroup.getTaskGroupId());
-
             jobStateManager.onTaskGroupStateChanged(schedulableTaskGroup.getTaskGroupId(),
                 TaskGroupState.State.EXECUTING);
             final ExecutorRepresenter executor = candidateExecutors.stream().findFirst().get();
@@ -151,6 +151,7 @@ public final class SchedulerRunner {
 
             pendingTaskGroupCollection.remove(schedulableTaskGroup.getTaskGroupId());
             numScheduledTaskGroups++;
+            LOG.debug("Successfully scheduled {}", schedulableTaskGroup.getTaskGroupId());
           } else {
             LOG.debug("Failed to schedule {}", schedulableTaskGroup.getTaskGroupId());
           }

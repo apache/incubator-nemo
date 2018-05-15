@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -28,20 +29,27 @@ import java.util.stream.Collectors;
  */
 public final class ContainerTypeAwareSchedulingPolicy implements SchedulingPolicy {
 
+  @VisibleForTesting
   @Inject
   public ContainerTypeAwareSchedulingPolicy() {
   }
 
+  /**
+   * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by the container type.
+   *                               If the container type of target TaskGroup is NONE, it will return the original set.
+   * @param scheduledTaskGroup {@link ScheduledTaskGroup} to be scheduled.
+   * @return filtered Set of {@link ExecutorRepresenter}.
+   */
   @Override
-  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterList,
+  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
                                                              final ScheduledTaskGroup scheduledTaskGroup) {
 
     if (scheduledTaskGroup.getContainerType().equals(ExecutorPlacementProperty.NONE)) {
-      return executorRepresenterList;
+      return executorRepresenterSet;
     }
 
     final Set<ExecutorRepresenter> candidateExecutors =
-        executorRepresenterList.stream()
+        executorRepresenterSet.stream()
             .filter(executor -> executor.getContainerType().equals(scheduledTaskGroup.getContainerType()))
             .collect(Collectors.toSet());
 

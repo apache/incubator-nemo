@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -39,15 +40,21 @@ import java.util.stream.Collectors;
 public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(RoundRobinSchedulingPolicy.class.getName());
 
+  @VisibleForTesting
   @Inject
   public RoundRobinSchedulingPolicy() {
   }
 
+  /**
+   * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by round robin behaviour.
+   * @param scheduledTaskGroup {@link ScheduledTaskGroup} to be scheduled.
+   * @return filtered Set of {@link ExecutorRepresenter}.
+   */
   @Override
-  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterList,
+  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
                                                              final ScheduledTaskGroup scheduledTaskGroup) {
     final OptionalInt minOccupancy =
-        executorRepresenterList.stream()
+        executorRepresenterSet.stream()
         .map(executor -> executor.getRunningTaskGroups().size())
         .mapToInt(i -> i).min();
 
@@ -56,7 +63,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
     }
 
     final Set<ExecutorRepresenter> candidateExecutors =
-        executorRepresenterList.stream()
+        executorRepresenterSet.stream()
         .filter(executor -> executor.getRunningTaskGroups().size() == minOccupancy.getAsInt())
         .collect(Collectors.toSet());
 
