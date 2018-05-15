@@ -19,9 +19,8 @@ import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -32,7 +31,7 @@ import java.util.UUID;
 public final class LocalTextFileTransform<I, O> implements Transform<I, O> {
   private final String path;
   private String fileName;
-  private Writer writer;
+  private List<I> elements;
 
   /**
    * Constructor.
@@ -46,36 +45,23 @@ public final class LocalTextFileTransform<I, O> implements Transform<I, O> {
   @Override
   public void prepare(final Context context, final OutputCollector<O> outputCollector) {
     fileName = path + UUID.randomUUID().toString();
-    try {
-      writer = new BufferedWriter(new OutputStreamWriter(
-          new FileOutputStream(fileName, false), "utf-8"));
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
+    this.elements = new ArrayList<>();
   }
 
   @Override
-  public void onData(final Iterator<I> elements, final String srcVertexId) {
-    elements.forEachRemaining(element -> {
-      try {
-        writer.write(element + "\n");
-      } catch (final IOException e) {
-        try {
-          writer.close();
-          if (new File(fileName).exists()) {
-            Files.delete(Paths.get(fileName));
-          }
-        } catch (final IOException e2) {
-          throw new RuntimeException(e.toString() + e2.toString());
-        }
-        throw new RuntimeException(e);
-      }
-    });
+  public void onData(final I element) {
+    elements.add(element);
   }
 
   @Override
   public void close() {
-    try {
+    try (
+        final Writer writer =
+            new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName, false), "utf-8"))
+    ) {
+      for (final I element : elements) {
+        writer.write(element + "\n");
+      }
       writer.close();
     } catch (final IOException e) {
       throw new RuntimeException(e);

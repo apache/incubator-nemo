@@ -23,7 +23,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
 
 import java.io.IOException;
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -34,8 +35,7 @@ import java.util.UUID;
 public final class HDFSTextFileTransform<I, O> implements Transform<I, O> {
   private final String path;
   private Path fileName;
-  private FileSystem fileSystem;
-  private FSDataOutputStream outputStream;
+  private List<I> elements;
 
   /**
    * Constructor.
@@ -49,34 +49,23 @@ public final class HDFSTextFileTransform<I, O> implements Transform<I, O> {
   @Override
   public void prepare(final Context context, final OutputCollector<O> outputCollector) {
     fileName = new Path(path + UUID.randomUUID().toString());
-    try {
-      fileSystem = fileName.getFileSystem(new JobConf());
-      outputStream = fileSystem.create(fileName, false);
-    } catch (final IOException e) {
-      throw new RuntimeException(e);
-    }
+    this.elements = new ArrayList<>();
   }
 
   @Override
-  public void onData(final Iterator<I> elements, final String srcVertexId) {
-    elements.forEachRemaining(element -> {
-      try {
-        outputStream.writeBytes(element + "\n");
-      } catch (final IOException e) {
-        try {
-          outputStream.close();
-          fileSystem.delete(fileName, true);
-        } catch (final IOException e2) {
-          throw new RuntimeException(e.toString() + e2.toString());
-        }
-        throw new RuntimeException(e);
-      }
-    });
+  public void onData(final I element) {
+    elements.add(element);
   }
 
   @Override
   public void close() {
-    try {
+    try (
+        final FileSystem fileSystem = fileName.getFileSystem(new JobConf());
+        final FSDataOutputStream outputStream = fileSystem.create(fileName, false);
+    ) {
+      for (final I element : elements) {
+        outputStream.writeBytes(element + "\n");
+      }
       outputStream.close();
     } catch (final IOException e) {
       throw new RuntimeException(e);
