@@ -68,13 +68,14 @@ public final class SparkITCase {
     final String inputFileName = "sample_input_mr";
     final String outputFileName = "sample_output_mr";
     final String testResourceFileName = "test_output_mr";
-    final String inputFilePath =  fileBasePath + inputFileName;
-    final String outputFilePath =  fileBasePath + outputFileName;
+    final String inputFilePath = fileBasePath + inputFileName;
+    final String outputFilePath = fileBasePath + outputFileName;
+    final String parallelism = "5";
 
     JobLauncher.main(builder
         .addJobId(JavaMapReduce.class.getSimpleName() + "_test")
         .addUserMain(JavaMapReduce.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath)
+        .addUserArgs(inputFilePath, outputFilePath, parallelism)
         .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
 

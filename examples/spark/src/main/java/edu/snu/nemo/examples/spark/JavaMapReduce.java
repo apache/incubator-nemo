@@ -18,6 +18,7 @@ package edu.snu.nemo.examples.spark;
 
 import edu.snu.nemo.compiler.frontend.spark.core.java.JavaPairRDD;
 import edu.snu.nemo.compiler.frontend.spark.core.java.JavaRDD;
+import edu.snu.nemo.compiler.frontend.spark.core.java.JavaSparkContext;
 import edu.snu.nemo.compiler.frontend.spark.sql.SparkSession;
 import scala.Tuple2;
 
@@ -42,19 +43,25 @@ public final class JavaMapReduce {
     // Parse Arguments
     final String input = args[0];
     final String output = args[1];
+    final int parallelism = args.length > 2 ? Integer.parseInt(args[2]) : 1;
+    final boolean yarn = args.length > 3 && Boolean.parseBoolean(args[3]);
 
-    final SparkSession spark = SparkSession
+    final SparkSession.Builder sparkBuilder = SparkSession
         .builder()
         .config("mapreduce.input.fileinputformat.input.dir.recursive", "true")
-        .appName("JavaWordCount")
-        .master("yarn")
-        .config("spark.submit.deployMode", "cluster")
-        .getOrCreate();
+        .appName("JavaWordCount");
+    if (yarn) {
+      sparkBuilder
+          .master("yarn")
+          .config("spark.submit.deployMode", "cluster");
+    }
+    final SparkSession spark = sparkBuilder.getOrCreate();
 
     final long start = System.currentTimeMillis();
 
     // Run MR
-    final JavaRDD<String> data = spark.read().textFile(input).javaRDD();
+    final JavaSparkContext jsc = new JavaSparkContext(spark.sparkContext());
+    final JavaRDD<String> data = jsc.textFile(input, parallelism);
     final JavaPairRDD<String, Long> documentToCount = data
         .mapToPair(line -> {
           final String[] words = line.split(" +");

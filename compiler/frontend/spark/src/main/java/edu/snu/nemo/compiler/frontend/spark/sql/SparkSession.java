@@ -35,7 +35,6 @@ import scala.Tuple2;
 
 import javax.naming.OperationNotSupportedException;
 import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -325,44 +324,33 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
       }
 
       UserGroupInformation.setLoginUser(UserGroupInformation.createRemoteUser("ubuntu"));
-/*
-      try {
-        // get and override configurations from JobLauncher.
-        final Configuration configurations = JobLauncher.getJobConf(new String[0]);
-        final Injector injector = Tang.Factory.getTang().newInjector(configurations);
 
-        final String appName = injector.getNamedInstance(JobConf.JobId.class);
-//      final String mainClass;
-        final String[] appArgs = injector.getNamedInstance(JobConf.UserMainArguments.class).split(" ");
-        final File fileDirectory = new File(injector.getNamedInstance(JobConf.FileDirectory.class));
-        final String master = injector.getNamedInstance(JobConf.DeployMode.class);
+      if (!options.containsKey("nemo.appName")) { // Called while compilation
+        try {
+          // get and override configurations from JobLauncher.
+          final Configuration configurations = JobLauncher.getBuiltJobConf();
+          final Injector injector = Tang.Factory.getTang().newInjector(configurations);
 
-        final String deployMode = master.equals("yarn") ? "cluster" : "client"; // client or cluster
-//      final String javaHome;
-//      final String sparkHome;
-//      final String driverMemory;
-//      final String executorMemory;
-//      final String executorCores;
-
+          this.config("nemo.appName", injector.getNamedInstance(JobConf.JobId.class));
+          this.config("nemo.appArgs", injector.getNamedInstance(JobConf.UserMainArguments.class));
+          this.config("nemo.fileDirectory", injector.getNamedInstance(JobConf.FileDirectory.class));
+          final String master = injector.getNamedInstance(JobConf.DeployMode.class);
+          this.config("nemo.master", master);
+          this.config("nemo.deployMode", master.equals("yarn") ? "cluster" : "client"); // client or cluster
+        } catch (final InjectionException e) {
+          throw new RuntimeException(e);
+        }
+      } else { // Called by Executor or something else.
         // SparkLauncher for setting up spark environments. This doesn't call actual program.
         final SparkLauncher launcher = (SparkLauncher) new SparkLauncher()
-            .setAppName(appName)
-//          .setMainClass(mainClass)
-            .addAppArgs(appArgs)
-            .directory(fileDirectory)
-            .setMaster(master)
-            .setDeployMode(deployMode)
-//          .setJavaHome(javaHome)
-//          .setSparkHome(sparkHome)
-//          .addSparkArg("--driver-memory", driverMemory)
-//          .addSparkArg("--executor-memory", executorMemory)
-//          .addSparkArg("--executor-cores", executorCores)
+            .setAppName(options.get("nemo.appName"))
+            .addAppArgs(options.get("nemo.appArgs").split(" "))
+            .directory(new File(options.get("nemo.fileDirectory")))
+            .setMaster(options.get("nemo.master"))
+            .setDeployMode(options.get("nemo.deployMode"))
             .setVerbose(true);
         launcher.setUpEnvironments();
-      } catch (final InjectionException | IOException e) {
-        throw new RuntimeException(e);
       }
-*/
 
       return SparkSession.from(super.getOrCreate(), this.options);
     }

@@ -22,6 +22,7 @@ import java.util.List;
 /**
  * Spark context wrapper for Java.
  */
+//public final class JavaSparkContext extends org.apache.spark.api.java.JavaSparkContext {
 public final class JavaSparkContext {
   private final SparkContext sparkContext;
 
@@ -33,8 +34,28 @@ public final class JavaSparkContext {
     this.sparkContext = sparkContext;
   }
 
+  public JavaRDD<String> textFile(final String path) {
+    return this.textFile(path, 1);
+  }
+
+  public JavaRDD<String> textFile(final String path, final int minPartitions) {
+    return JavaRDD.of(sparkContext, minPartitions, path);
+  }
+
   /**
    * Initiate a JavaRDD with the number of parallelism.
+   *
+   * @param list input data as list.
+   * @param <T> type of the initial element.
+   * @return the newly initiated JavaRDD.
+   */
+  public <T> JavaRDD<T> parallelize(final List<T> list) {
+    return this.parallelize(list, 1);
+  }
+
+  /**
+   * Initiate a JavaRDD with the number of parallelism.
+   *
    * @param l input data as list.
    * @param slices number of slices (parallelism).
    * @param <T> type of the initial element.
