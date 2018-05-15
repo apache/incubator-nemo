@@ -27,6 +27,7 @@ import java.util.Set;
  * Temporary class to implement stacked scheduling policy.
  * At now, policies are injected through Tang, but have to be configurable by users
  * when Nemo supports job-wide execution property.
+ * TODO #69: Support job-wide execution property.
  */
 public final class CompositeSchedulingPolicy implements SchedulingPolicy {
   private final List<SchedulingPolicy> schedulingPolicies;
