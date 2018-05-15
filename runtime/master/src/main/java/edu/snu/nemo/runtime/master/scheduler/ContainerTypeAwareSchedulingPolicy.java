@@ -16,56 +16,42 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
-import org.apache.reef.annotations.audience.DriverSide;
 
-import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * {@inheritDoc}
- * A Round-Robin implementation used by {@link BatchSingleJobScheduler}.
- *
- * This policy keeps a list of available {@link ExecutorRepresenter} for each type of container.
- * The RR policy is used for each container type when trying to schedule a task group.
+ * This policy find executors which has corresponding container type.
  */
-@ThreadSafe
-@DriverSide
-public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
-  private static final Logger LOG = LoggerFactory.getLogger(RoundRobinSchedulingPolicy.class.getName());
+public final class ContainerTypeAwareSchedulingPolicy implements SchedulingPolicy {
 
   @VisibleForTesting
   @Inject
-  public RoundRobinSchedulingPolicy() {
+  public ContainerTypeAwareSchedulingPolicy() {
   }
 
   /**
-   * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by round robin behaviour.
+   * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by the container type.
+   *                               If the container type of target TaskGroup is NONE, it will return the original set.
    * @param scheduledTaskGroup {@link ScheduledTaskGroup} to be scheduled.
    * @return filtered Set of {@link ExecutorRepresenter}.
    */
   @Override
   public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
                                                              final ScheduledTaskGroup scheduledTaskGroup) {
-    final OptionalInt minOccupancy =
-        executorRepresenterSet.stream()
-        .map(executor -> executor.getRunningTaskGroups().size())
-        .mapToInt(i -> i).min();
 
-    if (!minOccupancy.isPresent()) {
-      return Collections.emptySet();
+    if (scheduledTaskGroup.getContainerType().equals(ExecutorPlacementProperty.NONE)) {
+      return executorRepresenterSet;
     }
 
     final Set<ExecutorRepresenter> candidateExecutors =
         executorRepresenterSet.stream()
-        .filter(executor -> executor.getRunningTaskGroups().size() == minOccupancy.getAsInt())
-        .collect(Collectors.toSet());
+            .filter(executor -> executor.getContainerType().equals(scheduledTaskGroup.getContainerType()))
+            .collect(Collectors.toSet());
 
     return candidateExecutors;
   }

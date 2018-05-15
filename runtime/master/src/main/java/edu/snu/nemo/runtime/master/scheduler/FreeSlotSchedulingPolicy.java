@@ -18,54 +18,33 @@ package edu.snu.nemo.runtime.master.scheduler;
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
-import org.apache.reef.annotations.audience.DriverSide;
 
-import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
-import java.util.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * {@inheritDoc}
- * A Round-Robin implementation used by {@link BatchSingleJobScheduler}.
- *
- * This policy keeps a list of available {@link ExecutorRepresenter} for each type of container.
- * The RR policy is used for each container type when trying to schedule a task group.
+ * This policy finds executor that has free slot for a TaskGroup.
  */
-@ThreadSafe
-@DriverSide
-public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
-  private static final Logger LOG = LoggerFactory.getLogger(RoundRobinSchedulingPolicy.class.getName());
-
+public final class FreeSlotSchedulingPolicy implements SchedulingPolicy {
   @VisibleForTesting
   @Inject
-  public RoundRobinSchedulingPolicy() {
+  public FreeSlotSchedulingPolicy() {
   }
 
   /**
-   * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by round robin behaviour.
+   * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by the free slot of executors.
+   *                               Executors that do not have any free slots will be filtered by this policy.
    * @param scheduledTaskGroup {@link ScheduledTaskGroup} to be scheduled.
    * @return filtered Set of {@link ExecutorRepresenter}.
    */
   @Override
   public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
                                                              final ScheduledTaskGroup scheduledTaskGroup) {
-    final OptionalInt minOccupancy =
-        executorRepresenterSet.stream()
-        .map(executor -> executor.getRunningTaskGroups().size())
-        .mapToInt(i -> i).min();
-
-    if (!minOccupancy.isPresent()) {
-      return Collections.emptySet();
-    }
-
     final Set<ExecutorRepresenter> candidateExecutors =
         executorRepresenterSet.stream()
-        .filter(executor -> executor.getRunningTaskGroups().size() == minOccupancy.getAsInt())
-        .collect(Collectors.toSet());
+            .filter(executor -> executor.getRunningTaskGroups().size() < executor.getExecutorCapacity())
+            .collect(Collectors.toSet());
 
     return candidateExecutors;
   }
