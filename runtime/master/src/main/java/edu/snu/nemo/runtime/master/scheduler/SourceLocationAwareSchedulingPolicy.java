@@ -15,11 +15,9 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
-import edu.snu.nemo.runtime.common.state.TaskGroupState;
-import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
@@ -28,9 +26,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * This policy is same as {@link RoundRobinSchedulingPolicy}, however for TaskGroups
@@ -42,118 +38,9 @@ import java.util.stream.Stream;
 public final class SourceLocationAwareSchedulingPolicy implements SchedulingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(SourceLocationAwareSchedulingPolicy.class);
 
-  private final ExecutorRegistry executorRegistry;
-  private final RoundRobinSchedulingPolicy roundRobinSchedulingPolicy;
-
-  /**
-   * Injectable constructor for {@link SourceLocationAwareSchedulingPolicy}.
-   * @param executorRegistry provides catalog of available executors
-   * @param roundRobinSchedulingPolicy provides fallback for TaskGroups with no input source information
-   */
+  @VisibleForTesting
   @Inject
-  private SourceLocationAwareSchedulingPolicy(final ExecutorRegistry executorRegistry,
-                                              final RoundRobinSchedulingPolicy roundRobinSchedulingPolicy) {
-    this.executorRegistry = executorRegistry;
-    this.roundRobinSchedulingPolicy = roundRobinSchedulingPolicy;
-  }
-
-  /**
-   * Try to schedule a TaskGroup.
-   * If the TaskGroup has one or more source tasks, this method schedules the task group to one of the physical nodes,
-   * chosen from union of set of locations where splits of each source task resides.
-   * If the TaskGroup has no source tasks, falls back to {@link RoundRobinSchedulingPolicy}.
-   * @param scheduledTaskGroup to schedule.
-   * @param jobStateManager jobStateManager which the TaskGroup belongs to.
-   * @return true if the task group is successfully scheduled, false otherwise.
-   */
-  @Override
-  public boolean scheduleTaskGroup(final ScheduledTaskGroup scheduledTaskGroup,
-                                   final JobStateManager jobStateManager) {
-    Set<String> sourceLocations = Collections.emptySet();
-    try {
-      sourceLocations = getSourceLocations(scheduledTaskGroup.getLogicalTaskIdToReadable().values());
-    } catch (final UnsupportedOperationException e) {
-      // do nothing
-    } catch (final Exception e) {
-      throw new RuntimeException(e);
-    }
-    if (sourceLocations.size() == 0) {
-      // No source location information found, fall back to the RoundRobinSchedulingPolicy
-      return roundRobinSchedulingPolicy.scheduleTaskGroup(scheduledTaskGroup, jobStateManager);
-    }
-
-    return scheduleToLocalNode(scheduledTaskGroup, jobStateManager, sourceLocations);
-  }
-
-  /**
-   * Try to schedule a TaskGroup with source task.
-   * @param scheduledTaskGroup TaskGroup to schedule
-   * @param jobStateManager {@link JobStateManager}
-   * @param jobStateManager jobStateManager which the TaskGroup belongs to.
-   * @return true if the task group is successfully scheduled, false otherwise.
-   */
-  private boolean scheduleToLocalNode(final ScheduledTaskGroup scheduledTaskGroup,
-                                      final JobStateManager jobStateManager,
-                                      final Set<String> sourceLocations) {
-    final List<ExecutorRepresenter> candidateExecutors =
-        selectExecutorByContainerTypeAndNodeNames(scheduledTaskGroup.getContainerType(), sourceLocations);
-    if (candidateExecutors.size() == 0) {
-      return false;
-    }
-    final int randomIndex = ThreadLocalRandom.current().nextInt(0, candidateExecutors.size());
-    final ExecutorRepresenter selectedExecutor = candidateExecutors.get(randomIndex);
-
-    jobStateManager.onTaskGroupStateChanged(scheduledTaskGroup.getTaskGroupId(), TaskGroupState.State.EXECUTING);
-    selectedExecutor.onTaskGroupScheduled(scheduledTaskGroup);
-    LOG.info("Scheduling {} (source location: {}) to {} (node name: {})", scheduledTaskGroup.getTaskGroupId(),
-        String.join(", ", sourceLocations), selectedExecutor.getExecutorId(),
-        selectedExecutor.getNodeName());
-    return true;
-  }
-
-  @Override
-  public void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
-    roundRobinSchedulingPolicy.onExecutorAdded(executorRepresenter);
-  }
-
-  @Override
-  public Set<String> onExecutorRemoved(final String executorId) {
-    return roundRobinSchedulingPolicy.onExecutorRemoved(executorId);
-  }
-
-  @Override
-  public void onTaskGroupExecutionComplete(final String executorId, final String taskGroupId) {
-    roundRobinSchedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroupId);
-  }
-
-  @Override
-  public void onTaskGroupExecutionFailed(final String executorId, final String taskGroupId) {
-    roundRobinSchedulingPolicy.onTaskGroupExecutionFailed(executorId, taskGroupId);
-  }
-
-  @Override
-  public void terminate() {
-    roundRobinSchedulingPolicy.terminate();
-  }
-
-  /**
-   * @param containerType type of the desired container type
-   * @param nodeNames set of node names
-   * @return list of executors, which resides in one of {@code nodeNames}, has container type of {@code containerType},
-   *         and has an empty slot for execution
-   */
-  private List<ExecutorRepresenter> selectExecutorByContainerTypeAndNodeNames(
-    final String containerType, final Set<String> nodeNames) {
-    final Stream<ExecutorRepresenter> localNodesWithSpareCapacity = executorRegistry.getRunningExecutorIds().stream()
-        .map(executorId -> executorRegistry.getRunningExecutorRepresenter(executorId))
-        .filter(executor -> executor.getRunningTaskGroups().size() < executor.getExecutorCapacity())
-        .filter(executor -> nodeNames.contains(executor.getNodeName()));
-    if (containerType.equals(ExecutorPlacementProperty.NONE)) {
-      return localNodesWithSpareCapacity.collect(Collectors.toList());
-    } else {
-      return localNodesWithSpareCapacity.filter(executor -> executor.getContainerType().equals(containerType))
-          .collect(Collectors.toList());
-    }
+  public SourceLocationAwareSchedulingPolicy() {
   }
 
   /**
@@ -167,5 +54,35 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
       sourceLocations.addAll(readable.getLocations());
     }
     return new HashSet<>(sourceLocations);
+  }
+
+  /**
+   * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by source location.
+   *                               If there is no source locations, will return original set.
+   * @param scheduledTaskGroup {@link ScheduledTaskGroup} to be scheduled.
+   * @return filtered Set of {@link ExecutorRepresenter}.
+   */
+  @Override
+  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
+                                                             final ScheduledTaskGroup scheduledTaskGroup) {
+    final Set<String> sourceLocations;
+    try {
+      sourceLocations = getSourceLocations(scheduledTaskGroup.getLogicalTaskIdToReadable().values());
+    } catch (final UnsupportedOperationException e) {
+      return executorRepresenterSet;
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
+
+    if (sourceLocations.size() == 0) {
+      return executorRepresenterSet;
+    }
+
+    final Set<ExecutorRepresenter> candidateExecutors =
+            executorRepresenterSet.stream()
+            .filter(executor -> sourceLocations.contains(executor.getNodeName()))
+            .collect(Collectors.toSet());
+
+    return candidateExecutors;
   }
 }
