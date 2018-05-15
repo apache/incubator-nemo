@@ -70,7 +70,7 @@ public final class SparkITCase {
     final String testResourceFileName = "test_output_mr";
     final String inputFilePath = fileBasePath + inputFileName;
     final String outputFilePath = fileBasePath + outputFileName;
-    final String parallelism = "5";
+    final String parallelism = "3";
 
     JobLauncher.main(builder
         .addJobId(JavaMapReduce.class.getSimpleName() + "_test")
