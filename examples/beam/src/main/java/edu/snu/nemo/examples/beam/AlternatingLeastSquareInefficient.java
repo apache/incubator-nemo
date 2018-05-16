@@ -15,10 +15,10 @@
  */
 package edu.snu.nemo.examples.beam;
 
+import edu.snu.nemo.compiler.frontend.beam.coder.FloatArrayCoder;
+import edu.snu.nemo.compiler.frontend.beam.coder.IntArrayCoder;
 import edu.snu.nemo.compiler.frontend.beam.transform.LoopCompositeTransform;
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.compiler.frontend.beam.NemoPipelineRunner;
-import edu.snu.nemo.compiler.frontend.beam.coder.PairCoder;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.coders.CoderProviders;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -54,11 +54,11 @@ public final class AlternatingLeastSquareInefficient {
    * The loop updates the user matrix and the item matrix in each iteration.
    */
   public static final class UpdateUserAndItemMatrix extends LoopCompositeTransform<
-      PCollection<KV<Integer, List<Double>>>, PCollection<KV<Integer, List<Double>>>> {
+      PCollection<KV<Integer, float[]>>, PCollection<KV<Integer, float[]>>> {
     private final Integer numFeatures;
     private final Double lambda;
     private final PCollection<String> rawData;
-    private final PCollection<KV<Integer, Pair<List<Integer>, List<Double>>>> parsedItemData;
+    private final PCollection<KV<Integer, KV<int[], float[]>>> parsedItemData;
 
     /**
      * Constructor of UpdateUserAndItemMatrix CompositeTransform.
@@ -69,7 +69,7 @@ public final class AlternatingLeastSquareInefficient {
      */
     UpdateUserAndItemMatrix(final Integer numFeatures, final Double lambda,
                             final PCollection<String> rawData,
-                            final PCollection<KV<Integer, Pair<List<Integer>, List<Double>>>> parsedItemData) {
+                            final PCollection<KV<Integer, KV<int[], float[]>>> parsedItemData) {
       this.numFeatures = numFeatures;
       this.lambda = lambda;
       this.rawData = rawData;
@@ -77,16 +77,16 @@ public final class AlternatingLeastSquareInefficient {
     }
 
     @Override
-    public PCollection<KV<Integer, List<Double>>> expand(final PCollection<KV<Integer, List<Double>>> itemMatrix) {
+    public PCollection<KV<Integer, float[]>> expand(final PCollection<KV<Integer, float[]>> itemMatrix) {
       // Parse data for user
-      final PCollection<KV<Integer, Pair<List<Integer>, List<Double>>>> parsedUserData = rawData
+      final PCollection<KV<Integer, KV<int[], float[]>>> parsedUserData = rawData
           .apply(ParDo.of(new AlternatingLeastSquare.ParseLine(true)))
           .apply(Combine.perKey(new AlternatingLeastSquare.TrainingDataCombiner()));
 
       // Make Item Matrix view.
-      final PCollectionView<Map<Integer, List<Double>>> itemMatrixView = itemMatrix.apply(View.asMap());
+      final PCollectionView<Map<Integer, float[]>> itemMatrixView = itemMatrix.apply(View.asMap());
       // Get new User Matrix
-      final PCollectionView<Map<Integer, List<Double>>> userMatrixView = parsedUserData
+      final PCollectionView<Map<Integer, float[]>> userMatrixView = parsedUserData
           .apply(ParDo.of(new AlternatingLeastSquare.CalculateNextMatrix(numFeatures, lambda, itemMatrixView))
               .withSideInputs(itemMatrixView))
           .apply(View.asMap());
@@ -120,33 +120,33 @@ public final class AlternatingLeastSquareInefficient {
     options.setStableUniqueNames(PipelineOptions.CheckEnabled.OFF);
 
     final Pipeline p = Pipeline.create(options);
-    p.getCoderRegistry().registerCoderProvider(CoderProviders.fromStaticMethods(Pair.class, PairCoder.class));
+    p.getCoderRegistry().registerCoderProvider(CoderProviders.fromStaticMethods(int[].class, IntArrayCoder.class));
+    p.getCoderRegistry().registerCoderProvider(CoderProviders.fromStaticMethods(float[].class, FloatArrayCoder.class));
 
     // Read raw data
     final PCollection<String> rawData = GenericSourceSink.read(p, inputFilePath);
 
     // Parse data for item
-    final PCollection<KV<Integer, Pair<List<Integer>, List<Double>>>> parsedItemData = rawData
+    final PCollection<KV<Integer, KV<int[], float[]>>> parsedItemData = rawData
         .apply(ParDo.of(new AlternatingLeastSquare.ParseLine(false)))
         .apply(Combine.perKey(new AlternatingLeastSquare.TrainingDataCombiner()));
 
     // Create Initial Item Matrix
-    PCollection<KV<Integer, List<Double>>> itemMatrix = parsedItemData
-        .apply(ParDo.of(new DoFn<KV<Integer, Pair<List<Integer>, List<Double>>>, KV<Integer, List<Double>>>() {
+    PCollection<KV<Integer, float[]>> itemMatrix = parsedItemData
+        .apply(ParDo.of(new DoFn<KV<Integer, KV<int[], float[]>>, KV<Integer, float[]>>() {
           @ProcessElement
           public void processElement(final ProcessContext c) throws Exception {
-            final List<Double> result = new ArrayList<>(numFeatures);
-            result.add(0, 0.0);
+            final float[] result = new float[numFeatures];
 
-            final KV<Integer, Pair<List<Integer>, List<Double>>> element = c.element();
-            final List<Double> ratings = element.getValue().right();
-            for (Integer i = 0; i < ratings.size(); i++) {
-              result.set(0, result.get(0) + ratings.get(i));
+            final KV<Integer, KV<int[], float[]>> element = c.element();
+            final float[] ratings = element.getValue().getValue();
+            for (int i = 0; i < ratings.length; i++) {
+              result[0] += ratings[i];
             }
 
-            result.set(0, result.get(0) / ratings.size());
-            for (Integer i = 1; i < result.size(); i++) {
-              result.add(i, (Math.random() * 0.01));
+            result[0] /= ratings.length;
+            for (int i = 1; i < result.length; i++) {
+              result[i] = (float) (Math.random() * 0.01);
             }
             c.output(KV.of(element.getKey(), result));
           }

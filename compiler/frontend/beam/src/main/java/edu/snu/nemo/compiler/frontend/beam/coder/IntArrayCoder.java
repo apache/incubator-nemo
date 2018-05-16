@@ -19,10 +19,19 @@ import org.apache.beam.sdk.coders.AtomicCoder;
 
 import java.io.*;
 
+/**
+ * Coder for int[].
+ */
 public final class IntArrayCoder extends AtomicCoder<int[]> {
+  /**
+   * Private constructor.
+   */
   private IntArrayCoder() {
   }
 
+  /**
+   * @return a new coder
+   */
   public static IntArrayCoder of() {
     return new IntArrayCoder();
   }

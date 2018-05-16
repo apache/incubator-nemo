@@ -19,10 +19,19 @@ import org.apache.beam.sdk.coders.AtomicCoder;
 
 import java.io.*;
 
+/**
+ * Coder for float[].
+ */
 public final class FloatArrayCoder extends AtomicCoder<float[]> {
+  /**
+   * Private constructor.
+   */
   private FloatArrayCoder() {
   }
 
+  /**
+   * @return a new coder
+   */
   public static FloatArrayCoder of() {
     return new FloatArrayCoder();
   }
@@ -41,7 +50,7 @@ public final class FloatArrayCoder extends AtomicCoder<float[]> {
     final DataInputStream dataInputStream = new DataInputStream(inStream);
     final int floatArrayLen = dataInputStream.readInt();
     final float[] floatArray = new float[floatArrayLen];
-    for (int i = 0 ; i < floatArrayLen; i++) {
+    for (int i = 0; i < floatArrayLen; i++) {
       floatArray[i] = dataInputStream.readFloat();
     }
     return floatArray;

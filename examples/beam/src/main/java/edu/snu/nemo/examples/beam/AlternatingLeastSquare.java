@@ -29,12 +29,14 @@ import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.commons.lang.ArrayUtils;
 import org.netlib.util.intW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Sample Alternating Least Square application.
@@ -51,7 +53,7 @@ public final class AlternatingLeastSquare {
   /**
    * Method for parsing the input line.
    */
-  public static class ParseLine extends DoFn<String, KV<Integer, KV<int[], float[]>>> {
+  public static final class ParseLine extends DoFn<String, KV<Integer, KV<int[], float[]>>> {
     private final boolean isUserData;
 
     /**
@@ -102,6 +104,13 @@ public final class AlternatingLeastSquare {
    */
   public static final class UngroupSingleVectorList
       extends DoFn<KV<Integer, Iterable<float[]>>, KV<Integer, float[]>> {
+
+    /**
+     * ProcessElement method for BEAM.
+     *
+     * @param c ProcessContext.
+     * @throws Exception Exception on the way.
+     */
     @ProcessElement
     public void processElement(final ProcessContext c) throws Exception {
       final KV<Integer, Iterable<float[]>> element = c.element();
@@ -120,7 +129,7 @@ public final class AlternatingLeastSquare {
   /**
    * Combiner for the training data.
    */
-  public static class TrainingDataCombiner
+  public static final class TrainingDataCombiner
       extends Combine.CombineFn<KV<int[], float[]>, List<KV<int[], float[]>>, KV<int[], float[]>> {
 
     @Override
@@ -172,12 +181,10 @@ public final class AlternatingLeastSquare {
   /**
    * DoFn for calculating next matrix at each iteration.
    */
-  public static class CalculateNextMatrix extends DoFn<KV<Integer, KV<int[], float[]>>, KV<Integer, float[]>> {
+  public static final class CalculateNextMatrix extends DoFn<KV<Integer, KV<int[], float[]>>, KV<Integer, float[]>> {
     private static final LAPACK NETLIB_LAPACK = LAPACK.getInstance();
     private static final BLAS NETLIB_BLAS = BLAS.getInstance();
 
-    private final List<KV<Integer, float[]>> results;
-    private final double[] upperTriangularLeftMatrix;
     private final int numFeatures;
     private final double lambda;
     private final PCollectionView<Map<Integer, float[]>> fixedMatrixView;
@@ -195,16 +202,17 @@ public final class AlternatingLeastSquare {
       this.numFeatures = numFeatures;
       this.lambda = lambda;
       this.fixedMatrixView = fixedMatrixView;
-      this.results = new LinkedList<>();
-      this.upperTriangularLeftMatrix = new double[numFeatures * (numFeatures + 1) / 2];
     }
 
+    /**
+     * ProcessElement method for BEAM.
+     *
+     * @param c ProcessContext.
+     * @throws Exception Exception on the way.
+     */
     @ProcessElement
     public void processElement(final ProcessContext c) throws Exception {
-      for (int j = 0; j < upperTriangularLeftMatrix.length; j++) {
-        upperTriangularLeftMatrix[j] = 0.0;
-      }
-
+      final double[] upperTriangularLeftMatrix = new double[numFeatures * (numFeatures + 1) / 2];
       final Map<Integer, float[]> fixedMatrix = c.sideInput(fixedMatrixView);
 
       final int[] indexArr = c.element().getValue().getKey();
@@ -221,8 +229,6 @@ public final class AlternatingLeastSquare {
         for (int j = 0; j < numFeatures; j++) {
           tmp[j] = fixedMatrix.get(ratingIndex)[j];
         }
-
-
         NETLIB_BLAS.dspr("U", numFeatures, 1.0, tmp, 1, upperTriangularLeftMatrix);
         if (rating != 0.0) {
           NETLIB_BLAS.daxpy(numFeatures, rating, tmp, 1, rightSideVector, 1);
@@ -246,22 +252,10 @@ public final class AlternatingLeastSquare {
       }
 
       for (int i = 0; i < vector.length; i++) {
-        vector[i] = (float)rightSideVector[i];
+        vector[i] = (float) rightSideVector[i];
       }
 
-      results.add(KV.of(c.element().getKey(), vector));
-    }
-
-    /**
-     * FinishBundle method for BEAM.
-     *
-     * @param c Context.
-     */
-    @FinishBundle
-    public void finishBundle(final FinishBundleContext c) {
-      for (final KV<Integer, float[]> result : results) {
-        c.output(result, null, null);
-      }
+      c.output(KV.of(c.element().getKey(), vector));
     }
   }
 
@@ -372,7 +366,7 @@ public final class AlternatingLeastSquare {
 
             result[0] /= ratings.length;
             for (int i = 1; i < result.length; i++) {
-              result[i] = (float)(Math.random() * 0.01);
+              result[i] = (float) (Math.random() * 0.01);
             }
             c.output(KV.of(element.getKey(), result));
           }
@@ -390,9 +384,9 @@ public final class AlternatingLeastSquare {
           new SimpleFunction<KV<Integer, float[]>, String>() {
             @Override
             public String apply(final KV<Integer, float[]> elem) {
-              final List<String> values = Arrays.asList(elem.getValue())
-                  .stream()
-                  .map(e -> e.toString()).collect(Collectors.toList());
+              final List<String> values = Stream.of(ArrayUtils.toObject(elem.getValue()))
+                  .map(String::valueOf)
+                  .collect(Collectors.toList());
               return elem.getKey() + "," + String.join(",", values);
             }
           }));
