@@ -71,11 +71,12 @@ public final class SparkITCase {
     final String inputFilePath = fileBasePath + inputFileName;
     final String outputFilePath = fileBasePath + outputFileName;
     final String parallelism = "2";
+    final String runOnYarn = "false";
 
     JobLauncher.main(builder
         .addJobId(JavaMapReduce.class.getSimpleName() + "_test")
         .addUserMain(JavaMapReduce.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath, parallelism)
+        .addUserArgs(inputFilePath, outputFilePath, parallelism, runOnYarn)
         .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
 

@@ -48,10 +48,10 @@ public final class JavaMapReduce {
 
     final SparkSession.Builder sparkBuilder = SparkSession
         .builder()
-        .config("mapreduce.input.fileinputformat.input.dir.recursive", "true")
         .appName("JavaWordCount");
     if (yarn) {
       sparkBuilder
+          .config("mapreduce.input.fileinputformat.input.dir.recursive", "true")
           .master("yarn")
           .config("spark.submit.deployMode", "cluster");
     }
