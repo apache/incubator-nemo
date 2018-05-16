@@ -127,11 +127,11 @@ public final class TestPlanGenerator {
     final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v3, v2, Coder.DUMMY_CODER);
     dagBuilder.connectVertices(e2);
 
-    final IREdge e4 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v2, v4, Coder.DUMMY_CODER);
-    dagBuilder.connectVertices(e4);
+    final IREdge e3 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v2, v4, Coder.DUMMY_CODER);
+    dagBuilder.connectVertices(e3);
 
-    final IREdge e5 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v2, v5, Coder.DUMMY_CODER);
-    dagBuilder.connectVertices(e5);
+    final IREdge e4 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v4, v5, Coder.DUMMY_CODER);
+    dagBuilder.connectVertices(e4);
 
     return dagBuilder.buildWithoutSourceSinkCheck();
   }

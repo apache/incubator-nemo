@@ -74,9 +74,11 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
@@ -128,17 +130,17 @@ public final class DataTransferTest {
     injector.bindVolatileInstance(EvaluatorRequestor.class, mock(EvaluatorRequestor.class));
     injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
     final ContainerManager containerManager = injector.getInstance(ContainerManager.class);
+    final ExecutorRegistry executorRegistry = injector.getInstance(ExecutorRegistry.class);
 
     final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
-    final SchedulingPolicy schedulingPolicy = new RoundRobinSchedulingPolicy(
-        injector.getInstance(ExecutorRegistry.class));
+    final SchedulingPolicy schedulingPolicy = injector.getInstance(CompositeSchedulingPolicy.class);
     final PendingTaskGroupCollection taskGroupQueue = new SingleJobTaskGroupCollection();
-    final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingPolicy, taskGroupQueue);
+    final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingPolicy, taskGroupQueue, executorRegistry);
     final Scheduler scheduler =
         new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, taskGroupQueue, master,
-            pubSubEventHandler, updatePhysicalPlanEventHandler);
+            pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
     final AtomicInteger executorCount = new AtomicInteger(0);
 
     // Necessary for wiring up the message environments
