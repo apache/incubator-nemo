@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
-import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
@@ -29,61 +28,9 @@ import java.util.Set;
  */
 @DriverSide
 @ThreadSafe
-@DefaultImplementation(SourceLocationAwareSchedulingPolicy.class)
+@FunctionalInterface
+@DefaultImplementation(CompositeSchedulingPolicy.class)
 public interface SchedulingPolicy {
-
-  /**
-   * Attempts to schedule the given taskGroup to an executor according to this policy.
-   * If there is no executor available for the taskGroup, it waits for an executor to be assigned before it times out.
-   * (Depending on the executor's resource type)
-   *
-   * @param scheduledTaskGroup to schedule.
-   * @param jobStateManager jobStateManager which the TaskGroup belongs to.
-   * @return true if the task group is successfully scheduled, false otherwise.
-   */
-  boolean scheduleTaskGroup(final ScheduledTaskGroup scheduledTaskGroup, final JobStateManager jobStateManager);
-
-  /**
-   * Adds the executorId to the pool of available executors.
-   * Unlocks this policy to schedule a next taskGroup if locked.
-   * (Depending on the executor's resource type)
-   *
-   * @param executorRepresenter for the executor that has been added.
-   */
-  void onExecutorAdded(ExecutorRepresenter executorRepresenter);
-
-  /**
-   * Deletes the executorId from the pool of available executors.
-   * Locks this policy from scheduling if there is no more executor currently available for the next taskGroup.
-   * (Depending on the executor's resource type)
-   *
-   * @param executorId for the executor that has been deleted.
-   * @return the ids of the set of task groups that were running on the executor.
-   */
-  Set<String> onExecutorRemoved(String executorId);
-
-  /**
-   * Marks the taskGroup's completion in the executor.
-   * Unlocks this policy to schedule a next taskGroup if locked.
-   * (Depending on the executor's resource type)
-   *
-   * @param executorId of the executor where the taskGroup's execution has completed.
-   * @param taskGroupId whose execution has completed.
-   */
-  void onTaskGroupExecutionComplete(String executorId, String taskGroupId);
-
-  /**
-   * Marks the taskGroup's failure in the executor.
-   * Unlocks this policy to reschedule this taskGroup if locked.
-   * (Depending on the executor's resource type)
-   *
-   * @param executorId of the executor where the taskGroup's execution has failed.
-   * @param taskGroupId whose execution has completed.
-   */
-  void onTaskGroupExecutionFailed(String executorId, String taskGroupId);
-
-  /**
-   * End of scheduling.
-   */
-  void terminate();
+  Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
+                                                      final ScheduledTaskGroup scheduledTaskGroup);
 }
