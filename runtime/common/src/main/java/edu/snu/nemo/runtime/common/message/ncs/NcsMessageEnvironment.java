@@ -124,6 +124,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
     public void onNext(final Message<ControlMessage.Message> messages) {
       final ControlMessage.Message controlMessage = extractSingleMessage(messages);
+      LOG.debug("[RECEIVED]: msg={}", controlMessage);
       final MessageType messageType = getMsgType(controlMessage);
       switch (messageType) {
         case Send:
