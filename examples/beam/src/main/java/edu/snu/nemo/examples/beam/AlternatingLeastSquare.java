@@ -304,6 +304,47 @@ public final class AlternatingLeastSquare {
   }
 
   /**
+   * A DoFn that creates an initial matrix.
+   */
+  public static final class CreateInitialMatrix extends DoFn<KV<Integer, KV<int[], float[]>>, KV<Integer, float[]>> {
+    private final int numFeatures;
+    private final boolean isDeterministic;
+
+    CreateInitialMatrix(final int numFeatures,
+                        final boolean isDeterministic) {
+      this.numFeatures = numFeatures;
+      this.isDeterministic = isDeterministic;
+    }
+
+    /**
+     * ProcessElement method for BEAM.
+     *
+     * @param c ProcessContext.
+     * @throws Exception Exception on the way.
+     */
+    @ProcessElement
+    public void processElement(final ProcessContext c) throws Exception {
+      final float[] result = new float[numFeatures];
+
+      final KV<Integer, KV<int[], float[]>> element = c.element();
+      final float[] ratings = element.getValue().getValue();
+      for (int i = 0; i < ratings.length; i++) {
+        result[0] += ratings[i];
+      }
+
+      result[0] /= ratings.length;
+      for (int i = 1; i < result.length; i++) {
+        if (isDeterministic) {
+          result[i] = (float) (0.5 * 0.01); // use a deterministic average value
+        } else {
+          result[i] = (float) (Math.random() * 0.01);
+        }
+      }
+      c.output(KV.of(element.getKey(), result));
+    }
+  }
+
+  /**
    * Main function for the ALS BEAM program.
    * @param args arguments.
    */
@@ -351,27 +392,8 @@ public final class AlternatingLeastSquare {
         .apply(Combine.perKey(new TrainingDataCombiner()));
 
     // Create Initial Item Matrix
-    PCollection<KV<Integer, float[]>> itemMatrix = parsedItemData
-        .apply(ParDo.of(new DoFn<KV<Integer, KV<int[], float[]>>, KV<Integer, float[]>>() {
-
-          @ProcessElement
-          public void processElement(final ProcessContext c) throws Exception {
-            final float[] result = new float[numFeatures];
-
-            final KV<Integer, KV<int[], float[]>> element = c.element();
-            final float[] ratings = element.getValue().getValue();
-            for (int i = 0; i < ratings.length; i++) {
-              result[0] += ratings[i];
-            }
-
-            result[0] /= ratings.length;
-            for (int i = 1; i < result.length; i++) {
-              result[i] = (float) (Math.random() * 0.01);
-            }
-            c.output(KV.of(element.getKey(), result));
-          }
-        }));
-
+    PCollection<KV<Integer, float[]>> itemMatrix =
+        parsedItemData.apply(ParDo.of(new CreateInitialMatrix(numFeatures, checkOutput)));
 
     // Iterations to update Item Matrix.
     for (int i = 0; i < numItr; i++) {
