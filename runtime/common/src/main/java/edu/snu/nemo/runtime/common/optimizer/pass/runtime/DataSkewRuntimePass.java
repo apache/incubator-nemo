@@ -73,18 +73,18 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<P
         .collect(Collectors.toList());
 
     // Get number of evaluators of the next stage (number of blocks).
-    final Integer taskGroupListSize = optimizationEdges.stream().findFirst().orElseThrow(() ->
-        new RuntimeException("optimization edges are empty")).getDst().getTaskGroupIds().size();
+    final Integer taskListSize = optimizationEdges.stream().findFirst().orElseThrow(() ->
+        new RuntimeException("optimization edges are empty")).getDst().getTaskIds().size();
 
     // Calculate keyRanges.
-    final List<KeyRange> keyRanges = calculateHashRanges(metricData, taskGroupListSize);
+    final List<KeyRange> keyRanges = calculateHashRanges(metricData, taskListSize);
 
     // Overwrite the previously assigned hash value range in the physical DAG with the new range.
     optimizationEdges.forEach(optimizationEdge -> {
       // Update the information.
-      final List<KeyRange> taskGroupIdxToHashRange = new ArrayList<>();
-      IntStream.range(0, taskGroupListSize).forEach(i -> taskGroupIdxToHashRange.add(keyRanges.get(i)));
-      optimizationEdge.setTaskGroupIdxToKeyRange(taskGroupIdxToHashRange);
+      final List<KeyRange> taskIdxToHashRange = new ArrayList<>();
+      IntStream.range(0, taskListSize).forEach(i -> taskIdxToHashRange.add(keyRanges.get(i)));
+      optimizationEdge.setTaskIdxToKeyRange(taskIdxToHashRange);
     });
 
     return new PhysicalPlan(originalPlan.getId(), physicalDAGBuilder.build(), originalPlan.getTaskIRVertexMap());
@@ -94,12 +94,12 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<P
    * Method for calculating key ranges to evenly distribute the skewed metric data.
    *
    * @param metricData        the metric data.
-   * @param taskGroupListSize the size of the task group list.
+   * @param taskListSize the size of the task list.
    * @return the list of key ranges calculated.
    */
   @VisibleForTesting
   public List<KeyRange> calculateHashRanges(final Map<String, List<Pair<Integer, Long>>> metricData,
-                                            final Integer taskGroupListSize) {
+                                            final Integer taskListSize) {
     // NOTE: metricData is made up of a map of blockId to blockSizes.
     // Count the hash range (number of blocks for each block).
     final int maxHashValue = metricData.values().stream()
@@ -127,18 +127,18 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<P
 
     // Do the optimization using the information derived above.
     final Long totalSize = aggregatedMetricData.values().stream().mapToLong(n -> n).sum(); // get total size
-    final Long idealSizePerTaskGroup = totalSize / taskGroupListSize; // and derive the ideal size per task group
-    LOG.info("idealSizePerTaskgroup {} = {}(totalSize) / {}(taskGroupListSize)",
-        idealSizePerTaskGroup, totalSize, taskGroupListSize);
+    final Long idealSizePerTask = totalSize / taskListSize; // and derive the ideal size per task
+    LOG.info("idealSizePerTask {} = {}(totalSize) / {}(taskListSize)",
+        idealSizePerTask, totalSize, taskListSize);
 
     // find HashRanges to apply (for each blocks of each block).
-    final List<KeyRange> keyRanges = new ArrayList<>(taskGroupListSize);
+    final List<KeyRange> keyRanges = new ArrayList<>(taskListSize);
     int startingHashValue = 0;
     int finishingHashValue = 1; // initial values
     Long currentAccumulatedSize = aggregatedMetricData.getOrDefault(startingHashValue, 0L);
-    for (int i = 1; i <= taskGroupListSize; i++) {
-      if (i != taskGroupListSize) {
-        final Long idealAccumulatedSize = idealSizePerTaskGroup * i; // where we should end
+    for (int i = 1; i <= taskListSize; i++) {
+      if (i != taskListSize) {
+        final Long idealAccumulatedSize = idealSizePerTask * i; // where we should end
         // find the point while adding up one by one.
         while (currentAccumulatedSize < idealAccumulatedSize) {
           currentAccumulatedSize += aggregatedMetricData.getOrDefault(finishingHashValue, 0L);

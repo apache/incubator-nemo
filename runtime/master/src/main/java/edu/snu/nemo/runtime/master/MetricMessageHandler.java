@@ -27,7 +27,7 @@ public interface MetricMessageHandler {
 
   /**
    * Handle the received metric message.
-   * @param metricKey a given key for the metric (ex. TaskGroup ID)
+   * @param metricKey a given key for the metric (ex. Task ID)
    * @param metricValue the metric formatted as a string (ex. JSON).
    */
   void onMetricMessageReceived(final String metricKey, final String metricValue);

@@ -24,10 +24,10 @@ public final class JobState {
   private final StateMachine stateMachine;
 
   public JobState() {
-    stateMachine = buildTaskGroupStateMachine();
+    stateMachine = buildTaskStateMachine();
   }
 
-  private StateMachine buildTaskGroupStateMachine() {
+  private StateMachine buildTaskStateMachine() {
     final StateMachine.Builder stateMachineBuilder = StateMachine.newBuilder();
 
     // Add states

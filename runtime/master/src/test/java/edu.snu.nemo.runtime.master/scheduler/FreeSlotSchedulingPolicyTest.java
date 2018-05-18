@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.scheduler.FreeSlotSchedulingPolicy;
 import edu.snu.nemo.runtime.master.scheduler.SchedulingPolicy;
@@ -34,15 +34,15 @@ import static org.mockito.Mockito.*;
  * Tests {@link FreeSlotSchedulingPolicy}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ExecutorRepresenter.class, ScheduledTaskGroup.class})
+@PrepareForTest({ExecutorRepresenter.class, ScheduledTask.class})
 public final class FreeSlotSchedulingPolicyTest {
 
-  private static ExecutorRepresenter mockExecutorRepresenter(final int numRunningTaskGroups,
+  private static ExecutorRepresenter mockExecutorRepresenter(final int numRunningTasks,
                                                              final int capacity) {
     final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
-    final Set<String> runningTaskGroups = new HashSet<>();
-    IntStream.range(0, numRunningTaskGroups).forEach(i -> runningTaskGroups.add(String.valueOf(i)));
-    when(executorRepresenter.getRunningTaskGroups()).thenReturn(runningTaskGroups);
+    final Set<String> runningTasks = new HashSet<>();
+    IntStream.range(0, numRunningTasks).forEach(i -> runningTasks.add(String.valueOf(i)));
+    when(executorRepresenter.getRunningTasks()).thenReturn(runningTasks);
     when(executorRepresenter.getExecutorCapacity()).thenReturn(capacity);
     return executorRepresenter;
   }
@@ -53,12 +53,12 @@ public final class FreeSlotSchedulingPolicyTest {
     final ExecutorRepresenter a0 = mockExecutorRepresenter(1, 1);
     final ExecutorRepresenter a1 = mockExecutorRepresenter(2, 3);
 
-    final ScheduledTaskGroup scheduledTaskGroup = mock(ScheduledTaskGroup.class);
+    final ScheduledTask scheduledTask = mock(ScheduledTask.class);
 
     final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1));
 
     final Set<ExecutorRepresenter> candidateExecutors =
-        schedulingPolicy.filterExecutorRepresenters(executorRepresenterList, scheduledTaskGroup);
+        schedulingPolicy.filterExecutorRepresenters(executorRepresenterList, scheduledTask);
 
     final Set<ExecutorRepresenter> expectedExecutors = new HashSet<>(Arrays.asList(a1));
     assertEquals(expectedExecutors, candidateExecutors);

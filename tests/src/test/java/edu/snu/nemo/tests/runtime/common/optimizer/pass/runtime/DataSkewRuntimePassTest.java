@@ -44,10 +44,10 @@ public class DataSkewRuntimePassTest {
    */
   @Test
   public void testDataSkewDynamicOptimizationPass() {
-    final Integer taskGroupListSize = 5;
+    final Integer taskListSize = 5;
 
     final List<KeyRange> keyRanges =
-        new DataSkewRuntimePass().calculateHashRanges(testMetricData, taskGroupListSize);
+        new DataSkewRuntimePass().calculateHashRanges(testMetricData, taskListSize);
 
     assertEquals(0, keyRanges.get(0).rangeBeginInclusive());
     assertEquals(3, keyRanges.get(0).rangeEndExclusive());

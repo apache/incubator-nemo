@@ -29,7 +29,7 @@ public final class UpdatePhysicalPlanEvent implements CompilerEvent {
   /**
    * Constructor.
    * @param newPhysicalPlan the newly optimized physical plan.
-   * @param taskInfo information of the task at which this optimization occurs: its name and its task group ID.
+   * @param taskInfo information of the task at which this optimization occurs: its name and its task ID.
    */
   UpdatePhysicalPlanEvent(final PhysicalPlan newPhysicalPlan,
                           final Pair<String, String> taskInfo) {
@@ -45,7 +45,7 @@ public final class UpdatePhysicalPlanEvent implements CompilerEvent {
   }
 
   /**
-   * @return the information of the task at which this optimization occurs: its name and its task group ID.
+   * @return the information of the task at which this optimization occurs: its name and its task ID.
    */
   public Pair<String, String> getTaskInfo() {
     return this.taskInfo;

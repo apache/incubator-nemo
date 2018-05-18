@@ -18,7 +18,8 @@ package edu.snu.nemo.runtime.common.state;
 import edu.snu.nemo.common.StateMachine;
 
 /**
- * Represents the states and their transitions of a {@link edu.snu.nemo.runtime.common.plan.physical.Task}.
+ * Represents the states and their transitions of a
+ * {@link edu.snu.nemo.runtime.common.plan.physical.ScheduledTask}.
  */
 public final class TaskState {
   private final StateMachine stateMachine;
@@ -32,48 +33,38 @@ public final class TaskState {
 
     // Add states
     stateMachineBuilder.addState(State.READY, "The task has been created.");
-    stateMachineBuilder.addState(State.PENDING_IN_EXECUTOR, "The task is pending in its executor.");
     stateMachineBuilder.addState(State.EXECUTING, "The task is executing.");
-    stateMachineBuilder.addState(State.COMPLETE, "The task's execution is complete with its output committed.");
+    stateMachineBuilder.addState(State.COMPLETE, "All of this task's tasks have completed.");
     stateMachineBuilder.addState(State.FAILED_RECOVERABLE, "Task failed, but is recoverable.");
-    stateMachineBuilder.addState(State.FAILED_UNRECOVERABLE, "Task failed, and is unrecoverable. The job will fail.");
+    stateMachineBuilder.addState(State.FAILED_UNRECOVERABLE,
+        "Task failed, and is unrecoverable. The job will fail.");
     stateMachineBuilder.addState(State.ON_HOLD, "The task is paused for dynamic optimization.");
 
-    // Add transitions
-    stateMachineBuilder.addTransition(State.READY, State.PENDING_IN_EXECUTOR,
-        "Scheduling for execution");
-    stateMachineBuilder.addTransition(State.READY, State.FAILED_UNRECOVERABLE,
-        "Unrecoverable TaskGroup Failure");
-    stateMachineBuilder.addTransition(State.READY, State.FAILED_RECOVERABLE,
-        "Recoverable TaskGroup Failure");
 
-    stateMachineBuilder.addTransition(State.PENDING_IN_EXECUTOR, State.EXECUTING,
-        "Begin executing!");
-    stateMachineBuilder.addTransition(State.PENDING_IN_EXECUTOR, State.FAILED_UNRECOVERABLE,
-        "Unrecoverable TaskGroup Failure/Executor Failure");
-    stateMachineBuilder.addTransition(State.PENDING_IN_EXECUTOR, State.FAILED_RECOVERABLE,
-        "Recoverable TaskGroup Failure/Container Failure");
+    // Add transitions
+    stateMachineBuilder.addTransition(State.READY, State.EXECUTING,
+        "Scheduling to executor");
+    stateMachineBuilder.addTransition(State.READY, State.FAILED_RECOVERABLE,
+        "Stage Failure by a recoverable failure in another task");
+    stateMachineBuilder.addTransition(State.READY, State.FAILED_UNRECOVERABLE,
+        "Stage Failure");
 
     stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE,
-        "Task computation done");
+        "All tasks complete");
     stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_UNRECOVERABLE,
-        "Unexpected failure/Executor Failure");
+        "Unrecoverable failure in a task/Executor failure");
     stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_RECOVERABLE,
-        "Container Failure");
+        "Recoverable failure in a task/Container failure");
     stateMachineBuilder.addTransition(State.EXECUTING, State.ON_HOLD, "Task paused for dynamic optimization");
-
     stateMachineBuilder.addTransition(State.ON_HOLD, State.COMPLETE, "Task completed after dynamic optimization");
 
-    stateMachineBuilder.addTransition(State.COMPLETE, State.FAILED_UNRECOVERABLE,
-        "Executor Failure");
-
     stateMachineBuilder.addTransition(State.COMPLETE, State.FAILED_RECOVERABLE,
-        "Container Failure");
+        "Recoverable failure in a task/Container failure");
 
+    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.READY,
+        "Recoverable task failure");
     stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.FAILED_UNRECOVERABLE,
         "");
-    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.READY,
-        "Recoverable Task Failure");
 
     stateMachineBuilder.setInitialState(State.READY);
 
@@ -89,13 +80,20 @@ public final class TaskState {
    */
   public enum State {
     READY,
-    // PENDING_IN_EXECUTOR and EXECUTING states are only managed in executor.
-    PENDING_IN_EXECUTOR,
     EXECUTING,
     COMPLETE,
     FAILED_RECOVERABLE,
     FAILED_UNRECOVERABLE,
     ON_HOLD, // for dynamic optimization
+  }
+
+  /**
+   * Causes of a recoverable failure.
+   */
+  public enum RecoverableFailureCause {
+    INPUT_READ_FAILURE, // Occurs when a task is unable to read its input block
+    OUTPUT_WRITE_FAILURE, // Occurs when a task successfully generates its output, but is able to write it
+    CONTAINER_FAILURE // When a REEF evaluator fails
   }
 
   @Override

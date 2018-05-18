@@ -16,9 +16,9 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalStage;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 import edu.snu.nemo.runtime.common.state.StageState;
-import edu.snu.nemo.runtime.common.state.TaskGroupState;
+import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
  */
 public final class SchedulerTestUtil {
   /**
-   * Complete the stage by completing all of its TaskGroups.
+   * Complete the stage by completing all of its Tasks.
    * @param jobStateManager for the submitted job.
    * @param scheduler for the submitted job.
    * @param executorRegistry provides executor representers
@@ -48,12 +48,12 @@ public final class SchedulerTestUtil {
         // Stage has completed, so we break out of the loop.
         break;
       } else if (StageState.State.EXECUTING == stageState) {
-        physicalStage.getTaskGroupIds().forEach(taskGroupId -> {
-          final Enum tgState = jobStateManager.getTaskGroupState(taskGroupId).getStateMachine().getCurrentState();
-          if (TaskGroupState.State.EXECUTING == tgState) {
-            sendTaskGroupStateEventToScheduler(scheduler, executorRegistry, taskGroupId,
-                TaskGroupState.State.COMPLETE, attemptIdx, null);
-          } else if (TaskGroupState.State.READY == tgState || TaskGroupState.State.COMPLETE == tgState) {
+        physicalStage.getTaskIds().forEach(taskId -> {
+          final Enum tgState = jobStateManager.getTaskState(taskId).getStateMachine().getCurrentState();
+          if (TaskState.State.EXECUTING == tgState) {
+            sendTaskStateEventToScheduler(scheduler, executorRegistry, taskId,
+                TaskState.State.COMPLETE, attemptIdx, null);
+          } else if (TaskState.State.READY == tgState || TaskState.State.COMPLETE == tgState) {
             // Skip READY (try in the next loop and see if it becomes EXECUTING) and COMPLETE.
           } else {
             throw new IllegalStateException(tgState.toString());
@@ -68,60 +68,60 @@ public final class SchedulerTestUtil {
   }
 
   /**
-   * Sends task group state change event to scheduler.
-   * This replaces executor's task group completion messages for testing purposes.
+   * Sends task state change event to scheduler.
+   * This replaces executor's task completion messages for testing purposes.
    * @param scheduler for the submitted job.
    * @param executorRegistry provides executor representers
-   * @param taskGroupId for the task group to change the state.
-   * @param newState for the task group.
+   * @param taskId for the task to change the state.
+   * @param newState for the task.
    * @param cause in the case of a recoverable failure.
    */
-  public static void sendTaskGroupStateEventToScheduler(final Scheduler scheduler,
-                                                        final ExecutorRegistry executorRegistry,
-                                                        final String taskGroupId,
-                                                        final TaskGroupState.State newState,
-                                                        final int attemptIdx,
-                                                        final TaskGroupState.RecoverableFailureCause cause) {
+  public static void sendTaskStateEventToScheduler(final Scheduler scheduler,
+                                                   final ExecutorRegistry executorRegistry,
+                                                   final String taskId,
+                                                   final TaskState.State newState,
+                                                   final int attemptIdx,
+                                                   final TaskState.RecoverableFailureCause cause) {
     ExecutorRepresenter scheduledExecutor;
     do {
-      scheduledExecutor = findExecutorForTaskGroup(executorRegistry, taskGroupId);
+      scheduledExecutor = findExecutorForTask(executorRegistry, taskId);
     } while (scheduledExecutor == null);
 
-    scheduler.onTaskGroupStateChanged(scheduledExecutor.getExecutorId(), taskGroupId,
+    scheduler.onTaskStateChanged(scheduledExecutor.getExecutorId(), taskId,
         newState, attemptIdx, null, cause);
   }
 
-  public static void sendTaskGroupStateEventToScheduler(final Scheduler scheduler,
-                                                        final ExecutorRegistry executorRegistry,
-                                                        final String taskGroupId,
-                                                        final TaskGroupState.State newState,
-                                                        final int attemptIdx) {
-    sendTaskGroupStateEventToScheduler(scheduler, executorRegistry, taskGroupId, newState, attemptIdx, null);
+  public static void sendTaskStateEventToScheduler(final Scheduler scheduler,
+                                                   final ExecutorRegistry executorRegistry,
+                                                   final String taskId,
+                                                   final TaskState.State newState,
+                                                   final int attemptIdx) {
+    sendTaskStateEventToScheduler(scheduler, executorRegistry, taskId, newState, attemptIdx, null);
   }
 
-  public static void mockSchedulerRunner(final PendingTaskGroupCollection pendingTaskGroupCollection,
+  public static void mockSchedulerRunner(final PendingTaskCollection pendingTaskCollection,
                                          final SchedulingPolicy schedulingPolicy,
                                          final JobStateManager jobStateManager,
                                          final ExecutorRegistry executorRegistry,
                                          final boolean isPartialSchedule) {
-    while (!pendingTaskGroupCollection.isEmpty()) {
-      final ScheduledTaskGroup taskGroupToSchedule = pendingTaskGroupCollection.remove(
-          pendingTaskGroupCollection.peekSchedulableTaskGroups().get().iterator().next().getTaskGroupId());
+    while (!pendingTaskCollection.isEmpty()) {
+      final ScheduledTask taskToSchedule = pendingTaskCollection.remove(
+          pendingTaskCollection.peekSchedulableTasks().get().iterator().next().getTaskId());
 
       final Set<ExecutorRepresenter> runningExecutorRepresenter =
           executorRegistry.getRunningExecutorIds().stream()
               .map(executorId -> executorRegistry.getExecutorRepresenter(executorId))
               .collect(Collectors.toSet());
       final Set<ExecutorRepresenter> candidateExecutors =
-          schedulingPolicy.filterExecutorRepresenters(runningExecutorRepresenter, taskGroupToSchedule);
+          schedulingPolicy.filterExecutorRepresenters(runningExecutorRepresenter, taskToSchedule);
       if (candidateExecutors.size() > 0) {
-        jobStateManager.onTaskGroupStateChanged(taskGroupToSchedule.getTaskGroupId(),
-            TaskGroupState.State.EXECUTING);
+        jobStateManager.onTaskStateChanged(taskToSchedule.getTaskId(),
+            TaskState.State.EXECUTING);
         final ExecutorRepresenter executor = candidateExecutors.stream().findFirst().get();
-        executor.onTaskGroupScheduled(taskGroupToSchedule);
+        executor.onTaskScheduled(taskToSchedule);
       }
 
-      // Schedule only the first task group.
+      // Schedule only the first task.
       if (isPartialSchedule) {
         break;
       }
@@ -129,17 +129,17 @@ public final class SchedulerTestUtil {
   }
 
   /**
-   * Retrieves the executor to which the given task group was scheduled.
-   * @param taskGroupId of the task group to search.
+   * Retrieves the executor to which the given task was scheduled.
+   * @param taskId of the task to search.
    * @param executorRegistry provides executor representers
-   * @return the {@link ExecutorRepresenter} of the executor the task group was scheduled to.
+   * @return the {@link ExecutorRepresenter} of the executor the task was scheduled to.
    */
-  private static ExecutorRepresenter findExecutorForTaskGroup(final ExecutorRegistry executorRegistry,
-                                                              final String taskGroupId) {
+  private static ExecutorRepresenter findExecutorForTask(final ExecutorRegistry executorRegistry,
+                                                         final String taskId) {
     for (final String executorId : executorRegistry.getRunningExecutorIds()) {
       final ExecutorRepresenter executor = executorRegistry.getRunningExecutorRepresenter(executorId);
-      if (executor.getRunningTaskGroups().contains(taskGroupId)
-          || executor.getCompleteTaskGroups().contains(taskGroupId)) {
+      if (executor.getRunningTasks().contains(taskId)
+          || executor.getCompleteTasks().contains(taskId)) {
         return executor;
       }
     }

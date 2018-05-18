@@ -30,61 +30,61 @@ import java.util.Map;
  * PhysicalStage.
  */
 public final class PhysicalStage extends Vertex {
-  private final DAG<Task, RuntimeEdge<Task>> taskGroupDag;
+  private final DAG<Task, RuntimeEdge<Task>> taskDag;
   private final int parallelism;
   private final int scheduleGroupIndex;
   private final String containerType;
-  private final byte[] serializedTaskGroupDag;
+  private final byte[] serializedTaskDag;
   private final List<Map<String, Readable>> logicalTaskIdToReadables;
 
   /**
    * Constructor.
    *
    * @param stageId                  ID of the stage.
-   * @param taskGroupDag             the DAG of the task group in this stage.
-   * @param parallelism              how many task groups will be executed in this stage.
+   * @param taskDag             the DAG of the task in this stage.
+   * @param parallelism              how many tasks will be executed in this stage.
    * @param scheduleGroupIndex       the schedule group index.
-   * @param containerType            the type of container to execute the task group on.
+   * @param containerType            the type of container to execute the task on.
    * @param logicalTaskIdToReadables the list of maps between logical task ID and {@link Readable}.
    */
   public PhysicalStage(final String stageId,
-                       final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
+                       final DAG<Task, RuntimeEdge<Task>> taskDag,
                        final int parallelism,
                        final int scheduleGroupIndex,
                        final String containerType,
                        final List<Map<String, Readable>> logicalTaskIdToReadables) {
     super(stageId);
-    this.taskGroupDag = taskGroupDag;
+    this.taskDag = taskDag;
     this.parallelism = parallelism;
     this.scheduleGroupIndex = scheduleGroupIndex;
     this.containerType = containerType;
-    this.serializedTaskGroupDag = SerializationUtils.serialize(taskGroupDag);
+    this.serializedTaskDag = SerializationUtils.serialize(taskDag);
     this.logicalTaskIdToReadables = logicalTaskIdToReadables;
   }
 
   /**
-   * @return the task group.
+   * @return the task.
    */
-  public DAG<Task, RuntimeEdge<Task>> getTaskGroupDag() {
-    return taskGroupDag;
+  public DAG<Task, RuntimeEdge<Task>> getTaskDag() {
+    return taskDag;
   }
 
   /**
-   * @return the serialized DAG of the task group.
+   * @return the serialized DAG of the task.
    */
-  public byte[] getSerializedTaskGroupDag() {
-    return serializedTaskGroupDag;
+  public byte[] getSerializedTaskDag() {
+    return serializedTaskDag;
   }
 
   /**
-   * @return the list of the task group IDs in this stage.
+   * @return the list of the task IDs in this stage.
    */
-  public List<String> getTaskGroupIds() {
-    final List<String> taskGroupIds = new ArrayList<>();
-    for (int taskGroupIdx = 0; taskGroupIdx < parallelism; taskGroupIdx++) {
-      taskGroupIds.add(RuntimeIdGenerator.generateTaskGroupId(taskGroupIdx, getId()));
+  public List<String> getTaskIds() {
+    final List<String> taskIds = new ArrayList<>();
+    for (int taskIdx = 0; taskIdx < parallelism; taskIdx++) {
+      taskIds.add(RuntimeIdGenerator.generateTaskId(taskIdx, getId()));
     }
-    return taskGroupIds;
+    return taskIds;
   }
 
   /**
@@ -95,7 +95,7 @@ public final class PhysicalStage extends Vertex {
   }
 
   /**
-   * @return the type of container to execute the task group on.
+   * @return the type of container to execute the task on.
    */
   public String getContainerType() {
     return containerType;
@@ -112,7 +112,7 @@ public final class PhysicalStage extends Vertex {
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"scheduleGroupIndex\": ").append(scheduleGroupIndex);
-    sb.append(", \"taskGroupDag\": ").append(taskGroupDag);
+    sb.append(", \"taskDag\": ").append(taskDag);
     sb.append(", \"parallelism\": ").append(parallelism);
     sb.append(", \"containerType\": \"").append(containerType).append("\"");
     sb.append('}');

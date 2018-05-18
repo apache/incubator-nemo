@@ -18,7 +18,7 @@ package edu.snu.nemo.common.exception;
 /**
  * SchedulingException.
  * Thrown when any exception occurs while trying to schedule
- * a {edu.snu.nemo.runtime.common.plan.physical.TaskGroup} to an executor.
+ * a {edu.snu.nemo.runtime.common.plan.physical.Task} to an executor.
  */
 public final class SchedulingException extends RuntimeException {
   /**
