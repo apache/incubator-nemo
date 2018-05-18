@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.executor.data;
+package edu.snu.nemo.runtime.executor.data.partition;
+
+import java.io.IOException;
 
 /**
  * A collection of data elements.
@@ -22,6 +24,20 @@ package edu.snu.nemo.runtime.executor.data;
  * @param <K> the type of key used for {@link Partition}.
  */
 public interface Partition<T, K> {
+
+  /**
+   * Writes an element to non-committed partition.
+   *
+   * @param element element to write.
+   * @throws IOException if the partition is already committed.
+   */
+  void write(Object element) throws IOException;
+
+  /**
+   * Commits a partition to prevent further data write.
+   * @throws IOException if fail to commit partition.
+   */
+  void commit() throws IOException;
 
   /**
    * @return the key value.
@@ -35,6 +51,7 @@ public interface Partition<T, K> {
 
   /**
    * @return the data in this {@link Partition}.
+   * @throws IOException if the partition is not committed yet.
    */
-  T getData();
+  T getData() throws IOException;
 }

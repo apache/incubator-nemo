@@ -13,24 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.tests.runtime.master.scheduler;
+package edu.snu.nemo.runtime.master.scheduler;
 
-import edu.snu.nemo.common.coder.Coder;
-import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
-import edu.snu.nemo.compiler.optimizer.examples.EmptyComponents;
-import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.master.scheduler.ExecutorRegistry;
-import edu.snu.nemo.tests.runtime.RuntimeTestUtil;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageSender;
 import edu.snu.nemo.runtime.common.plan.physical.*;
@@ -41,8 +30,7 @@ import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
-import edu.snu.nemo.runtime.master.scheduler.*;
-import edu.snu.nemo.tests.compiler.optimizer.policy.TestPolicy;
+import edu.snu.nemo.runtime.plangenerator.TestPlanGenerator;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -89,7 +77,6 @@ public final class FaultToleranceTest {
   private BlockManagerMaster blockManagerMaster = mock(BlockManagerMaster.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
   private final ExecutorService serExecutorService = Executors.newSingleThreadExecutor();
-  private PhysicalPlanGenerator physicalPlanGenerator;
 
   private static final int MAX_SCHEDULE_ATTEMPT = 3;
 
@@ -101,9 +88,6 @@ public final class FaultToleranceTest {
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
 
-    final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
-    physicalPlanGenerator = injector.getInstance(PhysicalPlanGenerator.class);
   }
 
   private void setUpExecutors(final Collection<ExecutorRepresenter> executors,
@@ -129,53 +113,6 @@ public final class FaultToleranceTest {
     }
   }
 
-  private PhysicalPlan buildPlan() throws Exception {
-    // Build DAG
-    final Transform t = new EmptyComponents.EmptyTransform("empty");
-    final IRVertex v1 = new OperatorVertex(t);
-    v1.setProperty(ParallelismProperty.of(3));
-    v1.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v1);
-
-    final IRVertex v2 = new OperatorVertex(t);
-    v2.setProperty(ParallelismProperty.of(2));
-    v2.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v2);
-
-    final IRVertex v3 = new OperatorVertex(t);
-    v3.setProperty(ParallelismProperty.of(3));
-    v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v3);
-
-    final IRVertex v4 = new OperatorVertex(t);
-    v4.setProperty(ParallelismProperty.of(2));
-    v4.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v4);
-
-    final IRVertex v5 = new OperatorVertex(t);
-    v5.setProperty(ParallelismProperty.of(2));
-    v5.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
-    irDAGBuilder.addVertex(v5);
-
-    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2, Coder.DUMMY_CODER);
-    irDAGBuilder.connectVertices(e1);
-
-    final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v3, v2, Coder.DUMMY_CODER);
-    irDAGBuilder.connectVertices(e2);
-
-    final IREdge e3 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v2, v4, Coder.DUMMY_CODER);
-    irDAGBuilder.connectVertices(e3);
-
-    final IREdge e4 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v4, v5, Coder.DUMMY_CODER);
-    irDAGBuilder.connectVertices(e4);
-
-    final DAG<IRVertex, IREdge> irDAG =
-        CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(), new TestPolicy(), "");
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
-
-    return new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getTaskIRVertexMap());
-  }
-
   /**
    * Tests fault tolerance after a container removal.
    */
@@ -197,7 +134,9 @@ public final class FaultToleranceTest {
     executors.add(a3);
 
     setUpExecutors(executors, true);
-    final PhysicalPlan plan = buildPlan();
+    final PhysicalPlan plan =
+        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
+
     final JobStateManager jobStateManager =
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
@@ -208,16 +147,16 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
+        SchedulerTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
             executorRegistry, false);
         assertTrue(pendingTaskGroupCollection.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
-          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
-              taskGroupId, TaskGroupState.State.COMPLETE, 1));
+            SchedulerTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
+                taskGroupId, TaskGroupState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 1) {
         scheduler.onExecutorRemoved("a3");
         // There are 2 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
+        SchedulerTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
             executorRegistry, false);
 
         // Due to round robin scheduling, "a2" is assured to have a running TaskGroup.
@@ -228,16 +167,16 @@ public final class FaultToleranceTest {
         }
         assertEquals(jobStateManager.getAttemptCountForStage(stage.getId()), 2);
 
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
+        SchedulerTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
             executorRegistry, false);
         assertTrue(pendingTaskGroupCollection.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
-          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
-              taskGroupId, TaskGroupState.State.COMPLETE, 1));
+            SchedulerTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
+                taskGroupId, TaskGroupState.State.COMPLETE, 1));
       } else {
         // There are 1 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 2.
         // Schedule only the first TaskGroup
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
+        SchedulerTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
             executorRegistry, true);
       }
     }
@@ -264,7 +203,8 @@ public final class FaultToleranceTest {
     executors.add(a3);
     setUpExecutors(executors, true);
 
-    final PhysicalPlan plan = buildPlan();
+    final PhysicalPlan plan =
+        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
     final JobStateManager jobStateManager =
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
@@ -275,21 +215,21 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
+        SchedulerTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
             executorRegistry, false);
         assertTrue(pendingTaskGroupCollection.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
-          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
-              taskGroupId, TaskGroupState.State.COMPLETE, 1));
+            SchedulerTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
+                taskGroupId, TaskGroupState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
+        SchedulerTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
             executorRegistry, false);
         assertTrue(pendingTaskGroupCollection.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
-          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
-              taskGroupId, TaskGroupState.State.FAILED_RECOVERABLE, 1,
-              TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
+            SchedulerTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
+                taskGroupId, TaskGroupState.State.FAILED_RECOVERABLE, 1,
+                TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
 
         while (jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState() != EXECUTING) {
 
@@ -326,7 +266,8 @@ public final class FaultToleranceTest {
     executors.add(a3);
     setUpExecutors(executors, true);
 
-    final PhysicalPlan plan = buildPlan();
+    final PhysicalPlan plan =
+        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
     final JobStateManager jobStateManager =
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
@@ -337,21 +278,21 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 TaskGroups in ScheduleGroup 0.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
+        SchedulerTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
             executorRegistry, false);
         assertTrue(pendingTaskGroupCollection.isEmpty());
         stage.getTaskGroupIds().forEach(taskGroupId ->
-          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
-              taskGroupId, TaskGroupState.State.COMPLETE, 1));
+            SchedulerTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
+                taskGroupId, TaskGroupState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 1) {
         // There are 3 executors, each of capacity 2, and there are 2 TaskGroups in ScheduleGroup 1.
-        RuntimeTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
+        SchedulerTestUtil.mockSchedulerRunner(pendingTaskGroupCollection, schedulingPolicy, jobStateManager,
             executorRegistry, false);
 
         stage.getTaskGroupIds().forEach(taskGroupId ->
-          RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
-              taskGroupId, TaskGroupState.State.FAILED_RECOVERABLE, 1,
-              TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
+            SchedulerTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
+                taskGroupId, TaskGroupState.State.FAILED_RECOVERABLE, 1,
+                TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
 
         while (jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState() != EXECUTING) {
 
@@ -371,7 +312,7 @@ public final class FaultToleranceTest {
    */
   @Test(timeout=10000)
   public void testTaskGroupReexecutionForFailure() throws Exception {
-  final ActiveContext activeContext = mock(ActiveContext.class);
+    final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
 
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
@@ -388,7 +329,10 @@ public final class FaultToleranceTest {
 
     setUpExecutors(executors, false);
 
-    final PhysicalPlan plan = buildPlan();
+    final PhysicalPlan plan =
+        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
+
+
     final JobStateManager jobStateManager =
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 
@@ -403,11 +347,11 @@ public final class FaultToleranceTest {
         final Set<String> a3RunningTaskGroups = new HashSet<>(a3.getRunningTaskGroups());
 
         a1RunningTaskGroups.forEach(taskGroupId ->
-            RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
+            SchedulerTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
                 taskGroupId, TaskGroupState.State.COMPLETE, 1));
 
         a3RunningTaskGroups.forEach(taskGroupId ->
-            RuntimeTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
+            SchedulerTestUtil.sendTaskGroupStateEventToScheduler(scheduler, executorRegistry,
                 taskGroupId, TaskGroupState.State.COMPLETE, 1));
       }
     }

@@ -16,15 +16,10 @@
 package edu.snu.nemo.runtime.executor.data.partitioner;
 
 import edu.snu.nemo.common.KeyExtractor;
-import edu.snu.nemo.runtime.executor.data.Partition;
-import edu.snu.nemo.runtime.executor.data.NonSerializedPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.IntStream;
 
 /**
  * An implementation of {@link Partitioner} which hashes output data from a source task appropriate to detect data skew.
@@ -36,38 +31,35 @@ import java.util.stream.IntStream;
  * to prevent the extra deserialize - rehash - serialize process.
  * For more information, please check {@link edu.snu.nemo.conf.JobConf.HashRangeMultiplier}.
  */
-public final class DataSkewHashPartitioner implements Partitioner {
+public final class DataSkewHashPartitioner implements Partitioner<Integer> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewHashPartitioner.class.getName());
-  private final int hashRangeMultiplier; // Hash range multiplier.
+  private final KeyExtractor keyExtractor;
+  private final BigInteger hashRangeBase;
+  private final int hashRange;
 
-  public DataSkewHashPartitioner(final int hashRangeMultiplier) {
-    this.hashRangeMultiplier = hashRangeMultiplier;
-  }
-
-  @Override
-  public List<Partition> partition(final Iterable elements,
-                                   final int dstParallelism,
-                                   final KeyExtractor keyExtractor) {
+  /**
+   * Constructor.
+   *
+   * @param hashRangeMultiplier the hash range multiplier.
+   * @param dstParallelism      the number of destination tasks.
+   * @param keyExtractor        the key extractor that extracts keys from elements.
+   */
+  public DataSkewHashPartitioner(final int hashRangeMultiplier,
+                                 final int dstParallelism,
+                                 final KeyExtractor keyExtractor) {
+    this.keyExtractor = keyExtractor;
     // For this hash range, please check the description of HashRangeMultiplier in JobConf.
     // For actual hash range to use, we calculate a prime number right next to the desired hash range.
-    final BigInteger hashRangeBase = new BigInteger(String.valueOf(dstParallelism * hashRangeMultiplier));
-    final int hashRange = hashRangeBase.nextProbablePrime().intValue();
-
+    this.hashRangeBase = new BigInteger(String.valueOf(dstParallelism * hashRangeMultiplier));
+    this.hashRange = hashRangeBase.nextProbablePrime().intValue();
     LOG.info("hashRangeBase {} resulting hashRange {}", hashRangeBase, hashRange);
+  }
 
-    // Separate the data into partitions according to the hash value of their key.
-    final List<List> elementsByKey = new ArrayList<>(hashRange);
-    IntStream.range(0, hashRange).forEach(hashVal -> elementsByKey.add(new ArrayList<>()));
-    elements.forEach(element -> {
-      // Hash the data by its key, and "modulo" by the hash range.
-      final int hashVal = Math.abs(keyExtractor.extractKey(element).hashCode() % hashRange);
-      elementsByKey.get(hashVal).add(element);
-    });
-
-    final List<Partition> partitions = new ArrayList<>(hashRange);
-    for (int hashIdx = 0; hashIdx < hashRange; hashIdx++) {
-      partitions.add(new NonSerializedPartition(hashIdx, elementsByKey.get(hashIdx)));
-    }
-    return partitions;
+  /**
+   * @see Partitioner#partition(Object).
+   */
+  @Override
+  public Integer partition(final Object element) {
+    return Math.abs(keyExtractor.extractKey(element).hashCode() % hashRange);
   }
 }

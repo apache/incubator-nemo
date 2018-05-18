@@ -16,9 +16,10 @@
 package edu.snu.nemo.runtime.executor.data.stores;
 
 import edu.snu.nemo.common.exception.BlockFetchException;
+import edu.snu.nemo.common.exception.BlockWriteException;
 import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.data.KeyRange;
 import edu.snu.nemo.runtime.executor.data.*;
+import edu.snu.nemo.runtime.executor.data.block.Block;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.nemo.runtime.executor.data.metadata.LocalFileMetadata;
 import edu.snu.nemo.runtime.executor.data.block.FileBlock;
@@ -27,13 +28,12 @@ import org.apache.reef.tang.annotations.Parameter;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.io.*;
-import java.util.List;
 
 /**
  * Stores blocks in local files.
  */
 @ThreadSafe
-public final class LocalFileStore extends LocalBlockStore implements FileStore {
+public final class LocalFileStore extends LocalBlockStore {
   private final String fileDirectory;
 
   /**
@@ -51,21 +51,34 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
   }
 
   /**
-   * Creates a new block.
-   *
-   * @param blockId the ID of the block to create.
-   * @see BlockStore#createBlock(String)
+   * @see BlockStore#createBlock(String).
    */
   @Override
-  public void createBlock(final String blockId) {
-    removeBlock(blockId);
+  public Block createBlock(final String blockId) {
+    deleteBlock(blockId);
 
     final Serializer serializer = getSerializerFromWorker(blockId);
     final LocalFileMetadata metadata = new LocalFileMetadata();
 
-    final FileBlock block =
-        new FileBlock(serializer, DataUtil.blockIdToFilePath(blockId, fileDirectory), metadata);
-    getBlockMap().put(blockId, block);
+    return new FileBlock(blockId, serializer, DataUtil.blockIdToFilePath(blockId, fileDirectory), metadata);
+  }
+
+  /**
+   * Writes a committed block to this store.
+   *
+   * @param block the block to write.
+   * @throws BlockWriteException if fail to write.
+   */
+  @Override
+  public void writeBlock(final Block block) throws BlockWriteException {
+    if (!(block instanceof FileBlock)) {
+      throw new BlockWriteException(new Throwable(
+          this.toString() + "only accept " + FileBlock.class.getName()));
+    } else if (!block.isCommitted()) {
+      throw new BlockWriteException(new Throwable("The block " + block.getId() + "is not committed yet."));
+    } else {
+      getBlockMap().put(block.getId(), block);
+    }
   }
 
   /**
@@ -75,7 +88,7 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
    * @return whether the block exists or not.
    */
   @Override
-  public Boolean removeBlock(final String blockId) throws BlockFetchException {
+  public boolean deleteBlock(final String blockId) throws BlockFetchException {
     final FileBlock fileBlock = (FileBlock) getBlockMap().remove(blockId);
     if (fileBlock == null) {
       return false;
@@ -86,22 +99,5 @@ public final class LocalFileStore extends LocalBlockStore implements FileStore {
       throw new BlockFetchException(e);
     }
     return true;
-  }
-
-  /**
-   * @see FileStore#getFileAreas(String, KeyRange)
-   */
-  @Override
-  public List<FileArea> getFileAreas(final String blockId,
-                                     final KeyRange keyRange) {
-    try {
-      final FileBlock block = (FileBlock) getBlockMap().get(blockId);
-      if (block == null) {
-        throw new IOException(String.format("%s does not exists", blockId));
-      }
-      return block.asFileAreas(keyRange);
-    } catch (final IOException retrievalException) {
-      throw new BlockFetchException(retrievalException);
-    }
   }
 }
