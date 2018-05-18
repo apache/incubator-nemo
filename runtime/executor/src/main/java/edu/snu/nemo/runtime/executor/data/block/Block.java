@@ -35,7 +35,7 @@ public interface Block<K extends Serializable> {
   /**
    * Writes an element to non-committed block.
    * Invariant: This should not be invoked after this block is committed.
-   * Invariant: This method may not support concurrent write.
+   * Invariant: This method does not support concurrent write.
    *
    * @param key     the key.
    * @param element the element to write.
@@ -49,7 +49,7 @@ public interface Block<K extends Serializable> {
   /**
    * Stores {@link NonSerializedPartition}s to this block.
    * Invariant: This should not be invoked after this block is committed.
-   * Invariant: This method may not support concurrent write.
+   * Invariant: This method does not support concurrent write.
    *
    * @param partitions the {@link NonSerializedPartition}s to store.
    * @throws BlockWriteException for any error occurred while trying to write a block.
@@ -62,7 +62,7 @@ public interface Block<K extends Serializable> {
   /**
    * Stores {@link SerializedPartition}s to this block.
    * Invariant: This should not be invoked after this block is committed.
-   * Invariant: This method may not support concurrent write.
+   * Invariant: This method does not support concurrent write.
    *
    * @param partitions the {@link SerializedPartition}s to store.
    * @throws BlockWriteException for any error occurred while trying to write a block.

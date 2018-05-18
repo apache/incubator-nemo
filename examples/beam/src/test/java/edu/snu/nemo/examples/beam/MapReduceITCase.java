@@ -26,8 +26,6 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.util.Optional;
-
 /**
  * Test MapReduce program with JobLauncher.
  */
@@ -53,7 +51,7 @@ public final class MapReduceITCase {
   @After
   public void tearDown() throws Exception {
     try {
-      ExampleTestUtil.ensureOutputMismatch(fileBasePath, outputFileName, testResourceFileName);
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }

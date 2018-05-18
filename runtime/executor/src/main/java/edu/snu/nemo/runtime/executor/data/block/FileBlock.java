@@ -179,7 +179,8 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
               // The key value of this partition is in the range.
               final long availableBefore = fileStream.available();
               // We need to limit read bytes on this FileStream, which could be over-read by wrapped
-              // compression stream. We recommend to wrap with LimitedInputStream once more when
+              // compression stream. This depends on the nature of the compression algorithm used.
+              // We recommend to wrap with LimitedInputStream once more when
               // reading input from chained compression InputStream.
               // Plus, this stream must be not closed to prevent to close the filtered file partition.
               final LimitedInputStream limitedInputStream =

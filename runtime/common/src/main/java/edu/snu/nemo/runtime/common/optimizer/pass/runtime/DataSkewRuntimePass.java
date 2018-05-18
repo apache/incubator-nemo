@@ -38,6 +38,7 @@ import java.util.stream.IntStream;
 
 /**
  * Dynamic optimization pass for handling data skew.
+ * It receives pairs of the key index and the size of a partition for each output block.
  */
 public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<Pair<Integer, Long>>>> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());

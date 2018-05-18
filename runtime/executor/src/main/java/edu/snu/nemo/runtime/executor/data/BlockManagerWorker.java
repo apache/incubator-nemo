@@ -326,9 +326,9 @@ public final class BlockManagerWorker {
                           final DataStoreProperty.Value blockStore) {
     LOG.info("RemoveBlock: {}", blockId);
     final BlockStore store = getBlockStore(blockStore);
-    final boolean exist = store.deleteBlock(blockId);
+    final boolean deleted = store.deleteBlock(blockId);
 
-    if (exist) {
+    if (deleted) {
       final ControlMessage.BlockStateChangedMsg.Builder blockStateChangedMsgBuilder =
           ControlMessage.BlockStateChangedMsg.newBuilder()
               .setExecutorId(executorId)

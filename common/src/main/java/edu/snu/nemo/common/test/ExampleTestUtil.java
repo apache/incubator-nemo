@@ -44,7 +44,7 @@ public final class ExampleTestUtil {
    * @throws RuntimeException if the output is invalid.
    * @throws IOException IOException while testing.
    */
-  public static void ensureOutputMismatch(final String resourcePath,
+  public static void ensureOutputValidity(final String resourcePath,
                                           final String outputFileName,
                                           final String testResourceFileName) throws IOException {
     final String testOutput = Files.list(Paths.get(resourcePath))

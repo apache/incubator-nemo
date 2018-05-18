@@ -28,8 +28,6 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.util.Optional;
-
 /**
  * Test Spark programs with JobLauncher.
  */
@@ -62,7 +60,7 @@ public final class SparkITCase {
         .build());
 
     try {
-      ExampleTestUtil.ensureOutputMismatch(fileBasePath, outputFileName, testResourceFilename);
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFilename);
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
