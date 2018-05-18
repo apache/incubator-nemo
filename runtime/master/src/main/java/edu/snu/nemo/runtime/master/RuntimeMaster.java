@@ -280,7 +280,7 @@ public final class RuntimeMaster {
     case DataSizeMetric:
       final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
       // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-      accumulateBarrierMetric(dataSizeMetricMsg.getPartitionSizeInfoList(),
+      accumulateBarrierMetric(dataSizeMetricMsg.getPartitionSizeList(),
           dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getBlockId());
       break;
     case MetricMessageReceived:
@@ -300,21 +300,26 @@ public final class RuntimeMaster {
    * TODO #511: Refactor metric aggregation for (general) run-rime optimization.
    * TODO #513: Replace MetricCollectionBarrierVertex with a Customizable IRVertex.
    *
-   * @param blockSizeInfo the block size info to accumulate.
-   * @param srcVertexId   the ID of the source vertex.
-   * @param blockId       the ID of the block.
+   * @param partitionSizeInfo the size of partitions in a block to accumulate.
+   * @param srcVertexId       the ID of the source vertex.
+   * @param blockId           the ID of the block.
    */
-  private void accumulateBarrierMetric(final List<Long> blockSizeInfo,
-                                      final String srcVertexId,
-                                      final String blockId) {
+  private void accumulateBarrierMetric(final List<ControlMessage.PartitionSizeEntry> partitionSizeInfo,
+                                       final String srcVertexId,
+                                       final String blockId) {
     final IRVertex vertexToSendMetricDataTo = irVertices.stream()
         .filter(irVertex -> irVertex.getId().equals(srcVertexId)).findFirst()
         .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
 
+    final List<Pair<Integer, Long>> partitionSizes = new ArrayList<>();
+    partitionSizeInfo.forEach(partitionSizeEntry -> {
+      partitionSizes.add(Pair.of(partitionSizeEntry.getKey(), partitionSizeEntry.getSize()));
+    });
+
     if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
-      final MetricCollectionBarrierVertex<Long> metricCollectionBarrierVertex =
+      final MetricCollectionBarrierVertex<Pair<Integer, Long>> metricCollectionBarrierVertex =
           (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
-      metricCollectionBarrierVertex.accumulateMetric(blockId, blockSizeInfo);
+      metricCollectionBarrierVertex.accumulateMetric(blockId, partitionSizes);
     } else {
       throw new RuntimeException("Something wrong happened at DataSkewCompositePass.");
     }

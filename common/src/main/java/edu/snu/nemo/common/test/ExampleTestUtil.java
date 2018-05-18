@@ -19,11 +19,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.IntStream;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Test Utils for Examples.
@@ -42,12 +41,12 @@ public final class ExampleTestUtil {
    * @param resourcePath root folder for both resources.
    * @param outputFileName output file name.
    * @param testResourceFileName the test result file name.
+   * @throws RuntimeException if the output is invalid.
    * @throws IOException IOException while testing.
    */
   public static void ensureOutputValidity(final String resourcePath,
                                           final String outputFileName,
-                                          final String testResourceFileName)
-  throws IOException {
+                                          final String testResourceFileName) throws IOException {
     final String testOutput = Files.list(Paths.get(resourcePath))
         .filter(Files::isRegularFile)
         .filter(path -> path.getFileName().toString().startsWith(outputFileName))
@@ -86,6 +85,7 @@ public final class ExampleTestUtil {
    * @param resourcePath path to resources.
    * @param outputFileName name of output file.
    * @param testResourceFileName name of the file to compare the outputs to.
+   * @throws RuntimeException if the output is invalid.
    * @throws IOException exception.
    */
   public static void ensureALSOutputValidity(final String resourcePath,
@@ -118,15 +118,15 @@ public final class ExampleTestUtil {
       throw new RuntimeException("output mismatch");
     }
 
-    IntStream.range(0, testOutput.size()).forEach(i -> {
-          IntStream.range(0, testOutput.get(i).size()).forEach(j -> {
-            final Double testElement = testOutput.get(i).get(j);
-            final Double resourceElement = resourceOutput.get(i).get(j);
-            if (Math.abs(testElement - resourceElement) / resourceElement > ERROR) {
-              throw new RuntimeException("output mismatch");
-            }
-          });
-        });
+    for (int i = 0; i < testOutput.size(); i++) {
+      for (int j = 0; j < testOutput.get(i).size(); j++) {
+        final Double testElement = testOutput.get(i).get(j);
+        final Double resourceElement = resourceOutput.get(i).get(j);
+        if (Math.abs(testElement - resourceElement) / resourceElement > ERROR) {
+          throw new RuntimeException("output mismatch");
+        }
+      }
+    }
   }
 
   /**
@@ -146,6 +146,4 @@ public final class ExampleTestUtil {
       Files.delete(outputFilePath);
     }
   }
-
-
 }

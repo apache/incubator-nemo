@@ -52,8 +52,11 @@ public final class AlternatingLeastSquareITCase {
 
   @After
   public void tearDown() throws Exception {
-    ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, testResourceFileName);
-    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    try {
+      ExampleTestUtil.ensureALSOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
   }
 
   @Test (timeout = TIMEOUT)

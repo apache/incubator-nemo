@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.common.optimizer;
 
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
@@ -45,12 +46,13 @@ public final class RuntimeOptimizer {
     final DynamicOptimizationProperty.Value dynamicOptimizationType =
         metricCollectionBarrierVertex.getProperty(ExecutionProperty.Key.DynamicOptimizationType);
 
-    if (dynamicOptimizationType.equals(DynamicOptimizationProperty.Value.DataSkewRuntimePass)) {
+    switch (dynamicOptimizationType) {
+      case DataSkewRuntimePass:
         // Map between a partition ID to corresponding metric data (e.g., the size of each block).
-        final Map<String, List<Long>> metricData = metricCollectionBarrierVertex.getMetricData();
+        final Map<String, List<Pair<Integer, Long>>> metricData = metricCollectionBarrierVertex.getMetricData();
         return new DataSkewRuntimePass().apply(originalPlan, metricData);
-    } else {
-      return originalPlan;
+      default:
+        throw new UnsupportedOperationException("Unknown runtime pass: " + dynamicOptimizationType);
     }
   }
 }

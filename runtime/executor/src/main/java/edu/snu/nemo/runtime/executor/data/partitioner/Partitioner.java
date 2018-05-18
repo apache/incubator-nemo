@@ -15,25 +15,21 @@
  */
 package edu.snu.nemo.runtime.executor.data.partitioner;
 
-import edu.snu.nemo.common.KeyExtractor;
-import edu.snu.nemo.runtime.executor.data.Partition;
-
-import java.util.List;
+import java.io.Serializable;
 
 /**
  * This interface represents the way of partitioning output data from a source task.
- * It takes an iterable of elements and divide the data into multiple {@link Partition}s,
- * according to the number of destination tasks, the key of each element, etc.
+ * It takes an element and designates key of {@link edu.snu.nemo.runtime.executor.data.partition.Partition}
+ * to write the element, according to the number of destination tasks, the key of each element, etc.
+ * @param <K> the key type of the partition to write.
  */
-public interface Partitioner {
+public interface Partitioner<K extends Serializable> {
 
   /**
    * Divides the output data from a task into multiple blocks.
    *
-   * @param elements       the output data from a source task.
-   * @param dstParallelism the number of destination tasks.
-   * @param keyExtractor   extracts keys from elements.
-   * @return the list of partitioned blocks.
+   * @param element        the output element from a source task.
+   * @return the key of the partition in the block to write the element.
    */
-  List<Partition> partition(Iterable elements, int dstParallelism, KeyExtractor keyExtractor);
+   K partition(Object element);
 }

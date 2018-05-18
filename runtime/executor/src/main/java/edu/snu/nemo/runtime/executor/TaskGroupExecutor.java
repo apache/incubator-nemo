@@ -304,7 +304,6 @@ public final class TaskGroupExecutor {
     final long writeStartTime = System.currentTimeMillis();
 
     getTaskDataHandler(task).getOutputWriters().forEach(outputWriter -> {
-      outputWriter.write();
       outputWriter.close();
       final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
       writtenBytes.ifPresent(writtenBytesList::add);
@@ -599,7 +598,7 @@ public final class TaskGroupExecutor {
               // write them element-wise to OutputWriters.
               List<OutputWriter> outputWritersOfTask =
                   getTaskDataHandler(outputCollectorOwnerTask).getOutputWriters();
-              outputWritersOfTask.forEach(outputWriter -> outputWriter.writeElement(element));
+              outputWritersOfTask.forEach(outputWriter -> outputWriter.write(element));
             }
           }
 
@@ -684,7 +683,7 @@ public final class TaskGroupExecutor {
       // Write element-wise to OutputWriters if any
       if (hasOutputWriter(task)) {
         List<OutputWriter> outputWritersOfTask = dataHandler.getOutputWriters();
-        outputWritersOfTask.forEach(outputWriter -> outputWriter.writeElement(element));
+        outputWritersOfTask.forEach(outputWriter -> outputWriter.write(element));
       }
     }
   }
