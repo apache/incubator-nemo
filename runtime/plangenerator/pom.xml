@@ -25,7 +25,7 @@ limitations under the License.
         <relativePath>../../</relativePath>
     </parent>
 
-    <artifactId>nemo-runtime-testplans</artifactId>
+    <artifactId>nemo-runtime-plangenerator</artifactId>
     <name>Nemo Runtime Test Plans</name>
 
     <repositories>
@@ -38,12 +38,12 @@ limitations under the License.
     <dependencies>
         <dependency>
             <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-compiler-optimizer</artifactId>
+            <artifactId>nemo-runtime-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-runtime-common</artifactId>
+            <artifactId>nemo-compiler-optimizer</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

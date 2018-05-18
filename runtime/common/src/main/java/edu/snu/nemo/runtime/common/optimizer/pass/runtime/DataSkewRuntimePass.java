@@ -106,7 +106,8 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<P
         .map(list -> list.stream()
             .map(pair -> pair.left())
             .max(Integer::compareTo)
-            .orElseThrow(() -> new DynamicOptimizationException("Cannot find max hash value in a block.")))
+            .<DynamicOptimizationException>orElseThrow(
+                () -> new DynamicOptimizationException("Cannot find max hash value in a block.")))
         .max(Integer::compareTo)
         .orElseThrow(() -> new DynamicOptimizationException("Cannot find max hash value among blocks."));
 

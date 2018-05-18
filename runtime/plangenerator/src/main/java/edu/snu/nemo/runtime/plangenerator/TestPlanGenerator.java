@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.physicalplans;
+package edu.snu.nemo.runtime.plangenerator;
 
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.DAG;
@@ -27,6 +27,8 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.nemo.compiler.optimizer.examples.EmptyComponents;
+import edu.snu.nemo.compiler.optimizer.policy.BasicPullPolicy;
+import edu.snu.nemo.compiler.optimizer.policy.BasicPushPolicy;
 import edu.snu.nemo.compiler.optimizer.policy.Policy;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
@@ -38,7 +40,7 @@ import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 
 /**
- * Generates physical plans from IRs.
+ * Generates physical plans for testing purposes.
  */
 public final class TestPlanGenerator {
   private static final PhysicalPlanGenerator PLAN_GENERATOR;
@@ -55,34 +57,47 @@ public final class TestPlanGenerator {
   }
 
   /**
+   * Type of the plan to generate.
+   */
+  public enum PlanType {
+    TwoVerticesJoined,
+    ThreeSequentialVertices,
+    ThreeSequentialVerticesWithDifferentContainerTypes
+  }
+
+  /**
    * private constructor.
    */
   private TestPlanGenerator() {
   }
 
   /**
-   * @return push-based plan
-   * @throws Exception exception
+   * @param planType type of the plan to generate.
+   * @param isPush whether to use the push policy.
+   * @return the generated plan.
+   * @throws Exception exception.
    */
-  public static PhysicalPlan getSimplePushPlan() throws Exception {
-    return convertIRToPhysical(buildSimpleIRDAG(), new BasicPushPolicy());
+  public static PhysicalPlan generatePhysicalPlan(final PlanType planType, final boolean isPush) throws Exception {
+    final Policy policy = isPush ? new BasicPushPolicy() : new BasicPullPolicy();
+    switch (planType) {
+      case TwoVerticesJoined:
+        return convertIRToPhysical(getTwoVerticesJoinedDAG(), policy);
+      case ThreeSequentialVertices:
+        return convertIRToPhysical(getThreeSequentialVerticesDAG(true), policy);
+      case ThreeSequentialVerticesWithDifferentContainerTypes:
+        return convertIRToPhysical(getThreeSequentialVerticesDAG(false), policy);
+      default:
+        throw new IllegalArgumentException(planType.toString());
+    }
   }
 
   /**
-   * @return pull-based plan
-   * @throws Exception exception
+   * @param irDAG irDAG.
+   * @param policy policy.
+   * @return convert an IR into a physical plan using the given policy.
+   * @throws Exception exception.
    */
-  public static PhysicalPlan getSimplePullPlan() throws Exception {
-    return convertIRToPhysical(buildSimpleIRDAG(), new BasicPullPolicy());
-  }
-
-  /**
-   * @param irDAG irDAG
-   * @param policy policy
-   * @return convert an IR into a physical plan using the given policy
-   * @throws Exception exception
-   */
-  public static PhysicalPlan convertIRToPhysical(final DAG<IRVertex, IREdge> irDAG,
+  private static PhysicalPlan convertIRToPhysical(final DAG<IRVertex, IREdge> irDAG,
                                                   final Policy policy) throws Exception {
     final DAG<IRVertex, IREdge> optimized = CompiletimeOptimizer.optimize(irDAG, policy, EMPTY_DAG_DIRECTORY);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = optimized.convert(PLAN_GENERATOR);
@@ -90,9 +105,9 @@ public final class TestPlanGenerator {
   }
 
   /**
-   * @return a simple IR DAG
+   * @return a dag that joins two vertices.
    */
-  private static DAG<IRVertex, IREdge> buildSimpleIRDAG() {
+  private static DAG<IRVertex, IREdge> getTwoVerticesJoinedDAG() {
     final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
 
     final Transform t = new EmptyComponents.EmptyTransform("empty");
@@ -132,6 +147,46 @@ public final class TestPlanGenerator {
 
     final IREdge e4 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v4, v5, Coder.DUMMY_CODER);
     dagBuilder.connectVertices(e4);
+
+    return dagBuilder.buildWithoutSourceSinkCheck();
+  }
+
+  /**
+   * @param sameContainerType whether all three vertices are of the same container type
+   * @return a dag with 3 sequential vertices.
+   */
+  private static DAG<IRVertex, IREdge> getThreeSequentialVerticesDAG(final boolean sameContainerType) {
+    final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
+
+    final Transform t = new EmptyComponents.EmptyTransform("empty");
+    final IRVertex v1 = new OperatorVertex(t);
+    v1.setProperty(ParallelismProperty.of(3));
+    v1.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    dagBuilder.addVertex(v1);
+
+    final IRVertex v2 = new OperatorVertex(t);
+    v2.setProperty(ParallelismProperty.of(2));
+    if (sameContainerType) {
+      v2.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    } else {
+      v2.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.TRANSIENT));
+    }
+    dagBuilder.addVertex(v2);
+
+    final IRVertex v3 = new OperatorVertex(t);
+    v3.setProperty(ParallelismProperty.of(2));
+    if (sameContainerType) {
+      v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.COMPUTE));
+    } else {
+      v3.setProperty(ExecutorPlacementProperty.of(ExecutorPlacementProperty.TRANSIENT));
+    }
+    dagBuilder.addVertex(v3);
+
+    final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, v1, v2, Coder.DUMMY_CODER);
+    dagBuilder.connectVertices(e1);
+
+    final IREdge e2 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v2, v3, Coder.DUMMY_CODER);
+    dagBuilder.connectVertices(e2);
 
     return dagBuilder.buildWithoutSourceSinkCheck();
   }

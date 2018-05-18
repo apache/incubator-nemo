@@ -28,9 +28,9 @@ import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.MetricMessageHandler;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
-import edu.snu.nemo.runtime.master.physicalplans.TestPlanGenerator;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
+import edu.snu.nemo.runtime.plangenerator.TestPlanGenerator;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -134,7 +134,9 @@ public final class FaultToleranceTest {
     executors.add(a3);
 
     setUpExecutors(executors, true);
-    final PhysicalPlan plan = TestPlanGenerator.getSimplePullPlan();
+    final PhysicalPlan plan =
+        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
+
     final JobStateManager jobStateManager =
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
@@ -201,7 +203,8 @@ public final class FaultToleranceTest {
     executors.add(a3);
     setUpExecutors(executors, true);
 
-    final PhysicalPlan plan = TestPlanGenerator.getSimplePullPlan();
+    final PhysicalPlan plan =
+        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
     final JobStateManager jobStateManager =
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
@@ -263,7 +266,8 @@ public final class FaultToleranceTest {
     executors.add(a3);
     setUpExecutors(executors, true);
 
-    final PhysicalPlan plan = TestPlanGenerator.getSimplePullPlan();
+    final PhysicalPlan plan =
+        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
     final JobStateManager jobStateManager =
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
@@ -325,7 +329,10 @@ public final class FaultToleranceTest {
 
     setUpExecutors(executors, false);
 
-    final PhysicalPlan plan = TestPlanGenerator.getSimplePullPlan();
+    final PhysicalPlan plan =
+        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
+
+
     final JobStateManager jobStateManager =
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 

@@ -26,11 +26,11 @@ import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.MetricMessageHandler;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
-import edu.snu.nemo.runtime.master.physicalplans.TestPlanGenerator;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
 import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.runtime.plangenerator.TestPlanGenerator;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -129,7 +129,8 @@ public final class BatchSingleJobSchedulerTest {
    */
   @Test(timeout=10000)
   public void testPull() throws Exception {
-    scheduleAndCheckJobTermination(TestPlanGenerator.getSimplePullPlan());
+    scheduleAndCheckJobTermination(
+        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false));
   }
 
   /**
@@ -138,7 +139,8 @@ public final class BatchSingleJobSchedulerTest {
    */
   @Test(timeout=10000)
   public void testPush() throws Exception {
-    scheduleAndCheckJobTermination(TestPlanGenerator.getSimplePushPlan());
+    scheduleAndCheckJobTermination(
+        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, true));
   }
 
   private void scheduleAndCheckJobTermination(final PhysicalPlan plan) throws InjectionException {
