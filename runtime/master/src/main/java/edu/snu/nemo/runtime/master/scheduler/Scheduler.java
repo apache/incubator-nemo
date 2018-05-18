@@ -78,11 +78,11 @@ public interface Scheduler {
    * @param failureCause for which the Task failed in the case of a recoverable failure.
    */
   void onTaskStateChanged(String executorId,
-                               String taskId,
-                               TaskState.State newState,
-                               int attemptIdx,
-                               @Nullable String taskPutOnHold,
-                               TaskState.RecoverableFailureCause failureCause);
+                          String taskId,
+                          TaskState.State newState,
+                          int attemptIdx,
+                          @Nullable String taskPutOnHold,
+                          TaskState.RecoverableFailureCause failureCause);
 
   /**
    * To be called when a job should be terminated.

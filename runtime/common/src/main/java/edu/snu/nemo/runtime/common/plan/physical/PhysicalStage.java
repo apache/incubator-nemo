@@ -41,7 +41,7 @@ public final class PhysicalStage extends Vertex {
    * Constructor.
    *
    * @param stageId                  ID of the stage.
-   * @param taskDag             the DAG of the task in this stage.
+   * @param taskDag                  the DAG of the task in this stage.
    * @param parallelism              how many tasks will be executed in this stage.
    * @param scheduleGroupIndex       the schedule group index.
    * @param containerType            the type of container to execute the task on.

@@ -122,7 +122,7 @@ public final class JobStateManager {
   }
 
   /**
-   * Initializes the states for the job/stages/taskgroups/tasks for this job.
+   * Initializes the states for the job/stages/tasks for this job.
    */
   private void initializeComputationStates() {
     onJobStateChanged(JobState.State.EXECUTING);
