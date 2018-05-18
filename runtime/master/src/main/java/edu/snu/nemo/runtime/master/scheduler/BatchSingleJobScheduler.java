@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,6 +63,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   private final SchedulingPolicy schedulingPolicy;
   private final SchedulerRunner schedulerRunner;
   private final PendingTaskGroupCollection pendingTaskGroupCollection;
+  private final ExecutorRegistry executorRegistry;
 
   /**
    * Other necessary components of this {@link edu.snu.nemo.runtime.master.RuntimeMaster}.
@@ -83,7 +84,8 @@ public final class BatchSingleJobScheduler implements Scheduler {
                                  final PendingTaskGroupCollection pendingTaskGroupCollection,
                                  final BlockManagerMaster blockManagerMaster,
                                  final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
-                                 final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler) {
+                                 final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
+                                 final ExecutorRegistry executorRegistry) {
     this.schedulingPolicy = schedulingPolicy;
     this.schedulerRunner = schedulerRunner;
     this.pendingTaskGroupCollection = pendingTaskGroupCollection;
@@ -94,6 +96,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
       pubSubEventHandlerWrapper.getPubSubEventHandler()
           .subscribe(updatePhysicalPlanEventHandler.getEventClass(), updatePhysicalPlanEventHandler);
     }
+    this.executorRegistry = executorRegistry;
   }
 
   /**
@@ -166,7 +169,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
   @Override
   public void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
-    schedulingPolicy.onExecutorAdded(executorRepresenter);
+    executorRegistry.registerRepresenter(executorRepresenter);
     schedulerRunner.onAnExecutorAvailable();
   }
 
@@ -178,7 +181,10 @@ public final class BatchSingleJobScheduler implements Scheduler {
     taskGroupsToReExecute.addAll(blockManagerMaster.removeWorker(executorId));
 
     // TaskGroups executing on the removed executor
-    taskGroupsToReExecute.addAll(schedulingPolicy.onExecutorRemoved(executorId));
+    executorRegistry.setRepresenterAsFailed(executorId);
+    final ExecutorRepresenter executor = executorRegistry.getFailedExecutorRepresenter(executorId);
+    executor.onExecutorFailed();
+    taskGroupsToReExecute.addAll(executor.getFailedTaskGroups());
 
     taskGroupsToReExecute.forEach(failedTaskGroupId ->
       onTaskGroupStateChanged(executorId, failedTaskGroupId, TaskGroupState.State.FAILED_RECOVERABLE,
@@ -430,7 +436,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
                                             final Boolean isOnHoldToComplete) {
     LOG.debug("{} completed in {}", new Object[]{taskGroupId, executorId});
     if (!isOnHoldToComplete) {
-      schedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroupId);
+      executorRegistry.getRunningExecutorRepresenter(executorId).onTaskGroupExecutionComplete(taskGroupId);
     }
 
     final String stageIdForTaskGroupUponCompletion = RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId);
@@ -453,7 +459,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
                                           final String taskGroupId,
                                           final String taskPutOnHold) {
     LOG.info("{} put on hold in {}", new Object[]{taskGroupId, executorId});
-    schedulingPolicy.onTaskGroupExecutionComplete(executorId, taskGroupId);
+    executorRegistry.getRunningExecutorRepresenter(executorId).onTaskGroupExecutionComplete(taskGroupId);
     final String stageIdForTaskGroupUponCompletion = RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId);
 
     final boolean stageComplete =
@@ -493,7 +499,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
                                                      final int attemptIdx, final TaskGroupState.State newState,
                                                      final TaskGroupState.RecoverableFailureCause failureCause) {
     LOG.info("{} failed in {} by {}", new Object[]{taskGroupId, executorId, failureCause});
-    schedulingPolicy.onTaskGroupExecutionFailed(executorId, taskGroupId);
+    executorRegistry.getExecutorRepresenter(executorId).onTaskGroupExecutionFailed(taskGroupId);
 
     final String stageId = RuntimeIdGenerator.getStageIdFromTaskGroupId(taskGroupId);
     final int attemptIndexForStage =
