@@ -25,8 +25,8 @@ limitations under the License.
         <relativePath>../../</relativePath>
     </parent>
 
-    <artifactId>nemo-runtime-master</artifactId>
-    <name>Nemo Runtime Master</name>
+    <artifactId>nemo-runtime-plangenerator</artifactId>
+    <name>Nemo Runtime Test Plans</name>
 
     <repositories>
         <repository>
@@ -38,28 +38,13 @@ limitations under the License.
     <dependencies>
         <dependency>
             <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>edu.snu.nemo</groupId>
             <artifactId>nemo-runtime-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-runtime-plangenerator</artifactId>
+            <artifactId>nemo-compiler-optimizer</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>${jackson.version}</version>
         </dependency>
     </dependencies>
 </project>

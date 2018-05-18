@@ -13,12 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.tests.runtime.master.scheduler;
+package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
-import edu.snu.nemo.runtime.master.scheduler.FreeSlotSchedulingPolicy;
-import edu.snu.nemo.runtime.master.scheduler.SchedulingPolicy;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -31,36 +29,36 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests {@link FreeSlotSchedulingPolicy}.
+ * Tests {@link RoundRobinSchedulingPolicy}
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ExecutorRepresenter.class, ScheduledTaskGroup.class})
-public final class FreeSlotSchedulingPolicyTest {
+public final class RoundRobinSchedulingPolicyTest {
 
-  private static ExecutorRepresenter mockExecutorRepresenter(final int numRunningTaskGroups,
-                                                             final int capacity) {
+  private static ExecutorRepresenter mockExecutorRepresenter(final int numRunningTaskGroups) {
     final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
     final Set<String> runningTaskGroups = new HashSet<>();
     IntStream.range(0, numRunningTaskGroups).forEach(i -> runningTaskGroups.add(String.valueOf(i)));
     when(executorRepresenter.getRunningTaskGroups()).thenReturn(runningTaskGroups);
-    when(executorRepresenter.getExecutorCapacity()).thenReturn(capacity);
     return executorRepresenter;
   }
 
   @Test
-  public void testFreeSlot() {
-    final SchedulingPolicy schedulingPolicy = new FreeSlotSchedulingPolicy();
-    final ExecutorRepresenter a0 = mockExecutorRepresenter(1, 1);
-    final ExecutorRepresenter a1 = mockExecutorRepresenter(2, 3);
+  public void testRoundRobin() {
+    final SchedulingPolicy schedulingPolicy = new RoundRobinSchedulingPolicy();
+    final ExecutorRepresenter a0 = mockExecutorRepresenter(1);
+    final ExecutorRepresenter a1 = mockExecutorRepresenter(2);
+    final ExecutorRepresenter a2 = mockExecutorRepresenter(2);
 
     final ScheduledTaskGroup scheduledTaskGroup = mock(ScheduledTaskGroup.class);
 
-    final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1));
+    final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1, a2));
 
     final Set<ExecutorRepresenter> candidateExecutors =
         schedulingPolicy.filterExecutorRepresenters(executorRepresenterList, scheduledTaskGroup);
 
-    final Set<ExecutorRepresenter> expectedExecutors = new HashSet<>(Arrays.asList(a1));
+    final Set<ExecutorRepresenter> expectedExecutors = new HashSet<>(Arrays.asList(a0));
     assertEquals(expectedExecutors, candidateExecutors);
   }
 }
+
