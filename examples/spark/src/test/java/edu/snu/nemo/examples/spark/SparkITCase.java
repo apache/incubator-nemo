@@ -59,8 +59,11 @@ public final class SparkITCase {
         .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
 
-    ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFilename);
-    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    try {
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFilename);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
   }
 
   @Test(timeout = TIMEOUT)

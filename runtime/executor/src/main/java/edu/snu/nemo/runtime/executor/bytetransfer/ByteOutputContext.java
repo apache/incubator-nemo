@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.executor.bytetransfer;
 
 import edu.snu.nemo.runtime.executor.data.FileArea;
-import edu.snu.nemo.runtime.executor.data.SerializedPartition;
+import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 

@@ -247,7 +247,7 @@ public final class TaskGroupExecutorTest {
           taskIdToOutputData.get(dstTask.getId()).add(dataToWrite);
           return null;
         }
-      }).when(outputWriter).writeElement(any());
+      }).when(outputWriter).write(any());
       return outputWriter;
     }
   }

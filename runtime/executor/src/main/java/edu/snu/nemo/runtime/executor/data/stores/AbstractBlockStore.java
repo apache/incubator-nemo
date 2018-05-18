@@ -40,7 +40,7 @@ public abstract class AbstractBlockStore implements BlockStore {
    * @param blockId the ID of the block to get the coder.
    * @return the coder.
    */
-  public final Serializer getSerializerFromWorker(final String blockId) {
+  protected final Serializer getSerializerFromWorker(final String blockId) {
     final String runtimeEdgeId = RuntimeIdGenerator.getRuntimeEdgeIdFromBlockId(blockId);
     return serializerManager.getSerializer(runtimeEdgeId);
   }
