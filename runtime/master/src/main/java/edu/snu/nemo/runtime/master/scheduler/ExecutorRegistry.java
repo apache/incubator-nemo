@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -33,6 +34,9 @@ import java.util.stream.Collectors;
 @DriverSide
 @ThreadSafe
 public final class ExecutorRegistry {
+  /**
+   * States of an executor.
+   */
   enum ExecutorState {
     RUNNING,
     FAILED,
@@ -79,6 +83,28 @@ public final class ExecutorRegistry {
       executors.put(executorId, updater.apply(pair.left(), pair.right()));
       return true;
     }
+  }
+
+  synchronized void terminate() {
+    for (final ExecutorRepresenter executor : getRunningExecutors()) {
+      executor.shutDown();
+      executors.put(executor.getExecutorId(), Pair.of(executor, ExecutorState.COMPLETED));
+    }
+  }
+
+  /**
+   * Retrieves the executor to which the given task was scheduled.
+   * @param taskId of the task to search.
+   * @return the {@link ExecutorRepresenter} of the executor the task was scheduled to.
+   */
+  @VisibleForTesting
+  synchronized Optional<ExecutorRepresenter> findExecutorForTask(final String taskId) {
+    for (final ExecutorRepresenter executor : getRunningExecutors()) {
+      if (executor.getRunningTasks().contains(taskId) || executor.getCompleteTasks().contains(taskId)) {
+        return Optional.of(executor);
+      }
+    }
+    return Optional.empty();
   }
 
   private Set<ExecutorRepresenter> getRunningExecutors() {

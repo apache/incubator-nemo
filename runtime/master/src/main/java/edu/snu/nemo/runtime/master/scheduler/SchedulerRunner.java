@@ -20,7 +20,6 @@ import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 import edu.snu.nemo.runtime.common.state.JobState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
-import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.*;
@@ -30,7 +29,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +46,7 @@ public final class SchedulerRunner {
   private final Map<String, JobStateManager> jobStateManagers;
   private final PendingTaskCollection pendingTaskCollection;
   private final ExecutorService schedulerThread;
-  private boolean initialJobScheduled;
+  private AtomicBoolean isSchedulerRunning;
   private boolean isTerminated;
   private final DelayedSignalingCondition mustCheckSchedulingAvailabilityOrSchedulerTerminated
       = new DelayedSignalingCondition();
@@ -63,7 +61,7 @@ public final class SchedulerRunner {
     this.jobStateManagers = new HashMap<>();
     this.pendingTaskCollection = pendingTaskCollection;
     this.schedulerThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "SchedulerRunner"));
-    this.initialJobScheduled = false;
+    this.isSchedulerRunning = new AtomicBoolean(false);
     this.isTerminated = false;
     this.executorRegistry = executorRegistry;
     this.schedulingPolicy = schedulingPolicy;
@@ -84,29 +82,64 @@ public final class SchedulerRunner {
   }
 
   /**
+   * Run the scheduler thread.
+   */
+  void runSchedulerThread() {
+    if (!isTerminated) {
+      if (!isSchedulerRunning.getAndSet(true)) {
+        schedulerThread.execute(new SchedulerThread());
+        schedulerThread.shutdown();
+      }
+    }
+  }
+
+  /**
    * Begin scheduling a job.
    * @param jobStateManager the corresponding {@link JobStateManager}
    */
   void scheduleJob(final JobStateManager jobStateManager) {
     if (!isTerminated) {
       jobStateManagers.put(jobStateManager.getJobId(), jobStateManager);
-
-      if (!initialJobScheduled) {
-        initialJobScheduled = true;
-        schedulerThread.execute(new SchedulerThread());
-        schedulerThread.shutdown();
-      }
     } // else ignore new incoming jobs when terminated.
   }
 
   void terminate() {
-    for (final String executorId : executorRegistry.getRunningExecutorIds()) {
-      final ExecutorRepresenter representer = executorRegistry.getRunningExecutorRepresenter(executorId);
-      representer.shutDown();
-      executorRegistry.setRepresenterAsCompleted(executorId);
-    }
     isTerminated = true;
     mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
+  }
+
+  void doScheduleTask() {
+    final Collection<ScheduledTask> schedulableTasks = pendingTaskCollection.peekSchedulableTasks().orElse(null);
+    if (schedulableTasks == null) {
+      // Task queue is empty
+      LOG.debug("PendingTaskCollection is empty. Awaiting for more Tasks...");
+      return;
+    }
+
+    int numScheduledTasks = 0;
+    for (final ScheduledTask schedulableTask : schedulableTasks) {
+      final JobStateManager jobStateManager = jobStateManagers.get(schedulableTask.getJobId());
+      LOG.debug("Trying to schedule {}...", schedulableTask.getTaskId());
+
+      final boolean isScheduled = executorRegistry.registerTask(schedulingPolicy, schedulableTask);
+      if (isScheduled) {
+        pendingTaskCollection.remove(schedulableTask.getTaskId());
+        jobStateManager.onTaskStateChanged(schedulableTask.getTaskId(), TaskState.State.EXECUTING);
+        numScheduledTasks++;
+
+        LOG.debug("Successfully scheduled {}", schedulableTask.getTaskId());
+      } else {
+        LOG.debug("Failed to schedule {}", schedulableTask.getTaskId());
+      }
+    }
+
+    LOG.debug("Examined {} Tasks, scheduled {} Tasks", schedulableTasks.size(), numScheduledTasks);
+    if (schedulableTasks.size() == numScheduledTasks) {
+      // Scheduled all Tasks in the stage
+      // Immediately run next iteration to check whether there is another schedulable stage
+      LOG.debug("Trying to schedule next Stage in the ScheduleGroup (if any)...");
+      mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
+    }
   }
 
   /**
@@ -121,41 +154,7 @@ public final class SchedulerRunner {
       while (!isTerminated) {
         // Iteration guard
         mustCheckSchedulingAvailabilityOrSchedulerTerminated.await();
-
-        final Collection<ScheduledTask> schedulableTasks = pendingTaskCollection
-            .peekSchedulableTasks().orElse(null);
-        if (schedulableTasks == null) {
-          // Task queue is empty
-          LOG.debug("PendingTaskCollection is empty. Awaiting for more Tasks...");
-          continue;
-        }
-
-        int numScheduledTasks = 0;
-        for (final ScheduledTask schedulableTask : schedulableTasks) {
-          final JobStateManager jobStateManager = jobStateManagers.get(schedulableTask.getJobId());
-          LOG.debug("Trying to schedule {}...", schedulableTask.getTaskId());
-
-          final boolean isScheduled = executorRegistry.registerTask(schedulingPolicy, schedulableTask);
-          if (isScheduled) {
-            jobStateManager.onTaskStateChanged(schedulableTask.getTaskId(), TaskState.State.EXECUTING);
-            pendingTaskCollection.remove(schedulableTask.getTaskId());
-            numScheduledTasks++;
-
-            // TODO: actually send the task to the executor
-            LOG.debug("Successfully scheduled {}", schedulableTask.getTaskId());
-          } else {
-            LOG.debug("Failed to schedule {}", schedulableTask.getTaskId());
-          }
-        }
-
-        LOG.debug("Examined {} Tasks, scheduled {} Tasks",
-            schedulableTasks.size(), numScheduledTasks);
-        if (schedulableTasks.size() == numScheduledTasks) {
-          // Scheduled all Tasks in the stage
-          // Immediately run next iteration to check whether there is another schedulable stage
-          LOG.debug("Trying to schedule next Stage in the ScheduleGroup (if any)...");
-          mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
-        }
+        doScheduleTask();
       }
       jobStateManagers.values().forEach(jobStateManager -> {
         if (jobStateManager.getJobState().getStateMachine().getCurrentState() == JobState.State.COMPLETE) {

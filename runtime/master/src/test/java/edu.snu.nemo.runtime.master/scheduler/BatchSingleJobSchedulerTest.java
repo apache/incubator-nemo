@@ -89,7 +89,7 @@ public final class BatchSingleJobSchedulerTest {
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     scheduler =
-        new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, pendingTaskCollection,
+        new BatchSingleJobScheduler(schedulerRunner, pendingTaskCollection,
             blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
 
     final ActiveContext activeContext = mock(ActiveContext.class);

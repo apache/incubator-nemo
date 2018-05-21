@@ -82,9 +82,11 @@ public final class ExecutorRepresenter {
   /**
    * Marks all Tasks which were running in this executor as failed.
    */
-  public void onExecutorFailed() {
-    runningTasks.forEach(taskId -> failedTasks.add(taskId));
+  public Set<String> onExecutorFailed() {
+    failedTasks.addAll(runningTasks);
+    final Set<String> snapshot = new HashSet<>(runningTasks);
     runningTasks.clear();
+    return snapshot;
   }
 
   /**

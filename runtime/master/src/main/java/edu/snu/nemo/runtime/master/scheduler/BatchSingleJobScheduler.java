@@ -49,7 +49,6 @@ import static edu.snu.nemo.runtime.common.state.TaskState.State.ON_HOLD;
  * (i.e., runtimeMasterThread in RuntimeMaster)
  *
  * BatchSingleJobScheduler receives a single {@link PhysicalPlan} to execute and schedules the Tasks.
- * The policy by which it schedules them is dependent on the implementation of {@link SchedulingPolicy}.
  */
 @DriverSide
 @NotThreadSafe
@@ -60,7 +59,6 @@ public final class BatchSingleJobScheduler implements Scheduler {
   /**
    * Components related to scheduling the given job.
    */
-  private final SchedulingPolicy schedulingPolicy;
   private final SchedulerRunner schedulerRunner;
   private final PendingTaskCollection pendingTaskCollection;
   private final ExecutorRegistry executorRegistry;
@@ -79,14 +77,12 @@ public final class BatchSingleJobScheduler implements Scheduler {
   private int initialScheduleGroup;
 
   @Inject
-  public BatchSingleJobScheduler(final SchedulingPolicy schedulingPolicy,
-                                 final SchedulerRunner schedulerRunner,
+  public BatchSingleJobScheduler(final SchedulerRunner schedulerRunner,
                                  final PendingTaskCollection pendingTaskCollection,
                                  final BlockManagerMaster blockManagerMaster,
                                  final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                                  final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
                                  final ExecutorRegistry executorRegistry) {
-    this.schedulingPolicy = schedulingPolicy;
     this.schedulerRunner = schedulerRunner;
     this.pendingTaskCollection = pendingTaskCollection;
     this.blockManagerMaster = blockManagerMaster;
@@ -105,11 +101,13 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * @param scheduledJobStateManager to keep track of the submitted job's states.
    */
   @Override
-  public void scheduleJob(final PhysicalPlan jobToSchedule, final JobStateManager scheduledJobStateManager) {
+  public void scheduleJob(final PhysicalPlan jobToSchedule,
+                          final JobStateManager scheduledJobStateManager) {
     this.physicalPlan = jobToSchedule;
     this.jobStateManager = scheduledJobStateManager;
 
     schedulerRunner.scheduleJob(scheduledJobStateManager);
+    schedulerRunner.runSchedulerThread();
     pendingTaskCollection.onJobScheduled(physicalPlan);
 
     LOG.info("Job to schedule: {}", jobToSchedule.getId());
@@ -170,7 +168,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
   @Override
   public void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
-    executorRegistry.registerRepresenter(executorRepresenter);
+    executorRegistry.registerExecutor(executorRepresenter);
     schedulerRunner.onAnExecutorAvailable();
   }
 
@@ -182,11 +180,10 @@ public final class BatchSingleJobScheduler implements Scheduler {
     tasksToReExecute.addAll(blockManagerMaster.removeWorker(executorId));
 
     // Tasks executing on the removed executor
-    executorRegistry.setRepresenterAsFailed(executorId);
-    final ExecutorRepresenter executor = executorRegistry.getFailedExecutorRepresenter(executorId);
-    executor.onExecutorFailed();
-    tasksToReExecute.addAll(executor.getFailedTasks());
-
+    executorRegistry.updateExecutor(executorId, (executor, state) -> {
+      tasksToReExecute.addAll(executor.onExecutorFailed());
+      return Pair.of(executor, ExecutorRegistry.ExecutorState.FAILED);
+    });
     tasksToReExecute.forEach(failedTaskId ->
         onTaskStateChanged(executorId, failedTaskId, TaskState.State.FAILED_RECOVERABLE,
             SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE, null,
@@ -203,6 +200,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   @Override
   public void terminate() {
     this.schedulerRunner.terminate();
+    this.executorRegistry.terminate();
     this.pendingTaskCollection.close();
   }
 
@@ -437,7 +435,10 @@ public final class BatchSingleJobScheduler implements Scheduler {
                                        final Boolean isOnHoldToComplete) {
     LOG.debug("{} completed in {}", new Object[]{taskId, executorId});
     if (!isOnHoldToComplete) {
-      executorRegistry.getRunningExecutorRepresenter(executorId).onTaskExecutionComplete(taskId);
+      executorRegistry.updateExecutor(executorId, (executor, state) -> {
+        executor.onTaskExecutionComplete(taskId);
+        return Pair.of(executor, state);
+      });
     }
 
     final String stageIdForTaskUponCompletion = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
@@ -460,7 +461,10 @@ public final class BatchSingleJobScheduler implements Scheduler {
                                      final String taskId,
                                      final String taskPutOnHold) {
     LOG.info("{} put on hold in {}", new Object[]{taskId, executorId});
-    executorRegistry.getRunningExecutorRepresenter(executorId).onTaskExecutionComplete(taskId);
+    executorRegistry.updateExecutor(executorId, (executor, state) -> {
+      executor.onTaskExecutionComplete(taskId);
+      return Pair.of(executor, state);
+    });
     final String stageIdForTaskUponCompletion = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
 
     final boolean stageComplete =
@@ -500,7 +504,10 @@ public final class BatchSingleJobScheduler implements Scheduler {
                                                 final int attemptIdx, final TaskState.State newState,
                                                 final TaskState.RecoverableFailureCause failureCause) {
     LOG.info("{} failed in {} by {}", new Object[]{taskId, executorId, failureCause});
-    executorRegistry.getExecutorRepresenter(executorId).onTaskExecutionFailed(taskId);
+    executorRegistry.updateExecutor(executorId, (executor, state) -> {
+      executor.onTaskExecutionFailed(taskId);
+      return Pair.of(executor, state);
+    });
 
     final String stageId = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
     final int attemptIndexForStage =

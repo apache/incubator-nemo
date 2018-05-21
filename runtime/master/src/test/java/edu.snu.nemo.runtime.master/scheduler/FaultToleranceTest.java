@@ -64,7 +64,6 @@ import static org.mockito.Mockito.mock;
     PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
 public final class FaultToleranceTest {
   private static final Logger LOG = LoggerFactory.getLogger(FaultToleranceTest.class.getName());
-  private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
   private Scheduler scheduler;
   private SchedulingPolicy schedulingPolicy;
   private SchedulerRunner schedulerRunner;
@@ -82,8 +81,6 @@ public final class FaultToleranceTest {
 
   @Before
   public void setUp() throws Exception {
-    irDAGBuilder = new DAGBuilder<>();
-
     metricMessageHandler = mock(MetricMessageHandler.class);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
@@ -103,9 +100,8 @@ public final class FaultToleranceTest {
     } else {
       schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskCollection, executorRegistry);
     }
-    scheduler =
-        new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, pendingTaskCollection,
-            blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
+    scheduler = new BatchSingleJobScheduler(schedulerRunner, pendingTaskCollection, blockManagerMaster,
+        pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
 
     // Add nodes
     for (final ExecutorRepresenter executor : executors) {
