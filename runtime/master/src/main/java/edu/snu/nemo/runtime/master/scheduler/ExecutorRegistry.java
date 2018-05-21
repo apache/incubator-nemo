@@ -59,7 +59,7 @@ public final class ExecutorRegistry {
     }
   }
 
-  synchronized boolean registerTask(final SchedulingPolicy policy, final ScheduledTask task) {
+  synchronized boolean scheduleAndRegisterTask(final SchedulingPolicy policy, final ScheduledTask task) {
     final Set<ExecutorRepresenter> candidateExecutors =
         policy.filterExecutorRepresenters(getRunningExecutors(), task);
     final Optional<ExecutorRepresenter> firstCandidate = candidateExecutors.stream().findFirst();

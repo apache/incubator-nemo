@@ -121,7 +121,7 @@ public final class SchedulerRunner {
       final JobStateManager jobStateManager = jobStateManagers.get(schedulableTask.getJobId());
       LOG.debug("Trying to schedule {}...", schedulableTask.getTaskId());
 
-      final boolean isScheduled = executorRegistry.registerTask(schedulingPolicy, schedulableTask);
+      final boolean isScheduled = executorRegistry.scheduleAndRegisterTask(schedulingPolicy, schedulableTask);
       if (isScheduled) {
         pendingTaskCollection.remove(schedulableTask.getTaskId());
         jobStateManager.onTaskStateChanged(schedulableTask.getTaskId(), TaskState.State.EXECUTING);
