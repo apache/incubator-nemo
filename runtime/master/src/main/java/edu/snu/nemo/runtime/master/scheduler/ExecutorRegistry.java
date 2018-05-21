@@ -17,7 +17,6 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 
@@ -25,6 +24,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -55,22 +55,13 @@ public final class ExecutorRegistry {
     if (executors.containsKey(executorId)) {
       throw new IllegalArgumentException("Duplicate executor: " + executor.toString());
     } else {
+      // System.out.println("executor registered " + executor.getExecutorId());
       executors.put(executorId, Pair.of(executor, ExecutorState.RUNNING));
     }
   }
 
-  synchronized boolean scheduleAndRegisterTask(final SchedulingPolicy policy, final ScheduledTask task) {
-    final Set<ExecutorRepresenter> candidateExecutors =
-        policy.filterExecutorRepresenters(getRunningExecutors(), task);
-    final Optional<ExecutorRepresenter> firstCandidate = candidateExecutors.stream().findFirst();
-
-    if (firstCandidate.isPresent()) {
-      final ExecutorRepresenter selectedExecutor = firstCandidate.get();
-      selectedExecutor.onTaskScheduled(task);
-      return true;
-    } else {
-      return false;
-    }
+  synchronized void viewExecutors(final Consumer<Set<ExecutorRepresenter>> consumer) {
+    consumer.accept(getRunningExecutors());
   }
 
   synchronized void updateExecutor(

@@ -20,12 +20,14 @@ import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 import edu.snu.nemo.runtime.common.state.JobState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
+import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -116,25 +118,34 @@ public final class SchedulerRunner {
       return;
     }
 
-    int numScheduledTasks = 0;
+    final AtomicInteger numScheduledTasks = new AtomicInteger(0); // to be incremented in lambda
     for (final ScheduledTask schedulableTask : schedulableTasks) {
       final JobStateManager jobStateManager = jobStateManagers.get(schedulableTask.getJobId());
       LOG.debug("Trying to schedule {}...", schedulableTask.getTaskId());
 
-      final boolean isScheduled = executorRegistry.scheduleAndRegisterTask(schedulingPolicy, schedulableTask);
-      if (isScheduled) {
-        pendingTaskCollection.remove(schedulableTask.getTaskId());
-        jobStateManager.onTaskStateChanged(schedulableTask.getTaskId(), TaskState.State.EXECUTING);
-        numScheduledTasks++;
+      executorRegistry.viewExecutors(executors -> {
+        final Set<ExecutorRepresenter> candidateExecutors =
+            schedulingPolicy.filterExecutorRepresenters(executors, schedulableTask);
+        final Optional<ExecutorRepresenter> firstCandidate = candidateExecutors.stream().findFirst();
 
-        LOG.debug("Successfully scheduled {}", schedulableTask.getTaskId());
-      } else {
-        LOG.debug("Failed to schedule {}", schedulableTask.getTaskId());
-      }
+        if (firstCandidate.isPresent()) {
+          // update metadata first
+          jobStateManager.onTaskStateChanged(schedulableTask.getTaskId(), TaskState.State.EXECUTING);
+          pendingTaskCollection.remove(schedulableTask.getTaskId());
+          numScheduledTasks.incrementAndGet();
+
+          // send the task
+          final ExecutorRepresenter selectedExecutor = firstCandidate.get();
+          selectedExecutor.onTaskScheduled(schedulableTask);
+          LOG.debug("Successfully scheduled {}", schedulableTask.getTaskId());
+        } else {
+          LOG.debug("Failed to schedule {}", schedulableTask.getTaskId());
+        }
+      });
     }
 
     LOG.debug("Examined {} Tasks, scheduled {} Tasks", schedulableTasks.size(), numScheduledTasks);
-    if (schedulableTasks.size() == numScheduledTasks) {
+    if (schedulableTasks.size() == numScheduledTasks.get()) {
       // Scheduled all Tasks in the stage
       // Immediately run next iteration to check whether there is another schedulable stage
       LOG.debug("Trying to schedule next Stage in the ScheduleGroup (if any)...");

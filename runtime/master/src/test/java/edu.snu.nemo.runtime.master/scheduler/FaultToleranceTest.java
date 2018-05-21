@@ -331,7 +331,6 @@ public final class FaultToleranceTest {
     final Random random = new Random(0); // Deterministic seed.
 
     for (final PhysicalStage stage : dagOf4Stages) {
-      final Map<String, Integer> taskIdToAttemptIndex = new HashMap<>();
 
       while (jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState() != COMPLETE) {
         // By chance, remove or add executor
@@ -358,14 +357,11 @@ public final class FaultToleranceTest {
         if (!executors.isEmpty()) {
           final int indexOfCompletedExecutor = random.nextInt(executors.size());
           // New set for snapshotting
-          final Set<String> runningTaskSnapshot =
-              new HashSet<>(executors.get(indexOfCompletedExecutor).getRunningTasks());
-          runningTaskSnapshot.forEach(taskId -> {
-            taskIdToAttemptIndex.putIfAbsent(taskId, 1);
-            final int attemptIndex = taskIdToAttemptIndex.get(taskId);
-            taskIdToAttemptIndex.put(taskId, attemptIndex + 1);
+          final Map<String, Integer> runningTaskSnapshot =
+              new HashMap<>(executors.get(indexOfCompletedExecutor).getRunningTaskToAttempt());
+          runningTaskSnapshot.entrySet().forEach(entry -> {
             SchedulerTestUtil.sendTaskStateEventToScheduler(
-                scheduler, executorRegistry, taskId, TaskState.State.COMPLETE, attemptIndex);
+                scheduler, executorRegistry, entry.getKey(), TaskState.State.COMPLETE, entry.getValue());
           });
         }
       }

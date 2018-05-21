@@ -189,10 +189,11 @@ public final class BatchSingleJobScheduler implements Scheduler {
       tasksToReExecute.addAll(executor.onExecutorFailed());
       return Pair.of(executor, ExecutorRegistry.ExecutorState.FAILED);
     });
+
     tasksToReExecute.forEach(failedTaskId -> {
       final int attemptIndex = jobStateManager.getCurrentAttemptIndexForTask(failedTaskId);
       onTaskStateChanged(executorId, failedTaskId, TaskState.State.FAILED_RECOVERABLE,
-          SCHEDULE_ATTEMPT_ON_CONTAINER_FAILURE, null, TaskState.RecoverableFailureCause.CONTAINER_FAILURE);
+          attemptIndex, null, TaskState.RecoverableFailureCause.CONTAINER_FAILURE);
     });
 
     if (!tasksToReExecute.isEmpty()) {

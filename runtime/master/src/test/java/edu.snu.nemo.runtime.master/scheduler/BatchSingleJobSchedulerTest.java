@@ -73,8 +73,8 @@ public final class BatchSingleJobSchedulerTest {
 
   private static final int EXECUTOR_CAPACITY = 20;
 
-  // This schedule index will make sure that task events are not ignored
-  private static final int MAGIC_SCHEDULE_ATTEMPT_INDEX = Integer.MAX_VALUE;
+  // Assume no failures
+  private static final int MAGIC_SCHEDULE_ATTEMPT_INDEX = 1;
 
   @Before
   public void setUp() throws Exception {
