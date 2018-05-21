@@ -33,19 +33,22 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class MapReduceITCase {
   private static final int TIMEOUT = 120000;
-  private static ArgBuilder builder = new ArgBuilder();
+  private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
   private static final String inputFileName = "sample_input_mr";
   private static final String outputFileName = "sample_output_mr";
   private static final String testResourceFileName = "test_output_mr";
+  private static final String executorResourceFileName = fileBasePath + "beam_sample_executor_resources.json";
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
 
-
   @Before
   public void setUp() throws Exception {
-    builder = new ArgBuilder();
+    builder = new ArgBuilder()
+        .addResourceJson(executorResourceFileName)
+        .addUserMain(MapReduce.class.getCanonicalName())
+        .addUserArgs(inputFilePath, outputFilePath);
   }
 
   @After
@@ -61,8 +64,6 @@ public final class MapReduceITCase {
   public void test() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName())
-        .addUserMain(MapReduce.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath)
         .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
@@ -71,8 +72,6 @@ public final class MapReduceITCase {
   public void testSailfish() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_sailfish")
-        .addUserMain(MapReduce.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath)
         .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
@@ -81,8 +80,6 @@ public final class MapReduceITCase {
   public void testDisagg() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_disagg")
-        .addUserMain(MapReduce.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath)
         .addOptimizationPolicy(DisaggregationPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
@@ -91,8 +88,6 @@ public final class MapReduceITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_pado")
-        .addUserMain(MapReduce.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath)
         .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
@@ -105,8 +100,6 @@ public final class MapReduceITCase {
   public void testDataSkew() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_dataskew")
-        .addUserMain(MapReduce.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath)
         .addOptimizationPolicy(DataSkewPolicyParallelismFive.class.getCanonicalName())
         .build());
   }

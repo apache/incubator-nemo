@@ -36,12 +36,14 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PowerMockIgnore("javax.management.*")
 public final class SparkITCase {
   private static final int TIMEOUT = 180000;
-  private static ArgBuilder builder = new ArgBuilder();
+  private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
+  private static final String executorResourceFileName = fileBasePath + "spark_sample_executor_resources.json";
 
   @Before
   public void setUp() {
-    builder = new ArgBuilder();
+    builder = new ArgBuilder()
+        .addResourceJson(executorResourceFileName);
   }
 
   @Test(timeout = TIMEOUT)
@@ -83,8 +85,11 @@ public final class SparkITCase {
         .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
 
-    ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
-    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    try {
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
   }
 
   @Test(timeout = TIMEOUT)
