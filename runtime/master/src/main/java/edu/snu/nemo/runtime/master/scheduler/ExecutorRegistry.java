@@ -15,190 +15,83 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import edu.snu.nemo.common.Pair;
+import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 
-import javax.annotation.Nonnull;
-import javax.annotation.concurrent.NotThreadSafe;
+import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 /**
- * (WARNING) This class is not thread-safe.
- * (i.e., Only a SchedulingPolicy accesses this class)
- *
+ * (WARNING) This class must be thread-safe.
  * Maintains map between executor id and {@link ExecutorRepresenter}.
  */
 @DriverSide
-@NotThreadSafe
+@ThreadSafe
 public final class ExecutorRegistry {
-  private final Map<String, ExecutorRepresenter> runningExecutors;
-  private final Map<String, ExecutorRepresenter> failedExecutors;
-  private final Map<String, ExecutorRepresenter> completedExecutors;
+  enum ExecutorState {
+    RUNNING,
+    FAILED,
+    COMPLETED
+  }
+
+  private final Map<String, Pair<ExecutorRepresenter, ExecutorState>> executors;
 
   @Inject
   public ExecutorRegistry() {
-    this.runningExecutors = new HashMap<>();
-    this.failedExecutors = new HashMap<>();
-    this.completedExecutors = new HashMap<>();
+    this.executors = new HashMap<>();
+  }
+
+  synchronized void registerExecutor(final ExecutorRepresenter executor) {
+    final String executorId = executor.getExecutorId();
+    if (executors.containsKey(executorId)) {
+      throw new IllegalArgumentException("Duplicate executor: " + executor.toString());
+    } else {
+      executors.put(executorId, Pair.of(executor, ExecutorState.RUNNING));
+    }
+  }
+
+  synchronized Optional<ExecutorRepresenter> registerTask(final SchedulingPolicy policy,
+                                                          final ScheduledTask task) {
+    final Set<ExecutorRepresenter> candidateExecutors =
+        policy.filterExecutorRepresenters(getRunningExecutors(), task);
+    final Optional<ExecutorRepresenter> firstCandiate = candidateExecutors.stream().findFirst();
+
+    if (firstCandiate.isPresent()) {
+      final ExecutorRepresenter selectedExecutor = firstCandiate.get();
+      selectedExecutor.onTaskScheduled(task);
+      return Optional.of(selectedExecutor);
+    } else {
+      return Optional.empty();
+    }
+  }
+
+  synchronized boolean updateExecutor(
+      final String executorId,
+      final BiFunction<ExecutorRepresenter, ExecutorState, Pair<ExecutorRepresenter, ExecutorState>> updater) {
+    final Pair<ExecutorRepresenter, ExecutorState> pair = executors.get(executorId);
+    if (pair == null) {
+      return false;
+    } else {
+      executors.put(executorId, updater.apply(pair.left(), pair.right()));
+      return true;
+    }
+  }
+
+  private Set<ExecutorRepresenter> getRunningExecutors() {
+    return executors.values()
+        .stream()
+        .filter(pair -> pair.right().equals(ExecutorState.RUNNING))
+        .map(Pair::left)
+        .collect(Collectors.toSet());
   }
 
   @Override
   public String toString() {
-    final StringBuffer sb = new StringBuffer();
-    sb.append("Running: ");
-    sb.append(runningExecutors.toString());
-    sb.append("/ Failed: ");
-    sb.append(failedExecutors.toString());
-    sb.append("/ Completed: ");
-    sb.append(completedExecutors.toString());
-    return sb.toString();
-  }
-
-  /**
-   * @param executorId the executor id
-   * @return the corresponding {@link ExecutorRepresenter} that has not failed
-   * @throws NoSuchExecutorException when the executor was not found
-   */
-  @Nonnull
-  public ExecutorRepresenter getExecutorRepresenter(final String executorId) throws NoSuchExecutorException {
-    try {
-      return getRunningExecutorRepresenter(executorId);
-    } catch (final NoSuchExecutorException e) {
-      return getFailedExecutorRepresenter(executorId);
-    }
-  }
-
-  /**
-   * @param executorId the executor id
-   * @return the corresponding {@link ExecutorRepresenter} that has not failed
-   * @throws NoSuchExecutorException when the executor was not found
-   */
-  @Nonnull
-  public ExecutorRepresenter getRunningExecutorRepresenter(final String executorId) throws NoSuchExecutorException {
-    final ExecutorRepresenter representer = runningExecutors.get(executorId);
-    if (representer == null) {
-      throw new NoSuchExecutorException(executorId);
-    }
-    return representer;
-  }
-
-  /**
-   * @param executorId the executor id
-   * @return the corresponding {@link ExecutorRepresenter} that has not failed
-   * @throws NoSuchExecutorException when the executor was not found
-   */
-  @Nonnull
-  public ExecutorRepresenter getFailedExecutorRepresenter(final String executorId) throws NoSuchExecutorException {
-    final ExecutorRepresenter representer = failedExecutors.get(executorId);
-    if (representer == null) {
-      throw new NoSuchExecutorException(executorId);
-    }
-    return representer;
-  }
-
-  /**
-   * Returns a {@link Set} of running executor ids in the registry.
-   * Note the set is not modifiable. Also, further changes in the registry will not be reflected to the set.
-   * @return a {@link Set} of executor ids for running executors in the registry
-   */
-  public Set<String> getRunningExecutorIds() {
-    return Collections.unmodifiableSet(new TreeSet<>(runningExecutors.keySet()));
-  }
-
-  /**
-   * Adds executor representer.
-   * @param representer the {@link ExecutorRepresenter} to register.
-   * @throws DuplicateExecutorIdException on multiple attempts to register same representer,
-   *         or different representers with same executor id.
-   */
-  public void registerRepresenter(final ExecutorRepresenter representer) throws DuplicateExecutorIdException {
-    final String executorId = representer.getExecutorId();
-    if (failedExecutors.get(executorId) != null) {
-      throw new DuplicateExecutorIdException(executorId);
-    }
-    runningExecutors.compute(executorId, (id, existingRepresenter) -> {
-      if (existingRepresenter != null) {
-        throw new DuplicateExecutorIdException(id);
-      }
-      return representer;
-    });
-  }
-
-  /**
-   * Moves the representer into the pool of representer of the failed executors.
-   * @param executorId the corresponding executor id
-   * @throws NoSuchExecutorException when the specified executor id is not registered, or already set as failed
-   */
-  public void setRepresenterAsFailed(final String executorId) throws NoSuchExecutorException {
-    final ExecutorRepresenter representer = runningExecutors.remove(executorId);
-    if (representer == null) {
-      throw new NoSuchExecutorException(executorId);
-    }
-    failedExecutors.put(executorId, representer);
-  }
-
-  /**
-   * Moves the representer into the pool of representer of the failed executors.
-   * @param executorId the corresponding executor id
-   * @throws NoSuchExecutorException when the specified executor id is not registered, or already set as failed
-   */
-  public void setRepresenterAsCompleted(final String executorId) throws NoSuchExecutorException {
-    final ExecutorRepresenter representer = runningExecutors.remove(executorId);
-    if (representer == null) {
-      throw new NoSuchExecutorException(executorId);
-    }
-    if (failedExecutors.containsKey(executorId)) {
-      throw new IllegalStateException(executorId + " is in " + failedExecutors);
-    }
-    if (completedExecutors.containsKey(executorId)) {
-      throw new IllegalStateException(executorId + " is already in " + completedExecutors);
-    }
-
-    completedExecutors.put(executorId, representer);
-  }
-
-  /**
-   * Exception that indicates multiple attempts to register executors with same executor id.
-   */
-  public final class DuplicateExecutorIdException extends RuntimeException {
-    private final String executorId;
-
-    /**
-     * @param executorId the executor id that caused this exception
-     */
-    public DuplicateExecutorIdException(final String executorId) {
-      super(String.format("Duplicate executorId: %s", executorId));
-      this.executorId = executorId;
-    }
-
-    /**
-     * @return the executor id for this exception
-     */
-    public String getExecutorId() {
-      return executorId;
-    }
-  }
-
-  /**
-   * Exception that indicates no executor for the specified executorId.
-   */
-  public final class NoSuchExecutorException extends RuntimeException {
-    private final String executorId;
-
-    /**
-     * @param executorId the executor id that caused this exception
-     */
-    public NoSuchExecutorException(final String executorId) {
-      super(String.format("No such executor: %s", executorId));
-      this.executorId = executorId;
-    }
-
-    /**
-     * @return the executor id for this exception
-     */
-    public String getExecutorId() {
-      return executorId;
-    }
+    return executors.toString();
   }
 }
