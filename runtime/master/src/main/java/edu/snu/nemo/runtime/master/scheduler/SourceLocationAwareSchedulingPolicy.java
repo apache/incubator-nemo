@@ -17,7 +17,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
@@ -29,7 +29,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * This policy is same as {@link RoundRobinSchedulingPolicy}, however for TaskGroups
+ * This policy is same as {@link RoundRobinSchedulingPolicy}, however for Tasks
  * with {@link edu.snu.nemo.common.ir.vertex.SourceVertex}, it tries to pick one of the executors
  * where the corresponding data resides.
  */
@@ -45,7 +45,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
 
   /**
    * @param readables collection of readables
-   * @return Set of source locations from source tasks in {@code taskGroupDAG}
+   * @return Set of source locations from source tasks in {@code taskDAG}
    * @throws Exception for any exception raised during querying source locations for a readable
    */
   private static Set<String> getSourceLocations(final Collection<Readable> readables) throws Exception {
@@ -59,15 +59,15 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
   /**
    * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by source location.
    *                               If there is no source locations, will return original set.
-   * @param scheduledTaskGroup {@link ScheduledTaskGroup} to be scheduled.
+   * @param scheduledTask {@link ScheduledTask} to be scheduled.
    * @return filtered Set of {@link ExecutorRepresenter}.
    */
   @Override
   public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
-                                                             final ScheduledTaskGroup scheduledTaskGroup) {
+                                                             final ScheduledTask scheduledTask) {
     final Set<String> sourceLocations;
     try {
-      sourceLocations = getSourceLocations(scheduledTaskGroup.getLogicalTaskIdToReadable().values());
+      sourceLocations = getSourceLocations(scheduledTask.getLogicalTaskIdToReadable().values());
     } catch (final UnsupportedOperationException e) {
       return executorRepresenterSet;
     } catch (final Exception e) {

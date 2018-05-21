@@ -34,14 +34,14 @@ public final class BlockState {
     stateMachineBuilder.addState(State.READY, "The block is ready to be created.");
     stateMachineBuilder.addState(State.SCHEDULED, "The block is scheduled for creation.");
     stateMachineBuilder.addState(State.COMMITTED, "The block has been committed.");
-    stateMachineBuilder.addState(State.LOST_BEFORE_COMMIT, "The task group that produces the block is scheduled, "
+    stateMachineBuilder.addState(State.LOST_BEFORE_COMMIT, "The task that produces the block is scheduled, "
         + "but failed before committing");
     stateMachineBuilder.addState(State.REMOVED, "The block has been removed (e.g., GC-ed).");
     stateMachineBuilder.addState(State.LOST, "Block lost.");
 
     // Add transitions
     stateMachineBuilder.addTransition(State.READY, State.SCHEDULED,
-        "The task group that produces the block is scheduled.");
+        "The task that produces the block is scheduled.");
     stateMachineBuilder.addTransition(State.SCHEDULED, State.COMMITTED, "Successfully moved and committed");
     stateMachineBuilder.addTransition(State.SCHEDULED, State.LOST_BEFORE_COMMIT, "The block is lost before commit");
     stateMachineBuilder.addTransition(State.COMMITTED, State.LOST, "Lost after committed");

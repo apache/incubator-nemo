@@ -16,9 +16,9 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 import edu.snu.nemo.runtime.common.state.JobState;
-import edu.snu.nemo.runtime.common.state.TaskGroupState;
+import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -39,14 +39,14 @@ import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 
 /**
- * Takes a TaskGroup from the pending queue and schedules it to an executor.
+ * Takes a Task from the pending queue and schedules it to an executor.
  */
 @DriverSide
 @NotThreadSafe
 public final class SchedulerRunner {
   private static final Logger LOG = LoggerFactory.getLogger(SchedulerRunner.class.getName());
   private final Map<String, JobStateManager> jobStateManagers;
-  private final PendingTaskGroupCollection pendingTaskGroupCollection;
+  private final PendingTaskCollection pendingTaskCollection;
   private final ExecutorService schedulerThread;
   private boolean initialJobScheduled;
   private boolean isTerminated;
@@ -58,10 +58,10 @@ public final class SchedulerRunner {
   @VisibleForTesting
   @Inject
   public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
-                         final PendingTaskGroupCollection pendingTaskGroupCollection,
+                         final PendingTaskCollection pendingTaskCollection,
                          final ExecutorRegistry executorRegistry) {
     this.jobStateManagers = new HashMap<>();
-    this.pendingTaskGroupCollection = pendingTaskGroupCollection;
+    this.pendingTaskCollection = pendingTaskCollection;
     this.schedulerThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "SchedulerRunner"));
     this.initialJobScheduled = false;
     this.isTerminated = false;
@@ -77,9 +77,9 @@ public final class SchedulerRunner {
   }
 
   /**
-   * Signals to the condition on TaskGroup availability.
+   * Signals to the condition on Task availability.
    */
-  public void onATaskGroupAvailable() {
+  public void onATaskAvailable() {
     mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();
   }
 
@@ -110,7 +110,7 @@ public final class SchedulerRunner {
   }
 
   /**
-   * A separate thread is run to schedule task groups to executors.
+   * A separate thread is run to schedule tasks to executors.
    */
   private final class SchedulerThread implements Runnable {
     @Override
@@ -122,18 +122,18 @@ public final class SchedulerRunner {
         // Iteration guard
         mustCheckSchedulingAvailabilityOrSchedulerTerminated.await();
 
-        final Collection<ScheduledTaskGroup> schedulableTaskGroups = pendingTaskGroupCollection
-            .peekSchedulableTaskGroups().orElse(null);
-        if (schedulableTaskGroups == null) {
-          // TaskGroup queue is empty
-          LOG.debug("PendingTaskGroupCollection is empty. Awaiting for more TaskGroups...");
+        final Collection<ScheduledTask> schedulableTasks = pendingTaskCollection
+            .peekSchedulableTasks().orElse(null);
+        if (schedulableTasks == null) {
+          // Task queue is empty
+          LOG.debug("PendingTaskCollection is empty. Awaiting for more Tasks...");
           continue;
         }
 
-        int numScheduledTaskGroups = 0;
-        for (final ScheduledTaskGroup schedulableTaskGroup : schedulableTaskGroups) {
-          final JobStateManager jobStateManager = jobStateManagers.get(schedulableTaskGroup.getJobId());
-          LOG.debug("Trying to schedule {}...", schedulableTaskGroup.getTaskGroupId());
+        int numScheduledTasks = 0;
+        for (final ScheduledTask schedulableTask : schedulableTasks) {
+          final JobStateManager jobStateManager = jobStateManagers.get(schedulableTask.getJobId());
+          LOG.debug("Trying to schedule {}...", schedulableTask.getTaskId());
 
           final Set<ExecutorRepresenter> runningExecutorRepresenter =
               executorRegistry.getRunningExecutorIds().stream()
@@ -141,26 +141,26 @@ public final class SchedulerRunner {
               .collect(Collectors.toSet());
 
           final Set<ExecutorRepresenter> candidateExecutors =
-              schedulingPolicy.filterExecutorRepresenters(runningExecutorRepresenter, schedulableTaskGroup);
+              schedulingPolicy.filterExecutorRepresenters(runningExecutorRepresenter, schedulableTask);
 
           if (candidateExecutors.size() != 0) {
-            jobStateManager.onTaskGroupStateChanged(schedulableTaskGroup.getTaskGroupId(),
-                TaskGroupState.State.EXECUTING);
+            jobStateManager.onTaskStateChanged(schedulableTask.getTaskId(),
+                TaskState.State.EXECUTING);
             final ExecutorRepresenter executor = candidateExecutors.stream().findFirst().get();
-            executor.onTaskGroupScheduled(schedulableTaskGroup);
+            executor.onTaskScheduled(schedulableTask);
 
-            pendingTaskGroupCollection.remove(schedulableTaskGroup.getTaskGroupId());
-            numScheduledTaskGroups++;
-            LOG.debug("Successfully scheduled {}", schedulableTaskGroup.getTaskGroupId());
+            pendingTaskCollection.remove(schedulableTask.getTaskId());
+            numScheduledTasks++;
+            LOG.debug("Successfully scheduled {}", schedulableTask.getTaskId());
           } else {
-            LOG.debug("Failed to schedule {}", schedulableTaskGroup.getTaskGroupId());
+            LOG.debug("Failed to schedule {}", schedulableTask.getTaskId());
           }
         }
 
-        LOG.debug("Examined {} TaskGroups, scheduled {} TaskGroups",
-            schedulableTaskGroups.size(), numScheduledTaskGroups);
-        if (schedulableTaskGroups.size() == numScheduledTaskGroups) {
-          // Scheduled all TaskGroups in the stage
+        LOG.debug("Examined {} Tasks, scheduled {} Tasks",
+            schedulableTasks.size(), numScheduledTasks);
+        if (schedulableTasks.size() == numScheduledTasks) {
+          // Scheduled all Tasks in the stage
           // Immediately run next iteration to check whether there is another schedulable stage
           LOG.debug("Trying to schedule next Stage in the ScheduleGroup (if any)...");
           mustCheckSchedulingAvailabilityOrSchedulerTerminated.signal();

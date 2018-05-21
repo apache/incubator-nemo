@@ -84,17 +84,17 @@ public final class BlockManagerMasterTest {
   public void testLostAfterCommit() throws Exception {
     final String edgeId = RuntimeIdGenerator.generateRuntimeEdgeId("Edge-0");
     final int srcTaskIndex = 0;
-    final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId(srcTaskIndex, "Stage-test");
+    final String taskId = RuntimeIdGenerator.generateTaskId(srcTaskIndex, "Stage-test");
     final String executorId = RuntimeIdGenerator.generateExecutorId();
     final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskIndex);
 
     // Initially the block state is READY.
-    blockManagerMaster.initializeState(blockId, taskGroupId);
+    blockManagerMaster.initializeState(blockId, taskId);
     checkBlockAbsentException(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), blockId,
         BlockState.State.READY);
 
     // The block is being SCHEDULED.
-    blockManagerMaster.onProducerTaskGroupScheduled(taskGroupId);
+    blockManagerMaster.onProducerTaskScheduled(taskId);
     final Future<String> future = blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture();
     checkPendingFuture(future);
 
@@ -110,33 +110,33 @@ public final class BlockManagerMasterTest {
   }
 
   /**
-   * Test scenario where producer task group fails.
+   * Test scenario where producer task fails.
    * @throws Exception
    */
   @Test
   public void testBeforeAfterCommit() throws Exception {
     final String edgeId = RuntimeIdGenerator.generateRuntimeEdgeId("Edge-1");
     final int srcTaskIndex = 0;
-    final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId(srcTaskIndex, "Stage-Test");
+    final String taskId = RuntimeIdGenerator.generateTaskId(srcTaskIndex, "Stage-Test");
     final String executorId = RuntimeIdGenerator.generateExecutorId();
     final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskIndex);
 
     // The block is being scheduled.
-    blockManagerMaster.initializeState(blockId, taskGroupId);
-    blockManagerMaster.onProducerTaskGroupScheduled(taskGroupId);
+    blockManagerMaster.initializeState(blockId, taskId);
+    blockManagerMaster.onProducerTaskScheduled(taskId);
     final Future<String> future0 = blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture();
     checkPendingFuture(future0);
 
-    // Producer task group fails.
-    blockManagerMaster.onProducerTaskGroupFailed(taskGroupId);
+    // Producer task fails.
+    blockManagerMaster.onProducerTaskFailed(taskId);
 
     // A future, previously pending on SCHEDULED state, is now completed exceptionally.
     checkBlockAbsentException(future0, blockId, BlockState.State.LOST_BEFORE_COMMIT);
     checkBlockAbsentException(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), blockId,
         BlockState.State.LOST_BEFORE_COMMIT);
 
-    // Re-scheduling the taskGroup.
-    blockManagerMaster.onProducerTaskGroupScheduled(taskGroupId);
+    // Re-scheduling the task.
+    blockManagerMaster.onProducerTaskScheduled(taskId);
     final Future<String> future1 = blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture();
     checkPendingFuture(future1);
 

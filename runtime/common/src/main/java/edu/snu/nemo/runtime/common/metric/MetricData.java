@@ -25,7 +25,7 @@ import java.util.Map;
  */
 public class MetricData {
   /**
-   * Computation units are: Job, State, TaskGroup and Task.
+   * Computation units are: Job, State, Task.
    */
   private final String computationUnitId;
   private final ObjectMapper objectMapper;

@@ -27,7 +27,7 @@ import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 import edu.snu.nemo.runtime.common.plan.physical.Task;
 import edu.snu.nemo.runtime.executor.data.SerializerManager;
 import edu.snu.nemo.runtime.executor.datatransfer.DataTransferFactory;
@@ -49,7 +49,7 @@ public final class Executor {
   private final String executorId;
 
   /**
-   * To be used for a thread pool to execute task groups.
+   * To be used for a thread pool to execute tasks.
    */
   private final ExecutorService executorService;
 
@@ -87,36 +87,35 @@ public final class Executor {
     return executorId;
   }
 
-  private synchronized void onTaskGroupReceived(final ScheduledTaskGroup scheduledTaskGroup) {
-    LOG.debug("Executor [{}] received TaskGroup [{}] to execute.",
-        new Object[]{executorId, scheduledTaskGroup.getTaskGroupId()});
-    executorService.execute(() -> launchTaskGroup(scheduledTaskGroup));
+  private synchronized void onTaskReceived(final ScheduledTask scheduledTask) {
+    LOG.debug("Executor [{}] received Task [{}] to execute.",
+        new Object[]{executorId, scheduledTask.getTaskId()});
+    executorService.execute(() -> launchTask(scheduledTask));
   }
 
   /**
-   * Launches the TaskGroup, and keeps track of the execution state with taskGroupStateManager.
-   * @param scheduledTaskGroup to launch.
+   * Launches the Task, and keeps track of the execution state with taskStateManager.
+   * @param scheduledTask to launch.
    */
-  private void launchTaskGroup(final ScheduledTaskGroup scheduledTaskGroup) {
+  private void launchTask(final ScheduledTask scheduledTask) {
     try {
-      final DAG<Task, RuntimeEdge<Task>> taskGroupDag =
-          SerializationUtils.deserialize(scheduledTaskGroup.getSerializedTaskGroupDag());
-      final TaskGroupStateManager taskGroupStateManager =
-          new TaskGroupStateManager(scheduledTaskGroup, taskGroupDag, executorId,
+      final DAG<Task, RuntimeEdge<Task>> taskDag =
+          SerializationUtils.deserialize(scheduledTask.getSerializedTaskDag());
+      final TaskStateManager taskStateManager =
+          new TaskStateManager(scheduledTask, taskDag, executorId,
               persistentConnectionToMasterMap, metricMessageSender);
 
-      scheduledTaskGroup.getTaskGroupIncomingEdges()
+      scheduledTask.getTaskIncomingEdges()
           .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
-      scheduledTaskGroup.getTaskGroupOutgoingEdges()
+      scheduledTask.getTaskOutgoingEdges()
           .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
-      // TODO #432: remove these coders when we "streamize" task execution within a TaskGroup.
-      taskGroupDag.getVertices().forEach(v -> {
-        taskGroupDag.getOutgoingEdgesOf(v)
+      taskDag.getVertices().forEach(v -> {
+        taskDag.getOutgoingEdgesOf(v)
             .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
       });
 
-      new TaskGroupExecutor(
-          scheduledTaskGroup, taskGroupDag, taskGroupStateManager, dataTransferFactory, metricMessageSender).execute();
+      new TaskExecutor(
+          scheduledTask, taskDag, taskStateManager, dataTransferFactory, metricMessageSender).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()
@@ -149,11 +148,11 @@ public final class Executor {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
-      case ScheduleTaskGroup:
-        final ControlMessage.ScheduleTaskGroupMsg scheduleTaskGroupMsg = message.getScheduleTaskGroupMsg();
-        final ScheduledTaskGroup scheduledTaskGroup =
-            SerializationUtils.deserialize(scheduleTaskGroupMsg.getTaskGroup().toByteArray());
-        onTaskGroupReceived(scheduledTaskGroup);
+      case ScheduleTask:
+        final ControlMessage.ScheduleTaskMsg scheduleTaskMsg = message.getScheduleTaskMsg();
+        final ScheduledTask scheduledTask =
+            SerializationUtils.deserialize(scheduleTaskMsg.getTask().toByteArray());
+        onTaskReceived(scheduledTask);
         break;
       default:
         throw new IllegalMessageException(

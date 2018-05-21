@@ -28,7 +28,7 @@ public final class RuntimeIdGenerator {
   private static AtomicLong resourceSpecIdGenerator = new AtomicLong(0);
   private static final String BLOCK_PREFIX = "Block-";
   private static final String BLOCK_ID_SPLITTER = "_";
-  private static final String TASK_GROUP_INFIX = "-TaskGroup-";
+  private static final String TASK_INFIX = "-Task-";
   private static final String PHYSICAL_TASK_ID_SPLITTER = "_";
 
   /**
@@ -98,15 +98,15 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for {@link edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup}.
+   * Generates the ID for {@link edu.snu.nemo.runtime.common.plan.physical.ScheduledTask}.
    *
-   * @param index   the index of this task group.
+   * @param index   the index of this task.
    * @param stageId the ID of the stage.
    * @return the generated ID
    */
-  public static String generateTaskGroupId(final int index,
+  public static String generateTaskId(final int index,
                                            final String stageId) {
-    return stageId + TASK_GROUP_INFIX + index;
+    return stageId + TASK_INFIX + index;
   }
 
   /**
@@ -181,34 +181,34 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Extracts stage ID from a task group ID.
+   * Extracts stage ID from a task ID.
    *
-   * @param taskGroupId the task group ID to extract.
+   * @param taskId the task ID to extract.
    * @return the stage ID.
    */
-  public static String getStageIdFromTaskGroupId(final String taskGroupId) {
-    return parseTaskGroupId(taskGroupId)[0];
+  public static String getStageIdFromTaskId(final String taskId) {
+    return parseTaskId(taskId)[0];
   }
 
   /**
-   * Extracts task group index from a task group ID.
+   * Extracts task index from a task ID.
    *
-   * @param taskGroupId the task group ID to extract.
+   * @param taskId the task ID to extract.
    * @return the index.
    */
-  public static int getIndexFromTaskGroupId(final String taskGroupId) {
-    return Integer.valueOf(parseTaskGroupId(taskGroupId)[1]);
+  public static int getIndexFromTaskId(final String taskId) {
+    return Integer.valueOf(parseTaskId(taskId)[1]);
   }
 
   /**
-   * Parses a task group id.
-   * The result array will contain the stage id and the index of the task group in order.
+   * Parses a task id.
+   * The result array will contain the stage id and the index of the task in order.
    *
-   * @param taskGroupId to parse.
+   * @param taskId to parse.
    * @return the array of parsed information.
    */
-  private static String[] parseTaskGroupId(final String taskGroupId) {
-    return taskGroupId.split(TASK_GROUP_INFIX);
+  private static String[] parseTaskId(final String taskId) {
+    return taskId.split(TASK_INFIX);
   }
 
   /**

@@ -26,7 +26,7 @@ import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.physical.*;
-import edu.snu.nemo.runtime.common.state.TaskGroupState;
+import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.*;
 
@@ -38,15 +38,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Executes a task group.
+ * Executes a task.
  */
-public final class TaskGroupExecutor {
-  private static final Logger LOG = LoggerFactory.getLogger(TaskGroupExecutor.class.getName());
+public final class TaskExecutor {
+  private static final Logger LOG = LoggerFactory.getLogger(TaskExecutor.class.getName());
 
-  private final DAG<Task, RuntimeEdge<Task>> taskGroupDag;
-  private final String taskGroupId;
-  private final int taskGroupIdx;
-  private final TaskGroupStateManager taskGroupStateManager;
+  private final DAG<Task, RuntimeEdge<Task>> taskDag;
+  private final String taskId;
+  private final int taskIdx;
+  private final TaskStateManager taskStateManager;
   private final List<PhysicalStageEdge> stageIncomingEdges;
   private final List<PhysicalStageEdge> stageOutgoingEdges;
   private final DataTransferFactory channelFactory;
@@ -76,24 +76,24 @@ public final class TaskGroupExecutor {
 
   /**
    * Constructor.
-   * @param scheduledTaskGroup TaskGroup with information needed during execution.
-   * @param taskGroupDag TaskGroup expressed as a DAG of Tasks.
-   * @param taskGroupStateManager State manager for this TaskGroup.
+   * @param scheduledTask Task with information needed during execution.
+   * @param taskDag A DAG of Tasks.
+   * @param taskStateManager State manager for this Task.
    * @param channelFactory For reading from/writing to data to other Stages.
    * @param metricMessageSender For sending metric with execution stats to Master.
    */
-  public TaskGroupExecutor(final ScheduledTaskGroup scheduledTaskGroup,
-                           final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
-                           final TaskGroupStateManager taskGroupStateManager,
-                           final DataTransferFactory channelFactory,
-                           final MetricMessageSender metricMessageSender) {
-    this.taskGroupDag = taskGroupDag;
-    this.taskGroupId = scheduledTaskGroup.getTaskGroupId();
-    this.taskGroupIdx = scheduledTaskGroup.getTaskGroupIdx();
-    this.taskGroupStateManager = taskGroupStateManager;
-    this.stageIncomingEdges = scheduledTaskGroup.getTaskGroupIncomingEdges();
-    this.stageOutgoingEdges = scheduledTaskGroup.getTaskGroupOutgoingEdges();
-    this.logicalTaskIdToReadable = scheduledTaskGroup.getLogicalTaskIdToReadable();
+  public TaskExecutor(final ScheduledTask scheduledTask,
+                      final DAG<Task, RuntimeEdge<Task>> taskDag,
+                      final TaskStateManager taskStateManager,
+                      final DataTransferFactory channelFactory,
+                      final MetricMessageSender metricMessageSender) {
+    this.taskDag = taskDag;
+    this.taskId = scheduledTask.getTaskId();
+    this.taskIdx = scheduledTask.getTaskIdx();
+    this.taskStateManager = taskStateManager;
+    this.stageIncomingEdges = scheduledTask.getTaskIncomingEdges();
+    this.stageOutgoingEdges = scheduledTask.getTaskOutgoingEdges();
+    this.logicalTaskIdToReadable = scheduledTask.getLogicalTaskIdToReadable();
     this.channelFactory = channelFactory;
     this.metricCollector = new MetricCollector(metricMessageSender);
     this.logicalTaskIdPutOnHold = null;
@@ -119,25 +119,25 @@ public final class TaskGroupExecutor {
   }
 
   /**
-   * Initializes this TaskGroup before execution.
-   * 1) Create and connect reader/writers for both inter-TaskGroup data and intra-TaskGroup data.
+   * Initializes this Task before execution.
+   * 1) Create and connect reader/writers for both inter-Task data and intra-Task data.
    * 2) Prepares Transforms if needed.
    */
   private void initialize() {
     // Initialize data read of SourceVertex.
-    taskGroupDag.getTopologicalSort().stream()
+    taskDag.getTopologicalSort().stream()
         .filter(task -> task instanceof BoundedSourceTask)
         .forEach(boundedSourceTask -> ((BoundedSourceTask) boundedSourceTask).setReadable(
             logicalTaskIdToReadable.get(boundedSourceTask.getId())));
 
     // Initialize data handlers for each Task.
-    taskGroupDag.topologicalDo(task -> taskDataHandlers.add(new TaskDataHandler(task)));
+    taskDag.topologicalDo(task -> taskDataHandlers.add(new TaskDataHandler(task)));
 
     // Initialize data transfer.
     // Construct a pointer-based DAG of TaskDataHandlers that are used for data transfer.
     // 'Pointer-based' means that it isn't Map/List-based in getting the data structure or parent/children
     // to avoid element-wise extra overhead of calculating hash values(HashMap) or iterating Lists.
-    taskGroupDag.topologicalDo(task -> {
+    taskDag.topologicalDo(task -> {
       final Set<PhysicalStageEdge> inEdgesFromOtherStages = getInEdgesFromOtherStages(task);
       final Set<PhysicalStageEdge> outEdgesToOtherStages = getOutEdgesToOtherStages(task);
       final TaskDataHandler dataHandler = getTaskDataHandler(task);
@@ -145,14 +145,14 @@ public final class TaskGroupExecutor {
       // Set data handlers of children tasks.
       // This forms a pointer-based DAG of TaskDataHandlers.
       final List<TaskDataHandler> childrenDataHandlers = new ArrayList<>();
-      taskGroupDag.getChildren(task.getId()).forEach(child ->
+      taskDag.getChildren(task.getId()).forEach(child ->
           childrenDataHandlers.add(getTaskDataHandler(child)));
       dataHandler.setChildrenDataHandler(childrenDataHandlers);
 
       // Add InputReaders for inter-stage data transfer
       inEdgesFromOtherStages.forEach(physicalStageEdge -> {
         final InputReader inputReader = channelFactory.createReader(
-            taskGroupIdx, physicalStageEdge.getSrcVertex(), physicalStageEdge);
+            taskIdx, physicalStageEdge.getSrcVertex(), physicalStageEdge);
 
         // For InputReaders that have side input, collect them separately.
         if (inputReader.isSideInputReader()) {
@@ -167,7 +167,7 @@ public final class TaskGroupExecutor {
       // Add OutputWriters for inter-stage data transfer
       outEdgesToOtherStages.forEach(physicalStageEdge -> {
         final OutputWriter outputWriter = channelFactory.createWriter(
-            task, taskGroupIdx, physicalStageEdge.getDstVertex(), physicalStageEdge);
+            task, taskIdx, physicalStageEdge.getDstVertex(), physicalStageEdge);
         dataHandler.addOutputWriter(outputWriter);
       });
 
@@ -179,7 +179,7 @@ public final class TaskGroupExecutor {
     });
 
     // Prepare Transforms if needed.
-    taskGroupDag.topologicalDo(task -> {
+    taskDag.topologicalDo(task -> {
       if (task instanceof OperatorTask) {
         final Transform transform = ((OperatorTask) task).getTransform();
         final Map<Transform, Object> sideInputMap = new HashMap<>();
@@ -230,7 +230,7 @@ public final class TaskGroupExecutor {
    * @param task the Task to add input OutputCollectors to.
    */
   private void addInputFromThisStage(final Task task, final TaskDataHandler dataHandler) {
-    List<Task> parentTasks = taskGroupDag.getParents(task.getId());
+    List<Task> parentTasks = taskDag.getParents(task.getId());
     final String physicalTaskId = getPhysicalTaskId(task.getId());
 
     if (parentTasks != null) {
@@ -257,7 +257,7 @@ public final class TaskGroupExecutor {
     final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
     final String physicalTaskId = getPhysicalTaskId(task.getId());
 
-    taskGroupDag.getOutgoingEdgesOf(task).forEach(outEdge -> {
+    taskDag.getOutgoingEdgesOf(task).forEach(outEdge -> {
       if (outEdge.isSideInput()) {
         outputCollector.setSideInputRuntimeEdge(outEdge);
         outputCollector.setAsSideInputFor(physicalTaskId);
@@ -279,7 +279,7 @@ public final class TaskGroupExecutor {
 
   /**
    * If the given task is MetricCollectionBarrierTask,
-   * set task as put on hold and use it to decide TaskGroup state when TaskGroup finishes.
+   * set task as put on hold and use it to decide Task state when Task finishes.
    *
    * @param task the task to check whether it has OutputWriters.
    * @return true if the task has OutputWriters.
@@ -290,7 +290,7 @@ public final class TaskGroupExecutor {
   }
 
   /**
-   * Finalize the output write of this TaskGroup.
+   * Finalize the output write of this Task.
    * As element-wise output write is done and the block is in memory,
    * flush the block into the designated data store and commit it.
    *
@@ -319,7 +319,7 @@ public final class TaskGroupExecutor {
    * Get input iterator from BoundedSource and bind it with id.
    */
   private void prepareInputFromSource() {
-    taskGroupDag.topologicalDo(task -> {
+    taskDag.topologicalDo(task -> {
       if (task instanceof BoundedSourceTask) {
         try {
           final String iteratorId = generateIteratorId();
@@ -328,14 +328,14 @@ public final class TaskGroupExecutor {
           srcIteratorIdToDataHandlersMap.putIfAbsent(iteratorId, new ArrayList<>());
           srcIteratorIdToDataHandlersMap.get(iteratorId).add(getTaskDataHandler(task));
         } catch (final BlockFetchException ex) {
-          taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
-              Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE));
+          taskStateManager.onTaskStateChanged(TaskState.State.FAILED_RECOVERABLE,
+              Optional.empty(), Optional.of(TaskState.RecoverableFailureCause.INPUT_READ_FAILURE));
           LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}",
-              taskGroupId, ex.toString());
+              taskId, ex.toString());
         } catch (final Exception e) {
-          taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE,
+          taskStateManager.onTaskStateChanged(TaskState.State.FAILED_UNRECOVERABLE,
               Optional.empty(), Optional.empty());
-          LOG.error("{} Execution Failed! Exception: {}", taskGroupId, e.toString());
+          LOG.error("{} Execution Failed! Exception: {}", taskId, e.toString());
           throw new RuntimeException(e);
         }
       }
@@ -374,12 +374,12 @@ public final class TaskGroupExecutor {
   }
 
   /**
-   * Check whether all tasks in this TaskGroup are finished.
+   * Check whether all tasks in this Task are finished.
    *
    * @return true if all tasks are finished.
    */
   private boolean finishedAllTasks() {
-    // Total number of Tasks in this TaskGroup
+    // Total number of Tasks
     int taskNum = taskDataHandlers.size();
     int finishedTaskNum = finishedTaskIds.size();
 
@@ -496,22 +496,22 @@ public final class TaskGroupExecutor {
   }
 
   /**
-   * Executes the task group.
+   * Executes the task.
    */
   public void execute() {
     final Map<String, Object> metric = new HashMap<>();
-    metricCollector.beginMeasurement(taskGroupId, metric);
+    metricCollector.beginMeasurement(taskId, metric);
     long boundedSrcReadStartTime = 0;
     long boundedSrcReadEndTime = 0;
     long inputReadStartTime = 0;
     long inputReadEndTime = 0;
     if (isExecutionRequested) {
-      throw new RuntimeException("TaskGroup {" + taskGroupId + "} execution called again!");
+      throw new RuntimeException("Task {" + taskId + "} execution called again!");
     } else {
       isExecutionRequested = true;
     }
-    taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.EXECUTING, Optional.empty(), Optional.empty());
-    LOG.info("{} Executing!", taskGroupId);
+    taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
+    LOG.info("{} Executing!", taskId);
 
     // Prepare input data from bounded source.
     boundedSrcReadStartTime = System.currentTimeMillis();
@@ -523,7 +523,7 @@ public final class TaskGroupExecutor {
     inputReadStartTime = System.currentTimeMillis();
     prepareInputFromOtherStages();
 
-    // Execute the TaskGroup DAG.
+    // Execute the Task DAG.
     try {
       srcIteratorIdToDataHandlersMap.forEach((srcIteratorId, dataHandlers) -> {
         Iterator iterator = idToSrcIteratorMap.get(srcIteratorId);
@@ -565,8 +565,8 @@ public final class TaskGroupExecutor {
       inputReadEndTime = System.currentTimeMillis();
       metric.put("InputReadTime(ms)", inputReadEndTime - inputReadStartTime);
 
-      // Process intra-TaskGroup data.
-      // Intra-TaskGroup data comes from outputCollectors of this TaskGroup's Tasks.
+      // Process intra-Task data.
+      // Intra-Task data comes from outputCollectors of this Task's Tasks.
       initializeOutputToChildrenDataHandlersMap();
       while (!finishedAllTasks()) {
         outputToChildrenDataHandlersMap.forEach((outputCollector, childrenDataHandlers) -> {
@@ -609,30 +609,30 @@ public final class TaskGroupExecutor {
         updateOutputToChildrenDataHandlersMap();
       }
     } catch (final BlockWriteException ex2) {
-      taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_RECOVERABLE,
-          Optional.empty(), Optional.of(TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
+      taskStateManager.onTaskStateChanged(TaskState.State.FAILED_RECOVERABLE,
+          Optional.empty(), Optional.of(TaskState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
       LOG.error("{} Execution Failed (Recoverable: output write failure)! Exception: {}",
-          taskGroupId, ex2.toString());
+          taskId, ex2.toString());
     } catch (final Exception e) {
-      taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.FAILED_UNRECOVERABLE,
+      taskStateManager.onTaskStateChanged(TaskState.State.FAILED_UNRECOVERABLE,
           Optional.empty(), Optional.empty());
       LOG.error("{} Execution Failed! Exception: {}",
-          taskGroupId, e.toString());
+          taskId, e.toString());
       throw new RuntimeException(e);
     }
 
-    // Put TaskGroup-unit metrics.
+    // Put Task-unit metrics.
     final boolean available = serBlockSize >= 0;
     putReadBytesMetric(available, serBlockSize, encodedBlockSize, metric);
-    metricCollector.endMeasurement(taskGroupId, metric);
+    metricCollector.endMeasurement(taskId, metric);
     if (logicalTaskIdPutOnHold == null) {
-      taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.COMPLETE, Optional.empty(), Optional.empty());
+      taskStateManager.onTaskStateChanged(TaskState.State.COMPLETE, Optional.empty(), Optional.empty());
     } else {
-      taskGroupStateManager.onTaskGroupStateChanged(TaskGroupState.State.ON_HOLD,
+      taskStateManager.onTaskStateChanged(TaskState.State.ON_HOLD,
           Optional.of(logicalTaskIdPutOnHold),
           Optional.empty());
     }
-    LOG.info("{} Complete!", taskGroupId);
+    LOG.info("{} Complete!", taskId);
   }
 
   /**
@@ -695,7 +695,7 @@ public final class TaskGroupExecutor {
    * @return the physical task id.
    */
   private String getPhysicalTaskId(final String logicalTaskId) {
-    return RuntimeIdGenerator.generatePhysicalTaskId(taskGroupIdx, logicalTaskId);
+    return RuntimeIdGenerator.generatePhysicalTaskId(taskIdx, logicalTaskId);
   }
 
   /**

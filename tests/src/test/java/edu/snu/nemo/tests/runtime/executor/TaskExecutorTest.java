@@ -28,8 +28,8 @@ import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.physical.*;
 import edu.snu.nemo.runtime.executor.MetricMessageSender;
-import edu.snu.nemo.runtime.executor.TaskGroupExecutor;
-import edu.snu.nemo.runtime.executor.TaskGroupStateManager;
+import edu.snu.nemo.runtime.executor.TaskExecutor;
+import edu.snu.nemo.runtime.executor.TaskStateManager;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.DataTransferFactory;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
@@ -53,27 +53,27 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests {@link TaskGroupExecutor}.
+ * Tests {@link TaskExecutor}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({InputReader.class, OutputWriter.class, DataTransferFactory.class,
-    TaskGroupStateManager.class, PhysicalStageEdge.class})
-public final class TaskGroupExecutorTest {
+    TaskStateManager.class, PhysicalStageEdge.class})
+public final class TaskExecutorTest {
   private static final int DATA_SIZE = 100;
   private static final String CONTAINER_TYPE = "CONTAINER_TYPE";
   private static final int SOURCE_PARALLELISM = 5;
   private List elements;
   private Map<String, List<Object>> taskIdToOutputData;
   private DataTransferFactory dataTransferFactory;
-  private TaskGroupStateManager taskGroupStateManager;
+  private TaskStateManager taskStateManager;
   private MetricMessageSender metricMessageSender;
 
   @Before
   public void setUp() throws Exception {
     elements = getRangedNumList(0, DATA_SIZE);
 
-    // Mock a TaskGroupStateManager. It accumulates the state change into a list.
-    taskGroupStateManager = mock(TaskGroupStateManager.class);
+    // Mock a TaskStateManager. It accumulates the state change into a list.
+    taskStateManager = mock(TaskStateManager.class);
 
     // Mock a DataTransferFactory.
     taskIdToOutputData = new HashMap<>();
@@ -88,11 +88,10 @@ public final class TaskGroupExecutorTest {
   }
 
   /**
-   * Test the {@link BoundedSourceTask} processing in {@link TaskGroupExecutor}.
+   * Test the {@link BoundedSourceTask} processing in {@link TaskExecutor}.
    */
   @Test(timeout=2000)
   public void testSourceTask() throws Exception {
-    // Create a task group only having a source task.
     final IRVertex sourceIRVertex = new SimpleIRVertex();
     final String sourceIrVertexId = sourceIRVertex.getId();
 
@@ -117,15 +116,15 @@ public final class TaskGroupExecutorTest {
         new DAGBuilder<Task, RuntimeEdge<Task>>().addVertex(boundedSourceTask).build();
     final PhysicalStageEdge stageOutEdge = mock(PhysicalStageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(sourceIRVertex);
-    final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId(0, stageId);
-    final ScheduledTaskGroup scheduledTaskGroup =
-        new ScheduledTaskGroup("testSourceTask", new byte[0], taskGroupId, Collections.emptyList(),
+    final String taskId = RuntimeIdGenerator.generateTaskId(0, stageId);
+    final ScheduledTask scheduledTask =
+        new ScheduledTask("testSourceTask", new byte[0], taskId, Collections.emptyList(),
             Collections.singletonList(stageOutEdge), 0, CONTAINER_TYPE, logicalIdToReadable);
 
-    // Execute the task group.
-    final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
-        scheduledTaskGroup, taskDag, taskGroupStateManager, dataTransferFactory, metricMessageSender);
-    taskGroupExecutor.execute();
+    // Execute the task.
+    final TaskExecutor taskExecutor = new TaskExecutor(
+        scheduledTask, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
+    taskExecutor.execute();
 
     // Check the output.
     assertEquals(100, taskIdToOutputData.get(sourceTaskId).size());
@@ -133,9 +132,9 @@ public final class TaskGroupExecutorTest {
   }
 
   /**
-   * Test the {@link OperatorTask} processing in {@link TaskGroupExecutor}.
+   * Test the {@link OperatorTask} processing in {@link TaskExecutor}.
    *
-   * The DAG of the task group to test will looks like:
+   * The DAG of the task to test will looks like:
    * operator task 1 -> operator task 2
    *
    * The output data from upstream stage will be split
@@ -145,7 +144,6 @@ public final class TaskGroupExecutorTest {
    */
   @Test//(timeout=2000)
   public void testOperatorTask() throws Exception {
-    // Create a task group with two operator tasks.
     final IRVertex operatorIRVertex1 = new SimpleIRVertex();
     final IRVertex operatorIRVertex2 = new SimpleIRVertex();
     final String operatorIRVertexId1 = operatorIRVertex1.getId();
@@ -169,19 +167,19 @@ public final class TaskGroupExecutorTest {
         .connectVertices(new RuntimeEdge<Task>(
             runtimeIREdgeId, edgeProperties, operatorTask1, operatorTask2, coder))
         .build();
-    final String taskGroupId = RuntimeIdGenerator.generateTaskGroupId(0, stageId);
+    final String taskId = RuntimeIdGenerator.generateTaskId(0, stageId);
     final PhysicalStageEdge stageInEdge = mock(PhysicalStageEdge.class);
     when(stageInEdge.getDstVertex()).thenReturn(operatorIRVertex1);
     final PhysicalStageEdge stageOutEdge = mock(PhysicalStageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(operatorIRVertex2);
-    final ScheduledTaskGroup scheduledTaskGroup =
-        new ScheduledTaskGroup("testSourceTask", new byte[0], taskGroupId, Collections.singletonList(stageInEdge),
+    final ScheduledTask scheduledTask =
+        new ScheduledTask("testSourceTask", new byte[0], taskId, Collections.singletonList(stageInEdge),
             Collections.singletonList(stageOutEdge), 0, CONTAINER_TYPE, Collections.emptyMap());
 
-    // Execute the task group.
-    final TaskGroupExecutor taskGroupExecutor = new TaskGroupExecutor(
-        scheduledTaskGroup, taskDag, taskGroupStateManager, dataTransferFactory, metricMessageSender);
-    taskGroupExecutor.execute();
+    // Execute the task.
+    final TaskExecutor taskExecutor = new TaskExecutor(
+        scheduledTask, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
+    taskExecutor.execute();
 
     // Check the output.
     assertEquals(100, taskIdToOutputData.get(operatorTaskId2).size());

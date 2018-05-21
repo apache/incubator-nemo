@@ -136,10 +136,10 @@ public final class DataTransferTest {
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     final SchedulingPolicy schedulingPolicy = injector.getInstance(CompositeSchedulingPolicy.class);
-    final PendingTaskGroupCollection taskGroupQueue = new SingleJobTaskGroupCollection();
-    final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingPolicy, taskGroupQueue, executorRegistry);
+    final PendingTaskCollection taskQueue = new SingleJobTaskCollection();
+    final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingPolicy, taskQueue, executorRegistry);
     final Scheduler scheduler =
-        new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, taskGroupQueue, master,
+        new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, taskQueue, master,
             pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
     final AtomicInteger executorCount = new AtomicInteger(0);
 
@@ -328,11 +328,11 @@ public final class DataTransferTest {
     dummyEdge = new PhysicalStageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
         srcStage, dstStage, CODER, false);
     // Initialize states in Master
-    srcStage.getTaskGroupIds().forEach(srcTaskGroupId -> {
+    srcStage.getTaskIds().forEach(srcTaskId -> {
       final String blockId = RuntimeIdGenerator.generateBlockId(
-          edgeId, RuntimeIdGenerator.getIndexFromTaskGroupId(srcTaskGroupId));
-      master.initializeState(blockId, srcTaskGroupId);
-      master.onProducerTaskGroupScheduled(srcTaskGroupId);
+          edgeId, RuntimeIdGenerator.getIndexFromTaskId(srcTaskId));
+      master.initializeState(blockId, srcTaskId);
+      master.onProducerTaskScheduled(srcTaskId);
     });
 
     // Write
@@ -419,14 +419,14 @@ public final class DataTransferTest {
     dummyEdge2 = new PhysicalStageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2,
         srcStage, dstStage2, CODER, false);
     // Initialize states in Master
-    srcStage.getTaskGroupIds().forEach(srcTaskGroupId -> {
+    srcStage.getTaskIds().forEach(srcTaskId -> {
       final String blockId = RuntimeIdGenerator.generateBlockId(
-          edgeId, RuntimeIdGenerator.getIndexFromTaskGroupId(srcTaskGroupId));
-      master.initializeState(blockId, srcTaskGroupId);
+          edgeId, RuntimeIdGenerator.getIndexFromTaskId(srcTaskId));
+      master.initializeState(blockId, srcTaskId);
       final String blockId2 = RuntimeIdGenerator.generateBlockId(
-          edgeId2, RuntimeIdGenerator.getIndexFromTaskGroupId(srcTaskGroupId));
-      master.initializeState(blockId2, srcTaskGroupId);
-      master.onProducerTaskGroupScheduled(srcTaskGroupId);
+          edgeId2, RuntimeIdGenerator.getIndexFromTaskId(srcTaskId));
+      master.initializeState(blockId2, srcTaskId);
+      master.onProducerTaskScheduled(srcTaskId);
     });
 
     // Write

@@ -63,27 +63,27 @@ class PhysicalStageState:
     def __init__(self, data):
         self.id = data['id']
         self.state = data['state']
-        self.taskGroups = {}
-        for taskGroup in data['taskGroups']:
-            self.taskGroups[taskGroup['id']] = TaskGroupState(taskGroup)
+        self.tasks = {}
+        for task in data['tasks']:
+            self.tasks[task['id']] = TaskState(task)
     @classmethod
     def empty(cls):
-        return cls({'id': None, 'state': None, 'taskGroups': []})
+        return cls({'id': None, 'state': None, 'tasks': []})
     def get(self, id):
         try:
-            return self.taskGroups[id]
+            return self.tasks[id]
         except:
-            return TaskGroupState.empty()
+            return TaskState.empty()
     @property
-    def taskGroupStateSummary(self):
-        stateToNumTaskGroups = dict()
-        for taskGroupState in self.taskGroups.values():
-            before = stateToNumTaskGroups.get(taskGroupState.state, 0)
-            stateToNumTaskGroups[taskGroupState.state] = before + 1
-        return '\\n'.join(['{}: {}'.format(state, stateToNumTaskGroups[state])
-            for state in stateToNumTaskGroups.keys()])
+    def taskStateSummary(self):
+        stateToNumTasks = dict()
+        for taskState in self.tasks.values():
+            before = stateToNumTasks.get(taskState.state, 0)
+            stateToNumTasks[taskState.state] = before + 1
+        return '\\n'.join(['{}: {}'.format(state, stateToNumTasks[state])
+            for state in stateToNumTasks.keys()])
 
-class TaskGroupState:
+class TaskState:
     def __init__(self, data):
         self.id = data['id']
         self.state = data['state']
@@ -252,7 +252,7 @@ class LoopVertex:
 class PhysicalStage:
     def __init__(self, id, properties, state):
         self.id = id
-        self.taskGroup = DAG(properties['taskGroupDag'], JobState.empty())
+        self.task = DAG(properties['taskDag'], JobState.empty())
         self.idx = getIdx()
         self.state = state
     @property
@@ -262,14 +262,14 @@ class PhysicalStage:
         else:
             state = ' ({})'.format(self.state.state)
         dot = 'subgraph cluster_{} {{'.format(self.idx)
-        dot += 'label = "{}{}\\n\\n{} TaskGroup(s):\\n{}";'.format(self.id, state, len(self.state.taskGroups), self.state.taskGroupStateSummary)
+        dot += 'label = "{}{}\\n\\n{} Task(s):\\n{}";'.format(self.id, state, len(self.state.tasks), self.state.taskStateSummary)
         dot += 'color=red; bgcolor="{}";'.format(stateToColor(self.state.state))
-        dot += self.taskGroup.dot
+        dot += self.task.dot
         dot += '}'
         return dot
     @property
     def oneVertex(self):
-        return next(iter(self.taskGroup.vertices.values())).oneVertex
+        return next(iter(self.task.vertices.values())).oneVertex
     @property
     def logicalEnd(self):
         return 'cluster_{}'.format(self.idx)

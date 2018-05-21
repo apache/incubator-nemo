@@ -60,7 +60,7 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
   }
 
   /**
-   * @return the information of the task at which this optimization occurs: its name and its task group ID.
+   * @return the information of the task at which this optimization occurs: its name and its task ID.
    */
   public Pair<String, String> getTaskInfo() {
     return this.taskInfo;

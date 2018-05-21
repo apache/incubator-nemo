@@ -44,7 +44,7 @@ public final class ResourceSpecification {
   }
 
   /**
-   * @return The number of TaskGroups that can be run in this container.
+   * @return The number of Tasks that can be run in this container.
    */
   public int getCapacity() {
     return capacity;
@@ -89,7 +89,7 @@ public final class ResourceSpecification {
     }
 
     /**
-     * @param inputCapacity the number of TaskGroups that can be run in this container
+     * @param inputCapacity the number of Tasks that can be run in this container
      * @return {@link Builder} object.
      */
     public Builder setCapacity(final int inputCapacity) {

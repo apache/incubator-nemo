@@ -228,9 +228,9 @@ public final class PhysicalPlanGenerator
       final int stageParallelism = firstVertexProperties.get(ExecutionProperty.Key.Parallelism);
       final String containerType = firstVertexProperties.get(ExecutionProperty.Key.ExecutorPlacement);
 
-      // Only one task group DAG will be created and reused.
+      // Only one task DAG will be created and reused.
       final DAGBuilder<Task, RuntimeEdge<Task>> stageInternalDAGBuilder = new DAGBuilder<>();
-      // Collect split source readables in advance and bind to each scheduled task group to avoid extra source split.
+      // Collect split source readables in advance and bind to each scheduled task to avoid extra source split.
       final List<Map<String, Readable>> logicalTaskIdToReadables = new ArrayList<>(stageParallelism);
       for (int i = 0; i < stageParallelism; i++) {
         logicalTaskIdToReadables.add(new HashMap<>());
@@ -273,7 +273,7 @@ public final class PhysicalPlanGenerator
         taskIRVertexMap.put(newTaskToAdd, irVertex);
       });
 
-      // connect internal edges in the task group. It suffices to iterate over only the stage internal inEdges.
+      // connect internal edges in the task. It suffices to iterate over only the stage internal inEdges.
       final DAG<IRVertex, IREdge> stageInternalDAG = stage.getStageInternalDAG();
       stageInternalDAG.getVertices().forEach(irVertex -> {
         final List<IREdge> inEdges = stageInternalDAG.getIncomingEdgesOf(irVertex);
@@ -283,7 +283,7 @@ public final class PhysicalPlanGenerator
                 edge.getCoder(), edge.isSideInput())));
       });
 
-      // Create the task group to add for this stage.
+      // Create the task to add for this stage.
       final PhysicalStage physicalStage =
           new PhysicalStage(stage.getId(), stageInternalDAGBuilder.build(),
               stageParallelism, stage.getScheduleGroupIndex(), containerType, logicalTaskIdToReadables);

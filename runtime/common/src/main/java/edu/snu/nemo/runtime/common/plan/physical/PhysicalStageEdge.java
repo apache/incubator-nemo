@@ -42,9 +42,9 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
   private final IRVertex dstVertex;
 
   /**
-   * The list between the task group idx and key range to read.
+   * The list between the task idx and key range to read.
    */
-  private List<KeyRange> taskGroupIdxToKeyRange;
+  private List<KeyRange> taskIdxToKeyRange;
 
   /**
    * Constructor.
@@ -69,9 +69,9 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
     // Initialize the key range of each dst task.
-    this.taskGroupIdxToKeyRange = new ArrayList<>();
-    for (int taskIdx = 0; taskIdx < dstStage.getTaskGroupIds().size(); taskIdx++) {
-      taskGroupIdxToKeyRange.add(HashRange.of(taskIdx, taskIdx + 1));
+    this.taskIdxToKeyRange = new ArrayList<>();
+    for (int taskIdx = 0; taskIdx < dstStage.getTaskIds().size(); taskIdx++) {
+      taskIdxToKeyRange.add(HashRange.of(taskIdx, taskIdx + 1));
     }
   }
 
@@ -102,17 +102,17 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
   }
 
   /**
-   * @return the list between the task group idx and key range to read.
+   * @return the list between the task idx and key range to read.
    */
-  public List<KeyRange> getTaskGroupIdxToKeyRange() {
-    return taskGroupIdxToKeyRange;
+  public List<KeyRange> getTaskIdxToKeyRange() {
+    return taskIdxToKeyRange;
   }
 
   /**
-   * Sets the task group idx to key range list.
-   * @param taskGroupIdxToKeyRange the list to set.
+   * Sets the task idx to key range list.
+   * @param taskIdxToKeyRange the list to set.
    */
-  public void setTaskGroupIdxToKeyRange(final List<KeyRange> taskGroupIdxToKeyRange) {
-    this.taskGroupIdxToKeyRange = taskGroupIdxToKeyRange;
+  public void setTaskIdxToKeyRange(final List<KeyRange> taskIdxToKeyRange) {
+    this.taskIdxToKeyRange = taskIdxToKeyRange;
   }
 }

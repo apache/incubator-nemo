@@ -25,7 +25,7 @@ import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.nemo.runtime.common.state.TaskGroupState;
+import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
@@ -48,8 +48,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static edu.snu.nemo.runtime.common.state.TaskGroupState.State.COMPLETE;
-import static edu.snu.nemo.runtime.common.state.TaskGroupState.State.ON_HOLD;
+import static edu.snu.nemo.runtime.common.state.TaskState.State.COMPLETE;
+import static edu.snu.nemo.runtime.common.state.TaskState.State.ON_HOLD;
 
 /**
  * (WARNING) Use runtimeMasterThread for all public methods to avoid race conditions.
@@ -250,47 +250,47 @@ public final class RuntimeMaster {
     @Override
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
-      default:
-        throw new IllegalMessageException(
-            new Exception("This message should not be requested to Master :" + message.getType()));
+        default:
+          throw new IllegalMessageException(
+              new Exception("This message should not be requested to Master :" + message.getType()));
       }
     }
   }
 
   private void handleControlMessage(final ControlMessage.Message message) {
     switch (message.getType()) {
-    case TaskGroupStateChanged:
-      final ControlMessage.TaskGroupStateChangedMsg taskGroupStateChangedMsg
-          = message.getTaskGroupStateChangedMsg();
+      case TaskStateChanged:
+        final ControlMessage.TaskStateChangedMsg taskStateChangedMsg
+            = message.getTaskStateChangedMsg();
 
-      scheduler.onTaskGroupStateChanged(taskGroupStateChangedMsg.getExecutorId(),
-          taskGroupStateChangedMsg.getTaskGroupId(),
-          convertTaskGroupState(taskGroupStateChangedMsg.getState()),
-          taskGroupStateChangedMsg.getAttemptIdx(),
-          taskGroupStateChangedMsg.getTaskPutOnHoldId(),
-          convertFailureCause(taskGroupStateChangedMsg.getFailureCause()));
-      break;
-    case ExecutorFailed:
-      // Executor failed due to user code.
-      final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
-      final String failedExecutorId = executorFailedMsg.getExecutorId();
-      final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
-      LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
-      throw new RuntimeException(exception);
-    case DataSizeMetric:
-      final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
-      // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-      accumulateBarrierMetric(dataSizeMetricMsg.getPartitionSizeList(),
-          dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getBlockId());
-      break;
-    case MetricMessageReceived:
-      final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
-      metricList.forEach(metric ->
-          metricMessageHandler.onMetricMessageReceived(metric.getMetricKey(), metric.getMetricValue()));
-      break;
-    default:
-      throw new IllegalMessageException(
-          new Exception("This message should not be received by Master :" + message.getType()));
+        scheduler.onTaskStateChanged(taskStateChangedMsg.getExecutorId(),
+            taskStateChangedMsg.getTaskId(),
+            convertTaskState(taskStateChangedMsg.getState()),
+            taskStateChangedMsg.getAttemptIdx(),
+            taskStateChangedMsg.getTaskPutOnHoldId(),
+            convertFailureCause(taskStateChangedMsg.getFailureCause()));
+        break;
+      case ExecutorFailed:
+        // Executor failed due to user code.
+        final ControlMessage.ExecutorFailedMsg executorFailedMsg = message.getExecutorFailedMsg();
+        final String failedExecutorId = executorFailedMsg.getExecutorId();
+        final Exception exception = SerializationUtils.deserialize(executorFailedMsg.getException().toByteArray());
+        LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
+        throw new RuntimeException(exception);
+      case DataSizeMetric:
+        final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
+        // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
+        accumulateBarrierMetric(dataSizeMetricMsg.getPartitionSizeList(),
+            dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getBlockId());
+        break;
+      case MetricMessageReceived:
+        final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
+        metricList.forEach(metric ->
+            metricMessageHandler.onMetricMessageReceived(metric.getMetricKey(), metric.getMetricValue()));
+        break;
+      default:
+        throw new IllegalMessageException(
+            new Exception("This message should not be received by Master :" + message.getType()));
     }
   }
 
@@ -326,32 +326,32 @@ public final class RuntimeMaster {
   }
 
   // TODO #164: Cleanup Protobuf Usage
-  private static TaskGroupState.State convertTaskGroupState(final ControlMessage.TaskGroupStateFromExecutor state) {
+  private static TaskState.State convertTaskState(final ControlMessage.TaskStateFromExecutor state) {
     switch (state) {
       case READY:
-        return TaskGroupState.State.READY;
+        return TaskState.State.READY;
       case EXECUTING:
-        return TaskGroupState.State.EXECUTING;
+        return TaskState.State.EXECUTING;
       case COMPLETE:
         return COMPLETE;
       case FAILED_RECOVERABLE:
-        return TaskGroupState.State.FAILED_RECOVERABLE;
+        return TaskState.State.FAILED_RECOVERABLE;
       case FAILED_UNRECOVERABLE:
-        return TaskGroupState.State.FAILED_UNRECOVERABLE;
+        return TaskState.State.FAILED_UNRECOVERABLE;
       case ON_HOLD:
         return ON_HOLD;
       default:
-        throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
+        throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + state));
     }
   }
 
-  private TaskGroupState.RecoverableFailureCause convertFailureCause(
+  private TaskState.RecoverableFailureCause convertFailureCause(
       final ControlMessage.RecoverableFailureCause cause) {
     switch (cause) {
       case InputReadFailure:
-        return TaskGroupState.RecoverableFailureCause.INPUT_READ_FAILURE;
+        return TaskState.RecoverableFailureCause.INPUT_READ_FAILURE;
       case OutputWriteFailure:
-        return TaskGroupState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE;
+        return TaskState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE;
       default:
         throw new UnknownFailureCauseException(
             new Throwable("The failure cause for the recoverable failure is unknown"));

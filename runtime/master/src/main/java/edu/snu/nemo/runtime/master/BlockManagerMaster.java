@@ -52,7 +52,7 @@ import static edu.snu.nemo.runtime.common.state.BlockState.State.SCHEDULED;
 public final class BlockManagerMaster {
   private static final Logger LOG = LoggerFactory.getLogger(BlockManagerMaster.class.getName());
   private final Map<String, BlockMetadata> blockIdToMetadata;
-  private final Map<String, Set<String>> producerTaskGroupIdToBlockIds;
+  private final Map<String, Set<String>> producerTaskIdToBlockIds;
   // A lock that can be acquired exclusively or not.
   // Because the BlockMetadata itself is sufficiently synchronized,
   // operation that runs in a single block can just acquire a (sharable) read lock.
@@ -70,7 +70,7 @@ public final class BlockManagerMaster {
     masterMessageEnvironment.setupListener(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID,
         new PartitionManagerMasterControlMessageReceiver());
     this.blockIdToMetadata = new HashMap<>();
-    this.producerTaskGroupIdToBlockIds = new HashMap<>();
+    this.producerTaskIdToBlockIds = new HashMap<>();
     this.lock = new ReentrantReadWriteLock();
   }
 
@@ -78,17 +78,17 @@ public final class BlockManagerMaster {
    * Initializes the states of a block which will be produced by producer task(s).
    *
    * @param blockId             the id of the block to initialize.
-   * @param producerTaskGroupId the id of the producer task group.
+   * @param producerTaskId the id of the producer task.
    */
   @VisibleForTesting
   public void initializeState(final String blockId,
-                              final String producerTaskGroupId) {
+                              final String producerTaskId) {
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
     try {
       blockIdToMetadata.put(blockId, new BlockMetadata(blockId));
-      producerTaskGroupIdToBlockIds.putIfAbsent(producerTaskGroupId, new HashSet<>());
-      producerTaskGroupIdToBlockIds.get(producerTaskGroupId).add(blockId);
+      producerTaskIdToBlockIds.putIfAbsent(producerTaskId, new HashSet<>());
+      producerTaskIdToBlockIds.get(producerTaskId).add(blockId);
     } finally {
       writeLock.unlock();
     }
@@ -98,10 +98,10 @@ public final class BlockManagerMaster {
    * Manages the block information when a executor is removed.
    *
    * @param executorId the id of removed executor.
-   * @return the set of task groups have to be recomputed.
+   * @return the set of tasks have to be recomputed.
    */
   public Set<String> removeWorker(final String executorId) {
-    final Set<String> taskGroupsToRecompute = new HashSet<>();
+    final Set<String> tasksToRecompute = new HashSet<>();
     LOG.warn("Worker {} is removed.", new Object[]{executorId});
 
     final Lock writeLock = lock.writeLock();
@@ -110,12 +110,12 @@ public final class BlockManagerMaster {
       // Set committed block states to lost
       getCommittedBlocksByWorker(executorId).forEach(blockId -> {
         onBlockStateChanged(blockId, BlockState.State.LOST, executorId);
-        // producerTaskGroupForPartition should always be non-empty.
-        final Set<String> producerTaskGroupForPartition = getProducerTaskGroupIds(blockId);
-        producerTaskGroupForPartition.forEach(taskGroupsToRecompute::add);
+        // producerTaskForPartition should always be non-empty.
+        final Set<String> producerTaskForPartition = getProducerTaskIds(blockId);
+        producerTaskForPartition.forEach(tasksToRecompute::add);
       });
 
-      return taskGroupsToRecompute;
+      return tasksToRecompute;
     } finally {
       writeLock.unlock();
     }
@@ -154,66 +154,66 @@ public final class BlockManagerMaster {
   }
 
   /**
-   * Gets the ids of the task groups which already produced or will produce data for a specific block.
+   * Gets the ids of the tasks which already produced or will produce data for a specific block.
    *
    * @param blockId the id of the block.
-   * @return the ids of the producer task groups.
+   * @return the ids of the producer tasks.
    */
   @VisibleForTesting
-  public Set<String> getProducerTaskGroupIds(final String blockId) {
+  public Set<String> getProducerTaskIds(final String blockId) {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      final Set<String> producerTaskGroupIds = new HashSet<>();
-      for (Map.Entry<String, Set<String>> entry : producerTaskGroupIdToBlockIds.entrySet()) {
+      final Set<String> producerTaskIds = new HashSet<>();
+      for (Map.Entry<String, Set<String>> entry : producerTaskIdToBlockIds.entrySet()) {
         if (entry.getValue().contains(blockId)) {
-          producerTaskGroupIds.add(entry.getKey());
+          producerTaskIds.add(entry.getKey());
         }
       }
 
-      return producerTaskGroupIds;
+      return producerTaskIds;
     } finally {
       readLock.unlock();
     }
   }
 
   /**
-   * To be called when a potential producer task group is scheduled.
-   * To be precise, it is called when the task group is enqueued to
-   * {@link edu.snu.nemo.runtime.master.scheduler.PendingTaskGroupCollection}.
+   * To be called when a potential producer task is scheduled.
+   * To be precise, it is called when the task is enqueued to
+   * {@link edu.snu.nemo.runtime.master.scheduler.PendingTaskCollection}.
    *
-   * @param scheduledTaskGroupId the ID of the scheduled task group.
+   * @param scheduledTaskId the ID of the scheduled task.
    */
-  public void onProducerTaskGroupScheduled(final String scheduledTaskGroupId) {
+  public void onProducerTaskScheduled(final String scheduledTaskId) {
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
     try {
-      if (producerTaskGroupIdToBlockIds.containsKey(scheduledTaskGroupId)) {
-        producerTaskGroupIdToBlockIds.get(scheduledTaskGroupId).forEach(blockId -> {
+      if (producerTaskIdToBlockIds.containsKey(scheduledTaskId)) {
+        producerTaskIdToBlockIds.get(scheduledTaskId).forEach(blockId -> {
           if (!blockIdToMetadata.get(blockId).getBlockState()
               .getStateMachine().getCurrentState().equals(SCHEDULED)) {
             onBlockStateChanged(blockId, SCHEDULED, null);
           }
         });
-      } // else this task group does not produce any block
+      } // else this task does not produce any block
     } finally {
       writeLock.unlock();
     }
   }
 
   /**
-   * To be called when a potential producer task group fails.
-   * Only the TaskGroups that have not yet completed (i.e. blocks not yet committed) will call this method.
+   * To be called when a potential producer task fails.
+   * Only the Tasks that have not yet completed (i.e. blocks not yet committed) will call this method.
    *
-   * @param failedTaskGroupId the ID of the task group that failed.
+   * @param failedTaskId the ID of the task that failed.
    */
-  public void onProducerTaskGroupFailed(final String failedTaskGroupId) {
+  public void onProducerTaskFailed(final String failedTaskId) {
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
     try {
-      if (producerTaskGroupIdToBlockIds.containsKey(failedTaskGroupId)) {
-        LOG.info("ProducerTaskGroup {} failed for a list of blocks:", failedTaskGroupId);
-        producerTaskGroupIdToBlockIds.get(failedTaskGroupId).forEach(blockId -> {
+      if (producerTaskIdToBlockIds.containsKey(failedTaskId)) {
+        LOG.info("ProducerTask {} failed for a list of blocks:", failedTaskId);
+        producerTaskIdToBlockIds.get(failedTaskId).forEach(blockId -> {
           final BlockState.State state = (BlockState.State)
               blockIdToMetadata.get(blockId).getBlockState().getStateMachine().getCurrentState();
           if (state == BlockState.State.COMMITTED) {
@@ -224,7 +224,7 @@ public final class BlockManagerMaster {
             onBlockStateChanged(blockId, BlockState.State.LOST_BEFORE_COMMIT, null);
           }
         });
-      } // else this task group does not produce any block
+      } // else this task does not produce any block
     } finally {
       writeLock.unlock();
     }

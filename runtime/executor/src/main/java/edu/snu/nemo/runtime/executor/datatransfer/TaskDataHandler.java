@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * Per-Task data handler.
  * This is a wrapper class that handles data transfer of a Task.
- * As TaskGroup input is processed element-wise, Task output element percolates down
+ * As Task input is processed element-wise, Task output element percolates down
  * through the DAG of children TaskDataHandlers.
  */
 public final class TaskDataHandler {
@@ -69,7 +69,7 @@ public final class TaskDataHandler {
   }
 
   /**
-   * Get side input from other TaskGroup.
+   * Get side input from other Task.
    *
    * @return InputReader that has side input.
    */
@@ -78,8 +78,8 @@ public final class TaskDataHandler {
   }
 
   /**
-   * Get intra-TaskGroup side input from parent tasks.
-   * Just like normal intra-TaskGroup inputs, intra-TaskGroup side inputs are
+   * Get intra-Task side input from parent tasks.
+   * Just like normal intra-Task inputs, intra-Task side inputs are
    * collected in parent tasks' OutputCollectors.
    *
    * @return OutputCollectors of all parent tasks which are marked as having side input.
