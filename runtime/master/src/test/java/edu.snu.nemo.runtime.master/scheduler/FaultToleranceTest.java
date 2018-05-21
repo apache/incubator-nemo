@@ -62,7 +62,6 @@ import static org.mockito.Mockito.mock;
 public final class FaultToleranceTest {
   private static final Logger LOG = LoggerFactory.getLogger(FaultToleranceTest.class.getName());
 
-  private Scheduler scheduler;
   private SchedulingPolicy schedulingPolicy;
   private SchedulerRunner schedulerRunner;
   private ExecutorRegistry executorRegistry;
@@ -75,7 +74,7 @@ public final class FaultToleranceTest {
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
   private final ExecutorService serExecutorService = Executors.newSingleThreadExecutor();
 
-  private static final int MAX_SCHEDULE_ATTEMPT = 3;
+  private static final int MAX_SCHEDULE_ATTEMPT = Integer.MAX_VALUE;
 
   @Before
   public void setUp() throws Exception {
@@ -85,8 +84,7 @@ public final class FaultToleranceTest {
 
   }
 
-  private void setUpExecutors(final Collection<ExecutorRepresenter> executors,
-                              final boolean useMockSchedulerRunner) throws InjectionException {
+  private Scheduler setUpScheduler(final boolean useMockSchedulerRunner) throws InjectionException {
     final Injector injector = Tang.Factory.getTang().newInjector();
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
 
@@ -98,13 +96,8 @@ public final class FaultToleranceTest {
     } else {
       schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskCollection, executorRegistry);
     }
-    scheduler = new BatchSingleJobScheduler(schedulerRunner, pendingTaskCollection, blockManagerMaster,
+    return new BatchSingleJobScheduler(schedulerRunner, pendingTaskCollection, blockManagerMaster,
         pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
-
-    // Add nodes
-    for (final ExecutorRepresenter executor : executors) {
-      scheduler.onExecutorAdded(executor);
-    }
   }
 
   /**
@@ -127,7 +120,11 @@ public final class FaultToleranceTest {
     executors.add(a2);
     executors.add(a3);
 
-    setUpExecutors(executors, true);
+    final Scheduler scheduler = setUpScheduler(true);
+    for (final ExecutorRepresenter executor : executors) {
+      scheduler.onExecutorAdded(executor);
+    }
+
     final PhysicalPlan plan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
 
@@ -195,7 +192,10 @@ public final class FaultToleranceTest {
     executors.add(a1);
     executors.add(a2);
     executors.add(a3);
-    setUpExecutors(executors, true);
+    final Scheduler scheduler = setUpScheduler(true);
+    for (final ExecutorRepresenter executor : executors) {
+      scheduler.onExecutorAdded(executor);
+    }
 
     final PhysicalPlan plan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
@@ -258,7 +258,10 @@ public final class FaultToleranceTest {
     executors.add(a1);
     executors.add(a2);
     executors.add(a3);
-    setUpExecutors(executors, true);
+    final Scheduler scheduler = setUpScheduler(true);
+    for (final ExecutorRepresenter executor : executors) {
+      scheduler.onExecutorAdded(executor);
+    }
 
     final PhysicalPlan plan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
@@ -304,7 +307,7 @@ public final class FaultToleranceTest {
   /**
    * Tests the rescheduling of Tasks upon a failure.
    */
-  @Test(timeout=10000)
+  @Test(timeout=20000)
   public void testTaskReexecutionForFailure() throws Exception {
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
@@ -312,43 +315,65 @@ public final class FaultToleranceTest {
     final ResourceSpecification computeSpec = new ResourceSpecification(ExecutorPlacementProperty.COMPUTE, 2, 0);
     final Function<String, ExecutorRepresenter> executorRepresenterGenerator = executorId ->
         new ExecutorRepresenter(executorId, computeSpec, mockMsgSender, activeContext, serExecutorService, executorId);
-    final ExecutorRepresenter a3 = executorRepresenterGenerator.apply("a3");
-    final ExecutorRepresenter a2 = executorRepresenterGenerator.apply("a2");
-    final ExecutorRepresenter a1 = executorRepresenterGenerator.apply("a1");
 
-    final List<ExecutorRepresenter> executors = new ArrayList<>();
-    executors.add(a1);
-    executors.add(a2);
-    executors.add(a3);
-
-    setUpExecutors(executors, false);
-
+    final Scheduler scheduler = setUpScheduler(false);
     final PhysicalPlan plan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
-
-
     final JobStateManager jobStateManager =
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
-
     scheduler.scheduleJob(plan, jobStateManager);
-    scheduler.onExecutorRemoved("a2");
 
+    final List<ExecutorRepresenter> executors = new ArrayList<>();
     final List<PhysicalStage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
 
+    int executorIdIndex = 1;
+    float removalChance = 0.7f; // Out of 1.0
+    final Random random = new Random(0); // Deterministic seed.
+
     for (final PhysicalStage stage : dagOf4Stages) {
+      final Map<String, Integer> taskIdToAttemptIndex = new HashMap<>();
+
       while (jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState() != COMPLETE) {
-        final Set<String> a1RunningTasks = new HashSet<>(a1.getRunningTasks());
-        final Set<String> a3RunningTasks = new HashSet<>(a3.getRunningTasks());
+        // By chance, remove or add executor
+        if (isTrueByChance(random, removalChance)) {
+          // REMOVE EXECUTOR
+          if (!executors.isEmpty()) {
+            scheduler.onExecutorRemoved(executors.remove(random.nextInt(executors.size())).getExecutorId());
+          } else {
+            // Skip, since no executor is running.
+          }
+        } else {
+          if (executors.size() < 3) {
+            // ADD EXECUTOR
+            final ExecutorRepresenter newExecutor = executorRepresenterGenerator.apply("a" + executorIdIndex);
+            executorIdIndex += 1;
+            executors.add(newExecutor);
+            scheduler.onExecutorAdded(newExecutor);
+          } else {
+            // Skip, in order to keep the total number of running executors below or equal to 3
+          }
+        }
 
-        a1RunningTasks.forEach(taskId ->
-            SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
-                taskId, TaskState.State.COMPLETE, 1));
-
-        a3RunningTasks.forEach(taskId ->
-            SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
-                taskId, TaskState.State.COMPLETE, 1));
+        // Complete the execution of tasks
+        if (!executors.isEmpty()) {
+          final int indexOfCompletedExecutor = random.nextInt(executors.size());
+          // New set for snapshotting
+          final Set<String> runningTaskSnapshot =
+              new HashSet<>(executors.get(indexOfCompletedExecutor).getRunningTasks());
+          runningTaskSnapshot.forEach(taskId -> {
+            taskIdToAttemptIndex.putIfAbsent(taskId, 1);
+            final int attemptIndex = taskIdToAttemptIndex.get(taskId);
+            taskIdToAttemptIndex.put(taskId, attemptIndex + 1);
+            SchedulerTestUtil.sendTaskStateEventToScheduler(
+                scheduler, executorRegistry, taskId, TaskState.State.COMPLETE, attemptIndex);
+          });
+        }
       }
     }
     assertTrue(jobStateManager.checkJobTermination());
+  }
+
+  private boolean isTrueByChance(final Random random, final float chance) {
+    return chance > random.nextDouble();
   }
 }
