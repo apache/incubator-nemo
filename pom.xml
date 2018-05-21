@@ -63,6 +63,7 @@ limitations under the License.
         <module>runtime/executor</module>
         <module>runtime/master</module>
         <module>runtime/driver</module>
+        <module>runtime/plangenerator</module>
         <module>tests</module>
     </modules>
 

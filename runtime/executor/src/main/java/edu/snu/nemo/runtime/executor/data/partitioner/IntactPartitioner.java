@@ -15,23 +15,14 @@
  */
 package edu.snu.nemo.runtime.executor.data.partitioner;
 
-import edu.snu.nemo.common.KeyExtractor;
-import edu.snu.nemo.runtime.executor.data.NonSerializedPartition;
-import edu.snu.nemo.runtime.executor.data.Partition;
-
-import java.util.Collections;
-import java.util.List;
-
 /**
  * An implementation of {@link Partitioner} which makes an output data
- * from a source task to a single {@link Partition}.
+ * from a source task to a single {@link edu.snu.nemo.runtime.executor.data.partition.Partition}.
  */
-public final class IntactPartitioner implements Partitioner {
+public final class IntactPartitioner implements Partitioner<Integer> {
 
   @Override
-  public List<Partition> partition(final Iterable elements,
-                                   final int dstParallelism,
-                                   final KeyExtractor keyExtractor) {
-    return Collections.singletonList(new NonSerializedPartition(0, elements));
+  public Integer partition(final Object element) {
+    return 0;
   }
 }

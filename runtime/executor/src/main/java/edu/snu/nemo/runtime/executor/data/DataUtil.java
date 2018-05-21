@@ -18,6 +18,8 @@ package edu.snu.nemo.runtime.executor.data;
 import com.google.common.io.CountingInputStream;
 import edu.snu.nemo.common.DirectByteArrayOutputStream;
 import edu.snu.nemo.common.coder.Coder;
+import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
+import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 import edu.snu.nemo.runtime.executor.data.streamchainer.StreamChainer;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
@@ -87,7 +89,8 @@ public final class DataUtil {
   }
 
   /**
-   * Converts the non-serialized {@link Partition}s in an iterable to serialized {@link Partition}s.
+   * Converts the non-serialized {@link edu.snu.nemo.runtime.executor.data.partition.Partition}s
+   * in an iterable to serialized partitions.
    *
    * @param serializer          the serializer for serialization.
    * @param partitionsToConvert the partitions to convert.
@@ -118,7 +121,8 @@ public final class DataUtil {
   }
 
   /**
-   * Converts the serialized {@link Partition}s in an iterable to non-serialized {@link Partition}s.
+   * Converts the serialized {@link edu.snu.nemo.runtime.executor.data.partition.Partition}s
+   * in an iterable to non-serialized partitions.
    *
    * @param serializer          the serializer for deserialization.
    * @param partitionsToConvert the partitions to convert.
@@ -135,7 +139,7 @@ public final class DataUtil {
       try (final ByteArrayInputStream byteArrayInputStream =
                new ByteArrayInputStream(partitionToConvert.getData())) {
         final NonSerializedPartition<K> deserializePartition = deserializePartition(
-            partitionToConvert.getElementsTotal(), serializer, key, byteArrayInputStream);
+            partitionToConvert.getElementsCount(), serializer, key, byteArrayInputStream);
         nonSerializedPartitions.add(deserializePartition);
       }
     }
@@ -167,7 +171,8 @@ public final class DataUtil {
   }
 
   /**
-   * Concatenates an iterable of non-serialized {@link Partition}s into a single iterable of elements.
+   * Concatenates an iterable of non-serialized {@link edu.snu.nemo.runtime.executor.data.partition.Partition}s
+   * into a single iterable of elements.
    *
    * @param partitionsToConcat the partitions to concatenate.
    * @return the concatenated iterable of all elements.

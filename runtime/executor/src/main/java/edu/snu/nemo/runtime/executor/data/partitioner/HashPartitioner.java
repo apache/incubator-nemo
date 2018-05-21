@@ -16,36 +16,30 @@
 package edu.snu.nemo.runtime.executor.data.partitioner;
 
 import edu.snu.nemo.common.KeyExtractor;
-import edu.snu.nemo.runtime.executor.data.NonSerializedPartition;
-import edu.snu.nemo.runtime.executor.data.Partition;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.IntStream;
 
 /**
  * An implementation of {@link Partitioner} which hashes output data from a source task
  * according to the key of elements.
  * The data will be hashed by their key, and applied "modulo" operation by the number of destination tasks.
  */
-public final class HashPartitioner implements Partitioner {
+public final class HashPartitioner implements Partitioner<Integer> {
+  private final KeyExtractor keyExtractor;
+  private final int dstParallelism;
+
+  /**
+   * Constructor.
+   *
+   * @param dstParallelism the number of destination tasks.
+   * @param keyExtractor   the key extractor that extracts keys from elements.
+   */
+  public HashPartitioner(final int dstParallelism,
+                         final KeyExtractor keyExtractor) {
+    this.keyExtractor = keyExtractor;
+    this.dstParallelism = dstParallelism;
+  }
 
   @Override
-  public List<Partition> partition(final Iterable elements,
-                                   final int dstParallelism,
-                                   final KeyExtractor keyExtractor) {
-    final List<List> elementsByKey = new ArrayList<>(dstParallelism);
-    IntStream.range(0, dstParallelism).forEach(dstTaskIdx -> elementsByKey.add(new ArrayList<>()));
-    elements.forEach(element -> {
-      // Hash the data by its key, and "modulo" by the number of destination tasks.
-      final int dstIdx = Math.abs(keyExtractor.extractKey(element).hashCode() % dstParallelism);
-      elementsByKey.get(dstIdx).add(element);
-    });
-
-    final List<Partition> partitions = new ArrayList<>(dstParallelism);
-    for (int hashIdx = 0; hashIdx < dstParallelism; hashIdx++) {
-      partitions.add(new NonSerializedPartition(hashIdx, elementsByKey.get(hashIdx)));
-    }
-    return partitions;
+  public Integer partition(final Object element) {
+    return Math.abs(keyExtractor.extractKey(element).hashCode() % dstParallelism);
   }
 }

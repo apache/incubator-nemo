@@ -50,8 +50,11 @@ public final class MapReduceITCase {
 
   @After
   public void tearDown() throws Exception {
-    ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
-    ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    try {
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
   }
 
   @Test (timeout = TIMEOUT)
