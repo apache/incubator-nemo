@@ -24,31 +24,31 @@ public final class StageState {
   private final StateMachine stateMachine;
 
   public StageState() {
-    stateMachine = buildTaskGroupStateMachine();
+    stateMachine = buildTaskStateMachine();
   }
 
-  private StateMachine buildTaskGroupStateMachine() {
+  private StateMachine buildTaskStateMachine() {
     final StateMachine.Builder stateMachineBuilder = StateMachine.newBuilder();
 
     // Add states
     stateMachineBuilder.addState(State.READY, "The stage has been created.");
     stateMachineBuilder.addState(State.EXECUTING, "The stage is executing.");
-    stateMachineBuilder.addState(State.COMPLETE, "All of this stage's task groups have completed.");
+    stateMachineBuilder.addState(State.COMPLETE, "All of this stage's tasks have completed.");
     stateMachineBuilder.addState(State.FAILED_RECOVERABLE, "Stage failed, but is recoverable.");
     stateMachineBuilder.addState(State.FAILED_UNRECOVERABLE, "Stage failed, and is unrecoverable. The job will fail.");
 
     // Add transitions
     stateMachineBuilder.addTransition(State.READY, State.EXECUTING,
-        "The stage can now schedule its task groups");
+        "The stage can now schedule its tasks");
     stateMachineBuilder.addTransition(State.READY, State.FAILED_UNRECOVERABLE,
         "Job Failure");
 
     stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE,
-        "All task groups complete");
+        "All tasks complete");
     stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_UNRECOVERABLE,
-        "Unrecoverable failure in a task group");
+        "Unrecoverable failure in a task");
     stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_RECOVERABLE,
-        "Recoverable failure in a task group");
+        "Recoverable failure in a task");
 
     stateMachineBuilder.addTransition(State.COMPLETE, State.FAILED_RECOVERABLE,
         "Container on which the stage's output is stored failed");

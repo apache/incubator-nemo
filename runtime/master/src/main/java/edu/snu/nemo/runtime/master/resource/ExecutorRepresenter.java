@@ -20,7 +20,7 @@ import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageSender;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
 
@@ -36,7 +36,7 @@ import java.util.concurrent.ExecutorService;
  * Such information may include:
  *    a) The executor's resource type.
  *    b) The executor's capacity (ex. number of cores).
- *    c) Task groups scheduled/launched for the executor.
+ *    c) Tasks scheduled/launched for the executor.
  *    d) Name of the physical node which hosts this executor.
  *    e) (Please add other information as we implement more features).
  */
@@ -45,9 +45,9 @@ public final class ExecutorRepresenter {
 
   private final String executorId;
   private final ResourceSpecification resourceSpecification;
-  private final Set<String> runningTaskGroups;
-  private final Set<String> completeTaskGroups;
-  private final Set<String> failedTaskGroups;
+  private final Set<String> runningTasks;
+  private final Set<String> completeTasks;
+  private final Set<String> failedTasks;
   private final MessageSender<ControlMessage.Message> messageSender;
   private final ActiveContext activeContext;
   private final ExecutorService serializationExecutorService;
@@ -71,42 +71,42 @@ public final class ExecutorRepresenter {
     this.executorId = executorId;
     this.resourceSpecification = resourceSpecification;
     this.messageSender = messageSender;
-    this.runningTaskGroups = new HashSet<>();
-    this.completeTaskGroups = new HashSet<>();
-    this.failedTaskGroups = new HashSet<>();
+    this.runningTasks = new HashSet<>();
+    this.completeTasks = new HashSet<>();
+    this.failedTasks = new HashSet<>();
     this.activeContext = activeContext;
     this.serializationExecutorService = serializationExecutorService;
     this.nodeName = nodeName;
   }
 
   /**
-   * Marks all TaskGroups which were running in this executor as failed.
+   * Marks all Tasks which were running in this executor as failed.
    */
   public void onExecutorFailed() {
-    runningTaskGroups.forEach(taskGroupId -> failedTaskGroups.add(taskGroupId));
-    runningTaskGroups.clear();
+    runningTasks.forEach(taskId -> failedTasks.add(taskId));
+    runningTasks.clear();
   }
 
   /**
-   * Marks the TaskGroup as running, and sends scheduling message to the executor.
-   * @param scheduledTaskGroup
+   * Marks the Task as running, and sends scheduling message to the executor.
+   * @param scheduledTask
    */
-  public void onTaskGroupScheduled(final ScheduledTaskGroup scheduledTaskGroup) {
-    runningTaskGroups.add(scheduledTaskGroup.getTaskGroupId());
-    failedTaskGroups.remove(scheduledTaskGroup.getTaskGroupId());
+  public void onTaskScheduled(final ScheduledTask scheduledTask) {
+    runningTasks.add(scheduledTask.getTaskId());
+    failedTasks.remove(scheduledTask.getTaskId());
 
     serializationExecutorService.submit(new Runnable() {
       @Override
       public void run() {
-        final byte[] serialized = SerializationUtils.serialize(scheduledTaskGroup);
+        final byte[] serialized = SerializationUtils.serialize(scheduledTask);
         sendControlMessage(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
                 .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.ScheduleTaskGroup)
-                .setScheduleTaskGroupMsg(
-                    ControlMessage.ScheduleTaskGroupMsg.newBuilder()
-                        .setTaskGroup(ByteString.copyFrom(serialized))
+                .setType(ControlMessage.MessageType.ScheduleTask)
+                .setScheduleTaskMsg(
+                    ControlMessage.ScheduleTaskMsg.newBuilder()
+                        .setTask(ByteString.copyFrom(serialized))
                         .build())
                 .build());
       }
@@ -122,49 +122,49 @@ public final class ExecutorRepresenter {
   }
 
   /**
-   * Marks the specified TaskGroup as completed.
-   * @param taskGroupId id of the TaskGroup
+   * Marks the specified Task as completed.
+   * @param taskId id of the Task
    */
-  public void onTaskGroupExecutionComplete(final String taskGroupId) {
-    runningTaskGroups.remove(taskGroupId);
-    completeTaskGroups.add(taskGroupId);
+  public void onTaskExecutionComplete(final String taskId) {
+    runningTasks.remove(taskId);
+    completeTasks.add(taskId);
   }
 
   /**
-   * Marks the specified TaskGroup as failed.
-   * @param taskGroupId id of the TaskGroup
+   * Marks the specified Task as failed.
+   * @param taskId id of the Task
    */
-  public void onTaskGroupExecutionFailed(final String taskGroupId) {
-    runningTaskGroups.remove(taskGroupId);
-    failedTaskGroups.add(taskGroupId);
+  public void onTaskExecutionFailed(final String taskId) {
+    runningTasks.remove(taskId);
+    failedTasks.add(taskId);
   }
 
   /**
-   * @return how many TaskGroups can this executor simultaneously run
+   * @return how many Tasks can this executor simultaneously run
    */
   public int getExecutorCapacity() {
     return resourceSpecification.getCapacity();
   }
 
   /**
-   * @return set of ids of TaskGroups that are running in this executor
+   * @return set of ids of Tasks that are running in this executor
    */
-  public Set<String> getRunningTaskGroups() {
-    return runningTaskGroups;
+  public Set<String> getRunningTasks() {
+    return runningTasks;
   }
 
   /**
-   * @return set of ids of TaskGroups that have been failed in this exeuctor
+   * @return set of ids of Tasks that have been failed in this exeuctor
    */
-  public Set<String> getFailedTaskGroups() {
-    return failedTaskGroups;
+  public Set<String> getFailedTasks() {
+    return failedTasks;
   }
 
   /**
-   * @return set of ids of TaskGroups that have been completed in this executor
+   * @return set of ids of Tasks that have been completed in this executor
    */
-  public Set<String> getCompleteTaskGroups() {
-    return completeTaskGroups;
+  public Set<String> getCompleteTasks() {
+    return completeTasks;
   }
 
   /**
@@ -199,8 +199,8 @@ public final class ExecutorRepresenter {
   public String toString() {
     final StringBuffer sb = new StringBuffer("ExecutorRepresenter{");
     sb.append("executorId='").append(executorId).append('\'');
-    sb.append(", runningTaskGroups=").append(runningTaskGroups);
-    sb.append(", failedTaskGroups=").append(failedTaskGroups);
+    sb.append(", runningTasks=").append(runningTasks);
+    sb.append(", failedTasks=").append(failedTasks);
     sb.append('}');
     return sb.toString();
   }

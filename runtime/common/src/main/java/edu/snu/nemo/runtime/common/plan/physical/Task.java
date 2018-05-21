@@ -19,7 +19,7 @@ import edu.snu.nemo.common.dag.Vertex;
 
 /**
  * Task.
- * The index value is identical to the TaskGroup's index it belongs to.
+ * The index value is identical to the Task's index it belongs to.
  */
 public abstract class Task extends Vertex {
   private final String irVertexId;

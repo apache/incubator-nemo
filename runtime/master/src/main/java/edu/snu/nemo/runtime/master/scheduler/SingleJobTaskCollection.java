@@ -20,7 +20,7 @@ import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalStageEdge;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
 
@@ -29,103 +29,103 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * {@link PendingTaskGroupCollection} implementation.
- * This class provides two-level scheduling by keeping track of schedulable stages and stage-TaskGroup membership.
- * {@link #peekSchedulableTaskGroups()} returns collection of TaskGroups which belong to one of the schedulable stages.
+ * {@link PendingTaskCollection} implementation.
+ * This class provides two-level scheduling by keeping track of schedulable stages and stage-Task membership.
+ * {@link #peekSchedulableTasks()} returns collection of Tasks which belong to one of the schedulable stages.
  */
 @ThreadSafe
 @DriverSide
-public final class SingleJobTaskGroupCollection implements PendingTaskGroupCollection {
+public final class SingleJobTaskCollection implements PendingTaskCollection {
   private PhysicalPlan physicalPlan;
 
   /**
-   * Pending TaskGroups awaiting to be scheduled for each stage.
+   * Pending Tasks awaiting to be scheduled for each stage.
    */
-  private final ConcurrentMap<String, Map<String, ScheduledTaskGroup>> stageIdToPendingTaskGroups;
+  private final ConcurrentMap<String, Map<String, ScheduledTask>> stageIdToPendingTasks;
 
   /**
-   * Stages with TaskGroups that have not yet been scheduled.
+   * Stages with Tasks that have not yet been scheduled.
    */
   private final BlockingDeque<String> schedulableStages;
 
   @Inject
-  public SingleJobTaskGroupCollection() {
-    stageIdToPendingTaskGroups = new ConcurrentHashMap<>();
+  public SingleJobTaskCollection() {
+    stageIdToPendingTasks = new ConcurrentHashMap<>();
     schedulableStages = new LinkedBlockingDeque<>();
   }
 
   @Override
-  public synchronized void add(final ScheduledTaskGroup scheduledTaskGroup) {
-    final String stageId = RuntimeIdGenerator.getStageIdFromTaskGroupId(scheduledTaskGroup.getTaskGroupId());
+  public synchronized void add(final ScheduledTask scheduledTask) {
+    final String stageId = RuntimeIdGenerator.getStageIdFromTaskId(scheduledTask.getTaskId());
 
-    stageIdToPendingTaskGroups.compute(stageId, (s, taskGroupIdToTaskGroup) -> {
-      if (taskGroupIdToTaskGroup == null) {
-        final Map<String, ScheduledTaskGroup> taskGroupIdToTaskGroupMap = new HashMap<>();
-        taskGroupIdToTaskGroupMap.put(scheduledTaskGroup.getTaskGroupId(), scheduledTaskGroup);
-        updateSchedulableStages(stageId, scheduledTaskGroup.getContainerType());
-        return taskGroupIdToTaskGroupMap;
+    stageIdToPendingTasks.compute(stageId, (s, taskIdToTask) -> {
+      if (taskIdToTask == null) {
+        final Map<String, ScheduledTask> taskIdToTaskMap = new HashMap<>();
+        taskIdToTaskMap.put(scheduledTask.getTaskId(), scheduledTask);
+        updateSchedulableStages(stageId, scheduledTask.getContainerType());
+        return taskIdToTaskMap;
       } else {
-        taskGroupIdToTaskGroup.put(scheduledTaskGroup.getTaskGroupId(), scheduledTaskGroup);
-        return taskGroupIdToTaskGroup;
+        taskIdToTask.put(scheduledTask.getTaskId(), scheduledTask);
+        return taskIdToTask;
       }
     });
   }
 
   /**
-   * Removes the specified TaskGroup to be scheduled.
-   * The specified TaskGroup should belong to the collection from {@link #peekSchedulableTaskGroups()}.
-   * @param taskGroupId id of the TaskGroup
-   * @return the specified TaskGroup
-   * @throws NoSuchElementException if the specified TaskGroup is not in the queue,
-   *                                or removing this TaskGroup breaks scheduling order
-   *                                (i.e. does not belong to the collection from {@link #peekSchedulableTaskGroups()}.
+   * Removes the specified Task to be scheduled.
+   * The specified Task should belong to the collection from {@link #peekSchedulableTasks()}.
+   * @param taskId id of the Task
+   * @return the specified Task
+   * @throws NoSuchElementException if the specified Task is not in the queue,
+   *                                or removing this Task breaks scheduling order
+   *                                (i.e. does not belong to the collection from {@link #peekSchedulableTasks()}.
    */
   @Override
-  public synchronized ScheduledTaskGroup remove(final String taskGroupId) throws NoSuchElementException {
+  public synchronized ScheduledTask remove(final String taskId) throws NoSuchElementException {
     final String stageId = schedulableStages.peekFirst();
     if (stageId == null) {
-      throw new NoSuchElementException("No schedulable stage in TaskGroup queue");
+      throw new NoSuchElementException("No schedulable stage in Task queue");
     }
 
-    final Map<String, ScheduledTaskGroup> pendingTaskGroupsForStage = stageIdToPendingTaskGroups.get(stageId);
+    final Map<String, ScheduledTask> pendingTasksForStage = stageIdToPendingTasks.get(stageId);
 
-    if (pendingTaskGroupsForStage == null) {
-      throw new RuntimeException(String.format("Stage %s not found in TaskGroup queue", stageId));
+    if (pendingTasksForStage == null) {
+      throw new RuntimeException(String.format("Stage %s not found in Task queue", stageId));
     }
-    final ScheduledTaskGroup taskGroupToSchedule = pendingTaskGroupsForStage.remove(taskGroupId);
-    if (taskGroupToSchedule == null) {
-      throw new NoSuchElementException(String.format("TaskGroup %s not found in TaskGroup queue", taskGroupId));
+    final ScheduledTask taskToSchedule = pendingTasksForStage.remove(taskId);
+    if (taskToSchedule == null) {
+      throw new NoSuchElementException(String.format("Task %s not found in Task queue", taskId));
     }
-    if (pendingTaskGroupsForStage.isEmpty()) {
+    if (pendingTasksForStage.isEmpty()) {
       if (!schedulableStages.pollFirst().equals(stageId)) {
         throw new RuntimeException(String.format("Expected stage %s to be polled", stageId));
       }
-      stageIdToPendingTaskGroups.remove(stageId);
-      stageIdToPendingTaskGroups.forEach((scheduledStageId, taskGroups) ->
-          updateSchedulableStages(scheduledStageId, taskGroups.values().iterator().next().getContainerType()));
+      stageIdToPendingTasks.remove(stageId);
+      stageIdToPendingTasks.forEach((scheduledStageId, tasks) ->
+          updateSchedulableStages(scheduledStageId, tasks.values().iterator().next().getContainerType()));
     }
 
-    return taskGroupToSchedule;
+    return taskToSchedule;
   }
 
   /**
-   * Peeks TaskGroups that can be scheduled.
-   * @return TaskGroups to be scheduled, or {@link Optional#empty()} if the queue is empty
-   * @return collection of TaskGroups which belong to one of the schedulable stages
+   * Peeks Tasks that can be scheduled.
+   * @return Tasks to be scheduled, or {@link Optional#empty()} if the queue is empty
+   * @return collection of Tasks which belong to one of the schedulable stages
    *         or {@link Optional#empty} if the queue is empty
    */
   @Override
-  public synchronized Optional<Collection<ScheduledTaskGroup>> peekSchedulableTaskGroups() {
+  public synchronized Optional<Collection<ScheduledTask>> peekSchedulableTasks() {
     final String stageId = schedulableStages.peekFirst();
     if (stageId == null) {
       return Optional.empty();
     }
 
-    final Map<String, ScheduledTaskGroup> pendingTaskGroupsForStage = stageIdToPendingTaskGroups.get(stageId);
-    if (pendingTaskGroupsForStage == null) {
-      throw new RuntimeException(String.format("Stage %s not found in stageIdToPendingTaskGroups map", stageId));
+    final Map<String, ScheduledTask> pendingTasksForStage = stageIdToPendingTasks.get(stageId);
+    if (pendingTasksForStage == null) {
+      throw new RuntimeException(String.format("Stage %s not found in stageIdToPendingTasks map", stageId));
     }
-    return Optional.of(new ArrayList<>(pendingTaskGroupsForStage.values()));
+    return Optional.of(new ArrayList<>(pendingTasksForStage.values()));
   }
 
   /**
@@ -133,7 +133,7 @@ public final class SingleJobTaskGroupCollection implements PendingTaskGroupColle
    * @param stageId for the stage to begin the removal recursively.
    */
   @Override
-  public synchronized void removeTaskGroupsAndDescendants(final String stageId) {
+  public synchronized void removeTasksAndDescendants(final String stageId) {
     removeStageAndChildren(stageId);
   }
 
@@ -143,7 +143,7 @@ public final class SingleJobTaskGroupCollection implements PendingTaskGroupColle
    */
   private synchronized void removeStageAndChildren(final String stageId) {
     if (schedulableStages.remove(stageId)) {
-      stageIdToPendingTaskGroups.remove(stageId);
+      stageIdToPendingTasks.remove(stageId);
     }
 
     physicalPlan.getStageDAG().getChildren(stageId).forEach(
@@ -211,6 +211,6 @@ public final class SingleJobTaskGroupCollection implements PendingTaskGroupColle
   @Override
   public synchronized void close() {
     schedulableStages.clear();
-    stageIdToPendingTaskGroups.clear();
+    stageIdToPendingTasks.clear();
   }
 }

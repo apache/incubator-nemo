@@ -80,7 +80,7 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   }
 
   /**
-   * Mark this edge as side input so that TaskGroupExecutor can retrieve
+   * Mark this edge as side input so that TaskExecutor can retrieve
    * source transform using it.
    *
    * @param edge the RuntimeEdge to mark as side input.

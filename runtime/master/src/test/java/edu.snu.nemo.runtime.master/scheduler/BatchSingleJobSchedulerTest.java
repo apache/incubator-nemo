@@ -65,7 +65,7 @@ public final class BatchSingleJobSchedulerTest {
   private SchedulerRunner schedulerRunner;
   private ExecutorRegistry executorRegistry;
   private MetricMessageHandler metricMessageHandler;
-  private PendingTaskGroupCollection pendingTaskGroupCollection;
+  private PendingTaskCollection pendingTaskCollection;
   private PubSubEventHandlerWrapper pubSubEventHandler;
   private UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler;
   private BlockManagerMaster blockManagerMaster = mock(BlockManagerMaster.class);
@@ -73,7 +73,7 @@ public final class BatchSingleJobSchedulerTest {
 
   private static final int EXECUTOR_CAPACITY = 20;
 
-  // This schedule index will make sure that task group events are not ignored
+  // This schedule index will make sure that task events are not ignored
   private static final int MAGIC_SCHEDULE_ATTEMPT_INDEX = Integer.MAX_VALUE;
 
   @Before
@@ -83,13 +83,13 @@ public final class BatchSingleJobSchedulerTest {
 
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
     metricMessageHandler = mock(MetricMessageHandler.class);
-    pendingTaskGroupCollection = new SingleJobTaskGroupCollection();
+    pendingTaskCollection = new SingleJobTaskCollection();
     schedulingPolicy = injector.getInstance(CompositeSchedulingPolicy.class);
-    schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskGroupCollection, executorRegistry);
+    schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskCollection, executorRegistry);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     scheduler =
-        new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, pendingTaskGroupCollection,
+        new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, pendingTaskCollection,
             blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
 
     final ActiveContext activeContext = mock(ActiveContext.class);
@@ -125,7 +125,7 @@ public final class BatchSingleJobSchedulerTest {
 
   /**
    * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchSingleJobScheduler}.
-   * TaskGroup state changes are explicitly submitted to scheduler instead of executor messages.
+   * Task state changes are explicitly submitted to scheduler instead of executor messages.
    */
   @Test(timeout=10000)
   public void testPull() throws Exception {
@@ -135,7 +135,7 @@ public final class BatchSingleJobSchedulerTest {
 
   /**
    * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchSingleJobScheduler}.
-   * TaskGroup state changes are explicitly submitted to scheduler instead of executor messages.
+   * Task state changes are explicitly submitted to scheduler instead of executor messages.
    */
   @Test(timeout=10000)
   public void testPush() throws Exception {

@@ -197,8 +197,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
   private MessageType getMsgType(final ControlMessage.Message controlMessage) {
     switch (controlMessage.getType()) {
-      case TaskGroupStateChanged:
-      case ScheduleTaskGroup:
+      case TaskStateChanged:
+      case ScheduleTask:
       case BlockStateChanged:
       case ExecutorFailed:
       case DataSizeMetric:

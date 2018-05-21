@@ -124,10 +124,10 @@ public final class JobConf extends ConfigurationModuleBuilder {
 
   /**
    * Executor capacity.
-   * Determines the number of TaskGroup 'slots' for each executor.
-   * 1) Master's TaskGroup scheduler can use this number in scheduling.
-   *    (e.g., schedule TaskGroup to the executor currently with the maximum number of available slots)
-   * 2) Executor's number of TaskGroup execution threads is set to this number.
+   * Determines the number of Task 'slots' for each executor.
+   * 1) Master's Task scheduler can use this number in scheduling.
+   *    (e.g., schedule Task to the executor currently with the maximum number of available slots)
+   * 2) Executor's number of Task execution threads is set to this number.
    */
   @NamedParameter(doc = "Executor capacity", short_name = "executor_capacity", default_value = "1")
   public final class ExecutorCapacity implements Name<Integer> {
@@ -142,7 +142,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Max number of attempts for task group scheduling.
+   * Max number of attempts for task scheduling.
    */
   @NamedParameter(doc = "Max number of schedules", short_name = "max_schedule_attempt", default_value = "3")
   public final class MaxScheduleAttempt implements Name<Integer> {

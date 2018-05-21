@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -27,36 +27,36 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 
 /**
- * Keep tracks of all pending task groups.
- * {@link Scheduler} enqueues the TaskGroups to schedule to this queue.
- * {@link SchedulerRunner} refers to this queue when scheduling TaskGroups.
+ * Keep tracks of all pending tasks.
+ * {@link Scheduler} enqueues the Tasks to schedule to this queue.
+ * {@link SchedulerRunner} refers to this queue when scheduling Tasks.
  */
 @ThreadSafe
 @DriverSide
-@DefaultImplementation(SingleJobTaskGroupCollection.class)
-public interface PendingTaskGroupCollection {
+@DefaultImplementation(SingleJobTaskCollection.class)
+public interface PendingTaskCollection {
 
   /**
-   * Adds a TaskGroup to this collection.
-   * @param scheduledTaskGroup to add.
+   * Adds a Task to this collection.
+   * @param scheduledTask to add.
    */
-  void add(final ScheduledTaskGroup scheduledTaskGroup);
+  void add(final ScheduledTask scheduledTask);
 
   /**
-   * Removes the specified TaskGroup to be scheduled.
-   * @param taskGroupId id of the TaskGroup
-   * @return the specified TaskGroup
-   * @throws NoSuchElementException if the specified TaskGroup is not in the queue,
-   *                                or removing this TaskGroup breaks scheduling order
+   * Removes the specified Task to be scheduled.
+   * @param taskId id of the Task
+   * @return the specified Task
+   * @throws NoSuchElementException if the specified Task is not in the queue,
+   *                                or removing this Task breaks scheduling order
    */
-  ScheduledTaskGroup remove(final String taskGroupId) throws NoSuchElementException;
+  ScheduledTask remove(final String taskId) throws NoSuchElementException;
 
   /**
-   * Peeks TaskGroups that can be scheduled according to job dependency priority.
+   * Peeks Tasks that can be scheduled according to job dependency priority.
    * Changes to the queue must not reflected to the returned collection to avoid concurrent modification.
-   * @return TaskGroups that can be scheduled, or {@link Optional#empty()} if the queue is empty
+   * @return Tasks that can be scheduled, or {@link Optional#empty()} if the queue is empty
    */
-  Optional<Collection<ScheduledTaskGroup>> peekSchedulableTaskGroups();
+  Optional<Collection<ScheduledTask>> peekSchedulableTasks();
 
   /**
    * Registers a job to this queue in case the queue needs to understand the topology of the job DAG.
@@ -67,14 +67,14 @@ public interface PendingTaskGroupCollection {
   /**
    * Removes a stage and its descendant stages from this queue.
    * This is to be used for fault tolerance purposes,
-   * say when a stage fails and all affected TaskGroups must be removed.
-   * @param stageIdOfTaskGroups for the stage to begin the removal recursively.
+   * say when a stage fails and all affected Tasks must be removed.
+   * @param stageIdOfTasks for the stage to begin the removal recursively.
    */
-  void removeTaskGroupsAndDescendants(final String stageIdOfTaskGroups);
+  void removeTasksAndDescendants(final String stageIdOfTasks);
 
   /**
-   * Checks whether there are schedulable TaskGroups in the queue or not.
-   * @return true if there are schedulable TaskGroups in the queue, false otherwise.
+   * Checks whether there are schedulable Tasks in the queue or not.
+   * @return true if there are schedulable Tasks in the queue, false otherwise.
    */
   boolean isEmpty();
 

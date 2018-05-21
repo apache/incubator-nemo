@@ -33,32 +33,32 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Tests {@link SingleJobTaskGroupCollection}.
+ * Tests {@link SingleJobTaskCollection}.
  */
-public final class SingleTaskGroupQueueTest {
-  private SingleJobTaskGroupCollection pendingTaskGroupPriorityQueue;
+public final class SingleTaskQueueTest {
+  private SingleJobTaskCollection pendingTaskPriorityQueue;
 
   /**
-   * To be used for a thread pool to execute task groups.
+   * To be used for a thread pool to execute tasks.
    */
   private ExecutorService executorService;
 
   @Before
   public void setUp() throws Exception{
-    pendingTaskGroupPriorityQueue = new SingleJobTaskGroupCollection();
+    pendingTaskPriorityQueue = new SingleJobTaskCollection();
     executorService = Executors.newFixedThreadPool(2);
   }
 
   /**
-   * This method builds a physical DAG starting from an IR DAG and submits it to {@link SingleJobTaskGroupCollection}.
-   * Tests whether the dequeued TaskGroups are according to the stage-dependency priority.
+   * This method builds a physical DAG starting from an IR DAG and submits it to {@link SingleJobTaskCollection}.
+   * Tests whether the dequeued Tasks are according to the stage-dependency priority.
    */
   @Test
   public void testPushPriority() throws Exception {
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.ThreeSequentialVertices, true);
 
-    pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
+    pendingTaskPriorityQueue.onJobScheduled(physicalPlan);
     final List<PhysicalStage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
 
     // Make sure that ScheduleGroups have been assigned to satisfy PendingPQ's requirements.
@@ -70,10 +70,10 @@ public final class SingleTaskGroupQueueTest {
 
     // This mimics Batch Scheduler's behavior
     executorService.submit(() -> {
-      // First schedule the children TaskGroups (since it is push).
-      // BatchSingleJobScheduler will schedule TaskGroups in this order as well.
+      // First schedule the children Tasks (since it is push).
+      // BatchSingleJobScheduler will schedule Tasks in this order as well.
       scheduleStage(dagOf2Stages.get(1));
-      // Then, schedule the parent TaskGroups.
+      // Then, schedule the parent Tasks.
       scheduleStage(dagOf2Stages.get(0));
 
       countDownLatch.countDown();
@@ -83,15 +83,15 @@ public final class SingleTaskGroupQueueTest {
     executorService.submit(() -> {
       try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
-        final ScheduledTaskGroup dequeuedTaskGroup = dequeue();
-        assertEquals(RuntimeIdGenerator.getStageIdFromTaskGroupId(dequeuedTaskGroup.getTaskGroupId()),
+        final ScheduledTask dequeuedTask = dequeue();
+        assertEquals(RuntimeIdGenerator.getStageIdFromTaskId(dequeuedTask.getTaskId()),
             dagOf2Stages.get(1).getId());
 
-        // Let's say we fail to schedule, and add this TaskGroup back.
-        pendingTaskGroupPriorityQueue.add(dequeuedTaskGroup);
+        // Let's say we fail to schedule, and add this Task back.
+        pendingTaskPriorityQueue.add(dequeuedTask);
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
 
-        // Now that we've dequeued all of the children TaskGroups, we should now start getting the parents.
+        // Now that we've dequeued all of the children Tasks, we should now start getting the parents.
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
       } catch (Exception e) {
@@ -107,14 +107,14 @@ public final class SingleTaskGroupQueueTest {
   }
 
   /**
-   * This method builds a physical DAG starting from an IR DAG and submits it to {@link SingleJobTaskGroupCollection}.
-   * Tests whether the dequeued TaskGroups are according to the stage-dependency priority.
+   * This method builds a physical DAG starting from an IR DAG and submits it to {@link SingleJobTaskCollection}.
+   * Tests whether the dequeued Tasks are according to the stage-dependency priority.
    */
   @Test
   public void testPullPriority() throws Exception {
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.ThreeSequentialVertices, false);
-    pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
+    pendingTaskPriorityQueue.onJobScheduled(physicalPlan);
     final List<PhysicalStage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
 
     // Make sure that ScheduleGroups have been assigned to satisfy PendingPQ's requirements.
@@ -125,8 +125,8 @@ public final class SingleTaskGroupQueueTest {
 
     // This mimics Batch Scheduler's behavior
     executorService.submit(() -> {
-      // First schedule the parent TaskGroups (since it is pull).
-      // BatchSingleJobScheduler will schedule TaskGroups in this order as well.
+      // First schedule the parent Tasks (since it is pull).
+      // BatchSingleJobScheduler will schedule Tasks in this order as well.
       scheduleStage(dagOf2Stages.get(0));
       countDownLatch.countDown();
     }).get();
@@ -135,18 +135,18 @@ public final class SingleTaskGroupQueueTest {
     executorService.submit(() -> {
       try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
-        final ScheduledTaskGroup dequeuedTaskGroup = dequeue();
-        assertEquals(RuntimeIdGenerator.getStageIdFromTaskGroupId(dequeuedTaskGroup.getTaskGroupId()),
+        final ScheduledTask dequeuedTask = dequeue();
+        assertEquals(RuntimeIdGenerator.getStageIdFromTaskId(dequeuedTask.getTaskId()),
             dagOf2Stages.get(0).getId());
 
-        // Let's say we fail to schedule, and add this TaskGroup back.
-        pendingTaskGroupPriorityQueue.add(dequeuedTaskGroup);
+        // Let's say we fail to schedule, and add this Task back.
+        pendingTaskPriorityQueue.add(dequeuedTask);
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
 
-        // Now that we've dequeued all of the children TaskGroups, we should now schedule children.
+        // Now that we've dequeued all of the children Tasks, we should now schedule children.
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
 
-        // Schedule the children TaskGroups.
+        // Schedule the children Tasks.
         scheduleStage(dagOf2Stages.get(1));
       } catch (Exception e) {
         e.printStackTrace();
@@ -159,15 +159,15 @@ public final class SingleTaskGroupQueueTest {
   }
 
   /**
-   * This method builds a physical DAG starting from an IR DAG and submits it to {@link SingleJobTaskGroupCollection}.
-   * Tests whether the dequeued TaskGroups are according to the stage-dependency priority,
-   * while concurrently scheduling TaskGroups that have dependencies, but are of different container types.
+   * This method builds a physical DAG starting from an IR DAG and submits it to {@link SingleJobTaskCollection}.
+   * Tests whether the dequeued Tasks are according to the stage-dependency priority,
+   * while concurrently scheduling Tasks that have dependencies, but are of different container types.
    */
   @Test
   public void testWithDifferentContainerType() throws Exception {
     final PhysicalPlan physicalPlan = TestPlanGenerator.generatePhysicalPlan(
         TestPlanGenerator.PlanType.ThreeSequentialVerticesWithDifferentContainerTypes, true);
-    pendingTaskGroupPriorityQueue.onJobScheduled(physicalPlan);
+    pendingTaskPriorityQueue.onJobScheduled(physicalPlan);
     final List<PhysicalStage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
 
     // Make sure that ScheduleGroups have been assigned to satisfy PendingPQ's requirements.
@@ -175,10 +175,10 @@ public final class SingleTaskGroupQueueTest {
 
     final CountDownLatch countDownLatch = new CountDownLatch(2);
 
-    // First schedule the children TaskGroups (since it is push).
-    // BatchSingleJobScheduler will schedule TaskGroups in this order as well.
+    // First schedule the children Tasks (since it is push).
+    // BatchSingleJobScheduler will schedule Tasks in this order as well.
     scheduleStage(dagOf2Stages.get(1));
-    // Then, schedule the parent TaskGroups.
+    // Then, schedule the parent Tasks.
     scheduleStage(dagOf2Stages.get(0));
 
     countDownLatch.countDown();
@@ -206,32 +206,32 @@ public final class SingleTaskGroupQueueTest {
   }
 
   /**
-   * Schedule the task groups in a physical stage.
+   * Schedule the tasks in a physical stage.
    * @param stage the stage to schedule.
    */
   private void scheduleStage(final PhysicalStage stage) {
-    stage.getTaskGroupIds().forEach(taskGroupId ->
-        pendingTaskGroupPriorityQueue.add(new ScheduledTaskGroup(
-            "TestPlan", stage.getSerializedTaskGroupDag(), taskGroupId, Collections.emptyList(),
+    stage.getTaskIds().forEach(taskId ->
+        pendingTaskPriorityQueue.add(new ScheduledTask(
+            "TestPlan", stage.getSerializedTaskDag(), taskId, Collections.emptyList(),
             Collections.emptyList(), 0, stage.getContainerType(), Collections.emptyMap())));
   }
 
   /**
-   * Dequeues a scheduled task group from the task group priority queue and get it's stage name.
-   * @return the stage name of the dequeued task group.
+   * Dequeues a scheduled task from the task priority queue and get it's stage name.
+   * @return the stage name of the dequeued task.
    */
   private String dequeueAndGetStageId() {
-    final ScheduledTaskGroup scheduledTaskGroup = dequeue();
-    return RuntimeIdGenerator.getStageIdFromTaskGroupId(scheduledTaskGroup.getTaskGroupId());
+    final ScheduledTask scheduledTask = dequeue();
+    return RuntimeIdGenerator.getStageIdFromTaskId(scheduledTask.getTaskId());
   }
 
   /**
-   * Dequeues a scheduled task group from the task group priority queue.
-   * @return the TaskGroup dequeued
+   * Dequeues a scheduled task from the task priority queue.
+   * @return the Task dequeued
    */
-  private ScheduledTaskGroup dequeue() {
-    final Collection<ScheduledTaskGroup> scheduledTaskGroups
-        = pendingTaskGroupPriorityQueue.peekSchedulableTaskGroups().get();
-    return pendingTaskGroupPriorityQueue.remove(scheduledTaskGroups.iterator().next().getTaskGroupId());
+  private ScheduledTask dequeue() {
+    final Collection<ScheduledTask> scheduledTasks
+        = pendingTaskPriorityQueue.peekSchedulableTasks().get();
+    return pendingTaskPriorityQueue.remove(scheduledTasks.iterator().next().getTaskId());
   }
 }

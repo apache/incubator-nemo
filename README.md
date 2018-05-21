@@ -113,7 +113,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
   * `Reserved` : Containers that store eviction-free resources. `Reserved` containers are used to reliably store intermediate data which have high eviction cost.
   * `Compute` : Containers that are mainly used for computation.
 * `memory_mb`: Memory size in MB
-* `capacity`: Number of `TaskGroup`s that can be run in an executor. Set this value to be the same as the number of CPU cores of the container.
+* `capacity`: Number of `Task`s that can be run in an executor. Set this value to be the same as the number of CPU cores of the container.
 
 ### Examples
 ```json

@@ -32,7 +32,7 @@ import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.plan.physical.*;
 import edu.snu.nemo.runtime.common.state.JobState;
 import edu.snu.nemo.runtime.common.state.StageState;
-import edu.snu.nemo.runtime.common.state.TaskGroupState;
+import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.runtime.master.JobStateManager;
@@ -135,18 +135,18 @@ public final class JobStateManagerTest {
     for (int stageIdx = 0; stageIdx < stageList.size(); stageIdx++) {
       final PhysicalStage physicalStage = stageList.get(stageIdx);
       jobStateManager.onStageStateChanged(physicalStage.getId(), StageState.State.EXECUTING);
-      final List<String> taskGroupIds = physicalStage.getTaskGroupIds();
-      taskGroupIds.forEach(taskGroupId -> {
-        jobStateManager.onTaskGroupStateChanged(taskGroupId, TaskGroupState.State.EXECUTING);
-        jobStateManager.onTaskGroupStateChanged(taskGroupId, TaskGroupState.State.COMPLETE);
-        if (RuntimeIdGenerator.getIndexFromTaskGroupId(taskGroupId) == taskGroupIds.size() - 1) {
+      final List<String> taskIds = physicalStage.getTaskIds();
+      taskIds.forEach(taskId -> {
+        jobStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
+        jobStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
+        if (RuntimeIdGenerator.getIndexFromTaskId(taskId) == taskIds.size() - 1) {
           assertTrue(jobStateManager.checkStageCompletion(physicalStage.getId()));
         }
       });
-      final Map<String, TaskGroupState> taskGroupStateMap = jobStateManager.getIdToTaskGroupStates();
-      taskGroupIds.forEach(taskGroupId -> {
-        assertEquals(taskGroupStateMap.get(taskGroupId).getStateMachine().getCurrentState(),
-            TaskGroupState.State.COMPLETE);
+      final Map<String, TaskState> taskStateMap = jobStateManager.getIdToTaskStates();
+      taskIds.forEach(taskId -> {
+        assertEquals(taskStateMap.get(taskId).getStateMachine().getCurrentState(),
+            TaskState.State.COMPLETE);
       });
 
       if (stageIdx == stageList.size() - 1) {

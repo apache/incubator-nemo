@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 
@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
  * A Round-Robin implementation used by {@link BatchSingleJobScheduler}.
  *
  * This policy keeps a list of available {@link ExecutorRepresenter} for each type of container.
- * The RR policy is used for each container type when trying to schedule a task group.
+ * The RR policy is used for each container type when trying to schedule a task.
  */
 @ThreadSafe
 @DriverSide
@@ -47,15 +47,15 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
 
   /**
    * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by round robin behaviour.
-   * @param scheduledTaskGroup {@link ScheduledTaskGroup} to be scheduled.
+   * @param scheduledTask {@link ScheduledTask} to be scheduled.
    * @return filtered Set of {@link ExecutorRepresenter}.
    */
   @Override
   public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
-                                                             final ScheduledTaskGroup scheduledTaskGroup) {
+                                                             final ScheduledTask scheduledTask) {
     final OptionalInt minOccupancy =
         executorRepresenterSet.stream()
-        .map(executor -> executor.getRunningTaskGroups().size())
+        .map(executor -> executor.getRunningTasks().size())
         .mapToInt(i -> i).min();
 
     if (!minOccupancy.isPresent()) {
@@ -64,7 +64,7 @@ public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
 
     final Set<ExecutorRepresenter> candidateExecutors =
         executorRepresenterSet.stream()
-        .filter(executor -> executor.getRunningTaskGroups().size() == minOccupancy.getAsInt())
+        .filter(executor -> executor.getRunningTasks().size() == minOccupancy.getAsInt())
         .collect(Collectors.toSet());
 
     return candidateExecutors;

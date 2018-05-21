@@ -20,8 +20,8 @@ option java_package = "edu.snu.nemo.runtime.common.comm";
 option java_outer_classname = "ControlMessage";
 
 enum MessageType {
-    TaskGroupStateChanged = 0;
-    ScheduleTaskGroup = 1;
+    TaskStateChanged = 0;
+    ScheduleTask = 1;
     BlockStateChanged = 2;
     DataSizeMetric = 3;
     RequestBlockLocation = 4;
@@ -34,8 +34,8 @@ message Message {
     required MessageType type = 1;
     required int64 id = 2;
     required string listenerId = 3; // The id of the message listner (handler).
-    optional TaskGroupStateChangedMsg taskGroupStateChangedMsg = 4;
-    optional ScheduleTaskGroupMsg scheduleTaskGroupMsg = 5;
+    optional TaskStateChangedMsg taskStateChangedMsg = 4;
+    optional ScheduleTaskMsg scheduleTaskMsg = 5;
     optional BlockStateChangedMsg blockStateChangedMsg = 6;
     optional DataSizeMetricMsg dataSizeMetricMsg = 7;
     optional RequestBlockLocationMsg requestBlockLocationMsg = 8;
@@ -46,8 +46,8 @@ message Message {
 }
 
 // Messages from Master to Executors
-message ScheduleTaskGroupMsg {
-    required bytes taskGroup = 1;
+message ScheduleTaskMsg {
+    required bytes task = 1;
 }
 
 message BlockLocationInfoMsg {
@@ -58,10 +58,10 @@ message BlockLocationInfoMsg {
 }
 
 // Messages from Executors to Master
-message TaskGroupStateChangedMsg {
+message TaskStateChangedMsg {
     required string executorId = 1;
-    required string taskGroupId = 2;
-    required TaskGroupStateFromExecutor state = 3;
+    required string taskId = 2;
+    required TaskStateFromExecutor state = 3;
     optional string taskPutOnHoldId = 4;
     optional RecoverableFailureCause failureCause = 5;
     required int32 attemptIdx = 6;
@@ -131,7 +131,7 @@ message ByteTransferContextDescriptor {
     optional bytes keyRange = 4;
 }
 
-enum TaskGroupStateFromExecutor {
+enum TaskStateFromExecutor {
     READY = 0;
     EXECUTING = 1;
     COMPLETE = 2;

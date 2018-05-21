@@ -23,82 +23,82 @@ import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTaskGroup;
+import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
 import edu.snu.nemo.runtime.common.plan.physical.Task;
-import edu.snu.nemo.runtime.common.state.TaskGroupState;
 
 import java.util.*;
 
+import edu.snu.nemo.runtime.common.state.TaskState;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Manages the states related to a task group.
+ * Manages the states related to a task.
  * The methods of this class are synchronized.
  */
 @EvaluatorSide
-public final class TaskGroupStateManager {
-  private static final Logger LOG = LoggerFactory.getLogger(TaskGroupStateManager.class.getName());
+public final class TaskStateManager {
+  private static final Logger LOG = LoggerFactory.getLogger(TaskStateManager.class.getName());
 
-  private final String taskGroupId;
+  private final String taskId;
   private final int attemptIdx;
   private final String executorId;
   private final MetricCollector metricCollector;
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
-  public TaskGroupStateManager(final ScheduledTaskGroup scheduledTaskGroup,
-                               final DAG<Task, RuntimeEdge<Task>> taskGroupDag,
+  public TaskStateManager(final ScheduledTask scheduledTask,
+                               final DAG<Task, RuntimeEdge<Task>> taskDag,
                                final String executorId,
                                final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                                final MetricMessageSender metricMessageSender) {
-    this.taskGroupId = scheduledTaskGroup.getTaskGroupId();
-    this.attemptIdx = scheduledTaskGroup.getAttemptIdx();
+    this.taskId = scheduledTask.getTaskId();
+    this.attemptIdx = scheduledTask.getAttemptIdx();
     this.executorId = executorId;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.metricCollector = new MetricCollector(metricMessageSender);
   }
 
   /**
-   * Updates the state of the task group.
-   * @param newState of the task group.
+   * Updates the state of the task.
+   * @param newState of the task.
    * @param taskPutOnHold the logical ID of the tasks put on hold, empty otherwise.
    * @param cause only provided as non-empty upon recoverable failures.
    */
-  public synchronized void onTaskGroupStateChanged(final TaskGroupState.State newState,
-                                                   final Optional<String> taskPutOnHold,
-                                                   final Optional<TaskGroupState.RecoverableFailureCause> cause) {
+  public synchronized void onTaskStateChanged(final TaskState.State newState,
+                                              final Optional<String> taskPutOnHold,
+                                              final Optional<TaskState.RecoverableFailureCause> cause) {
     final Map<String, Object> metric = new HashMap<>();
 
     switch (newState) {
       case EXECUTING:
-        LOG.debug("Executing TaskGroup ID {}...", this.taskGroupId);
+        LOG.debug("Executing Task ID {}...", this.taskId);
         metric.put("ContainerId", executorId);
         metric.put("ScheduleAttempt", attemptIdx);
         metric.put("FromState", newState);
-        metricCollector.beginMeasurement(taskGroupId, metric);
+        metricCollector.beginMeasurement(taskId, metric);
         break;
       case COMPLETE:
-        LOG.debug("TaskGroup ID {} complete!", this.taskGroupId);
+        LOG.debug("Task ID {} complete!", this.taskId);
         metric.put("ToState", newState);
-        metricCollector.endMeasurement(taskGroupId, metric);
-        notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
+        metricCollector.endMeasurement(taskId, metric);
+        notifyTaskStateToMaster(newState, Optional.empty(), cause);
         break;
       case FAILED_RECOVERABLE:
-        LOG.debug("TaskGroup ID {} failed (recoverable).", this.taskGroupId);
+        LOG.debug("Task ID {} failed (recoverable).", this.taskId);
         metric.put("ToState", newState);
-        metricCollector.endMeasurement(taskGroupId, metric);
-        notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
+        metricCollector.endMeasurement(taskId, metric);
+        notifyTaskStateToMaster(newState, Optional.empty(), cause);
         break;
       case FAILED_UNRECOVERABLE:
-        LOG.debug("TaskGroup ID {} failed (unrecoverable).", this.taskGroupId);
+        LOG.debug("Task ID {} failed (unrecoverable).", this.taskId);
         metric.put("ToState", newState);
-        metricCollector.endMeasurement(taskGroupId, metric);
-        notifyTaskGroupStateToMaster(newState, Optional.empty(), cause);
+        metricCollector.endMeasurement(taskId, metric);
+        notifyTaskStateToMaster(newState, Optional.empty(), cause);
         break;
       case ON_HOLD:
-        LOG.debug("TaskGroup ID {} put on hold.", this.taskGroupId);
-        notifyTaskGroupStateToMaster(newState, taskPutOnHold, cause);
+        LOG.debug("Task ID {} put on hold.", this.taskId);
+        notifyTaskStateToMaster(newState, taskPutOnHold, cause);
         break;
       default:
         throw new IllegalStateException("Illegal state at this point");
@@ -106,18 +106,18 @@ public final class TaskGroupStateManager {
   }
 
   /**
-   * Notifies the change in task group state to master.
-   * @param newState of the task group.
+   * Notifies the change in task state to master.
+   * @param newState of the task.
    * @param taskPutOnHold the logical ID of the tasks put on hold, empty otherwise.
    * @param cause only provided as non-empty upon recoverable failures.
    */
-  private void notifyTaskGroupStateToMaster(final TaskGroupState.State newState,
+  private void notifyTaskStateToMaster(final TaskState.State newState,
                                             final Optional<String> taskPutOnHold,
-                                            final Optional<TaskGroupState.RecoverableFailureCause> cause) {
-    final ControlMessage.TaskGroupStateChangedMsg.Builder msgBuilder =
-        ControlMessage.TaskGroupStateChangedMsg.newBuilder()
+                                            final Optional<TaskState.RecoverableFailureCause> cause) {
+    final ControlMessage.TaskStateChangedMsg.Builder msgBuilder =
+        ControlMessage.TaskStateChangedMsg.newBuilder()
           .setExecutorId(executorId)
-          .setTaskGroupId(taskGroupId)
+          .setTaskId(taskId)
           .setAttemptIdx(attemptIdx)
           .setState(convertState(newState));
     if (taskPutOnHold.isPresent()) {
@@ -127,37 +127,37 @@ public final class TaskGroupStateManager {
       msgBuilder.setFailureCause(convertFailureCause(cause.get()));
     }
 
-    // Send taskGroupStateChangedMsg to master!
+    // Send taskStateChangedMsg to master!
     persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
         ControlMessage.Message.newBuilder()
             .setId(RuntimeIdGenerator.generateMessageId())
             .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.TaskGroupStateChanged)
-            .setTaskGroupStateChangedMsg(msgBuilder.build())
+            .setType(ControlMessage.MessageType.TaskStateChanged)
+            .setTaskStateChangedMsg(msgBuilder.build())
             .build());
   }
 
-  private ControlMessage.TaskGroupStateFromExecutor convertState(final TaskGroupState.State state) {
+  private ControlMessage.TaskStateFromExecutor convertState(final TaskState.State state) {
     switch (state) {
     case READY:
-      return ControlMessage.TaskGroupStateFromExecutor.READY;
+      return ControlMessage.TaskStateFromExecutor.READY;
     case EXECUTING:
-      return ControlMessage.TaskGroupStateFromExecutor.EXECUTING;
+      return ControlMessage.TaskStateFromExecutor.EXECUTING;
     case COMPLETE:
-      return ControlMessage.TaskGroupStateFromExecutor.COMPLETE;
+      return ControlMessage.TaskStateFromExecutor.COMPLETE;
     case FAILED_RECOVERABLE:
-      return ControlMessage.TaskGroupStateFromExecutor.FAILED_RECOVERABLE;
+      return ControlMessage.TaskStateFromExecutor.FAILED_RECOVERABLE;
     case FAILED_UNRECOVERABLE:
-      return ControlMessage.TaskGroupStateFromExecutor.FAILED_UNRECOVERABLE;
+      return ControlMessage.TaskStateFromExecutor.FAILED_UNRECOVERABLE;
     case ON_HOLD:
-      return ControlMessage.TaskGroupStateFromExecutor.ON_HOLD;
+      return ControlMessage.TaskStateFromExecutor.ON_HOLD;
     default:
-      throw new UnknownExecutionStateException(new Exception("This TaskGroupState is unknown: " + state));
+      throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + state));
     }
   }
 
   private ControlMessage.RecoverableFailureCause convertFailureCause(
-    final TaskGroupState.RecoverableFailureCause cause) {
+    final TaskState.RecoverableFailureCause cause) {
     switch (cause) {
     case INPUT_READ_FAILURE:
       return ControlMessage.RecoverableFailureCause.InputReadFailure;
@@ -170,6 +170,6 @@ public final class TaskGroupStateManager {
   }
 
   // Tentative
-  public void getCurrentTaskGroupExecutionState() {
+  public void getCurrentTaskExecutionState() {
   }
 }
