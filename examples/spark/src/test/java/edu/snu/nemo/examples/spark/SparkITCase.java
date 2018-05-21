@@ -46,7 +46,6 @@ public final class SparkITCase {
         .addResourceJson(executorResourceFileName);
   }
 
-  /* Temporary disabled because of Travis issue
   @Test(timeout = TIMEOUT)
   public void testSparkWordCount() throws Exception {
     final String inputFileName = "sample_input_wordcount";
@@ -69,8 +68,8 @@ public final class SparkITCase {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
-  */
 
+  /* Temporary disabled because of Travis issue
   @Test(timeout = TIMEOUT)
   public void testSparkMapReduce() throws Exception {
     final String inputFileName = "sample_input_mr";
@@ -93,7 +92,7 @@ public final class SparkITCase {
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
-  }
+  }*/
 
   @Test(timeout = TIMEOUT)
   public void testSparkPi() throws Exception {
