@@ -62,10 +62,10 @@ public final class ExecutorRegistry {
   synchronized boolean registerTask(final SchedulingPolicy policy, final ScheduledTask task) {
     final Set<ExecutorRepresenter> candidateExecutors =
         policy.filterExecutorRepresenters(getRunningExecutors(), task);
-    final Optional<ExecutorRepresenter> firstCandiate = candidateExecutors.stream().findFirst();
+    final Optional<ExecutorRepresenter> firstCandidate = candidateExecutors.stream().findFirst();
 
-    if (firstCandiate.isPresent()) {
-      final ExecutorRepresenter selectedExecutor = firstCandiate.get();
+    if (firstCandidate.isPresent()) {
+      final ExecutorRepresenter selectedExecutor = firstCandidate.get();
       selectedExecutor.onTaskScheduled(task);
       return true;
     } else {
@@ -73,15 +73,14 @@ public final class ExecutorRegistry {
     }
   }
 
-  synchronized boolean updateExecutor(
+  synchronized void updateExecutor(
       final String executorId,
       final BiFunction<ExecutorRepresenter, ExecutorState, Pair<ExecutorRepresenter, ExecutorState>> updater) {
     final Pair<ExecutorRepresenter, ExecutorState> pair = executors.get(executorId);
     if (pair == null) {
-      return false;
+      throw new IllegalArgumentException("Unknown executor id " + executorId);
     } else {
       executors.put(executorId, updater.apply(pair.left(), pair.right()));
-      return true;
     }
   }
 

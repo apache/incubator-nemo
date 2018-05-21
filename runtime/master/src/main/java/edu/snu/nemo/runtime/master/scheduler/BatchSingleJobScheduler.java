@@ -101,8 +101,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * @param scheduledJobStateManager to keep track of the submitted job's states.
    */
   @Override
-  public void scheduleJob(final PhysicalPlan jobToSchedule,
-                          final JobStateManager scheduledJobStateManager) {
+  public void scheduleJob(final PhysicalPlan jobToSchedule, final JobStateManager scheduledJobStateManager) {
     this.physicalPlan = jobToSchedule;
     this.jobStateManager = scheduledJobStateManager;
 
