@@ -92,7 +92,6 @@ public final class TaskExecutorTest {
    */
   @Test(timeout=2000)
   public void testSourceTask() throws Exception {
-    // Create a task only having a source task.
     final IRVertex sourceIRVertex = new SimpleIRVertex();
     final String sourceIrVertexId = sourceIRVertex.getId();
 
@@ -145,7 +144,6 @@ public final class TaskExecutorTest {
    */
   @Test//(timeout=2000)
   public void testOperatorTask() throws Exception {
-    // Create a task with two operator tasks.
     final IRVertex operatorIRVertex1 = new SimpleIRVertex();
     final IRVertex operatorIRVertex2 = new SimpleIRVertex();
     final String operatorIRVertexId1 = operatorIRVertex1.getId();

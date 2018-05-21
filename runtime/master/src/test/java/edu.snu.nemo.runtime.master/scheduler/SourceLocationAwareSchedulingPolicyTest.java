@@ -54,13 +54,13 @@ public final class SourceLocationAwareSchedulingPolicyTest {
     final SchedulingPolicy schedulingPolicy = new SourceLocationAwareSchedulingPolicy();
 
     // Prepare test scenario
-    final ScheduledTask tg = CreateScheduledTask.withReadablesWithSourceLocations(
+    final ScheduledTask task = CreateScheduledTask.withReadablesWithSourceLocations(
         Collections.singletonList(Collections.singletonList(SITE_0)));
     final ExecutorRepresenter e0 = mockExecutorRepresenter(SITE_1);
     final ExecutorRepresenter e1 = mockExecutorRepresenter(SITE_1);
 
     assertEquals(Collections.emptySet(),
-        schedulingPolicy.filterExecutorRepresenters(new HashSet<>(Arrays.asList(e0, e1)), tg));
+        schedulingPolicy.filterExecutorRepresenters(new HashSet<>(Arrays.asList(e0, e1)), task));
   }
 
   /**
@@ -70,21 +70,21 @@ public final class SourceLocationAwareSchedulingPolicyTest {
   public void testSourceLocationAwareSchedulingWithMultiSource() {
     final SchedulingPolicy schedulingPolicy = new SourceLocationAwareSchedulingPolicy();
     // Prepare test scenario
-    final ScheduledTask tg0 = CreateScheduledTask.withReadablesWithSourceLocations(
+    final ScheduledTask task0 = CreateScheduledTask.withReadablesWithSourceLocations(
         Collections.singletonList(Collections.singletonList(SITE_1)));
-    final ScheduledTask tg1 = CreateScheduledTask.withReadablesWithSourceLocations(
+    final ScheduledTask task1 = CreateScheduledTask.withReadablesWithSourceLocations(
         Collections.singletonList(Arrays.asList(SITE_0, SITE_1, SITE_2)));
-    final ScheduledTask tg2 = CreateScheduledTask.withReadablesWithSourceLocations(
+    final ScheduledTask task2 = CreateScheduledTask.withReadablesWithSourceLocations(
         Arrays.asList(Collections.singletonList(SITE_0), Collections.singletonList(SITE_1),
             Arrays.asList(SITE_1, SITE_2)));
-    final ScheduledTask tg3 = CreateScheduledTask.withReadablesWithSourceLocations(
+    final ScheduledTask task3 = CreateScheduledTask.withReadablesWithSourceLocations(
         Arrays.asList(Collections.singletonList(SITE_1), Collections.singletonList(SITE_0),
             Arrays.asList(SITE_0, SITE_2)));
 
     final ExecutorRepresenter e = mockExecutorRepresenter(SITE_1);
-    for (final ScheduledTask tg : new HashSet<>(Arrays.asList(tg0, tg1, tg2, tg3))) {
+    for (final ScheduledTask task : new HashSet<>(Arrays.asList(task0, task1, task2, task3))) {
       assertEquals(new HashSet<>(Collections.singletonList(e)), schedulingPolicy.filterExecutorRepresenters(
-          new HashSet<>(Collections.singletonList(e)), tg));
+          new HashSet<>(Collections.singletonList(e)), task));
     }
   }
 
@@ -93,15 +93,15 @@ public final class SourceLocationAwareSchedulingPolicyTest {
    * Utility for creating {@link ScheduledTask}.
    */
   private static final class CreateScheduledTask {
-    private static final AtomicInteger tgIndex = new AtomicInteger(0);
     private static final AtomicInteger taskIndex = new AtomicInteger(0);
+    private static final AtomicInteger intraTaskIndex = new AtomicInteger(0);
 
     private static ScheduledTask doCreate(final Collection<Readable> readables) {
       final ScheduledTask mockInstance = mock(ScheduledTask.class);
       final Map<String, Readable> readableMap = new HashMap<>();
-      readables.forEach(readable -> readableMap.put(String.format("TASK-%d", taskIndex.getAndIncrement()),
+      readables.forEach(readable -> readableMap.put(String.format("TASK-%d", intraTaskIndex.getAndIncrement()),
           readable));
-      when(mockInstance.getTaskId()).thenReturn(String.format("TG-%d", tgIndex.getAndIncrement()));
+      when(mockInstance.getTaskId()).thenReturn(String.format("T-%d", taskIndex.getAndIncrement()));
       when(mockInstance.getLogicalTaskIdToReadable()).thenReturn(readableMap);
       return mockInstance;
     }

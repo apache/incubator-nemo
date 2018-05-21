@@ -267,7 +267,6 @@ public final class JobStateManager {
    * State changes that occur in executors are sent to master as a control message,
    * and the call to this method is initiated in {@link edu.snu.nemo.runtime.master.scheduler.BatchSingleJobScheduler}
    * when the message/event is received.
-   * A task completion implies completion of all its tasks.
    *
    * @param taskId  the ID of the task.
    * @param newState     the new state of the task.
@@ -275,7 +274,7 @@ public final class JobStateManager {
   public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newState) {
     final StateMachine taskState = idToTaskStates.get(taskId).getStateMachine();
     final String stageId = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
-    LOG.debug("Task Group State Transition: id {}, from {} to {}",
+    LOG.debug("Task State Transition: id {}, from {} to {}",
         new Object[]{taskId, taskState.getCurrentState(), newState});
     final Map<String, Object> metric = new HashMap<>();
 

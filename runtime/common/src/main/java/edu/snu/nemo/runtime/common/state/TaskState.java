@@ -34,12 +34,11 @@ public final class TaskState {
     // Add states
     stateMachineBuilder.addState(State.READY, "The task has been created.");
     stateMachineBuilder.addState(State.EXECUTING, "The task is executing.");
-    stateMachineBuilder.addState(State.COMPLETE, "All of this task's tasks have completed.");
+    stateMachineBuilder.addState(State.COMPLETE, "The task has completed.");
     stateMachineBuilder.addState(State.FAILED_RECOVERABLE, "Task failed, but is recoverable.");
     stateMachineBuilder.addState(State.FAILED_UNRECOVERABLE,
         "Task failed, and is unrecoverable. The job will fail.");
     stateMachineBuilder.addState(State.ON_HOLD, "The task is paused for dynamic optimization.");
-
 
     // Add transitions
     stateMachineBuilder.addTransition(State.READY, State.EXECUTING,
@@ -62,7 +61,7 @@ public final class TaskState {
         "Recoverable failure in a task/Container failure");
 
     stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.READY,
-        "Recoverable task failure");
+        "Recovered from failure and is ready");
     stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.FAILED_UNRECOVERABLE,
         "");
 
@@ -92,7 +91,7 @@ public final class TaskState {
    */
   public enum RecoverableFailureCause {
     INPUT_READ_FAILURE, // Occurs when a task is unable to read its input block
-    OUTPUT_WRITE_FAILURE, // Occurs when a task successfully generates its output, but is able to write it
+    OUTPUT_WRITE_FAILURE, // Occurs when a task successfully generates its output, but is unable to write it
     CONTAINER_FAILURE // When a REEF evaluator fails
   }
 

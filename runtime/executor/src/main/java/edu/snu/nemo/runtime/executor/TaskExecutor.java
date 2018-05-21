@@ -77,7 +77,7 @@ public final class TaskExecutor {
   /**
    * Constructor.
    * @param scheduledTask Task with information needed during execution.
-   * @param taskDag Task expressed as a DAG of Tasks.
+   * @param taskDag A DAG of Tasks.
    * @param taskStateManager State manager for this Task.
    * @param channelFactory For reading from/writing to data to other Stages.
    * @param metricMessageSender For sending metric with execution stats to Master.
@@ -379,7 +379,7 @@ public final class TaskExecutor {
    * @return true if all tasks are finished.
    */
   private boolean finishedAllTasks() {
-    // Total number of Tasks in this Task
+    // Total number of Tasks
     int taskNum = taskDataHandlers.size();
     int finishedTaskNum = finishedTaskIds.size();
 

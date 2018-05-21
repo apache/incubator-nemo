@@ -109,7 +109,6 @@ public final class Executor {
           .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
       scheduledTask.getTaskOutgoingEdges()
           .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
-      // TODO #432: remove these coders when we "streamize" task execution within a Task.
       taskDag.getVertices().forEach(v -> {
         taskDag.getOutgoingEdgesOf(v)
             .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
