@@ -55,8 +55,7 @@ public final class ExecutorRegistry {
     }
   }
 
-  synchronized Optional<ExecutorRepresenter> registerTask(final SchedulingPolicy policy,
-                                                          final ScheduledTask task) {
+  synchronized boolean registerTask(final SchedulingPolicy policy, final ScheduledTask task) {
     final Set<ExecutorRepresenter> candidateExecutors =
         policy.filterExecutorRepresenters(getRunningExecutors(), task);
     final Optional<ExecutorRepresenter> firstCandiate = candidateExecutors.stream().findFirst();
@@ -64,9 +63,9 @@ public final class ExecutorRegistry {
     if (firstCandiate.isPresent()) {
       final ExecutorRepresenter selectedExecutor = firstCandiate.get();
       selectedExecutor.onTaskScheduled(task);
-      return Optional.of(selectedExecutor);
+      return true;
     } else {
-      return Optional.empty();
+      return false;
     }
   }
 

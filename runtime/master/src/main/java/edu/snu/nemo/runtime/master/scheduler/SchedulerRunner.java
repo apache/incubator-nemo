@@ -135,22 +135,13 @@ public final class SchedulerRunner {
           final JobStateManager jobStateManager = jobStateManagers.get(schedulableTask.getJobId());
           LOG.debug("Trying to schedule {}...", schedulableTask.getTaskId());
 
-          final Set<ExecutorRepresenter> runningExecutorRepresenter =
-              executorRegistry.getRunningExecutorIds().stream()
-              .map(executorId -> executorRegistry.getExecutorRepresenter(executorId))
-              .collect(Collectors.toSet());
-
-          final Set<ExecutorRepresenter> candidateExecutors =
-              schedulingPolicy.filterExecutorRepresenters(runningExecutorRepresenter, schedulableTask);
-
-          if (candidateExecutors.size() != 0) {
-            jobStateManager.onTaskStateChanged(schedulableTask.getTaskId(),
-                TaskState.State.EXECUTING);
-            final ExecutorRepresenter executor = candidateExecutors.stream().findFirst().get();
-            executor.onTaskScheduled(schedulableTask);
-
+          final boolean isScheduled = executorRegistry.registerTask(schedulingPolicy, schedulableTask);
+          if (isScheduled) {
+            jobStateManager.onTaskStateChanged(schedulableTask.getTaskId(), TaskState.State.EXECUTING);
             pendingTaskCollection.remove(schedulableTask.getTaskId());
             numScheduledTasks++;
+
+            // TODO: actually send the task to the executor
             LOG.debug("Successfully scheduled {}", schedulableTask.getTaskId());
           } else {
             LOG.debug("Failed to schedule {}", schedulableTask.getTaskId());
