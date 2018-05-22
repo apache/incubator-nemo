@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * A class to restrict parallel connection per runtime edge.
  */
-public final class ParallelConnectionRestrictor {
+public final class BlockTransferConnectionQueue {
   private static final Object FUTURE_OBJECT = new Object();
   private final Map<String, Integer> runtimeEdgeIdToNumOutstandingConnections = new ConcurrentHashMap<>();
   private final Map<String, Queue<CompletableFuture<Object>>> runtimeEdgeIdToPendingConnections
@@ -36,7 +36,7 @@ public final class ParallelConnectionRestrictor {
   private final int maxNum;
 
   @Inject
-  private ParallelConnectionRestrictor(@Parameter(JobConf.MaxNumDownloadsForARuntimeEdge.class) final int maxNum) {
+  private BlockTransferConnectionQueue(@Parameter(JobConf.MaxNumDownloadsForARuntimeEdge.class) final int maxNum) {
     this.maxNum = maxNum;
   }
 

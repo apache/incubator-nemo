@@ -72,7 +72,7 @@ public final class BlockManagerWorker {
   private final Map<String, AtomicInteger> blockToRemainingRead;
   private final SerializerManager serializerManager;
   private final Map<String, CompletableFuture<ControlMessage.Message>> pendingBlockLocationRequest;
-  private final ParallelConnectionRestrictor parallelConnectionRestrictor;
+  private final BlockTransferConnectionQueue blockTransferConnectionQueue;
 
   /**
    * Constructor.
@@ -86,7 +86,7 @@ public final class BlockManagerWorker {
    * @param persistentConnectionToMasterMap the connection map.
    * @param byteTransfer                    the byte transfer.
    * @param serializerManager               the serializer manager.
-   * @param parallelConnectionRestrictor    restricts parallel connections
+   * @param blockTransferConnectionQueue    restricts parallel connections
    */
   @Inject
   private BlockManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -98,7 +98,7 @@ public final class BlockManagerWorker {
                              final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                              final ByteTransfer byteTransfer,
                              final SerializerManager serializerManager,
-                             final ParallelConnectionRestrictor parallelConnectionRestrictor) {
+                             final BlockTransferConnectionQueue blockTransferConnectionQueue) {
     this.executorId = executorId;
     this.memoryStore = memoryStore;
     this.serializedMemoryStore = serializedMemoryStore;
@@ -110,7 +110,7 @@ public final class BlockManagerWorker {
     this.blockToRemainingRead = new ConcurrentHashMap<>();
     this.serializerManager = serializerManager;
     this.pendingBlockLocationRequest = new ConcurrentHashMap<>();
-    this.parallelConnectionRestrictor = parallelConnectionRestrictor;
+    this.blockTransferConnectionQueue = blockTransferConnectionQueue;
   }
 
   /**
@@ -233,11 +233,11 @@ public final class BlockManagerWorker {
             .setRuntimeEdgeId(runtimeEdgeId)
             .setKeyRange(ByteString.copyFrom(SerializationUtils.serialize(keyRange)))
             .build();
-        final CompletableFuture<ByteInputContext> contextFuture = parallelConnectionRestrictor
+        final CompletableFuture<ByteInputContext> contextFuture = blockTransferConnectionQueue
             .newConnectionRequest(runtimeEdgeId)
             .thenCompose(obj -> byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray()));
         contextFuture.thenApply(context -> context.getCompletedFuture()
-            .thenAccept(f -> parallelConnectionRestrictor.connectionFinished(runtimeEdgeId)));
+            .thenAccept(f -> blockTransferConnectionQueue.connectionFinished(runtimeEdgeId)));
         return contextFuture
             .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
                 serializerManager.getSerializer(runtimeEdgeId)));
