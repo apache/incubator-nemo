@@ -241,6 +241,19 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
    */
   private static DataCommunicationPatternProperty.Value getEdgeCommunicationPattern(final IRVertex src,
                                                                                     final IRVertex dst) {
+    try {
+      final Class<?> constructUnionTableFn = Class.forName(
+          "org.apache.beam.sdk.transforms.join.CoGroupByKey$ConstructUnionTableFn");
+      if (src instanceof OperatorVertex && ((OperatorVertex) src).getTransform() instanceof DoTransform
+          && ((DoTransform) ((OperatorVertex) src).getTransform()).getDoFn().getClass().equals(constructUnionTableFn)) {
+        return DataCommunicationPatternProperty.Value.Shuffle;
+      }
+    } catch (final ClassNotFoundException e) {
+      throw new RuntimeException(e);
+    }
+    if (src instanceof OperatorVertex && ((OperatorVertex) src).getTransform() instanceof FlattenTransform) {
+      return DataCommunicationPatternProperty.Value.OneToOne;
+    }
     if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof GroupByKeyTransform) {
       return DataCommunicationPatternProperty.Value.Shuffle;
     } else if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof CreateViewTransform
