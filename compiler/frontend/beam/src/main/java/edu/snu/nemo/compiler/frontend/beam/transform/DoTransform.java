@@ -328,4 +328,11 @@ public final class DoTransform<I, O> implements Transform<I, O> {
       throw new UnsupportedOperationException("timer() in ProcessContext under DoTransform");
     }
   }
+
+  /**
+   * @return {@link DoFn} for this transform.
+   */
+  public DoFn getDoFn() {
+    return doFn;
+  }
 }
