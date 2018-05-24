@@ -172,6 +172,10 @@ public final class BatchSingleJobScheduler implements Scheduler {
       }
     } else if (taskAttemptIndex < currentTaskAttemptIndex) {
       // Do not change state, as this notification is for a previous task attempt.
+      // For example, the master can receive a notification that an executor has been removed,
+      // and then a notification that the task that was running in the removed executor has been completed.
+      // In this case, if we do not consider the attempt number, the state changes from FAILED_RECOVERABLE to COMPLETED,
+      // which is illegal.
       LOG.info("{} state change to {} arrived late, we will ignore this.", new Object[]{taskId, newState});
     } else {
       throw new SchedulingException(new Throwable("AttemptIdx for a task cannot be greater than its current index"));
