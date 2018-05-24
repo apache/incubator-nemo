@@ -67,7 +67,7 @@ public final class JobStateManager {
 
   /**
    * Maintain the number of schedule attempts for each task.
-   * The attempt numbers are update only here, and are read-only in other places.
+   * The attempt numbers are updated only here, and are read-only in other places.
    */
   private final Map<String, Integer> taskIdToCurrentAttempt;
 
@@ -306,8 +306,6 @@ public final class JobStateManager {
         throw new IllegalStateTransitionException(
             new Throwable("The stage has not yet been submitted for execution"));
       }
-
-      taskIdToCurrentAttempt.put(taskId, taskIdToCurrentAttempt.get(taskId) + 1);
       break;
     case EXECUTING:
       taskState.setState(newState);
@@ -334,12 +332,13 @@ public final class JobStateManager {
           throw new IllegalStateTransitionException(
               new Throwable("The stage has not yet been submitted for execution"));
         }
+
+        // We'll recover and retry this task
+        taskIdToCurrentAttempt.put(taskId, taskIdToCurrentAttempt.get(taskId) + 1);
       } else {
         LOG.info("{} state is already FAILED_RECOVERABLE. Skipping this event.",
             taskId);
       }
-
-      taskIdToCurrentAttempt.put(taskId, taskIdToCurrentAttempt.get(taskId) + 1);
       break;
     case READY:
       taskState.setState(newState);
