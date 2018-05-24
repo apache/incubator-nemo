@@ -32,7 +32,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 /**
- * (WARNING) This class is not thread-safe.
+ * (WARNING) This class is not thread-safe, and thus should only be accessed through ExecutorRegistry.
  *
  * Contains information/state regarding an executor.
  * Such information may include:
