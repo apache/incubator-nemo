@@ -156,6 +156,7 @@ public final class SchedulerRunner {
 
   /**
    * A separate thread is run to schedule tasks to executors.
+   * See comments in the {@link Scheduler} for avoiding race conditions.
    */
   private final class SchedulerThread implements Runnable {
     @Override

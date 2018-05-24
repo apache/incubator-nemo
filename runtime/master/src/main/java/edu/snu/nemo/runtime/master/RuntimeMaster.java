@@ -53,6 +53,7 @@ import static edu.snu.nemo.runtime.common.state.TaskState.State.ON_HOLD;
 
 /**
  * (WARNING) Use runtimeMasterThread for all public methods to avoid race conditions.
+ * See comments in the {@link Scheduler} for avoiding race conditions.
  *
  * Runtime Master is the central controller of Runtime.
  * Compiler submits an {@link PhysicalPlan} to Runtime Master to execute a job.
