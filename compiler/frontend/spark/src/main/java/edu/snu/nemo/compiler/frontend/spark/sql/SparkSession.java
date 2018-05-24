@@ -15,14 +15,7 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.sql;
 
-import edu.snu.nemo.client.JobLauncher;
-import edu.snu.nemo.compiler.frontend.spark.SparkLauncher;
-import edu.snu.nemo.conf.JobConf;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.reef.tang.Configuration;
-import org.apache.reef.tang.Injector;
-import org.apache.reef.tang.Tang;
-import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaRDD;
@@ -34,7 +27,6 @@ import org.apache.spark.sql.types.StructType;
 import scala.Tuple2;
 
 import javax.naming.OperationNotSupportedException;
-import java.io.File;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -324,33 +316,6 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
       }
 
       UserGroupInformation.setLoginUser(UserGroupInformation.createRemoteUser("ubuntu"));
-
-      if (!options.containsKey("nemo.appName")) { // Called while compilation
-        try {
-          // get and override configurations from JobLauncher.
-          final Configuration configurations = JobLauncher.getBuiltJobConf();
-          final Injector injector = Tang.Factory.getTang().newInjector(configurations);
-
-          this.config("nemo.appName", injector.getNamedInstance(JobConf.JobId.class));
-          this.config("nemo.appArgs", injector.getNamedInstance(JobConf.UserMainArguments.class));
-          this.config("nemo.fileDirectory", injector.getNamedInstance(JobConf.FileDirectory.class));
-          final String master = injector.getNamedInstance(JobConf.DeployMode.class);
-          this.config("nemo.master", master);
-          this.config("nemo.deployMode", master.equals("yarn") ? "cluster" : "client"); // client or cluster
-        } catch (final InjectionException e) {
-          throw new RuntimeException(e);
-        }
-      } else { // Called by Executor or something else.
-        // SparkLauncher for setting up spark environments. This doesn't call actual program.
-        final SparkLauncher launcher = (SparkLauncher) new SparkLauncher()
-            .setAppName(options.get("nemo.appName"))
-            .addAppArgs(options.get("nemo.appArgs").split(" "))
-            .directory(new File(options.get("nemo.fileDirectory")))
-            .setMaster(options.get("nemo.master"))
-            .setDeployMode(options.get("nemo.deployMode"))
-            .setVerbose(true);
-        launcher.setUpEnvironments();
-      }
 
       return SparkSession.from(super.getOrCreate(), this.options);
     }
