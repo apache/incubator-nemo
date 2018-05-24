@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.client;
 
+import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.driver.NemoDriver;
@@ -56,6 +57,7 @@ public final class JobLauncher {
   private static final int LOCAL_NUMBER_OF_EVALUATORS = 100; // hopefully large enough for our use....
   private static Configuration jobAndDriverConf = null;
   private static Configuration deployModeConf = null;
+  private static Configuration builtJobConf = null;
 
   /**
    * private constructor.
@@ -65,37 +67,39 @@ public final class JobLauncher {
 
   /**
    * Main JobLauncher method.
+   *
    * @param args arguments.
    * @throws Exception exception on the way.
    */
   public static void main(final String[] args) throws Exception {
     // Get Job and Driver Confs
-    final Configuration jobConf = getJobConf(args);
-    final Configuration driverConf = getDriverConf(jobConf);
+    builtJobConf = getJobConf(args);
+    final Configuration driverConf = getDriverConf(builtJobConf);
     final Configuration driverNcsConf = getDriverNcsConf();
     final Configuration driverMessageConfg = getDriverMessageConf();
-    final Configuration executorResourceConfig = getExecutorResourceConf(jobConf);
+    final Configuration executorResourceConfig = getExecutorResourceConf(builtJobConf);
     final Configuration clientConf = getClientConf();
 
     // Merge Job and Driver Confs
-    jobAndDriverConf = Configurations.merge(jobConf, driverConf, driverNcsConf, driverMessageConfg,
+    jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfg,
         executorResourceConfig);
 
     // Get DeployMode Conf
-    deployModeConf = Configurations.merge(getDeployModeConf(jobConf), clientConf);
+    deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
 
     // Launch client main
-    runUserProgramMain(jobConf);
+    runUserProgramMain(builtJobConf);
   }
 
   /**
    * Launch application using the application DAG.
+   *
    * @param dag the application DAG.
    */
   // When modifying the signature of this method, see CompilerTestUtil#compileDAG and make corresponding changes
   public static void launchDAG(final DAG dag) {
     try {
-      if (jobAndDriverConf == null || deployModeConf == null) {
+      if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
         throw new RuntimeException("Configuration for launching driver is not ready");
       }
       final String serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
@@ -103,7 +107,7 @@ public final class JobLauncher {
           .bindNamedParameter(JobConf.SerializedDAG.class, serializedDAG)
           .build();
       // Launch and wait indefinitely for the job to finish
-      final LauncherStatus launcherStatus =  DriverLauncher.getLauncher(deployModeConf)
+      final LauncherStatus launcherStatus = DriverLauncher.getLauncher(deployModeConf)
           .run(Configurations.merge(jobAndDriverConf, dagConf));
       final Optional<Throwable> possibleError = launcherStatus.getError();
       if (possibleError.isPresent()) {
@@ -118,6 +122,7 @@ public final class JobLauncher {
 
   /**
    * Run user-provided main method.
+   *
    * @param jobConf the job configuration
    * @throws Exception on any exceptions on the way
    */
@@ -148,6 +153,7 @@ public final class JobLauncher {
 
   /**
    * Get driver ncs configuration.
+   *
    * @return driver ncs configuration.
    * @throws InjectionException exception while injection.
    */
@@ -161,6 +167,7 @@ public final class JobLauncher {
 
   /**
    * Get driver message configuration.
+   *
    * @return driver message configuration.
    * @throws InjectionException exception while injection.
    */
@@ -172,6 +179,7 @@ public final class JobLauncher {
 
   /**
    * Get driver configuration.
+   *
    * @param jobConf job Configuration to get job id and driver memory.
    * @return driver configuration.
    * @throws InjectionException exception while injection.
@@ -195,11 +203,13 @@ public final class JobLauncher {
 
   /**
    * Get job configuration.
+   *
    * @param args arguments to be processed as command line.
    * @return job configuration.
-   * @throws IOException exception while processing command line.
+   * @throws IOException        exception while processing command line.
    * @throws InjectionException exception while injection.
    */
+  @VisibleForTesting
   public static Configuration getJobConf(final String[] args) throws IOException, InjectionException {
     final JavaConfigurationBuilder confBuilder = TANG.newConfigurationBuilder();
     final CommandLine cl = new CommandLine(confBuilder);
@@ -227,11 +237,12 @@ public final class JobLauncher {
 
   /**
    * Get deploy mode configuration.
+   *
    * @param jobConf job configuration to get deploy mode.
    * @return deploy mode configuration.
    * @throws InjectionException exception while injection.
    */
-  public static Configuration getDeployModeConf(final Configuration jobConf) throws InjectionException {
+  private static Configuration getDeployModeConf(final Configuration jobConf) throws InjectionException {
     final Injector injector = TANG.newInjector(jobConf);
     final String deployMode = injector.getNamedInstance(JobConf.DeployMode.class);
     switch (deployMode) {
@@ -250,11 +261,12 @@ public final class JobLauncher {
 
   /**
    * Get executor resource configuration.
+   *
    * @param jobConf job configuration to get executor json path.
    * @return executor resource configuration.
    * @throws InjectionException exception while injection.
    */
-  public static Configuration getExecutorResourceConf(final Configuration jobConf) throws InjectionException {
+  private static Configuration getExecutorResourceConf(final Configuration jobConf) throws InjectionException {
     final Injector injector = TANG.newInjector(jobConf);
     try {
       final String path = injector.getNamedInstance(JobConf.ExecutorJsonPath.class);
@@ -265,5 +277,15 @@ public final class JobLauncher {
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Get the built job configuration.
+   * It can be {@code null} if this method is not called by the process which called the main function of this class.
+   *
+   * @return the built job configuration.
+   */
+  public static Configuration getBuiltJobConf() {
+    return builtJobConf;
   }
 }

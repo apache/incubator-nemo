@@ -46,7 +46,7 @@ public final class JavaSparkPi {
         .appName("JavaSparkPi")
         .getOrCreate();
 
-    JavaSparkContext jsc = new JavaSparkContext(spark.sparkContext());
+    final JavaSparkContext jsc = new JavaSparkContext(spark.sparkContext());
 
     int slices = (args.length == 1) ? Integer.parseInt(args[0]) : 2;
     int n = 100000 * slices;

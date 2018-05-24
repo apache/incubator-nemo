@@ -34,7 +34,40 @@ public final class JavaSparkContext {
   }
 
   /**
+   * Create a String {@link JavaRDD} from a text file path.
+   *
+   * @param path the path to read.
+   * @return the RDD.
+   */
+  public JavaRDD<String> textFile(final String path) {
+    return this.textFile(path, 1);
+  }
+
+  /**
+   * Create a String {@link JavaRDD} from a text file path with specific minimum parallelism.
+   *
+   * @param path          the path to read.
+   * @param minPartitions the minimum parallelism.
+   * @return the RDD.
+   */
+  public JavaRDD<String> textFile(final String path, final int minPartitions) {
+    return JavaRDD.of(sparkContext, minPartitions, path);
+  }
+
+  /**
    * Initiate a JavaRDD with the number of parallelism.
+   *
+   * @param list input data as list.
+   * @param <T> type of the initial element.
+   * @return the newly initiated JavaRDD.
+   */
+  public <T> JavaRDD<T> parallelize(final List<T> list) {
+    return this.parallelize(list, 1);
+  }
+
+  /**
+   * Initiate a JavaRDD with the number of parallelism.
+   *
    * @param l input data as list.
    * @param slices number of slices (parallelism).
    * @param <T> type of the initial element.
