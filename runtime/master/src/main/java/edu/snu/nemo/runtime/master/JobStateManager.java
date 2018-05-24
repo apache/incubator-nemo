@@ -66,6 +66,12 @@ public final class JobStateManager {
   private final Map<String, TaskState> idToTaskStates;
 
   /**
+   * Maintain the number of schedule attempts for each task.
+   * The attempt numbers are updated only here, and are read-only in other places.
+   */
+  private final Map<String, Integer> taskIdToCurrentAttempt;
+
+  /**
    * Keeps track of the number of schedule attempts for each stage.
    */
   private final Map<String, Integer> scheduleAttemptIdxByStage;
@@ -111,6 +117,7 @@ public final class JobStateManager {
     this.jobState = new JobState();
     this.idToStageStates = new HashMap<>();
     this.idToTaskStates = new HashMap<>();
+    this.taskIdToCurrentAttempt = new HashMap<>();
     this.scheduleAttemptIdxByStage = new HashMap<>();
     this.stageIdToRemainingTaskSet = new HashMap<>();
     this.currentJobStageIds = new HashSet<>();
@@ -133,6 +140,7 @@ public final class JobStateManager {
       idToStageStates.put(physicalStage.getId(), new StageState());
       physicalStage.getTaskIds().forEach(taskId -> {
         idToTaskStates.put(taskId, new TaskState());
+        taskIdToCurrentAttempt.put(taskId, 1);
       });
     });
   }
@@ -274,6 +282,7 @@ public final class JobStateManager {
   public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newState) {
     final StateMachine taskState = idToTaskStates.get(taskId).getStateMachine();
     final String stageId = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
+
     LOG.debug("Task State Transition: id {}, from {} to {}",
         new Object[]{taskId, taskState.getCurrentState(), newState});
     final Map<String, Object> metric = new HashMap<>();
@@ -323,6 +332,9 @@ public final class JobStateManager {
           throw new IllegalStateTransitionException(
               new Throwable("The stage has not yet been submitted for execution"));
         }
+
+        // We'll recover and retry this task
+        taskIdToCurrentAttempt.put(taskId, taskIdToCurrentAttempt.get(taskId) + 1);
       } else {
         LOG.info("{} state is already FAILED_RECOVERABLE. Skipping this event.",
             taskId);
@@ -355,6 +367,14 @@ public final class JobStateManager {
       return scheduleAttemptIdxByStage.get(stageId);
     } else {
       throw new IllegalStateException("No mapping for this stage's attemptIdx, an inconsistent state occurred.");
+    }
+  }
+
+  public synchronized int getCurrentAttemptIndexForTask(final String taskId) {
+    if (taskIdToCurrentAttempt.containsKey(taskId)) {
+      return taskIdToCurrentAttempt.get(taskId);
+    } else {
+      throw new IllegalStateException("No mapping for this task's attemptIdx, an inconsistent state occurred.");
     }
   }
 
