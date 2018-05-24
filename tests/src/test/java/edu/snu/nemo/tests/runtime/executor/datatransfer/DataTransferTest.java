@@ -138,9 +138,8 @@ public final class DataTransferTest {
     final SchedulingPolicy schedulingPolicy = injector.getInstance(CompositeSchedulingPolicy.class);
     final PendingTaskCollection taskQueue = new SingleJobTaskCollection();
     final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingPolicy, taskQueue, executorRegistry);
-    final Scheduler scheduler =
-        new BatchSingleJobScheduler(schedulingPolicy, schedulerRunner, taskQueue, master,
-            pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
+    final Scheduler scheduler = new BatchSingleJobScheduler(
+        schedulerRunner, taskQueue, master, pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
     final AtomicInteger executorCount = new AtomicInteger(0);
 
     // Necessary for wiring up the message environments

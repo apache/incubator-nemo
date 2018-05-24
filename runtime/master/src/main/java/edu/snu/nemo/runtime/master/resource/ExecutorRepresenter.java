@@ -25,12 +25,14 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 /**
- * (WARNING) This class is not thread-safe.
+ * (WARNING) This class is not thread-safe, and thus should only be accessed through ExecutorRegistry.
  *
  * Contains information/state regarding an executor.
  * Such information may include:
@@ -46,6 +48,7 @@ public final class ExecutorRepresenter {
   private final String executorId;
   private final ResourceSpecification resourceSpecification;
   private final Set<String> runningTasks;
+  private final Map<String, Integer> runningTaskToAttempt;
   private final Set<String> completeTasks;
   private final Set<String> failedTasks;
   private final MessageSender<ControlMessage.Message> messageSender;
@@ -72,6 +75,7 @@ public final class ExecutorRepresenter {
     this.resourceSpecification = resourceSpecification;
     this.messageSender = messageSender;
     this.runningTasks = new HashSet<>();
+    this.runningTaskToAttempt = new HashMap<>();
     this.completeTasks = new HashSet<>();
     this.failedTasks = new HashSet<>();
     this.activeContext = activeContext;
@@ -82,9 +86,11 @@ public final class ExecutorRepresenter {
   /**
    * Marks all Tasks which were running in this executor as failed.
    */
-  public void onExecutorFailed() {
-    runningTasks.forEach(taskId -> failedTasks.add(taskId));
+  public Set<String> onExecutorFailed() {
+    failedTasks.addAll(runningTasks);
+    final Set<String> snapshot = new HashSet<>(runningTasks);
     runningTasks.clear();
+    return snapshot;
   }
 
   /**
@@ -93,6 +99,7 @@ public final class ExecutorRepresenter {
    */
   public void onTaskScheduled(final ScheduledTask scheduledTask) {
     runningTasks.add(scheduledTask.getTaskId());
+    runningTaskToAttempt.put(scheduledTask.getTaskId(), scheduledTask.getAttemptIdx());
     failedTasks.remove(scheduledTask.getTaskId());
 
     serializationExecutorService.submit(new Runnable() {
@@ -123,10 +130,11 @@ public final class ExecutorRepresenter {
 
   /**
    * Marks the specified Task as completed.
-   * @param taskId id of the Task
+   *
    */
   public void onTaskExecutionComplete(final String taskId) {
     runningTasks.remove(taskId);
+    runningTaskToAttempt.remove(taskId);
     completeTasks.add(taskId);
   }
 
@@ -136,6 +144,7 @@ public final class ExecutorRepresenter {
    */
   public void onTaskExecutionFailed(final String taskId) {
     runningTasks.remove(taskId);
+    runningTaskToAttempt.remove(taskId);
     failedTasks.add(taskId);
   }
 
@@ -153,9 +162,13 @@ public final class ExecutorRepresenter {
     return runningTasks;
   }
 
+  public Map<String, Integer> getRunningTaskToAttempt() {
+    return runningTaskToAttempt;
+  }
+
   /**
    * @return set of ids of Tasks that have been failed in this exeuctor
-   */
+
   public Set<String> getFailedTasks() {
     return failedTasks;
   }

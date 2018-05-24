@@ -31,7 +31,7 @@ import java.util.concurrent.*;
 /**
  * {@link PendingTaskCollection} implementation.
  * This class provides two-level scheduling by keeping track of schedulable stages and stage-Task membership.
- * {@link #peekSchedulableTasks()} returns collection of Tasks which belong to one of the schedulable stages.
+ * {@link #peekSchedulableStage()} returns collection of Tasks which belong to one of the schedulable stages.
  */
 @ThreadSafe
 @DriverSide
@@ -73,12 +73,12 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
 
   /**
    * Removes the specified Task to be scheduled.
-   * The specified Task should belong to the collection from {@link #peekSchedulableTasks()}.
+   * The specified Task should belong to the collection from {@link #peekSchedulableStage()}.
    * @param taskId id of the Task
    * @return the specified Task
    * @throws NoSuchElementException if the specified Task is not in the queue,
    *                                or removing this Task breaks scheduling order
-   *                                (i.e. does not belong to the collection from {@link #peekSchedulableTasks()}.
+   *                                (i.e. does not belong to the collection from {@link #peekSchedulableStage()}.
    */
   @Override
   public synchronized ScheduledTask remove(final String taskId) throws NoSuchElementException {
@@ -115,7 +115,7 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
    *         or {@link Optional#empty} if the queue is empty
    */
   @Override
-  public synchronized Optional<Collection<ScheduledTask>> peekSchedulableTasks() {
+  public synchronized Optional<Collection<ScheduledTask>> peekSchedulableStage() {
     final String stageId = schedulableStages.peekFirst();
     if (stageId == null) {
       return Optional.empty();
