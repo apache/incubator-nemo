@@ -231,7 +231,7 @@ public final class SingleTaskQueueTest {
    */
   private ScheduledTask dequeue() {
     final Collection<ScheduledTask> scheduledTasks
-        = pendingTaskPriorityQueue.peekSchedulableTasks().get();
+        = pendingTaskPriorityQueue.peekSchedulableStage().get();
     return pendingTaskPriorityQueue.remove(scheduledTasks.iterator().next().getTaskId());
   }
 }

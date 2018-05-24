@@ -128,20 +128,26 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   /**
-   * Receives a {@link edu.snu.nemo.runtime.common.comm.ControlMessage.TaskStateChangedMsg} from an executor.
-   * The message is received via communicator where this method is called.
+   * Handles task state transition notifications sent from executors.
+   * Note that we can receive notifications for previous task attempts, due to the nature of asynchronous events.
+   * We ignore such late-arriving notifications, and only handle notifications for the current task attempt.
+   *
    * @param executorId the id of the executor where the message was sent from.
    * @param taskId whose state has changed
+   * @param taskAttemptIndex of the task whose state has changed
    * @param newState the state to change to
    * @param taskPutOnHold the ID of task that are put on hold. It is null otherwise.
    */
   @Override
-  public void onTaskStateChanged(final String executorId, final String taskId,
-                                 final TaskState.State newState, final int attemptIdx,
+  public void onTaskStateChanged(final String executorId,
+                                 final String taskId,
+                                 final int taskAttemptIndex,
+                                 final TaskState.State newState,
                                  @Nullable final String taskPutOnHold,
                                  final TaskState.RecoverableFailureCause failureCause) {
     final int currentTaskAttemptIndex = jobStateManager.getCurrentAttemptIndexForTask(taskId);
-    if (attemptIdx == currentTaskAttemptIndex) {
+    if (taskAttemptIndex == currentTaskAttemptIndex) {
+      // Do change state, as this notification is for the current task attempt.
       switch (newState) {
         case COMPLETE:
           jobStateManager.onTaskStateChanged(taskId, newState);
@@ -164,8 +170,8 @@ public final class BatchSingleJobScheduler implements Scheduler {
         default:
           throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + newState));
       }
-    } else if (attemptIdx < currentTaskAttemptIndex) {
-      // We can ignore this late arriving message.
+    } else if (taskAttemptIndex < currentTaskAttemptIndex) {
+      // Do not change state, as this notification is for a previous task attempt.
       LOG.info("{} state change to {} arrived late, we will ignore this.", new Object[]{taskId, newState});
     } else {
       throw new SchedulingException(new Throwable("AttemptIdx for a task cannot be greater than its current index"));
@@ -192,8 +198,8 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
     tasksToReExecute.forEach(failedTaskId -> {
       final int attemptIndex = jobStateManager.getCurrentAttemptIndexForTask(failedTaskId);
-      onTaskStateChanged(executorId, failedTaskId, TaskState.State.FAILED_RECOVERABLE,
-          attemptIndex, null, TaskState.RecoverableFailureCause.CONTAINER_FAILURE);
+      onTaskStateChanged(executorId, failedTaskId, attemptIndex, TaskState.State.FAILED_RECOVERABLE,
+          null, TaskState.RecoverableFailureCause.CONTAINER_FAILURE);
     });
 
     if (!tasksToReExecute.isEmpty()) {
@@ -389,7 +395,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
       final int taskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
       final int attemptIdx = jobStateManager.getCurrentAttemptIndexForTask(taskId);
 
-      LOG.debug("Enquing {}", taskId);
+      LOG.debug("Enqueueing {}", taskId);
       pendingTaskCollection.add(new ScheduledTask(physicalPlan.getId(),
           stageToSchedule.getSerializedTaskDag(), taskId, stageIncomingEdges, stageOutgoingEdges, attemptIdx,
           stageToSchedule.getContainerType(), logicalTaskIdToReadables.get(taskIdx)));

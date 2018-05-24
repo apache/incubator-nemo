@@ -79,8 +79,8 @@ public interface Scheduler {
    */
   void onTaskStateChanged(String executorId,
                           String taskId,
-                          TaskState.State newState,
                           int attemptIdx,
+                          TaskState.State newState,
                           @Nullable String taskPutOnHold,
                           TaskState.RecoverableFailureCause failureCause);
 

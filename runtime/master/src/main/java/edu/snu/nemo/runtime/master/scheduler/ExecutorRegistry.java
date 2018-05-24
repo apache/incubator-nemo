@@ -40,7 +40,7 @@ public final class ExecutorRegistry {
   enum ExecutorState {
     RUNNING,
     FAILED,
-    COMPLETED
+    TERMINATED
   }
 
   private final Map<String, Pair<ExecutorRepresenter, ExecutorState>> executors;
@@ -55,7 +55,6 @@ public final class ExecutorRegistry {
     if (executors.containsKey(executorId)) {
       throw new IllegalArgumentException("Duplicate executor: " + executor.toString());
     } else {
-      // System.out.println("executor registered " + executor.getExecutorId());
       executors.put(executorId, Pair.of(executor, ExecutorState.RUNNING));
     }
   }
@@ -78,7 +77,7 @@ public final class ExecutorRegistry {
   synchronized void terminate() {
     for (final ExecutorRepresenter executor : getRunningExecutors()) {
       executor.shutDown();
-      executors.put(executor.getExecutorId(), Pair.of(executor, ExecutorState.COMPLETED));
+      executors.put(executor.getExecutorId(), Pair.of(executor, ExecutorState.TERMINATED));
     }
   }
 

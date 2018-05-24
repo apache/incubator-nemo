@@ -74,7 +74,7 @@ public final class BatchSingleJobSchedulerTest {
   private static final int EXECUTOR_CAPACITY = 20;
 
   // Assume no failures
-  private static final int MAGIC_SCHEDULE_ATTEMPT_INDEX = 1;
+  private static final int SCHEDULE_ATTEMPT_INDEX = 1;
 
   @Before
   public void setUp() throws Exception {
@@ -164,7 +164,7 @@ public final class BatchSingleJobSchedulerTest {
 
       stages.forEach(physicalStage -> {
         SchedulerTestUtil.completeStage(
-            jobStateManager, scheduler, executorRegistry, physicalStage, MAGIC_SCHEDULE_ATTEMPT_INDEX);
+            jobStateManager, scheduler, executorRegistry, physicalStage, SCHEDULE_ATTEMPT_INDEX);
       });
     }
 

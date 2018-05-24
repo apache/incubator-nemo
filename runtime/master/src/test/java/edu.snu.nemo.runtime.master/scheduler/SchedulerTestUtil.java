@@ -88,8 +88,8 @@ final class SchedulerTestUtil {
         break;
       }
     }
-    scheduler.onTaskStateChanged(scheduledExecutor.getExecutorId(), taskId,
-        newState, attemptIdx, null, cause);
+    scheduler.onTaskStateChanged(scheduledExecutor.getExecutorId(), taskId, attemptIdx,
+        newState, null, cause);
   }
 
   static void sendTaskStateEventToScheduler(final Scheduler scheduler,
@@ -109,9 +109,9 @@ final class SchedulerTestUtil {
         new SchedulerRunner(schedulingPolicy, pendingTaskCollection, executorRegistry);
     schedulerRunner.scheduleJob(jobStateManager);
     while (!pendingTaskCollection.isEmpty()) {
-      schedulerRunner.doScheduleTask();
+      schedulerRunner.doScheduleStage();
       if (isPartialSchedule) {
-        // Schedule only the first task
+        // Schedule only the first stage
         break;
       }
     }

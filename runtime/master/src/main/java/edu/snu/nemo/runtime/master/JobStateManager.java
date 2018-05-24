@@ -66,7 +66,8 @@ public final class JobStateManager {
   private final Map<String, TaskState> idToTaskStates;
 
   /**
-   * Keeps track of the number of schedule attempts for each task.
+   * Maintain the number of schedule attempts for each task.
+   * The attempt numbers are update only here, and are read-only in other places.
    */
   private final Map<String, Integer> taskIdToCurrentAttempt;
 
