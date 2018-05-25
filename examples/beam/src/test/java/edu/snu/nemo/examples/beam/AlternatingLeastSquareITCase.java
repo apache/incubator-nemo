@@ -34,20 +34,24 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 public final class AlternatingLeastSquareITCase {
   private static final int TIMEOUT = 240000;
-  private static ArgBuilder builder = new ArgBuilder();
+  private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
   private static final String input = fileBasePath + "sample_input_als";
   private static final String outputFileName = "sample_output_als";
   private static final String output = fileBasePath + outputFileName;
   private static final String testResourceFileName = "test_output_als";
+  private static final String executorResourceFileName = fileBasePath + "beam_sample_executor_resources.json";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
   private static final String lambda = "0.05";
 
   @Before
   public void setUp() throws Exception {
-    builder = new ArgBuilder();
+    builder = new ArgBuilder()
+        .addResourceJson(executorResourceFileName)
+        .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
+        .addUserArgs(input, numFeatures, numIteration, lambda, output);
   }
 
   @After
@@ -63,8 +67,6 @@ public final class AlternatingLeastSquareITCase {
   public void test() throws Exception {
     JobLauncher.main(builder
         .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
-        .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-        .addUserArgs(input, numFeatures, numIteration, lambda, output)
         .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
@@ -73,8 +75,6 @@ public final class AlternatingLeastSquareITCase {
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_pado")
-        .addUserMain(AlternatingLeastSquare.class.getCanonicalName())
-        .addUserArgs(input, numFeatures, numIteration, lambda, output)
         .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
         .build());
   }

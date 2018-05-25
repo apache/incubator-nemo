@@ -35,13 +35,15 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 @PowerMockIgnore("javax.management.*")
 public final class SparkITCase {
-  private static final int TIMEOUT = 120000;
-  private static ArgBuilder builder = new ArgBuilder();
+  private static final int TIMEOUT = 180000;
+  private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
+  private static final String executorResourceFileName = fileBasePath + "spark_sample_executor_resources.json";
 
   @Before
   public void setUp() {
-    builder = new ArgBuilder();
+    builder = new ArgBuilder()
+        .addResourceJson(executorResourceFileName);
   }
 
   @Test(timeout = TIMEOUT)
@@ -51,6 +53,7 @@ public final class SparkITCase {
     final String testResourceFilename = "test_output_wordcount";
     final String inputFilePath = fileBasePath + inputFileName;
     final String outputFilePath = fileBasePath + outputFileName;
+
 
     JobLauncher.main(builder
         .addJobId(JavaWordCount.class.getSimpleName() + "_test")
@@ -65,6 +68,31 @@ public final class SparkITCase {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
+
+  /* Temporary disabled because of Travis issue
+  @Test(timeout = TIMEOUT)
+  public void testSparkMapReduce() throws Exception {
+    final String inputFileName = "sample_input_mr";
+    final String outputFileName = "sample_output_mr";
+    final String testResourceFileName = "test_output_mr";
+    final String inputFilePath = fileBasePath + inputFileName;
+    final String outputFilePath = fileBasePath + outputFileName;
+    final String parallelism = "2";
+    final String runOnYarn = "false";
+
+    JobLauncher.main(builder
+        .addJobId(JavaMapReduce.class.getSimpleName() + "_test")
+        .addUserMain(JavaMapReduce.class.getCanonicalName())
+        .addUserArgs(inputFilePath, outputFilePath, parallelism, runOnYarn)
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .build());
+
+    try {
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFileName);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
+  }*/
 
   @Test(timeout = TIMEOUT)
   public void testSparkPi() throws Exception {

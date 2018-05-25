@@ -25,6 +25,7 @@ import java.util.List;
 public interface Readable<O> extends Serializable {
   /**
    * Method to read data from the source.
+   *
    * @return an {@link Iterable} of the data read by the readable.
    * @throws Exception exception while reading data.
    */
@@ -33,10 +34,10 @@ public interface Readable<O> extends Serializable {
   /**
    * Returns the list of locations where this readable resides.
    * Each location has a complete copy of the readable.
+   *
    * @return List of locations where this readable resides
    * @throws UnsupportedOperationException when this operation is not supported
-   * @throws Exception any other exceptions on the way
+   * @throws Exception                     any other exceptions on the way
    */
   List<String> getLocations() throws Exception;
 }
-

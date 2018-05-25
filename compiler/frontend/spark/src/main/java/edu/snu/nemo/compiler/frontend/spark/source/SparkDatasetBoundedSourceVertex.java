@@ -19,51 +19,50 @@ import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.compiler.frontend.spark.sql.Dataset;
 import edu.snu.nemo.compiler.frontend.spark.sql.SparkSession;
-import org.apache.spark.TaskContext$;
+import org.apache.spark.*;
 import org.apache.spark.rdd.RDD;
 import scala.collection.JavaConverters;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.IntStream;
+import java.util.*;
 
 /**
- * Bounded source vertex for Spark.
+ * Bounded source vertex for Spark Dataset.
  * @param <T> type of data to read.
  */
-public final class SparkBoundedSourceVertex<T> extends SourceVertex<T> {
+public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
   private final List<Readable<T>> readables;
 
   /**
    * Constructor.
-   * Note that we have to first create our iterators here and supply them to our readables.
    *
    * @param sparkSession sparkSession to recreate on each executor.
-   * @param dataset Dataset to read data from.
+   * @param dataset      Dataset to read data from.
    */
-  public SparkBoundedSourceVertex(final SparkSession sparkSession, final Dataset<T> dataset) {
+  public SparkDatasetBoundedSourceVertex(final SparkSession sparkSession, final Dataset<T> dataset) {
     this.readables = new ArrayList<>();
-    IntStream.range(0, dataset.rdd().getNumPartitions()).forEach(partitionIndex ->
-        readables.add(new SparkBoundedSourceReadable(
-            sparkSession.getDatasetCommandsList(),
-            sparkSession.getInitialConf(),
-            partitionIndex)));
+    final RDD rdd = dataset.rdd();
+    final Partition[] partitions = rdd.getPartitions();
+    for (int i = 0; i < partitions.length; i++) {
+      readables.add(new SparkDatasetBoundedSourceReadable(
+          partitions[i],
+          sparkSession.getDatasetCommandsList(),
+          sparkSession.getInitialConf(),
+          i));
+    }
   }
 
   /**
-   * Constructor.
+   * Constructor for cloning.
    *
    * @param readables the list of Readables to set.
    */
-  public SparkBoundedSourceVertex(final List<Readable<T>> readables) {
+  private SparkDatasetBoundedSourceVertex(final List<Readable<T>> readables) {
     this.readables = readables;
   }
 
   @Override
-  public SparkBoundedSourceVertex getClone() {
-    final SparkBoundedSourceVertex<T> that = new SparkBoundedSourceVertex<>((this.readables));
+  public SparkDatasetBoundedSourceVertex getClone() {
+    final SparkDatasetBoundedSourceVertex<T> that = new SparkDatasetBoundedSourceVertex<>((this.readables));
     this.copyExecutionPropertiesTo(that);
     return that;
   }
@@ -74,25 +73,30 @@ public final class SparkBoundedSourceVertex<T> extends SourceVertex<T> {
   }
 
   /**
-   * A Readable for SparkBoundedSourceReadablesWrapper.
+   * A Readable wrapper for Spark Dataset.
    */
-  private final class SparkBoundedSourceReadable implements Readable<T> {
+  private final class SparkDatasetBoundedSourceReadable implements Readable<T> {
     private final LinkedHashMap<String, Object[]> commands;
     private final Map<String, String> sessionInitialConf;
     private final int partitionIndex;
+    private final List<String> locations;
 
     /**
      * Constructor.
-     * @param commands list of commands needed to build the dataset.
+     *
+     * @param partition          the partition to wrap.
+     * @param commands           list of commands needed to build the dataset.
      * @param sessionInitialConf spark session's initial configuration.
-     * @param partitionIndex partition for this readable.
+     * @param partitionIndex     partition for this readable.
      */
-    private SparkBoundedSourceReadable(final LinkedHashMap<String, Object[]> commands,
-                                       final Map<String, String> sessionInitialConf,
-                                       final int partitionIndex) {
+    private SparkDatasetBoundedSourceReadable(final Partition partition,
+                                              final LinkedHashMap<String, Object[]> commands,
+                                              final Map<String, String> sessionInitialConf,
+                                              final int partitionIndex) {
       this.commands = commands;
       this.sessionInitialConf = sessionInitialConf;
       this.partitionIndex = partitionIndex;
+      this.locations = SparkSourceUtil.getPartitionLocation(partition);
     }
 
     @Override
@@ -111,7 +115,11 @@ public final class SparkBoundedSourceVertex<T> extends SourceVertex<T> {
 
     @Override
     public List<String> getLocations() {
-      throw new UnsupportedOperationException();
+      if (locations.isEmpty()) {
+        throw new UnsupportedOperationException();
+      } else {
+        return locations;
+      }
     }
   }
 }
