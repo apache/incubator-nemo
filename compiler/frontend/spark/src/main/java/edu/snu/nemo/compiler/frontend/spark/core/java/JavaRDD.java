@@ -15,23 +15,23 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.core.java;
 
+import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor;
 import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder;
 import edu.snu.nemo.compiler.frontend.spark.core.RDD;
-import edu.snu.nemo.compiler.frontend.spark.source.SparkBoundedSourceVertex;
+import edu.snu.nemo.compiler.frontend.spark.source.SparkDatasetBoundedSourceVertex;
+import edu.snu.nemo.compiler.frontend.spark.source.SparkTextFileBoundedSourceVertex;
 import edu.snu.nemo.compiler.frontend.spark.sql.Dataset;
 import edu.snu.nemo.compiler.frontend.spark.sql.SparkSession;
 import edu.snu.nemo.compiler.frontend.spark.transform.*;
-import org.apache.spark.Partition;
-import org.apache.spark.Partitioner;
-import org.apache.spark.SparkContext;
-import org.apache.spark.TaskContext;
+import org.apache.spark.*;
 import org.apache.spark.api.java.JavaFutureAction;
 import org.apache.spark.api.java.Optional;
 import org.apache.spark.api.java.function.*;
@@ -59,14 +59,16 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   /**
    * Static method to create a JavaRDD object from an iterable object.
+   *
    * @param sparkContext spark context containing configurations.
-   * @param initialData initial data.
-   * @param parallelism parallelism information.
-   * @param <T> type of the resulting object.
+   * @param initialData  initial data.
+   * @param parallelism  parallelism information.
+   * @param <T>          type of the resulting object.
    * @return the new JavaRDD object.
    */
   public static <T> JavaRDD<T> of(final SparkContext sparkContext,
-                                  final Iterable<T> initialData, final Integer parallelism) {
+                                  final Iterable<T> initialData,
+                                  final int parallelism) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     final IRVertex initializedSourceVertex = new InitializedSourceVertex<>(initialData);
@@ -77,17 +79,40 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   }
 
   /**
+   * Static method to create a JavaRDD object from an text file.
+   *
+   * @param sparkContext  the spark context containing configurations.
+   * @param minPartitions the minimum nubmer of partitions.
+   * @param inputPath     the path of the input text file.
+   * @param <T>           the type of resulting object.
+   * @return the new JavaRDD object
+   */
+  public static <T> JavaRDD<T> of(final SparkContext sparkContext,
+                                  final int minPartitions,
+                                  final String inputPath) {
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
+    final int numPartitions = sparkContext.textFile(inputPath, minPartitions).getNumPartitions();
+    final IRVertex textSourceVertex = new SparkTextFileBoundedSourceVertex(sparkContext, inputPath, numPartitions);
+    textSourceVertex.setProperty(ParallelismProperty.of(numPartitions));
+    builder.addVertex(textSourceVertex);
+
+    return new JavaRDD<>(sparkContext, builder.buildWithoutSourceSinkCheck(), textSourceVertex);
+  }
+
+  /**
    * Static method to create a JavaRDD object from a Dataset.
+   *
    * @param sparkSession spark session containing configurations.
-   * @param dataset dataset to read initial data from.
-   * @param <T> type of the resulting object.
+   * @param dataset      dataset to read initial data from.
+   * @param <T>          type of the resulting object.
    * @return the new JavaRDD object.
    */
   public static <T> JavaRDD<T> of(final SparkSession sparkSession,
                                   final Dataset<T> dataset) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
-    final IRVertex sparkBoundedSourceVertex = new SparkBoundedSourceVertex<>(sparkSession, dataset);
+    final IRVertex sparkBoundedSourceVertex = new SparkDatasetBoundedSourceVertex<>(sparkSession, dataset);
     sparkBoundedSourceVertex.setProperty(ParallelismProperty.of(dataset.rdd().getNumPartitions()));
     builder.addVertex(sparkBoundedSourceVertex);
 
@@ -96,9 +121,10 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   /**
    * Constructor.
+   *
    * @param sparkContext spark context containing configurations.
-   * @param dag the current DAG.
-   * @param lastVertex last vertex added to the builder.
+   * @param dag          the current DAG.
+   * @param lastVertex   last vertex added to the builder.
    */
   JavaRDD(final SparkContext sparkContext, final DAG<IRVertex, IREdge> dag, final IRVertex lastVertex) {
     // TODO #366: resolve while implementing scala RDD.
@@ -122,8 +148,9 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   /**
    * Map transform.
+   *
    * @param func function to apply.
-   * @param <O> output type.
+   * @param <O>  output type.
    * @return the JavaRDD with the DAG.
    */
   @Override
@@ -159,7 +186,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   /////////////// TRANSFORMATION TO PAIR RDD ///////////////
 
   @Override
-  public <K2, V2> JavaPairRDD<K2, V2> mapToPair(final PairFunction<T, K2, V2> f)  {
+  public <K2, V2> JavaPairRDD<K2, V2> mapToPair(final PairFunction<T, K2, V2> f) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
 
     final IRVertex mapToPairVertex = new OperatorVertex(new MapToPairTransform<>(f));
@@ -179,6 +206,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   /**
    * This method is to be removed after a result handler is implemented.
+   *
    * @return a unique integer.
    */
   public static Integer getResultId() {
@@ -187,6 +215,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   /**
    * Reduce action.
+   *
    * @param func function (binary operator) to apply.
    * @return the result of the reduce action.
    */
@@ -208,6 +237,27 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   @Override
   public List<T> collect() {
     return SparkFrontendUtils.collect(dag, loopVertexStack, lastVertex, serializer);
+  }
+
+  @Override
+  public void saveAsTextFile(final String path) {
+
+    // Check if given path is HDFS path.
+    final boolean isHDFSPath = path.startsWith("hdfs://") || path.startsWith("s3a://") || path.startsWith("file://");
+    final Transform textFileTransform = isHDFSPath
+        ? new HDFSTextFileTransform(path) : new LocalTextFileTransform(path);
+
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
+
+    final IRVertex flatMapVertex = new OperatorVertex(textFileTransform);
+    builder.addVertex(flatMapVertex, loopVertexStack);
+
+    final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, flatMapVertex),
+        lastVertex, flatMapVertex, new SparkCoder(serializer));
+    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
+    builder.connectVertices(newEdge);
+
+    JobLauncher.launchDAG(builder.build());
   }
 
   /////////////// UNSUPPORTED TRANSFORMATIONS ///////////////
@@ -260,7 +310,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   @Override
   public <R> JavaRDD<R> mapPartitionsWithIndex(final Function2<Integer, Iterator<T>, Iterator<R>> f,
-                                                final boolean preservesPartitioning) {
+                                               final boolean preservesPartitioning) {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 
@@ -328,7 +378,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   }
 
   @Override
-  public <U> JavaPairRDD<U, Iterable<T>> groupBy(final Function<T, U> f, final int numPartitions)  {
+  public <U> JavaPairRDD<U, Iterable<T>> groupBy(final Function<T, U> f, final int numPartitions) {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 
@@ -344,12 +394,12 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   @Override
   public <K2, V2> JavaPairRDD<K2, V2> mapPartitionsToPair(final PairFlatMapFunction<java.util.Iterator<T>, K2, V2> f,
-                                                          final boolean preservesPartitioning)  {
+                                                          final boolean preservesPartitioning) {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 
   @Override
-  public JavaPairRDD<T, Long> zipWithIndex()  {
+  public JavaPairRDD<T, Long> zipWithIndex() {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 
@@ -372,9 +422,8 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   }
 
 
-
   @Override
-  public JavaFutureAction<List<T>> collectAsync()  {
+  public JavaFutureAction<List<T>> collectAsync() {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 
@@ -389,7 +438,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   }
 
   @Override
-  public PartialResult<BoundedDouble> countApprox(final long timeout)  {
+  public PartialResult<BoundedDouble> countApprox(final long timeout) {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 
@@ -399,12 +448,12 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   }
 
   @Override
-  public long countApproxDistinct(final double relativeSD)  {
+  public long countApproxDistinct(final double relativeSD) {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 
   @Override
-  public JavaFutureAction<Long> countAsync()  {
+  public JavaFutureAction<Long> countAsync() {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 
@@ -459,7 +508,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   }
 
   @Override
-  public int getNumPartitions()  {
+  public int getNumPartitions() {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 
@@ -479,7 +528,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   }
 
   @Override
-  public boolean isEmpty()  {
+  public boolean isEmpty() {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 
@@ -519,13 +568,8 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   }
 
   @Override
-  public void saveAsTextFile(final String path) {
-    throw new UnsupportedOperationException("Operation not yet implemented.");
-  }
-
-  @Override
   public void saveAsTextFile(final String path,
-                              final Class<? extends org.apache.hadoop.io.compress.CompressionCodec> codec) {
+                             final Class<? extends org.apache.hadoop.io.compress.CompressionCodec> codec) {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 
@@ -586,7 +630,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
 
   @Override
   public <U> U treeAggregate(final U zeroValue, final Function2<U, T, U> seqOp,
-                              final Function2<U, U, U> combOp, final int depth) {
+                             final Function2<U, U, U> combOp, final int depth) {
     throw new UnsupportedOperationException("Operation not yet implemented.");
   }
 

@@ -52,11 +52,11 @@ public interface PendingTaskCollection {
   ScheduledTask remove(final String taskId) throws NoSuchElementException;
 
   /**
-   * Peeks Tasks that can be scheduled according to job dependency priority.
+   * Peeks stage that can be scheduled according to job dependency priority.
    * Changes to the queue must not reflected to the returned collection to avoid concurrent modification.
-   * @return Tasks that can be scheduled, or {@link Optional#empty()} if the queue is empty
+   * @return stage that can be scheduled, or {@link Optional#empty()} if the queue is empty
    */
-  Optional<Collection<ScheduledTask>> peekSchedulableTasks();
+  Optional<Collection<ScheduledTask>> peekSchedulableStage();
 
   /**
    * Registers a job to this queue in case the queue needs to understand the topology of the job DAG.
