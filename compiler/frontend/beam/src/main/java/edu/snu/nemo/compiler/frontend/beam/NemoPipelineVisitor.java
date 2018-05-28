@@ -253,7 +253,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     final Transform dstTransform = dst instanceof OperatorVertex ? ((OperatorVertex) dst).getTransform() : null;
     final DoFn srcDoFn = srcTransform instanceof DoTransform ? ((DoTransform) srcTransform).getDoFn() : null;
 
-    if (srcDoFn.getClass().equals(constructUnionTableFn)) {
+    if (srcDoFn != null && srcDoFn.getClass().equals(constructUnionTableFn)) {
       return DataCommunicationPatternProperty.Value.Shuffle;
     }
     if (srcTransform instanceof FlattenTransform) {
