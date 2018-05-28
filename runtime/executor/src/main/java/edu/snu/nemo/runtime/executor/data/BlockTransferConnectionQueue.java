@@ -69,9 +69,13 @@ public final class BlockTransferConnectionQueue {
   public synchronized void onConnectionFinished(final String runtimeEdgeId) {
     final Queue<CompletableFuture<Void>> pendingConnections = runtimeEdgeIdToPendingConnections.get(runtimeEdgeId);
     if (pendingConnections.size() == 0) {
+      // Just decrease the number of current connections.
+      // Since we have no pending connections, we leave pendingConnections queue untouched.
       final int numCurrentConnections = runtimeEdgeIdToNumCurrentConnections.get(runtimeEdgeId);
       runtimeEdgeIdToNumCurrentConnections.put(runtimeEdgeId, numCurrentConnections - 1);
     } else {
+      // Since pendingConnections has at least one element, the poll method invocation will immediately return.
+      // One connection is completed, and another connection kicks in; the number of current connection stays same
       final CompletableFuture<Void> nextFuture = pendingConnections.poll();
       nextFuture.complete(null);
     }
