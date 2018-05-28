@@ -35,6 +35,7 @@ import edu.snu.nemo.runtime.executor.datatransfer.*;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -44,17 +45,25 @@ import org.slf4j.LoggerFactory;
  * Executes a task.
  */
 public final class TaskExecutor {
+  // Static variables
   private static final Logger LOG = LoggerFactory.getLogger(TaskExecutor.class.getName());
+  private static final String ITERATORID_PREFIX = "ITERATOR_";
+  private static final AtomicInteger ITERATORID_GENERATOR = new AtomicInteger(0);
 
+  // From ExecutableTask
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
   private final String taskId;
   private final int taskIdx;
   private final TaskStateManager taskStateManager;
   private final List<PhysicalStageEdge> stageIncomingEdges;
   private final List<PhysicalStageEdge> stageOutgoingEdges;
+  private Map<String, Readable> irVertexIdToReadable;
+
+  // Other parameters
   private final DataTransferFactory channelFactory;
   private final MetricCollector metricCollector;
 
+  // Data structures
   private final List<InputReader> inputReaders;
   private final Map<InputReader, List<IRVertexDataHandler>> inputReaderToDataHandlersMap;
   private final Map<String, Iterator> idToSrcIteratorMap;
@@ -64,18 +73,16 @@ public final class TaskExecutor {
   private List<IRVertexDataHandler> IRVertexDataHandlers;
   private Map<OutputCollectorImpl, List<IRVertexDataHandler>> outputToChildrenDataHandlersMap;
   private final Set<String> finishedTaskIds;
-  private int numPartitions;
-  private Map<String, Readable> logicalTaskIdToReadable;
 
   // For metrics
   private long serBlockSize;
   private long encodedBlockSize;
 
-  private boolean isExecutionRequested;
+  // Misc
+  private AtomicBoolean isExecuted;
   private String irVertexIdPutOnHold;
+  private int numPartitions;
 
-  private static final String ITERATORID_PREFIX = "ITERATOR_";
-  private static final AtomicInteger ITERATORID_GENERATOR = new AtomicInteger(0);
 
   /**
    * Constructor.
@@ -90,18 +97,20 @@ public final class TaskExecutor {
                       final TaskStateManager taskStateManager,
                       final DataTransferFactory channelFactory,
                       final MetricMessageSender metricMessageSender) {
+    // Information from the ExecutableTask.
     this.irVertexDag = irVertexDag;
     this.taskId = executableTask.getTaskId();
     this.taskIdx = executableTask.getTaskIdx();
-    this.taskStateManager = taskStateManager;
     this.stageIncomingEdges = executableTask.getTaskIncomingEdges();
     this.stageOutgoingEdges = executableTask.getTaskOutgoingEdges();
-    this.logicalTaskIdToReadable = executableTask.getIRVertexIdToReadable();
+    this.irVertexIdToReadable = executableTask.getIRVertexIdToReadable();
+
+    // Other parameters.
+    this.taskStateManager = taskStateManager;
     this.channelFactory = channelFactory;
     this.metricCollector = new MetricCollector(metricMessageSender);
-    this.irVertexIdPutOnHold = null;
-    this.isExecutionRequested = false;
 
+    // Initialize data structures.
     this.inputReaders = new ArrayList<>();
     this.inputReaderToDataHandlersMap = new ConcurrentHashMap<>();
     this.idToSrcIteratorMap = new HashMap<>();
@@ -110,13 +119,16 @@ public final class TaskExecutor {
     this.partitionQueue = new LinkedBlockingQueue<>();
     this.outputToChildrenDataHandlersMap = new HashMap<>();
     this.IRVertexDataHandlers = new ArrayList<>();
-
     this.finishedTaskIds = new HashSet<>();
-    this.numPartitions = 0;
 
+    // Metrics
     this.serBlockSize = 0;
     this.encodedBlockSize = 0;
 
+    // Misc
+    this.isExecuted = new AtomicBoolean(false);
+    this.irVertexIdPutOnHold = null;
+    this.numPartitions = 0;
 
     initialize();
   }
@@ -421,8 +433,8 @@ public final class TaskExecutor {
    * @param irVertex the IRVertex with the transform to close.
    */
   private void closeTransform(final IRVertex irVertex) {
-    if (task instanceof OperatorVertex) {
-      Transform transform = ((OperatorVertex) task).getTransform();
+    if (irVertex instanceof OperatorVertex) {
+      Transform transform = ((OperatorVertex) irVertex).getTransform();
       transform.close();
     }
   }
@@ -502,10 +514,8 @@ public final class TaskExecutor {
     long boundedSrcReadEndTime = 0;
     long inputReadStartTime = 0;
     long inputReadEndTime = 0;
-    if (isExecutionRequested) {
+    if (isExecuted.getAndSet(true)) {
       throw new RuntimeException("Task {" + taskId + "} execution called again!");
-    } else {
-      isExecutionRequested = true;
     }
     taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
     LOG.info("{} Executing!", taskId);
@@ -568,16 +578,16 @@ public final class TaskExecutor {
       while (!finishedAllTasks()) {
         outputToChildrenDataHandlersMap.forEach((outputCollector, childrenDataHandlers) -> {
           // Get the task that has this outputCollector as its output outputCollector
-          Task outputCollectorOwnerTask = IRVertexDataHandlers.stream()
+          final IRVertex outputProducer = IRVertexDataHandlers.stream()
               .filter(dataHandler -> dataHandler.getOutputCollector() == outputCollector)
               .findFirst().get().getIRVertex();
 
           // Before consuming the output of outputCollectorOwnerTask as input,
           // close transform if it is OperatorTransform.
-          closeTransform(outputCollectorOwnerTask);
+          closeTransform(outputProducer);
 
           // Set outputCollectorOwnerTask as finished.
-          finishedTaskIds.add(getPhysicalIRVertexId(outputCollectorOwnerTask.getId()));
+          finishedTaskIds.add(getPhysicalIRVertexId(outputProducer.getId()));
 
           while (!outputCollector.isEmpty()) {
             final Object element = outputCollector.remove();
@@ -590,17 +600,17 @@ public final class TaskExecutor {
             }
 
             // Write element-wise to OutputWriters if any and close the OutputWriters.
-            if (hasOutputWriter(outputCollectorOwnerTask)) {
+            if (hasOutputWriter(outputProducer)) {
               // If outputCollector isn't empty(if closeTransform produced some output),
               // write them element-wise to OutputWriters.
               List<OutputWriter> outputWritersOfTask =
-                  getIRVertexDataHandler(outputCollectorOwnerTask).getOutputWriters();
+                  getIRVertexDataHandler(outputProducer).getOutputWriters();
               outputWritersOfTask.forEach(outputWriter -> outputWriter.write(element));
             }
           }
 
-          if (hasOutputWriter(outputCollectorOwnerTask)) {
-            writeAndCloseOutputWriters(outputCollectorOwnerTask);
+          if (hasOutputWriter(outputProducer)) {
+            writeAndCloseOutputWriters(outputProducer);
           }
         });
         updateOutputToChildrenDataHandlersMap();
