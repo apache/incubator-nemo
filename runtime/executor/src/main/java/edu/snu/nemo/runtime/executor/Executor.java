@@ -17,6 +17,7 @@ package edu.snu.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
 import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.IllegalMessageException;
 import edu.snu.nemo.common.exception.UnknownFailureCauseException;
@@ -98,23 +99,22 @@ public final class Executor {
    */
   private void launchTask(final ExecutableTask executableTask) {
     try {
-      final DAG<Task, RuntimeEdge<Task>> taskDag =
+      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
           SerializationUtils.deserialize(executableTask.getSerializedIRDag());
       final TaskStateManager taskStateManager =
-          new TaskStateManager(executableTask, taskDag, executorId,
-              persistentConnectionToMasterMap, metricMessageSender);
+          new TaskStateManager(executableTask, executorId, persistentConnectionToMasterMap, metricMessageSender);
 
       executableTask.getTaskIncomingEdges()
           .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
       executableTask.getTaskOutgoingEdges()
           .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
-      taskDag.getVertices().forEach(v -> {
-        taskDag.getOutgoingEdgesOf(v)
+      irDag.getVertices().forEach(v -> {
+        irDag.getOutgoingEdgesOf(v)
             .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
       });
 
       new TaskExecutor(
-          executableTask, taskDag, taskStateManager, dataTransferFactory, metricMessageSender).execute();
+          executableTask, irDag, taskStateManager, dataTransferFactory, metricMessageSender).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()

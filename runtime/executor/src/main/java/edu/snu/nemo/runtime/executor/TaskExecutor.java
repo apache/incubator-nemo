@@ -72,7 +72,7 @@ public final class TaskExecutor {
   private long encodedBlockSize;
 
   private boolean isExecutionRequested;
-  private String logicalTaskIdPutOnHold;
+  private String irVertexIdPutOnHold;
 
   private static final String ITERATORID_PREFIX = "ITERATOR_";
   private static final AtomicInteger ITERATORID_GENERATOR = new AtomicInteger(0);
@@ -99,7 +99,7 @@ public final class TaskExecutor {
     this.logicalTaskIdToReadable = executableTask.getIRVertexIdToReadable();
     this.channelFactory = channelFactory;
     this.metricCollector = new MetricCollector(metricMessageSender);
-    this.logicalTaskIdPutOnHold = null;
+    this.irVertexIdPutOnHold = null;
     this.isExecutionRequested = false;
 
     this.inputReaders = new ArrayList<>();
@@ -127,11 +127,11 @@ public final class TaskExecutor {
    * 2) Prepares Transforms if needed.
    */
   private void initialize() {
-    // Initialize data handlers for each Task.
+    // Initialize data handlers for each IRVertex.
     irVertexDag.topologicalDo(irVertex -> IRVertexDataHandlers.add(new IRVertexDataHandler(irVertex)));
 
     // Initialize data transfer.
-    // Construct a pointer-based DAG of TaskDataHandlers that are used for data transfer.
+    // Construct a pointer-based DAG of IRVertexDataHandlers that are used for data transfer.
     // 'Pointer-based' means that it isn't Map/List-based in getting the data structure or parent/children
     // to avoid element-wise extra overhead of calculating hash values(HashMap) or iterating Lists.
     irVertexDag.topologicalDo(irVertex -> {
@@ -139,8 +139,8 @@ public final class TaskExecutor {
       final Set<PhysicalStageEdge> outEdgesToOtherStages = getOutEdgesToOtherStages(irVertex);
       final IRVertexDataHandler dataHandler = getIRVertexDataHandler(irVertex);
 
-      // Set data handlers of children tasks.
-      // This forms a pointer-based DAG of TaskDataHandlers.
+      // Set data handlers of children irVertices.
+      // This forms a pointer-based DAG of IRVertexDataHandlers.
       final List<IRVertexDataHandler> childrenDataHandlers = new ArrayList<>();
       irVertexDag.getChildren(irVertex.getId()).forEach(child ->
           childrenDataHandlers.add(getIRVertexDataHandler(child)));
@@ -281,9 +281,9 @@ public final class TaskExecutor {
    * @param irVertex the IRVertex to check whether it has OutputWriters.
    * @return true if the task has OutputWriters.
    */
-  private void setTaskPutOnHold(final MetricCollectionBarrierIRVertex irVertex) {
-    final String physicalTaskId = getPhysicalIRVertexId(task.getId());
-    logicalTaskIdPutOnHold = RuntimeIdGenerator.getLogicalTaskIdIdFromPhysicalTaskId(physicalTaskId);
+  private void setTaskPutOnHold(final MetricCollectionBarrierVertex irVertex) {
+    final String physicalTaskId = getPhysicalIRVertexId(irVertex.getId());
+    irVertexIdPutOnHold = RuntimeIdGenerator.getLogicalTaskIdIdFromPhysicalTaskId(physicalTaskId);
   }
 
   /**
@@ -294,7 +294,7 @@ public final class TaskExecutor {
    * @param irVertex the IRVertex with OutputWriter to flush and commit output block.
    */
   private void writeAndCloseOutputWriters(final IRVertex irVertex) {
-    final String physicalTaskId = getPhysicalIRVertexId(task.getId());
+    final String physicalTaskId = getPhysicalIRVertexId(irVertex.getId());
     final List<Long> writtenBytesList = new ArrayList<>();
     final Map<String, Object> metric = new HashMap<>();
     metricCollector.beginMeasurement(physicalTaskId, metric);
@@ -622,11 +622,11 @@ public final class TaskExecutor {
     final boolean available = serBlockSize >= 0;
     putReadBytesMetric(available, serBlockSize, encodedBlockSize, metric);
     metricCollector.endMeasurement(taskId, metric);
-    if (logicalTaskIdPutOnHold == null) {
+    if (irVertexIdPutOnHold == null) {
       taskStateManager.onTaskStateChanged(TaskState.State.COMPLETE, Optional.empty(), Optional.empty());
     } else {
       taskStateManager.onTaskStateChanged(TaskState.State.ON_HOLD,
-          Optional.of(logicalTaskIdPutOnHold),
+          Optional.of(irVertexIdPutOnHold),
           Optional.empty());
     }
     LOG.info("{} Complete!", taskId);
