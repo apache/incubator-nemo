@@ -64,8 +64,8 @@ class PhysicalStageState:
         self.id = data['id']
         self.state = data['state']
         self.tasks = {}
-        for task in data['tasks']:
-            self.tasks[task['id']] = TaskState(task)
+        for irVertex in data['tasks']:
+            self.tasks[irVertex['id']] = TaskState(irVertex)
     @classmethod
     def empty(cls):
         return cls({'id': None, 'state': None, 'tasks': []})
@@ -252,7 +252,7 @@ class LoopVertex:
 class PhysicalStage:
     def __init__(self, id, properties, state):
         self.id = id
-        self.task = DAG(properties['irDag'], JobState.empty())
+        self.irVertex = DAG(properties['irDag'], JobState.empty())
         self.idx = getIdx()
         self.state = state
     @property
@@ -264,12 +264,12 @@ class PhysicalStage:
         dot = 'subgraph cluster_{} {{'.format(self.idx)
         dot += 'label = "{}{}\\n\\n{} Task(s):\\n{}";'.format(self.id, state, len(self.state.tasks), self.state.taskStateSummary)
         dot += 'color=red; bgcolor="{}";'.format(stateToColor(self.state.state))
-        dot += self.task.dot
+        dot += self.irVertex.dot
         dot += '}'
         return dot
     @property
     def oneVertex(self):
-        return next(iter(self.task.vertices.values())).oneVertex
+        return next(iter(self.irVertex.vertices.values())).oneVertex
     @property
     def logicalEnd(self):
         return 'cluster_{}'.format(self.idx)

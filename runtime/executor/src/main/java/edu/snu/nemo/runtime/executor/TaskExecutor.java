@@ -21,6 +21,9 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.exception.BlockWriteException;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
+import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
@@ -43,7 +46,7 @@ import org.slf4j.LoggerFactory;
 public final class TaskExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(TaskExecutor.class.getName());
 
-  private final DAG<Task, RuntimeEdge<Task>> taskDag;
+  private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
   private final String taskId;
   private final int taskIdx;
   private final TaskStateManager taskStateManager;
@@ -53,13 +56,13 @@ public final class TaskExecutor {
   private final MetricCollector metricCollector;
 
   private final List<InputReader> inputReaders;
-  private final Map<InputReader, List<TaskDataHandler>> inputReaderToDataHandlersMap;
+  private final Map<InputReader, List<IRVertexDataHandler>> inputReaderToDataHandlersMap;
   private final Map<String, Iterator> idToSrcIteratorMap;
-  private final Map<String, List<TaskDataHandler>> srcIteratorIdToDataHandlersMap;
-  private final Map<String, List<TaskDataHandler>> iteratorIdToDataHandlersMap;
+  private final Map<String, List<IRVertexDataHandler>> srcIteratorIdToDataHandlersMap;
+  private final Map<String, List<IRVertexDataHandler>> iteratorIdToDataHandlersMap;
   private final LinkedBlockingQueue<Pair<String, DataUtil.IteratorWithNumBytes>> partitionQueue;
-  private List<TaskDataHandler> taskDataHandlers;
-  private Map<OutputCollectorImpl, List<TaskDataHandler>> outputToChildrenDataHandlersMap;
+  private List<IRVertexDataHandler> IRVertexDataHandlers;
+  private Map<OutputCollectorImpl, List<IRVertexDataHandler>> outputToChildrenDataHandlersMap;
   private final Set<String> finishedTaskIds;
   private int numPartitions;
   private Map<String, Readable> logicalTaskIdToReadable;
@@ -77,17 +80,17 @@ public final class TaskExecutor {
   /**
    * Constructor.
    * @param executableTask Task with information needed during execution.
-   * @param taskDag A DAG of Tasks.
+   * @param irVertexDag A DAG of Tasks.
    * @param taskStateManager State manager for this Task.
    * @param channelFactory For reading from/writing to data to other Stages.
    * @param metricMessageSender For sending metric with execution stats to Master.
    */
   public TaskExecutor(final ExecutableTask executableTask,
-                      final DAG<Task, RuntimeEdge<Task>> taskDag,
+                      final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                       final TaskStateManager taskStateManager,
                       final DataTransferFactory channelFactory,
                       final MetricMessageSender metricMessageSender) {
-    this.taskDag = taskDag;
+    this.irVertexDag = irVertexDag;
     this.taskId = executableTask.getTaskId();
     this.taskIdx = executableTask.getTaskIdx();
     this.taskStateManager = taskStateManager;
@@ -106,7 +109,7 @@ public final class TaskExecutor {
     this.iteratorIdToDataHandlersMap = new ConcurrentHashMap<>();
     this.partitionQueue = new LinkedBlockingQueue<>();
     this.outputToChildrenDataHandlersMap = new HashMap<>();
-    this.taskDataHandlers = new ArrayList<>();
+    this.IRVertexDataHandlers = new ArrayList<>();
 
     this.finishedTaskIds = new HashSet<>();
     this.numPartitions = 0;
@@ -124,29 +127,23 @@ public final class TaskExecutor {
    * 2) Prepares Transforms if needed.
    */
   private void initialize() {
-    // Initialize data read of SourceVertex.
-    taskDag.getTopologicalSort().stream()
-        .filter(task -> task instanceof BoundedSourceTask)
-        .forEach(boundedSourceTask -> ((BoundedSourceTask) boundedSourceTask).setReadable(
-            logicalTaskIdToReadable.get(boundedSourceTask.getId())));
-
     // Initialize data handlers for each Task.
-    taskDag.topologicalDo(task -> taskDataHandlers.add(new TaskDataHandler(task)));
+    irVertexDag.topologicalDo(irVertex -> IRVertexDataHandlers.add(new IRVertexDataHandler(irVertex)));
 
     // Initialize data transfer.
     // Construct a pointer-based DAG of TaskDataHandlers that are used for data transfer.
     // 'Pointer-based' means that it isn't Map/List-based in getting the data structure or parent/children
     // to avoid element-wise extra overhead of calculating hash values(HashMap) or iterating Lists.
-    taskDag.topologicalDo(task -> {
-      final Set<PhysicalStageEdge> inEdgesFromOtherStages = getInEdgesFromOtherStages(task);
-      final Set<PhysicalStageEdge> outEdgesToOtherStages = getOutEdgesToOtherStages(task);
-      final TaskDataHandler dataHandler = getTaskDataHandler(task);
+    irVertexDag.topologicalDo(irVertex -> {
+      final Set<PhysicalStageEdge> inEdgesFromOtherStages = getInEdgesFromOtherStages(irVertex);
+      final Set<PhysicalStageEdge> outEdgesToOtherStages = getOutEdgesToOtherStages(irVertex);
+      final IRVertexDataHandler dataHandler = getIRVertexDataHandler(irVertex);
 
       // Set data handlers of children tasks.
       // This forms a pointer-based DAG of TaskDataHandlers.
-      final List<TaskDataHandler> childrenDataHandlers = new ArrayList<>();
-      taskDag.getChildren(task.getId()).forEach(child ->
-          childrenDataHandlers.add(getTaskDataHandler(child)));
+      final List<IRVertexDataHandler> childrenDataHandlers = new ArrayList<>();
+      irVertexDag.getChildren(irVertex.getId()).forEach(child ->
+          childrenDataHandlers.add(getIRVertexDataHandler(child)));
       dataHandler.setChildrenDataHandler(childrenDataHandlers);
 
       // Add InputReaders for inter-stage data transfer
@@ -167,29 +164,29 @@ public final class TaskExecutor {
       // Add OutputWriters for inter-stage data transfer
       outEdgesToOtherStages.forEach(physicalStageEdge -> {
         final OutputWriter outputWriter = channelFactory.createWriter(
-            task, taskIdx, physicalStageEdge.getDstVertex(), physicalStageEdge);
+            irVertex, taskIdx, physicalStageEdge.getDstVertex(), physicalStageEdge);
         dataHandler.addOutputWriter(outputWriter);
       });
 
       // Add InputPipes for intra-stage data transfer
-      addInputFromThisStage(task, dataHandler);
+      addInputFromThisStage(irVertex, dataHandler);
 
       // Add OutputPipe for intra-stage data transfer
-      setOutputCollector(task, dataHandler);
+      setOutputCollector(irVertex, dataHandler);
     });
 
     // Prepare Transforms if needed.
-    taskDag.topologicalDo(task -> {
-      if (task instanceof OperatorTask) {
-        final Transform transform = ((OperatorTask) task).getTransform();
+    irVertexDag.topologicalDo(irVertex -> {
+      if (irVertex instanceof OperatorVertex) {
+        final Transform transform = ((OperatorVertex) irVertex).getTransform();
         final Map<Transform, Object> sideInputMap = new HashMap<>();
-        final TaskDataHandler dataHandler = getTaskDataHandler(task);
+        final IRVertexDataHandler dataHandler = getIRVertexDataHandler(irVertex);
         // Check and collect side inputs.
         if (!dataHandler.getSideInputFromOtherStages().isEmpty()) {
-          sideInputFromOtherStages(task, sideInputMap);
+          sideInputFromOtherStages(irVertex, sideInputMap);
         }
         if (!dataHandler.getSideInputFromThisStage().isEmpty()) {
-          sideInputFromThisStage(task, sideInputMap);
+          sideInputFromThisStage(irVertex, sideInputMap);
         }
 
         final Transform.Context transformContext = new ContextImpl(sideInputMap);
@@ -202,40 +199,40 @@ public final class TaskExecutor {
   /**
    * Collect all inter-stage incoming edges of this task.
    *
-   * @param task the Task whose inter-stage incoming edges to be collected.
+   * @param irVertex the IRVertex whose inter-stage incoming edges to be collected.
    * @return the collected incoming edges.
    */
-  private Set<PhysicalStageEdge> getInEdgesFromOtherStages(final Task task) {
+  private Set<PhysicalStageEdge> getInEdgesFromOtherStages(final IRVertex irVertex) {
     return stageIncomingEdges.stream().filter(
-        stageInEdge -> stageInEdge.getDstVertex().getId().equals(task.getIrVertexId()))
+        stageInEdge -> stageInEdge.getDstVertex().getId().equals(irVertex.getId()))
         .collect(Collectors.toSet());
   }
 
   /**
    * Collect all inter-stage outgoing edges of this task.
    *
-   * @param task the Task whose inter-stage outgoing edges to be collected.
+   * @param irVertex the IRVertex whose inter-stage outgoing edges to be collected.
    * @return the collected outgoing edges.
    */
-  private Set<PhysicalStageEdge> getOutEdgesToOtherStages(final Task task) {
+  private Set<PhysicalStageEdge> getOutEdgesToOtherStages(final IRVertex irVertex) {
     return stageOutgoingEdges.stream().filter(
-        stageInEdge -> stageInEdge.getSrcVertex().getId().equals(task.getIrVertexId()))
+        stageInEdge -> stageInEdge.getSrcVertex().getId().equals(irVertex.getId()))
         .collect(Collectors.toSet());
   }
 
   /**
-   * Add input OutputCollectors to each {@link Task}.
+   * Add input OutputCollectors to each {@link IRVertex}.
    * Input OutputCollector denotes all the OutputCollectors of intra-Stage parent tasks of this task.
    *
-   * @param task the Task to add input OutputCollectors to.
+   * @param irVertex the IRVertex to add input OutputCollectors to.
    */
-  private void addInputFromThisStage(final Task task, final TaskDataHandler dataHandler) {
-    List<Task> parentTasks = taskDag.getParents(task.getId());
-    final String physicalTaskId = getPhysicalIRVertexId(task.getId());
+  private void addInputFromThisStage(final IRVertex irVertex, final IRVertexDataHandler dataHandler) {
+    List<IRVertex> parentVertices = irVertexDag.getParents(irVertex.getId());
+    final String physicalTaskId = getPhysicalIRVertexId(irVertex.getId());
 
-    if (parentTasks != null) {
-      parentTasks.forEach(parent -> {
-        final OutputCollectorImpl parentOutputCollector = getTaskDataHandler(parent).getOutputCollector();
+    if (parentVertices != null) {
+      parentVertices.forEach(parent -> {
+        final OutputCollectorImpl parentOutputCollector = getIRVertexDataHandler(parent).getOutputCollector();
         if (parentOutputCollector.hasSideInputFor(physicalTaskId)) {
           dataHandler.addSideInputFromThisStage(parentOutputCollector);
         } else {
@@ -246,18 +243,18 @@ public final class TaskExecutor {
   }
 
   /**
-   * Add output outputCollectors to each {@link Task}.
+   * Add output outputCollectors to each {@link IRVertex}.
    * Output outputCollector denotes the one and only one outputCollector of this task.
    * Check the outgoing edges that will use this outputCollector,
    * and set this outputCollector as side input if any one of the edges uses this outputCollector as side input.
    *
-   * @param task the Task to add output outputCollectors to.
+   * @param irVertex the IRVertex to add output outputCollectors to.
    */
-  private void setOutputCollector(final Task task, final TaskDataHandler dataHandler) {
+  private void setOutputCollector(final IRVertex irVertex, final IRVertexDataHandler dataHandler) {
     final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
-    final String physicalTaskId = getPhysicalIRVertexId(task.getId());
+    final String physicalTaskId = getPhysicalIRVertexId(irVertex.getId());
 
-    taskDag.getOutgoingEdgesOf(task).forEach(outEdge -> {
+    irVertexDag.getOutgoingEdgesOf(irVertex).forEach(outEdge -> {
       if (outEdge.isSideInput()) {
         outputCollector.setSideInputRuntimeEdge(outEdge);
         outputCollector.setAsSideInputFor(physicalTaskId);
@@ -268,23 +265,23 @@ public final class TaskExecutor {
   }
 
   /**
-   * Check that this task has OutputWriter for inter-stage data.
+   * Check that this irVertex has OutputWriter for inter-stage data.
    *
-   * @param task the task to check whether it has OutputWriters.
-   * @return true if the task has OutputWriters.
+   * @param irVertex the irVertex to check whether it has OutputWriters.
+   * @return true if the irVertex has OutputWriters.
    */
-  private boolean hasOutputWriter(final Task task) {
-    return !getTaskDataHandler(task).getOutputWriters().isEmpty();
+  private boolean hasOutputWriter(final IRVertex irVertex) {
+    return !getIRVertexDataHandler(irVertex).getOutputWriters().isEmpty();
   }
 
   /**
    * If the given task is MetricCollectionBarrierTask,
    * set task as put on hold and use it to decide Task state when Task finishes.
    *
-   * @param task the task to check whether it has OutputWriters.
+   * @param irVertex the IRVertex to check whether it has OutputWriters.
    * @return true if the task has OutputWriters.
    */
-  private void setTaskPutOnHold(final MetricCollectionBarrierTask task) {
+  private void setTaskPutOnHold(final MetricCollectionBarrierIRVertex irVertex) {
     final String physicalTaskId = getPhysicalIRVertexId(task.getId());
     logicalTaskIdPutOnHold = RuntimeIdGenerator.getLogicalTaskIdIdFromPhysicalTaskId(physicalTaskId);
   }
@@ -294,16 +291,16 @@ public final class TaskExecutor {
    * As element-wise output write is done and the block is in memory,
    * flush the block into the designated data store and commit it.
    *
-   * @param task the task with OutputWriter to flush and commit output block.
+   * @param irVertex the IRVertex with OutputWriter to flush and commit output block.
    */
-  private void writeAndCloseOutputWriters(final Task task) {
+  private void writeAndCloseOutputWriters(final IRVertex irVertex) {
     final String physicalTaskId = getPhysicalIRVertexId(task.getId());
     final List<Long> writtenBytesList = new ArrayList<>();
     final Map<String, Object> metric = new HashMap<>();
     metricCollector.beginMeasurement(physicalTaskId, metric);
     final long writeStartTime = System.currentTimeMillis();
 
-    getTaskDataHandler(task).getOutputWriters().forEach(outputWriter -> {
+    getIRVertexDataHandler(irVertex).getOutputWriters().forEach(outputWriter -> {
       outputWriter.close();
       final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
       writtenBytes.ifPresent(writtenBytesList::add);
@@ -319,14 +316,14 @@ public final class TaskExecutor {
    * Get input iterator from BoundedSource and bind it with id.
    */
   private void prepareInputFromSource() {
-    taskDag.topologicalDo(task -> {
-      if (task instanceof BoundedSourceTask) {
+    irVertexDag.topologicalDo(irVertex -> {
+      if (irVertex instanceof SourceVertex) {
         try {
           final String iteratorId = generateIteratorId();
-          final Iterator iterator = ((BoundedSourceTask) task).getReadable().read().iterator();
+          final Iterator iterator = ((SourceVertex) irVertex).getReadable().read().iterator();
           idToSrcIteratorMap.putIfAbsent(iteratorId, iterator);
           srcIteratorIdToDataHandlersMap.putIfAbsent(iteratorId, new ArrayList<>());
-          srcIteratorIdToDataHandlersMap.get(iteratorId).add(getTaskDataHandler(task));
+          srcIteratorIdToDataHandlersMap.get(iteratorId).add(getIRVertexDataHandler(irVertex));
         } catch (final BlockFetchException ex) {
           taskStateManager.onTaskStateChanged(TaskState.State.FAILED_RECOVERABLE,
               Optional.empty(), Optional.of(TaskState.RecoverableFailureCause.INPUT_READ_FAILURE));
@@ -380,7 +377,7 @@ public final class TaskExecutor {
    */
   private boolean finishedAllTasks() {
     // Total number of Tasks
-    int taskNum = taskDataHandlers.size();
+    int taskNum = IRVertexDataHandlers.size();
     int finishedTaskNum = finishedTaskIds.size();
 
     return finishedTaskNum == taskNum;
@@ -406,8 +403,8 @@ public final class TaskExecutor {
    * Update the map of OutputCollector-children task DAG.
    */
   private void updateOutputToChildrenDataHandlersMap() {
-    Map<OutputCollectorImpl, List<TaskDataHandler>> currentMap = outputToChildrenDataHandlersMap;
-    Map<OutputCollectorImpl, List<TaskDataHandler>> updatedMap = new HashMap<>();
+    Map<OutputCollectorImpl, List<IRVertexDataHandler>> currentMap = outputToChildrenDataHandlersMap;
+    Map<OutputCollectorImpl, List<IRVertexDataHandler>> updatedMap = new HashMap<>();
 
     currentMap.values().forEach(dataHandlers ->
         dataHandlers.forEach(dataHandler -> {
@@ -421,11 +418,11 @@ public final class TaskExecutor {
   /**
    * Update the map of OutputCollector-children task DAG.
    *
-   * @param task the Task with the transform to close.
+   * @param irVertex the IRVertex with the transform to close.
    */
-  private void closeTransform(final Task task) {
-    if (task instanceof OperatorTask) {
-      Transform transform = ((OperatorTask) task).getTransform();
+  private void closeTransform(final IRVertex irVertex) {
+    if (task instanceof OperatorVertex) {
+      Transform transform = ((OperatorVertex) task).getTransform();
       transform.close();
     }
   }
@@ -434,11 +431,11 @@ public final class TaskExecutor {
    * As a preprocessing of side input data, get inter stage side input
    * and form a map of source transform-side input.
    *
-   * @param task the task which receives side input from other stages.
+   * @param irVertex the IRVertex which receives side input from other stages.
    * @param sideInputMap the map of source transform-side input to build.
    */
-  private void sideInputFromOtherStages(final Task task, final Map<Transform, Object> sideInputMap) {
-    getTaskDataHandler(task).getSideInputFromOtherStages().forEach(sideInputReader -> {
+  private void sideInputFromOtherStages(final IRVertex irVertex, final Map<Transform, Object> sideInputMap) {
+    getIRVertexDataHandler(irVertex).getSideInputFromOtherStages().forEach(sideInputReader -> {
       try {
         final DataUtil.IteratorWithNumBytes sideInputIterator = sideInputReader.read().get(0).get();
         final Object sideInput = getSideInput(sideInputIterator);
@@ -447,7 +444,7 @@ public final class TaskExecutor {
         if (inEdge instanceof PhysicalStageEdge) {
           srcTransform = ((OperatorVertex) ((PhysicalStageEdge) inEdge).getSrcVertex()).getTransform();
         } else {
-          srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
+          srcTransform = ((OperatorVertex) inEdge.getSrc()).getTransform();
         }
         sideInputMap.put(srcTransform, sideInput);
 
@@ -477,11 +474,11 @@ public final class TaskExecutor {
    * Assumption:  intra stage side input denotes a data element initially received
    *              via side input reader from other stages.
    *
-   * @param task the task which receives the data element marked as side input.
+   * @param irVertex the IRVertex which receives the data element marked as side input.
    * @param sideInputMap the map of source transform-side input to build.
    */
-  private void sideInputFromThisStage(final Task task, final Map<Transform, Object> sideInputMap) {
-    getTaskDataHandler(task).getSideInputFromThisStage().forEach(input -> {
+  private void sideInputFromThisStage(final IRVertex irVertex, final Map<Transform, Object> sideInputMap) {
+    getIRVertexDataHandler(irVertex).getSideInputFromThisStage().forEach(input -> {
       // because sideInput is only 1 element in the outputCollector
       Object sideInput = input.remove();
       final RuntimeEdge inEdge = input.getSideInputRuntimeEdge();
@@ -489,7 +486,7 @@ public final class TaskExecutor {
       if (inEdge instanceof PhysicalStageEdge) {
         srcTransform = ((OperatorVertex) ((PhysicalStageEdge) inEdge).getSrcVertex()).getTransform();
       } else {
-        srcTransform = ((OperatorTask) inEdge.getSrc()).getTransform();
+        srcTransform = ((OperatorVertex) inEdge.getSrc()).getTransform();
       }
       sideInputMap.put(srcTransform, sideInput);
     });
@@ -528,7 +525,7 @@ public final class TaskExecutor {
       srcIteratorIdToDataHandlersMap.forEach((srcIteratorId, dataHandlers) -> {
         Iterator iterator = idToSrcIteratorMap.get(srcIteratorId);
         iterator.forEachRemaining(element -> {
-          for (final TaskDataHandler dataHandler : dataHandlers) {
+          for (final IRVertexDataHandler dataHandler : dataHandlers) {
             runTask(dataHandler, element);
           }
         });
@@ -539,9 +536,9 @@ public final class TaskExecutor {
         Pair<String, DataUtil.IteratorWithNumBytes> idToIteratorPair = partitionQueue.take();
         final String iteratorId = idToIteratorPair.left();
         final DataUtil.IteratorWithNumBytes iterator = idToIteratorPair.right();
-        List<TaskDataHandler> dataHandlers = iteratorIdToDataHandlersMap.get(iteratorId);
+        List<IRVertexDataHandler> dataHandlers = iteratorIdToDataHandlersMap.get(iteratorId);
         iterator.forEachRemaining(element -> {
-          for (final TaskDataHandler dataHandler : dataHandlers) {
+          for (final IRVertexDataHandler dataHandler : dataHandlers) {
             runTask(dataHandler, element);
           }
         });
@@ -571,9 +568,9 @@ public final class TaskExecutor {
       while (!finishedAllTasks()) {
         outputToChildrenDataHandlersMap.forEach((outputCollector, childrenDataHandlers) -> {
           // Get the task that has this outputCollector as its output outputCollector
-          Task outputCollectorOwnerTask = taskDataHandlers.stream()
+          Task outputCollectorOwnerTask = IRVertexDataHandlers.stream()
               .filter(dataHandler -> dataHandler.getOutputCollector() == outputCollector)
-              .findFirst().get().getTask();
+              .findFirst().get().getIRVertex();
 
           // Before consuming the output of outputCollectorOwnerTask as input,
           // close transform if it is OperatorTransform.
@@ -587,7 +584,7 @@ public final class TaskExecutor {
 
             // Pass outputCollectorOwnerTask's output to its children tasks recursively.
             if (!childrenDataHandlers.isEmpty()) {
-              for (final TaskDataHandler childDataHandler : childrenDataHandlers) {
+              for (final IRVertexDataHandler childDataHandler : childrenDataHandlers) {
                 runTask(childDataHandler, element);
               }
             }
@@ -597,7 +594,7 @@ public final class TaskExecutor {
               // If outputCollector isn't empty(if closeTransform produced some output),
               // write them element-wise to OutputWriters.
               List<OutputWriter> outputWritersOfTask =
-                  getTaskDataHandler(outputCollectorOwnerTask).getOutputWriters();
+                  getIRVertexDataHandler(outputCollectorOwnerTask).getOutputWriters();
               outputWritersOfTask.forEach(outputWriter -> outputWriter.write(element));
             }
           }
@@ -638,32 +635,32 @@ public final class TaskExecutor {
   /**
    * Recursively executes a task with the input data element.
    *
-   * @param dataHandler TaskDataHandler of a task to execute.
+   * @param dataHandler IRVertexDataHandler of a task to execute.
    * @param dataElement input data element to process.
    */
-  private void runTask(final TaskDataHandler dataHandler, final Object dataElement) {
-    final Task task = dataHandler.getTask();
+  private void runTask(final IRVertexDataHandler dataHandler, final Object dataElement) {
+    final IRVertex irVertex = dataHandler.getIRVertex();
     final OutputCollectorImpl outputCollector = dataHandler.getOutputCollector();
 
     // Process element-wise depending on the Task type
-    if (task instanceof BoundedSourceTask) {
+    if (irVertex instanceof SourceVertex) {
       if (dataElement == null) { // null used for Beam VoidCoders
         final List<Object> nullForVoidCoder = Collections.singletonList(dataElement);
         outputCollector.emit(nullForVoidCoder);
       } else {
         outputCollector.emit(dataElement);
       }
-    } else if (task instanceof OperatorTask) {
-      final Transform transform = ((OperatorTask) task).getTransform();
+    } else if (irVertex instanceof OperatorVertex) {
+      final Transform transform = ((OperatorVertex) irVertex).getTransform();
       transform.onData(dataElement);
-    } else if (task instanceof MetricCollectionBarrierTask) {
+    } else if (irVertex instanceof MetricCollectionBarrierVertex) {
       if (dataElement == null) { // null used for Beam VoidCoders
         final List<Object> nullForVoidCoder = Collections.singletonList(dataElement);
         outputCollector.emit(nullForVoidCoder);
       } else {
         outputCollector.emit(dataElement);
       }
-      setTaskPutOnHold((MetricCollectionBarrierTask) task);
+      setTaskPutOnHold((MetricCollectionBarrierVertex) irVertex);
     } else {
       throw new UnsupportedOperationException("This type  of Task is not supported");
     }
@@ -673,15 +670,15 @@ public final class TaskExecutor {
       final Object element = outputCollector.remove();
 
       // Pass output to its children recursively.
-      List<TaskDataHandler> childrenDataHandlers = dataHandler.getChildren();
+      List<IRVertexDataHandler> childrenDataHandlers = dataHandler.getChildren();
       if (!childrenDataHandlers.isEmpty()) {
-        for (final TaskDataHandler childDataHandler : childrenDataHandlers) {
+        for (final IRVertexDataHandler childDataHandler : childrenDataHandlers) {
           runTask(childDataHandler, element);
         }
       }
 
       // Write element-wise to OutputWriters if any
-      if (hasOutputWriter(task)) {
+      if (hasOutputWriter(irVertex)) {
         List<OutputWriter> outputWritersOfTask = dataHandler.getOutputWriters();
         outputWritersOfTask.forEach(outputWriter -> outputWriter.write(element));
       }
@@ -705,9 +702,9 @@ public final class TaskExecutor {
     return ITERATORID_PREFIX + ITERATORID_GENERATOR.getAndIncrement();
   }
 
-  private TaskDataHandler getTaskDataHandler(final Task task) {
-    return taskDataHandlers.stream()
-        .filter(dataHandler -> dataHandler.getTask() == task)
+  private IRVertexDataHandler getIRVertexDataHandler(final IRVertex irVertex) {
+    return IRVertexDataHandlers.stream()
+        .filter(dataHandler -> dataHandler.getIRVertex() == irVertex)
         .findFirst().get();
   }
 

@@ -41,31 +41,31 @@ public final class DataTransferFactory {
   /**
    * Creates an {@link OutputWriter} between two stages.
    *
-   * @param srcTask     the {@link Task} that outputs the data to be written.
+   * @param srcIRVertex     the {@link IRVertex} that outputs the data to be written.
    * @param srcTaskIdx  the index of the source task.
    * @param dstIRVertex the {@link IRVertex} that will take the output data as its input.
    * @param runtimeEdge that connects the srcTask to the tasks belonging to dstIRVertex.
    * @return the {@link OutputWriter} created.
    */
-  public OutputWriter createWriter(final Task srcTask,
+  public OutputWriter createWriter(final IRVertex srcIRVertex,
                                    final int srcTaskIdx,
                                    final IRVertex dstIRVertex,
                                    final RuntimeEdge<?> runtimeEdge) {
     return new OutputWriter(hashRangeMultiplier, srcTaskIdx,
-        srcTask.getIrVertexId(), dstIRVertex, runtimeEdge, blockManagerWorker);
+        srcIRVertex.getId(), dstIRVertex, runtimeEdge, blockManagerWorker);
   }
 
   /**
    * Creates an {@link InputReader} between two stages.
    *
-   * @param dstTaskIdx  the index of the destination task.
+   * @param dstIRVertexIdx  the index of the destination task.
    * @param srcIRVertex the {@link IRVertex} that output the data to be read.
    * @param runtimeEdge that connects the tasks belonging to srcIRVertex to dstTask.
    * @return the {@link InputReader} created.
    */
-  public InputReader createReader(final int dstTaskIdx,
+  public InputReader createReader(final int dstIRVertexIdx,
                                   final IRVertex srcIRVertex,
                                   final RuntimeEdge runtimeEdge) {
-    return new InputReader(dstTaskIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
+    return new InputReader(dstIRVertexIdx, srcIRVertex, runtimeEdge, blockManagerWorker);
   }
 }
