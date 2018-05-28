@@ -18,7 +18,6 @@ package edu.snu.nemo.runtime.executor.datatransfer;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.physical.Task;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.reef.tang.annotations.Parameter;
 

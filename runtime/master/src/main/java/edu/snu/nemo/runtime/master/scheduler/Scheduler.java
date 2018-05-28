@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.common.Pair;
+import edu.snu.nemo.runtime.common.plan.physical.ExecutableTask;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
@@ -32,7 +33,7 @@ import javax.annotation.Nullable;
  * Other scheduler-related classes that are accessed by only one of the two threads are not synchronized(NotThreadSafe).
  *
  * Receives jobs to execute and schedules
- * {@link edu.snu.nemo.runtime.common.plan.physical.ScheduledTask} to executors.
+ * {@link ExecutableTask} to executors.
  */
 @DriverSide
 @DefaultImplementation(BatchSingleJobScheduler.class)

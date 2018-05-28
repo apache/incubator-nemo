@@ -117,13 +117,20 @@ public final class TaskExecutorTest {
     final PhysicalStageEdge stageOutEdge = mock(PhysicalStageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(sourceIRVertex);
     final String taskId = RuntimeIdGenerator.generateTaskId(0, stageId);
-    final ScheduledTask scheduledTask =
-        new ScheduledTask("testSourceTask", new byte[0], taskId, Collections.emptyList(),
-            Collections.singletonList(stageOutEdge), 0, CONTAINER_TYPE, logicalIdToReadable);
+    final ExecutableTask executableTask =
+        new ExecutableTask(
+            "testSourceTask",
+            taskId,
+            0,
+            CONTAINER_TYPE,
+            new byte[0],
+            Collections.emptyList(),
+            Collections.singletonList(stageOutEdge),
+            logicalIdToReadable);
 
     // Execute the task.
     final TaskExecutor taskExecutor = new TaskExecutor(
-        scheduledTask, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
+        executableTask, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
     taskExecutor.execute();
 
     // Check the output.
@@ -172,13 +179,20 @@ public final class TaskExecutorTest {
     when(stageInEdge.getDstVertex()).thenReturn(operatorIRVertex1);
     final PhysicalStageEdge stageOutEdge = mock(PhysicalStageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(operatorIRVertex2);
-    final ScheduledTask scheduledTask =
-        new ScheduledTask("testSourceTask", new byte[0], taskId, Collections.singletonList(stageInEdge),
-            Collections.singletonList(stageOutEdge), 0, CONTAINER_TYPE, Collections.emptyMap());
+    final ExecutableTask executableTask =
+        new ExecutableTask(
+            "testSourceTask",
+            taskId,
+            0,
+            CONTAINER_TYPE,
+            new byte[0],
+            Collections.singletonList(stageInEdge),
+            Collections.singletonList(stageOutEdge),
+            Collections.emptyMap());
 
     // Execute the task.
     final TaskExecutor taskExecutor = new TaskExecutor(
-        scheduledTask, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
+        executableTask, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
     taskExecutor.execute();
 
     // Check the output.

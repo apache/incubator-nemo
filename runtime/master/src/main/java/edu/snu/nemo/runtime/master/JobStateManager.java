@@ -162,7 +162,7 @@ public final class JobStateManager {
 
       // Initialize states for blocks of stage internal edges
       taskIdsForStage.forEach(taskId -> {
-        final DAG<Task, RuntimeEdge<Task>> taskInternalDag = physicalStage.getTaskDag();
+        final DAG<Task, RuntimeEdge<Task>> taskInternalDag = physicalStage.getIRDAG();
         taskInternalDag.getVertices().forEach(task -> {
           final List<RuntimeEdge<Task>> internalOutgoingEdges = taskInternalDag.getOutgoingEdgesOf(task);
           internalOutgoingEdges.forEach(taskRuntimeEdge -> {

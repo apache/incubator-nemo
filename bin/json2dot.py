@@ -252,7 +252,7 @@ class LoopVertex:
 class PhysicalStage:
     def __init__(self, id, properties, state):
         self.id = id
-        self.task = DAG(properties['taskDag'], JobState.empty())
+        self.task = DAG(properties['irDag'], JobState.empty())
         self.idx = getIdx()
         self.state = state
     @property

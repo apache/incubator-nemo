@@ -23,8 +23,7 @@ import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
-import edu.snu.nemo.runtime.common.plan.physical.Task;
+import edu.snu.nemo.runtime.common.plan.physical.ExecutableTask;
 
 import java.util.*;
 
@@ -47,13 +46,13 @@ public final class TaskStateManager {
   private final MetricCollector metricCollector;
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
-  public TaskStateManager(final ScheduledTask scheduledTask,
+  public TaskStateManager(final ExecutableTask executableTask,
                                final DAG<Task, RuntimeEdge<Task>> taskDag,
                                final String executorId,
                                final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                                final MetricMessageSender metricMessageSender) {
-    this.taskId = scheduledTask.getTaskId();
-    this.attemptIdx = scheduledTask.getAttemptIdx();
+    this.taskId = executableTask.getTaskId();
+    this.attemptIdx = executableTask.getAttemptIdx();
     this.executorId = executorId;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.metricCollector = new MetricCollector(metricMessageSender);

@@ -400,9 +400,15 @@ public final class BatchSingleJobScheduler implements Scheduler {
       final int attemptIdx = jobStateManager.getCurrentAttemptIndexForTask(taskId);
 
       LOG.debug("Enqueueing {}", taskId);
-      pendingTaskCollection.add(new ScheduledTask(physicalPlan.getId(),
-          stageToSchedule.getSerializedTaskDag(), taskId, stageIncomingEdges, stageOutgoingEdges, attemptIdx,
-          stageToSchedule.getContainerType(), logicalTaskIdToReadables.get(taskIdx)));
+      pendingTaskCollection.add(new ExecutableTask(
+          physicalPlan.getId(),
+          taskId,
+          attemptIdx,
+          stageToSchedule.getContainerType(),
+          stageToSchedule.getSerializedIRDAG(),
+          stageIncomingEdges,
+          stageOutgoingEdges,
+          logicalTaskIdToReadables.get(taskIdx)));
     });
     schedulerRunner.onATaskAvailable();
   }
@@ -416,7 +422,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   private DAG<Task, RuntimeEdge<Task>> getTaskDagById(final String taskId) {
     for (final PhysicalStage physicalStage : physicalPlan.getStageDAG().getVertices()) {
       if (physicalStage.getId().equals(RuntimeIdGenerator.getStageIdFromTaskId(taskId))) {
-        return physicalStage.getTaskDag();
+        return physicalStage.getIRDAG();
       }
     }
     throw new RuntimeException(new Throwable("This taskId does not exist in the plan"));

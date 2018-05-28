@@ -119,7 +119,7 @@ public final class RuntimeMaster {
   public Pair<JobStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
                                                                  final int maxScheduleAttempt) {
     final Callable<Pair<JobStateManager, ScheduledExecutorService>> jobExecutionCallable = () -> {
-      this.irVertices.addAll(plan.getTaskIRVertexMap().values());
+      this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {
         final JobStateManager jobStateManager =
             new JobStateManager(plan, blockManagerMaster, metricMessageHandler, maxScheduleAttempt);

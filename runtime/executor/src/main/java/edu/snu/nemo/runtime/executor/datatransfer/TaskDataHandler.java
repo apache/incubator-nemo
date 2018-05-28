@@ -15,8 +15,6 @@
  */
 package edu.snu.nemo.runtime.executor.datatransfer;
 
-import edu.snu.nemo.runtime.common.plan.physical.Task;
-
 import java.util.ArrayList;
 import java.util.List;
 

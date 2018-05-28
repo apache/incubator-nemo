@@ -15,6 +15,8 @@
  */
 package edu.snu.nemo.runtime.common;
 
+import edu.snu.nemo.runtime.common.plan.physical.ExecutableTask;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -76,29 +78,19 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for {@link edu.snu.nemo.runtime.common.plan.physical.Task}.
+   * Generates the ID for the physical representation of an IRVertex.
    *
-   * @param irVertexId the ID of the IR vertex.
+   * @param irVertexId the id of the IRVertex.
+   * @param index      the index of the physical task.
    * @return the generated ID
    */
-  public static String generateLogicalTaskId(final String irVertexId) {
-    return "Task-" + irVertexId;
+  public static String generatePhysicalIRVertexId(final String irVertexId,
+                                                  final int index) {
+    return irVertexId + PHYSICAL_TASK_ID_SPLITTER + index;
   }
 
   /**
-   * Generates the ID for {@link edu.snu.nemo.runtime.common.plan.physical.Task}.
-   *
-   * @param index         the index of the physical task.
-   * @param logicalTaskId the logical ID of the task.
-   * @return the generated ID
-   */
-  public static String generatePhysicalTaskId(final int index,
-                                              final String logicalTaskId) {
-    return logicalTaskId + PHYSICAL_TASK_ID_SPLITTER + index;
-  }
-
-  /**
-   * Generates the ID for {@link edu.snu.nemo.runtime.common.plan.physical.ScheduledTask}.
+   * Generates the ID for {@link ExecutableTask}.
    *
    * @param index   the index of this task.
    * @param stageId the ID of the stage.

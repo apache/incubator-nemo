@@ -76,24 +76,24 @@ public final class TaskExecutor {
 
   /**
    * Constructor.
-   * @param scheduledTask Task with information needed during execution.
+   * @param executableTask Task with information needed during execution.
    * @param taskDag A DAG of Tasks.
    * @param taskStateManager State manager for this Task.
    * @param channelFactory For reading from/writing to data to other Stages.
    * @param metricMessageSender For sending metric with execution stats to Master.
    */
-  public TaskExecutor(final ScheduledTask scheduledTask,
+  public TaskExecutor(final ExecutableTask executableTask,
                       final DAG<Task, RuntimeEdge<Task>> taskDag,
                       final TaskStateManager taskStateManager,
                       final DataTransferFactory channelFactory,
                       final MetricMessageSender metricMessageSender) {
     this.taskDag = taskDag;
-    this.taskId = scheduledTask.getTaskId();
-    this.taskIdx = scheduledTask.getTaskIdx();
+    this.taskId = executableTask.getTaskId();
+    this.taskIdx = executableTask.getTaskIdx();
     this.taskStateManager = taskStateManager;
-    this.stageIncomingEdges = scheduledTask.getTaskIncomingEdges();
-    this.stageOutgoingEdges = scheduledTask.getTaskOutgoingEdges();
-    this.logicalTaskIdToReadable = scheduledTask.getLogicalTaskIdToReadable();
+    this.stageIncomingEdges = executableTask.getTaskIncomingEdges();
+    this.stageOutgoingEdges = executableTask.getTaskOutgoingEdges();
+    this.logicalTaskIdToReadable = executableTask.getIRVertexIdToReadable();
     this.channelFactory = channelFactory;
     this.metricCollector = new MetricCollector(metricMessageSender);
     this.logicalTaskIdPutOnHold = null;
@@ -231,7 +231,7 @@ public final class TaskExecutor {
    */
   private void addInputFromThisStage(final Task task, final TaskDataHandler dataHandler) {
     List<Task> parentTasks = taskDag.getParents(task.getId());
-    final String physicalTaskId = getPhysicalTaskId(task.getId());
+    final String physicalTaskId = getPhysicalIRVertexId(task.getId());
 
     if (parentTasks != null) {
       parentTasks.forEach(parent -> {
@@ -255,7 +255,7 @@ public final class TaskExecutor {
    */
   private void setOutputCollector(final Task task, final TaskDataHandler dataHandler) {
     final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
-    final String physicalTaskId = getPhysicalTaskId(task.getId());
+    final String physicalTaskId = getPhysicalIRVertexId(task.getId());
 
     taskDag.getOutgoingEdgesOf(task).forEach(outEdge -> {
       if (outEdge.isSideInput()) {
@@ -285,7 +285,7 @@ public final class TaskExecutor {
    * @return true if the task has OutputWriters.
    */
   private void setTaskPutOnHold(final MetricCollectionBarrierTask task) {
-    final String physicalTaskId = getPhysicalTaskId(task.getId());
+    final String physicalTaskId = getPhysicalIRVertexId(task.getId());
     logicalTaskIdPutOnHold = RuntimeIdGenerator.getLogicalTaskIdIdFromPhysicalTaskId(physicalTaskId);
   }
 
@@ -297,7 +297,7 @@ public final class TaskExecutor {
    * @param task the task with OutputWriter to flush and commit output block.
    */
   private void writeAndCloseOutputWriters(final Task task) {
-    final String physicalTaskId = getPhysicalTaskId(task.getId());
+    final String physicalTaskId = getPhysicalIRVertexId(task.getId());
     final List<Long> writtenBytesList = new ArrayList<>();
     final Map<String, Object> metric = new HashMap<>();
     metricCollector.beginMeasurement(physicalTaskId, metric);
@@ -580,7 +580,7 @@ public final class TaskExecutor {
           closeTransform(outputCollectorOwnerTask);
 
           // Set outputCollectorOwnerTask as finished.
-          finishedTaskIds.add(getPhysicalTaskId(outputCollectorOwnerTask.getId()));
+          finishedTaskIds.add(getPhysicalIRVertexId(outputCollectorOwnerTask.getId()));
 
           while (!outputCollector.isEmpty()) {
             final Object element = outputCollector.remove();
@@ -689,13 +689,11 @@ public final class TaskExecutor {
   }
 
   /**
-   * Get the matching physical task id of the given logical task id.
-   *
-   * @param logicalTaskId the logical task id.
-   * @return the physical task id.
+   * @param irVertexId the ir vertex id.
+   * @return the physical ir vertex id.
    */
-  private String getPhysicalTaskId(final String logicalTaskId) {
-    return RuntimeIdGenerator.generatePhysicalTaskId(taskIdx, logicalTaskId);
+  private String getPhysicalIRVertexId(final String irVertexId) {
+    return RuntimeIdGenerator.generatePhysicalIRVertexId(irVertexId, taskIdx);
   }
 
   /**

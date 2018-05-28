@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
+import edu.snu.nemo.runtime.common.plan.physical.ExecutableTask;
 import edu.snu.nemo.runtime.common.state.JobState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
@@ -112,7 +112,7 @@ public final class SchedulerRunner {
   }
 
   void doScheduleStage() {
-    final Collection<ScheduledTask> stageToSchedule = pendingTaskCollection.peekSchedulableStage().orElse(null);
+    final Collection<ExecutableTask> stageToSchedule = pendingTaskCollection.peekSchedulableStage().orElse(null);
     if (stageToSchedule == null) {
       // Task queue is empty
       LOG.debug("PendingTaskCollection is empty. Awaiting for more Tasks...");
@@ -120,7 +120,7 @@ public final class SchedulerRunner {
     }
 
     final AtomicInteger numScheduledTasks = new AtomicInteger(0); // to be incremented in lambda
-    for (final ScheduledTask schedulableTask : stageToSchedule) {
+    for (final ExecutableTask schedulableTask : stageToSchedule) {
       final JobStateManager jobStateManager = jobStateManagers.get(schedulableTask.getJobId());
       LOG.debug("Trying to schedule {}...", schedulableTask.getTaskId());
 

@@ -101,7 +101,7 @@ public final class TestPlanGenerator {
                                                   final Policy policy) throws Exception {
     final DAG<IRVertex, IREdge> optimized = CompiletimeOptimizer.optimize(irDAG, policy, EMPTY_DAG_DIRECTORY);
     final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = optimized.convert(PLAN_GENERATOR);
-    return new PhysicalPlan("Plan", physicalDAG, PLAN_GENERATOR.getTaskIRVertexMap());
+    return new PhysicalPlan("Plan", physicalDAG, PLAN_GENERATOR.getIdToIRVertex());
   }
 
   /**

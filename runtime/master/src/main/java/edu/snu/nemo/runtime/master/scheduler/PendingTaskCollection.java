@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
+import edu.snu.nemo.runtime.common.plan.physical.ExecutableTask;
 
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -38,9 +38,9 @@ public interface PendingTaskCollection {
 
   /**
    * Adds a Task to this collection.
-   * @param scheduledTask to add.
+   * @param executableTask to add.
    */
-  void add(final ScheduledTask scheduledTask);
+  void add(final ExecutableTask executableTask);
 
   /**
    * Removes the specified Task to be scheduled.
@@ -49,14 +49,14 @@ public interface PendingTaskCollection {
    * @throws NoSuchElementException if the specified Task is not in the queue,
    *                                or removing this Task breaks scheduling order
    */
-  ScheduledTask remove(final String taskId) throws NoSuchElementException;
+  ExecutableTask remove(final String taskId) throws NoSuchElementException;
 
   /**
    * Peeks stage that can be scheduled according to job dependency priority.
    * Changes to the queue must not reflected to the returned collection to avoid concurrent modification.
    * @return stage that can be scheduled, or {@link Optional#empty()} if the queue is empty
    */
-  Optional<Collection<ScheduledTask>> peekSchedulableStage();
+  Optional<Collection<ExecutableTask>> peekSchedulableStage();
 
   /**
    * Registers a job to this queue in case the queue needs to understand the topology of the job DAG.

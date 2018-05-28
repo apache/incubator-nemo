@@ -24,7 +24,6 @@ import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.stage.*;
 import edu.snu.nemo.common.exception.IllegalVertexOperationException;
@@ -197,16 +196,13 @@ public final class PhysicalPlanGenerator
     return dagOfStagesBuilder.build();
   }
 
-  // Map that keeps track of the IRVertex of each tasks
-  private final Map<Task, IRVertex> taskIRVertexMap = new HashMap<>();
+  private final Map<String, IRVertex> idToIRVertex = new HashMap<>();
 
   /**
-   * Getter for taskIRVertexMap.
-   *
-   * @return the taskIRVertexMap.
+   * @return the idToIRVertex map.
    */
-  public Map<Task, IRVertex> getTaskIRVertexMap() {
-    return taskIRVertexMap;
+  public Map<String, IRVertex> getIdToIRVertex() {
+    return idToIRVertex;
   }
 
   /**
@@ -221,7 +217,6 @@ public final class PhysicalPlanGenerator
     final DAGBuilder<PhysicalStage, PhysicalStageEdge> physicalDAGBuilder = new DAGBuilder<>();
 
     for (final Stage stage : dagOfStages.getVertices()) {
-      final Map<IRVertex, Task> irVertexTaskMap = new HashMap<>();
       final List<IRVertex> stageVertices = stage.getStageInternalDAG().getVertices();
 
       final ExecutionPropertyMap firstVertexProperties = stageVertices.iterator().next().getExecutionProperties();
@@ -229,7 +224,7 @@ public final class PhysicalPlanGenerator
       final String containerType = firstVertexProperties.get(ExecutionProperty.Key.ExecutorPlacement);
 
       // Only one task DAG will be created and reused.
-      final DAGBuilder<Task, RuntimeEdge<Task>> stageInternalDAGBuilder = new DAGBuilder<>();
+      final DAGBuilder<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAGBuilder = new DAGBuilder<>();
       // Collect split source readables in advance and bind to each scheduled task to avoid extra source split.
       final List<Map<String, Readable>> logicalTaskIdToReadables = new ArrayList<>(stageParallelism);
       for (int i = 0; i < stageParallelism; i++) {
@@ -238,39 +233,25 @@ public final class PhysicalPlanGenerator
 
       // Iterate over the vertices contained in this stage to convert to tasks.
       stageVertices.forEach(irVertex -> {
-        final Task newTaskToAdd;
         if (irVertex instanceof SourceVertex) {
           final SourceVertex sourceVertex = (SourceVertex) irVertex;
-
           try {
             final List<Readable> readables = sourceVertex.getReadables(stageParallelism);
-            final String irVertexId = sourceVertex.getId();
-            final String logicalTaskId = RuntimeIdGenerator.generateLogicalTaskId(irVertexId);
             for (int i = 0; i < stageParallelism; i++) {
-              logicalTaskIdToReadables.get(i).put(logicalTaskId, readables.get(i));
+              logicalTaskIdToReadables.get(i).put(irVertex.getId(), readables.get(i));
             }
-            newTaskToAdd = new BoundedSourceTask(logicalTaskId, irVertexId);
           } catch (Exception e) {
             throw new PhysicalPlanGenerationException(e);
           }
         } else if (irVertex instanceof OperatorVertex) {
-          final OperatorVertex operatorVertex = (OperatorVertex) irVertex;
-          final String operatorVertexId = operatorVertex.getId();
-          newTaskToAdd = new OperatorTask(RuntimeIdGenerator.generateLogicalTaskId(operatorVertexId),
-              operatorVertexId, operatorVertex.getTransform());
-
+          // Do nothing.
         } else if (irVertex instanceof MetricCollectionBarrierVertex) {
-          final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
-              (MetricCollectionBarrierVertex) irVertex;
-          final String metricVertexId = metricCollectionBarrierVertex.getId();
-          newTaskToAdd = new MetricCollectionBarrierTask(RuntimeIdGenerator.generateLogicalTaskId(metricVertexId),
-              metricVertexId);
+          // Do nothing.
         } else {
           throw new IllegalVertexOperationException("This vertex type is not supported");
         }
-        stageInternalDAGBuilder.addVertex(newTaskToAdd);
-        irVertexTaskMap.put(irVertex, newTaskToAdd);
-        taskIRVertexMap.put(newTaskToAdd, irVertex);
+        stageInternalDAGBuilder.addVertex(irVertex);
+        idToIRVertex.put(irVertex.getId(), irVertex);
       });
 
       // connect internal edges in the task. It suffices to iterate over only the stage internal inEdges.
@@ -279,7 +260,7 @@ public final class PhysicalPlanGenerator
         final List<IREdge> inEdges = stageInternalDAG.getIncomingEdgesOf(irVertex);
         inEdges.forEach(edge ->
             stageInternalDAGBuilder.connectVertices(new RuntimeEdge<>(edge.getId(), edge.getExecutionProperties(),
-                irVertexTaskMap.get(edge.getSrc()), irVertexTaskMap.get(edge.getDst()),
+                idToIRVertex.get(edge.getSrc().getId()), idToIRVertex.get(edge.getDst().getId()),
                 edge.getCoder(), edge.isSideInput())));
       });
 
