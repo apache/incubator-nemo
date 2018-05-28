@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.core.java;
+package edu.snu.nemo.compiler.frontend.spark.core;
 
+import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
+import edu.snu.nemo.compiler.frontend.spark.core.rdd.RDD;
 import org.apache.spark.SparkContext;
 
 import java.util.List;
@@ -51,7 +53,7 @@ public final class JavaSparkContext {
    * @return the RDD.
    */
   public JavaRDD<String> textFile(final String path, final int minPartitions) {
-    return JavaRDD.of(sparkContext, minPartitions, path);
+    return JavaRDD.fromRDD(RDD.of(sparkContext, minPartitions, path));
   }
 
   /**
@@ -74,6 +76,6 @@ public final class JavaSparkContext {
    * @return the newly initiated JavaRDD.
    */
   public <T> JavaRDD<T> parallelize(final List<T> l, final int slices) {
-    return JavaRDD.of(this.sparkContext, l, slices);
+    return JavaRDD.fromRDD(RDD.of(this.sparkContext, l, slices));
   }
 }

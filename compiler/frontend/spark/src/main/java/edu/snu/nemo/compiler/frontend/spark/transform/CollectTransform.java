@@ -17,7 +17,7 @@ package edu.snu.nemo.compiler.frontend.spark.transform;
 
 import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.compiler.frontend.spark.core.java.JavaRDD;
+import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 
 import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;

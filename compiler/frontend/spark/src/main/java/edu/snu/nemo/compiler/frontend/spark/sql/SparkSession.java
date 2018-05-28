@@ -49,7 +49,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
    * @param initialConf initial spark session configuration.
    */
   private SparkSession(final SparkContext sparkContext, final Map<String, String> initialConf) {
-    super(sparkContext);
+    super(new edu.snu.nemo.compiler.frontend.spark.core.SparkContext(sparkContext));
     this.datasetCommandsList = new LinkedHashMap<>();
     this.initialConf = initialConf;
     this.isUserTriggered = new AtomicBoolean(true);

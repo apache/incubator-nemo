@@ -13,135 +13,53 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.core.java;
+package edu.snu.nemo.compiler.frontend.spark.core.rdd;
 
-import edu.snu.nemo.client.JobLauncher;
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.dag.DAGBuilder;
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
-import edu.snu.nemo.common.ir.vertex.*;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor;
-import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder;
-import edu.snu.nemo.compiler.frontend.spark.core.RDD;
-import edu.snu.nemo.compiler.frontend.spark.source.SparkDatasetBoundedSourceVertex;
-import edu.snu.nemo.compiler.frontend.spark.source.SparkTextFileBoundedSourceVertex;
-import edu.snu.nemo.compiler.frontend.spark.sql.Dataset;
-import edu.snu.nemo.compiler.frontend.spark.sql.SparkSession;
-import edu.snu.nemo.compiler.frontend.spark.transform.*;
 import org.apache.spark.*;
 import org.apache.spark.api.java.JavaFutureAction;
 import org.apache.spark.api.java.Optional;
 import org.apache.spark.api.java.function.*;
 import org.apache.spark.partial.BoundedDouble;
 import org.apache.spark.partial.PartialResult;
-import org.apache.spark.serializer.Serializer;
 import org.apache.spark.storage.StorageLevel;
 import scala.reflect.ClassTag$;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static edu.snu.nemo.compiler.frontend.spark.core.java.SparkFrontendUtils.getEdgeCommunicationPattern;
-
 /**
  * Java RDD.
  * @param <T> type of the final element.
  */
 public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
-  private final SparkContext sparkContext;
-  private final Stack<LoopVertex> loopVertexStack;
-  private final DAG<IRVertex, IREdge> dag;
-  private final IRVertex lastVertex;
-  private final Serializer serializer;
+  private final RDD<T> rdd;
 
   /**
-   * Static method to create a JavaRDD object from an iterable object.
+   * Static method to create a JavaRDD object from {@link RDD}.
    *
-   * @param sparkContext spark context containing configurations.
-   * @param initialData  initial data.
-   * @param parallelism  parallelism information.
-   * @param <T>          type of the resulting object.
+   * @param <T> type of the resulting object.
    * @return the new JavaRDD object.
    */
-  public static <T> JavaRDD<T> of(final SparkContext sparkContext,
-                                  final Iterable<T> initialData,
-                                  final int parallelism) {
-    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
-
-    final IRVertex initializedSourceVertex = new InitializedSourceVertex<>(initialData);
-    initializedSourceVertex.setProperty(ParallelismProperty.of(parallelism));
-    builder.addVertex(initializedSourceVertex);
-
-    return new JavaRDD<>(sparkContext, builder.buildWithoutSourceSinkCheck(), initializedSourceVertex);
+  public static <T> JavaRDD<T> fromRDD(final RDD<T> rddFrom) {
+    return new JavaRDD<>(rddFrom);
   }
 
-  /**
-   * Static method to create a JavaRDD object from an text file.
-   *
-   * @param sparkContext  the spark context containing configurations.
-   * @param minPartitions the minimum nubmer of partitions.
-   * @param inputPath     the path of the input text file.
-   * @param <T>           the type of resulting object.
-   * @return the new JavaRDD object
-   */
-  public static <T> JavaRDD<T> of(final SparkContext sparkContext,
-                                  final int minPartitions,
-                                  final String inputPath) {
-    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
-
-    final int numPartitions = sparkContext.textFile(inputPath, minPartitions).getNumPartitions();
-    final IRVertex textSourceVertex = new SparkTextFileBoundedSourceVertex(sparkContext, inputPath, numPartitions);
-    textSourceVertex.setProperty(ParallelismProperty.of(numPartitions));
-    builder.addVertex(textSourceVertex);
-
-    return new JavaRDD<>(sparkContext, builder.buildWithoutSourceSinkCheck(), textSourceVertex);
-  }
-
-  /**
-   * Static method to create a JavaRDD object from a Dataset.
-   *
-   * @param sparkSession spark session containing configurations.
-   * @param dataset      dataset to read initial data from.
-   * @param <T>          type of the resulting object.
-   * @return the new JavaRDD object.
-   */
-  public static <T> JavaRDD<T> of(final SparkSession sparkSession,
-                                  final Dataset<T> dataset) {
-    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
-
-    final IRVertex sparkBoundedSourceVertex = new SparkDatasetBoundedSourceVertex<>(sparkSession, dataset);
-    sparkBoundedSourceVertex.setProperty(ParallelismProperty.of(dataset.rdd().getNumPartitions()));
-    builder.addVertex(sparkBoundedSourceVertex);
-
-    return new JavaRDD<>(sparkSession.sparkContext(), builder.buildWithoutSourceSinkCheck(), sparkBoundedSourceVertex);
+  @Override
+  public JavaRDD<T> wrapRDD(final org.apache.spark.rdd.RDD<T> rddFrom) {
+    if (!(rddFrom instanceof RDD)) {
+      throw new UnsupportedOperationException("Cannot wrap Spark RDD as Nemo RDD!");
+    }
+    return fromRDD((RDD<T>) rddFrom);
   }
 
   /**
    * Constructor.
    *
-   * @param sparkContext spark context containing configurations.
-   * @param dag          the current DAG.
-   * @param lastVertex   last vertex added to the builder.
+   * @param rdd the rdd to wrap.
    */
-  JavaRDD(final SparkContext sparkContext, final DAG<IRVertex, IREdge> dag, final IRVertex lastVertex) {
-    // TODO #366: resolve while implementing scala RDD.
-    super(RDD.of(sparkContext), ClassTag$.MODULE$.apply((Class<T>) Object.class));
-
-    this.loopVertexStack = new Stack<>();
-    this.sparkContext = sparkContext;
-    this.dag = dag;
-    this.lastVertex = lastVertex;
-    this.serializer = SparkFrontendUtils.deriveSerializerFrom(sparkContext);
-  }
-
-  /**
-   * @return the spark context.
-   */
-  public SparkContext getSparkContext() {
-    return sparkContext;
+  private JavaRDD(final RDD<T> rdd) {
+    super(rdd, ClassTag$.MODULE$.apply((Class<T>) Object.class));
+    this.rdd = rdd;
   }
 
   /////////////// TRANSFORMATIONS ///////////////
@@ -151,53 +69,33 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
    *
    * @param func function to apply.
    * @param <O>  output type.
-   * @return the JavaRDD with the DAG.
+   * @return the JavaRDD with the extended DAG.
    */
   @Override
   public <O> JavaRDD<O> map(final Function<T, O> func) {
-    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
-
-    final IRVertex mapVertex = new OperatorVertex(new MapTransform<>(func));
-    builder.addVertex(mapVertex, loopVertexStack);
-
-    final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, mapVertex),
-        lastVertex, mapVertex, new SparkCoder(serializer));
-    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
-    builder.connectVertices(newEdge);
-
-    return new JavaRDD<>(this.sparkContext, builder.buildWithoutSourceSinkCheck(), mapVertex);
+    return fromRDD(rdd.map(func));
   }
 
+  /**
+   * Flat map transform.
+   *
+   * @param func function to apply.
+   * @param <O>  output type.
+   * @return the JavaRDD with the extended DAG.
+   */
   @Override
-  public <U> JavaRDD<U> flatMap(final FlatMapFunction<T, U> f) {
-    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
-
-    final IRVertex flatMapVertex = new OperatorVertex(new FlatMapTransform<>(f));
-    builder.addVertex(flatMapVertex, loopVertexStack);
-
-    final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, flatMapVertex),
-        lastVertex, flatMapVertex, new SparkCoder(serializer));
-    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
-    builder.connectVertices(newEdge);
-
-    return new JavaRDD<>(this.sparkContext, builder.buildWithoutSourceSinkCheck(), flatMapVertex);
+  public <O> JavaRDD<O> flatMap(final FlatMapFunction<T, O> func) {
+    return fromRDD(rdd.flatMap(func));
   }
 
   /////////////// TRANSFORMATION TO PAIR RDD ///////////////
 
+  /**
+   * @see org.apache.spark.api.java.JavaRDD#mapToPair(PairFunction).
+   */
   @Override
   public <K2, V2> JavaPairRDD<K2, V2> mapToPair(final PairFunction<T, K2, V2> f) {
-    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
-
-    final IRVertex mapToPairVertex = new OperatorVertex(new MapToPairTransform<>(f));
-    builder.addVertex(mapToPairVertex, loopVertexStack);
-
-    final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, mapToPairVertex),
-        lastVertex, mapToPairVertex, new SparkCoder(serializer));
-    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
-    builder.connectVertices(newEdge);
-
-    return new JavaPairRDD<>(this.sparkContext, builder.buildWithoutSourceSinkCheck(), mapToPairVertex);
+    return rdd.mapToPair(f);
   }
 
   /////////////// ACTIONS ///////////////
@@ -221,43 +119,17 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
    */
   @Override
   public T reduce(final Function2<T, T, T> func) {
-    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
-
-    final IRVertex reduceVertex = new OperatorVertex(new ReduceTransform<>(func));
-    builder.addVertex(reduceVertex, loopVertexStack);
-
-    final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, reduceVertex),
-        lastVertex, reduceVertex, new SparkCoder(serializer));
-    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
-    builder.connectVertices(newEdge);
-
-    return ReduceTransform.reduceIterator(collect().iterator(), func);
+    return rdd.reduce(func);
   }
 
   @Override
   public List<T> collect() {
-    return SparkFrontendUtils.collect(dag, loopVertexStack, lastVertex, serializer);
+    return rdd.collectToList();
   }
 
   @Override
   public void saveAsTextFile(final String path) {
-
-    // Check if given path is HDFS path.
-    final boolean isHDFSPath = path.startsWith("hdfs://") || path.startsWith("s3a://") || path.startsWith("file://");
-    final Transform textFileTransform = isHDFSPath
-        ? new HDFSTextFileTransform(path) : new LocalTextFileTransform(path);
-
-    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
-
-    final IRVertex flatMapVertex = new OperatorVertex(textFileTransform);
-    builder.addVertex(flatMapVertex, loopVertexStack);
-
-    final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, flatMapVertex),
-        lastVertex, flatMapVertex, new SparkCoder(serializer));
-    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
-    builder.connectVertices(newEdge);
-
-    JobLauncher.launchDAG(builder.build());
+    rdd.saveAsTextFile(path);
   }
 
   /////////////// UNSUPPORTED TRANSFORMATIONS ///////////////

@@ -15,7 +15,8 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.sql;
 
-import edu.snu.nemo.compiler.frontend.spark.core.java.JavaRDD;
+import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
+import edu.snu.nemo.compiler.frontend.spark.core.rdd.RDD;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.api.java.function.MapPartitionsFunction;
 import org.apache.spark.sql.Column;
@@ -70,8 +71,18 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
 
   @Override
   public JavaRDD<T> toJavaRDD() {
-    return JavaRDD.of((SparkSession) super.sparkSession(), this);
+    return JavaRDD.fromRDD(this.rdd());
   }
+
+  /**
+   * Create a {@link RDD} component from this data set.
+   *
+   * @return the new RDD component.
+   */
+   @Override
+   public RDD<T> rdd() {
+     return RDD.of((SparkSession) super.sparkSession(), this);
+   }
 
   @Override
   public Dataset<Row> agg(final Column expr, final Column... exprs) {

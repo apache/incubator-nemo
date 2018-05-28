@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.core.java;
+package edu.snu.nemo.compiler.frontend.spark.core.rdd;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
@@ -24,7 +24,7 @@ import edu.snu.nemo.common.ir.vertex.LoopVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor;
 import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder;
-import edu.snu.nemo.compiler.frontend.spark.core.RDD;
+import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils;
 import edu.snu.nemo.compiler.frontend.spark.transform.MapTransform;
 import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform;
 import org.apache.spark.SparkContext;
@@ -37,7 +37,7 @@ import scala.reflect.ClassTag$;
 import java.util.List;
 import java.util.Stack;
 
-import static edu.snu.nemo.compiler.frontend.spark.core.java.SparkFrontendUtils.getEdgeCommunicationPattern;
+import static edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils.getEdgeCommunicationPattern;
 
 /**
  * Java RDD for pairs.
@@ -53,9 +53,10 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
 
   /**
    * Constructor.
+   *
    * @param sparkContext spark context containing configurations.
-   * @param dag the current DAG.
-   * @param lastVertex last vertex added to the builder.
+   * @param dag          the current DAG.
+   * @param lastVertex   last vertex added to the builder.
    */
   JavaPairRDD(final SparkContext sparkContext, final DAG<IRVertex, IREdge> dag, final IRVertex lastVertex) {
     // TODO #366: resolve while implementing scala RDD.
