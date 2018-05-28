@@ -57,10 +57,10 @@ public final class BlockTransferConnectionQueueTest {
     final BlockTransferConnectionQueue queue = getQueue(3);
     final Future executorServiceFuture = executorService.submit(() -> {
       try {
-        queue.newConnectionRequest(RUNTIME_EDGE_0).get();
-        queue.newConnectionRequest(RUNTIME_EDGE_0).get();
-        queue.newConnectionRequest(RUNTIME_EDGE_0).get();
-        queue.newConnectionRequest(RUNTIME_EDGE_0).get();
+        queue.requestConnectPermission(RUNTIME_EDGE_0).get();
+        queue.requestConnectPermission(RUNTIME_EDGE_0).get();
+        queue.requestConnectPermission(RUNTIME_EDGE_0).get();
+        queue.requestConnectPermission(RUNTIME_EDGE_0).get();
       } catch (final InterruptedException | ExecutionException e) {
         throw new RuntimeException(e);
       }
@@ -68,7 +68,7 @@ public final class BlockTransferConnectionQueueTest {
     Thread.sleep(WAIT_TIME);
     // We must have one pending connection request.
     assertFalse(executorServiceFuture.isDone());
-    queue.connectionFinished(RUNTIME_EDGE_0);
+    queue.onConnectionFinished(RUNTIME_EDGE_0);
     // The remaining request should be accepted before test timeout.
     executorServiceFuture.get();
   }

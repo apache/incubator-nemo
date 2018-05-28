@@ -142,7 +142,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * Number of maximum number of parallel downloads for a runtime edge.
+   * Maximum number of parallel downloads for a runtime edge.
    */
   @NamedParameter(doc = "Maximum number of parallel downloads for a runtime edge.", short_name = "max_downloads",
       default_value = "30")

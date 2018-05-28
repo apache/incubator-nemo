@@ -234,10 +234,10 @@ public final class BlockManagerWorker {
             .setKeyRange(ByteString.copyFrom(SerializationUtils.serialize(keyRange)))
             .build();
         final CompletableFuture<ByteInputContext> contextFuture = blockTransferConnectionQueue
-            .newConnectionRequest(runtimeEdgeId)
+            .requestConnectPermission(runtimeEdgeId)
             .thenCompose(obj -> byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray()));
         contextFuture.thenApply(context -> context.getCompletedFuture()
-            .thenAccept(f -> blockTransferConnectionQueue.connectionFinished(runtimeEdgeId)));
+            .thenAccept(f -> blockTransferConnectionQueue.onConnectionFinished(runtimeEdgeId)));
         return contextFuture
             .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
                 serializerManager.getSerializer(runtimeEdgeId)));

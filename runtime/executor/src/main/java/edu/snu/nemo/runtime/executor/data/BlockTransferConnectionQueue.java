@@ -20,19 +20,19 @@ import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.ArrayDeque;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A class to restrict parallel connection per runtime edge.
+ * Executors can suffer from performance degradation and network-related exceptions when there are massive connections,
+ * especially under low network bandwidth or high volume of data.
  */
 public final class BlockTransferConnectionQueue {
-  private static final Object FUTURE_OBJECT = new Object();
-  private final Map<String, Integer> runtimeEdgeIdToNumOutstandingConnections = new ConcurrentHashMap<>();
-  private final Map<String, Queue<CompletableFuture<Object>>> runtimeEdgeIdToPendingConnections
-      = new ConcurrentHashMap<>();
+  private final Map<String, Integer> runtimeEdgeIdToNumCurrentConnections = new HashMap<>();
+  private final Map<String, Queue<CompletableFuture<Void>>> runtimeEdgeIdToPendingConnections = new HashMap<>();
   private final int maxNum;
 
   @Inject
@@ -41,39 +41,39 @@ public final class BlockTransferConnectionQueue {
   }
 
   /**
-   * Request a new connection request.
+   * Request a permission to make a connection.
    * @param runtimeEdgeId the corresponding runtime edge id.
    * @return a future that will be completed when the connection is granted.
    */
-  public synchronized CompletableFuture<Object> newConnectionRequest(final String runtimeEdgeId) {
-    runtimeEdgeIdToNumOutstandingConnections.putIfAbsent(runtimeEdgeId, 0);
+  public synchronized CompletableFuture<Void> requestConnectPermission(final String runtimeEdgeId) {
+    runtimeEdgeIdToNumCurrentConnections.putIfAbsent(runtimeEdgeId, 0);
     runtimeEdgeIdToPendingConnections.computeIfAbsent(runtimeEdgeId, id -> new ArrayDeque<>());
-    final CompletableFuture<Object> future = new CompletableFuture();
-    final int currentOutstandingConnections = runtimeEdgeIdToNumOutstandingConnections.get(runtimeEdgeId);
+    final int currentOutstandingConnections = runtimeEdgeIdToNumCurrentConnections.get(runtimeEdgeId);
 
     if (currentOutstandingConnections < maxNum) {
       // grant immediately
-      future.complete(FUTURE_OBJECT);
-      runtimeEdgeIdToNumOutstandingConnections.put(runtimeEdgeId, currentOutstandingConnections + 1);
+      runtimeEdgeIdToNumCurrentConnections.put(runtimeEdgeId, currentOutstandingConnections + 1);
+      return CompletableFuture.completedFuture(null);
     } else {
       // add to pending queue
+      final CompletableFuture<Void> future = new CompletableFuture<>();
       runtimeEdgeIdToPendingConnections.get(runtimeEdgeId).add(future);
+      return future;
     }
-    return future;
   }
 
   /**
    * Indicates the connection has finished.
    * @param runtimeEdgeId the corresponding runtime edge id.
    */
-  public synchronized void connectionFinished(final String runtimeEdgeId) {
-    final Queue<CompletableFuture<Object>> pendingConnections = runtimeEdgeIdToPendingConnections.get(runtimeEdgeId);
+  public synchronized void onConnectionFinished(final String runtimeEdgeId) {
+    final Queue<CompletableFuture<Void>> pendingConnections = runtimeEdgeIdToPendingConnections.get(runtimeEdgeId);
     if (pendingConnections.size() == 0) {
-      final int currentOutstandingConnections = runtimeEdgeIdToNumOutstandingConnections.get(runtimeEdgeId);
-      runtimeEdgeIdToNumOutstandingConnections.put(runtimeEdgeId, currentOutstandingConnections - 1);
+      final int numCurrentConnections = runtimeEdgeIdToNumCurrentConnections.get(runtimeEdgeId);
+      runtimeEdgeIdToNumCurrentConnections.put(runtimeEdgeId, numCurrentConnections - 1);
     } else {
-      final CompletableFuture<Object> nextFuture = pendingConnections.poll();
-      nextFuture.complete(FUTURE_OBJECT);
+      final CompletableFuture<Void> nextFuture = pendingConnections.poll();
+      nextFuture.complete(null);
     }
   }
 }
