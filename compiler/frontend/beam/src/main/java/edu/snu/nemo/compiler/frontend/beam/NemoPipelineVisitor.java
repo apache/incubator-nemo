@@ -244,7 +244,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
                                                                                     final IRVertex dst) {
     final Class<?> constructUnionTableFn;
     try {
-      constructUnionTableFn = Class.forName( "org.apache.beam.sdk.transforms.join.CoGroupByKey$ConstructUnionTableFn");
+      constructUnionTableFn = Class.forName("org.apache.beam.sdk.transforms.join.CoGroupByKey$ConstructUnionTableFn");
     } catch (final ClassNotFoundException e) {
       throw new RuntimeException(e);
     }
