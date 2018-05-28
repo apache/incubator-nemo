@@ -15,7 +15,9 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.core;
 
+import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 import edu.snu.nemo.compiler.frontend.spark.core.rdd.RDD;
+import org.apache.spark.SparkConf;
 
 import java.util.List;
 
@@ -27,11 +29,19 @@ public final class SparkContext extends org.apache.spark.SparkContext {
 
   /**
    * Constructor.
-   *
-   * @param sparkContext spark context to wrap.
    */
-  public SparkContext(final org.apache.spark.SparkContext sparkContext) {
-    this.sparkContext = sparkContext;
+  public SparkContext() {
+    this.sparkContext = org.apache.spark.SparkContext.getOrCreate();
+  }
+
+  /**
+   * Constructor with configuration.
+   *
+   * @param sparkConf spark configuration to wrap.
+   */
+  public SparkContext(final SparkConf sparkConf) {
+    super(sparkConf);
+    this.sparkContext = org.apache.spark.SparkContext.getOrCreate(sparkConf);
   }
 
   /**
@@ -43,6 +53,6 @@ public final class SparkContext extends org.apache.spark.SparkContext {
    * @return the newly initiated JavaRDD.
    */
   public <T> RDD<T> parallelize(final List<T> l, final int slices) {
-    return RDD.of(this.sparkContext, l, slices);
+    return JavaRDD.of(this.sparkContext, l, slices).rdd();
   }
 }
