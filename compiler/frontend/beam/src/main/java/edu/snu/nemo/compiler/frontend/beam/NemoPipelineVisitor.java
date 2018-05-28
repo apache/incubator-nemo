@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.compiler.frontend.beam;
 
+import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamCoder;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
@@ -241,26 +242,29 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
    */
   private static DataCommunicationPatternProperty.Value getEdgeCommunicationPattern(final IRVertex src,
                                                                                     final IRVertex dst) {
+    final Class<?> constructUnionTableFn;
     try {
-      final Class<?> constructUnionTableFn = Class.forName(
-          "org.apache.beam.sdk.transforms.join.CoGroupByKey$ConstructUnionTableFn");
-      if (src instanceof OperatorVertex && ((OperatorVertex) src).getTransform() instanceof DoTransform
-          && ((DoTransform) ((OperatorVertex) src).getTransform()).getDoFn().getClass().equals(constructUnionTableFn)) {
-        return DataCommunicationPatternProperty.Value.Shuffle;
-      }
+      constructUnionTableFn = Class.forName( "org.apache.beam.sdk.transforms.join.CoGroupByKey$ConstructUnionTableFn");
     } catch (final ClassNotFoundException e) {
       throw new RuntimeException(e);
     }
-    if (src instanceof OperatorVertex && ((OperatorVertex) src).getTransform() instanceof FlattenTransform) {
-      return DataCommunicationPatternProperty.Value.OneToOne;
-    }
-    if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof GroupByKeyTransform) {
+
+    final Transform srcTransform = src instanceof OperatorVertex ? ((OperatorVertex) src).getTransform() : null;
+    final Transform dstTransform = dst instanceof OperatorVertex ? ((OperatorVertex) dst).getTransform() : null;
+    final DoFn srcDoFn = srcTransform instanceof DoTransform ? ((DoTransform) srcTransform).getDoFn() : null;
+
+    if (srcDoFn.getClass().equals(constructUnionTableFn)) {
       return DataCommunicationPatternProperty.Value.Shuffle;
-    } else if (dst instanceof OperatorVertex && ((OperatorVertex) dst).getTransform() instanceof CreateViewTransform
-        || src instanceof OperatorVertex && ((OperatorVertex) src).getTransform() instanceof CreateViewTransform) {
-      return DataCommunicationPatternProperty.Value.BroadCast;
-    } else {
+    }
+    if (srcTransform instanceof FlattenTransform) {
       return DataCommunicationPatternProperty.Value.OneToOne;
     }
+    if (dstTransform instanceof GroupByKeyTransform) {
+      return DataCommunicationPatternProperty.Value.Shuffle;
+    }
+    if (srcTransform instanceof CreateViewTransform || dstTransform instanceof CreateViewTransform) {
+      return DataCommunicationPatternProperty.Value.BroadCast;
+    }
+    return DataCommunicationPatternProperty.Value.OneToOne;
   }
 }
