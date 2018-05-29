@@ -29,7 +29,6 @@ import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.executor.data.*;
 import edu.snu.nemo.runtime.executor.data.block.Block;
 import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
-import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 import edu.snu.nemo.runtime.executor.data.streamchainer.CompressionStreamChainer;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.nemo.runtime.executor.data.stores.*;
@@ -81,8 +80,8 @@ public final class BlockStoreTest {
   private BlockManagerMaster blockManagerMaster;
   private LocalMessageDispatcher messageDispatcher;
   // Variables for shuffle test
-  private static final int NUM_WRITE_TASKS = 3;
-  private static final int NUM_READ_TASKS = 3;
+  private static final int NUM_WRITE_VERTICES = 3;
+  private static final int NUM_READ_VERTICES = 3;
   private static final int DATA_SIZE = 1000;
   private List<String> blockIdList;
   private List<List<NonSerializedPartition<Integer>>> partitionsPerBlock;
@@ -115,20 +114,18 @@ public final class BlockStoreTest {
     when(serializerManager.getSerializer(any())).thenReturn(SERIALIZER);
 
     // Following part is for for the shuffle test.
-    final List<String> writeTaskIdList = new ArrayList<>(NUM_WRITE_TASKS);
-    final List<String> readTaskIdList = new ArrayList<>(NUM_READ_TASKS);
-    blockIdList = new ArrayList<>(NUM_WRITE_TASKS);
-    partitionsPerBlock = new ArrayList<>(NUM_WRITE_TASKS);
+    final List<String> writeVertexIdList = new ArrayList<>(NUM_WRITE_VERTICES);
+    final List<String> readTaskIdList = new ArrayList<>(NUM_READ_VERTICES);
+    blockIdList = new ArrayList<>(NUM_WRITE_VERTICES);
+    partitionsPerBlock = new ArrayList<>(NUM_WRITE_VERTICES);
 
     // Generates the ids of the tasks to be used.
-    IntStream.range(0, NUM_WRITE_TASKS).forEach(
-        number -> writeTaskIdList.add(RuntimeIdGenerator.generateLogicalTaskId("Write_IR_vertex")));
-    IntStream.range(0, NUM_READ_TASKS).forEach(
-        number -> readTaskIdList.add(RuntimeIdGenerator.generateLogicalTaskId("Read_IR_vertex")));
+    IntStream.range(0, NUM_WRITE_VERTICES).forEach(number -> writeVertexIdList.add("Write_IR_vertex"));
+    IntStream.range(0, NUM_READ_VERTICES).forEach(number -> readTaskIdList.add("Read_IR_vertex"));
 
     // Generates the ids and the data of the blocks to be used.
     final String shuffleEdge = RuntimeIdGenerator.generateRuntimeEdgeId("shuffle_edge");
-    IntStream.range(0, NUM_WRITE_TASKS).forEach(writeTaskIdx -> {
+    IntStream.range(0, NUM_WRITE_VERTICES).forEach(writeTaskIdx -> {
       // Create a block for each writer task.
       final String blockId = RuntimeIdGenerator.generateBlockId(shuffleEdge, writeTaskIdx);
       blockIdList.add(blockId);
@@ -137,27 +134,26 @@ public final class BlockStoreTest {
           blockId, BlockState.State.SCHEDULED, null);
 
       // Create blocks for this block.
-      final List<NonSerializedPartition<Integer>> partitionsForBlock = new ArrayList<>(NUM_READ_TASKS);
+      final List<NonSerializedPartition<Integer>> partitionsForBlock = new ArrayList<>(NUM_READ_VERTICES);
       partitionsPerBlock.add(partitionsForBlock);
-      IntStream.range(0, NUM_READ_TASKS).forEach(readTaskIdx -> {
-        final int partitionsCount = writeTaskIdx * NUM_READ_TASKS + readTaskIdx;
+      IntStream.range(0, NUM_READ_VERTICES).forEach(readTaskIdx -> {
+        final int partitionsCount = writeTaskIdx * NUM_READ_VERTICES + readTaskIdx;
         partitionsForBlock.add(new NonSerializedPartition(
             readTaskIdx, getRangedNumList(partitionsCount * DATA_SIZE, (partitionsCount + 1) * DATA_SIZE), -1, -1));
       });
     });
 
     // Following part is for the concurrent read test.
-    final String writeTaskId = RuntimeIdGenerator.generateLogicalTaskId("conc_write_IR_vertex");
+    final String writeTaskId = "conc_write_IR_vertex";
     final List<String> concReadTaskIdList = new ArrayList<>(NUM_CONC_READ_TASKS);
     final String concEdge = RuntimeIdGenerator.generateRuntimeEdgeId("conc_read_edge");
 
     // Generates the ids and the data to be used.
-    concBlockId = RuntimeIdGenerator.generateBlockId(concEdge, NUM_WRITE_TASKS + NUM_READ_TASKS + 1);
+    concBlockId = RuntimeIdGenerator.generateBlockId(concEdge, NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1);
     blockManagerMaster.initializeState(concBlockId, "unused");
     blockManagerMaster.onBlockStateChanged(
         concBlockId, BlockState.State.SCHEDULED, null);
-    IntStream.range(0, NUM_CONC_READ_TASKS).forEach(
-        number -> concReadTaskIdList.add(RuntimeIdGenerator.generateLogicalTaskId("conc_read_IR_vertex")));
+    IntStream.range(0, NUM_CONC_READ_TASKS).forEach(number -> concReadTaskIdList.add("conc_read_IR_vertex"));
     concBlockPartition = new NonSerializedPartition(0, getRangedNumList(0, CONC_READ_DATA_SIZE), -1, -1);
 
     // Following part is for the shuffle in hash range test
@@ -170,16 +166,14 @@ public final class BlockStoreTest {
     expectedDataInRange = new ArrayList<>(NUM_READ_HASH_TASKS);
 
     // Generates the ids of the tasks to be used.
-    IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(
-        number -> writeHashTaskIdList.add(RuntimeIdGenerator.generateLogicalTaskId("hash_write_IR_vertex")));
-    IntStream.range(0, NUM_READ_HASH_TASKS).forEach(
-        number -> readHashTaskIdList.add(RuntimeIdGenerator.generateLogicalTaskId("hash_read_IR_vertex")));
+    IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(number -> writeHashTaskIdList.add("hash_write_IR_vertex"));
+    IntStream.range(0, NUM_READ_HASH_TASKS).forEach(number -> readHashTaskIdList.add("hash_read_IR_vertex"));
     final String hashEdge = RuntimeIdGenerator.generateRuntimeEdgeId("hash_edge");
 
     // Generates the ids and the data of the blocks to be used.
     IntStream.range(0, NUM_WRITE_HASH_TASKS).forEach(writeTaskIdx -> {
       final String blockId = RuntimeIdGenerator.generateBlockId(
-          hashEdge, NUM_WRITE_TASKS + NUM_READ_TASKS + 1 + writeTaskIdx);
+          hashEdge, NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1 + writeTaskIdx);
       hashedBlockIdList.add(blockId);
       blockManagerMaster.initializeState(blockId, "Unused");
       blockManagerMaster.onBlockStateChanged(
@@ -307,14 +301,14 @@ public final class BlockStoreTest {
    */
   private void shuffle(final BlockStore writerSideStore,
                        final BlockStore readerSideStore) {
-    final ExecutorService writeExecutor = Executors.newFixedThreadPool(NUM_WRITE_TASKS);
-    final ExecutorService readExecutor = Executors.newFixedThreadPool(NUM_READ_TASKS);
-    final List<Future<Boolean>> writeFutureList = new ArrayList<>(NUM_WRITE_TASKS);
-    final List<Future<Boolean>> readFutureList = new ArrayList<>(NUM_READ_TASKS);
+    final ExecutorService writeExecutor = Executors.newFixedThreadPool(NUM_WRITE_VERTICES);
+    final ExecutorService readExecutor = Executors.newFixedThreadPool(NUM_READ_VERTICES);
+    final List<Future<Boolean>> writeFutureList = new ArrayList<>(NUM_WRITE_VERTICES);
+    final List<Future<Boolean>> readFutureList = new ArrayList<>(NUM_READ_VERTICES);
     final long startNano = System.nanoTime();
 
     // Write concurrently
-    IntStream.range(0, NUM_WRITE_TASKS).forEach(writeTaskIdx ->
+    IntStream.range(0, NUM_WRITE_VERTICES).forEach(writeTaskIdx ->
         writeFutureList.add(writeExecutor.submit(new Callable<Boolean>() {
           @Override
           public Boolean call() {
@@ -338,7 +332,7 @@ public final class BlockStoreTest {
         })));
 
     // Wait each writer to success
-    IntStream.range(0, NUM_WRITE_TASKS).forEach(writer -> {
+    IntStream.range(0, NUM_WRITE_VERTICES).forEach(writer -> {
       try {
         assertTrue(writeFutureList.get(writer).get());
       } catch (final Exception e) {
@@ -348,12 +342,12 @@ public final class BlockStoreTest {
     final long writeEndNano = System.nanoTime();
 
     // Read concurrently and check whether the result is equal to the input
-    IntStream.range(0, NUM_READ_TASKS).forEach(readTaskIdx ->
+    IntStream.range(0, NUM_READ_VERTICES).forEach(readTaskIdx ->
         readFutureList.add(readExecutor.submit(new Callable<Boolean>() {
           @Override
           public Boolean call() {
             try {
-              for (int writeTaskIdx = 0; writeTaskIdx < NUM_WRITE_TASKS; writeTaskIdx++) {
+              for (int writeTaskIdx = 0; writeTaskIdx < NUM_WRITE_VERTICES; writeTaskIdx++) {
                 readResultCheck(blockIdList.get(writeTaskIdx), HashRange.of(readTaskIdx, readTaskIdx + 1),
                     readerSideStore, partitionsPerBlock.get(writeTaskIdx).get(readTaskIdx).getData());
               }
@@ -366,7 +360,7 @@ public final class BlockStoreTest {
         })));
 
     // Wait each reader to success
-    IntStream.range(0, NUM_READ_TASKS).forEach(reader -> {
+    IntStream.range(0, NUM_READ_VERTICES).forEach(reader -> {
       try {
         assertTrue(readFutureList.get(reader).get());
       } catch (final Exception e) {
