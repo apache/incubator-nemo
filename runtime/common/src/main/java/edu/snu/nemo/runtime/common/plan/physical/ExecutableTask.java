@@ -34,7 +34,7 @@ public final class ExecutableTask implements Serializable {
   private final int attemptIdx;
   private final String containerType;
   private final byte[] serializedTaskDag;
-  private final Map<String, Readable> IRVertexIdToReadable;
+  private final Map<String, Readable> irVertexIdToReadable;
 
   /**
    * Constructor.
@@ -46,7 +46,7 @@ public final class ExecutableTask implements Serializable {
    * @param serializedIRDag      the serialized DAG of the task.
    * @param taskIncomingEdges    the incoming edges of the task.
    * @param taskOutgoingEdges    the outgoing edges of the task.
-   * @param IRVertexIdToReadable the map between logical task ID and readable.
+   * @param irVertexIdToReadable the map between logical task ID and readable.
    */
   public ExecutableTask(final String jobId,
                         final String taskId,
@@ -55,7 +55,7 @@ public final class ExecutableTask implements Serializable {
                         final byte[] serializedIRDag,
                         final List<PhysicalStageEdge> taskIncomingEdges,
                         final List<PhysicalStageEdge> taskOutgoingEdges,
-                        final Map<String, Readable> IRVertexIdToReadable) {
+                        final Map<String, Readable> irVertexIdToReadable) {
     this.jobId = jobId;
     this.taskId = taskId;
     this.taskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
@@ -64,7 +64,7 @@ public final class ExecutableTask implements Serializable {
     this.serializedTaskDag = serializedIRDag;
     this.taskIncomingEdges = taskIncomingEdges;
     this.taskOutgoingEdges = taskOutgoingEdges;
-    this.IRVertexIdToReadable = IRVertexIdToReadable;
+    this.irVertexIdToReadable = irVertexIdToReadable;
   }
 
   /**
@@ -126,7 +126,7 @@ public final class ExecutableTask implements Serializable {
   /**
    * @return the map between logical task ID and readable.
    */
-  public Map<String, Readable> getIRVertexIdToReadable() {
-    return IRVertexIdToReadable;
+  public Map<String, Readable> getIrVertexIdToReadable() {
+    return irVertexIdToReadable;
   }
 }

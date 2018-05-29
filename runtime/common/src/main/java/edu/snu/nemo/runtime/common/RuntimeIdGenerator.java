@@ -15,8 +15,6 @@
  */
 package edu.snu.nemo.runtime.common;
 
-import edu.snu.nemo.runtime.common.plan.physical.ExecutableTask;
-
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -31,7 +29,7 @@ public final class RuntimeIdGenerator {
   private static final String BLOCK_PREFIX = "Block-";
   private static final String BLOCK_ID_SPLITTER = "_";
   private static final String TASK_INFIX = "-Task-";
-  private static final String PHYSICAL_TASK_ID_SPLITTER = "_";
+  private static final String PHYSICAL_IRVERTEX_ID_SPLITTER = "_";
 
   /**
    * Private constructor which will not be used.
@@ -86,11 +84,11 @@ public final class RuntimeIdGenerator {
    */
   public static String generatePhysicalIRVertexId(final String irVertexId,
                                                   final int index) {
-    return irVertexId + PHYSICAL_TASK_ID_SPLITTER + index;
+    return irVertexId + PHYSICAL_IRVERTEX_ID_SPLITTER + index;
   }
 
   /**
-   * Generates the ID for {@link ExecutableTask}.
+   * Generates the ID for a task.
    *
    * @param index   the index of this task.
    * @param stageId the ID of the stage.
@@ -204,12 +202,10 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Extracts logical task ID from a physical task ID.
-   *
-   * @param physicalTaskId the physical task ID to extract.
-   * @return the logical task ID.
+   * @param physicalIRVertexId physical id
+   * @return vertex id
    */
-  public static String getLogicalTaskIdIdFromPhysicalTaskId(final String physicalTaskId) {
-    return physicalTaskId.split(PHYSICAL_TASK_ID_SPLITTER)[0];
+  public static String getIRVertexIdFromPhysicalIRVertexId(final String physicalIRVertexId) {
+    return physicalIRVertexId.split(PHYSICAL_IRVERTEX_ID_SPLITTER)[0];
   }
 }

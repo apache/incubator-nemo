@@ -19,6 +19,7 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
@@ -414,12 +415,10 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   /**
-   * Gets the DAG of a task from it's ID.
-   *
-   * @param taskId the ID of the task to get.
-   * @return the DAG of the task.
+   * @param taskId id of the task
+   * @return the dag
    */
-  private DAG<Task, RuntimeEdge<Task>> getTaskDagById(final String taskId) {
+  private DAG<IRVertex, RuntimeEdge<IRVertex>> getVertexDagById(final String taskId) {
     for (final PhysicalStage physicalStage : physicalPlan.getStageDAG().getVertices()) {
       if (physicalStage.getId().equals(RuntimeIdGenerator.getStageIdFromTaskId(taskId))) {
         return physicalStage.getIRDAG();
@@ -497,7 +496,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     if (stageComplete) {
       // get optimization vertex from the task.
       final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
-          getTaskDagById(taskId).getVertices().stream() // get tasks list
+          getVertexDagById(taskId).getVertices().stream() // get tasks list
               .filter(task -> task.getId().equals(taskPutOnHold)) // find it
               .map(physicalPlan::getIRVertexOf) // get the corresponding IRVertex, the MetricCollectionBarrierVertex
               .filter(irVertex -> irVertex instanceof MetricCollectionBarrierVertex)

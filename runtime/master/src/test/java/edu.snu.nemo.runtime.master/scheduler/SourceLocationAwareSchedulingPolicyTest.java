@@ -102,7 +102,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
       readables.forEach(readable -> readableMap.put(String.format("TASK-%d", intraTaskIndex.getAndIncrement()),
           readable));
       when(mockInstance.getTaskId()).thenReturn(String.format("T-%d", taskIndex.getAndIncrement()));
-      when(mockInstance.getIRVertexIdToReadable()).thenReturn(readableMap);
+      when(mockInstance.getIrVertexIdToReadable()).thenReturn(readableMap);
       return mockInstance;
     }
 

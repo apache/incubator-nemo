@@ -67,7 +67,7 @@ public final class SourceLocationAwareSchedulingPolicy implements SchedulingPoli
                                                              final ExecutableTask executableTask) {
     final Set<String> sourceLocations;
     try {
-      sourceLocations = getSourceLocations(executableTask.getIRVertexIdToReadable().values());
+      sourceLocations = getSourceLocations(executableTask.getIrVertexIdToReadable().values());
     } catch (final UnsupportedOperationException e) {
       return executorRepresenterSet;
     } catch (final Exception e) {

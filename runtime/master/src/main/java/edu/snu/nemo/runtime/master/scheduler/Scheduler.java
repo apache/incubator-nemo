@@ -16,7 +16,6 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.runtime.common.plan.physical.ExecutableTask;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
@@ -31,9 +30,6 @@ import javax.annotation.Nullable;
  * RMT and ST meet only at two points: {@link ExecutorRegistry}, and {@link PendingTaskCollection},
  * which are synchronized(ThreadSafe).
  * Other scheduler-related classes that are accessed by only one of the two threads are not synchronized(NotThreadSafe).
- *
- * Receives jobs to execute and schedules
- * {@link ExecutableTask} to executors.
  */
 @DriverSide
 @DefaultImplementation(BatchSingleJobScheduler.class)
