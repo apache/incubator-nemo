@@ -36,31 +36,31 @@ public final class PhysicalStage extends Vertex {
   private final int scheduleGroupIndex;
   private final String containerType;
   private final byte[] serializedIRDag;
-  private final List<Map<String, Readable>> logicalTaskIdToReadables;
+  private final List<Map<String, Readable>> vertexIdToReadables;
 
   /**
    * Constructor.
    *
-   * @param stageId                  ID of the stage.
-   * @param irDag                  the DAG of the task in this stage.
-   * @param parallelism              how many tasks will be executed in this stage.
-   * @param scheduleGroupIndex       the schedule group index.
-   * @param containerType            the type of container to execute the task on.
-   * @param logicalTaskIdToReadables the list of maps between logical task ID and {@link Readable}.
+   * @param stageId             ID of the stage.
+   * @param irDag               the DAG of the task in this stage.
+   * @param parallelism         how many tasks will be executed in this stage.
+   * @param scheduleGroupIndex  the schedule group index.
+   * @param containerType       the type of container to execute the task on.
+   * @param vertexIdToReadables the list of maps between vertex ID and {@link Readable}.
    */
   public PhysicalStage(final String stageId,
                        final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
                        final int parallelism,
                        final int scheduleGroupIndex,
                        final String containerType,
-                       final List<Map<String, Readable>> logicalTaskIdToReadables) {
+                       final List<Map<String, Readable>> vertexIdToReadables) {
     super(stageId);
     this.irDag = irDag;
     this.parallelism = parallelism;
     this.scheduleGroupIndex = scheduleGroupIndex;
     this.containerType = containerType;
     this.serializedIRDag = SerializationUtils.serialize(irDag);
-    this.logicalTaskIdToReadables = logicalTaskIdToReadables;
+    this.vertexIdToReadables = vertexIdToReadables;
   }
 
   /**
@@ -103,10 +103,10 @@ public final class PhysicalStage extends Vertex {
   }
 
   /**
-   * @return the list of maps between logical task ID and readable.
+   * @return the list of maps between vertex ID and readables.
    */
-  public List<Map<String, Readable>> getLogicalTaskIdToReadables() {
-    return logicalTaskIdToReadables;
+  public List<Map<String, Readable>> getVertexIdToReadables() {
+    return vertexIdToReadables;
   }
 
   @Override

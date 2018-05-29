@@ -21,11 +21,8 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.exception.BlockWriteException;
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
-import edu.snu.nemo.common.ir.vertex.SourceVertex;
+import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.physical.*;
@@ -665,7 +662,7 @@ public final class TaskExecutor {
       }
       setIRVertexPutOnHold((MetricCollectionBarrierVertex) irVertex);
     } else {
-      throw new UnsupportedOperationException("This type  of Task is not supported");
+      throw new UnsupportedOperationException("This type of IRVertex is not supported");
     }
 
     // For the produced output

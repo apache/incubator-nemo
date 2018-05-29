@@ -393,7 +393,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     LOG.info("Scheduling Stage {}", stageToSchedule.getId());
 
     // each readable and source task will be bounded in executor.
-    final List<Map<String, Readable>> logicalTaskIdToReadables = stageToSchedule.getLogicalTaskIdToReadables();
+    final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
 
     taskIdsToSchedule.forEach(taskId -> {
       blockManagerMaster.onProducerTaskScheduled(taskId);
@@ -409,7 +409,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           stageToSchedule.getSerializedIRDAG(),
           stageIncomingEdges,
           stageOutgoingEdges,
-          logicalTaskIdToReadables.get(taskIdx)));
+          vertexIdToReadables.get(taskIdx)));
     });
     schedulerRunner.onATaskAvailable();
   }

@@ -21,11 +21,11 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
-import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.physical.*;
@@ -94,7 +94,7 @@ public final class TaskExecutorTest {
    */
   @Test(timeout=2000)
   public void testSourceVertex() throws Exception {
-    final IRVertex sourceIRVertex = new SimpleSourceVertex();
+    final IRVertex sourceIRVertex = new EmptyComponents.EmptySourceVertex("empty");
     final String stageId = RuntimeIdGenerator.generateStageId(0);
 
     final Readable readable = new Readable() {
@@ -111,7 +111,7 @@ public final class TaskExecutorTest {
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
-        new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>().addVertex(sourceIRVertex).build();
+        new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>().addVertex(sourceIRVertex).buildWithoutSourceSinkCheck();
     final PhysicalStageEdge stageOutEdge = mock(PhysicalStageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(sourceIRVertex);
     final String taskId = RuntimeIdGenerator.generateTaskId(0, stageId);
@@ -251,21 +251,6 @@ public final class TaskExecutorTest {
         }
       }).when(outputWriter).write(any());
       return outputWriter;
-    }
-  }
-
-  /**
-   * Simple {@link IRVertex} for testing.
-   */
-  private class SimpleSourceVertex extends SourceVertex {
-    @Override
-    public List<Readable> getReadables(int desiredNumOfSplits) throws Exception {
-      return null;
-    }
-
-    @Override
-    public IRVertex getClone() {
-      return null;
     }
   }
 

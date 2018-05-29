@@ -235,6 +235,13 @@ public final class PhysicalPlanGenerator
 
       // Iterate over the vertices contained in this stage
       stageVertices.forEach(irVertex -> {
+        if (!(irVertex instanceof  SourceVertex
+            || irVertex instanceof OperatorVertex
+            || irVertex instanceof MetricCollectionBarrierVertex)) {
+          // Sanity check
+          throw new IllegalStateException(irVertex.toString());
+        }
+
         if (irVertex instanceof SourceVertex) {
           final SourceVertex sourceVertex = (SourceVertex) irVertex;
           try {
@@ -246,6 +253,7 @@ public final class PhysicalPlanGenerator
             throw new PhysicalPlanGenerationException(e);
           }
         }
+
         stageInternalDAGBuilder.addVertex(irVertex);
         idToIRVertex.put(irVertex.getId(), irVertex);
       });

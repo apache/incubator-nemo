@@ -37,6 +37,9 @@ public final class RuntimeIdGenerator {
   private RuntimeIdGenerator() {
   }
 
+
+  //////////////////////////////////////////////////////////////// Generate IDs
+
   /**
    * Generates the ID for {@link edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan}.
    *
@@ -94,8 +97,7 @@ public final class RuntimeIdGenerator {
    * @param stageId the ID of the stage.
    * @return the generated ID
    */
-  public static String generateTaskId(final int index,
-                                           final String stageId) {
+  public static String generateTaskId(final int index, final String stageId) {
     return stageId + TASK_INFIX + index;
   }
 
@@ -137,6 +139,8 @@ public final class RuntimeIdGenerator {
   public static String generateResourceSpecId() {
     return "ResourceSpec-" + resourceSpecIdGenerator.getAndIncrement();
   }
+
+  //////////////////////////////////////////////////////////////// Parse IDs
 
   /**
    * Extracts runtime edge ID from a block ID.
