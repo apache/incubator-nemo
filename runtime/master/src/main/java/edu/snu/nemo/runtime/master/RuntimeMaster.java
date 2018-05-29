@@ -268,7 +268,7 @@ public final class RuntimeMaster {
             taskStateChangedMsg.getTaskId(),
             taskStateChangedMsg.getAttemptIdx(),
             convertTaskState(taskStateChangedMsg.getState()),
-            taskStateChangedMsg.getTaskPutOnHoldId(),
+            taskStateChangedMsg.getVertexPutOnHoldId(),
             convertFailureCause(taskStateChangedMsg.getFailureCause()));
         break;
       case ExecutorFailed:

@@ -58,11 +58,11 @@ public final class TaskStateManager {
   /**
    * Updates the state of the task.
    * @param newState of the task.
-   * @param taskPutOnHold the logical ID of the tasks put on hold, empty otherwise.
+   * @param vertexPutOnHold the vertex put on hold.
    * @param cause only provided as non-empty upon recoverable failures.
    */
   public synchronized void onTaskStateChanged(final TaskState.State newState,
-                                              final Optional<String> taskPutOnHold,
+                                              final Optional<String> vertexPutOnHold,
                                               final Optional<TaskState.RecoverableFailureCause> cause) {
     final Map<String, Object> metric = new HashMap<>();
 
@@ -94,7 +94,7 @@ public final class TaskStateManager {
         break;
       case ON_HOLD:
         LOG.debug("Task ID {} put on hold.", this.taskId);
-        notifyTaskStateToMaster(newState, taskPutOnHold, cause);
+        notifyTaskStateToMaster(newState, vertexPutOnHold, cause);
         break;
       default:
         throw new IllegalStateException("Illegal state at this point");
@@ -104,11 +104,11 @@ public final class TaskStateManager {
   /**
    * Notifies the change in task state to master.
    * @param newState of the task.
-   * @param taskPutOnHold the logical ID of the tasks put on hold, empty otherwise.
+   * @param vertexPutOnHold the vertex put on hold.
    * @param cause only provided as non-empty upon recoverable failures.
    */
   private void notifyTaskStateToMaster(final TaskState.State newState,
-                                       final Optional<String> taskPutOnHold,
+                                       final Optional<String> vertexPutOnHold,
                                        final Optional<TaskState.RecoverableFailureCause> cause) {
     final ControlMessage.TaskStateChangedMsg.Builder msgBuilder =
         ControlMessage.TaskStateChangedMsg.newBuilder()
@@ -116,8 +116,8 @@ public final class TaskStateManager {
             .setTaskId(taskId)
             .setAttemptIdx(attemptIdx)
             .setState(convertState(newState));
-    if (taskPutOnHold.isPresent()) {
-      msgBuilder.setTaskPutOnHoldId(taskPutOnHold.get());
+    if (vertexPutOnHold.isPresent()) {
+      msgBuilder.setVertexPutOnHoldId(vertexPutOnHold.get());
     }
     if (cause.isPresent()) {
       msgBuilder.setFailureCause(convertFailureCause(cause.get()));

@@ -137,14 +137,14 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * @param taskId whose state has changed
    * @param taskAttemptIndex of the task whose state has changed
    * @param newState the state to change to
-   * @param taskPutOnHold the ID of task that are put on hold. It is null otherwise.
+   * @param vertexPutOnHold the ID of vertex that is put on hold. It is null otherwise.
    */
   @Override
   public void onTaskStateChanged(final String executorId,
                                  final String taskId,
                                  final int taskAttemptIndex,
                                  final TaskState.State newState,
-                                 @Nullable final String taskPutOnHold,
+                                 @Nullable final String vertexPutOnHold,
                                  final TaskState.RecoverableFailureCause failureCause) {
     final int currentTaskAttemptIndex = jobStateManager.getCurrentAttemptIndexForTask(taskId);
     if (taskAttemptIndex == currentTaskAttemptIndex) {
@@ -159,7 +159,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           break;
         case ON_HOLD:
           jobStateManager.onTaskStateChanged(taskId, newState);
-          onTaskExecutionOnHold(executorId, taskId, taskPutOnHold);
+          onTaskExecutionOnHold(executorId, taskId, vertexPutOnHold);
           break;
         case FAILED_UNRECOVERABLE:
           throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The job failed on Task #")
@@ -476,13 +476,13 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
   /**
    * Action for after task execution is put on hold.
-   * @param executorId     the ID of the executor.
-   * @param taskId    the ID of the task.
-   * @param taskPutOnHold  the ID of task that is put on hold.
+   * @param executorId       the ID of the executor.
+   * @param taskId           the ID of the task.
+   * @param vertexPutOnHold  the ID of vertex that is put on hold.
    */
   private void onTaskExecutionOnHold(final String executorId,
                                      final String taskId,
-                                     final String taskPutOnHold) {
+                                     final String vertexPutOnHold) {
     LOG.info("{} put on hold in {}", new Object[]{taskId, executorId});
     executorRegistry.updateExecutor(executorId, (executor, state) -> {
       executor.onTaskExecutionComplete(taskId);
@@ -496,15 +496,14 @@ public final class BatchSingleJobScheduler implements Scheduler {
     if (stageComplete) {
       // get optimization vertex from the task.
       final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
-          getVertexDagById(taskId).getVertices().stream() // get tasks list
-              .filter(task -> task.getId().equals(taskPutOnHold)) // find it
-              .map(physicalPlan::getIRVertexOf) // get the corresponding IRVertex, the MetricCollectionBarrierVertex
+          getVertexDagById(taskId).getVertices().stream() // get vertex list
+              .filter(irVertex -> irVertex.getId().equals(vertexPutOnHold)) // find it
               .filter(irVertex -> irVertex instanceof MetricCollectionBarrierVertex)
               .distinct()
               .map(irVertex -> (MetricCollectionBarrierVertex) irVertex) // convert types
               .findFirst().orElseThrow(() -> new RuntimeException(ON_HOLD.name() // get it
               + " called with failed task ids by some other task than "
-              + MetricCollectionBarrierTask.class.getSimpleName()));
+              + MetricCollectionBarrierVertex.class.getSimpleName()));
       // and we will use this vertex to perform metric collection and dynamic optimization.
 
       pubSubEventHandlerWrapper.getPubSubEventHandler().onNext(

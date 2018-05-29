@@ -62,7 +62,7 @@ message TaskStateChangedMsg {
     required string executorId = 1;
     required string taskId = 2;
     required TaskStateFromExecutor state = 3;
-    optional string taskPutOnHoldId = 4;
+    optional string vertexPutOnHoldId = 4;
     optional RecoverableFailureCause failureCause = 5;
     required int32 attemptIdx = 6;
 }
