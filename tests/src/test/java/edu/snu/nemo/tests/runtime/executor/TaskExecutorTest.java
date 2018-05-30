@@ -92,7 +92,7 @@ public final class TaskExecutorTest {
   /**
    * Test the {@link edu.snu.nemo.common.ir.vertex.SourceVertex} processing in {@link TaskExecutor}.
    */
-  @Test(timeout=2000)
+  @Test(timeout=5000)
   public void testSourceVertex() throws Exception {
     final IRVertex sourceIRVertex = new EmptyComponents.EmptySourceVertex("empty");
     final String stageId = RuntimeIdGenerator.generateStageId(0);
@@ -147,7 +147,7 @@ public final class TaskExecutorTest {
    * Because of this, the operator task 1 will process multiple partitions and emit data in multiple times also.
    * On the other hand, operator task 2 will receive the output data once and produce a single output.
    */
-  @Test(timeout=2000)
+  @Test(timeout=5000)
   public void testOperatorVertex() throws Exception {
     final IRVertex operatorIRVertex1 = new OperatorVertex(new SimpleTransform());
     final IRVertex operatorIRVertex2 = new OperatorVertex(new SimpleTransform());

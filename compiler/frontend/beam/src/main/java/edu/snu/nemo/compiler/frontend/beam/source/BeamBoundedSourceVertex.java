@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
   private static final Logger LOG = LoggerFactory.getLogger(BeamBoundedSourceVertex.class.getName());
-  private final BoundedSource<O> source;
+  private BoundedSource<O> source;
 
   /**
    * Constructor of BeamBoundedSourceVertex.
@@ -60,6 +60,11 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
     source.split(source.getEstimatedSizeBytes(null) / desiredNumOfSplits, null)
         .forEach(boundedSource -> readables.add(new BoundedSourceReadable<>(boundedSource)));
     return readables;
+  }
+
+  @Override
+  public void clearInternalStates() {
+    source = null;
   }
 
   @Override

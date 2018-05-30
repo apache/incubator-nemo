@@ -34,4 +34,9 @@ public abstract class SourceVertex<O> extends IRVertex {
    * @throws Exception if fail to get.
    */
   public abstract List<Readable<O>> getReadables(int desiredNumOfSplits) throws Exception;
+
+  /**
+   * Clears internal states, must be called after getReadables().
+   */
+  public abstract void clearInternalStates();
 }

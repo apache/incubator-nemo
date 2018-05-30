@@ -71,7 +71,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
                                   final int parallelism) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
-    final IRVertex initializedSourceVertex = new InitializedSourceVertex<>(initialData);
+    final IRVertex initializedSourceVertex = new InMemorySourceVertex<>(initialData);
     initializedSourceVertex.setProperty(ParallelismProperty.of(parallelism));
     builder.addVertex(initializedSourceVertex);
 

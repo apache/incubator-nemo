@@ -114,12 +114,12 @@ public final class RuntimeIdGenerator {
    * Generates the ID for a block, whose data is the output of a task.
    *
    * @param runtimeEdgeId of the block
-   * @param taskIndex     of the block
+   * @param producerTaskIndex of the block
    * @return the generated ID
    */
   public static String generateBlockId(final String runtimeEdgeId,
-                                       final int taskIndex) {
-    return BLOCK_PREFIX + runtimeEdgeId + BLOCK_ID_SPLITTER + taskIndex;
+                                       final int producerTaskIndex) {
+    return BLOCK_PREFIX + runtimeEdgeId + BLOCK_ID_SPLITTER + producerTaskIndex;
   }
 
   /**

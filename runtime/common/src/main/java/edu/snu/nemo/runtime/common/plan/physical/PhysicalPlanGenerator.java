@@ -198,6 +198,7 @@ public final class PhysicalPlanGenerator
     return dagOfStagesBuilder.build();
   }
 
+
   private final Map<String, IRVertex> idToIRVertex = new HashMap<>();
 
   /**
@@ -244,6 +245,8 @@ public final class PhysicalPlanGenerator
 
         if (irVertex instanceof SourceVertex) {
           final SourceVertex sourceVertex = (SourceVertex) irVertex;
+
+          // Take care of the Readables
           try {
             final List<Readable> readables = sourceVertex.getReadables(stageParallelism);
             for (int i = 0; i < stageParallelism; i++) {
@@ -252,6 +255,9 @@ public final class PhysicalPlanGenerator
           } catch (Exception e) {
             throw new PhysicalPlanGenerationException(e);
           }
+
+          // Clear internal metadata
+          sourceVertex.clearInternalStates();
         }
 
         stageInternalDAGBuilder.addVertex(irVertex);
@@ -263,9 +269,13 @@ public final class PhysicalPlanGenerator
       stageInternalDAG.getVertices().forEach(irVertex -> {
         final List<IREdge> inEdges = stageInternalDAG.getIncomingEdgesOf(irVertex);
         inEdges.forEach(edge ->
-            stageInternalDAGBuilder.connectVertices(new RuntimeEdge<>(edge.getId(), edge.getExecutionProperties(),
-                idToIRVertex.get(edge.getSrc().getId()), idToIRVertex.get(edge.getDst().getId()),
-                edge.getCoder(), edge.isSideInput())));
+            stageInternalDAGBuilder.connectVertices(new RuntimeEdge<>(
+                edge.getId(),
+                edge.getExecutionProperties(),
+                edge.getSrc(),
+                edge.getDst(),
+                edge.getCoder(),
+                edge.isSideInput())));
       });
 
       // Create the physical stage.
@@ -285,7 +295,8 @@ public final class PhysicalPlanGenerator
 
           physicalDAGBuilder.connectVertices(new PhysicalStageEdge(stageEdge.getId(),
               stageEdge.getExecutionProperties(),
-              stageEdge.getSrcVertex(), stageEdge.getDstVertex(),
+              stageEdge.getSrcVertex(),
+              stageEdge.getDstVertex(),
               srcStage, dstStage,
               stageEdge.getCoder(),
               stageEdge.isSideInput()));

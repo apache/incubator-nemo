@@ -32,7 +32,6 @@ import edu.snu.nemo.runtime.executor.datatransfer.*;
 
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -76,7 +75,7 @@ public final class TaskExecutor {
   private long encodedBlockSize;
 
   // Misc
-  private AtomicBoolean isExecuted;
+  private boolean isExecuted;
   private String irVertexIdPutOnHold;
   private int numPartitions;
 
@@ -123,7 +122,7 @@ public final class TaskExecutor {
     this.encodedBlockSize = 0;
 
     // Misc
-    this.isExecuted = new AtomicBoolean(false);
+    this.isExecuted = false;
     this.irVertexIdPutOnHold = null;
     this.numPartitions = 0;
 
@@ -206,7 +205,7 @@ public final class TaskExecutor {
   }
 
   /**
-   * Collect all inter-stage incoming edges of this task.
+   * Collect all inter-stage incoming edges of this vertex.
    *
    * @param irVertex the IRVertex whose inter-stage incoming edges to be collected.
    * @return the collected incoming edges.
@@ -218,7 +217,7 @@ public final class TaskExecutor {
   }
 
   /**
-   * Collect all inter-stage outgoing edges of this task.
+   * Collect all inter-stage outgoing edges of this vertex.
    *
    * @param irVertex the IRVertex whose inter-stage outgoing edges to be collected.
    * @return the collected outgoing edges.
@@ -381,7 +380,6 @@ public final class TaskExecutor {
     // Total number of Tasks
     int taskNum = irVertexDataHandlers.size();
     int finishedTaskNum = finishedTaskIds.size();
-
     return finishedTaskNum == taskNum;
   }
 
@@ -504,9 +502,10 @@ public final class TaskExecutor {
     long boundedSrcReadEndTime = 0;
     long inputReadStartTime = 0;
     long inputReadEndTime = 0;
-    if (isExecuted.getAndSet(true)) {
+    if (isExecuted) {
       throw new RuntimeException("Task {" + taskId + "} execution called again!");
     }
+    isExecuted = true;
     taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
     LOG.info("{} Executing!", taskId);
 
