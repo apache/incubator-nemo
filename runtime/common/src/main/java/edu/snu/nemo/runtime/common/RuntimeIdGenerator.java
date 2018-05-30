@@ -29,7 +29,6 @@ public final class RuntimeIdGenerator {
   private static final String BLOCK_PREFIX = "Block-";
   private static final String BLOCK_ID_SPLITTER = "_";
   private static final String TASK_INFIX = "-Task-";
-  private static final String PHYSICAL_IRVERTEX_ID_SPLITTER = "_";
 
   /**
    * Private constructor which will not be used.
@@ -76,18 +75,6 @@ public final class RuntimeIdGenerator {
    */
   public static String generateStageId(final Integer stageId) {
     return "Stage-" + stageId;
-  }
-
-  /**
-   * Generates the ID for the physical representation of an IRVertex.
-   *
-   * @param irVertexId the id of the IRVertex.
-   * @param index      the index of the physical task.
-   * @return the generated ID
-   */
-  public static String generatePhysicalIRVertexId(final String irVertexId,
-                                                  final int index) {
-    return irVertexId + PHYSICAL_IRVERTEX_ID_SPLITTER + index;
   }
 
   /**
@@ -203,13 +190,5 @@ public final class RuntimeIdGenerator {
    */
   private static String[] parseTaskId(final String taskId) {
     return taskId.split(TASK_INFIX);
-  }
-
-  /**
-   * @param physicalIRVertexId physical id
-   * @return vertex id
-   */
-  public static String getIRVertexIdFromPhysicalIRVertexId(final String physicalIRVertexId) {
-    return physicalIRVertexId.split(PHYSICAL_IRVERTEX_ID_SPLITTER)[0];
   }
 }

@@ -23,7 +23,6 @@ import edu.snu.nemo.common.exception.BlockWriteException;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.physical.*;
 import edu.snu.nemo.runtime.common.state.TaskState;
@@ -68,7 +67,7 @@ public final class TaskExecutor {
   private final LinkedBlockingQueue<Pair<String, DataUtil.IteratorWithNumBytes>> partitionQueue;
   private List<IRVertexDataHandler> irVertexDataHandlers;
   private Map<OutputCollectorImpl, List<IRVertexDataHandler>> outputToChildrenDataHandlersMap;
-  private final Set<String> finishedTaskIds;
+  private final Set<String> finishedVertexIds;
 
   // For metrics
   private long serBlockSize;
@@ -115,7 +114,7 @@ public final class TaskExecutor {
     this.partitionQueue = new LinkedBlockingQueue<>();
     this.outputToChildrenDataHandlersMap = new HashMap<>();
     this.irVertexDataHandlers = new ArrayList<>();
-    this.finishedTaskIds = new HashSet<>();
+    this.finishedVertexIds = new HashSet<>();
 
     // Metrics
     this.serBlockSize = 0;
@@ -236,12 +235,10 @@ public final class TaskExecutor {
    */
   private void addInputFromThisStage(final IRVertex irVertex, final IRVertexDataHandler dataHandler) {
     List<IRVertex> parentVertices = irVertexDag.getParents(irVertex.getId());
-    final String physicalTaskId = getPhysicalIRVertexId(irVertex.getId());
-
     if (parentVertices != null) {
       parentVertices.forEach(parent -> {
         final OutputCollectorImpl parentOutputCollector = getIRVertexDataHandler(parent).getOutputCollector();
-        if (parentOutputCollector.hasSideInputFor(physicalTaskId)) {
+        if (parentOutputCollector.hasSideInputFor(irVertex.getId())) {
           dataHandler.addSideInputFromThisStage(parentOutputCollector);
         } else {
           dataHandler.addInputFromThisStages(parentOutputCollector);
@@ -256,12 +253,10 @@ public final class TaskExecutor {
    */
   private void setOutputCollector(final IRVertex irVertex, final IRVertexDataHandler dataHandler) {
     final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
-    final String physicalTaskId = getPhysicalIRVertexId(irVertex.getId());
-
     irVertexDag.getOutgoingEdgesOf(irVertex).forEach(outEdge -> {
       if (outEdge.isSideInput()) {
         outputCollector.setSideInputRuntimeEdge(outEdge);
-        outputCollector.setAsSideInputFor(physicalTaskId);
+        outputCollector.setAsSideInputFor(irVertex.getId());
       }
     });
 
@@ -279,8 +274,7 @@ public final class TaskExecutor {
   }
 
   private void setIRVertexPutOnHold(final MetricCollectionBarrierVertex irVertex) {
-    final String physicalirVertexId = getPhysicalIRVertexId(irVertex.getId());
-    irVertexIdPutOnHold = RuntimeIdGenerator.getIRVertexIdFromPhysicalIRVertexId(physicalirVertexId);
+    irVertexIdPutOnHold = irVertex.getId();
   }
 
   /**
@@ -291,10 +285,9 @@ public final class TaskExecutor {
    * @param irVertex the IRVertex with OutputWriter to flush and commit output block.
    */
   private void writeAndCloseOutputWriters(final IRVertex irVertex) {
-    final String physicalTaskId = getPhysicalIRVertexId(irVertex.getId());
     final List<Long> writtenBytesList = new ArrayList<>();
     final Map<String, Object> metric = new HashMap<>();
-    metricCollector.beginMeasurement(physicalTaskId, metric);
+    metricCollector.beginMeasurement(irVertex.getId(), metric);
     final long writeStartTime = System.currentTimeMillis();
 
     getIRVertexDataHandler(irVertex).getOutputWriters().forEach(outputWriter -> {
@@ -306,7 +299,7 @@ public final class TaskExecutor {
     final long writeEndTime = System.currentTimeMillis();
     metric.put("OutputWriteTime(ms)", writeEndTime - writeStartTime);
     putWrittenBytesMetric(writtenBytesList, metric);
-    metricCollector.endMeasurement(physicalTaskId, metric);
+    metricCollector.endMeasurement(irVertex.getId(), metric);
   }
 
   /**
@@ -379,7 +372,7 @@ public final class TaskExecutor {
   private boolean finishedAllVertices() {
     // Total number of Tasks
     int taskNum = irVertexDataHandlers.size();
-    int finishedTaskNum = finishedTaskIds.size();
+    int finishedTaskNum = finishedVertexIds.size();
     return finishedTaskNum == taskNum;
   }
 
@@ -576,7 +569,7 @@ public final class TaskExecutor {
           closeTransform(outputProducer);
 
           // Set outputProducer as finished.
-          finishedTaskIds.add(getPhysicalIRVertexId(outputProducer.getId()));
+          finishedVertexIds.add(outputProducer.getId());
 
           while (!outputCollector.isEmpty()) {
             final Object element = outputCollector.remove();
@@ -682,14 +675,6 @@ public final class TaskExecutor {
         outputWritersOfTask.forEach(outputWriter -> outputWriter.write(element));
       }
     }
-  }
-
-  /**
-   * @param irVertexId the ir vertex id.
-   * @return the physical ir vertex id.
-   */
-  private String getPhysicalIRVertexId(final String irVertexId) {
-    return RuntimeIdGenerator.generatePhysicalIRVertexId(irVertexId, taskIdx);
   }
 
   /**
