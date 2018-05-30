@@ -18,6 +18,8 @@ package edu.snu.nemo.compiler.frontend.spark.core;
 import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 import edu.snu.nemo.compiler.frontend.spark.core.rdd.RDD;
 import org.apache.spark.SparkConf;
+import scala.collection.Seq;
+import scala.reflect.ClassTag;
 
 import java.util.List;
 
@@ -47,12 +49,16 @@ public final class SparkContext extends org.apache.spark.SparkContext {
   /**
    * Initiate a JavaRDD with the number of parallelism.
    *
-   * @param l      input data as list.
-   * @param slices number of slices (parallelism).
-   * @param <T>    type of the initial element.
+   * @param seq        input data as list.
+   * @param numSlices  number of slices (parallelism).
+   * @param evidence$1 type of the initial element.
    * @return the newly initiated JavaRDD.
    */
-  public <T> RDD<T> parallelize(final List<T> l, final int slices) {
-    return JavaRDD.of(this.sparkContext, l, slices).rdd();
+  @Override
+  public <T> RDD<T> parallelize(final Seq<T> seq,
+                                final int numSlices,
+                                final ClassTag<T> evidence$1) {
+    final List<T> javaList = scala.collection.JavaConversions.seqAsJavaList(seq);
+    return JavaRDD.of(this.sparkContext, javaList, numSlices).rdd();
   }
 }

@@ -88,6 +88,7 @@ public final class SparkTextFileBoundedSourceVertex extends SourceVertex<String>
      * @param partition      the partition to wrap.
      * @param sparkConf      configuration needed to build the SparkContext.
      * @param partitionIndex partition for this readable.
+     * @param inputPath      the input file path.
      * @param numPartitions  the total number of partitions.
      */
     private SparkTextFileBoundedSourceReadable(final Partition partition,

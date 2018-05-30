@@ -60,8 +60,10 @@ public final class CollectTransform<T> implements Transform<T, T> {
         FileOutputStream fos = new FileOutputStream(filename);
         ObjectOutputStream oos = new ObjectOutputStream(fos)
     ) {
-      oos.writeObject(list);
-      oos.close();
+      oos.writeInt(list.size()); // Write the length of list at first.
+      for (final T t : list) {
+        oos.writeObject(t);
+      }
     } catch (Exception e) {
       throw new RuntimeException("Exception while file closing in CollectTransform " + e);
     }

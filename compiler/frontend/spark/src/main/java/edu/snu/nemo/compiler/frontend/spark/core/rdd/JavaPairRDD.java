@@ -61,7 +61,7 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
   JavaPairRDD(final SparkContext sparkContext, final DAG<IRVertex, IREdge> dag, final IRVertex lastVertex) {
     // TODO #366: resolve while implementing scala RDD.
     super(new RDD<>(sparkContext, ClassTag$.MODULE$.apply(Object.class)),
-        ClassTag$.MODULE$.apply(Object.class), ClassTag$.MODULE$.apply(Object.class)); // TODO: TMP
+        ClassTag$.MODULE$.apply(Object.class), ClassTag$.MODULE$.apply(Object.class)); // TODO #?: TMP
 
     this.loopVertexStack = new Stack<>();
     this.sparkContext = sparkContext;

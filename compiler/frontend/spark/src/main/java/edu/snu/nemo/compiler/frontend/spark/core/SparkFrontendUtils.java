@@ -48,7 +48,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Stack;
 
-
 /**
  * Utility class for RDDs.
  */
@@ -112,9 +111,13 @@ public final class SparkFrontendUtils {
       // TODO #740: remove this part, and make it properly transfer with executor.
       File file = new File(resultFile + i);
       while (file.exists()) {
-        try (final FileInputStream fin = new FileInputStream(file)) {
-          try (final ObjectInputStream ois = new ObjectInputStream(fin)) {
-            result.addAll((List<T>) ois.readObject());
+        try (
+            final FileInputStream fis = new FileInputStream(file);
+            final ObjectInputStream dis = new ObjectInputStream(fis)
+        ) {
+          final int size = dis.readInt();
+          for (int j = 0; j < size; j++) {
+            result.add((T) dis.readObject());
           }
         }
 
@@ -158,7 +161,7 @@ public final class SparkFrontendUtils {
   public static <I, O> Function<I, O> toJavaFunction(final Function1<I, O> scalaFunction) {
     return new Function<I, O>() {
       @Override
-      public O call(I v1) throws Exception {
+      public O call(final I v1) throws Exception {
         return scalaFunction.apply(v1);
       }
     };
@@ -176,7 +179,7 @@ public final class SparkFrontendUtils {
   public static <I1, I2, O> Function2<I1, I2, O> toJavaFunction(final scala.Function2<I1, I2, O> scalaFunction) {
     return new Function2<I1, I2, O>() {
       @Override
-      public O call(I1 v1, I2 v2) throws Exception {
+      public O call(final I1 v1, final I2 v2) throws Exception {
         return scalaFunction.apply(v1, v2);
       }
     };
@@ -193,7 +196,7 @@ public final class SparkFrontendUtils {
   public static <I, O> FlatMapFunction<I, O> toFlatMapFunction(final Function1<I, TraversableOnce<O>> scalaFunction) {
     return new FlatMapFunction<I, O>() {
       @Override
-      public Iterator<O> call(I i) throws Exception {
+      public Iterator<O> call(final I i) throws Exception {
         return JavaConverters.asJavaIteratorConverter(scalaFunction.apply(i).toIterator()).asJava();
       }
     };

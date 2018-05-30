@@ -125,7 +125,8 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   /**
    * Static method to create a JavaRDD object from {@link RDD}.
    *
-   * @param <T> type of the resulting object.
+   * @param rddFrom the RDD to parse.
+   * @param <T>     type of the resulting object.
    * @return the new JavaRDD object.
    */
   public static <T> JavaRDD<T> fromRDD(final RDD<T> rddFrom) {
@@ -153,7 +154,8 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
    * @param lastVertex   last vertex added to the builder.
    */
   JavaRDD(final SparkContext sparkContext, final DAG<IRVertex, IREdge> dag, final IRVertex lastVertex) {
-    super(new RDD(sparkContext, ClassTag$.MODULE$.apply(Object.class)), ClassTag$.MODULE$.apply(Object.class)); // TODO: TMP
+    // TODO #?: TMP
+    super(new RDD(sparkContext, ClassTag$.MODULE$.apply(Object.class)), ClassTag$.MODULE$.apply(Object.class));
 
     this.loopVertexStack = new Stack<>();
     this.sparkContext = sparkContext;
