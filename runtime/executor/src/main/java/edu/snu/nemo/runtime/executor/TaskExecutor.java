@@ -59,7 +59,6 @@ public final class TaskExecutor {
   private final MetricCollector metricCollector;
 
   // Data structures
-  private final List<InputReader> inputReaders;
   private final Map<InputReader, List<IRVertexDataHandler>> inputReaderToDataHandlersMap;
   private final Map<String, Iterator> idToSrcIteratorMap;
   private final Map<String, List<IRVertexDataHandler>> srcIteratorIdToDataHandlersMap;
@@ -106,7 +105,6 @@ public final class TaskExecutor {
     this.metricCollector = new MetricCollector(metricMessageSender);
 
     // Initialize data structures.
-    this.inputReaders = new ArrayList<>();
     this.inputReaderToDataHandlersMap = new ConcurrentHashMap<>();
     this.idToSrcIteratorMap = new HashMap<>();
     this.srcIteratorIdToDataHandlersMap = new HashMap<>();
@@ -162,7 +160,6 @@ public final class TaskExecutor {
         if (inputReader.isSideInputReader()) {
           dataHandler.addSideInputFromOtherStages(inputReader);
         } else {
-          inputReaders.add(inputReader);
           inputReaderToDataHandlersMap.putIfAbsent(inputReader, new ArrayList<>());
           inputReaderToDataHandlersMap.get(inputReader).add(dataHandler);
         }
