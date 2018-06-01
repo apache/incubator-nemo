@@ -17,6 +17,7 @@ package edu.snu.nemo.examples.spark;
 
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
+import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,7 +45,7 @@ public final class SparkScalaITCase {
   }
 
   @Test(timeout = TIMEOUT)
-  public void testSparkPi() throws Exception {
+  public void testPi() throws Exception {
     final String numParallelism = "3";
 
     JobLauncher.main(builder
@@ -53,5 +54,27 @@ public final class SparkScalaITCase {
         .addUserArgs(numParallelism)
         .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
+  }
+
+  @Test(timeout = TIMEOUT)
+  public void testWordCount() throws Exception {
+    final String inputFileName = "sample_input_wordcount";
+    final String outputFileName = "sample_output_wordcount";
+    final String testResourceFilename = "test_output_wordcount";
+    final String inputFilePath = fileBasePath + inputFileName;
+    final String outputFilePath = fileBasePath + outputFileName;
+
+    JobLauncher.main(builder
+        .addJobId(SparkWordCount.class.getSimpleName() + "_test")
+        .addUserMain(SparkWordCount.class.getCanonicalName())
+        .addUserArgs(inputFilePath, outputFilePath)
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .build());
+
+    try {
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFilename);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
   }
 }

@@ -116,7 +116,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     final IRVertex sparkBoundedSourceVertex = new SparkDatasetBoundedSourceVertex<>(sparkSession, dataset);
-    sparkBoundedSourceVertex.setProperty(ParallelismProperty.of(dataset.rdd().getNumPartitions()));
+    sparkBoundedSourceVertex.setProperty(ParallelismProperty.of(dataset.superRDD().getNumPartitions()));
     builder.addVertex(sparkBoundedSourceVertex);
 
     return new JavaRDD<>(sparkSession.sparkContext(), builder.buildWithoutSourceSinkCheck(), sparkBoundedSourceVertex);
@@ -127,7 +127,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
    *
    * @param rddFrom the RDD to parse.
    * @param <T>     type of the resulting object.
-   * @return the new JavaRDD object.
+   * @return the parsed JavaRDD object.
    */
   public static <T> JavaRDD<T> fromRDD(final RDD<T> rddFrom) {
     return rddFrom.toJavaRDD();

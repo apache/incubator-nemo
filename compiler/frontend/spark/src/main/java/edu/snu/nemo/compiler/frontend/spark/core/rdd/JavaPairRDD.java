@@ -51,6 +51,32 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
   private final IRVertex lastVertex;
   private final Serializer serializer;
 
+  /*
+   * Static method to create a JavaPairRDD object from {@link RDD}.
+   *
+   * @param rddFrom the RDD to parse.
+   * @param <K>     type of the key.
+   * @param <V>     type of the value.
+   * @return the parsed JavaPairRDD object.
+   */
+  /*
+  public static <K, V> JavaPairRDD<K, V> fromRDD(final RDD<Tuple2<K, V>> rddFrom) {
+    return (new PairRDDFunctions<>(rddFrom), ).toJavaPairRDD();
+  }
+
+  @Override
+  public JavaPairRDD<K, V> wrapRDD(final org.apache.spark.rdd.RDD<Tuple2<K, V>> rddFrom) {
+    if (!(rddFrom instanceof RDD)) {
+      throw new UnsupportedOperationException("Cannot wrap Spark RDD as Nemo RDD!");
+    }
+    return fromRDD(rddFrom);
+  }*/
+
+  @Override
+  public RDD<Tuple2<K, V>> rdd() {
+    return new RDD<>(sparkContext, this.toJavaRDD(), ClassTag$.MODULE$.apply(Object.class));
+  }
+
   /**
    * Constructor.
    *
@@ -60,7 +86,7 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
    */
   JavaPairRDD(final SparkContext sparkContext, final DAG<IRVertex, IREdge> dag, final IRVertex lastVertex) {
     // TODO #366: resolve while implementing scala RDD.
-    super(new RDD<>(sparkContext, ClassTag$.MODULE$.apply(Object.class)),
+    super(new RDD<>(sparkContext, ClassTag$.MODULE$.apply(Tuple2.class)),
         ClassTag$.MODULE$.apply(Object.class), ClassTag$.MODULE$.apply(Object.class)); // TODO #?: TMP
 
     this.loopVertexStack = new Stack<>();
@@ -75,6 +101,10 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
    */
   public SparkContext getSparkContext() {
     return sparkContext;
+  }
+
+  public JavaRDD<Tuple2<K, V>> toJavaRDD() {
+    return new JavaRDD<>(sparkContext, dag, lastVertex);
   }
 
   /////////////// TRANSFORMATIONS ///////////////

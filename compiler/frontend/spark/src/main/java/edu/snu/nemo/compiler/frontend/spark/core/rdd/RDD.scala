@@ -53,14 +53,14 @@ final class RDD[T: ClassTag] protected (
    * Not supported yet.
    */
   override def getPartitions: Array[Partition] = {
-    throw new UnsupportedOperationException("Operation unsupported.");
+    throw new UnsupportedOperationException("Operation unsupported.")
   }
 
   /**
    * Not supported yet.
    */
   override def compute(split: Partition, context: TaskContext): Iterator[T] = {
-    throw new UnsupportedOperationException("Operation unsupported.");
+    throw new UnsupportedOperationException("Operation unsupported.")
   }
 
   /////////////// TRANSFORMATIONS ///////////////

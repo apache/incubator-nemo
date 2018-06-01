@@ -57,8 +57,8 @@ public final class CollectTransform<T> implements Transform<T, T> {
   @Override
   public void close() {
     try (
-        FileOutputStream fos = new FileOutputStream(filename);
-        ObjectOutputStream oos = new ObjectOutputStream(fos)
+        final FileOutputStream fos = new FileOutputStream(filename);
+        final ObjectOutputStream oos = new ObjectOutputStream(fos)
     ) {
       oos.writeInt(list.size()); // Write the length of list at first.
       for (final T t : list) {

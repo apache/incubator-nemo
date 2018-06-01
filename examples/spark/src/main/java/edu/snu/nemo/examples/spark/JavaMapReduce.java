@@ -48,7 +48,7 @@ public final class JavaMapReduce {
 
     final SparkSession.Builder sparkBuilder = SparkSession
         .builder()
-        .appName("JavaWordCount");
+        .appName("JavaMapReduce");
     if (yarn) {
       sparkBuilder
           .config("mapreduce.input.fileinputformat.input.dir.recursive", "true")
