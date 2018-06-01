@@ -31,18 +31,10 @@ import scala.reflect.ClassTag
 /**
  * Extra functions available on RDDs of (key, value) pairs through an implicit conversion in Nemo.
  */
-final class PairRDDFunctions[K: ClassTag, V: ClassTag] (
+final class PairRDDFunctions[K: ClassTag, V: ClassTag] protected[rdd] (
     self: RDD[(K, V)]) extends org.apache.spark.rdd.PairRDDFunctions[K, V](self) {
-    //private val javaPairRDD: JavaPairRDD[K, V]) extends org.apache.spark.rdd.PairRDDFunctions[K, V](self) {
 
   private val loopVertexStack = new util.Stack[LoopVertex]
-
-  /**
-    * @return converted JavaRDD.
-    */
-  //def toJavaPairRDD() : JavaPairRDD[K, V] = {
-  //  javaPairRDD
-  //}
 
   /////////////// TRANSFORMATIONS ///////////////
 

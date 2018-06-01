@@ -26,8 +26,11 @@ import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
 import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
 import edu.snu.nemo.compiler.frontend.spark.transform._
+import org.apache.hadoop.io.WritableFactory
+import org.apache.spark.rdd.{AsyncRDDActions, DoubleRDDFunctions, OrderedRDDFunctions, SequenceFileRDDFunctions}
 import org.apache.spark.serializer.Serializer
 import org.apache.spark.{Dependency, Partition, SparkContext, TaskContext}
+import org.apache.spark.api.java.function.Function
 
 import scala.reflect.ClassTag
 import scala.language.implicitConversions
@@ -41,7 +44,6 @@ final class RDD[T: ClassTag] protected[rdd] (
     protected[rdd] val dag: DAG[IRVertex, IREdge],
     protected[rdd] val lastVertex: IRVertex,
     private val sourceRDD: Option[org.apache.spark.rdd.RDD[T]]) extends org.apache.spark.rdd.RDD[T](_sc, deps) {
-    //private val javaRDD: JavaRDD[T]) extends org.apache.spark.rdd.RDD[T](_sc, deps) {
 
   private val loopVertexStack = new util.Stack[LoopVertex]
   protected[rdd] val serializer: Serializer = SparkFrontendUtils.deriveSerializerFrom(_sc)
@@ -79,13 +81,22 @@ final class RDD[T: ClassTag] protected[rdd] (
     throw new UnsupportedOperationException("Operation unsupported.")
   }
 
+  /////////////// WRAPPER FUNCTIONS /////////////
+
+  /**
+   * A scala wrapper for map transformation.
+   */
+  override def map[U](f: (T) => U)(implicit evidence$3: ClassManifest[U]): RDD[U] = {
+    val javaFunc = SparkFrontendUtils.toJavaFunction(f)
+    map(javaFunc)
+  }
+
   /////////////// TRANSFORMATIONS ///////////////
 
   /**
    * Return a new RDD by applying a function to all elements of this RDD.
    */
-  override def map[U](f: (T) => U)(implicit evidence$3: ClassManifest[U]): RDD[U] = {
-    val javaFunc = SparkFrontendUtils.toJavaFunction(f)
+  protected[rdd] def map[U](javaFunc: Function[T, U]): RDD[U] = {
     val builder: DAGBuilder[IRVertex, IREdge] = new DAGBuilder[IRVertex, IREdge](dag)
 
     val mapVertex: IRVertex = new OperatorVertex(new MapTransform[T, U](javaFunc))
@@ -173,20 +184,39 @@ final class RDD[T: ClassTag] protected[rdd] (
 }
 
 /**
-  * Defines implicit functions that provide extra functionalities on RDDs of specific types.
-  *
-  * For example, [[RDD.rddToPairRDDFunctions]] converts an RDD into a [[PairRDDFunctions]] for
-  * key-value-pair RDDs, and enabling extra functionalities such as `PairRDDFunctions.reduceByKey`.
-  */
+ * Defines implicit functions that provide extra functionalities on RDDs of specific types.
+ *
+ * For example, [[RDD.rddToPairRDDFunctions]] converts an RDD into a [[PairRDDFunctions]] for
+ * key-value-pair RDDs, and enabling extra functionalities such as `PairRDDFunctions.reduceByKey`.
+ */
 object RDD {
-
-  // The following implicit functions were in SparkContext before 1.3 and users had to
-  // `import SparkContext._` to enable them. Now we move them here to make the compiler find
-  // them automatically. However, we still keep the old functions in SparkContext for backward
-  // compatibility and forward to the following functions directly.
-
   implicit def rddToPairRDDFunctions[K, V](rdd: RDD[(K, V)])
     (implicit kt: ClassTag[K], vt: ClassTag[V], ord: Ordering[K] = null): PairRDDFunctions[K, V] = {
     new PairRDDFunctions(rdd)
+  }
+
+  implicit def rddToAsyncRDDActions[T: ClassTag](rdd: RDD[T]): AsyncRDDActions[T] = {
+    throw new UnsupportedOperationException("Operation unsupported.")
+  }
+
+  implicit def rddToSequenceFileRDDFunctions[K, V](rdd: RDD[(K, V)])
+    (implicit kt: ClassTag[K], vt: ClassTag[V],
+     keyWritableFactory: WritableFactory[K],
+     valueWritableFactory: WritableFactory[V]): SequenceFileRDDFunctions[K, V] = {
+    throw new UnsupportedOperationException("Operation unsupported.")
+  }
+
+  implicit def rddToOrderedRDDFunctions[K : Ordering : ClassTag, V: ClassTag](rdd: RDD[(K, V)])
+  : OrderedRDDFunctions[K, V, (K, V)] = {
+    throw new UnsupportedOperationException("Operation unsupported.")
+  }
+
+  implicit def doubleRDDToDoubleRDDFunctions(rdd: RDD[Double]): DoubleRDDFunctions = {
+    throw new UnsupportedOperationException("Operation unsupported.")
+  }
+
+  implicit def numericRDDToDoubleRDDFunctions[T](rdd: RDD[T])(implicit num: Numeric[T])
+  : DoubleRDDFunctions = {
+    throw new UnsupportedOperationException("Operation unsupported.")
   }
 }
