@@ -81,7 +81,7 @@ public final class TaskExecutor {
   /**
    * Constructor.
    * @param executableTask Task with information needed during execution.
-   * @param irVertexDag A DAG of Tasks.
+   * @param irVertexDag A DAG of vertices.
    * @param taskStateManager State manager for this Task.
    * @param channelFactory For reading from/writing to data to other Stages.
    * @param metricMessageSender For sending metric with execution stats to Master.
@@ -245,7 +245,7 @@ public final class TaskExecutor {
   }
 
   /**
-   * Add output outputCollectors to each {@link IRVertex}.
+   * Add outputCollectors to each {@link IRVertex}.
    * @param irVertex the IRVertex to add output outputCollectors to.
    */
   private void setOutputCollector(final IRVertex irVertex, final IRVertexDataHandler dataHandler) {
@@ -368,9 +368,9 @@ public final class TaskExecutor {
    */
   private boolean finishedAllVertices() {
     // Total number of Tasks
-    int taskNum = irVertexDataHandlers.size();
-    int finishedTaskNum = finishedVertexIds.size();
-    return finishedTaskNum == taskNum;
+    int vertexNum = irVertexDataHandlers.size();
+    int finishedVertexNum = finishedVertexIds.size();
+    return finishedVertexNum == vertexNum;
   }
 
   /**

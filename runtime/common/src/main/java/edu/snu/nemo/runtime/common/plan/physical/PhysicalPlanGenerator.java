@@ -70,8 +70,7 @@ public final class PhysicalPlanGenerator
     dagOfStages.storeJSON(dagDirectory, "plan-logical", "logical execution plan");
     // then create tasks and make it into a physical execution plan.
 
-    final DAG<PhysicalStage, PhysicalStageEdge> result = stagesIntoPlan(dagOfStages);
-    return result;
+    return stagesIntoPlan(dagOfStages);
   }
 
   /**

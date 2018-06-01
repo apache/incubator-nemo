@@ -37,6 +37,10 @@ public abstract class SourceVertex<O> extends IRVertex {
 
   /**
    * Clears internal states, must be called after getReadables().
+   * Concretely, this clears the huge list of input splits held by objects like BeamBoundedSourceVertex before
+   * sending the vertex to remote executors.
+   * Between clearing states of an existing vertex, and creating a new vertex, we've chosen the former approach
+   * to ensure consistent use of the same IRVertex object across the compiler, the master, and the executors.
    */
   public abstract void clearInternalStates();
 }

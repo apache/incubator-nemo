@@ -416,7 +416,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
   /**
    * @param taskId id of the task
-   * @return the dag
+   * @return the IR dag
    */
   private DAG<IRVertex, RuntimeEdge<IRVertex>> getVertexDagById(final String taskId) {
     for (final PhysicalStage physicalStage : physicalPlan.getStageDAG().getVertices()) {
