@@ -23,16 +23,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A ScheduledTask is a grouping of {@link Task}s that belong to a stage.
- * Executors receive units of ScheduledTasks during job execution,
- * and thus the resource type of all tasks of a ScheduledTask must be identical.
- * A stage contains a list of IDs of Tasks whose length corresponds to stage/operator parallelism.
- *
- * This class includes all information which will be required from the executor after scheduled,
- * including the (serialized) DAG of {@link Task}s,
- * the incoming/outgoing edges to/from the stage the Task belongs to, and so on.
+ * An ExecutableTask is a self-contained executable that can be executed in specific types of containers.
  */
-public final class ScheduledTask implements Serializable {
+public final class ExecutableTask implements Serializable {
   private final String jobId;
   private final String taskId;
   private final int taskIdx;
@@ -41,37 +34,37 @@ public final class ScheduledTask implements Serializable {
   private final int attemptIdx;
   private final String containerType;
   private final byte[] serializedTaskDag;
-  private final Map<String, Readable> logicalTaskIdToReadable;
+  private final Map<String, Readable> irVertexIdToReadable;
 
   /**
    * Constructor.
    *
-   * @param jobId                   the id of the job.
-   * @param serializedTaskDag  the serialized DAG of the task.
-   * @param taskId             the ID of the scheduled task.
-   * @param taskIncomingEdges  the incoming edges of the task.
-   * @param taskOutgoingEdges  the outgoing edges of the task.
-   * @param attemptIdx              the attempt index.
-   * @param containerType           the type of container to execute the task on.
-   * @param logicalTaskIdToReadable the map between logical task ID and readable.
+   * @param jobId                the id of the job.
+   * @param taskId               the ID of the scheduled task.
+   * @param attemptIdx           the attempt index.
+   * @param containerType        the type of container to execute the task on.
+   * @param serializedIRDag      the serialized DAG of the task.
+   * @param taskIncomingEdges    the incoming edges of the task.
+   * @param taskOutgoingEdges    the outgoing edges of the task.
+   * @param irVertexIdToReadable the map between logical task ID and readable.
    */
-  public ScheduledTask(final String jobId,
-                            final byte[] serializedTaskDag,
-                            final String taskId,
-                            final List<PhysicalStageEdge> taskIncomingEdges,
-                            final List<PhysicalStageEdge> taskOutgoingEdges,
-                            final int attemptIdx,
-                            final String containerType,
-                            final Map<String, Readable> logicalTaskIdToReadable) {
+  public ExecutableTask(final String jobId,
+                        final String taskId,
+                        final int attemptIdx,
+                        final String containerType,
+                        final byte[] serializedIRDag,
+                        final List<PhysicalStageEdge> taskIncomingEdges,
+                        final List<PhysicalStageEdge> taskOutgoingEdges,
+                        final Map<String, Readable> irVertexIdToReadable) {
     this.jobId = jobId;
     this.taskId = taskId;
     this.taskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
-    this.taskIncomingEdges = taskIncomingEdges;
-    this.taskOutgoingEdges = taskOutgoingEdges;
     this.attemptIdx = attemptIdx;
     this.containerType = containerType;
-    this.serializedTaskDag = serializedTaskDag;
-    this.logicalTaskIdToReadable = logicalTaskIdToReadable;
+    this.serializedTaskDag = serializedIRDag;
+    this.taskIncomingEdges = taskIncomingEdges;
+    this.taskOutgoingEdges = taskOutgoingEdges;
+    this.irVertexIdToReadable = irVertexIdToReadable;
   }
 
   /**
@@ -84,7 +77,7 @@ public final class ScheduledTask implements Serializable {
   /**
    * @return the serialized DAG of the task.
    */
-  public byte[] getSerializedTaskDag() {
+  public byte[] getSerializedIRDag() {
     return serializedTaskDag;
   }
 
@@ -133,7 +126,7 @@ public final class ScheduledTask implements Serializable {
   /**
    * @return the map between logical task ID and readable.
    */
-  public Map<String, Readable> getLogicalTaskIdToReadable() {
-    return logicalTaskIdToReadable;
+  public Map<String, Readable> getIrVertexIdToReadable() {
+    return irVertexIdToReadable;
   }
 }

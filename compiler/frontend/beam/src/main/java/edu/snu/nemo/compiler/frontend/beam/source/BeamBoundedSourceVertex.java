@@ -35,7 +35,8 @@ import org.slf4j.LoggerFactory;
  */
 public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
   private static final Logger LOG = LoggerFactory.getLogger(BeamBoundedSourceVertex.class.getName());
-  private final BoundedSource<O> source;
+  private BoundedSource<O> source;
+  private final String sourceDescription;
 
   /**
    * Constructor of BeamBoundedSourceVertex.
@@ -43,6 +44,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
    */
   public BeamBoundedSourceVertex(final BoundedSource<O> source) {
     this.source = source;
+    this.sourceDescription = source.toString();
   }
 
   @Override
@@ -63,12 +65,17 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
   }
 
   @Override
+  public void clearInternalStates() {
+    source = null;
+  }
+
+  @Override
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{");
     sb.append(irVertexPropertiesToString());
     sb.append(", \"source\": \"");
-    sb.append(source);
+    sb.append(sourceDescription);
     sb.append("\"}");
     return sb.toString();
   }

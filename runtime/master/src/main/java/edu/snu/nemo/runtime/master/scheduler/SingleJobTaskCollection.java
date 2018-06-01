@@ -20,7 +20,7 @@ import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalStage;
 import edu.snu.nemo.runtime.common.plan.physical.PhysicalStageEdge;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
+import edu.snu.nemo.runtime.common.plan.physical.ExecutableTask;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
 
@@ -41,7 +41,7 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
   /**
    * Pending Tasks awaiting to be scheduled for each stage.
    */
-  private final ConcurrentMap<String, Map<String, ScheduledTask>> stageIdToPendingTasks;
+  private final ConcurrentMap<String, Map<String, ExecutableTask>> stageIdToPendingTasks;
 
   /**
    * Stages with Tasks that have not yet been scheduled.
@@ -55,17 +55,17 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
   }
 
   @Override
-  public synchronized void add(final ScheduledTask scheduledTask) {
-    final String stageId = RuntimeIdGenerator.getStageIdFromTaskId(scheduledTask.getTaskId());
+  public synchronized void add(final ExecutableTask executableTask) {
+    final String stageId = RuntimeIdGenerator.getStageIdFromTaskId(executableTask.getTaskId());
 
     stageIdToPendingTasks.compute(stageId, (s, taskIdToTask) -> {
       if (taskIdToTask == null) {
-        final Map<String, ScheduledTask> taskIdToTaskMap = new HashMap<>();
-        taskIdToTaskMap.put(scheduledTask.getTaskId(), scheduledTask);
-        updateSchedulableStages(stageId, scheduledTask.getContainerType());
+        final Map<String, ExecutableTask> taskIdToTaskMap = new HashMap<>();
+        taskIdToTaskMap.put(executableTask.getTaskId(), executableTask);
+        updateSchedulableStages(stageId, executableTask.getContainerType());
         return taskIdToTaskMap;
       } else {
-        taskIdToTask.put(scheduledTask.getTaskId(), scheduledTask);
+        taskIdToTask.put(executableTask.getTaskId(), executableTask);
         return taskIdToTask;
       }
     });
@@ -81,18 +81,18 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
    *                                (i.e. does not belong to the collection from {@link #peekSchedulableStage()}.
    */
   @Override
-  public synchronized ScheduledTask remove(final String taskId) throws NoSuchElementException {
+  public synchronized ExecutableTask remove(final String taskId) throws NoSuchElementException {
     final String stageId = schedulableStages.peekFirst();
     if (stageId == null) {
       throw new NoSuchElementException("No schedulable stage in Task queue");
     }
 
-    final Map<String, ScheduledTask> pendingTasksForStage = stageIdToPendingTasks.get(stageId);
+    final Map<String, ExecutableTask> pendingTasksForStage = stageIdToPendingTasks.get(stageId);
 
     if (pendingTasksForStage == null) {
       throw new RuntimeException(String.format("Stage %s not found in Task queue", stageId));
     }
-    final ScheduledTask taskToSchedule = pendingTasksForStage.remove(taskId);
+    final ExecutableTask taskToSchedule = pendingTasksForStage.remove(taskId);
     if (taskToSchedule == null) {
       throw new NoSuchElementException(String.format("Task %s not found in Task queue", taskId));
     }
@@ -115,13 +115,13 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
    *         or {@link Optional#empty} if the queue is empty
    */
   @Override
-  public synchronized Optional<Collection<ScheduledTask>> peekSchedulableStage() {
+  public synchronized Optional<Collection<ExecutableTask>> peekSchedulableStage() {
     final String stageId = schedulableStages.peekFirst();
     if (stageId == null) {
       return Optional.empty();
     }
 
-    final Map<String, ScheduledTask> pendingTasksForStage = stageIdToPendingTasks.get(stageId);
+    final Map<String, ExecutableTask> pendingTasksForStage = stageIdToPendingTasks.get(stageId);
     if (pendingTasksForStage == null) {
       throw new RuntimeException(String.format("Stage %s not found in stageIdToPendingTasks map", stageId));
     }

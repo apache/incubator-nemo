@@ -18,7 +18,6 @@ package edu.snu.nemo.runtime.executor.datatransfer;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.physical.Task;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -42,18 +41,18 @@ public final class DataTransferFactory {
   /**
    * Creates an {@link OutputWriter} between two stages.
    *
-   * @param srcTask     the {@link Task} that outputs the data to be written.
+   * @param srcIRVertex     the {@link IRVertex} that outputs the data to be written.
    * @param srcTaskIdx  the index of the source task.
    * @param dstIRVertex the {@link IRVertex} that will take the output data as its input.
    * @param runtimeEdge that connects the srcTask to the tasks belonging to dstIRVertex.
    * @return the {@link OutputWriter} created.
    */
-  public OutputWriter createWriter(final Task srcTask,
+  public OutputWriter createWriter(final IRVertex srcIRVertex,
                                    final int srcTaskIdx,
                                    final IRVertex dstIRVertex,
                                    final RuntimeEdge<?> runtimeEdge) {
     return new OutputWriter(hashRangeMultiplier, srcTaskIdx,
-        srcTask.getIrVertexId(), dstIRVertex, runtimeEdge, blockManagerWorker);
+        srcIRVertex.getId(), dstIRVertex, runtimeEdge, blockManagerWorker);
   }
 
   /**

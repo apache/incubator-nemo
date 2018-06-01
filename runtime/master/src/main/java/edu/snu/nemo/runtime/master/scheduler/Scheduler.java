@@ -30,9 +30,6 @@ import javax.annotation.Nullable;
  * RMT and ST meet only at two points: {@link ExecutorRegistry}, and {@link PendingTaskCollection},
  * which are synchronized(ThreadSafe).
  * Other scheduler-related classes that are accessed by only one of the two threads are not synchronized(NotThreadSafe).
- *
- * Receives jobs to execute and schedules
- * {@link edu.snu.nemo.runtime.common.plan.physical.ScheduledTask} to executors.
  */
 @DriverSide
 @DefaultImplementation(BatchSingleJobScheduler.class)

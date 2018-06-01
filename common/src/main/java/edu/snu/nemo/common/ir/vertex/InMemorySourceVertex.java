@@ -22,23 +22,23 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Source vertex with initial data as object.
- * @param <T> type of initial data.
+ * Source vertex with the data in memory.
+ * @param <T> type of data.
  */
-public final class InitializedSourceVertex<T> extends SourceVertex<T> {
-  private final Iterable<T> initializedSourceData;
+public final class InMemorySourceVertex<T> extends SourceVertex<T> {
+  private Iterable<T> initializedSourceData;
 
   /**
    * Constructor.
    * @param initializedSourceData the initial data object.
    */
-  public InitializedSourceVertex(final Iterable<T> initializedSourceData) {
+  public InMemorySourceVertex(final Iterable<T> initializedSourceData) {
     this.initializedSourceData = initializedSourceData;
   }
 
   @Override
-  public InitializedSourceVertex<T> getClone() {
-    final InitializedSourceVertex<T> that = new InitializedSourceVertex<>(this.initializedSourceData);
+  public InMemorySourceVertex<T> getClone() {
+    final InMemorySourceVertex<T> that = new InMemorySourceVertex<>(this.initializedSourceData);
     this.copyExecutionPropertiesTo(that);
     return that;
   }
@@ -61,23 +61,28 @@ public final class InitializedSourceVertex<T> extends SourceVertex<T> {
         }
       }
 
-      readables.add(new InitializedSourceReadable<>(dataForReader));
+      readables.add(new InMemorySourceReadable<>(dataForReader));
     }
     return readables;
   }
 
+  @Override
+  public void clearInternalStates() {
+    initializedSourceData = null;
+  }
+
   /**
-   * Readable for initialized source vertex. It simply returns the initialized data.
-   * @param <T> type of the initial data.
+   * Simply returns the in-memory data.
+   * @param <T> type of the data.
    */
-  private static final class InitializedSourceReadable<T> implements Readable<T> {
+  private static final class InMemorySourceReadable<T> implements Readable<T> {
     private final Iterable<T> initializedSourceData;
 
     /**
      * Constructor.
      * @param initializedSourceData the source data.
      */
-    private InitializedSourceReadable(final Iterable<T> initializedSourceData) {
+    private InMemorySourceReadable(final Iterable<T> initializedSourceData) {
       this.initializedSourceData = initializedSourceData;
     }
 

@@ -159,6 +159,7 @@ public final class BlockManagerWorker {
             numSerializedBytes += partition.getNumSerializedBytes();
             numEncodedBytes += partition.getNumEncodedBytes();
           }
+
           return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator, numSerializedBytes,
               numEncodedBytes));
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
@@ -207,13 +208,16 @@ public final class BlockManagerWorker {
                       .build());
           return responseFromMasterFuture;
         });
-    blockLocationFuture.whenComplete((message, throwable) -> pendingBlockLocationRequest.remove(blockId));
+    blockLocationFuture.whenComplete((message, throwable) -> {
+      pendingBlockLocationRequest.remove(blockId);
+    });
 
     // Using thenCompose so that fetching block data starts after getting response from master.
     return blockLocationFuture.thenCompose(responseFromMaster -> {
       if (responseFromMaster.getType() != ControlMessage.MessageType.BlockLocationInfo) {
         throw new RuntimeException("Response message type mismatch!");
       }
+
       final ControlMessage.BlockLocationInfoMsg blockLocationInfoMsg =
           responseFromMaster.getBlockLocationInfoMsg();
       if (!blockLocationInfoMsg.hasOwnerExecutorId()) {

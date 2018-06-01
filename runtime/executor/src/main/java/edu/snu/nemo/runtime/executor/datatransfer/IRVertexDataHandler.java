@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.runtime.executor.datatransfer;
 
-import edu.snu.nemo.runtime.common.plan.physical.Task;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,9 +26,9 @@ import java.util.List;
  * As Task input is processed element-wise, Task output element percolates down
  * through the DAG of children TaskDataHandlers.
  */
-public final class TaskDataHandler {
-  private final Task task;
-  private List<TaskDataHandler> children;
+public final class IRVertexDataHandler {
+  private final IRVertex irVertex;
+  private List<IRVertexDataHandler> children;
   private final List<OutputCollectorImpl> inputFromThisStage;
   private final List<InputReader> sideInputFromOtherStages;
   private final List<OutputCollectorImpl> sideInputFromThisStage;
@@ -36,12 +36,12 @@ public final class TaskDataHandler {
   private final List<OutputWriter> outputWriters;
 
   /**
-   * TaskDataHandler Constructor.
+   * IRVertexDataHandler Constructor.
    *
-   * @param task Task of this TaskDataHandler.
+   * @param irVertex Task of this IRVertexDataHandler.
    */
-  public TaskDataHandler(final Task task) {
-    this.task = task;
+  public IRVertexDataHandler(final IRVertex irVertex) {
+    this.irVertex = irVertex;
     this.children = new ArrayList<>();
     this.inputFromThisStage = new ArrayList<>();
     this.sideInputFromOtherStages = new ArrayList<>();
@@ -51,12 +51,12 @@ public final class TaskDataHandler {
   }
 
   /**
-   * Get the task that owns this TaskDataHandler.
+   * Get the irVertex that owns this IRVertexDataHandler.
    *
-   * @return task of this TaskDataHandler.
+   * @return irVertex of this IRVertexDataHandler.
    */
-  public Task getTask() {
-    return task;
+  public IRVertex getIRVertex() {
+    return irVertex;
   }
 
   /**
@@ -64,7 +64,7 @@ public final class TaskDataHandler {
    *
    * @return DAG of children tasks' TaskDataHandlers.
    */
-  public List<TaskDataHandler> getChildren() {
+  public List<IRVertexDataHandler> getChildren() {
     return children;
   }
 
@@ -89,18 +89,18 @@ public final class TaskDataHandler {
   }
 
   /**
-   * Get OutputCollector of this task.
+   * Get OutputCollector of this irVertex.
    *
-   * @return OutputCollector of this task.
+   * @return OutputCollector of this irVertex.
    */
   public OutputCollectorImpl getOutputCollector() {
     return outputCollector;
   }
 
   /**
-   * Get OutputWriters of this task.
+   * Get OutputWriters of this irVertex.
    *
-   * @return OutputWriters of this task.
+   * @return OutputWriters of this irVertex.
    */
   public List<OutputWriter> getOutputWriters() {
     return outputWriters;
@@ -111,14 +111,14 @@ public final class TaskDataHandler {
    *
    * @param childrenDataHandler list of children TaskDataHandlers.
    */
-  public void setChildrenDataHandler(final List<TaskDataHandler> childrenDataHandler) {
+  public void setChildrenDataHandler(final List<IRVertexDataHandler> childrenDataHandler) {
     children = childrenDataHandler;
   }
 
   /**
-   * Add OutputCollector of a parent task that will provide intra-stage input.
+   * Add OutputCollector of a parent irVertex that will provide intra-stage input.
    *
-   * @param input OutputCollector of a parent task.
+   * @param input OutputCollector of a parent irVertex.
    */
   public void addInputFromThisStages(final OutputCollectorImpl input) {
     inputFromThisStage.add(input);
@@ -134,27 +134,27 @@ public final class TaskDataHandler {
   }
 
   /**
-   * Add OutputCollector of a parent task that will provide intra-stage side input.
+   * Add OutputCollector of a parent irVertex that will provide intra-stage side input.
    *
-   * @param ocAsSideInput OutputCollector of a parent task with side input.
+   * @param ocAsSideInput OutputCollector of a parent irVertex with side input.
    */
   public void addSideInputFromThisStage(final OutputCollectorImpl ocAsSideInput) {
     sideInputFromThisStage.add(ocAsSideInput);
   }
 
   /**
-   * Set OutputCollector of this task.
+   * Set OutputCollector of this irVertex.
    *
-   * @param oc OutputCollector of this task.
+   * @param oc OutputCollector of this irVertex.
    */
   public void setOutputCollector(final OutputCollectorImpl oc) {
     outputCollector = oc;
   }
 
   /**
-   * Add OutputWriter of this task.
+   * Add OutputWriter of this irVertex.
    *
-   * @param outputWriter OutputWriter of this task.
+   * @param outputWriter OutputWriter of this irVertex.
    */
   public void addOutputWriter(final OutputWriter outputWriter) {
     outputWriters.add(outputWriter);

@@ -83,7 +83,7 @@ public final class SingleTaskQueueTest {
     executorService.submit(() -> {
       try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
-        final ScheduledTask dequeuedTask = dequeue();
+        final ExecutableTask dequeuedTask = dequeue();
         assertEquals(RuntimeIdGenerator.getStageIdFromTaskId(dequeuedTask.getTaskId()),
             dagOf2Stages.get(1).getId());
 
@@ -135,7 +135,7 @@ public final class SingleTaskQueueTest {
     executorService.submit(() -> {
       try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
-        final ScheduledTask dequeuedTask = dequeue();
+        final ExecutableTask dequeuedTask = dequeue();
         assertEquals(RuntimeIdGenerator.getStageIdFromTaskId(dequeuedTask.getTaskId()),
             dagOf2Stages.get(0).getId());
 
@@ -211,9 +211,15 @@ public final class SingleTaskQueueTest {
    */
   private void scheduleStage(final PhysicalStage stage) {
     stage.getTaskIds().forEach(taskId ->
-        pendingTaskPriorityQueue.add(new ScheduledTask(
-            "TestPlan", stage.getSerializedTaskDag(), taskId, Collections.emptyList(),
-            Collections.emptyList(), 0, stage.getContainerType(), Collections.emptyMap())));
+        pendingTaskPriorityQueue.add(new ExecutableTask(
+            "TestPlan",
+            taskId,
+            0,
+            stage.getContainerType(),
+            stage.getSerializedIRDAG(),
+            Collections.emptyList(),
+            Collections.emptyList(),
+            Collections.emptyMap())));
   }
 
   /**
@@ -221,17 +227,17 @@ public final class SingleTaskQueueTest {
    * @return the stage name of the dequeued task.
    */
   private String dequeueAndGetStageId() {
-    final ScheduledTask scheduledTask = dequeue();
-    return RuntimeIdGenerator.getStageIdFromTaskId(scheduledTask.getTaskId());
+    final ExecutableTask executableTask = dequeue();
+    return RuntimeIdGenerator.getStageIdFromTaskId(executableTask.getTaskId());
   }
 
   /**
    * Dequeues a scheduled task from the task priority queue.
    * @return the Task dequeued
    */
-  private ScheduledTask dequeue() {
-    final Collection<ScheduledTask> scheduledTasks
+  private ExecutableTask dequeue() {
+    final Collection<ExecutableTask> executableTasks
         = pendingTaskPriorityQueue.peekSchedulableStage().get();
-    return pendingTaskPriorityQueue.remove(scheduledTasks.iterator().next().getTaskId());
+    return pendingTaskPriorityQueue.remove(executableTasks.iterator().next().getTaskId());
   }
 }

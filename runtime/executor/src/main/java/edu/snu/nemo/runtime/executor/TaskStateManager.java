@@ -15,16 +15,13 @@
  */
 package edu.snu.nemo.runtime.executor;
 
-import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.exception.UnknownFailureCauseException;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
-import edu.snu.nemo.runtime.common.plan.physical.Task;
+import edu.snu.nemo.runtime.common.plan.physical.ExecutableTask;
 
 import java.util.*;
 
@@ -47,13 +44,12 @@ public final class TaskStateManager {
   private final MetricCollector metricCollector;
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
-  public TaskStateManager(final ScheduledTask scheduledTask,
-                               final DAG<Task, RuntimeEdge<Task>> taskDag,
-                               final String executorId,
-                               final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
-                               final MetricMessageSender metricMessageSender) {
-    this.taskId = scheduledTask.getTaskId();
-    this.attemptIdx = scheduledTask.getAttemptIdx();
+  public TaskStateManager(final ExecutableTask executableTask,
+                          final String executorId,
+                          final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+                          final MetricMessageSender metricMessageSender) {
+    this.taskId = executableTask.getTaskId();
+    this.attemptIdx = executableTask.getAttemptIdx();
     this.executorId = executorId;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.metricCollector = new MetricCollector(metricMessageSender);
@@ -62,11 +58,11 @@ public final class TaskStateManager {
   /**
    * Updates the state of the task.
    * @param newState of the task.
-   * @param taskPutOnHold the logical ID of the tasks put on hold, empty otherwise.
+   * @param vertexPutOnHold the vertex put on hold.
    * @param cause only provided as non-empty upon recoverable failures.
    */
   public synchronized void onTaskStateChanged(final TaskState.State newState,
-                                              final Optional<String> taskPutOnHold,
+                                              final Optional<String> vertexPutOnHold,
                                               final Optional<TaskState.RecoverableFailureCause> cause) {
     final Map<String, Object> metric = new HashMap<>();
 
@@ -98,7 +94,7 @@ public final class TaskStateManager {
         break;
       case ON_HOLD:
         LOG.debug("Task ID {} put on hold.", this.taskId);
-        notifyTaskStateToMaster(newState, taskPutOnHold, cause);
+        notifyTaskStateToMaster(newState, vertexPutOnHold, cause);
         break;
       default:
         throw new IllegalStateException("Illegal state at this point");
@@ -108,20 +104,20 @@ public final class TaskStateManager {
   /**
    * Notifies the change in task state to master.
    * @param newState of the task.
-   * @param taskPutOnHold the logical ID of the tasks put on hold, empty otherwise.
+   * @param vertexPutOnHold the vertex put on hold.
    * @param cause only provided as non-empty upon recoverable failures.
    */
   private void notifyTaskStateToMaster(final TaskState.State newState,
-                                            final Optional<String> taskPutOnHold,
-                                            final Optional<TaskState.RecoverableFailureCause> cause) {
+                                       final Optional<String> vertexPutOnHold,
+                                       final Optional<TaskState.RecoverableFailureCause> cause) {
     final ControlMessage.TaskStateChangedMsg.Builder msgBuilder =
         ControlMessage.TaskStateChangedMsg.newBuilder()
-          .setExecutorId(executorId)
-          .setTaskId(taskId)
-          .setAttemptIdx(attemptIdx)
-          .setState(convertState(newState));
-    if (taskPutOnHold.isPresent()) {
-          msgBuilder.setTaskPutOnHoldId(taskPutOnHold.get());
+            .setExecutorId(executorId)
+            .setTaskId(taskId)
+            .setAttemptIdx(attemptIdx)
+            .setState(convertState(newState));
+    if (vertexPutOnHold.isPresent()) {
+      msgBuilder.setVertexPutOnHoldId(vertexPutOnHold.get());
     }
     if (cause.isPresent()) {
       msgBuilder.setFailureCause(convertFailureCause(cause.get()));
@@ -139,33 +135,33 @@ public final class TaskStateManager {
 
   private ControlMessage.TaskStateFromExecutor convertState(final TaskState.State state) {
     switch (state) {
-    case READY:
-      return ControlMessage.TaskStateFromExecutor.READY;
-    case EXECUTING:
-      return ControlMessage.TaskStateFromExecutor.EXECUTING;
-    case COMPLETE:
-      return ControlMessage.TaskStateFromExecutor.COMPLETE;
-    case FAILED_RECOVERABLE:
-      return ControlMessage.TaskStateFromExecutor.FAILED_RECOVERABLE;
-    case FAILED_UNRECOVERABLE:
-      return ControlMessage.TaskStateFromExecutor.FAILED_UNRECOVERABLE;
-    case ON_HOLD:
-      return ControlMessage.TaskStateFromExecutor.ON_HOLD;
-    default:
-      throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + state));
+      case READY:
+        return ControlMessage.TaskStateFromExecutor.READY;
+      case EXECUTING:
+        return ControlMessage.TaskStateFromExecutor.EXECUTING;
+      case COMPLETE:
+        return ControlMessage.TaskStateFromExecutor.COMPLETE;
+      case FAILED_RECOVERABLE:
+        return ControlMessage.TaskStateFromExecutor.FAILED_RECOVERABLE;
+      case FAILED_UNRECOVERABLE:
+        return ControlMessage.TaskStateFromExecutor.FAILED_UNRECOVERABLE;
+      case ON_HOLD:
+        return ControlMessage.TaskStateFromExecutor.ON_HOLD;
+      default:
+        throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + state));
     }
   }
 
   private ControlMessage.RecoverableFailureCause convertFailureCause(
-    final TaskState.RecoverableFailureCause cause) {
+      final TaskState.RecoverableFailureCause cause) {
     switch (cause) {
-    case INPUT_READ_FAILURE:
-      return ControlMessage.RecoverableFailureCause.InputReadFailure;
-    case OUTPUT_WRITE_FAILURE:
-      return ControlMessage.RecoverableFailureCause.OutputWriteFailure;
-    default:
-      throw new UnknownFailureCauseException(
-          new Throwable("The failure cause for the recoverable failure is unknown"));
+      case INPUT_READ_FAILURE:
+        return ControlMessage.RecoverableFailureCause.InputReadFailure;
+      case OUTPUT_WRITE_FAILURE:
+        return ControlMessage.RecoverableFailureCause.OutputWriteFailure;
+      default:
+        throw new UnknownFailureCauseException(
+            new Throwable("The failure cause for the recoverable failure is unknown"));
     }
   }
 

@@ -20,7 +20,7 @@ import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageSender;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
+import edu.snu.nemo.runtime.common.plan.physical.ExecutableTask;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
 
@@ -95,17 +95,17 @@ public final class ExecutorRepresenter {
 
   /**
    * Marks the Task as running, and sends scheduling message to the executor.
-   * @param scheduledTask
+   * @param executableTask
    */
-  public void onTaskScheduled(final ScheduledTask scheduledTask) {
-    runningTasks.add(scheduledTask.getTaskId());
-    runningTaskToAttempt.put(scheduledTask.getTaskId(), scheduledTask.getAttemptIdx());
-    failedTasks.remove(scheduledTask.getTaskId());
+  public void onTaskScheduled(final ExecutableTask executableTask) {
+    runningTasks.add(executableTask.getTaskId());
+    runningTaskToAttempt.put(executableTask.getTaskId(), executableTask.getAttemptIdx());
+    failedTasks.remove(executableTask.getTaskId());
 
     serializationExecutorService.submit(new Runnable() {
       @Override
       public void run() {
-        final byte[] serialized = SerializationUtils.serialize(scheduledTask);
+        final byte[] serialized = SerializationUtils.serialize(executableTask);
         sendControlMessage(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())

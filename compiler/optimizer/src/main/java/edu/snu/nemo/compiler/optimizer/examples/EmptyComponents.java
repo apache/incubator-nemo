@@ -72,7 +72,7 @@ public class EmptyComponents {
    * @param <T> type of the data.
    */
   public static final class EmptySourceVertex<T> extends SourceVertex<T> {
-    private final String name;
+    private String name;
 
     /**
      * Constructor.
@@ -94,6 +94,10 @@ public class EmptyComponents {
     @Override
     public List<Readable<T>> getReadables(final int desirednumOfSplits) {
       return Arrays.asList(new EmptyReadable<>());
+    }
+
+    @Override
+    public void clearInternalStates() {
     }
 
     @Override

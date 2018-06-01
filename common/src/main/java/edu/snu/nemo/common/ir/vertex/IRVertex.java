@@ -21,7 +21,8 @@ import edu.snu.nemo.common.dag.Vertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 
 /**
- * The top-most wrapper for a user operation in the IR.
+ * The basic unit of operation in a dataflow program, as well as the most important data structure in Nemo.
+ * An IRVertex is created and modified in the compiler, and executed in the runtime.
  */
 public abstract class IRVertex extends Vertex {
   private final ExecutionPropertyMap executionProperties;
