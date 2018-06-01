@@ -42,14 +42,16 @@ object SparkWordCount {
 
     val counts = ones.reduceByKey((i1, i2) => i1 + i2)
 
+    val parsed = counts.map(tuple => tuple._1 + ": " + tuple._2.toString)
+
     val writeMode = args(1) != null // write to file or print
 
     if (writeMode) { // print to output file
-      counts.saveAsTextFile(args(1))
+      parsed.saveAsTextFile(args(1))
     } else { // print to console.
-      val output = counts.collect()
+      val output = parsed.collect()
       for (elem <- output) {
-        println(elem._1 + ": " + elem._2)
+        println(elem)
       }
     }
     spark.stop()

@@ -15,38 +15,54 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.core.rdd
 
+import java.util
+
+import edu.snu.nemo.client.JobLauncher
+import edu.snu.nemo.common.dag.{DAG, DAGBuilder}
+import edu.snu.nemo.common.ir.edge.IREdge
+import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty
+import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
+import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
+import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
+import edu.snu.nemo.compiler.frontend.spark.transform._
+import org.apache.spark.serializer.Serializer
 import org.apache.spark.{Dependency, Partition, SparkContext, TaskContext}
 
 import scala.reflect.ClassTag
+import scala.language.implicitConversions
 
 /**
  * RDD for Nemo.
  */
-final class RDD[T: ClassTag] protected (
-    private val _sc: SparkContext,
+final class RDD[T: ClassTag] protected[rdd] (
+    protected[rdd] val _sc: SparkContext,
     private val deps: Seq[Dependency[_]],
-    private val javaRDD: JavaRDD[T]) extends org.apache.spark.rdd.RDD[T](_sc, deps) {
+    protected[rdd] val dag: DAG[IRVertex, IREdge],
+    protected[rdd] val lastVertex: IRVertex,
+    private val sourceRDD: Option[org.apache.spark.rdd.RDD[T]]) extends org.apache.spark.rdd.RDD[T](_sc, deps) {
+    //private val javaRDD: JavaRDD[T]) extends org.apache.spark.rdd.RDD[T](_sc, deps) {
+
+  private val loopVertexStack = new util.Stack[LoopVertex]
+  protected[rdd] val serializer: Serializer = SparkFrontendUtils.deriveSerializerFrom(_sc)
 
   /**
    * Constructor without dependencies (not needed in Nemo RDD).
    *
    * @param sparkContext the spark context.
-   * @param javaRDDFrom  the java RDD.
    */
-  protected def this(sparkContext: SparkContext, javaRDDFrom: JavaRDD[T]) = {
-    this(sparkContext, Nil, javaRDDFrom)
-  }
-
-  protected def this(sparkContext: SparkContext) = {
-    this(sparkContext, Nil, null) // TODO: TMP
+  protected[rdd] def this(sparkContext: SparkContext,
+                          dagFrom: DAG[IRVertex, IREdge],
+                          lastVertexFrom: IRVertex,
+                          sourceRDDFrom: Option[org.apache.spark.rdd.RDD[T]]) = {
+    this(sparkContext, Nil, dagFrom, lastVertexFrom, sourceRDDFrom)
   }
 
   /**
    * @return converted JavaRDD.
    */
   override def toJavaRDD() : JavaRDD[T] = {
-    javaRDD
+    new JavaRDD[T](this)
   }
 
   /**
@@ -69,7 +85,18 @@ final class RDD[T: ClassTag] protected (
    * Return a new RDD by applying a function to all elements of this RDD.
    */
   override def map[U](f: (T) => U)(implicit evidence$3: ClassManifest[U]): RDD[U] = {
-    new RDD[U](_sc, deps, javaRDD.map(SparkFrontendUtils.toJavaFunction(f)))
+    val javaFunc = SparkFrontendUtils.toJavaFunction(f)
+    val builder: DAGBuilder[IRVertex, IREdge] = new DAGBuilder[IRVertex, IREdge](dag)
+
+    val mapVertex: IRVertex = new OperatorVertex(new MapTransform[T, U](javaFunc))
+    builder.addVertex(mapVertex, loopVertexStack)
+
+    val newEdge: IREdge = new IREdge(SparkFrontendUtils.getEdgeCommunicationPattern(lastVertex, mapVertex),
+      lastVertex, mapVertex, new SparkCoder[T](serializer))
+    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor))
+    builder.connectVertices(newEdge)
+
+    new RDD[U](_sc, builder.buildWithoutSourceSinkCheck, mapVertex, Option.empty)
   }
 
   /**
@@ -77,7 +104,18 @@ final class RDD[T: ClassTag] protected (
    *  RDD, and then flattening the results.
    */
   override def flatMap[U: ClassTag](f: T => TraversableOnce[U]): RDD[U] = {
-    new RDD[U](_sc, deps, javaRDD.flatMap(SparkFrontendUtils.toFlatMapFunction(f)))
+    val javaFunc = SparkFrontendUtils.toFlatMapFunction(f)
+    val builder = new DAGBuilder[IRVertex, IREdge](dag)
+
+    val flatMapVertex = new OperatorVertex(new FlatMapTransform[T, U](javaFunc))
+    builder.addVertex(flatMapVertex, loopVertexStack)
+
+    val newEdge = new IREdge(SparkFrontendUtils.getEdgeCommunicationPattern(lastVertex, flatMapVertex),
+      lastVertex, flatMapVertex, new SparkCoder[T](serializer))
+    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor))
+    builder.connectVertices(newEdge)
+
+    new RDD[U](_sc, builder.buildWithoutSourceSinkCheck, flatMapVertex, Option.empty)
   }
 
   /////////////// ACTIONS ///////////////
@@ -88,22 +126,67 @@ final class RDD[T: ClassTag] protected (
    * @note This method should only be used if the resulting array is expected to be small, as
    * all the data is loaded into the driver's memory.
    */
-  override def collect(): Array[T] = {
-    javaRDD.collect().toArray().asInstanceOf[Array[T]]
-  }
+  override def collect(): Array[T] =
+    SparkFrontendUtils.collect(dag, loopVertexStack, lastVertex, serializer).toArray().asInstanceOf[Array[T]]
 
   /**
    * Reduces the elements of this RDD using the specified commutative and
    * associative binary operator.
    */
   override def reduce(f: (T, T) => T): T = {
-    javaRDD.reduce(SparkFrontendUtils.toJavaFunction(f))
+    val javaFunc = SparkFrontendUtils.toJavaFunction(f)
+    val builder = new DAGBuilder[IRVertex, IREdge](dag)
+
+    val reduceVertex = new OperatorVertex(new ReduceTransform[T](javaFunc))
+    builder.addVertex(reduceVertex, loopVertexStack)
+
+    val newEdge = new IREdge(SparkFrontendUtils.getEdgeCommunicationPattern(lastVertex, reduceVertex),
+      lastVertex, reduceVertex, new SparkCoder[T](serializer))
+    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor))
+
+    builder.connectVertices(newEdge)
+    ReduceTransform.reduceIterator(
+      SparkFrontendUtils.collect(dag, loopVertexStack, lastVertex, serializer).iterator(), javaFunc)
   }
 
   /**
    * Save this RDD as a text file, using string representations of elements.
    */
   override def saveAsTextFile(path: String): Unit = {
-    javaRDD.saveAsTextFile(path)
+    // Check if given path is HDFS path.
+    val isHDFSPath = path.startsWith("hdfs://") || path.startsWith("s3a://") || path.startsWith("file://")
+    val textFileTransform =
+      if (isHDFSPath) new HDFSTextFileTransform[T](path)
+      else new LocalTextFileTransform[T](path)
+
+    val builder = new DAGBuilder[IRVertex, IREdge](dag)
+    val flatMapVertex = new OperatorVertex(textFileTransform)
+
+    builder.addVertex(flatMapVertex, loopVertexStack)
+    val newEdge = new IREdge(SparkFrontendUtils.getEdgeCommunicationPattern(lastVertex, flatMapVertex),
+      lastVertex, flatMapVertex, new SparkCoder[T](serializer))
+    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor))
+
+    builder.connectVertices(newEdge)
+    JobLauncher.launchDAG(builder.build)
+  }
+}
+
+/**
+  * Defines implicit functions that provide extra functionalities on RDDs of specific types.
+  *
+  * For example, [[RDD.rddToPairRDDFunctions]] converts an RDD into a [[PairRDDFunctions]] for
+  * key-value-pair RDDs, and enabling extra functionalities such as `PairRDDFunctions.reduceByKey`.
+  */
+object RDD {
+
+  // The following implicit functions were in SparkContext before 1.3 and users had to
+  // `import SparkContext._` to enable them. Now we move them here to make the compiler find
+  // them automatically. However, we still keep the old functions in SparkContext for backward
+  // compatibility and forward to the following functions directly.
+
+  implicit def rddToPairRDDFunctions[K, V](rdd: RDD[(K, V)])
+    (implicit kt: ClassTag[K], vt: ClassTag[V], ord: Ordering[K] = null): PairRDDFunctions[K, V] = {
+    new PairRDDFunctions(rdd)
   }
 }

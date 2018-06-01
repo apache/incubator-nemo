@@ -51,13 +51,13 @@ public final class SparkContext extends org.apache.spark.SparkContext {
    *
    * @param seq        input data as list.
    * @param numSlices  number of slices (parallelism).
-   * @param evidence$1 type of the initial element.
+   * @param evidence   type of the initial element.
    * @return the newly initiated JavaRDD.
    */
   @Override
   public <T> RDD<T> parallelize(final Seq<T> seq,
                                 final int numSlices,
-                                final ClassTag<T> evidence$1) {
+                                final ClassTag<T> evidence) {
     final List<T> javaList = scala.collection.JavaConversions.seqAsJavaList(seq);
     return JavaRDD.of(this.sparkContext, javaList, numSlices).rdd();
   }

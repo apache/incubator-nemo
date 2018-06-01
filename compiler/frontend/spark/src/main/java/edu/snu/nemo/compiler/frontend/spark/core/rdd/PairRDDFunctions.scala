@@ -15,7 +15,16 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.core.rdd
 
+import java.util
+
+import edu.snu.nemo.common.dag.DAGBuilder
+import edu.snu.nemo.common.ir.edge.IREdge
+import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty
+import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
+import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
+import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
+import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform
 
 import scala.reflect.ClassTag
 
@@ -23,15 +32,17 @@ import scala.reflect.ClassTag
  * Extra functions available on RDDs of (key, value) pairs through an implicit conversion in Nemo.
  */
 final class PairRDDFunctions[K: ClassTag, V: ClassTag] (
-    self: RDD[(K, V)],
-    private val javaPairRDD: JavaPairRDD[K, V]) extends org.apache.spark.rdd.PairRDDFunctions[K, V](self) {
+    self: RDD[(K, V)]) extends org.apache.spark.rdd.PairRDDFunctions[K, V](self) {
+    //private val javaPairRDD: JavaPairRDD[K, V]) extends org.apache.spark.rdd.PairRDDFunctions[K, V](self) {
+
+  private val loopVertexStack = new util.Stack[LoopVertex]
 
   /**
     * @return converted JavaRDD.
     */
-  def toJavaPairRDD() : JavaPairRDD[K, V] = {
-    javaPairRDD
-  }
+  //def toJavaPairRDD() : JavaPairRDD[K, V] = {
+  //  javaPairRDD
+  //}
 
   /////////////// TRANSFORMATIONS ///////////////
 
@@ -42,6 +53,17 @@ final class PairRDDFunctions[K: ClassTag, V: ClassTag] (
     * parallelism level.
     */
   override def reduceByKey(func: (V, V) => V): RDD[(K, V)] = {
-    javaPairRDD.reduceByKey(SparkFrontendUtils.toJavaFunction(func)).rdd()
+    val javaFunc = SparkFrontendUtils.toJavaFunction(func)
+    val builder = new DAGBuilder[IRVertex, IREdge](self.dag)
+
+    val reduceByKeyVertex = new OperatorVertex(new ReduceByKeyTransform[K, V](javaFunc))
+    builder.addVertex(reduceByKeyVertex, loopVertexStack)
+
+    val newEdge = new IREdge(SparkFrontendUtils.getEdgeCommunicationPattern(self.lastVertex, reduceByKeyVertex),
+      self.lastVertex, reduceByKeyVertex, new SparkCoder[Tuple2[K, V]](self.serializer))
+    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor))
+    builder.connectVertices(newEdge)
+
+    new RDD[(K, V)](self._sc, builder.buildWithoutSourceSinkCheck, reduceByKeyVertex, Option.empty)
   }
 }

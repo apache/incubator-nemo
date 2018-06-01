@@ -25,7 +25,6 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.TypedColumn;
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan;
 import org.apache.spark.storage.StorageLevel;
-import scala.reflect.ClassTag$;
 
 import java.util.stream.Stream;
 
@@ -75,7 +74,10 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
     return JavaRDD.of((SparkSession) super.sparkSession(), this);
   }
 
-  public org.apache.spark.rdd.RDD<T> superRDD() {
+  /**
+   * @return a Spark RDD from this dataset.
+   */
+  public org.apache.spark.rdd.RDD<T> sparkRDD() {
     return super.rdd();
   }
 
@@ -87,7 +89,7 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
    @Override
    public RDD<T> rdd() {
      final JavaRDD<T> javaRDD = JavaRDD.of((SparkSession) super.sparkSession(), this);
-     return new RDD<>(super.sparkSession().sparkContext(), javaRDD, ClassTag$.MODULE$.apply(Object.class));
+     return javaRDD.rdd();
    }
 
   @Override

@@ -29,7 +29,6 @@ import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder;
 import edu.snu.nemo.compiler.frontend.spark.transform.CollectTransform;
 import edu.snu.nemo.compiler.frontend.spark.transform.GroupByKeyTransform;
 import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform;
-import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
@@ -64,7 +63,7 @@ public final class SparkFrontendUtils {
    * @param sparkContext spark context to derive the serializer from.
    * @return the serializer.
    */
-  public static Serializer deriveSerializerFrom(final SparkContext sparkContext) {
+  public static Serializer deriveSerializerFrom(final org.apache.spark.SparkContext sparkContext) {
     if (sparkContext.conf().get("spark.serializer", "")
         .equals("org.apache.spark.serializer.KryoSerializer")) {
       return new KryoSerializer(sparkContext.conf());
