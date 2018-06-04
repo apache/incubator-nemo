@@ -13,22 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.plan.physical;
+package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.runtime.common.data.KeyRange;
-import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.data.HashRange;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Contains information stage boundary {@link edu.snu.nemo.runtime.common.plan.stage.StageEdge}.
+ * Edge of a stage.
  */
-public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
+public final class StageEdge extends RuntimeEdge<Stage> {
   /**
    * The source {@link IRVertex}.
    * This belongs to the srcStage.
@@ -57,14 +56,14 @@ public final class PhysicalStageEdge extends RuntimeEdge<PhysicalStage> {
    * @param coder the coder for enconding and deconding.
    * @param isSideInput whether or not the edge is a sideInput edge.
    */
-  public PhysicalStageEdge(final String runtimeEdgeId,
-                           final ExecutionPropertyMap edgeProperties,
-                           final IRVertex srcVertex,
-                           final IRVertex dstVertex,
-                           final PhysicalStage srcStage,
-                           final PhysicalStage dstStage,
-                           final Coder coder,
-                           final Boolean isSideInput) {
+  public StageEdge(final String runtimeEdgeId,
+                   final ExecutionPropertyMap edgeProperties,
+                   final IRVertex srcVertex,
+                   final IRVertex dstVertex,
+                   final Stage srcStage,
+                   final Stage dstStage,
+                   final Coder coder,
+                   final Boolean isSideInput) {
     super(runtimeEdgeId, edgeProperties, srcStage, dstStage, coder, isSideInput);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;

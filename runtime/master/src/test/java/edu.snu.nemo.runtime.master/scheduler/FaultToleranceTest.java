@@ -19,7 +19,8 @@ import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageSender;
-import edu.snu.nemo.runtime.common.plan.physical.*;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.MetricMessageHandler;
@@ -132,9 +133,9 @@ public final class FaultToleranceTest {
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
 
-    final List<PhysicalStage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
+    final List<Stage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
 
-    for (final PhysicalStage stage : dagOf4Stages) {
+    for (final Stage stage : dagOf4Stages) {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0.
@@ -203,9 +204,9 @@ public final class FaultToleranceTest {
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
 
-    final List<PhysicalStage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
+    final List<Stage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
 
-    for (final PhysicalStage stage : dagOf4Stages) {
+    for (final Stage stage : dagOf4Stages) {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0.
@@ -269,9 +270,9 @@ public final class FaultToleranceTest {
         new JobStateManager(plan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
     scheduler.scheduleJob(plan, jobStateManager);
 
-    final List<PhysicalStage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
+    final List<Stage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
 
-    for (final PhysicalStage stage : dagOf4Stages) {
+    for (final Stage stage : dagOf4Stages) {
       if (stage.getScheduleGroupIndex() == 0) {
 
         // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0.
@@ -324,13 +325,13 @@ public final class FaultToleranceTest {
     scheduler.scheduleJob(plan, jobStateManager);
 
     final List<ExecutorRepresenter> executors = new ArrayList<>();
-    final List<PhysicalStage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
+    final List<Stage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
 
     int executorIdIndex = 1;
     float removalChance = 0.7f; // Out of 1.0
     final Random random = new Random(0); // Deterministic seed.
 
-    for (final PhysicalStage stage : dagOf4Stages) {
+    for (final Stage stage : dagOf4Stages) {
 
       while (jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState() != COMPLETE) {
         // By chance, remove or add executor

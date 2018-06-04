@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.common.optimizer.pass.runtime;
 
 import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 
 import java.io.Serializable;
 import java.util.Set;

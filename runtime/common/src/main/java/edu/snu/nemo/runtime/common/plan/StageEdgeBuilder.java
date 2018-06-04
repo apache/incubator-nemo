@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.plan.stage;
+package edu.snu.nemo.runtime.common.plan;
 
 
 import edu.snu.nemo.common.coder.Coder;
@@ -37,7 +37,7 @@ public final class StageEdgeBuilder {
    * Represents the edge between vertices in a logical plan.
    * @param irEdgeId id of this edge.
    */
-  public StageEdgeBuilder(final String irEdgeId) {
+  StageEdgeBuilder(final String irEdgeId) {
     this.stageEdgeId = irEdgeId;
   }
 
@@ -112,7 +112,6 @@ public final class StageEdgeBuilder {
   }
 
   public StageEdge build() {
-    return new StageEdge(stageEdgeId,
-        edgeProperties, srcStage, dstStage, coder, isSideInput, srcVertex, dstVertex);
+    return new StageEdge(stageEdgeId, edgeProperties, srcVertex, dstVertex, srcStage, dstStage, coder, isSideInput);
   }
 }

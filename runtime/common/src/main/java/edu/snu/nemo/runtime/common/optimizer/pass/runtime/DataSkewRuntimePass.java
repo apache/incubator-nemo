@@ -24,9 +24,9 @@ import edu.snu.nemo.common.exception.DynamicOptimizationException;
 
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.data.KeyRange;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalStage;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalStageEdge;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import edu.snu.nemo.runtime.common.plan.Stage;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.data.HashRange;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEventHandler;
 import org.slf4j.Logger;
@@ -60,16 +60,16 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<P
   @Override
   public PhysicalPlan apply(final PhysicalPlan originalPlan, final Map<String, List<Pair<Integer, Long>>> metricData) {
     // Builder to create new stages.
-    final DAGBuilder<PhysicalStage, PhysicalStageEdge> physicalDAGBuilder =
+    final DAGBuilder<Stage, StageEdge> physicalDAGBuilder =
         new DAGBuilder<>(originalPlan.getStageDAG());
 
     // get edges to optimize
     final List<String> optimizationEdgeIds = metricData.keySet().stream().map(blockId ->
         RuntimeIdGenerator.getRuntimeEdgeIdFromBlockId(blockId)).collect(Collectors.toList());
-    final DAG<PhysicalStage, PhysicalStageEdge> stageDAG = originalPlan.getStageDAG();
-    final List<PhysicalStageEdge> optimizationEdges = stageDAG.getVertices().stream()
-        .flatMap(physicalStage -> stageDAG.getIncomingEdgesOf(physicalStage).stream())
-        .filter(physicalStageEdge -> optimizationEdgeIds.contains(physicalStageEdge.getId()))
+    final DAG<Stage, StageEdge> stageDAG = originalPlan.getStageDAG();
+    final List<StageEdge> optimizationEdges = stageDAG.getVertices().stream()
+        .flatMap(stage -> stageDAG.getIncomingEdgesOf(stage).stream())
+        .filter(stageEdge -> optimizationEdgeIds.contains(stageEdge.getId()))
         .collect(Collectors.toList());
 
     // Get number of evaluators of the next stage (number of blocks).

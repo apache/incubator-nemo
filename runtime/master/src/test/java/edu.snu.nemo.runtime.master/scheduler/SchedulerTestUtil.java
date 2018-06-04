@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalStage;
+import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
@@ -32,21 +32,21 @@ final class SchedulerTestUtil {
    * @param jobStateManager for the submitted job.
    * @param scheduler for the submitted job.
    * @param executorRegistry provides executor representers
-   * @param physicalStage for which the states should be marked as complete.
+   * @param stage for which the states should be marked as complete.
    */
   static void completeStage(final JobStateManager jobStateManager,
                             final Scheduler scheduler,
                             final ExecutorRegistry executorRegistry,
-                            final PhysicalStage physicalStage,
+                            final Stage stage,
                             final int attemptIdx) {
     // Loop until the stage completes.
     while (true) {
-      final Enum stageState = jobStateManager.getStageState(physicalStage.getId()).getStateMachine().getCurrentState();
+      final Enum stageState = jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState();
       if (StageState.State.COMPLETE == stageState) {
         // Stage has completed, so we break out of the loop.
         break;
       } else if (StageState.State.EXECUTING == stageState) {
-        physicalStage.getTaskIds().forEach(taskId -> {
+        stage.getTaskIds().forEach(taskId -> {
           final Enum tgState = jobStateManager.getTaskState(taskId).getStateMachine().getCurrentState();
           if (TaskState.State.EXECUTING == tgState) {
             sendTaskStateEventToScheduler(scheduler, executorRegistry, taskId,

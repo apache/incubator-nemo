@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.plan.physical;
+package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.Vertex;
@@ -28,9 +28,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * PhysicalStage.
+ * Stage.
  */
-public final class PhysicalStage extends Vertex {
+public final class Stage extends Vertex {
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
   private final int parallelism;
   private final int scheduleGroupIndex;
@@ -48,12 +48,12 @@ public final class PhysicalStage extends Vertex {
    * @param containerType       the type of container to execute the task on.
    * @param vertexIdToReadables the list of maps between vertex ID and {@link Readable}.
    */
-  public PhysicalStage(final String stageId,
-                       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
-                       final int parallelism,
-                       final int scheduleGroupIndex,
-                       final String containerType,
-                       final List<Map<String, Readable>> vertexIdToReadables) {
+  public Stage(final String stageId,
+               final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
+               final int parallelism,
+               final int scheduleGroupIndex,
+               final String containerType,
+               final List<Map<String, Readable>> vertexIdToReadables) {
     super(stageId);
     this.irDag = irDag;
     this.parallelism = parallelism;

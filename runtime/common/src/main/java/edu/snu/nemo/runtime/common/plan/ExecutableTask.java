@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.plan.physical;
+package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
@@ -29,8 +29,8 @@ public final class ExecutableTask implements Serializable {
   private final String jobId;
   private final String taskId;
   private final int taskIdx;
-  private final List<PhysicalStageEdge> taskIncomingEdges;
-  private final List<PhysicalStageEdge> taskOutgoingEdges;
+  private final List<StageEdge> taskIncomingEdges;
+  private final List<StageEdge> taskOutgoingEdges;
   private final int attemptIdx;
   private final String containerType;
   private final byte[] serializedTaskDag;
@@ -53,8 +53,8 @@ public final class ExecutableTask implements Serializable {
                         final int attemptIdx,
                         final String containerType,
                         final byte[] serializedIRDag,
-                        final List<PhysicalStageEdge> taskIncomingEdges,
-                        final List<PhysicalStageEdge> taskOutgoingEdges,
+                        final List<StageEdge> taskIncomingEdges,
+                        final List<StageEdge> taskOutgoingEdges,
                         final Map<String, Readable> irVertexIdToReadable) {
     this.jobId = jobId;
     this.taskId = taskId;
@@ -98,14 +98,14 @@ public final class ExecutableTask implements Serializable {
   /**
    * @return the incoming edges of the task.
    */
-  public List<PhysicalStageEdge> getTaskIncomingEdges() {
+  public List<StageEdge> getTaskIncomingEdges() {
     return taskIncomingEdges;
   }
 
   /**
    * @return the outgoing edges of the task.
    */
-  public List<PhysicalStageEdge> getTaskOutgoingEdges() {
+  public List<StageEdge> getTaskOutgoingEdges() {
     return taskOutgoingEdges;
   }
 

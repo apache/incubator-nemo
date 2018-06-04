@@ -13,15 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.plan.stage;
+package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.common.dag.DAGBuilder;
-
-import java.util.List;
 
 /**
  * Stage Builder.
@@ -73,33 +70,14 @@ public final class StageBuilder {
   }
 
   /**
-   * Integrity check for stages.
-   * @param stage stage to check for.
-   */
-  private void integrityCheck(final Stage stage) {
-    final List<IRVertex> vertices = stage.getStageInternalDAG().getVertices();
-
-    final String firstPlacement = vertices.iterator().next().getProperty(ExecutionProperty.Key.ExecutorPlacement);
-    final int scheduleGroupIdx =
-        vertices.iterator().next().<Integer>getProperty(ExecutionProperty.Key.ScheduleGroupIndex);
-    vertices.forEach(irVertex -> {
-      if ((firstPlacement != null
-          && !firstPlacement.equals(irVertex.<String>getProperty(ExecutionProperty.Key.ExecutorPlacement)))
-          || scheduleGroupIdx != irVertex.<Integer>getProperty(ExecutionProperty.Key.ScheduleGroupIndex)) {
-        throw new RuntimeException("Vertices of the same stage have different execution properties: "
-            + irVertex.getId());
-      }
-    });
-  }
-
-  /**
    * Builds and returns the {@link Stage}.
    * @return the runtime stage.
    */
   public Stage build() {
-    final Stage stage = new Stage(RuntimeIdGenerator.generateStageId(stageId),
-        stageInternalDAGBuilder.buildWithoutSourceSinkCheck(), scheduleGroupIndex);
-    integrityCheck(stage);
+    final Stage stage = new Stage(
+        RuntimeIdGenerator.generateStageId(stageId),
+        stageInternalDAGBuilder.buildWithoutSourceSinkCheck(),
+        scheduleGroupIndex);
     return stage;
   }
 }

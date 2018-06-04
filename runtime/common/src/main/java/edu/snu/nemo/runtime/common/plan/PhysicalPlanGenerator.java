@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.plan.physical;
+package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
@@ -24,8 +24,6 @@ import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
-import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.stage.*;
 import edu.snu.nemo.common.exception.IllegalVertexOperationException;
 import edu.snu.nemo.common.exception.PhysicalPlanGenerationException;
 import org.apache.reef.tang.annotations.Parameter;
@@ -37,10 +35,9 @@ import java.util.function.Function;
 /**
  * A function that converts an IR DAG to physical DAG.
  */
-public final class PhysicalPlanGenerator
-    implements Function<DAG<IRVertex, IREdge>, DAG<PhysicalStage, PhysicalStageEdge>> {
+public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdge>, DAG<Stage, StageEdge>> {
 
-  final String dagDirectory;
+  private final String dagDirectory;
 
   /**
    * Private constructor.
@@ -59,7 +56,7 @@ public final class PhysicalPlanGenerator
    * @return {@link PhysicalPlan} to execute.
    */
   @Override
-  public DAG<PhysicalStage, PhysicalStageEdge> apply(final DAG<IRVertex, IREdge> irDAG) {
+  public DAG<Stage, StageEdge> apply(final DAG<IRVertex, IREdge> irDAG) {
     // first, stage-partition the IR DAG.
     final DAG<Stage, StageEdge> dagOfStages = stagePartitionIrDAG(irDAG);
 
@@ -68,9 +65,8 @@ public final class PhysicalPlanGenerator
 
     // for debugging purposes.
     dagOfStages.storeJSON(dagDirectory, "plan-logical", "logical execution plan");
-    // then create tasks and make it into a physical execution plan.
 
-    return stagesIntoPlan(dagOfStages);
+    return dagOfStages;
   }
 
   /**
@@ -207,16 +203,16 @@ public final class PhysicalPlanGenerator
     return idToIRVertex;
   }
 
-  /**
+
    * Converts the given DAG of stages to a physical DAG for execution.
    *
    * @param dagOfStages IR DAG partitioned into stages.
    * @return the converted physical DAG to execute,
-   * which consists of {@link PhysicalStage} and their relationship represented by {@link PhysicalStageEdge}.
+   * which consists of {@link Stage} and their relationship represented by {@link StageEdge}.
    */
-  private DAG<PhysicalStage, PhysicalStageEdge> stagesIntoPlan(final DAG<Stage, StageEdge> dagOfStages) {
-    final Map<String, PhysicalStage> runtimeStageIdToPhysicalStageMap = new HashMap<>();
-    final DAGBuilder<PhysicalStage, PhysicalStageEdge> physicalDAGBuilder = new DAGBuilder<>();
+  private DAG<Stage, StageEdge> stagesIntoPlan(final DAG<Stage, StageEdge> dagOfStages) {
+    final Map<String, Stage> runtimeStageIdToPhysicalStageMap = new HashMap<>();
+    final DAGBuilder<Stage, StageEdge> physicalDAGBuilder = new DAGBuilder<>();
 
     for (final Stage stage : dagOfStages.getVertices()) {
       final List<IRVertex> stageVertices = stage.getStageInternalDAG().getVertices();
@@ -227,7 +223,7 @@ public final class PhysicalPlanGenerator
 
       // Only one DAG will be created and reused.
       final DAGBuilder<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAGBuilder = new DAGBuilder<>();
-      // Collect split source readables in advance and bind to each irvertex to avoid extra source split.
+      // Collect split source readables i  /**n advance and bind to each irvertex to avoid extra source split.
       final List<Map<String, Readable>> vertexIdToReadables = new ArrayList<>(stageParallelism);
       for (int i = 0; i < stageParallelism; i++) {
         vertexIdToReadables.add(new HashMap<>());
@@ -278,21 +274,21 @@ public final class PhysicalPlanGenerator
       });
 
       // Create the physical stage.
-      final PhysicalStage physicalStage =
-          new PhysicalStage(stage.getId(), stageInternalDAGBuilder.buildWithoutSourceSinkCheck(),
+      final Stage stage =
+          new Stage(stage.getId(), stageInternalDAGBuilder.buildWithoutSourceSinkCheck(),
               stageParallelism, stage.getScheduleGroupIndex(), containerType, vertexIdToReadables);
 
-      physicalDAGBuilder.addVertex(physicalStage);
-      runtimeStageIdToPhysicalStageMap.put(stage.getId(), physicalStage);
+      physicalDAGBuilder.addVertex(stage);
+      runtimeStageIdToPhysicalStageMap.put(stage.getId(), stage);
     }
 
     // Connect Physical stages
     dagOfStages.getVertices().forEach(stage ->
         dagOfStages.getIncomingEdgesOf(stage).forEach(stageEdge -> {
-          final PhysicalStage srcStage = runtimeStageIdToPhysicalStageMap.get(stageEdge.getSrc().getId());
-          final PhysicalStage dstStage = runtimeStageIdToPhysicalStageMap.get(stageEdge.getDst().getId());
+          final Stage srcStage = runtimeStageIdToPhysicalStageMap.get(stageEdge.getSrc().getId());
+          final Stage dstStage = runtimeStageIdToPhysicalStageMap.get(stageEdge.getDst().getId());
 
-          physicalDAGBuilder.connectVertices(new PhysicalStageEdge(stageEdge.getId(),
+          physicalDAGBuilder.connectVertices(new StageEdge(stageEdge.getId(),
               stageEdge.getExecutionProperties(),
               stageEdge.getSrcVertex(),
               stageEdge.getDstVertex(),
@@ -302,5 +298,25 @@ public final class PhysicalPlanGenerator
         }));
 
     return physicalDAGBuilder.build();
+  }
+
+
+  /**
+   * Integrity check for stages.
+   * @param stage stage to check for.
+   */ private void integrityCheck(final Stage stage) {
+    final List<IRVertex> vertices = stage.getStageInternalDAG().getVertices();
+
+    final String firstPlacement = vertices.iterator().next().getProperty(ExecutionProperty.Key.ExecutorPlacement);
+    final int scheduleGroupIdx =
+        vertices.iterator().next().<Integer>getProperty(ExecutionProperty.Key.ScheduleGroupIndex);
+    vertices.forEach(irVertex -> {
+      if ((firstPlacement != null
+          && !firstPlacement.equals(irVertex.<String>getProperty(ExecutionProperty.Key.ExecutorPlacement)))
+          || scheduleGroupIdx != irVertex.<Integer>getProperty(ExecutionProperty.Key.ScheduleGroupIndex)) {
+        throw new RuntimeException("Vertices of the same stage have different execution properties: "
+            + irVertex.getId());
+      }
+    });
   }
 }
