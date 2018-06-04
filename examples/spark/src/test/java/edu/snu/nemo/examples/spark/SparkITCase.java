@@ -69,6 +69,29 @@ public final class SparkITCase {
     }
   }
 
+  @Test(timeout = TIMEOUT)
+  public void testSparkWordAndLineCount() throws Exception {
+    final String inputFileName = "sample_input_wordcount";
+    final String outputFileName = "sample_output_wordAndLineCount";
+    final String testResourceFilename = "test_output_wordAndLineCount";
+    final String inputFilePath = fileBasePath + inputFileName;
+    final String outputFilePath = fileBasePath + outputFileName;
+
+
+    JobLauncher.main(builder
+        .addJobId(JavaWordAndLineCount.class.getSimpleName() + "_test")
+        .addUserMain(JavaWordAndLineCount.class.getCanonicalName())
+        .addUserArgs(inputFilePath, outputFilePath)
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .build());
+
+    try {
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFilename);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
+  }
+
   /* Temporary disabled because of Travis issue
   @Test(timeout = TIMEOUT)
   public void testSparkMapReduce() throws Exception {
