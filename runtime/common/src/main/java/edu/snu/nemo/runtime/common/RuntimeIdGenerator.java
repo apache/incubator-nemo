@@ -15,8 +15,6 @@
  */
 package edu.snu.nemo.runtime.common;
 
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
-
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -42,7 +40,7 @@ public final class RuntimeIdGenerator {
   //////////////////////////////////////////////////////////////// Generate IDs
 
   /**
-   * Generates the ID for {@link PhysicalPlan}.
+   * Generates the ID for physical plan.
    *
    * @return the generated ID
    */

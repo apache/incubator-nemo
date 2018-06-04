@@ -16,10 +16,9 @@
 package edu.snu.nemo.runtime.common.state;
 
 import edu.snu.nemo.common.StateMachine;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 
 /**
- * Represents the states and their transitions of a {@link PhysicalPlan}.
+ * Represents the states and their transitions of a physical plan.
  */
 public final class JobState {
   private final StateMachine stateMachine;

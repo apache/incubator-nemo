@@ -208,7 +208,7 @@ public final class SingleTaskQueueTest {
   }
 
   /**
-   * Schedule the tasks in a physical stage.
+   * Schedule the tasks in a stage.
    * @param stage the stage to schedule.
    */
   private void scheduleStage(final Stage stage) {

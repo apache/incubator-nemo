@@ -15,57 +15,71 @@
  */
 package edu.snu.nemo.runtime.common.plan;
 
-import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.common.dag.DAGBuilder;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 /**
  * Stage Builder.
  */
-public final class StageBuilder {
-  private final DAGBuilder<IRVertex, IREdge> stageInternalDAGBuilder;
+final class StageBuilder {
+  private final DAGBuilder<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAGBuilder;
   private final Integer stageId;
+  private final int parallelism;
   private final int scheduleGroupIndex;
+  private final String containerType;
+  private List<Map<String, Readable>> vertexIdToReadables;
 
   /**
    * Builds a {@link Stage}.
    * @param stageId stage ID in numeric form.
    * @param scheduleGroupIndex indicating its scheduling order.
    */
-  public StageBuilder(final Integer stageId,
-                      final int scheduleGroupIndex) {
+  StageBuilder(final Integer stageId,
+               final int parallelism,
+               final int scheduleGroupIndex,
+               final String containerType) {
     this.stageId = stageId;
+    this.parallelism = parallelism;
     this.scheduleGroupIndex = scheduleGroupIndex;
+    this.containerType = containerType;
     this.stageInternalDAGBuilder = new DAGBuilder<>();
+    this.vertexIdToReadables = new ArrayList<>(1);
   }
 
-  /**
-   */
   /**
    * Adds a {@link IRVertex} to this stage.
    * @param vertex to add.
    * @return the stageBuilder.
    */
-  public StageBuilder addVertex(final IRVertex vertex) {
+  StageBuilder addVertex(final IRVertex vertex) {
     stageInternalDAGBuilder.addVertex(vertex);
-    return this;
-  }
+    return this; }
 
   /**
    * Connects two {@link IRVertex} in this stage.
    * @param edge the IREdge that connects vertices.
    * @return the stageBuilder.
    */
-  public StageBuilder connectInternalVertices(final IREdge edge) {
+  StageBuilder connectInternalVertices(final RuntimeEdge<IRVertex> edge) {
     stageInternalDAGBuilder.connectVertices(edge);
+    return this;
+  }
+
+  StageBuilder addReadables(final List<Map<String, Readable>> vertexIdToReadable) {
+    this.vertexIdToReadables = vertexIdToReadable;
     return this;
   }
 
   /**
    * @return true if this builder doesn't contain any valid {@link IRVertex}.
    */
-  public boolean isEmpty() {
+  boolean isEmpty() {
     return stageInternalDAGBuilder.isEmpty();
   }
 
@@ -73,11 +87,14 @@ public final class StageBuilder {
    * Builds and returns the {@link Stage}.
    * @return the runtime stage.
    */
-  public Stage build() {
+  Stage build() {
     final Stage stage = new Stage(
         RuntimeIdGenerator.generateStageId(stageId),
         stageInternalDAGBuilder.buildWithoutSourceSinkCheck(),
-        scheduleGroupIndex);
+        parallelism,
+        scheduleGroupIndex,
+        containerType,
+        vertexIdToReadables);
     return stage;
   }
 }

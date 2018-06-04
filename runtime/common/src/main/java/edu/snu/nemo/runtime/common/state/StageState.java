@@ -16,10 +16,9 @@
 package edu.snu.nemo.runtime.common.state;
 
 import edu.snu.nemo.common.StateMachine;
-import edu.snu.nemo.runtime.common.plan.Stage;
 
 /**
- * Represents the states and their transitions of a {@link Stage}.
+ * Represents the states and their transitions of a stage.
  */
 public final class StageState {
   private final StateMachine stateMachine;
