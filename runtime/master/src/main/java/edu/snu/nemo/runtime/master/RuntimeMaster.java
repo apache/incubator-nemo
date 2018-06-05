@@ -35,6 +35,7 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
+import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
@@ -226,12 +227,20 @@ public final class RuntimeMaster {
 
   /**
    * Called when an executor fails due to container failure on this runtime.
-   * @param failedExecutorId of the failed executor.
+   * @param failedEvaluator that failed.
    */
-  public void onExecutorFailed(final String failedExecutorId) {
+  public void onExecutorFailed(final FailedEvaluator failedEvaluator) {
     runtimeMasterThread.execute(() -> {
-      LOG.error(failedExecutorId + " executor failed");
-      scheduler.onExecutorRemoved(failedExecutorId);
+      LOG.info("onExecutorFailed: {}", failedEvaluator.getId());
+
+      // Note that getFailedContextList() can be empty if the failure occurred
+      // prior to launching an Executor on the Evaluator.
+      failedEvaluator.getFailedContextList().forEach(failedContext -> {
+        final String failedExecutorId = failedContext.getId();
+        scheduler.onExecutorRemoved(failedExecutorId);
+      });
+
+      containerManager.onContainerFailed(failedEvaluator.getId());
     });
   }
 
