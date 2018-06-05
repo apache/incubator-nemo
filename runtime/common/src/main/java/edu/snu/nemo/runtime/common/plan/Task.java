@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * An Task is a self-contained executable that can be executed on a machine.
+ * A Task is a self-contained executable that can be executed on a machine.
  */
 public final class Task implements Serializable {
   private final String jobId;
@@ -40,13 +40,13 @@ public final class Task implements Serializable {
    * Constructor.
    *
    * @param jobId                the id of the job.
-   * @param taskId               the ID of the scheduled task.
+   * @param taskId               the ID of the task.
    * @param attemptIdx           the attempt index.
    * @param containerType        the type of container to execute the task on.
    * @param serializedIRDag      the serialized DAG of the task.
    * @param taskIncomingEdges    the incoming edges of the task.
    * @param taskOutgoingEdges    the outgoing edges of the task.
-   * @param irVertexIdToReadable the map between logical task ID and readable.
+   * @param irVertexIdToReadable the map between IRVertex id to readable.
    */
   public Task(final String jobId,
               final String taskId,
@@ -82,14 +82,14 @@ public final class Task implements Serializable {
   }
 
   /**
-   * @return the ID of the scheduled task.
+   * @return the ID of the task.
    */
   public String getTaskId() {
     return taskId;
   }
 
   /**
-   * @return the idx of the scheduled task.
+   * @return the idx of the task.
    */
   public int getTaskIdx() {
     return taskIdx;
@@ -124,7 +124,7 @@ public final class Task implements Serializable {
   }
 
   /**
-   * @return the map between logical task ID and readable.
+   * @return the map between IRVertex id and readable.
    */
   public Map<String, Readable> getIrVertexIdToReadable() {
     return irVertexIdToReadable;
