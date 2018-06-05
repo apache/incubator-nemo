@@ -28,7 +28,7 @@ import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.ExecutableTask;
+import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.executor.data.SerializerManager;
 import edu.snu.nemo.runtime.executor.datatransfer.DataTransferFactory;
 import org.apache.commons.lang3.SerializationUtils;
@@ -87,26 +87,26 @@ public final class Executor {
     return executorId;
   }
 
-  private synchronized void onTaskReceived(final ExecutableTask executableTask) {
+  private synchronized void onTaskReceived(final Task task) {
     LOG.debug("Executor [{}] received Task [{}] to execute.",
-        new Object[]{executorId, executableTask.getTaskId()});
-    executorService.execute(() -> launchTask(executableTask));
+        new Object[]{executorId, task.getTaskId()});
+    executorService.execute(() -> launchTask(task));
   }
 
   /**
    * Launches the Task, and keeps track of the execution state with taskStateManager.
-   * @param executableTask to launch.
+   * @param task to launch.
    */
-  private void launchTask(final ExecutableTask executableTask) {
+  private void launchTask(final Task task) {
     try {
       final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
-          SerializationUtils.deserialize(executableTask.getSerializedIRDag());
+          SerializationUtils.deserialize(task.getSerializedIRDag());
       final TaskStateManager taskStateManager =
-          new TaskStateManager(executableTask, executorId, persistentConnectionToMasterMap, metricMessageSender);
+          new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
 
-      executableTask.getTaskIncomingEdges()
+      task.getTaskIncomingEdges()
           .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
-      executableTask.getTaskOutgoingEdges()
+      task.getTaskOutgoingEdges()
           .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
       irDag.getVertices().forEach(v -> {
         irDag.getOutgoingEdgesOf(v)
@@ -114,7 +114,7 @@ public final class Executor {
       });
 
       new TaskExecutor(
-          executableTask, irDag, taskStateManager, dataTransferFactory, metricMessageSender).execute();
+          task, irDag, taskStateManager, dataTransferFactory, metricMessageSender).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()
@@ -149,9 +149,9 @@ public final class Executor {
       switch (message.getType()) {
       case ScheduleTask:
         final ControlMessage.ScheduleTaskMsg scheduleTaskMsg = message.getScheduleTaskMsg();
-        final ExecutableTask executableTask =
+        final Task task =
             SerializationUtils.deserialize(scheduleTaskMsg.getTask().toByteArray());
-        onTaskReceived(executableTask);
+        onTaskReceived(task);
         break;
       default:
         throw new IllegalMessageException(

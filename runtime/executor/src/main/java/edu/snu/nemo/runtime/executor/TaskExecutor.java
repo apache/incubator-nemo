@@ -23,7 +23,7 @@ import edu.snu.nemo.common.exception.BlockWriteException;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.runtime.common.plan.ExecutableTask;
+import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.state.TaskState;
@@ -46,7 +46,7 @@ public final class TaskExecutor {
   private static final String ITERATORID_PREFIX = "ITERATOR_";
   private static final AtomicInteger ITERATORID_GENERATOR = new AtomicInteger(0);
 
-  // From ExecutableTask
+  // From Task
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
   private final String taskId;
   private final int taskIdx;
@@ -81,24 +81,24 @@ public final class TaskExecutor {
 
   /**
    * Constructor.
-   * @param executableTask Task with information needed during execution.
+   * @param task Task with information needed during execution.
    * @param irVertexDag A DAG of vertices.
    * @param taskStateManager State manager for this Task.
    * @param channelFactory For reading from/writing to data to other Stages.
    * @param metricMessageSender For sending metric with execution stats to Master.
    */
-  public TaskExecutor(final ExecutableTask executableTask,
+  public TaskExecutor(final Task task,
                       final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                       final TaskStateManager taskStateManager,
                       final DataTransferFactory channelFactory,
                       final MetricMessageSender metricMessageSender) {
-    // Information from the ExecutableTask.
+    // Information from the Task.
     this.irVertexDag = irVertexDag;
-    this.taskId = executableTask.getTaskId();
-    this.taskIdx = executableTask.getTaskIdx();
-    this.stageIncomingEdges = executableTask.getTaskIncomingEdges();
-    this.stageOutgoingEdges = executableTask.getTaskOutgoingEdges();
-    this.irVertexIdToReadable = executableTask.getIrVertexIdToReadable();
+    this.taskId = task.getTaskId();
+    this.taskIdx = task.getTaskIdx();
+    this.stageIncomingEdges = task.getTaskIncomingEdges();
+    this.stageOutgoingEdges = task.getTaskOutgoingEdges();
+    this.irVertexIdToReadable = task.getIrVertexIdToReadable();
 
     // Other parameters.
     this.taskStateManager = taskStateManager;

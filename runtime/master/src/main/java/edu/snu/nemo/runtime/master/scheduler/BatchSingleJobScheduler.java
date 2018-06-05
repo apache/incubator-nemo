@@ -400,7 +400,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
       final int attemptIdx = jobStateManager.getCurrentAttemptIndexForTask(taskId);
 
       LOG.debug("Enqueueing {}", taskId);
-      pendingTaskCollection.add(new ExecutableTask(
+      pendingTaskCollection.add(new Task(
           physicalPlan.getId(),
           taskId,
           attemptIdx,
