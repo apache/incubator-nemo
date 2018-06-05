@@ -75,50 +75,27 @@ public final class JavaPairRDD<K, V> extends org.apache.spark.api.java.JavaPairR
     return rdd.sparkContext();
   }
 
-  /*public JavaRDD<Tuple2<K, V>> toJavaRDD() {
-    return new JavaRDD<>(rdd);
-  }*/
-
   /////////////// TRANSFORMATIONS ///////////////
 
   @Override
   public JavaPairRDD<K, V> reduceByKey(final Function2<V, V, V> func) {
-    /*final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
-
-    final IRVertex reduceByKeyVertex = new OperatorVertex(new ReduceByKeyTransform<K, V>(func));
-    builder.addVertex(reduceByKeyVertex, loopVertexStack);
-
-    final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, reduceByKeyVertex),
-        lastVertex, reduceByKeyVertex, new SparkCoder(serializer));
-    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
-    builder.connectVertices(newEdge);
-
-    return new JavaPairRDD<>(this.sparkContext, builder.buildWithoutSourceSinkCheck(), reduceByKeyVertex);*/
-    return null;
+    // Explicit conversion
+    final PairRDDFunctions<K, V> pairRdd = RDD.rddToPairRDDFunctions(
+        rdd, ClassTag$.MODULE$.apply(Object.class), ClassTag$.MODULE$.apply(Object.class), null);
+    final RDD<Tuple2<K, V>> reducedRdd = pairRdd.reduceByKey(func);
+    return JavaPairRDD.fromRDD(reducedRdd);
   }
 
   @Override
   public <R> JavaRDD<R> map(final Function<Tuple2<K, V>, R> f) {
-    /*final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
-
-    final IRVertex mapVertex = new OperatorVertex(new MapTransform<>(f));
-    builder.addVertex(mapVertex, loopVertexStack);
-
-    final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, mapVertex),
-        lastVertex, mapVertex, new SparkCoder(serializer));
-    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
-    builder.connectVertices(newEdge);
-
-    return new JavaRDD<>(this.sparkContext, builder.buildWithoutSourceSinkCheck(), mapVertex);*/
-    return null;
+    return rdd.map(f, ClassTag$.MODULE$.apply(Object.class)).toJavaRDD();
   }
 
   /////////////// ACTIONS ///////////////
 
   @Override
   public List<Tuple2<K, V>> collect() {
-    //return SparkFrontendUtils.collect(dag, loopVertexStack, lastVertex, serializer);
-    return null;
+    return rdd.collectAsList();
   }
 
   //TODO#776: support unimplemented RDD transformation/actions.

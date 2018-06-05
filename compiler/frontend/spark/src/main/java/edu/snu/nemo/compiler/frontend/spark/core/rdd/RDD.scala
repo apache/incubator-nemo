@@ -30,7 +30,7 @@ import org.apache.hadoop.io.WritableFactory
 import org.apache.spark.rdd.{AsyncRDDActions, DoubleRDDFunctions, OrderedRDDFunctions, SequenceFileRDDFunctions}
 import org.apache.spark.serializer.Serializer
 import org.apache.spark.{Dependency, Partition, SparkContext, TaskContext}
-import org.apache.spark.api.java.function.Function
+import org.apache.spark.api.java.function.{FlatMapFunction, Function, Function2}
 
 import scala.reflect.ClassTag
 import scala.language.implicitConversions
@@ -91,12 +91,38 @@ final class RDD[T: ClassTag] protected[rdd] (
     map(javaFunc)
   }
 
+  /**
+   * A scala wrapper for flatMap transformation.
+   */
+  override def flatMap[U: ClassTag](f: T => TraversableOnce[U]): RDD[U] = {
+    val javaFunc = SparkFrontendUtils.toFlatMapFunction(f)
+    flatMap(javaFunc)
+  }
+
+  /**
+   * A scala wrapper for reduce action.
+   */
+  override def reduce(f: (T, T) => T): T = {
+    val javaFunc = SparkFrontendUtils.toJavaFunction(f)
+    reduce(javaFunc)
+  }
+
+  /**
+   * A scala wrapper for collect action.
+   *
+   * @return the collected value.
+   * @note This method should only be used if the resulting array is expected to be small, as
+   *       all the data is loaded into the driver's memory.
+   */
+  override def collect(): Array[T] =
+    collectAsList().toArray().asInstanceOf[Array[T]]
+
   /////////////// TRANSFORMATIONS ///////////////
 
   /**
    * Return a new RDD by applying a function to all elements of this RDD.
    */
-  protected[rdd] def map[U](javaFunc: Function[T, U]): RDD[U] = {
+  protected[rdd] def map[U: ClassTag](javaFunc: Function[T, U]): RDD[U] = {
     val builder: DAGBuilder[IRVertex, IREdge] = new DAGBuilder[IRVertex, IREdge](dag)
 
     val mapVertex: IRVertex = new OperatorVertex(new MapTransform[T, U](javaFunc))
@@ -111,11 +137,10 @@ final class RDD[T: ClassTag] protected[rdd] (
   }
 
   /**
-   *  Return a new RDD by first applying a function to all elements of this
-   *  RDD, and then flattening the results.
+   * Return a new RDD by first applying a function to all elements of this
+   * RDD, and then flattening the results.
    */
-  override def flatMap[U: ClassTag](f: T => TraversableOnce[U]): RDD[U] = {
-    val javaFunc = SparkFrontendUtils.toFlatMapFunction(f)
+  protected[rdd] def flatMap[U: ClassTag](javaFunc: FlatMapFunction[T, U]): RDD[U] = {
     val builder = new DAGBuilder[IRVertex, IREdge](dag)
 
     val flatMapVertex = new OperatorVertex(new FlatMapTransform[T, U](javaFunc))
@@ -132,20 +157,19 @@ final class RDD[T: ClassTag] protected[rdd] (
   /////////////// ACTIONS ///////////////
 
   /**
-   * Return an array that contains all of the elements in this RDD.
+   * Return a list that contains all of the elements in this RDD.
    *
    * @note This method should only be used if the resulting array is expected to be small, as
-   * all the data is loaded into the driver's memory.
+   *       all the data is loaded into the driver's memory.
    */
-  override def collect(): Array[T] =
-    SparkFrontendUtils.collect(dag, loopVertexStack, lastVertex, serializer).toArray().asInstanceOf[Array[T]]
+  protected[rdd] def collectAsList(): util.List[T] =
+    SparkFrontendUtils.collect(dag, loopVertexStack, lastVertex, serializer)
 
   /**
    * Reduces the elements of this RDD using the specified commutative and
    * associative binary operator.
    */
-  override def reduce(f: (T, T) => T): T = {
-    val javaFunc = SparkFrontendUtils.toJavaFunction(f)
+  protected[rdd] def reduce(javaFunc: Function2[T, T, T]): T = {
     val builder = new DAGBuilder[IRVertex, IREdge](dag)
 
     val reduceVertex = new OperatorVertex(new ReduceTransform[T](javaFunc))
@@ -201,8 +225,8 @@ object RDD {
 
   implicit def rddToSequenceFileRDDFunctions[K, V](rdd: RDD[(K, V)])
     (implicit kt: ClassTag[K], vt: ClassTag[V],
-     keyWritableFactory: WritableFactory[K],
-     valueWritableFactory: WritableFactory[V]): SequenceFileRDDFunctions[K, V] = {
+     keyWritableFactory: WritableFactory,
+     valueWritableFactory: WritableFactory): SequenceFileRDDFunctions[K, V] = {
     throw new UnsupportedOperationException("Operation unsupported.")
   }
 

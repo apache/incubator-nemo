@@ -25,6 +25,7 @@ import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
 import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
 import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform
+import org.apache.spark.api.java.function.Function2
 
 import scala.reflect.ClassTag
 
@@ -36,16 +37,25 @@ final class PairRDDFunctions[K: ClassTag, V: ClassTag] protected[rdd] (
 
   private val loopVertexStack = new util.Stack[LoopVertex]
 
+  /////////////// WRAPPER FUNCTIONS /////////////
+
+  /**
+   * A scala wrapper for reduceByKey transformation.
+   */
+  override def reduceByKey(func: (V, V) => V): RDD[(K, V)] = {
+    val javaFunc = SparkFrontendUtils.toJavaFunction(func)
+    reduceByKey(javaFunc)
+  }
+
   /////////////// TRANSFORMATIONS ///////////////
 
   /**
-    * Merge the values for each key using an associative and commutative reduce function. This will
-    * also perform the merging locally on each mapper before sending results to a reducer, similarly
-    * to a "combiner" in MapReduce. Output will be hash-partitioned with the existing partitioner/
-    * parallelism level.
-    */
-  override def reduceByKey(func: (V, V) => V): RDD[(K, V)] = {
-    val javaFunc = SparkFrontendUtils.toJavaFunction(func)
+   * Merge the values for each key using an associative and commutative reduce function. This will
+   * also perform the merging locally on each mapper before sending results to a reducer, similarly
+   * to a "combiner" in MapReduce. Output will be hash-partitioned with the existing partitioner/
+   * parallelism level.
+   */
+  protected[rdd] def reduceByKey(javaFunc: Function2[V, V, V]): RDD[(K, V)] = {
     val builder = new DAGBuilder[IRVertex, IREdge](self.dag)
 
     val reduceByKeyVertex = new OperatorVertex(new ReduceByKeyTransform[K, V](javaFunc))

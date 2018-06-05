@@ -32,10 +32,12 @@ import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.serializer.JavaSerializer;
 import org.apache.spark.serializer.KryoSerializer;
 import org.apache.spark.serializer.Serializer;
 import scala.Function1;
+import scala.Tuple2;
 import scala.collection.JavaConverters;
 import scala.collection.TraversableOnce;
 
@@ -197,6 +199,24 @@ public final class SparkFrontendUtils {
       @Override
       public Iterator<O> call(final I i) throws Exception {
         return JavaConverters.asJavaIteratorConverter(scalaFunction.apply(i).toIterator()).asJava();
+      }
+    };
+  }
+
+  /**
+   * Converts a {@link PairFunction} to a plain map {@link Function}.
+   *
+   * @param pairFunction the pair function to convert.
+   * @param <T>          the type of original element.
+   * @param <K>          the type of converted key.
+   * @param <V>          the type of converted value.
+   * @return the converted map function.
+   */
+  public static <T, K, V> Function<T, Tuple2<K, V>> pairFunctionToFunction(final PairFunction<T, K, V> pairFunction) {
+    return new Function<T, Tuple2<K, V>>() {
+      @Override
+      public Tuple2<K, V> call(final T elem) throws Exception {
+        return pairFunction.call(elem);
       }
     };
   }
