@@ -19,7 +19,7 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.InitializedSourceVertex;
+import edu.snu.nemo.common.ir.vertex.InMemorySourceVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils;
 import edu.snu.nemo.compiler.frontend.spark.source.SparkDatasetBoundedSourceVertex;
@@ -152,7 +152,10 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   /**
    * Constructor with Spark source RDD.
    *
-   * @param sparkRDD the Spark source rdd to wrap.
+   * @param sparkRDD     the Spark source rdd to wrap.
+   * @param sparkContext the Spark context in the wrapped rdd.
+   * @param dag          the IR DAG in construction.
+   * @param lastVertex   the last vertex of the DAG in construction.
    */
   JavaRDD(final org.apache.spark.rdd.RDD<T> sparkRDD,
           final SparkContext sparkContext,
