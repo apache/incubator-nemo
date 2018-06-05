@@ -19,6 +19,7 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
+import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.reef.driver.catalog.NodeDescriptor;
 import org.apache.reef.driver.context.ActiveContext;
@@ -34,6 +35,7 @@ import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
@@ -97,7 +99,7 @@ public final class ContainerManagerTest {
       final ResourceSpecification spec = entry.getValue();
       containerManager.requestContainer(num, spec);
 
-      IntStream.range(0, num).forEach(n -> {
+      for (int i = 0; i < num; i++) {
         final String evaluatorId = getEvaluatorId();
         final String executorId = getExecutorId();
         final EvaluatorDescriptor descriptor = createDescriptor(spec);
@@ -106,8 +108,12 @@ public final class ContainerManagerTest {
             executorId,
             createMockEvaluator(evaluatorId, descriptor),
             mock(Configuration.class));
-        containerManager.onContainerLaunched(createMockContext(executorId, descriptor));
-      });
+        final ExecutorRepresenter executorRepresenter =
+            containerManager.onContainerLaunched(createMockContext(executorId, descriptor)).get();
+        assertEquals(spec.getContainerType(), executorRepresenter.getContainerType());
+        assertEquals(spec.getCapacity(), executorRepresenter.getExecutorCapacity());
+        assertEquals(descriptor.getNodeDescriptor().getName(), executorRepresenter.getNodeName());
+      }
     }
   }
 
