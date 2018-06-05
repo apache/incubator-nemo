@@ -154,16 +154,6 @@ public final class NemoDriver {
     @Override
     public void onNext(final FailedEvaluator failedEvaluator) {
       runtimeMaster.onExecutorFailed(failedEvaluator);
-
-
-      /*
-      // The list size is 0 if the evaluator failed before an executor started. For now, the size is 1 otherwise.
-      failedEvaluator.getFailedContextList().forEach(failedContext -> {
-        final String failedExecutorId = failedContext.getId();
-      });
-      throw new RuntimeException(failedEvaluator.getId()
-          + " failed. See driver's log for the stack trace in executor.");
-      */
     }
   }
 
