@@ -190,7 +190,11 @@ public final class ContainerManager {
     return Optional.of(executorRepresenter);
   }
 
-  public void onContainerFailed(final String failedEvaluatorId) {
+  /**
+   * @param failedEvaluatorId of the failed evaluator
+   * @return the resource specification of the failed evaluator
+   */
+  public ResourceSpecification onContainerFailed(final String failedEvaluatorId) {
     final ResourceSpecification resourceSpecification = evaluatorIdToResourceSpec.remove(failedEvaluatorId);
     if (resourceSpecification == null) {
       throw new IllegalStateException(failedEvaluatorId + " not in " + evaluatorIdToResourceSpec);
@@ -198,6 +202,7 @@ public final class ContainerManager {
 
     // Re-acquire a new container using the failed container's resource spec
     requestContainer(1, resourceSpecification);
+    return resourceSpecification;
   }
 
   public void terminate() {

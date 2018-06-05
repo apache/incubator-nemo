@@ -38,6 +38,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -119,7 +120,7 @@ public final class ContainerManagerTest {
         getExecutorId(),
         createMockEvaluator(evaluatorId, createDescriptor(RESOURCE_SPEC_A)),
         mock(Configuration.class));
-    containerManager.onContainerFailed(evaluatorId);
+    assertEquals(RESOURCE_SPEC_A, containerManager.onContainerFailed(evaluatorId));
   }
 
   @Test
@@ -134,7 +135,7 @@ public final class ContainerManagerTest {
         createMockEvaluator(evaluatorId, descriptor),
         mock(Configuration.class));
     containerManager.onContainerLaunched(createMockContext(executorId, descriptor));
-    containerManager.onContainerFailed(evaluatorId);
+    assertEquals(RESOURCE_SPEC_A, containerManager.onContainerFailed(evaluatorId));
   }
 
   private EvaluatorDescriptor createDescriptor(final ResourceSpecification spec) {
