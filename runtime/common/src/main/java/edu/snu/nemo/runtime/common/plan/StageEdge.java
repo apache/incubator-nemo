@@ -25,7 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Edge of a stage.
+ * Edge of a stage that connects an IRVertex of the source stage to an IRVertex of the destination stage.
+ * This means that there can be multiple StageEdges between two Stages.
  */
 public final class StageEdge extends RuntimeEdge<Stage> {
   /**
@@ -49,8 +50,8 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    * Constructor.
    * @param runtimeEdgeId id of the runtime edge.
    * @param edgeProperties edge execution properties.
-   * @param srcVertex source vertex.
-   * @param dstVertex destination vertex.
+   * @param srcVertex source IRVertex in the srcStage of this edge.
+   * @param dstVertex destination IRVertex in the dstStage of this edge.
    * @param srcStage source stage.
    * @param dstStage destination stage.
    * @param coder the coder for enconding and deconding.
