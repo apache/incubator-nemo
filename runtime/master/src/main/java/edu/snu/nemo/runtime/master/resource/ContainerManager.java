@@ -70,6 +70,11 @@ public final class ContainerManager {
   private final Map<String, ResourceSpecification> pendingContextIdToResourceSpec;
   private final Map<String, List<ResourceSpecification>> pendingContainerRequestsByContainerType;
 
+  /**
+   * Remember the resource spec for each evaluator.
+   */
+  private final Map<String, ResourceSpecification> evaluatorIdToResourceSpec;
+
   @Inject
   private ContainerManager(@Parameter(JobConf.ScheduleSerThread.class) final int scheduleSerThread,
                            final EvaluatorRequestor evaluatorRequestor,
@@ -79,6 +84,7 @@ public final class ContainerManager {
     this.messageEnvironment = messageEnvironment;
     this.pendingContextIdToResourceSpec = new HashMap<>();
     this.pendingContainerRequestsByContainerType = new HashMap<>();
+    this.evaluatorIdToResourceSpec = new HashMap<>();
     this.requestLatchByResourceSpecId = new HashMap<>();
     this.serializationExecutorService = Executors.newFixedThreadPool(scheduleSerThread);
   }
@@ -126,7 +132,8 @@ public final class ContainerManager {
    * @param allocatedContainer the allocated container.
    * @param executorConfiguration executor related configuration.
    */
-  public void onContainerAllocated(final String executorId, final AllocatedEvaluator allocatedContainer,
+  public void onContainerAllocated(final String executorId,
+                                   final AllocatedEvaluator allocatedContainer,
                                    final Configuration executorConfiguration) {
     if (isTerminated) {
       LOG.info("ContainerManager is terminated, closing {}", allocatedContainer.getId());
@@ -135,6 +142,8 @@ public final class ContainerManager {
     }
 
     final ResourceSpecification resourceSpecification = selectResourceSpecForContainer();
+    evaluatorIdToResourceSpec.put(allocatedContainer.getId(), resourceSpecification);
+
     LOG.info("Container type (" + resourceSpecification.getContainerType()
         + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
@@ -179,6 +188,20 @@ public final class ContainerManager {
 
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
     return Optional.of(executorRepresenter);
+  }
+
+  /**
+   * Re-acquire a new container using the failed container's resource spec.
+   * @param failedEvaluatorId of the failed evaluator
+   * @return the resource specification of the failed evaluator
+   */
+  public ResourceSpecification onContainerFailed(final String failedEvaluatorId) {
+    final ResourceSpecification resourceSpecification = evaluatorIdToResourceSpec.remove(failedEvaluatorId);
+    if (resourceSpecification == null) {
+      throw new IllegalStateException(failedEvaluatorId + " not in " + evaluatorIdToResourceSpec);
+    }
+    requestContainer(1, resourceSpecification);
+    return resourceSpecification;
   }
 
   public void terminate() {
