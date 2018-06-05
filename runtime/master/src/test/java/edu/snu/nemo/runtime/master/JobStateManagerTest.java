@@ -22,7 +22,10 @@ import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
-import edu.snu.nemo.runtime.common.plan.physical.*;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlanGenerator;
+import edu.snu.nemo.runtime.common.plan.Stage;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.state.JobState;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.common.state.TaskState;
@@ -85,17 +88,17 @@ public final class JobStateManagerTest {
 
     assertEquals(jobStateManager.getJobId(), "TestPlan");
 
-    final List<PhysicalStage> stageList = physicalPlan.getStageDAG().getTopologicalSort();
+    final List<Stage> stageList = physicalPlan.getStageDAG().getTopologicalSort();
 
     for (int stageIdx = 0; stageIdx < stageList.size(); stageIdx++) {
-      final PhysicalStage physicalStage = stageList.get(stageIdx);
-      jobStateManager.onStageStateChanged(physicalStage.getId(), StageState.State.EXECUTING);
-      final List<String> taskIds = physicalStage.getTaskIds();
+      final Stage stage = stageList.get(stageIdx);
+      jobStateManager.onStageStateChanged(stage.getId(), StageState.State.EXECUTING);
+      final List<String> taskIds = stage.getTaskIds();
       taskIds.forEach(taskId -> {
         jobStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
         jobStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
         if (RuntimeIdGenerator.getIndexFromTaskId(taskId) == taskIds.size() - 1) {
-          assertTrue(jobStateManager.checkStageCompletion(physicalStage.getId()));
+          assertTrue(jobStateManager.checkStageCompletion(stage.getId()));
         }
       });
       final Map<String, TaskState> taskStateMap = jobStateManager.getIdToTaskStates();
@@ -117,7 +120,7 @@ public final class JobStateManagerTest {
   public void testWaitUntilFinish() {
     // Create a JobStateManager of an empty dag.
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.build();
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
+    final DAG<Stage, StageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
     final JobStateManager jobStateManager = new JobStateManager(
         new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getIdToIRVertex()),
         blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);

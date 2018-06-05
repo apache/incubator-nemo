@@ -23,8 +23,10 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.metric.MetricDataBuilder;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import edu.snu.nemo.runtime.common.plan.Stage;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.physical.*;
 import edu.snu.nemo.runtime.common.state.JobState;
 import edu.snu.nemo.runtime.common.state.StageState;
 
@@ -136,10 +138,10 @@ public final class JobStateManager {
     onJobStateChanged(JobState.State.EXECUTING);
 
     // Initialize the states for the job down to task-level.
-    physicalPlan.getStageDAG().topologicalDo(physicalStage -> {
-      currentJobStageIds.add(physicalStage.getId());
-      idToStageStates.put(physicalStage.getId(), new StageState());
-      physicalStage.getTaskIds().forEach(taskId -> {
+    physicalPlan.getStageDAG().topologicalDo(stage -> {
+      currentJobStageIds.add(stage.getId());
+      idToStageStates.put(stage.getId(), new StageState());
+      stage.getTaskIds().forEach(taskId -> {
         idToTaskStates.put(taskId, new TaskState());
         taskIdToCurrentAttempt.put(taskId, 1);
       });
@@ -147,23 +149,23 @@ public final class JobStateManager {
   }
 
   private void initializePartitionStates(final BlockManagerMaster blockManagerMaster) {
-    final DAG<PhysicalStage, PhysicalStageEdge> stageDAG = physicalPlan.getStageDAG();
-    stageDAG.topologicalDo(physicalStage -> {
-      final List<String> taskIdsForStage = physicalStage.getTaskIds();
-      final List<PhysicalStageEdge> stageOutgoingEdges = stageDAG.getOutgoingEdgesOf(physicalStage);
+    final DAG<Stage, StageEdge> stageDAG = physicalPlan.getStageDAG();
+    stageDAG.topologicalDo(stage -> {
+      final List<String> taskIdsForStage = stage.getTaskIds();
+      final List<StageEdge> stageOutgoingEdges = stageDAG.getOutgoingEdgesOf(stage);
 
       // Initialize states for blocks of inter-stage edges
-      stageOutgoingEdges.forEach(physicalStageEdge -> {
+      stageOutgoingEdges.forEach(stageEdge -> {
         final int srcParallelism = taskIdsForStage.size();
         IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-          final String blockId = RuntimeIdGenerator.generateBlockId(physicalStageEdge.getId(), srcTaskIdx);
+          final String blockId = RuntimeIdGenerator.generateBlockId(stageEdge.getId(), srcTaskIdx);
           blockManagerMaster.initializeState(blockId, taskIdsForStage.get(srcTaskIdx));
         });
       });
 
       // Initialize states for blocks of stage internal edges
       taskIdsForStage.forEach(taskId -> {
-        final DAG<IRVertex, RuntimeEdge<IRVertex>> taskInternalDag = physicalStage.getIRDAG();
+        final DAG<IRVertex, RuntimeEdge<IRVertex>> taskInternalDag = stage.getIRDAG();
         taskInternalDag.getVertices().forEach(task -> {
           final List<RuntimeEdge<IRVertex>> internalOutgoingEdges = taskInternalDag.getOutgoingEdgesOf(task);
           internalOutgoingEdges.forEach(taskRuntimeEdge -> {
@@ -240,7 +242,7 @@ public final class JobStateManager {
       // if there exists a mapping, this state change is from a failed_recoverable stage,
       // and there may be tasks that do not need to be re-executed.
       if (!stageIdToRemainingTaskSet.containsKey(stageId)) {
-        for (final PhysicalStage stage : physicalPlan.getStageDAG().getVertices()) {
+        for (final Stage stage : physicalPlan.getStageDAG().getVertices()) {
           if (stage.getId().equals(stageId)) {
             Set<String> remainingTaskIds = new HashSet<>();
             remainingTaskIds.addAll(
@@ -510,9 +512,9 @@ public final class JobStateManager {
   public synchronized String toString() {
     final StringBuilder sb = new StringBuilder("{");
     sb.append("\"jobId\": \"").append(jobId).append("\", ");
-    sb.append("\"physicalStages\": [");
+    sb.append("\"stages\": [");
     boolean isFirstStage = true;
-    for (final PhysicalStage stage : physicalPlan.getStageDAG().getVertices()) {
+    for (final Stage stage : physicalPlan.getStageDAG().getVertices()) {
       if (!isFirstStage) {
         sb.append(", ");
       }

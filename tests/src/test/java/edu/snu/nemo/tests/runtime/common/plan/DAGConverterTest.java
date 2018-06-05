@@ -32,11 +32,9 @@ import edu.snu.nemo.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.nemo.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlanGenerator;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalStage;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalStageEdge;
-import edu.snu.nemo.runtime.common.plan.stage.Stage;
-import edu.snu.nemo.runtime.common.plan.stage.StageEdge;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlanGenerator;
+import edu.snu.nemo.runtime.common.plan.Stage;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.tests.compiler.optimizer.policy.TestPolicy;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -80,7 +78,7 @@ public final class DAGConverterTest {
     final DAG<IRVertex, IREdge> irDAG = CompiletimeOptimizer.optimize(irDAGBuilder.buildWithoutSourceSinkCheck(),
         new TestPolicy(), "");
     final DAG<Stage, StageEdge> DAGOfStages = physicalPlanGenerator.stagePartitionIrDAG(irDAG);
-    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
+    final DAG<Stage, StageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
 
     // Test DAG of stages
     final List<Stage> sortedDAGOfStages = DAGOfStages.getTopologicalSort();
@@ -94,9 +92,9 @@ public final class DAGConverterTest {
     assertEquals(DAGOfStages.getOutgoingEdgesOf(stage2).size(), 0);
 
     // Test Physical DAG
-    final List<PhysicalStage> sortedPhysicalDAG = physicalDAG.getTopologicalSort();
-    final PhysicalStage physicalStage1 = sortedPhysicalDAG.get(0);
-    final PhysicalStage physicalStage2 = sortedPhysicalDAG.get(1);
+    final List<Stage> sortedPhysicalDAG = physicalDAG.getTopologicalSort();
+    final Stage physicalStage1 = sortedPhysicalDAG.get(0);
+    final Stage physicalStage2 = sortedPhysicalDAG.get(1);
     assertEquals(physicalDAG.getVertices().size(), 2);
     assertEquals(physicalDAG.getIncomingEdgesOf(physicalStage1).size(), 0);
     assertEquals(physicalDAG.getIncomingEdgesOf(physicalStage2).size(), 1);
@@ -238,10 +236,10 @@ public final class DAGConverterTest {
 
     // Test Physical DAG
 
-//    final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
-//    final List<PhysicalStage> sortedPhysicalDAG = physicalDAG.getTopologicalSort();
-//    final PhysicalStage physicalStage1 = sortedPhysicalDAG.get(0);
-//    final PhysicalStage physicalStage2 = sortedPhysicalDAG.get(1);
+//    final DAG<Stage, StageEdge> physicalDAG = logicalDAG.convert(new PhysicalDAGGenerator());
+//    final List<Stage> sortedPhysicalDAG = physicalDAG.getTopologicalSort();
+//    final Stage physicalStage1 = sortedPhysicalDAG.get(0);
+//    final Stage physicalStage2 = sortedPhysicalDAG.get(1);
 //    assertEquals(physicalDAG.getVertices().size(), 2);
 //    assertEquals(physicalDAG.getIncomingEdgesOf(physicalStage1).size(), 0);
 //    assertEquals(physicalDAG.getIncomingEdgesOf(physicalStage2).size(), 1);

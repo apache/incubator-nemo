@@ -21,7 +21,7 @@ package edu.snu.nemo.runtime.master.eventhandler;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.CompilerEventHandler;
 import edu.snu.nemo.runtime.common.eventhandler.UpdatePhysicalPlanEvent;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.master.scheduler.Scheduler;
 
 import javax.inject.Inject;

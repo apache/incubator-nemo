@@ -17,10 +17,10 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalStage;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalStageEdge;
-import edu.snu.nemo.runtime.common.plan.physical.ExecutableTask;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import edu.snu.nemo.runtime.common.plan.Stage;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
+import edu.snu.nemo.runtime.common.plan.ExecutableTask;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
 
@@ -147,7 +147,7 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
     }
 
     physicalPlan.getStageDAG().getChildren(stageId).forEach(
-        physicalStage -> removeStageAndChildren(physicalStage.getId()));
+        stage -> removeStageAndChildren(stage.getId()));
   }
 
   /**
@@ -161,7 +161,7 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
    */
   private synchronized void updateSchedulableStages(
       final String candidateStageId, final String candidateStageContainerType) {
-    final DAG<PhysicalStage, PhysicalStageEdge> jobDAG = physicalPlan.getStageDAG();
+    final DAG<Stage, StageEdge> jobDAG = physicalPlan.getStageDAG();
 
     if (isSchedulable(candidateStageId, candidateStageContainerType)) {
       // Check for ancestor stages that became schedulable due to candidateStage's absence from the queue.
@@ -187,8 +187,8 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
    * @return true if schedulable, false otherwise.
    */
   private synchronized boolean isSchedulable(final String candidateStageId, final String candidateStageContainerType) {
-    final DAG<PhysicalStage, PhysicalStageEdge> jobDAG = physicalPlan.getStageDAG();
-    for (final PhysicalStage descendantStage : jobDAG.getDescendants(candidateStageId)) {
+    final DAG<Stage, StageEdge> jobDAG = physicalPlan.getStageDAG();
+    for (final Stage descendantStage : jobDAG.getDescendants(candidateStageId)) {
       if (schedulableStages.contains(descendantStage.getId())) {
         if (candidateStageContainerType.equals(descendantStage.getContainerType())) {
           return false;

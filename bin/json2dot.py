@@ -48,18 +48,18 @@ class JobState:
     def __init__(self, data):
         self.id = data['jobId']
         self.stages = {}
-        for stage in data['physicalStages']:
-            self.stages[stage['id']] = PhysicalStageState(stage)
+        for stage in data['stages']:
+            self.stages[stage['id']] = StageState(stage)
     @classmethod
     def empty(cls):
-        return cls({'jobId': None, 'physicalStages': []})
+        return cls({'jobId': None, 'stages': []})
     def get(self, id):
         try:
             return self.stages[id]
         except:
-            return PhysicalStageState.empty()
+            return StageState.empty()
 
-class PhysicalStageState:
+class StageState:
     def __init__(self, data):
         self.id = data['id']
         self.state = data['state']
@@ -114,7 +114,7 @@ class DAG:
 
 def Vertex(id, properties, state):
     try:
-        return PhysicalStage(id, properties, state)
+        return Stage(id, properties, state)
     except:
         pass
     try:
@@ -249,7 +249,7 @@ class LoopVertex:
         vertexId = list(filter(lambda v: edgeId in self.incoming[v], self.incoming))[0]
         return self.dag.vertices[vertexId]
 
-class PhysicalStage:
+class Stage:
     def __init__(self, id, properties, state):
         self.id = id
         self.irVertex = DAG(properties['irDag'], JobState.empty())
@@ -276,7 +276,7 @@ class PhysicalStage:
 
 def Edge(src, dst, properties):
     try:
-        return PhysicalStageEdge(src, dst, properties)
+        return StageEdge(src, dst, properties)
     except:
         pass
     try:
@@ -325,7 +325,7 @@ class IREdge:
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(src.oneVertex.idx,
                 dst.oneVertex.idx, src.logicalEnd, dst.logicalEnd, label)
 
-class PhysicalStageEdge:
+class StageEdge:
     def __init__(self, src, dst, properties):
         self.src = src
         self.dst = dst

@@ -77,14 +77,6 @@ public final class MapReduceITCase {
   }
 
   @Test (timeout = TIMEOUT)
-  public void testDisagg() throws Exception {
-    JobLauncher.main(builder
-        .addJobId(MapReduceITCase.class.getSimpleName() + "_disagg")
-        .addOptimizationPolicy(DisaggregationPolicyParallelismFive.class.getCanonicalName())
-        .build());
-  }
-
-  @Test (timeout = TIMEOUT)
   public void testPado() throws Exception {
     JobLauncher.main(builder
         .addJobId(MapReduceITCase.class.getSimpleName() + "_pado")
