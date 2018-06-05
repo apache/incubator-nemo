@@ -30,7 +30,7 @@ import java.util.*;
  * @param <T> type of data to read.
  */
 public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
-  private final List<Readable<T>> readables;
+  private List<Readable<T>> readables;
 
   /**
    * Constructor.
@@ -70,6 +70,11 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
   @Override
   public List<Readable<T>> getReadables(final int desiredNumOfSplits) {
     return readables;
+  }
+
+  @Override
+  public void clearInternalStates() {
+    readables = null;
   }
 
   /**

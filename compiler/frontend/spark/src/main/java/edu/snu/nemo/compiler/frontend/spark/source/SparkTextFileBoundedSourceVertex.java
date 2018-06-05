@@ -27,7 +27,7 @@ import java.util.*;
  * Bounded source vertex for Spark text file.
  */
 public final class SparkTextFileBoundedSourceVertex extends SourceVertex<String> {
-  private final List<Readable<String>> readables;
+  private List<Readable<String>> readables;
 
   /**
    * Constructor.
@@ -70,6 +70,11 @@ public final class SparkTextFileBoundedSourceVertex extends SourceVertex<String>
   @Override
   public List<Readable<String>> getReadables(final int desiredNumOfSplits) {
     return readables;
+  }
+
+  @Override
+  public void clearInternalStates() {
+    readables = null;
   }
 
   /**

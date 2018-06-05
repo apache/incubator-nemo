@@ -19,6 +19,7 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
@@ -136,14 +137,14 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * @param taskId whose state has changed
    * @param taskAttemptIndex of the task whose state has changed
    * @param newState the state to change to
-   * @param taskPutOnHold the ID of task that are put on hold. It is null otherwise.
+   * @param vertexPutOnHold the ID of vertex that is put on hold. It is null otherwise.
    */
   @Override
   public void onTaskStateChanged(final String executorId,
                                  final String taskId,
                                  final int taskAttemptIndex,
                                  final TaskState.State newState,
-                                 @Nullable final String taskPutOnHold,
+                                 @Nullable final String vertexPutOnHold,
                                  final TaskState.RecoverableFailureCause failureCause) {
     final int currentTaskAttemptIndex = jobStateManager.getCurrentAttemptIndexForTask(taskId);
     if (taskAttemptIndex == currentTaskAttemptIndex) {
@@ -158,7 +159,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           break;
         case ON_HOLD:
           jobStateManager.onTaskStateChanged(taskId, newState);
-          onTaskExecutionOnHold(executorId, taskId, taskPutOnHold);
+          onTaskExecutionOnHold(executorId, taskId, vertexPutOnHold);
           break;
         case FAILED_UNRECOVERABLE:
           throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The job failed on Task #")
@@ -392,7 +393,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     LOG.info("Scheduling Stage {}", stageToSchedule.getId());
 
     // each readable and source task will be bounded in executor.
-    final List<Map<String, Readable>> logicalTaskIdToReadables = stageToSchedule.getLogicalTaskIdToReadables();
+    final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
 
     taskIdsToSchedule.forEach(taskId -> {
       blockManagerMaster.onProducerTaskScheduled(taskId);
@@ -400,23 +401,27 @@ public final class BatchSingleJobScheduler implements Scheduler {
       final int attemptIdx = jobStateManager.getCurrentAttemptIndexForTask(taskId);
 
       LOG.debug("Enqueueing {}", taskId);
-      pendingTaskCollection.add(new ScheduledTask(physicalPlan.getId(),
-          stageToSchedule.getSerializedTaskDag(), taskId, stageIncomingEdges, stageOutgoingEdges, attemptIdx,
-          stageToSchedule.getContainerType(), logicalTaskIdToReadables.get(taskIdx)));
+      pendingTaskCollection.add(new ExecutableTask(
+          physicalPlan.getId(),
+          taskId,
+          attemptIdx,
+          stageToSchedule.getContainerType(),
+          stageToSchedule.getSerializedIRDAG(),
+          stageIncomingEdges,
+          stageOutgoingEdges,
+          vertexIdToReadables.get(taskIdx)));
     });
     schedulerRunner.onATaskAvailable();
   }
 
   /**
-   * Gets the DAG of a task from it's ID.
-   *
-   * @param taskId the ID of the task to get.
-   * @return the DAG of the task.
+   * @param taskId id of the task
+   * @return the IR dag
    */
-  private DAG<Task, RuntimeEdge<Task>> getTaskDagById(final String taskId) {
+  private DAG<IRVertex, RuntimeEdge<IRVertex>> getVertexDagById(final String taskId) {
     for (final PhysicalStage physicalStage : physicalPlan.getStageDAG().getVertices()) {
       if (physicalStage.getId().equals(RuntimeIdGenerator.getStageIdFromTaskId(taskId))) {
-        return physicalStage.getTaskDag();
+        return physicalStage.getIRDAG();
       }
     }
     throw new RuntimeException(new Throwable("This taskId does not exist in the plan"));
@@ -471,13 +476,13 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
   /**
    * Action for after task execution is put on hold.
-   * @param executorId     the ID of the executor.
-   * @param taskId    the ID of the task.
-   * @param taskPutOnHold  the ID of task that is put on hold.
+   * @param executorId       the ID of the executor.
+   * @param taskId           the ID of the task.
+   * @param vertexPutOnHold  the ID of vertex that is put on hold.
    */
   private void onTaskExecutionOnHold(final String executorId,
                                      final String taskId,
-                                     final String taskPutOnHold) {
+                                     final String vertexPutOnHold) {
     LOG.info("{} put on hold in {}", new Object[]{taskId, executorId});
     executorRegistry.updateExecutor(executorId, (executor, state) -> {
       executor.onTaskExecutionComplete(taskId);
@@ -491,15 +496,14 @@ public final class BatchSingleJobScheduler implements Scheduler {
     if (stageComplete) {
       // get optimization vertex from the task.
       final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
-          getTaskDagById(taskId).getVertices().stream() // get tasks list
-              .filter(task -> task.getId().equals(taskPutOnHold)) // find it
-              .map(physicalPlan::getIRVertexOf) // get the corresponding IRVertex, the MetricCollectionBarrierVertex
+          getVertexDagById(taskId).getVertices().stream() // get vertex list
+              .filter(irVertex -> irVertex.getId().equals(vertexPutOnHold)) // find it
               .filter(irVertex -> irVertex instanceof MetricCollectionBarrierVertex)
               .distinct()
               .map(irVertex -> (MetricCollectionBarrierVertex) irVertex) // convert types
               .findFirst().orElseThrow(() -> new RuntimeException(ON_HOLD.name() // get it
               + " called with failed task ids by some other task than "
-              + MetricCollectionBarrierTask.class.getSimpleName()));
+              + MetricCollectionBarrierVertex.class.getSimpleName()));
       // and we will use this vertex to perform metric collection and dynamic optimization.
 
       pubSubEventHandlerWrapper.getPubSubEventHandler().onNext(

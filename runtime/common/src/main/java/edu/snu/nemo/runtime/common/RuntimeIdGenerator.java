@@ -29,13 +29,15 @@ public final class RuntimeIdGenerator {
   private static final String BLOCK_PREFIX = "Block-";
   private static final String BLOCK_ID_SPLITTER = "_";
   private static final String TASK_INFIX = "-Task-";
-  private static final String PHYSICAL_TASK_ID_SPLITTER = "_";
 
   /**
    * Private constructor which will not be used.
    */
   private RuntimeIdGenerator() {
   }
+
+
+  //////////////////////////////////////////////////////////////// Generate IDs
 
   /**
    * Generates the ID for {@link edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan}.
@@ -76,36 +78,13 @@ public final class RuntimeIdGenerator {
   }
 
   /**
-   * Generates the ID for {@link edu.snu.nemo.runtime.common.plan.physical.Task}.
-   *
-   * @param irVertexId the ID of the IR vertex.
-   * @return the generated ID
-   */
-  public static String generateLogicalTaskId(final String irVertexId) {
-    return "Task-" + irVertexId;
-  }
-
-  /**
-   * Generates the ID for {@link edu.snu.nemo.runtime.common.plan.physical.Task}.
-   *
-   * @param index         the index of the physical task.
-   * @param logicalTaskId the logical ID of the task.
-   * @return the generated ID
-   */
-  public static String generatePhysicalTaskId(final int index,
-                                              final String logicalTaskId) {
-    return logicalTaskId + PHYSICAL_TASK_ID_SPLITTER + index;
-  }
-
-  /**
-   * Generates the ID for {@link edu.snu.nemo.runtime.common.plan.physical.ScheduledTask}.
+   * Generates the ID for a task.
    *
    * @param index   the index of this task.
    * @param stageId the ID of the stage.
    * @return the generated ID
    */
-  public static String generateTaskId(final int index,
-                                           final String stageId) {
+  public static String generateTaskId(final int index, final String stageId) {
     return stageId + TASK_INFIX + index;
   }
 
@@ -122,12 +101,12 @@ public final class RuntimeIdGenerator {
    * Generates the ID for a block, whose data is the output of a task.
    *
    * @param runtimeEdgeId of the block
-   * @param taskIndex     of the block
+   * @param producerTaskIndex of the block
    * @return the generated ID
    */
   public static String generateBlockId(final String runtimeEdgeId,
-                                       final int taskIndex) {
-    return BLOCK_PREFIX + runtimeEdgeId + BLOCK_ID_SPLITTER + taskIndex;
+                                       final int producerTaskIndex) {
+    return BLOCK_PREFIX + runtimeEdgeId + BLOCK_ID_SPLITTER + producerTaskIndex;
   }
 
   /**
@@ -147,6 +126,8 @@ public final class RuntimeIdGenerator {
   public static String generateResourceSpecId() {
     return "ResourceSpec-" + resourceSpecIdGenerator.getAndIncrement();
   }
+
+  //////////////////////////////////////////////////////////////// Parse IDs
 
   /**
    * Extracts runtime edge ID from a block ID.
@@ -209,15 +190,5 @@ public final class RuntimeIdGenerator {
    */
   private static String[] parseTaskId(final String taskId) {
     return taskId.split(TASK_INFIX);
-  }
-
-  /**
-   * Extracts logical task ID from a physical task ID.
-   *
-   * @param physicalTaskId the physical task ID to extract.
-   * @return the logical task ID.
-   */
-  public static String getLogicalTaskIdIdFromPhysicalTaskId(final String physicalTaskId) {
-    return physicalTaskId.split(PHYSICAL_TASK_ID_SPLITTER)[0];
   }
 }

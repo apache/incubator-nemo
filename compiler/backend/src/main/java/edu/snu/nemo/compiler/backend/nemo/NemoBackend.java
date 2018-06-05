@@ -59,7 +59,7 @@ public final class NemoBackend implements Backend<PhysicalPlan> {
                               final PhysicalPlanGenerator physicalPlanGenerator) {
     final DAG<PhysicalStage, PhysicalStageEdge> physicalStageDAG = irDAG.convert(physicalPlanGenerator);
     final PhysicalPlan physicalPlan = new PhysicalPlan(RuntimeIdGenerator.generatePhysicalPlanId(),
-        physicalStageDAG, physicalPlanGenerator.getTaskIRVertexMap());
+        physicalStageDAG, physicalPlanGenerator.getIdToIRVertex());
     return physicalPlan;
   }
 }

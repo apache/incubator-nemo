@@ -17,6 +17,7 @@ package edu.snu.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
 import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.IllegalMessageException;
 import edu.snu.nemo.common.exception.UnknownFailureCauseException;
@@ -27,8 +28,7 @@ import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
-import edu.snu.nemo.runtime.common.plan.physical.Task;
+import edu.snu.nemo.runtime.common.plan.physical.ExecutableTask;
 import edu.snu.nemo.runtime.executor.data.SerializerManager;
 import edu.snu.nemo.runtime.executor.datatransfer.DataTransferFactory;
 import org.apache.commons.lang3.SerializationUtils;
@@ -87,35 +87,34 @@ public final class Executor {
     return executorId;
   }
 
-  private synchronized void onTaskReceived(final ScheduledTask scheduledTask) {
+  private synchronized void onTaskReceived(final ExecutableTask executableTask) {
     LOG.debug("Executor [{}] received Task [{}] to execute.",
-        new Object[]{executorId, scheduledTask.getTaskId()});
-    executorService.execute(() -> launchTask(scheduledTask));
+        new Object[]{executorId, executableTask.getTaskId()});
+    executorService.execute(() -> launchTask(executableTask));
   }
 
   /**
    * Launches the Task, and keeps track of the execution state with taskStateManager.
-   * @param scheduledTask to launch.
+   * @param executableTask to launch.
    */
-  private void launchTask(final ScheduledTask scheduledTask) {
+  private void launchTask(final ExecutableTask executableTask) {
     try {
-      final DAG<Task, RuntimeEdge<Task>> taskDag =
-          SerializationUtils.deserialize(scheduledTask.getSerializedTaskDag());
+      final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag =
+          SerializationUtils.deserialize(executableTask.getSerializedIRDag());
       final TaskStateManager taskStateManager =
-          new TaskStateManager(scheduledTask, taskDag, executorId,
-              persistentConnectionToMasterMap, metricMessageSender);
+          new TaskStateManager(executableTask, executorId, persistentConnectionToMasterMap, metricMessageSender);
 
-      scheduledTask.getTaskIncomingEdges()
+      executableTask.getTaskIncomingEdges()
           .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
-      scheduledTask.getTaskOutgoingEdges()
+      executableTask.getTaskOutgoingEdges()
           .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
-      taskDag.getVertices().forEach(v -> {
-        taskDag.getOutgoingEdgesOf(v)
+      irDag.getVertices().forEach(v -> {
+        irDag.getOutgoingEdgesOf(v)
             .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
       });
 
       new TaskExecutor(
-          scheduledTask, taskDag, taskStateManager, dataTransferFactory, metricMessageSender).execute();
+          executableTask, irDag, taskStateManager, dataTransferFactory, metricMessageSender).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()
@@ -150,9 +149,9 @@ public final class Executor {
       switch (message.getType()) {
       case ScheduleTask:
         final ControlMessage.ScheduleTaskMsg scheduleTaskMsg = message.getScheduleTaskMsg();
-        final ScheduledTask scheduledTask =
+        final ExecutableTask executableTask =
             SerializationUtils.deserialize(scheduleTaskMsg.getTask().toByteArray());
-        onTaskReceived(scheduledTask);
+        onTaskReceived(executableTask);
         break;
       default:
         throw new IllegalMessageException(

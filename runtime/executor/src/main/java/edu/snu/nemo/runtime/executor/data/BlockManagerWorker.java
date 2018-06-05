@@ -72,6 +72,7 @@ public final class BlockManagerWorker {
   private final Map<String, AtomicInteger> blockToRemainingRead;
   private final SerializerManager serializerManager;
   private final Map<String, CompletableFuture<ControlMessage.Message>> pendingBlockLocationRequest;
+  private final BlockTransferConnectionQueue blockTransferConnectionQueue;
 
   /**
    * Constructor.
@@ -85,6 +86,7 @@ public final class BlockManagerWorker {
    * @param persistentConnectionToMasterMap the connection map.
    * @param byteTransfer                    the byte transfer.
    * @param serializerManager               the serializer manager.
+   * @param blockTransferConnectionQueue    restricts parallel connections
    */
   @Inject
   private BlockManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -95,7 +97,8 @@ public final class BlockManagerWorker {
                              final RemoteFileStore remoteFileStore,
                              final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                              final ByteTransfer byteTransfer,
-                             final SerializerManager serializerManager) {
+                             final SerializerManager serializerManager,
+                             final BlockTransferConnectionQueue blockTransferConnectionQueue) {
     this.executorId = executorId;
     this.memoryStore = memoryStore;
     this.serializedMemoryStore = serializedMemoryStore;
@@ -107,6 +110,7 @@ public final class BlockManagerWorker {
     this.blockToRemainingRead = new ConcurrentHashMap<>();
     this.serializerManager = serializerManager;
     this.pendingBlockLocationRequest = new ConcurrentHashMap<>();
+    this.blockTransferConnectionQueue = blockTransferConnectionQueue;
   }
 
   /**
@@ -155,6 +159,7 @@ public final class BlockManagerWorker {
             numSerializedBytes += partition.getNumSerializedBytes();
             numEncodedBytes += partition.getNumEncodedBytes();
           }
+
           return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator, numSerializedBytes,
               numEncodedBytes));
         } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
@@ -203,13 +208,16 @@ public final class BlockManagerWorker {
                       .build());
           return responseFromMasterFuture;
         });
-    blockLocationFuture.whenComplete((message, throwable) -> pendingBlockLocationRequest.remove(blockId));
+    blockLocationFuture.whenComplete((message, throwable) -> {
+      pendingBlockLocationRequest.remove(blockId);
+    });
 
     // Using thenCompose so that fetching block data starts after getting response from master.
     return blockLocationFuture.thenCompose(responseFromMaster -> {
       if (responseFromMaster.getType() != ControlMessage.MessageType.BlockLocationInfo) {
         throw new RuntimeException("Response message type mismatch!");
       }
+
       final ControlMessage.BlockLocationInfoMsg blockLocationInfoMsg =
           responseFromMaster.getBlockLocationInfoMsg();
       if (!blockLocationInfoMsg.hasOwnerExecutorId()) {
@@ -229,9 +237,13 @@ public final class BlockManagerWorker {
             .setRuntimeEdgeId(runtimeEdgeId)
             .setKeyRange(ByteString.copyFrom(SerializationUtils.serialize(keyRange)))
             .build();
-        return byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray())
-            .thenCompose(context -> context.getCompletedFuture())
-            .thenApply(streams -> new DataUtil.InputStreamIterator(streams,
+        final CompletableFuture<ByteInputContext> contextFuture = blockTransferConnectionQueue
+            .requestConnectPermission(runtimeEdgeId)
+            .thenCompose(obj -> byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray()));
+        contextFuture.thenApply(context -> context.getCompletedFuture()
+            .thenAccept(f -> blockTransferConnectionQueue.onConnectionFinished(runtimeEdgeId)));
+        return contextFuture
+            .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
                 serializerManager.getSerializer(runtimeEdgeId)));
       }
     });

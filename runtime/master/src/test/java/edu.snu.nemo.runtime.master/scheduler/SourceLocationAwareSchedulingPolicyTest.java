@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import edu.snu.nemo.runtime.common.plan.physical.ScheduledTask;
+import edu.snu.nemo.runtime.common.plan.physical.ExecutableTask;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.junit.Test;
@@ -33,7 +33,7 @@ import static org.mockito.Mockito.*;
  * Test cases for {@link SourceLocationAwareSchedulingPolicy}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ExecutorRepresenter.class, ScheduledTask.class, Readable.class})
+@PrepareForTest({ExecutorRepresenter.class, ExecutableTask.class, Readable.class})
 public final class SourceLocationAwareSchedulingPolicyTest {
   private static final String SITE_0 = "SEOUL";
   private static final String SITE_1 = "JINJU";
@@ -46,7 +46,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
   }
 
   /**
-   * {@link SourceLocationAwareSchedulingPolicy} should fail to schedule a {@link ScheduledTask} when
+   * {@link SourceLocationAwareSchedulingPolicy} should fail to schedule a {@link ExecutableTask} when
    * there are no executors in appropriate location(s).
    */
   @Test
@@ -54,7 +54,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
     final SchedulingPolicy schedulingPolicy = new SourceLocationAwareSchedulingPolicy();
 
     // Prepare test scenario
-    final ScheduledTask task = CreateScheduledTask.withReadablesWithSourceLocations(
+    final ExecutableTask task = CreateExecutableTask.withReadablesWithSourceLocations(
         Collections.singletonList(Collections.singletonList(SITE_0)));
     final ExecutorRepresenter e0 = mockExecutorRepresenter(SITE_1);
     final ExecutorRepresenter e1 = mockExecutorRepresenter(SITE_1);
@@ -70,19 +70,19 @@ public final class SourceLocationAwareSchedulingPolicyTest {
   public void testSourceLocationAwareSchedulingWithMultiSource() {
     final SchedulingPolicy schedulingPolicy = new SourceLocationAwareSchedulingPolicy();
     // Prepare test scenario
-    final ScheduledTask task0 = CreateScheduledTask.withReadablesWithSourceLocations(
+    final ExecutableTask task0 = CreateExecutableTask.withReadablesWithSourceLocations(
         Collections.singletonList(Collections.singletonList(SITE_1)));
-    final ScheduledTask task1 = CreateScheduledTask.withReadablesWithSourceLocations(
+    final ExecutableTask task1 = CreateExecutableTask.withReadablesWithSourceLocations(
         Collections.singletonList(Arrays.asList(SITE_0, SITE_1, SITE_2)));
-    final ScheduledTask task2 = CreateScheduledTask.withReadablesWithSourceLocations(
+    final ExecutableTask task2 = CreateExecutableTask.withReadablesWithSourceLocations(
         Arrays.asList(Collections.singletonList(SITE_0), Collections.singletonList(SITE_1),
             Arrays.asList(SITE_1, SITE_2)));
-    final ScheduledTask task3 = CreateScheduledTask.withReadablesWithSourceLocations(
+    final ExecutableTask task3 = CreateExecutableTask.withReadablesWithSourceLocations(
         Arrays.asList(Collections.singletonList(SITE_1), Collections.singletonList(SITE_0),
             Arrays.asList(SITE_0, SITE_2)));
 
     final ExecutorRepresenter e = mockExecutorRepresenter(SITE_1);
-    for (final ScheduledTask task : new HashSet<>(Arrays.asList(task0, task1, task2, task3))) {
+    for (final ExecutableTask task : new HashSet<>(Arrays.asList(task0, task1, task2, task3))) {
       assertEquals(new HashSet<>(Collections.singletonList(e)), schedulingPolicy.filterExecutorRepresenters(
           new HashSet<>(Collections.singletonList(e)), task));
     }
@@ -90,23 +90,23 @@ public final class SourceLocationAwareSchedulingPolicyTest {
 
 
   /**
-   * Utility for creating {@link ScheduledTask}.
+   * Utility for creating {@link ExecutableTask}.
    */
-  private static final class CreateScheduledTask {
+  private static final class CreateExecutableTask {
     private static final AtomicInteger taskIndex = new AtomicInteger(0);
     private static final AtomicInteger intraTaskIndex = new AtomicInteger(0);
 
-    private static ScheduledTask doCreate(final Collection<Readable> readables) {
-      final ScheduledTask mockInstance = mock(ScheduledTask.class);
+    private static ExecutableTask doCreate(final Collection<Readable> readables) {
+      final ExecutableTask mockInstance = mock(ExecutableTask.class);
       final Map<String, Readable> readableMap = new HashMap<>();
       readables.forEach(readable -> readableMap.put(String.format("TASK-%d", intraTaskIndex.getAndIncrement()),
           readable));
       when(mockInstance.getTaskId()).thenReturn(String.format("T-%d", taskIndex.getAndIncrement()));
-      when(mockInstance.getLogicalTaskIdToReadable()).thenReturn(readableMap);
+      when(mockInstance.getIrVertexIdToReadable()).thenReturn(readableMap);
       return mockInstance;
     }
 
-    static ScheduledTask withReadablesWithSourceLocations(final Collection<List<String>> sourceLocation) {
+    static ExecutableTask withReadablesWithSourceLocations(final Collection<List<String>> sourceLocation) {
       try {
         final List<Readable> readables = new ArrayList<>();
         for (final List<String> locations : sourceLocation) {
@@ -120,7 +120,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
       }
     }
 
-    static ScheduledTask withReadablesWithoutSourceLocations(final int numReadables) {
+    static ExecutableTask withReadablesWithoutSourceLocations(final int numReadables) {
       try {
         final List<Readable> readables = new ArrayList<>();
         for (int i = 0; i < numReadables; i++) {
@@ -134,7 +134,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
       }
     }
 
-    static ScheduledTask withReadablesWhichThrowException(final int numReadables) {
+    static ExecutableTask withReadablesWhichThrowException(final int numReadables) {
       try {
         final List<Readable> readables = new ArrayList<>();
         for (int i = 0; i < numReadables; i++) {
@@ -148,7 +148,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
       }
     }
 
-    static ScheduledTask withoutReadables() {
+    static ExecutableTask withoutReadables() {
       return doCreate(Collections.emptyList());
     }
   }
