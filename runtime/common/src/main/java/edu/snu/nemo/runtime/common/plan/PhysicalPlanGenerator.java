@@ -211,7 +211,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
         idToIRVertex.put(irVertex.getId(), irVertex);
       }
       stageBuilder.addReadables(vertexIdToReadables);
-// If this runtime stage contains at least one vertex, build it!
+      // If this runtime stage contains at least one vertex, build it!
       if (!stageBuilder.isEmpty()) {
         final Stage currentStage = stageBuilder.build();
         dagOfStagesBuilder.addVertex(currentStage);
