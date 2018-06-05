@@ -239,7 +239,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   }
 
   /////////////// UNSUPPORTED TRANSFORMATIONS ///////////////
-  //TODO#776: support unimplemented RDD transformation/actions.
+  //TODO#92: Implement the unimplemented transformations/actions & dataset initialization methods for Spark frontend.
 
   @Override
   public JavaRDD<T> cache() {
@@ -343,7 +343,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   }
 
   /////////////// UNSUPPORTED TRANSFORMATION TO PAIR RDD ///////////////
-  //TODO#776: support unimplemented RDD transformation/actions.
+  //TODO#92: Implement the unimplemented transformations/actions & dataset initialization methods for Spark frontend.
 
   @Override
   public <K2, V2> JavaPairRDD<K2, V2> flatMapToPair(final PairFlatMapFunction<T, K2, V2> f) {
@@ -387,7 +387,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   }
 
   /////////////// UNSUPPORTED ACTIONS ///////////////
-  //TODO#776: support unimplemented RDD transformation/actions.
+  //TODO#92: Implement the unimplemented transformations/actions & dataset initialization methods for Spark frontend.
 
   @Override
   public <U> U aggregate(final U zeroValue, final Function2<U, T, U> seqOp, final Function2<U, U, U> combOp) {

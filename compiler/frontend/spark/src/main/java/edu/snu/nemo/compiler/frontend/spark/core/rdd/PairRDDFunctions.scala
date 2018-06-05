@@ -25,7 +25,14 @@ import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
 import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
 import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.io.compress.CompressionCodec
+import org.apache.hadoop.mapred.{JobConf, OutputFormat}
+import org.apache.hadoop.mapreduce.{OutputFormat => NewOutputFormat}
 import org.apache.spark.api.java.function.Function2
+import org.apache.spark.partial.{BoundedDouble, PartialResult}
+import org.apache.spark.{Partitioner, rdd}
+import org.apache.spark.serializer.Serializer
 
 import scala.reflect.ClassTag
 
@@ -68,4 +75,250 @@ final class PairRDDFunctions[K: ClassTag, V: ClassTag] protected[rdd] (
 
     new RDD[(K, V)](self._sc, builder.buildWithoutSourceSinkCheck, reduceByKeyVertex, Option.empty)
   }
+
+  /////////////// UNSUPPORTED METHODS ///////////////
+  //TODO#92: Implement the unimplemented transformations/actions & dataset initialization methods for Spark frontend.
+  override def combineByKeyWithClassTag[C](createCombiner: V => C, mergeValue: (C, V) => C,
+                                           mergeCombiners: (C, C) => C, partitioner: Partitioner,
+                                           mapSideCombine: Boolean, serializer: Serializer)
+                                          (implicit ct: ClassTag[C]): RDD[(K, C)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def combineByKey[C](createCombiner: V => C, mergeValue: (C, V) => C,
+                               mergeCombiners: (C, C) => C, partitioner: Partitioner,
+                               mapSideCombine: Boolean, serializer: Serializer): RDD[(K, C)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def combineByKey[C](createCombiner: V => C, mergeValue: (C, V) => C,
+                               mergeCombiners: (C, C) => C, numPartitions: Int): RDD[(K, C)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def combineByKeyWithClassTag[C](createCombiner: V => C, mergeValue: (C, V) => C,
+                                           mergeCombiners: (C, C) => C, numPartitions: Int)
+                                          (implicit ct: ClassTag[C]): RDD[(K, C)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def aggregateByKey[U](zeroValue: U, partitioner: Partitioner)
+                                (seqOp: (U, V) => U, combOp: (U, U) => U)
+                                (implicit evidence$1: ClassTag[U]): RDD[(K, U)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def aggregateByKey[U](zeroValue: U, numPartitions: Int)
+                                (seqOp: (U, V) => U, combOp: (U, U) => U)
+                                (implicit evidence$2: ClassTag[U]): RDD[(K, U)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def aggregateByKey[U](zeroValue: U)(seqOp: (U, V) => U, combOp: (U, U) => U)
+                                (implicit evidence$3: ClassTag[U]): RDD[(K, U)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def foldByKey(zeroValue: V, partitioner: Partitioner)(func: (V, V) => V): RDD[(K, V)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def foldByKey(zeroValue: V, numPartitions: Int)(func: (V, V) => V): RDD[(K, V)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def foldByKey(zeroValue: V)(func: (V, V) => V): RDD[(K, V)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def sampleByKey(withReplacement: Boolean,
+                           fractions: collection.Map[K, Double], seed: Long): RDD[(K, V)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def sampleByKeyExact(withReplacement: Boolean,
+                                fractions: collection.Map[K, Double], seed: Long): RDD[(K, V)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def reduceByKey(partitioner: Partitioner, func: (V, V) => V): RDD[(K, V)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def reduceByKey(func: (V, V) => V, numPartitions: Int): RDD[(K, V)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def reduceByKeyLocally(func: (V, V) => V): collection.Map[K, V] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def countByKey(): collection.Map[K, Long] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def countByKeyApprox(timeout: Long, confidence: Double): PartialResult[collection.Map[K, BoundedDouble]] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def countApproxDistinctByKey(p: Int, sp: Int, partitioner: Partitioner): RDD[(K, Long)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def countApproxDistinctByKey(relativeSD: Double, partitioner: Partitioner): RDD[(K, Long)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def countApproxDistinctByKey(relativeSD: Double, numPartitions: Int): RDD[(K, Long)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def countApproxDistinctByKey(relativeSD: Double): RDD[(K, Long)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def groupByKey(partitioner: Partitioner): RDD[(K, Iterable[V])] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def groupByKey(numPartitions: Int): RDD[(K, Iterable[V])] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def partitionBy(partitioner: Partitioner): RDD[(K, V)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def join[W](other: rdd.RDD[(K, W)], partitioner: Partitioner): RDD[(K, (V, W))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def leftOuterJoin[W](other: rdd.RDD[(K, W)], partitioner: Partitioner): RDD[(K, (V, Option[W]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def rightOuterJoin[W](other: rdd.RDD[(K, W)], partitioner: Partitioner): RDD[(K, (Option[V], W))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def fullOuterJoin[W](other: rdd.RDD[(K, W)], partitioner: Partitioner): RDD[(K, (Option[V], Option[W]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def combineByKey[C](createCombiner: V => C, mergeValue: (C, V) => C,
+                               mergeCombiners: (C, C) => C): RDD[(K, C)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def combineByKeyWithClassTag[C](createCombiner: V => C, mergeValue: (C, V) => C,
+                                           mergeCombiners: (C, C) => C)
+                                          (implicit ct: ClassTag[C]): RDD[(K, C)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def groupByKey(): RDD[(K, Iterable[V])] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def join[W](other: rdd.RDD[(K, W)]): RDD[(K, (V, W))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def join[W](other: rdd.RDD[(K, W)], numPartitions: Int): RDD[(K, (V, W))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def leftOuterJoin[W](other: rdd.RDD[(K, W)]): RDD[(K, (V, Option[W]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def leftOuterJoin[W](other: rdd.RDD[(K, W)], numPartitions: Int): RDD[(K, (V, Option[W]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def rightOuterJoin[W](other: rdd.RDD[(K, W)]): RDD[(K, (Option[V], W))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def rightOuterJoin[W](other: rdd.RDD[(K, W)], numPartitions: Int): RDD[(K, (Option[V], W))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def fullOuterJoin[W](other: rdd.RDD[(K, W)]): RDD[(K, (Option[V], Option[W]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def fullOuterJoin[W](other: rdd.RDD[(K, W)], numPartitions: Int): RDD[(K, (Option[V], Option[W]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def collectAsMap(): collection.Map[K, V] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def mapValues[U](f: V => U): RDD[(K, U)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def flatMapValues[U](f: V => TraversableOnce[U]): RDD[(K, U)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def cogroup[W1, W2, W3](other1: rdd.RDD[(K, W1)], other2: rdd.RDD[(K, W2)],
+                                   other3: rdd.RDD[(K, W3)], partitioner: Partitioner)
+  : RDD[(K, (Iterable[V], Iterable[W1], Iterable[W2], Iterable[W3]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def cogroup[W](other: rdd.RDD[(K, W)], partitioner: Partitioner): RDD[(K, (Iterable[V], Iterable[W]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def cogroup[W1, W2](other1: rdd.RDD[(K, W1)],
+                               other2: rdd.RDD[(K, W2)],
+                               partitioner: Partitioner): RDD[(K, (Iterable[V], Iterable[W1], Iterable[W2]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def cogroup[W1, W2, W3](other1: rdd.RDD[(K, W1)], other2: rdd.RDD[(K, W2)],
+                                   other3: rdd.RDD[(K, W3)])
+  : RDD[(K, (Iterable[V], Iterable[W1], Iterable[W2], Iterable[W3]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def cogroup[W](other: rdd.RDD[(K, W)]): RDD[(K, (Iterable[V], Iterable[W]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def cogroup[W1, W2](other1: rdd.RDD[(K, W1)], other2: rdd.RDD[(K, W2)])
+  : RDD[(K, (Iterable[V], Iterable[W1], Iterable[W2]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def cogroup[W](other: rdd.RDD[(K, W)], numPartitions: Int): RDD[(K, (Iterable[V], Iterable[W]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def cogroup[W1, W2](other1: rdd.RDD[(K, W1)],
+                               other2: rdd.RDD[(K, W2)],
+                               numPartitions: Int): RDD[(K, (Iterable[V], Iterable[W1], Iterable[W2]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def cogroup[W1, W2, W3](other1: rdd.RDD[(K, W1)], other2: rdd.RDD[(K, W2)],
+                                   other3: rdd.RDD[(K, W3)], numPartitions: Int)
+  : RDD[(K, (Iterable[V], Iterable[W1], Iterable[W2], Iterable[W3]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def groupWith[W](other: rdd.RDD[(K, W)]): RDD[(K, (Iterable[V], Iterable[W]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def groupWith[W1, W2](other1: rdd.RDD[(K, W1)], other2: rdd.RDD[(K, W2)])
+  : RDD[(K, (Iterable[V], Iterable[W1], Iterable[W2]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def groupWith[W1, W2, W3](other1: rdd.RDD[(K, W1)], other2: rdd.RDD[(K, W2)], other3: rdd.RDD[(K, W3)])
+  : rdd.RDD[(K, (Iterable[V], Iterable[W1], Iterable[W2], Iterable[W3]))] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def subtractByKey[W](other: rdd.RDD[(K, W)])(implicit evidence$4: ClassTag[W]): RDD[(K, V)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def subtractByKey[W](other: rdd.RDD[(K, W)], numPartitions: Int)
+                               (implicit evidence$5: ClassTag[W]): RDD[(K, V)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def subtractByKey[W](other: rdd.RDD[(K, W)], p: Partitioner)
+                               (implicit evidence$6: ClassTag[W]): RDD[(K, V)] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def lookup(key: K): Seq[V] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def saveAsHadoopFile[F <: OutputFormat[K, V]](path: String)(implicit fm: ClassTag[F]): Unit =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def saveAsHadoopFile[F <: OutputFormat[K, V]](path: String, codec: Class[_ <: CompressionCodec])
+                                                        (implicit fm: ClassTag[F]): Unit =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def saveAsNewAPIHadoopFile[F <: NewOutputFormat[K, V]](path: String)(implicit fm: ClassTag[F]): Unit =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def saveAsNewAPIHadoopFile(path: String, keyClass: Class[_], valueClass: Class[_],
+                                      outputFormatClass: Class[_ <: NewOutputFormat[_, _]],
+                                      conf: Configuration): Unit =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def saveAsHadoopFile(path: String, keyClass: Class[_], valueClass: Class[_],
+                                outputFormatClass: Class[_ <: OutputFormat[_, _]],
+                                codec: Class[_ <: CompressionCodec]): Unit =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def saveAsHadoopFile(path: String, keyClass: Class[_], valueClass: Class[_],
+                                outputFormatClass: Class[_ <: OutputFormat[_, _]], conf: JobConf,
+                                codec: Option[Class[_ <: CompressionCodec]]): Unit =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def saveAsNewAPIHadoopDataset(conf: Configuration): Unit =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def saveAsHadoopDataset(conf: JobConf): Unit =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def keys: RDD[K] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
+
+  override def values: RDD[V] =
+    throw new UnsupportedOperationException("Operation not yet implemented.")
 }
