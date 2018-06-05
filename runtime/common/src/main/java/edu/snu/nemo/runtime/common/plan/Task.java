@@ -23,9 +23,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * An ExecutableTask is a self-contained executable that can be executed in specific types of containers.
+ * An Task is a self-contained executable that can be executed on a machine.
  */
-public final class ExecutableTask implements Serializable {
+public final class Task implements Serializable {
   private final String jobId;
   private final String taskId;
   private final int taskIdx;
@@ -33,7 +33,7 @@ public final class ExecutableTask implements Serializable {
   private final List<StageEdge> taskOutgoingEdges;
   private final int attemptIdx;
   private final String containerType;
-  private final byte[] serializedTaskDag;
+  private final byte[] serializedIRDag;
   private final Map<String, Readable> irVertexIdToReadable;
 
   /**
@@ -48,20 +48,20 @@ public final class ExecutableTask implements Serializable {
    * @param taskOutgoingEdges    the outgoing edges of the task.
    * @param irVertexIdToReadable the map between logical task ID and readable.
    */
-  public ExecutableTask(final String jobId,
-                        final String taskId,
-                        final int attemptIdx,
-                        final String containerType,
-                        final byte[] serializedIRDag,
-                        final List<StageEdge> taskIncomingEdges,
-                        final List<StageEdge> taskOutgoingEdges,
-                        final Map<String, Readable> irVertexIdToReadable) {
+  public Task(final String jobId,
+              final String taskId,
+              final int attemptIdx,
+              final String containerType,
+              final byte[] serializedIRDag,
+              final List<StageEdge> taskIncomingEdges,
+              final List<StageEdge> taskOutgoingEdges,
+              final Map<String, Readable> irVertexIdToReadable) {
     this.jobId = jobId;
     this.taskId = taskId;
     this.taskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
     this.attemptIdx = attemptIdx;
     this.containerType = containerType;
-    this.serializedTaskDag = serializedIRDag;
+    this.serializedIRDag = serializedIRDag;
     this.taskIncomingEdges = taskIncomingEdges;
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.irVertexIdToReadable = irVertexIdToReadable;
@@ -75,10 +75,10 @@ public final class ExecutableTask implements Serializable {
   }
 
   /**
-   * @return the serialized DAG of the task.
+   * @return the serialized IR DAG of the task.
    */
   public byte[] getSerializedIRDag() {
-    return serializedTaskDag;
+    return serializedIRDag;
   }
 
   /**

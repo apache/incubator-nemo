@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.nemo.runtime.common.plan.ExecutableTask;
+import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.state.JobState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
@@ -112,7 +112,7 @@ public final class SchedulerRunner {
   }
 
   void doScheduleStage() {
-    final Collection<ExecutableTask> stageToSchedule = pendingTaskCollection.peekSchedulableStage().orElse(null);
+    final Collection<Task> stageToSchedule = pendingTaskCollection.peekSchedulableStage().orElse(null);
     if (stageToSchedule == null) {
       // Task queue is empty
       LOG.debug("PendingTaskCollection is empty. Awaiting for more Tasks...");
@@ -120,27 +120,27 @@ public final class SchedulerRunner {
     }
 
     final AtomicInteger numScheduledTasks = new AtomicInteger(0); // to be incremented in lambda
-    for (final ExecutableTask schedulableTask : stageToSchedule) {
-      final JobStateManager jobStateManager = jobStateManagers.get(schedulableTask.getJobId());
-      LOG.debug("Trying to schedule {}...", schedulableTask.getTaskId());
+    for (final Task task : stageToSchedule) {
+      final JobStateManager jobStateManager = jobStateManagers.get(task.getJobId());
+      LOG.debug("Trying to schedule {}...", task.getTaskId());
 
       executorRegistry.viewExecutors(executors -> {
         final Set<ExecutorRepresenter> candidateExecutors =
-            schedulingPolicy.filterExecutorRepresenters(executors, schedulableTask);
+            schedulingPolicy.filterExecutorRepresenters(executors, task);
         final Optional<ExecutorRepresenter> firstCandidate = candidateExecutors.stream().findFirst();
 
         if (firstCandidate.isPresent()) {
           // update metadata first
-          jobStateManager.onTaskStateChanged(schedulableTask.getTaskId(), TaskState.State.EXECUTING);
-          pendingTaskCollection.remove(schedulableTask.getTaskId());
+          jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+          pendingTaskCollection.remove(task.getTaskId());
           numScheduledTasks.incrementAndGet();
 
           // send the task
           final ExecutorRepresenter selectedExecutor = firstCandidate.get();
-          selectedExecutor.onTaskScheduled(schedulableTask);
-          LOG.debug("Successfully scheduled {}", schedulableTask.getTaskId());
+          selectedExecutor.onTaskScheduled(task);
+          LOG.debug("Successfully scheduled {}", task.getTaskId());
         } else {
-          LOG.debug("Failed to schedule {}", schedulableTask.getTaskId());
+          LOG.debug("Failed to schedule {}", task.getTaskId());
         }
       });
     }

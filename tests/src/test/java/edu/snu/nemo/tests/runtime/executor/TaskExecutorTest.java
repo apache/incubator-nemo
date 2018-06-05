@@ -27,7 +27,7 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
-import edu.snu.nemo.runtime.common.plan.ExecutableTask;
+import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.executor.MetricMessageSender;
@@ -116,8 +116,8 @@ public final class TaskExecutorTest {
     final StageEdge stageOutEdge = mock(StageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(sourceIRVertex);
     final String taskId = RuntimeIdGenerator.generateTaskId(0, stageId);
-    final ExecutableTask executableTask =
-        new ExecutableTask(
+    final Task task =
+        new Task(
             "testSourceVertex",
             taskId,
             0,
@@ -129,7 +129,7 @@ public final class TaskExecutorTest {
 
     // Execute the task.
     final TaskExecutor taskExecutor = new TaskExecutor(
-        executableTask, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
+        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
     taskExecutor.execute();
 
     // Check the output.
@@ -170,8 +170,8 @@ public final class TaskExecutorTest {
     when(stageInEdge.getDstVertex()).thenReturn(operatorIRVertex1);
     final StageEdge stageOutEdge = mock(StageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(operatorIRVertex2);
-    final ExecutableTask executableTask =
-        new ExecutableTask(
+    final Task task =
+        new Task(
             "testSourceVertex",
             taskId,
             0,
@@ -183,7 +183,7 @@ public final class TaskExecutorTest {
 
     // Execute the task.
     final TaskExecutor taskExecutor = new TaskExecutor(
-        executableTask, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
+        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
     taskExecutor.execute();
 
     // Check the output.

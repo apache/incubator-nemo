@@ -20,7 +20,7 @@ import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
-import edu.snu.nemo.runtime.common.plan.ExecutableTask;
+import edu.snu.nemo.runtime.common.plan.Task;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
 
@@ -41,7 +41,7 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
   /**
    * Pending Tasks awaiting to be scheduled for each stage.
    */
-  private final ConcurrentMap<String, Map<String, ExecutableTask>> stageIdToPendingTasks;
+  private final ConcurrentMap<String, Map<String, Task>> stageIdToPendingTasks;
 
   /**
    * Stages with Tasks that have not yet been scheduled.
@@ -55,17 +55,17 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
   }
 
   @Override
-  public synchronized void add(final ExecutableTask executableTask) {
-    final String stageId = RuntimeIdGenerator.getStageIdFromTaskId(executableTask.getTaskId());
+  public synchronized void add(final Task task) {
+    final String stageId = RuntimeIdGenerator.getStageIdFromTaskId(task.getTaskId());
 
     stageIdToPendingTasks.compute(stageId, (s, taskIdToTask) -> {
       if (taskIdToTask == null) {
-        final Map<String, ExecutableTask> taskIdToTaskMap = new HashMap<>();
-        taskIdToTaskMap.put(executableTask.getTaskId(), executableTask);
-        updateSchedulableStages(stageId, executableTask.getContainerType());
+        final Map<String, Task> taskIdToTaskMap = new HashMap<>();
+        taskIdToTaskMap.put(task.getTaskId(), task);
+        updateSchedulableStages(stageId, task.getContainerType());
         return taskIdToTaskMap;
       } else {
-        taskIdToTask.put(executableTask.getTaskId(), executableTask);
+        taskIdToTask.put(task.getTaskId(), task);
         return taskIdToTask;
       }
     });
@@ -81,18 +81,18 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
    *                                (i.e. does not belong to the collection from {@link #peekSchedulableStage()}.
    */
   @Override
-  public synchronized ExecutableTask remove(final String taskId) throws NoSuchElementException {
+  public synchronized Task remove(final String taskId) throws NoSuchElementException {
     final String stageId = schedulableStages.peekFirst();
     if (stageId == null) {
       throw new NoSuchElementException("No schedulable stage in Task queue");
     }
 
-    final Map<String, ExecutableTask> pendingTasksForStage = stageIdToPendingTasks.get(stageId);
+    final Map<String, Task> pendingTasksForStage = stageIdToPendingTasks.get(stageId);
 
     if (pendingTasksForStage == null) {
       throw new RuntimeException(String.format("Stage %s not found in Task queue", stageId));
     }
-    final ExecutableTask taskToSchedule = pendingTasksForStage.remove(taskId);
+    final Task taskToSchedule = pendingTasksForStage.remove(taskId);
     if (taskToSchedule == null) {
       throw new NoSuchElementException(String.format("Task %s not found in Task queue", taskId));
     }
@@ -115,13 +115,13 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
    *         or {@link Optional#empty} if the queue is empty
    */
   @Override
-  public synchronized Optional<Collection<ExecutableTask>> peekSchedulableStage() {
+  public synchronized Optional<Collection<Task>> peekSchedulableStage() {
     final String stageId = schedulableStages.peekFirst();
     if (stageId == null) {
       return Optional.empty();
     }
 
-    final Map<String, ExecutableTask> pendingTasksForStage = stageIdToPendingTasks.get(stageId);
+    final Map<String, Task> pendingTasksForStage = stageIdToPendingTasks.get(stageId);
     if (pendingTasksForStage == null) {
       throw new RuntimeException(String.format("Stage %s not found in stageIdToPendingTasks map", stageId));
     }
