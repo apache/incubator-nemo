@@ -77,7 +77,7 @@ public final class JavaWordAndLineCount {
     if (writemode) { // print to output file
       try (BufferedWriter bw = new BufferedWriter(new FileWriter(args[1]))) {
         for (Tuple2<?, ?> lineTuple : lineOutput) {
-          bw.write(lineTuple._1 + ": " + lineTuple._2 + "\n");
+          bw.write(lineTuple._1 + ": " + lineTuple._2 + "\n\n");
         }
         for (Tuple2<?, ?> wordTuple : wordOutput) {
           bw.write(wordTuple._1 + ": " + wordTuple._2 + "\n");
@@ -87,7 +87,7 @@ public final class JavaWordAndLineCount {
       }
     } else { // print to console.
       for (Tuple2<?, ?> lineTuple : lineOutput) {
-        System.out.println(lineTuple._1 + ": " + lineTuple._2);
+        System.out.println(lineTuple._1 + ": " + lineTuple._2 + "\n");
       }
       for (Tuple2<?, ?> wordTuple : wordOutput) {
         System.out.println(wordTuple._1 + ": " + wordTuple._2);
