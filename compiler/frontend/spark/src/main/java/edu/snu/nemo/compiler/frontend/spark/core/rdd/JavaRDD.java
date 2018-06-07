@@ -200,7 +200,7 @@ public final class JavaRDD<T> extends org.apache.spark.api.java.JavaRDD<T> {
   @Override
   public <K2, V2> JavaPairRDD<K2, V2> mapToPair(final PairFunction<T, K2, V2> f) {
     final RDD<Tuple2<K2, V2>> pairRdd =
-        rdd.map(SparkFrontendUtils.pairFunctionToFunction(f), ClassTag$.MODULE$.apply(Object.class));
+        rdd.map(SparkFrontendUtils.pairFunctionToPlainFunction(f), ClassTag$.MODULE$.apply(Object.class));
     return JavaPairRDD.fromRDD(pairRdd);
   }
 

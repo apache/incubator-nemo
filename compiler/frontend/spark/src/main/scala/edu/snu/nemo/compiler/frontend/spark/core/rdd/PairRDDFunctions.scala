@@ -31,8 +31,8 @@ import org.apache.hadoop.mapred.{JobConf, OutputFormat}
 import org.apache.hadoop.mapreduce.{OutputFormat => NewOutputFormat}
 import org.apache.spark.api.java.function.Function2
 import org.apache.spark.partial.{BoundedDouble, PartialResult}
-import org.apache.spark.{Partitioner, rdd}
 import org.apache.spark.serializer.Serializer
+import org.apache.spark.{Partitioner, rdd}
 
 import scala.reflect.ClassTag
 

@@ -28,15 +28,15 @@ import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
 import edu.snu.nemo.compiler.frontend.spark.transform._
 import org.apache.hadoop.io.WritableFactory
 import org.apache.hadoop.io.compress.CompressionCodec
-import org.apache.spark.rdd.{AsyncRDDActions, DoubleRDDFunctions, OrderedRDDFunctions, PartitionCoalescer, SequenceFileRDDFunctions}
-import org.apache.spark.serializer.Serializer
-import org.apache.spark.{Dependency, Partition, Partitioner, SparkContext, TaskContext}
 import org.apache.spark.api.java.function.{FlatMapFunction, Function, Function2}
 import org.apache.spark.partial.{BoundedDouble, PartialResult}
+import org.apache.spark.rdd.{AsyncRDDActions, DoubleRDDFunctions, OrderedRDDFunctions, PartitionCoalescer, SequenceFileRDDFunctions}
+import org.apache.spark.serializer.Serializer
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.{Dependency, Partition, Partitioner, SparkContext, TaskContext}
 
-import scala.reflect.ClassTag
 import scala.language.implicitConversions
+import scala.reflect.ClassTag
 
 /**
  * RDD for Nemo.
@@ -98,7 +98,7 @@ final class RDD[T: ClassTag] protected[rdd] (
    * A scala wrapper for flatMap transformation.
    */
   override def flatMap[U: ClassTag](f: T => TraversableOnce[U]): RDD[U] = {
-    val javaFunc = SparkFrontendUtils.toFlatMapFunction(f)
+    val javaFunc = SparkFrontendUtils.toJavaFlatMapFunction(f)
     flatMap(javaFunc)
   }
 

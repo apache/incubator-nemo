@@ -194,7 +194,8 @@ public final class SparkFrontendUtils {
    * @param <O>           the type of output.
    * @return the converted Java function.
    */
-  public static <I, O> FlatMapFunction<I, O> toFlatMapFunction(final Function1<I, TraversableOnce<O>> scalaFunction) {
+  public static <I, O> FlatMapFunction<I, O> toJavaFlatMapFunction(
+      final Function1<I, TraversableOnce<O>> scalaFunction) {
     return new FlatMapFunction<I, O>() {
       @Override
       public Iterator<O> call(final I i) throws Exception {
@@ -212,7 +213,8 @@ public final class SparkFrontendUtils {
    * @param <V>          the type of converted value.
    * @return the converted map function.
    */
-  public static <T, K, V> Function<T, Tuple2<K, V>> pairFunctionToFunction(final PairFunction<T, K, V> pairFunction) {
+  public static <T, K, V> Function<T, Tuple2<K, V>> pairFunctionToPlainFunction(
+      final PairFunction<T, K, V> pairFunction) {
     return new Function<T, Tuple2<K, V>>() {
       @Override
       public Tuple2<K, V> call(final T elem) throws Exception {
