@@ -68,7 +68,7 @@ public final class SparkJavaITCase {
     }
   }
 
-  // Temporary disabled because of Travis issue
+  /* Temporary disabled because of Travis issue
   @Test(timeout = TIMEOUT)
   public void testSparkMapReduce() throws Exception {
     final String inputFileName = "sample_input_mr";
@@ -91,7 +91,7 @@ public final class SparkJavaITCase {
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
-  }
+  }*/
 
   @Test(timeout = TIMEOUT)
   public void testSparkPi() throws Exception {
