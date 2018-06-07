@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import edu.snu.nemo.runtime.common.plan.physical.ExecutableTask;
+import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.junit.Test;
@@ -33,7 +33,7 @@ import static org.mockito.Mockito.*;
  * Test cases for {@link SourceLocationAwareSchedulingPolicy}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ExecutorRepresenter.class, ExecutableTask.class, Readable.class})
+@PrepareForTest({ExecutorRepresenter.class, Task.class, Readable.class})
 public final class SourceLocationAwareSchedulingPolicyTest {
   private static final String SITE_0 = "SEOUL";
   private static final String SITE_1 = "JINJU";
@@ -46,7 +46,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
   }
 
   /**
-   * {@link SourceLocationAwareSchedulingPolicy} should fail to schedule a {@link ExecutableTask} when
+   * {@link SourceLocationAwareSchedulingPolicy} should fail to schedule a {@link Task} when
    * there are no executors in appropriate location(s).
    */
   @Test
@@ -54,7 +54,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
     final SchedulingPolicy schedulingPolicy = new SourceLocationAwareSchedulingPolicy();
 
     // Prepare test scenario
-    final ExecutableTask task = CreateExecutableTask.withReadablesWithSourceLocations(
+    final Task task = CreateTask.withReadablesWithSourceLocations(
         Collections.singletonList(Collections.singletonList(SITE_0)));
     final ExecutorRepresenter e0 = mockExecutorRepresenter(SITE_1);
     final ExecutorRepresenter e1 = mockExecutorRepresenter(SITE_1);
@@ -70,19 +70,19 @@ public final class SourceLocationAwareSchedulingPolicyTest {
   public void testSourceLocationAwareSchedulingWithMultiSource() {
     final SchedulingPolicy schedulingPolicy = new SourceLocationAwareSchedulingPolicy();
     // Prepare test scenario
-    final ExecutableTask task0 = CreateExecutableTask.withReadablesWithSourceLocations(
+    final Task task0 = CreateTask.withReadablesWithSourceLocations(
         Collections.singletonList(Collections.singletonList(SITE_1)));
-    final ExecutableTask task1 = CreateExecutableTask.withReadablesWithSourceLocations(
+    final Task task1 = CreateTask.withReadablesWithSourceLocations(
         Collections.singletonList(Arrays.asList(SITE_0, SITE_1, SITE_2)));
-    final ExecutableTask task2 = CreateExecutableTask.withReadablesWithSourceLocations(
+    final Task task2 = CreateTask.withReadablesWithSourceLocations(
         Arrays.asList(Collections.singletonList(SITE_0), Collections.singletonList(SITE_1),
             Arrays.asList(SITE_1, SITE_2)));
-    final ExecutableTask task3 = CreateExecutableTask.withReadablesWithSourceLocations(
+    final Task task3 = CreateTask.withReadablesWithSourceLocations(
         Arrays.asList(Collections.singletonList(SITE_1), Collections.singletonList(SITE_0),
             Arrays.asList(SITE_0, SITE_2)));
 
     final ExecutorRepresenter e = mockExecutorRepresenter(SITE_1);
-    for (final ExecutableTask task : new HashSet<>(Arrays.asList(task0, task1, task2, task3))) {
+    for (final Task task : new HashSet<>(Arrays.asList(task0, task1, task2, task3))) {
       assertEquals(new HashSet<>(Collections.singletonList(e)), schedulingPolicy.filterExecutorRepresenters(
           new HashSet<>(Collections.singletonList(e)), task));
     }
@@ -90,14 +90,14 @@ public final class SourceLocationAwareSchedulingPolicyTest {
 
 
   /**
-   * Utility for creating {@link ExecutableTask}.
+   * Utility for creating {@link Task}.
    */
-  private static final class CreateExecutableTask {
+  private static final class CreateTask {
     private static final AtomicInteger taskIndex = new AtomicInteger(0);
     private static final AtomicInteger intraTaskIndex = new AtomicInteger(0);
 
-    private static ExecutableTask doCreate(final Collection<Readable> readables) {
-      final ExecutableTask mockInstance = mock(ExecutableTask.class);
+    private static Task doCreate(final Collection<Readable> readables) {
+      final Task mockInstance = mock(Task.class);
       final Map<String, Readable> readableMap = new HashMap<>();
       readables.forEach(readable -> readableMap.put(String.format("TASK-%d", intraTaskIndex.getAndIncrement()),
           readable));
@@ -106,7 +106,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
       return mockInstance;
     }
 
-    static ExecutableTask withReadablesWithSourceLocations(final Collection<List<String>> sourceLocation) {
+    static Task withReadablesWithSourceLocations(final Collection<List<String>> sourceLocation) {
       try {
         final List<Readable> readables = new ArrayList<>();
         for (final List<String> locations : sourceLocation) {
@@ -120,7 +120,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
       }
     }
 
-    static ExecutableTask withReadablesWithoutSourceLocations(final int numReadables) {
+    static Task withReadablesWithoutSourceLocations(final int numReadables) {
       try {
         final List<Readable> readables = new ArrayList<>();
         for (int i = 0; i < numReadables; i++) {
@@ -134,7 +134,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
       }
     }
 
-    static ExecutableTask withReadablesWhichThrowException(final int numReadables) {
+    static Task withReadablesWhichThrowException(final int numReadables) {
       try {
         final List<Readable> readables = new ArrayList<>();
         for (int i = 0; i < numReadables; i++) {
@@ -148,7 +148,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
       }
     }
 
-    static ExecutableTask withoutReadables() {
+    static Task withoutReadables() {
       return doCreate(Collections.emptyList());
     }
   }

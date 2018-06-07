@@ -20,7 +20,9 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageSender;
-import edu.snu.nemo.runtime.common.plan.physical.*;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import edu.snu.nemo.runtime.common.plan.Stage;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.MetricMessageHandler;
@@ -152,19 +154,19 @@ public final class BatchSingleJobSchedulerTest {
     // b) the stages of the next ScheduleGroup are scheduled after the stages of each ScheduleGroup are made "complete".
     for (int i = 0; i < getNumScheduleGroups(plan.getStageDAG()); i++) {
       final int scheduleGroupIdx = i;
-      final List<PhysicalStage> stages = filterStagesWithAScheduleGroupIndex(plan.getStageDAG(), scheduleGroupIdx);
+      final List<Stage> stages = filterStagesWithAScheduleGroupIndex(plan.getStageDAG(), scheduleGroupIdx);
 
       LOG.debug("Checking that all stages of ScheduleGroup {} enter the executing state", scheduleGroupIdx);
-      stages.forEach(physicalStage -> {
-        while (jobStateManager.getStageState(physicalStage.getId()).getStateMachine().getCurrentState()
+      stages.forEach(stage -> {
+        while (jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState()
             != StageState.State.EXECUTING) {
 
         }
       });
 
-      stages.forEach(physicalStage -> {
+      stages.forEach(stage -> {
         SchedulerTestUtil.completeStage(
-            jobStateManager, scheduler, executorRegistry, physicalStage, SCHEDULE_ATTEMPT_INDEX);
+            jobStateManager, scheduler, executorRegistry, stage, SCHEDULE_ATTEMPT_INDEX);
       });
     }
 
@@ -174,13 +176,13 @@ public final class BatchSingleJobSchedulerTest {
     assertTrue(jobStateManager.checkJobTermination());
   }
 
-  private List<PhysicalStage> filterStagesWithAScheduleGroupIndex(
-      final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG, final int scheduleGroupIndex) {
-    final Set<PhysicalStage> stageSet = new HashSet<>(physicalDAG.filterVertices(
-        physicalStage -> physicalStage.getScheduleGroupIndex() == scheduleGroupIndex));
+  private List<Stage> filterStagesWithAScheduleGroupIndex(
+      final DAG<Stage, StageEdge> physicalDAG, final int scheduleGroupIndex) {
+    final Set<Stage> stageSet = new HashSet<>(physicalDAG.filterVertices(
+        stage -> stage.getScheduleGroupIndex() == scheduleGroupIndex));
 
     // Return the filtered vertices as a sorted list
-    final List<PhysicalStage> sortedStages = new ArrayList<>(stageSet.size());
+    final List<Stage> sortedStages = new ArrayList<>(stageSet.size());
     physicalDAG.topologicalDo(stage -> {
       if (stageSet.contains(stage)) {
         sortedStages.add(stage);
@@ -189,7 +191,7 @@ public final class BatchSingleJobSchedulerTest {
     return sortedStages;
   }
 
-  private int getNumScheduleGroups(final DAG<PhysicalStage, PhysicalStageEdge> physicalDAG) {
+  private int getNumScheduleGroups(final DAG<Stage, StageEdge> physicalDAG) {
     final Set<Integer> scheduleGroupSet = new HashSet<>();
     physicalDAG.getVertices().forEach(stage -> scheduleGroupSet.add(stage.getScheduleGroupIndex()));
     return scheduleGroupSet.size();

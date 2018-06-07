@@ -24,7 +24,7 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.data.KeyRange;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalStageEdge;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.exception.UnsupportedCommPatternException;
 import edu.snu.nemo.runtime.common.data.HashRange;
@@ -113,9 +113,9 @@ public final class InputReader extends DataTransfer {
    * @return the list of the completable future of the data.
    */
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
-    assert (runtimeEdge instanceof PhysicalStageEdge);
+    assert (runtimeEdge instanceof StageEdge);
     final KeyRange hashRangeToRead =
-        ((PhysicalStageEdge) runtimeEdge).getTaskIdxToKeyRange().get(dstTaskIndex);
+        ((StageEdge) runtimeEdge).getTaskIdxToKeyRange().get(dstTaskIndex);
     if (hashRangeToRead == null) {
       throw new BlockFetchException(
           new Throwable("The hash range to read is not assigned to " + dstTaskIndex + "'th task"));

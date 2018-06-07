@@ -37,8 +37,8 @@ import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalStage;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalStageEdge;
+import edu.snu.nemo.runtime.common.plan.Stage;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.executor.Executor;
 import edu.snu.nemo.runtime.executor.MetricManagerWorker;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
@@ -320,9 +320,9 @@ public final class DataTransferTest {
 
     final IRVertex srcMockVertex = mock(IRVertex.class);
     final IRVertex dstMockVertex = mock(IRVertex.class);
-    final PhysicalStage srcStage = setupStages("srcStage-" + testIndex);
-    final PhysicalStage dstStage = setupStages("dstStage-" + testIndex);
-    dummyEdge = new PhysicalStageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
+    final Stage srcStage = setupStages("srcStage-" + testIndex);
+    final Stage dstStage = setupStages("dstStage-" + testIndex);
+    dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
         srcStage, dstStage, CODER, false);
     // Initialize states in Master
     srcStage.getTaskIds().forEach(srcTaskId -> {
@@ -407,13 +407,13 @@ public final class DataTransferTest {
 
     final IRVertex srcMockVertex = mock(IRVertex.class);
     final IRVertex dstMockVertex = mock(IRVertex.class);
-    final PhysicalStage srcStage = setupStages("srcStage-" + testIndex);
-    final PhysicalStage dstStage = setupStages("dstStage-" + testIndex);
-    dummyEdge = new PhysicalStageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
+    final Stage srcStage = setupStages("srcStage-" + testIndex);
+    final Stage dstStage = setupStages("dstStage-" + testIndex);
+    dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
         srcStage, dstStage, CODER, false);
     final IRVertex dstMockVertex2 = mock(IRVertex.class);
-    final PhysicalStage dstStage2 = setupStages("dstStage-" + testIndex2);
-    dummyEdge2 = new PhysicalStageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2,
+    final Stage dstStage2 = setupStages("dstStage-" + testIndex2);
+    dummyEdge2 = new StageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2,
         srcStage, dstStage2, CODER, false);
     // Initialize states in Master
     srcStage.getTaskIds().forEach(srcTaskId -> {
@@ -541,9 +541,9 @@ public final class DataTransferTest {
     return Pair.of(srcVertex, dstVertex);
   }
 
-  private PhysicalStage setupStages(final String stageId) {
+  private Stage setupStages(final String stageId) {
     final DAG<IRVertex, RuntimeEdge<IRVertex>> emptyDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>().build();
 
-    return new PhysicalStage(stageId, emptyDag, PARALLELISM_TEN, 0, "Not_used", Collections.emptyList());
+    return new Stage(stageId, emptyDag, PARALLELISM_TEN, 0, "Not_used", Collections.emptyList());
   }
 }

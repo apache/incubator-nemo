@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.common.plan.physical;
+package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -26,7 +26,7 @@ import java.util.Map;
  */
 public final class PhysicalPlan implements Serializable {
   private final String id;
-  private final DAG<PhysicalStage, PhysicalStageEdge> stageDAG;
+  private final DAG<Stage, StageEdge> stageDAG;
   private final Map<String, IRVertex> idToIRVertex;
 
   /**
@@ -37,7 +37,7 @@ public final class PhysicalPlan implements Serializable {
    * @param idToIRVertex map from task to IR vertex.
    */
   public PhysicalPlan(final String id,
-                      final DAG<PhysicalStage, PhysicalStageEdge> stageDAG,
+                      final DAG<Stage, StageEdge> stageDAG,
                       final Map<String, IRVertex> idToIRVertex) {
     this.id = id;
     this.stageDAG = stageDAG;
@@ -54,7 +54,7 @@ public final class PhysicalPlan implements Serializable {
   /**
    * @return the DAG of stages.
    */
-  public DAG<PhysicalStage, PhysicalStageEdge> getStageDAG() {
+  public DAG<Stage, StageEdge> getStageDAG() {
     return stageDAG;
   }
 

@@ -21,7 +21,7 @@ package edu.snu.nemo.runtime.common.eventhandler;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.eventhandler.RuntimeEvent;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
-import edu.snu.nemo.runtime.common.plan.physical.PhysicalPlan;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 
 /**
  * An event for triggering dynamic optimization.

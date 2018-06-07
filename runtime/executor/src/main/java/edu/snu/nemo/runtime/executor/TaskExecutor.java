@@ -23,8 +23,9 @@ import edu.snu.nemo.common.exception.BlockWriteException;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
+import edu.snu.nemo.runtime.common.plan.Task;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.physical.*;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.*;
@@ -45,13 +46,13 @@ public final class TaskExecutor {
   private static final String ITERATORID_PREFIX = "ITERATOR_";
   private static final AtomicInteger ITERATORID_GENERATOR = new AtomicInteger(0);
 
-  // From ExecutableTask
+  // From Task
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag;
   private final String taskId;
   private final int taskIdx;
   private final TaskStateManager taskStateManager;
-  private final List<PhysicalStageEdge> stageIncomingEdges;
-  private final List<PhysicalStageEdge> stageOutgoingEdges;
+  private final List<StageEdge> stageIncomingEdges;
+  private final List<StageEdge> stageOutgoingEdges;
   private Map<String, Readable> irVertexIdToReadable;
 
   // Other parameters
@@ -80,24 +81,24 @@ public final class TaskExecutor {
 
   /**
    * Constructor.
-   * @param executableTask Task with information needed during execution.
+   * @param task Task with information needed during execution.
    * @param irVertexDag A DAG of vertices.
    * @param taskStateManager State manager for this Task.
    * @param channelFactory For reading from/writing to data to other Stages.
    * @param metricMessageSender For sending metric with execution stats to Master.
    */
-  public TaskExecutor(final ExecutableTask executableTask,
+  public TaskExecutor(final Task task,
                       final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                       final TaskStateManager taskStateManager,
                       final DataTransferFactory channelFactory,
                       final MetricMessageSender metricMessageSender) {
-    // Information from the ExecutableTask.
+    // Information from the Task.
     this.irVertexDag = irVertexDag;
-    this.taskId = executableTask.getTaskId();
-    this.taskIdx = executableTask.getTaskIdx();
-    this.stageIncomingEdges = executableTask.getTaskIncomingEdges();
-    this.stageOutgoingEdges = executableTask.getTaskOutgoingEdges();
-    this.irVertexIdToReadable = executableTask.getIrVertexIdToReadable();
+    this.taskId = task.getTaskId();
+    this.taskIdx = task.getTaskIdx();
+    this.stageIncomingEdges = task.getTaskIncomingEdges();
+    this.stageOutgoingEdges = task.getTaskOutgoingEdges();
+    this.irVertexIdToReadable = task.getIrVertexIdToReadable();
 
     // Other parameters.
     this.taskStateManager = taskStateManager;
@@ -140,8 +141,8 @@ public final class TaskExecutor {
     // 'Pointer-based' means that it isn't Map/List-based in getting the data structure or parent/children
     // to avoid element-wise extra overhead of calculating hash values(HashMap) or iterating Lists.
     irVertexDag.topologicalDo(irVertex -> {
-      final Set<PhysicalStageEdge> inEdgesFromOtherStages = getInEdgesFromOtherStages(irVertex);
-      final Set<PhysicalStageEdge> outEdgesToOtherStages = getOutEdgesToOtherStages(irVertex);
+      final Set<StageEdge> inEdgesFromOtherStages = getInEdgesFromOtherStages(irVertex);
+      final Set<StageEdge> outEdgesToOtherStages = getOutEdgesToOtherStages(irVertex);
       final IRVertexDataHandler dataHandler = getIRVertexDataHandler(irVertex);
 
       // Set data handlers of children irVertices.
@@ -152,9 +153,9 @@ public final class TaskExecutor {
       dataHandler.setChildrenDataHandler(childrenDataHandlers);
 
       // Add InputReaders for inter-stage data transfer
-      inEdgesFromOtherStages.forEach(physicalStageEdge -> {
+      inEdgesFromOtherStages.forEach(stageEdge -> {
         final InputReader inputReader = channelFactory.createReader(
-            taskIdx, physicalStageEdge.getSrcVertex(), physicalStageEdge);
+            taskIdx, stageEdge.getSrcVertex(), stageEdge);
 
         // For InputReaders that have side input, collect them separately.
         if (inputReader.isSideInputReader()) {
@@ -166,9 +167,9 @@ public final class TaskExecutor {
       });
 
       // Add OutputWriters for inter-stage data transfer
-      outEdgesToOtherStages.forEach(physicalStageEdge -> {
+      outEdgesToOtherStages.forEach(stageEdge -> {
         final OutputWriter outputWriter = channelFactory.createWriter(
-            irVertex, taskIdx, physicalStageEdge.getDstVertex(), physicalStageEdge);
+            irVertex, taskIdx, stageEdge.getDstVertex(), stageEdge);
         dataHandler.addOutputWriter(outputWriter);
       });
 
@@ -206,7 +207,7 @@ public final class TaskExecutor {
    * @param irVertex the IRVertex whose inter-stage incoming edges to be collected.
    * @return the collected incoming edges.
    */
-  private Set<PhysicalStageEdge> getInEdgesFromOtherStages(final IRVertex irVertex) {
+  private Set<StageEdge> getInEdgesFromOtherStages(final IRVertex irVertex) {
     return stageIncomingEdges.stream().filter(
         stageInEdge -> stageInEdge.getDstVertex().getId().equals(irVertex.getId()))
         .collect(Collectors.toSet());
@@ -218,7 +219,7 @@ public final class TaskExecutor {
    * @param irVertex the IRVertex whose inter-stage outgoing edges to be collected.
    * @return the collected outgoing edges.
    */
-  private Set<PhysicalStageEdge> getOutEdgesToOtherStages(final IRVertex irVertex) {
+  private Set<StageEdge> getOutEdgesToOtherStages(final IRVertex irVertex) {
     return stageOutgoingEdges.stream().filter(
         stageInEdge -> stageInEdge.getSrcVertex().getId().equals(irVertex.getId()))
         .collect(Collectors.toSet());
@@ -431,8 +432,8 @@ public final class TaskExecutor {
         final Object sideInput = getSideInput(sideInputIterator);
         final RuntimeEdge inEdge = sideInputReader.getRuntimeEdge();
         final Transform srcTransform;
-        if (inEdge instanceof PhysicalStageEdge) {
-          srcTransform = ((OperatorVertex) ((PhysicalStageEdge) inEdge).getSrcVertex()).getTransform();
+        if (inEdge instanceof StageEdge) {
+          srcTransform = ((OperatorVertex) ((StageEdge) inEdge).getSrcVertex()).getTransform();
         } else {
           srcTransform = ((OperatorVertex) inEdge.getSrc()).getTransform();
         }
@@ -473,8 +474,8 @@ public final class TaskExecutor {
       Object sideInput = input.remove();
       final RuntimeEdge inEdge = input.getSideInputRuntimeEdge();
       final Transform srcTransform;
-      if (inEdge instanceof PhysicalStageEdge) {
-        srcTransform = ((OperatorVertex) ((PhysicalStageEdge) inEdge).getSrcVertex()).getTransform();
+      if (inEdge instanceof StageEdge) {
+        srcTransform = ((OperatorVertex) ((StageEdge) inEdge).getSrcVertex()).getTransform();
       } else {
         srcTransform = ((OperatorVertex) inEdge.getSrc()).getTransform();
       }

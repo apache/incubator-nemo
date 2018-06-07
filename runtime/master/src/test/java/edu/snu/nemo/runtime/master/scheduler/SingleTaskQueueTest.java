@@ -16,7 +16,9 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
-import edu.snu.nemo.runtime.common.plan.physical.*;
+import edu.snu.nemo.runtime.common.plan.Task;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.plangenerator.TestPlanGenerator;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,7 +61,7 @@ public final class SingleTaskQueueTest {
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.ThreeSequentialVertices, true);
 
     pendingTaskPriorityQueue.onJobScheduled(physicalPlan);
-    final List<PhysicalStage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
+    final List<Stage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
 
     // Make sure that ScheduleGroups have been assigned to satisfy PendingPQ's requirements.
     assertEquals(dagOf2Stages.get(0).getScheduleGroupIndex(), dagOf2Stages.get(1).getScheduleGroupIndex());
@@ -83,7 +85,7 @@ public final class SingleTaskQueueTest {
     executorService.submit(() -> {
       try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(1).getId());
-        final ExecutableTask dequeuedTask = dequeue();
+        final Task dequeuedTask = dequeue();
         assertEquals(RuntimeIdGenerator.getStageIdFromTaskId(dequeuedTask.getTaskId()),
             dagOf2Stages.get(1).getId());
 
@@ -115,7 +117,7 @@ public final class SingleTaskQueueTest {
     final PhysicalPlan physicalPlan =
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.ThreeSequentialVertices, false);
     pendingTaskPriorityQueue.onJobScheduled(physicalPlan);
-    final List<PhysicalStage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
+    final List<Stage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
 
     // Make sure that ScheduleGroups have been assigned to satisfy PendingPQ's requirements.
     assertEquals(dagOf2Stages.get(0).getScheduleGroupIndex(), 0);
@@ -135,7 +137,7 @@ public final class SingleTaskQueueTest {
     executorService.submit(() -> {
       try {
         assertEquals(dequeueAndGetStageId(), dagOf2Stages.get(0).getId());
-        final ExecutableTask dequeuedTask = dequeue();
+        final Task dequeuedTask = dequeue();
         assertEquals(RuntimeIdGenerator.getStageIdFromTaskId(dequeuedTask.getTaskId()),
             dagOf2Stages.get(0).getId());
 
@@ -168,7 +170,7 @@ public final class SingleTaskQueueTest {
     final PhysicalPlan physicalPlan = TestPlanGenerator.generatePhysicalPlan(
         TestPlanGenerator.PlanType.ThreeSequentialVerticesWithDifferentContainerTypes, true);
     pendingTaskPriorityQueue.onJobScheduled(physicalPlan);
-    final List<PhysicalStage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
+    final List<Stage> dagOf2Stages = physicalPlan.getStageDAG().getTopologicalSort();
 
     // Make sure that ScheduleGroups have been assigned to satisfy PendingPQ's requirements.
     assertEquals(dagOf2Stages.get(0).getScheduleGroupIndex(), dagOf2Stages.get(1).getScheduleGroupIndex());
@@ -206,12 +208,12 @@ public final class SingleTaskQueueTest {
   }
 
   /**
-   * Schedule the tasks in a physical stage.
+   * Schedule the tasks in a stage.
    * @param stage the stage to schedule.
    */
-  private void scheduleStage(final PhysicalStage stage) {
+  private void scheduleStage(final Stage stage) {
     stage.getTaskIds().forEach(taskId ->
-        pendingTaskPriorityQueue.add(new ExecutableTask(
+        pendingTaskPriorityQueue.add(new Task(
             "TestPlan",
             taskId,
             0,
@@ -227,17 +229,17 @@ public final class SingleTaskQueueTest {
    * @return the stage name of the dequeued task.
    */
   private String dequeueAndGetStageId() {
-    final ExecutableTask executableTask = dequeue();
-    return RuntimeIdGenerator.getStageIdFromTaskId(executableTask.getTaskId());
+    final Task task = dequeue();
+    return RuntimeIdGenerator.getStageIdFromTaskId(task.getTaskId());
   }
 
   /**
    * Dequeues a scheduled task from the task priority queue.
    * @return the Task dequeued
    */
-  private ExecutableTask dequeue() {
-    final Collection<ExecutableTask> executableTasks
+  private Task dequeue() {
+    final Collection<Task> tasks
         = pendingTaskPriorityQueue.peekSchedulableStage().get();
-    return pendingTaskPriorityQueue.remove(executableTasks.iterator().next().getTaskId());
+    return pendingTaskPriorityQueue.remove(tasks.iterator().next().getTaskId());
   }
 }

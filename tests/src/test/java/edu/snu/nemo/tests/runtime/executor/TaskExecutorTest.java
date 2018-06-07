@@ -27,8 +27,9 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.plan.Task;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
-import edu.snu.nemo.runtime.common.plan.physical.*;
 import edu.snu.nemo.runtime.executor.MetricMessageSender;
 import edu.snu.nemo.runtime.executor.TaskExecutor;
 import edu.snu.nemo.runtime.executor.TaskStateManager;
@@ -59,7 +60,7 @@ import static org.mockito.Mockito.*;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({InputReader.class, OutputWriter.class, DataTransferFactory.class,
-    TaskStateManager.class, PhysicalStageEdge.class})
+    TaskStateManager.class, StageEdge.class})
 public final class TaskExecutorTest {
   private static final int DATA_SIZE = 100;
   private static final String CONTAINER_TYPE = "CONTAINER_TYPE";
@@ -112,11 +113,11 @@ public final class TaskExecutorTest {
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
         new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>().addVertex(sourceIRVertex).buildWithoutSourceSinkCheck();
-    final PhysicalStageEdge stageOutEdge = mock(PhysicalStageEdge.class);
+    final StageEdge stageOutEdge = mock(StageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(sourceIRVertex);
     final String taskId = RuntimeIdGenerator.generateTaskId(0, stageId);
-    final ExecutableTask executableTask =
-        new ExecutableTask(
+    final Task task =
+        new Task(
             "testSourceVertex",
             taskId,
             0,
@@ -128,7 +129,7 @@ public final class TaskExecutorTest {
 
     // Execute the task.
     final TaskExecutor taskExecutor = new TaskExecutor(
-        executableTask, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
+        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
     taskExecutor.execute();
 
     // Check the output.
@@ -165,12 +166,12 @@ public final class TaskExecutorTest {
             runtimeIREdgeId, edgeProperties, operatorIRVertex1, operatorIRVertex2, coder))
         .buildWithoutSourceSinkCheck();
     final String taskId = RuntimeIdGenerator.generateTaskId(0, stageId);
-    final PhysicalStageEdge stageInEdge = mock(PhysicalStageEdge.class);
+    final StageEdge stageInEdge = mock(StageEdge.class);
     when(stageInEdge.getDstVertex()).thenReturn(operatorIRVertex1);
-    final PhysicalStageEdge stageOutEdge = mock(PhysicalStageEdge.class);
+    final StageEdge stageOutEdge = mock(StageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(operatorIRVertex2);
-    final ExecutableTask executableTask =
-        new ExecutableTask(
+    final Task task =
+        new Task(
             "testSourceVertex",
             taskId,
             0,
@@ -182,7 +183,7 @@ public final class TaskExecutorTest {
 
     // Execute the task.
     final TaskExecutor taskExecutor = new TaskExecutor(
-        executableTask, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
+        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
     taskExecutor.execute();
 
     // Check the output.

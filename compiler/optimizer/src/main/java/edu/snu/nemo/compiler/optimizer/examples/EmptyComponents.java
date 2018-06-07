@@ -21,7 +21,6 @@ import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -93,7 +92,11 @@ public class EmptyComponents {
 
     @Override
     public List<Readable<T>> getReadables(final int desirednumOfSplits) {
-      return Arrays.asList(new EmptyReadable<>());
+      final List list = new ArrayList(desirednumOfSplits);
+      for (int i = 0; i < desirednumOfSplits; i++) {
+        list.add(new EmptyReadable<>());
+      }
+      return list;
     }
 
     @Override
