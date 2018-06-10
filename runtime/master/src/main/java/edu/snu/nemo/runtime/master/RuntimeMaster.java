@@ -77,6 +77,7 @@ public final class RuntimeMaster {
   private final BlockManagerMaster blockManagerMaster;
   private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
+  private final Map<Integer, Long> aggregatedMetricData;
 
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
@@ -110,6 +111,7 @@ public final class RuntimeMaster {
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
+    this.aggregatedMetricData = new HashMap<>();
   }
 
   /**
@@ -321,15 +323,22 @@ public final class RuntimeMaster {
         .filter(irVertex -> irVertex.getId().equals(srcVertexId)).findFirst()
         .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
 
-    final List<Pair<Integer, Long>> partitionSizes = new ArrayList<>();
+    // For each hash range index, aggregate the metric data as they arrive.
     partitionSizeInfo.forEach(partitionSizeEntry -> {
-      partitionSizes.add(Pair.of(partitionSizeEntry.getKey(), partitionSizeEntry.getSize()));
+      final int key = partitionSizeEntry.getKey();
+      final long size = partitionSizeEntry.getSize();
+      if (aggregatedMetricData.containsKey(key)) {
+        aggregatedMetricData.compute(key, (existKey, existValue) -> existValue + size);
+      } else {
+        aggregatedMetricData.put(key, size);
+      }
     });
 
     if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
-      final MetricCollectionBarrierVertex<Pair<Integer, Long>> metricCollectionBarrierVertex =
+      final MetricCollectionBarrierVertex<Map<Integer, Long>> metricCollectionBarrierVertex =
           (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
-      metricCollectionBarrierVertex.accumulateMetric(blockId, partitionSizes);
+      metricCollectionBarrierVertex.addBlockId(blockId);
+      metricCollectionBarrierVertex.updateMetricData(aggregatedMetricData);
     } else {
       throw new RuntimeException("Something wrong happened at DataSkewCompositePass.");
     }

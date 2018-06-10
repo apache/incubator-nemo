@@ -40,7 +40,7 @@ import java.util.stream.IntStream;
  * Dynamic optimization pass for handling data skew.
  * It receives pairs of the key index and the size of a partition for each output block.
  */
-public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<Pair<Integer, Long>>>> {
+public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>, Map<Integer, Long>>> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
   private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
 
@@ -58,13 +58,15 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<P
   }
 
   @Override
-  public PhysicalPlan apply(final PhysicalPlan originalPlan, final Map<String, List<Pair<Integer, Long>>> metricData) {
+  public PhysicalPlan apply(final PhysicalPlan originalPlan,
+                            final Pair<List<String>, Map<Integer, Long>> metricData) {
     // Builder to create new stages.
     final DAGBuilder<Stage, StageEdge> physicalDAGBuilder =
         new DAGBuilder<>(originalPlan.getStageDAG());
+    final List<String> blockIds = metricData.left();
 
     // get edges to optimize
-    final List<String> optimizationEdgeIds = metricData.keySet().stream().map(blockId ->
+    final List<String> optimizationEdgeIds = blockIds.stream().map(blockId ->
         RuntimeIdGenerator.getRuntimeEdgeIdFromBlockId(blockId)).collect(Collectors.toList());
     final DAG<Stage, StageEdge> stageDAG = originalPlan.getStageDAG();
     final List<StageEdge> optimizationEdges = stageDAG.getVertices().stream()
@@ -77,7 +79,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<P
         new RuntimeException("optimization edges are empty")).getDst().getTaskIds().size();
 
     // Calculate keyRanges.
-    final List<KeyRange> keyRanges = calculateHashRanges(metricData, taskListSize);
+    final List<KeyRange> keyRanges = calculateHashRanges(metricData.right(), taskListSize);
 
     // Overwrite the previously assigned hash value range in the physical DAG with the new range.
     optimizationEdges.forEach(optimizationEdge -> {
@@ -93,37 +95,18 @@ public final class DataSkewRuntimePass implements RuntimePass<Map<String, List<P
   /**
    * Method for calculating key ranges to evenly distribute the skewed metric data.
    *
-   * @param metricData        the metric data.
+   * @param aggregatedMetricData the metric data.
    * @param taskListSize the size of the task list.
    * @return the list of key ranges calculated.
    */
   @VisibleForTesting
-  public List<KeyRange> calculateHashRanges(final Map<String, List<Pair<Integer, Long>>> metricData,
+  public List<KeyRange> calculateHashRanges(final Map<Integer, Long> aggregatedMetricData,
                                             final Integer taskListSize) {
-    // NOTE: metricData is made up of a map of blockId to blockSizes.
-    // Count the hash range (number of blocks for each block).
-    final int maxHashValue = metricData.values().stream()
-        .map(list -> list.stream()
-            .map(pair -> pair.left())
-            .max(Integer::compareTo)
-            .<DynamicOptimizationException>orElseThrow(
-                () -> new DynamicOptimizationException("Cannot find max hash value in a block.")))
+    // NOTE: aggregatedMetricDataMap is made up of a map of (hash value, blockSize).
+    // Get the max hash value.
+    final int maxHashValue = aggregatedMetricData.keySet().stream()
         .max(Integer::compareTo)
         .orElseThrow(() -> new DynamicOptimizationException("Cannot find max hash value among blocks."));
-
-    // Aggregate metric data.
-    final Map<Integer, Long> aggregatedMetricData = new HashMap<>(maxHashValue);
-    // for each hash range index, we aggregate the metric data.
-    metricData.forEach((blockId, pairs) -> {
-      pairs.forEach(pair -> {
-        final int key = pair.left();
-        if (aggregatedMetricData.containsKey(key)) {
-          aggregatedMetricData.compute(key, (existKey, existValue) -> existValue + pair.right());
-        } else {
-          aggregatedMetricData.put(key, pair.right());
-        }
-      });
-    });
 
     // Do the optimization using the information derived above.
     final Long totalSize = aggregatedMetricData.values().stream().mapToLong(n -> n).sum(); // get total size
