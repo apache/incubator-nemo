@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.tests.runtime.executor;
+package edu.snu.nemo.runtime.executor.task;
 
 import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.coder.Coder;
@@ -25,7 +25,6 @@ import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.compiler.optimizer.examples.EmptyComponents;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
@@ -47,8 +46,8 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.IntStream;
 
-import static edu.snu.nemo.tests.runtime.RuntimeTestUtil.getRangedNumList;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -150,8 +149,8 @@ public final class TaskExecutorTest {
    */
   @Test(timeout=5000)
   public void testOperatorVertex() throws Exception {
-    final IRVertex operatorIRVertex1 = new OperatorVertex(new SimpleTransform());
-    final IRVertex operatorIRVertex2 = new OperatorVertex(new SimpleTransform());
+    final IRVertex operatorIRVertex1 = new OperatorVertex(new IdentityFunctionTransform());
+    final IRVertex operatorIRVertex2 = new OperatorVertex(new IdentityFunctionTransform());
     final String runtimeIREdgeId = "Runtime edge between operator tasks";
 
     final String stageId = RuntimeIdGenerator.generateStageId(1);
@@ -256,10 +255,10 @@ public final class TaskExecutorTest {
   }
 
   /**
-   * Simple {@link Transform} for testing.
+   * Simple identity function for testing.
    * @param <T> input/output type.
    */
-  private class SimpleTransform<T> implements Transform<T, T> {
+  private class IdentityFunctionTransform<T> implements Transform<T, T> {
     private OutputCollector<T> outputCollector;
 
     @Override
@@ -276,5 +275,17 @@ public final class TaskExecutorTest {
     public void close() {
       // Do nothing.
     }
+  }
+
+  /**
+   * Gets a list of integer pair elements in range.
+   * @param start value of the range (inclusive).
+   * @param end   value of the range (exclusive).
+   * @return the list of elements.
+   */
+  private List getRangedNumList(final int start, final int end) {
+    final List numList = new ArrayList<>(end - start);
+    IntStream.range(start, end).forEach(number -> numList.add(number));
+    return numList;
   }
 }
