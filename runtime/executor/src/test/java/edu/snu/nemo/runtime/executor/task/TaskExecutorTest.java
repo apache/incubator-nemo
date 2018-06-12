@@ -44,6 +44,7 @@ import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
@@ -99,7 +100,7 @@ public final class TaskExecutorTest {
 
     final Readable readable = new Readable() {
       @Override
-      public Iterable read() throws Exception {
+      public Iterable read() throws IOException {
         return elements;
       }
       @Override

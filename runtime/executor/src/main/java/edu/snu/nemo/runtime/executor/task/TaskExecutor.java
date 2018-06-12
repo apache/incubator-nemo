@@ -63,10 +63,6 @@ public final class TaskExecutor {
   private long serBlockSize;
   private long encodedBlockSize;
 
-  // Actual data
-  private final LinkedBlockingQueue<Pair<String, DataUtil.IteratorWithNumBytes>> vertexIdAndDataPairQueue;
-  private int numPartitionsFromOtherStages;
-
   // Misc
   private final DataTransferFactory channelFactory;
   private boolean isExecuted;
@@ -96,10 +92,6 @@ public final class TaskExecutor {
     this.serBlockSize = 0;
     this.encodedBlockSize = 0;
 
-    // Actual data
-    this.vertexIdAndDataPairQueue = new LinkedBlockingQueue<>();
-    this.numPartitionsFromOtherStages = 0;
-
     // Misc
     this.channelFactory = channelFactory;
     this.isExecuted = false;
@@ -116,13 +108,13 @@ public final class TaskExecutor {
    * Converts the DAG of vertices into pointer-based DAG of vertex harnesses.
    * This conversion is necessary for constructing concrete data channels for each vertex's inputs and outputs.
    *
-   * - Source vertex read: Explicitly handled
+   * - Source vertex read: Explicitly handled (SourceVertexDataFetcher)
    * - Sink vertex write: Implicitly handled within an OperatorVertex
    *
-   * - Parent-task read: Explicitly handled
+   * - Parent-task read: Explicitly handled (ParentTaskDataFetcher)
    * - Children-task write: Explicitly handled
    *
-   * - Intra-vertex read: Implicitly handled by handling Intra-vertex writes in a reverse-topo order
+   * - Intra-vertex read: Implicitly handled when performing Intra-vertex writes
    * - Intra-vertex write: Explicitly handled
    *
    * For element-wise data processing, we traverse vertex harnesses from the roots to the leaves for each element.
@@ -133,7 +125,8 @@ public final class TaskExecutor {
    * @param irVertexDag dag.
    * @return topologically-sorted harnesses.
    */
-  List<VertexHarness> prepareHarnesses(final Task task, final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
+  private List<VertexHarness> prepareHarnesses(final Task task,
+                                               final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
     final int taskIndex = RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId());
 
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
@@ -143,7 +136,7 @@ public final class TaskExecutor {
     final Map<String, VertexHarness> vertexIdToHarness = new HashMap<>();
     reverseTopologicallySorted.forEach(irVertex -> {
       // Source vertex read
-      final Optional<Readable> sourceReader = getSourceVertexReader(irVertex, task.getIrVertexIdToReadable());
+      final List<Readable> sourceReaders = getSourceVertexReader(irVertex, task.getIrVertexIdToReadable());
 
       // Parent-task read
       final List<InputReader> parentTaskReaders =
@@ -161,8 +154,8 @@ public final class TaskExecutor {
       prepareTransform(irVertex);
 
       // Remember the created harness
-      final VertexHarness vertexHarness =
-          new VertexHarness(irVertex, outputCollector, childrenHandlers, parentTaskReaders, childrenTaskWriters);
+      final VertexHarness vertexHarness = new VertexHarness(irVertex, outputCollector, childrenHandlers,
+          sourceReaders, parentTaskReaders, childrenTaskWriters);
       vertexIdToHarness.put(irVertex.getId(), vertexHarness);
     });
 
@@ -175,42 +168,45 @@ public final class TaskExecutor {
 
   /**
    * Recursively process a data element down the DAG dependency.
-   *
    * @param vertexHarness VertexHarness of a vertex to execute.
    * @param dataElement input data element to process.
    */
-  void processElementRecursively(final VertexHarness vertexHarness, final Object dataElement) {
+  private void processElementRecursively(final VertexHarness vertexHarness, final Object dataElement) {
     final IRVertex irVertex = vertexHarness.getIRVertex();
     final OutputCollectorImpl outputCollector = vertexHarness.getOutputCollector();
 
     // Process element-wise depending on the vertex type
+    /*
     if (irVertex instanceof SourceVertex) {
-      if (dataElement == null) { // null used for Beam VoidCoders
-        final List<Object> nullForVoidCoder = Collections.singletonList(dataElement);
-        outputCollector.emit(nullForVoidCoder);
-      } else {
-        outputCollector.emit(dataElement);
-      }
-    } else if (irVertex instanceof OperatorVertex) {
+      handleNull(outputCollector, dataElement);
+    } else
+    */
+
+    if (irVertex instanceof OperatorVertex) {
       final Transform transform = ((OperatorVertex) irVertex).getTransform();
       transform.onData(dataElement);
     } else if (irVertex instanceof MetricCollectionBarrierVertex) {
-      if (dataElement == null) { // null used for Beam VoidCoders
-        final List<Object> nullForVoidCoder = Collections.singletonList(dataElement);
-        outputCollector.emit(nullForVoidCoder);
-      } else {
-        outputCollector.emit(dataElement);
-      }
+      handleNull(outputCollector, dataElement);
       setIRVertexPutOnHold((MetricCollectionBarrierVertex) irVertex);
     } else {
       throw new UnsupportedOperationException("This type of IRVertex is not supported");
     }
 
-    // Consume all of the produced elements
+
+    // Handle this vertex's outputs
     while (!outputCollector.isEmpty()) {
       final Object element = outputCollector.remove();
       vertexHarness.getWritersToChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
       vertexHarness.getChildren().forEach(child -> processElementRecursively(child, element)); // Recursive call
+    }
+  }
+
+  private void handleNull(final OutputCollectorImpl outputCollector, final Object dataElement) {
+    if (dataElement == null) { // null used for Beam VoidCoders
+      final List<Object> nullForVoidCoder = Collections.singletonList(dataElement);
+      outputCollector.emit(nullForVoidCoder);
+    } else {
+      outputCollector.emit(dataElement);
     }
   }
 
@@ -246,36 +242,6 @@ public final class TaskExecutor {
 
     // Execute the IRVertex DAG.
 
-    // Process data from other stages.
-    for (int currPartition = 0; currPartition < numPartitionsFromOtherStages; currPartition++) {
-      Pair<String, DataUtil.IteratorWithNumBytes> idToIteratorPair = vertexIdAndDataPairQueue.take();
-      final String iteratorId = idToIteratorPair.left();
-      final DataUtil.IteratorWithNumBytes iterator = idToIteratorPair.right();
-      List<VertexHarness> vertexHarnesses = iteratorIdToDataHandlersMap.get(iteratorId);
-      iterator.forEachRemaining(element -> {
-        for (final VertexHarness vertexHarness : vertexHarnesses) {
-          processElementRecursively(vertexHarness, element);
-        }
-      });
-
-      // Collect metrics on block size if possible.
-      try {
-        serBlockSize += iterator.getNumSerializedBytes();
-      } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-        serBlockSize = -1;
-      } catch (final IllegalStateException e) {
-        LOG.error("Failed to get the number of bytes of serialized data - the data is not ready yet ", e);
-      }
-      try {
-        encodedBlockSize += iterator.getNumEncodedBytes();
-      } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-        encodedBlockSize = -1;
-      } catch (final IllegalStateException e) {
-        LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
-      }
-    }
-    inputReadEndTime = System.currentTimeMillis();
-    metric.put("InputReadTime(ms)", inputReadEndTime - inputReadStartTime);
 
     try {
     } catch (final BlockWriteException ex2) {
@@ -331,15 +297,15 @@ public final class TaskExecutor {
     }
   }
 
-  private Optional<Readable> getSourceVertexReader(final IRVertex irVertex,
-                                                   final Map<String, Readable> irVertexIdToReadable) {
+  private List<Readable> getSourceVertexReader(final IRVertex irVertex,
+                                               final Map<String, Readable> irVertexIdToReadable) {
     if (irVertex instanceof SourceVertex) {
       try {
         final Readable readable = irVertexIdToReadable.get(irVertex.getId());
         if (readable == null) {
           throw new IllegalStateException(irVertex.toString());
         }
-        return Optional.of(readable);
+        return Arrays.asList(readable);
       } catch (final BlockFetchException ex) {
         taskStateManager.onTaskStateChanged(TaskState.State.FAILED_RECOVERABLE,
             Optional.empty(), Optional.of(TaskState.RecoverableFailureCause.INPUT_READ_FAILURE));
@@ -352,7 +318,7 @@ public final class TaskExecutor {
         throw new RuntimeException(e);
       }
     } else {
-      return Optional.empty();
+      return new ArrayList<>(0);
     }
   }
 
@@ -393,23 +359,6 @@ public final class TaskExecutor {
     return childrenHandlers;
   }
 
-
-  /**
-   * Add outputCollectors to each {@link IRVertex}.
-   * @param irVertex the IRVertex to add output outputCollectors to.
-   */
-  private void setOutputCollector(final IRVertex irVertex, final VertexHarness vertexHarness) {
-    final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
-    irVertexDag.getOutgoingEdgesOf(irVertex).forEach(outEdge -> {
-      if (outEdge.isSideInput()) {
-        outputCollector.setSideInputRuntimeEdge(outEdge);
-        outputCollector.setAsSideInputFor(irVertex.getId());
-      }
-    });
-
-    vertexHarness.setOutputCollector(outputCollector);
-  }
-
   private void setIRVertexPutOnHold(final MetricCollectionBarrierVertex irVertex) {
     idOfVertexPutOnHold = irVertex.getId();
   }
@@ -446,27 +395,6 @@ public final class TaskExecutor {
    */
   private void prepareInputFromOtherStages() {
     inputReaderToDataHandlersMap.forEach((inputReader, dataHandlers) -> {
-      final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader.read();
-      numPartitionsFromOtherStages += futures.size();
-
-      // Add consumers which will push iterator when the futures are complete.
-      futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
-        if (exception != null) {
-          throw new BlockFetchException(exception);
-        }
-
-        if (iteratorIdToDataHandlersMap.containsKey(iteratorId)) {
-          throw new RuntimeException("iteratorIdToDataHandlersMap already contains " + iteratorId);
-        } else {
-          iteratorIdToDataHandlersMap.computeIfAbsent(iteratorId, absentIteratorId -> dataHandlers);
-          try {
-            vertexIdAndDataPairQueue.put(Pair.of(iteratorId, iterator));
-          } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new BlockFetchException(e);
-          }
-        }
-      }));
     });
   }
 

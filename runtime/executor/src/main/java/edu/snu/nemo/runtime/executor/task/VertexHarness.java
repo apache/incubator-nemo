@@ -16,34 +16,30 @@
 package edu.snu.nemo.runtime.executor.task;
 
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputWriter;
 
 import java.util.List;
 
 /**
- * Captures the relationship between an IRVertex's outputCollector, and children vertices.
+ * Captures the relationship between a non-source IRVertex's outputCollector, and children vertices.
  */
-class VertexHarness {
+final class VertexHarness {
   // IRVertex and its corresponding output collector.
   private final IRVertex irVertex;
   private final OutputCollectorImpl outputCollector;
 
   // These lists can be empty
   private final List<VertexHarness> children;
-  private final List<InputReader> readersForParentTasks;
   private final List<OutputWriter> writersToChildrenTasks;
 
   VertexHarness(final IRVertex irVertex,
                 final OutputCollectorImpl outputCollector,
                 final List<VertexHarness> children,
-                final List<InputReader> readersForParentTasks,
                 final List<OutputWriter> writersToChildrenTasks) {
     this.irVertex = irVertex;
     this.outputCollector = outputCollector;
     this.children = children;
-    this.readersForParentTasks = readersForParentTasks;
     this.writersToChildrenTasks = writersToChildrenTasks;
   }
 
@@ -67,14 +63,6 @@ class VertexHarness {
   List<VertexHarness> getChildren() {
     return children;
   }
-
-  /**
-   * @return InputReaders of this irVertex. (empty if none exists)
-   */
-  List<InputReader> getReadersForParentTasks() {
-    return readersForParentTasks;
-  }
-
   /**
    * @return OutputWriters of this irVertex. (empty if none exists)
    */

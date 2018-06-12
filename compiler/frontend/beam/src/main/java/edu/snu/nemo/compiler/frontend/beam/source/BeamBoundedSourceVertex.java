@@ -17,6 +17,7 @@ package edu.snu.nemo.compiler.frontend.beam.source;
 
 import edu.snu.nemo.common.ir.Readable;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -96,7 +97,7 @@ public final class BeamBoundedSourceVertex<O> extends SourceVertex<O> {
     }
 
     @Override
-    public Iterable<T> read() throws Exception {
+    public Iterable<T> read() throws IOException {
       final ArrayList<T> elements = new ArrayList<>();
       try (BoundedSource.BoundedReader<T> reader = boundedSource.createReader(null)) {
         for (boolean available = reader.start(); available; available = reader.advance()) {
