@@ -50,6 +50,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 @NotThreadSafe
 public final class TaskExecutor {
   private static final Logger LOG = LoggerFactory.getLogger(TaskExecutor.class.getName());
+  private static final int NONE_FINISHED = -1;
 
   // Essential information
   private final String taskId;
@@ -110,13 +111,13 @@ public final class TaskExecutor {
    * This conversion is necessary for constructing concrete data channels for each vertex's inputs and outputs.
    *
    * - Source vertex read: Explicitly handled (SourceVertexDataFetcher)
-   * - Sink vertex write: Implicitly handled within an OperatorVertex
+   * - Sink vertex write: Implicitly handled within the vertex
    *
    * - Parent-task read: Explicitly handled (ParentTaskDataFetcher)
    * - Children-task write: Explicitly handled (VertexHarness)
    *
-   * - Intra-vertex read: Implicitly handled when performing Intra-vertex writes
-   * - Intra-vertex write: Explicitly handled (VertexHarness)
+   * - Intra-task read: Implicitly handled when performing Intra-task writes
+   * - Intra-task write: Explicitly handled (VertexHarness)
    *
    * For element-wise data processing, we traverse vertex harnesses from the roots to the leaves for each element.
    * This means that overheads associated with jumping from one harness to the other should be minimal.
@@ -137,11 +138,9 @@ public final class TaskExecutor {
     final List<DataFetcher> dataFetchers = new ArrayList<>();
     final Map<String, VertexHarness> vertexIdToHarness = new HashMap<>();
     reverseTopologicallySorted.forEach(irVertex -> {
-      // Children handlers
       final List<VertexHarness> children = getChildrenHarnesses(irVertex, irVertexDag, vertexIdToHarness);
       final Optional<Readable> sourceReader = getSourceVertexReader(irVertex, task.getIrVertexIdToReadable());
       if (sourceReader.isPresent() != irVertex instanceof SourceVertex) {
-        // Sanity check
         throw new IllegalStateException(irVertex.toString());
       }
 
@@ -217,12 +216,25 @@ public final class TaskExecutor {
 
     // Phase 1: Consume task-external input data.
     // Recursively process each data element produced by a data fetcher.
-    // TODO: stop when all inputs are fetched
     final List<DataFetcher> availableFetchers = new ArrayList<>(dataFetchers);
-    for (final DataFetcher dataFetcher : availableFetchers) {
-      final Object element = dataFetcher.fetchDataElement();
-      for (final VertexHarness harness : dataFetcher.getConsumers()) {
-        processElementRecursively(harness, element);
+    int finishedFetcherIndex = NONE_FINISHED;
+    while (!availableFetchers.isEmpty()) {
+      for (int i = 0; i < availableFetchers.size(); i++) {
+        final DataFetcher dataFetcher = dataFetchers.get(i);
+        final Object element = dataFetcher.fetchDataElement();
+        if (element == null) {
+          finishedFetcherIndex = i;
+          break;
+        } else {
+          for (final VertexHarness harness : dataFetcher.getConsumers()) {
+            processElementRecursively(harness, element);
+          }
+        }
+      }
+
+      // Remove the finished fetcher from the list
+      if (finishedFetcherIndex != NONE_FINISHED) {
+        availableFetchers.remove(finishedFetcherIndex);
       }
     }
 

@@ -17,12 +17,16 @@ package edu.snu.nemo.runtime.executor.task;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 abstract class DataFetcher {
   private final List<VertexHarness> consumers;
+  protected final Map<String, Object> metricMap;
 
-  DataFetcher(final List<VertexHarness> consumers) {
+  DataFetcher(final List<VertexHarness> consumers,
+              final Map<String, Object> metricMap) {
     this.consumers = consumers;
+    this.metricMap = metricMap;
   }
 
   /**

@@ -21,6 +21,7 @@ import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
@@ -36,8 +37,9 @@ class ParentTaskDataFetcher extends DataFetcher {
   private int currentIteratorIndex;
 
   ParentTaskDataFetcher(final List<InputReader> readersForParentTasks,
-                        final List<VertexHarness> children) {
-    super(children);
+                        final List<VertexHarness> children,
+                        final Map<String, Object> metricMap ) {
+    super(children, metricMap);
     this.readersForParentTasks = readersForParentTasks;
     this.hasFetchStarted = false;
     this.dataQueue = new LinkedBlockingQueue<>();

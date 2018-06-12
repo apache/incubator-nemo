@@ -20,6 +20,7 @@ import edu.snu.nemo.common.ir.Readable;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 class SourceVertexDataFetcher extends DataFetcher {
@@ -29,8 +30,9 @@ class SourceVertexDataFetcher extends DataFetcher {
   private Iterator iterator;
 
   SourceVertexDataFetcher(final Readable readable,
-                          final List<VertexHarness> children) {
-    super(children);
+                          final List<VertexHarness> children,
+                          final Map<String, Object> metricMap) {
+    super(children, metricMap);
     this.readable = readable;
   }
 
