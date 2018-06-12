@@ -29,7 +29,7 @@ import java.util.*;
  */
 public abstract class CompositePass implements CompileTimePass {
   private final List<CompileTimePass> passList;
-  private final Set<ExecutionProperty.Key> prerequisiteExecutionProperties;
+  private final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties;
 
   /**
    * Constructor.
@@ -75,7 +75,7 @@ public abstract class CompositePass implements CompileTimePass {
   }
 
   @Override
-  public final Set<ExecutionProperty.Key> getPrerequisiteExecutionProperties() {
+  public final Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties() {
     return prerequisiteExecutionProperties;
   }
 }

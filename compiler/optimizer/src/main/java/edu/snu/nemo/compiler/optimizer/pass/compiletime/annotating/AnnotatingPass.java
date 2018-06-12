@@ -26,16 +26,16 @@ import java.util.Set;
  * It is ensured by the compiler that the shape of the IR DAG itself is not modified by an AnnotatingPass.
  */
 public abstract class AnnotatingPass implements CompileTimePass {
-  private final ExecutionProperty.Key keyOfExecutionPropertyToModify;
-  private final Set<ExecutionProperty.Key> prerequisiteExecutionProperties;
+  private final Class<? extends ExecutionProperty> keyOfExecutionPropertyToModify;
+  private final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties;
 
   /**
    * Constructor.
    * @param keyOfExecutionPropertyToModify key of execution property to modify.
    * @param prerequisiteExecutionProperties prerequisite execution properties.
    */
-  public AnnotatingPass(final ExecutionProperty.Key keyOfExecutionPropertyToModify,
-                        final Set<ExecutionProperty.Key> prerequisiteExecutionProperties) {
+  public AnnotatingPass(final Class<? extends ExecutionProperty> keyOfExecutionPropertyToModify,
+                        final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties) {
     this.keyOfExecutionPropertyToModify = keyOfExecutionPropertyToModify;
     this.prerequisiteExecutionProperties = prerequisiteExecutionProperties;
   }
@@ -44,21 +44,20 @@ public abstract class AnnotatingPass implements CompileTimePass {
    * Constructor.
    * @param keyOfExecutionPropertyToModify key of execution property to modify.
    */
-  public AnnotatingPass(final ExecutionProperty.Key keyOfExecutionPropertyToModify) {
-    this.keyOfExecutionPropertyToModify = keyOfExecutionPropertyToModify;
-    this.prerequisiteExecutionProperties = new HashSet<>();
+  public AnnotatingPass(final Class<? extends ExecutionProperty> keyOfExecutionPropertyToModify) {
+    this(keyOfExecutionPropertyToModify, new HashSet<>());
   }
 
   /**
    * Getter for key of execution property to modify.
    * @return key of execution property to modify.
    */
-  public final ExecutionProperty.Key getExecutionPropertyToModify() {
+  public final Class<? extends ExecutionProperty> getExecutionPropertyToModify() {
     return keyOfExecutionPropertyToModify;
   }
 
   @Override
-  public final Set<ExecutionProperty.Key> getPrerequisiteExecutionProperties() {
+  public final Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties() {
     return prerequisiteExecutionProperties;
   }
 }

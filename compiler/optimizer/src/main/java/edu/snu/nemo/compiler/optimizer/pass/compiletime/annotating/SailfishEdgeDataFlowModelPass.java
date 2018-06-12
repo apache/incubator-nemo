@@ -19,7 +19,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
 
 import java.util.Collections;
@@ -34,7 +33,7 @@ public final class SailfishEdgeDataFlowModelPass extends AnnotatingPass {
    * Default constructor.
    */
   public SailfishEdgeDataFlowModelPass() {
-    super(ExecutionProperty.Key.DataFlowModel, Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
+    super(DataFlowModelProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
   }
 
   @Override
@@ -42,7 +41,7 @@ public final class SailfishEdgeDataFlowModelPass extends AnnotatingPass {
     dag.getVertices().forEach(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       inEdges.forEach(edge -> {
-        if (edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
+        if (edge.getPropertyValue(DataCommunicationPatternProperty.class).get()
             .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
           edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push)); // Push to the merger vertex.
         } else {

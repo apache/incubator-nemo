@@ -16,13 +16,17 @@
 package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.vertex.*;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.StageIdProperty;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.exception.IllegalVertexOperationException;
 import edu.snu.nemo.common.exception.PhysicalPlanGenerationException;
 import org.apache.reef.tang.annotations.Parameter;
@@ -82,10 +86,10 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
     final Map<String, List<StageEdge>> edgeGroupToIrEdge = new HashMap<>();
 
     dagOfStages.topologicalDo(irVertex -> dagOfStages.getIncomingEdgesOf(irVertex).forEach(e -> {
-      final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupProperty =
-          e.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
-      if (duplicateEdgeGroupProperty != null) {
-        final String duplicateGroupId = duplicateEdgeGroupProperty.getGroupId();
+      final Optional<DuplicateEdgeGroupPropertyValue> duplicateEdgeGroupProperty =
+          e.getPropertyValue(DuplicateEdgeGroupProperty.class);
+      if (duplicateEdgeGroupProperty.isPresent()) {
+        final String duplicateGroupId = duplicateEdgeGroupProperty.get().getGroupId();
         edgeGroupToIrEdge.computeIfAbsent(duplicateGroupId, k -> new ArrayList<>()).add(e);
       }
     }));
@@ -93,10 +97,10 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
     edgeGroupToIrEdge.forEach((id, edges) -> {
       final StageEdge representativeEdge = edges.get(0);
       final DuplicateEdgeGroupPropertyValue representativeProperty =
-          representativeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
+          representativeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class).get();
       edges.forEach(e -> {
         final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupProperty =
-            e.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
+            e.getPropertyValue(DuplicateEdgeGroupProperty.class).get();
         duplicateEdgeGroupProperty.setRepresentativeEdgeId(representativeEdge.getId());
         duplicateEdgeGroupProperty.setGroupSize(representativeProperty.getGroupSize());
       });
@@ -114,7 +118,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
 
     final Map<Integer, List<IRVertex>> vertexListForEachStage = new LinkedHashMap<>();
     irDAG.topologicalDo(irVertex -> {
-      final Integer stageNum = irVertex.getProperty(ExecutionProperty.Key.StageId);
+      final Integer stageNum = irVertex.getPropertyValue(StageIdProperty.class).get();
       if (!vertexListForEachStage.containsKey(stageNum)) {
         vertexListForEachStage.put(stageNum, new ArrayList<>());
       }
@@ -133,13 +137,13 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
       final IRVertex irVertexOfNewStage = stageVertices.stream().findAny()
           .orElseThrow(() -> new RuntimeException("Error: List " + stageVertices.getClass() + " is Empty"));
       final StageBuilder stageBuilder = new StageBuilder(
-          irVertexOfNewStage.getProperty(ExecutionProperty.Key.StageId),
-          irVertexOfNewStage.getProperty(ExecutionProperty.Key.Parallelism),
-          irVertexOfNewStage.getProperty(ExecutionProperty.Key.ScheduleGroupIndex),
-          irVertexOfNewStage.getProperty(ExecutionProperty.Key.ExecutorPlacement));
+          irVertexOfNewStage.getPropertyValue(StageIdProperty.class).get(),
+          irVertexOfNewStage.getPropertyValue(ParallelismProperty.class).get(),
+          irVertexOfNewStage.getPropertyValue(ScheduleGroupIndexProperty.class).get(),
+          irVertexOfNewStage.getPropertyValue(ExecutorPlacementProperty.class).get());
 
       // Prepare useful variables.
-      final int stageParallelism = irVertexOfNewStage.getProperty(ExecutionProperty.Key.Parallelism);
+      final int stageParallelism = irVertexOfNewStage.getPropertyValue(ParallelismProperty.class).get();
       final List<Map<String, Readable>> vertexIdToReadables = new ArrayList<>(stageParallelism);
       for (int i = 0; i < stageParallelism; i++) {
         vertexIdToReadables.add(new HashMap<>());
@@ -238,9 +242,9 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
    */
   private void integrityCheck(final List<IRVertex> stageVertices) {
     final IRVertex firstVertex = stageVertices.get(0);
-    final String placement = firstVertex.getProperty(ExecutionProperty.Key.ExecutorPlacement);
-    final int scheduleGroup = firstVertex.<Integer>getProperty(ExecutionProperty.Key.ScheduleGroupIndex);
-    final int parallelism = firstVertex.<Integer>getProperty(ExecutionProperty.Key.Parallelism);
+    final String placement = firstVertex.getPropertyValue(ExecutorPlacementProperty.class).get();
+    final int scheduleGroup = firstVertex.getPropertyValue(ScheduleGroupIndexProperty.class).get();
+    final int parallelism = firstVertex.getPropertyValue(ParallelismProperty.class).get();
 
     stageVertices.forEach(irVertex -> {
       // Check vertex type.
@@ -252,9 +256,9 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
 
       // Check execution properties.
       if ((placement != null
-          && !placement.equals(irVertex.<String>getProperty(ExecutionProperty.Key.ExecutorPlacement)))
-          || scheduleGroup != irVertex.<Integer>getProperty(ExecutionProperty.Key.ScheduleGroupIndex)
-          || parallelism != irVertex.<Integer>getProperty(ExecutionProperty.Key.Parallelism)) {
+          && !placement.equals(irVertex.getPropertyValue(ExecutorPlacementProperty.class).get()))
+          || scheduleGroup != irVertex.getPropertyValue(ScheduleGroupIndexProperty.class).get()
+          || parallelism != irVertex.getPropertyValue(ParallelismProperty.class).get()) {
         throw new RuntimeException("Vertices of the same stage have different execution properties: "
             + irVertex.getId());
       }

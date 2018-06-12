@@ -19,8 +19,6 @@ import edu.snu.nemo.runtime.executor.data.streamchainer.CompressionStreamChainer
 import edu.snu.nemo.runtime.executor.data.streamchainer.StreamChainer;
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +27,7 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -51,11 +50,11 @@ public final class SerializerManager {
    *
    * @param runtimeEdgeId id of the runtime edge.
    * @param coder         the corresponding coder.
-   * @param propertyMap   ExecutionPropertyMap of runtime edge
+   * @param compressionProperty   compression property
    */
   public void register(final String runtimeEdgeId,
                        final Coder coder,
-                       final ExecutionPropertyMap propertyMap) {
+                       final Optional<CompressionProperty.Value> compressionProperty) {
     LOG.debug("{} edge id registering to SerializerManager", runtimeEdgeId);
     final Serializer serializer = new Serializer(coder, Collections.emptyList());
     runtimeEdgeIdToSerializer.putIfAbsent(runtimeEdgeId, serializer);
@@ -63,11 +62,10 @@ public final class SerializerManager {
     final List<StreamChainer> streamChainerList = new ArrayList<>();
 
     // Compression chain
-    CompressionProperty.Compression compressionProperty = propertyMap.get(ExecutionProperty.Key.Compression);
-    if (compressionProperty != null) {
+    if (compressionProperty.isPresent()) {
       LOG.debug("Adding {} compression chain for {}",
-          compressionProperty, runtimeEdgeId);
-      streamChainerList.add(new CompressionStreamChainer(compressionProperty));
+          compressionProperty.get(), runtimeEdgeId);
+      streamChainerList.add(new CompressionStreamChainer(compressionProperty.get()));
     }
 
     serializer.setStreamChainers(streamChainerList);

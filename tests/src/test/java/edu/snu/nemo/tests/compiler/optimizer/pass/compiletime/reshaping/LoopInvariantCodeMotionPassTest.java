@@ -19,7 +19,7 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.LoopExtractionPass;
@@ -90,7 +90,7 @@ public class LoopInvariantCodeMotionPassTest {
             final Optional<IREdge> theIncomingEdge = newDAGIncomingEdge.stream().findFirst();
             assertTrue(theIncomingEdge.isPresent());
             final IREdge newIREdge =
-                new IREdge(theIncomingEdge.get().getProperty(ExecutionProperty.Key.DataCommunicationPattern),
+                new IREdge(theIncomingEdge.get().getPropertyValue(DataCommunicationPatternProperty.class).get(),
                     theIncomingEdge.get().getSrc(), alsLoop, theIncomingEdge.get().getCoder());
             builder.connectVertices(newIREdge);
           }

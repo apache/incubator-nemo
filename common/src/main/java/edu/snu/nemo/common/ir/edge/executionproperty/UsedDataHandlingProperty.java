@@ -15,19 +15,19 @@
  */
 package edu.snu.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
  * UsedDataHandling ExecutionProperty.
  * This property represents the used data handling strategy.
  */
-public final class UsedDataHandlingProperty extends ExecutionProperty<UsedDataHandlingProperty.Value> {
+public final class UsedDataHandlingProperty extends EdgeExecutionProperty<UsedDataHandlingProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
   private UsedDataHandlingProperty(final Value value) {
-    super(Key.UsedDataHandling, value);
+    super(value);
   }
 
   /**

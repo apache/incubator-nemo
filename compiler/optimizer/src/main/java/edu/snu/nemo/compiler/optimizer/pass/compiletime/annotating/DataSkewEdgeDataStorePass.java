@@ -19,7 +19,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 
 /**
@@ -32,7 +31,7 @@ public final class DataSkewEdgeDataStorePass extends AnnotatingPass {
    * Default constructor.
    */
   public DataSkewEdgeDataStorePass() {
-    super(ExecutionProperty.Key.DataStore);
+    super(DataStoreProperty.class);
   }
 
   @Override

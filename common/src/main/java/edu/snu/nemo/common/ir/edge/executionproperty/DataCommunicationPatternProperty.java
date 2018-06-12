@@ -15,19 +15,20 @@
  */
 package edu.snu.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
+// TODO #492: modularizing runtime components for data communication pattern.
 /**
  * DataCommunicationPattern ExecutionProperty.
  */
 public final class DataCommunicationPatternProperty
-    extends ExecutionProperty<DataCommunicationPatternProperty.Value>  {
+    extends EdgeExecutionProperty<DataCommunicationPatternProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
   private DataCommunicationPatternProperty(final Value value) {
-    super(Key.DataCommunicationPattern, value);
+    super(value);
   }
 
   /**

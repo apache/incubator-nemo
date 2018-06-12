@@ -18,8 +18,11 @@ package edu.snu.nemo.runtime.common.plan;
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.Edge;
 import edu.snu.nemo.common.dag.Vertex;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+
+import java.io.Serializable;
+import java.util.Optional;
 
 /**
  * Represents the edge between vertices in a logical/physical plan in runtime.
@@ -73,7 +76,8 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
    * @param executionPropertyKey key of the execution property.
    * @return the execution property.
    */
-  public final <T> T getProperty(final ExecutionProperty.Key executionPropertyKey) {
+  public final <T extends Serializable> Optional<T> getPropertyValue(
+      final Class<? extends EdgeExecutionProperty<T>> executionPropertyKey) {
     return edgeProperties.get(executionPropertyKey);
   }
 

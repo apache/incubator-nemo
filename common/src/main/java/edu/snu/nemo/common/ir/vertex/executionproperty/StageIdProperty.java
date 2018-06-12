@@ -15,18 +15,18 @@
  */
 package edu.snu.nemo.common.ir.vertex.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
  * StageId ExecutionProperty.
  */
-public final class StageIdProperty extends ExecutionProperty<Integer> {
+public final class StageIdProperty extends VertexExecutionProperty<Integer> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
   private StageIdProperty(final Integer value) {
-    super(Key.StageId, value);
+    super(value);
   }
 
   /**

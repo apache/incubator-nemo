@@ -22,7 +22,6 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternPro
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.UsedDataHandlingProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.SailfishPass;
 import edu.snu.nemo.tests.compiler.CompilerTestUtil;
@@ -48,40 +47,40 @@ public class SailfishPassTest {
   }
 
   @Test
-  public void testSailfish() throws Exception {
+  public void testSailfish() {
     final DAG<IRVertex, IREdge> processedDAG = new SailfishPass().apply(compiledDAG);
 
     processedDAG.getTopologicalSort().forEach(irVertex -> {
       if (processedDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
               DataCommunicationPatternProperty.Value.Shuffle
-          .equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))) {
+          .equals(irEdge.getPropertyValue(DataCommunicationPatternProperty.class).get()))) {
         // Merger vertex
         processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger -> {
           if (DataCommunicationPatternProperty.Value.Shuffle
-          .equals(edgeToMerger.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
+          .equals(edgeToMerger.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
             assertEquals(DataFlowModelProperty.Value.Push,
-                edgeToMerger.getProperty(ExecutionProperty.Key.DataFlowModel));
+                edgeToMerger.getPropertyValue(DataFlowModelProperty.class).get());
             assertEquals(UsedDataHandlingProperty.Value.Discard,
-                edgeToMerger.getProperty(ExecutionProperty.Key.UsedDataHandling));
+                edgeToMerger.getPropertyValue(UsedDataHandlingProperty.class).get());
             assertEquals(DataStoreProperty.Value.SerializedMemoryStore,
-                edgeToMerger.getProperty(ExecutionProperty.Key.DataStore));
+                edgeToMerger.getPropertyValue(DataStoreProperty.class).get());
           } else {
             assertEquals(DataFlowModelProperty.Value.Pull,
-                edgeToMerger.getProperty(ExecutionProperty.Key.DataFlowModel));
+                edgeToMerger.getPropertyValue(DataFlowModelProperty.class).get());
           }
         });
         processedDAG.getOutgoingEdgesOf(irVertex).forEach(edgeFromMerger -> {
           assertEquals(DataFlowModelProperty.Value.Pull,
-              edgeFromMerger.getProperty(ExecutionProperty.Key.DataFlowModel));
+              edgeFromMerger.getPropertyValue(DataFlowModelProperty.class).get());
           assertEquals(DataCommunicationPatternProperty.Value.OneToOne,
-              edgeFromMerger.getProperty(ExecutionProperty.Key.DataCommunicationPattern));
+              edgeFromMerger.getPropertyValue(DataCommunicationPatternProperty.class).get());
           assertEquals(DataStoreProperty.Value.LocalFileStore,
-              edgeFromMerger.getProperty(ExecutionProperty.Key.DataStore));
+              edgeFromMerger.getPropertyValue(DataStoreProperty.class).get());
         });
       } else {
         // Non merger vertex.
         processedDAG.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          assertEquals(DataFlowModelProperty.Value.Pull, irEdge.getProperty(ExecutionProperty.Key.DataFlowModel));
+          assertEquals(DataFlowModelProperty.Value.Pull, irEdge.getPropertyValue(DataFlowModelProperty.class).get());
         });
       }
     });

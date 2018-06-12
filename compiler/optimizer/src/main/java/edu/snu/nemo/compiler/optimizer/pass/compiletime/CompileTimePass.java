@@ -33,5 +33,5 @@ public interface CompileTimePass extends Function<DAG<IRVertex, IREdge>, DAG<IRV
    * Getter for prerequisite execution properties.
    * @return set of prerequisite execution properties.
    */
-  Set<ExecutionProperty.Key> getPrerequisiteExecutionProperties();
+  Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties();
 }

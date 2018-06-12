@@ -15,18 +15,18 @@
  */
 package edu.snu.nemo.common.ir.vertex.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
  * Parallelism ExecutionProperty.
  */
-public final class ParallelismProperty extends ExecutionProperty<Integer> {
+public final class ParallelismProperty extends VertexExecutionProperty<Integer> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
   private ParallelismProperty(final Integer value) {
-    super(Key.Parallelism, value);
+    super(value);
   }
 
   /**

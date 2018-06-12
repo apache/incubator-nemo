@@ -15,18 +15,18 @@
  */
 package edu.snu.nemo.common.ir.vertex.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
  * ScheduleGroupIndex ExecutionProperty.
  */
-public final class ScheduleGroupIndexProperty extends ExecutionProperty<Integer> {
+public final class ScheduleGroupIndexProperty extends VertexExecutionProperty<Integer> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
   private ScheduleGroupIndexProperty(final Integer value) {
-    super(Key.ScheduleGroupIndex, value);
+    super(value);
   }
 
   /**

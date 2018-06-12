@@ -17,6 +17,7 @@ package edu.snu.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
 import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.IllegalMessageException;
@@ -104,13 +105,14 @@ public final class Executor {
       final TaskStateManager taskStateManager =
           new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
 
-      task.getTaskIncomingEdges()
-          .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
-      task.getTaskOutgoingEdges()
-          .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
+      task.getTaskIncomingEdges().forEach(e -> serializerManager.register(e.getId(), e.getCoder(),
+          e.getPropertyValue(CompressionProperty.class)));
+      task.getTaskOutgoingEdges().forEach(e -> serializerManager.register(e.getId(), e.getCoder(),
+          e.getPropertyValue(CompressionProperty.class)));
       irDag.getVertices().forEach(v -> {
         irDag.getOutgoingEdgesOf(v)
-            .forEach(e -> serializerManager.register(e.getId(), e.getCoder(), e.getExecutionProperties()));
+            .forEach(e -> serializerManager.register(e.getId(), e.getCoder(),
+                e.getPropertyValue(CompressionProperty.class)));
       });
 
       new TaskExecutor(

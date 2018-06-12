@@ -26,7 +26,7 @@ import java.util.Set;
  * It is ensured by the compiler that no execution properties are modified by a ReshapingPass.
  */
 public abstract class ReshapingPass implements CompileTimePass {
-  private final Set<ExecutionProperty.Key> prerequisiteExecutionProperties;
+  private final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties;
 
   /**
    * Default constructor.
@@ -39,12 +39,12 @@ public abstract class ReshapingPass implements CompileTimePass {
    * Constructor.
    * @param prerequisiteExecutionProperties prerequisite of execution properties.
    */
-  public ReshapingPass(final Set<ExecutionProperty.Key> prerequisiteExecutionProperties) {
+  public ReshapingPass(final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties) {
     this.prerequisiteExecutionProperties = prerequisiteExecutionProperties;
   }
 
   @Override
-  public final Set<ExecutionProperty.Key> getPrerequisiteExecutionProperties() {
+  public final Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties() {
     return prerequisiteExecutionProperties;
   }
 }
