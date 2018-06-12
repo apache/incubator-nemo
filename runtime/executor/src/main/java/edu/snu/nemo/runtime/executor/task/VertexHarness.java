@@ -16,31 +16,39 @@
 package edu.snu.nemo.runtime.executor.task;
 
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
+import edu.snu.nemo.runtime.executor.datatransfer.OutputWriter;
 
 import java.util.List;
 
 /**
  * Captures the relationship between an IRVertex's outputCollector, and children vertices.
  */
-abstract class DataHandler {
+abstract class VertexHarness {
   // IRVertex and its corresponding output collector.
   private final IRVertex irVertex;
   private final OutputCollectorImpl outputCollector;
 
-  // Children handlers. (can be empty)
-  private List<DataHandler> children;
+  // These lists can be empty
+  private final List<VertexHarness> children;
+  private final List<InputReader> readersForParentTasks;
+  private final List<OutputWriter> writersToChildrenTasks;
 
-  DataHandler(final IRVertex irVertex,
-              final OutputCollectorImpl outputCollector,
-              final List<DataHandler> children) {
+  VertexHarness(final IRVertex irVertex,
+                final OutputCollectorImpl outputCollector,
+                final List<VertexHarness> children,
+                final List<InputReader> readersForParentTasks,
+                final List<OutputWriter> writersToChildrenTasks) {
     this.irVertex = irVertex;
     this.outputCollector = outputCollector;
     this.children = children;
+    this.readersForParentTasks = readersForParentTasks;
+    this.writersToChildrenTasks = writersToChildrenTasks;
   }
 
   /**
-   * @return irVertex of this DataHandler.
+   * @return irVertex of this VertexHarness.
    */
   IRVertex getIRVertex() {
     return irVertex;
@@ -54,9 +62,23 @@ abstract class DataHandler {
   }
 
   /**
-   * @return list of children.
+   * @return list of children. (empty if none exists)
    */
-  List<DataHandler> getChildren() {
+  List<VertexHarness> getChildren() {
     return children;
+  }
+
+  /**
+   * @return InputReaders of this irVertex. (empty if none exists)
+   */
+  List<InputReader> getReadersForParentTasks() {
+    return readersForParentTasks;
+  }
+
+  /**
+   * @return OutputWriters of this irVertex. (empty if none exists)
+   */
+  List<OutputWriter> getWritersToChildrenTasks() {
+    return writersToChildrenTasks;
   }
 }
