@@ -116,7 +116,7 @@ public final class SparkFrontendUtils {
             final FileInputStream fis = new FileInputStream(file);
             final ObjectInputStream dis = new ObjectInputStream(fis)
         ) {
-          final int size = dis.readInt();
+          final int size = dis.readInt(); // Read the number of collected T recorded in CollectTransform.
           for (int j = 0; j < size; j++) {
             result.add((T) dis.readObject());
           }

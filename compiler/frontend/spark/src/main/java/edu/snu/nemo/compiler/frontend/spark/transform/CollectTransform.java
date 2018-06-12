@@ -60,7 +60,8 @@ public final class CollectTransform<T> implements Transform<T, T> {
         final FileOutputStream fos = new FileOutputStream(filename);
         final ObjectOutputStream oos = new ObjectOutputStream(fos)
     ) {
-      oos.writeInt(list.size()); // Write the length of list at first.
+      // Write the length of list at first. This is needed internally and must not shown in the collected result.
+      oos.writeInt(list.size());
       for (final T t : list) {
         oos.writeObject(t);
       }

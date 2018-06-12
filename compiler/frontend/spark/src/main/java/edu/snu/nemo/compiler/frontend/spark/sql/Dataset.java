@@ -75,6 +75,9 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
   }
 
   /**
+   * Create a actual {@link RDD} component of Spark to get the source data.
+   * This method should not be called by any user program.
+   *
    * @return a Spark RDD from this dataset.
    */
   public org.apache.spark.rdd.RDD<T> sparkRDD() {
@@ -83,6 +86,11 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
 
   /**
    * Create a {@link RDD} component from this data set.
+   * To transparently give our RDD to user programs, this method have to be overridden.
+   *
+   * By overriding this method, if a method (such as reduce) of super ({@link org.apache.spark.sql.Dataset}) is called
+   * and it uses super's rdd, the rdd will be our rdd returned by this method.
+   * This is an intended behavior and the result will be calculated by our system.
    *
    * @return the new RDD component.
    */
