@@ -20,7 +20,6 @@ import edu.snu.nemo.common.ContextImpl;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.BlockFetchException;
-import edu.snu.nemo.common.exception.BlockWriteException;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
@@ -32,11 +31,9 @@ import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.executor.MetricCollector;
 import edu.snu.nemo.runtime.executor.MetricMessageSender;
 import edu.snu.nemo.runtime.executor.TaskStateManager;
-import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.*;
 
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,19 +50,15 @@ public final class TaskExecutor {
   private static final int NONE_FINISHED = -1;
 
   // Essential information
+  private boolean isExecuted;
   private final String taskId;
   private final TaskStateManager taskStateManager;
   private final List<DataFetcher> dataFetchers;
   private final List<VertexHarness> sortedHarnesses;
 
   // Metrics information
+  private final Map<String, Object> metricMap;
   private final MetricCollector metricCollector;
-  private long serBlockSize;
-  private long encodedBlockSize;
-
-  // Misc
-  private final DataTransferFactory channelFactory;
-  private boolean isExecuted;
 
   // Dynamic optimization
   private String idOfVertexPutOnHold;
@@ -75,33 +68,29 @@ public final class TaskExecutor {
    * @param task Task with information needed during execution.
    * @param irVertexDag A DAG of vertices.
    * @param taskStateManager State manager for this Task.
-   * @param channelFactory For reading from/writing to data to other Stages.
+   * @param dataTransferFactory For reading from/writing to data to other tasks.
    * @param metricMessageSender For sending metric with execution stats to Master.
    */
   public TaskExecutor(final Task task,
                       final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                       final TaskStateManager taskStateManager,
-                      final DataTransferFactory channelFactory,
+                      final DataTransferFactory dataTransferFactory,
                       final MetricMessageSender metricMessageSender) {
-    // Information from the Task.
+    // Essential information
+    this.isExecuted = false;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
 
     // Metrics information
+    this.metricMap = new HashMap<>();
     this.metricCollector = new MetricCollector(metricMessageSender);
-    this.serBlockSize = 0;
-    this.encodedBlockSize = 0;
-
-    // Misc
-    this.channelFactory = channelFactory;
-    this.isExecuted = false;
 
     // Dynamic optimization
     // Assigning null is very bad, but we are keeping this for now
     this.idOfVertexPutOnHold = null;
 
     // Prepare data structures
-    final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag);
+    final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag, dataTransferFactory);
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
   }
@@ -128,7 +117,8 @@ public final class TaskExecutor {
    * @return fetchers and harnesses.
    */
   private Pair<List<DataFetcher>, List<VertexHarness>> prepare(final Task task,
-                                                               final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
+                                                               final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
+                                                               final DataTransferFactory dataTransferFactory) {
     final int taskIndex = RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId());
 
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
@@ -145,16 +135,16 @@ public final class TaskExecutor {
       }
 
       if (irVertex instanceof SourceVertex) {
-        dataFetchers.add(new SourceVertexDataFetcher(sourceReader.get(), children)); // Source vertex read
+        dataFetchers.add(new SourceVertexDataFetcher(sourceReader.get(), children, metricMap)); // Source vertex read
       } else {
         final List<InputReader> parentTaskReaders =
-            getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges());
+            getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges(), dataTransferFactory);
         if (parentTaskReaders.size() > 0) {
-          dataFetchers.add(new ParentTaskDataFetcher(parentTaskReaders, children)); // Parent-task read
+          dataFetchers.add(new ParentTaskDataFetcher(parentTaskReaders, children, metricMap)); // Parent-task read
         }
 
-        final List<OutputWriter> childrenTaskWriters =
-            getChildrenTaskWriters(taskIndex, irVertex, task.getTaskOutgoingEdges()); // Children-task write
+        final List<OutputWriter> childrenTaskWriters = getChildrenTaskWriters(
+            taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory); // Children-task write
         prepareTransform(irVertex);
         final VertexHarness vertexHarness =
             new VertexHarness(irVertex, new OutputCollectorImpl(), children, childrenTaskWriters); // Intra-vertex write
@@ -213,6 +203,27 @@ public final class TaskExecutor {
       throw new RuntimeException("Task {" + taskId + "} execution called again");
     }
     LOG.info("{} started", taskId);
+    taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
+
+    // Metric start
+    metricCollector.beginMeasurement(taskId, metricMap);
+
+    /*
+    try {
+    } catch () {
+      taskStateManager.onTaskStateChanged(TaskState.State.FAILED_UNRECOVERABLE,
+          Optional.empty(), Optional.empty());
+      LOG.error("{} Execution Failed! Exception: {}",
+          taskId, e.toString());
+      throw new RuntimeException(e);
+    }
+
+      } catch (final BlockFetchException ex) {
+        taskStateManager.onTaskStateChanged(TaskState.State.FAILED_RECOVERABLE,
+            Optional.empty(), Optional.of(TaskState.RecoverableFailureCause.INPUT_READ_FAILURE));
+        LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}",
+            taskId, ex.toString());
+    */
 
     // Phase 1: Consume task-external input data.
     // Recursively process each data element produced by a data fetcher.
@@ -251,57 +262,19 @@ public final class TaskExecutor {
       }
     }
 
+    // Metric done
+    metricCollector.endMeasurement(taskId, metricMap);
 
-
-
-    final Map<String, Object> metric = new HashMap<>();
-    metricCollector.beginMeasurement(taskId, metric);
-    long boundedSrcReadStartTime = 0;
-    long boundedSrcReadEndTime = 0;
-    long inputReadStartTime = 0;
-    long inputReadEndTime = 0;
-    isExecuted = true;
-    taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
-
-    // Prepare input data from bounded source.
-    boundedSrcReadStartTime = System.currentTimeMillis();
-    getSourceVertexIterable();
-    boundedSrcReadEndTime = System.currentTimeMillis();
-    metric.put("BoundedSourceReadTime(ms)", boundedSrcReadEndTime - boundedSrcReadStartTime);
-
-    // Prepare input data from other stages.
-    inputReadStartTime = System.currentTimeMillis();
-    prepareInputFromOtherStages();
-
-    // Execute the IRVertex DAG.
-
-
-    try {
-    } catch (final BlockWriteException ex2) {
-      taskStateManager.onTaskStateChanged(TaskState.State.FAILED_RECOVERABLE,
-          Optional.empty(), Optional.of(TaskState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
-      LOG.error("{} Execution Failed (Recoverable: output write failure)! Exception: {}",
-          taskId, ex2.toString());
-    } catch (final Exception e) {
-      taskStateManager.onTaskStateChanged(TaskState.State.FAILED_UNRECOVERABLE,
-          Optional.empty(), Optional.empty());
-      LOG.error("{} Execution Failed! Exception: {}",
-          taskId, e.toString());
-      throw new RuntimeException(e);
-    }
-
-    // Put Task-unit metrics.
-    final boolean available = serBlockSize >= 0;
-    putReadBytesMetric(available, serBlockSize, encodedBlockSize, metric);
-    metricCollector.endMeasurement(taskId, metric);
+    // DynOpt
     if (idOfVertexPutOnHold == null) {
       taskStateManager.onTaskStateChanged(TaskState.State.COMPLETE, Optional.empty(), Optional.empty());
+      LOG.info("{} completed", taskId);
     } else {
       taskStateManager.onTaskStateChanged(TaskState.State.ON_HOLD,
           Optional.of(idOfVertexPutOnHold),
           Optional.empty());
+      LOG.info("{} on hold", taskId);
     }
-    LOG.info("{} completed", taskId);
   }
 
   private void prepareTransform(final IRVertex irVertex) {
@@ -332,25 +305,13 @@ public final class TaskExecutor {
   }
 
   private Optional<Readable> getSourceVertexReader(final IRVertex irVertex,
-                                               final Map<String, Readable> irVertexIdToReadable) {
+                                                   final Map<String, Readable> irVertexIdToReadable) {
     if (irVertex instanceof SourceVertex) {
-      try {
-        final Readable readable = irVertexIdToReadable.get(irVertex.getId());
-        if (readable == null) {
-          throw new IllegalStateException(irVertex.toString());
-        }
-        return Optional.of(readable);
-      } catch (final BlockFetchException ex) {
-        taskStateManager.onTaskStateChanged(TaskState.State.FAILED_RECOVERABLE,
-            Optional.empty(), Optional.of(TaskState.RecoverableFailureCause.INPUT_READ_FAILURE));
-        LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}",
-            taskId, ex.toString());
-      } catch (final Exception e) {
-        taskStateManager.onTaskStateChanged(TaskState.State.FAILED_UNRECOVERABLE,
-            Optional.empty(), Optional.empty());
-        LOG.error("{} Execution Failed! Exception: {}", taskId, e.toString());
-        throw new RuntimeException(e);
+      final Readable readable = irVertexIdToReadable.get(irVertex.getId());
+      if (readable == null) {
+        throw new IllegalStateException(irVertex.toString());
       }
+      return Optional.of(readable);
     } else {
       return Optional.empty();
     }
@@ -358,23 +319,25 @@ public final class TaskExecutor {
 
   private List<InputReader> getParentTaskReaders(final int taskIndex,
                                                  final IRVertex irVertex,
-                                                 final List<StageEdge> inEdgesFromParentTasks) {
+                                                 final List<StageEdge> inEdgesFromParentTasks,
+                                                 final DataTransferFactory dataTransferFactory) {
     return inEdgesFromParentTasks
         .stream()
         .filter(inEdge -> inEdge.getDstVertex().getId().equals(irVertex.getId()))
-        .map(inEdgeForThisVertex ->
-            channelFactory.createReader(taskIndex, inEdgeForThisVertex.getSrcVertex(), inEdgeForThisVertex))
+        .map(inEdgeForThisVertex -> dataTransferFactory
+            .createReader(taskIndex, inEdgeForThisVertex.getSrcVertex(), inEdgeForThisVertex))
         .collect(Collectors.toList());
   }
 
   private List<OutputWriter> getChildrenTaskWriters(final int taskIndex,
                                                     final IRVertex irVertex,
-                                                    final List<StageEdge> outEdgesToChildrenTasks) {
+                                                    final List<StageEdge> outEdgesToChildrenTasks,
+                                                    final DataTransferFactory dataTransferFactory) {
     return outEdgesToChildrenTasks
         .stream()
         .filter(outEdge -> outEdge.getSrcVertex().getId().equals(irVertex.getId()))
-        .map(outEdgeForThisVertex ->
-            channelFactory.createWriter(irVertex, taskIndex, outEdgeForThisVertex.getDstVertex(), outEdgeForThisVertex))
+        .map(outEdgeForThisVertex -> dataTransferFactory
+            .createWriter(irVertex, taskIndex, outEdgeForThisVertex.getDstVertex(), outEdgeForThisVertex))
         .collect(Collectors.toList());
   }
 
@@ -387,7 +350,7 @@ public final class TaskExecutor {
         .map(vertexIdToHarness::get)
         .collect(Collectors.toList());
     if (childrenHandlers.stream().anyMatch(harness -> harness == null)) {
-      // Sanity check: there shouldn't be a null hraness.
+      // Sanity check: there shouldn't be a null harness.
       throw new IllegalStateException(childrenHandlers.toString());
     }
     return childrenHandlers;
@@ -419,104 +382,6 @@ public final class TaskExecutor {
 
     final long writeEndTime = System.currentTimeMillis();
     metric.put("OutputWriteTime(ms)", writeEndTime - writeStartTime);
-    putWrittenBytesMetric(writtenBytesList, metric);
-    metricCollector.endMeasurement(irVertex.getId(), metric);
-  }
-
-
-  /**
-   * As a preprocessing of side input data, get inter stage side input
-   * and form a map of source transform-side input.
-   *
-   * @param irVertex the IRVertex which receives side input from other stages.
-   * @param sideInputMap the map of source transform-side input to build.
-   */
-  private void sideInputFromOtherStages(final IRVertex irVertex, final Map<Transform, Object> sideInputMap) {
-    vertexIdToDataHandler.get(irVertex.getId()).getSideInputFromOtherStages().forEach(sideInputReader -> {
-      try {
-        final DataUtil.IteratorWithNumBytes sideInputIterator = sideInputReader.read().get(0).get();
-        final Object sideInput = getSideInput(sideInputIterator);
-        final RuntimeEdge inEdge = sideInputReader.getRuntimeEdge();
-        final Transform srcTransform;
-        if (inEdge instanceof StageEdge) {
-          srcTransform = ((OperatorVertex) ((StageEdge) inEdge).getSrcVertex()).getTransform();
-        } else {
-          srcTransform = ((OperatorVertex) inEdge.getSrc()).getTransform();
-        }
-        sideInputMap.put(srcTransform, sideInput);
-
-        // Collect metrics on block size if possible.
-        try {
-          serBlockSize += sideInputIterator.getNumSerializedBytes();
-        } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-          serBlockSize = -1;
-        }
-        try {
-          encodedBlockSize += sideInputIterator.getNumEncodedBytes();
-        } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-          encodedBlockSize = -1;
-        }
-      } catch (final InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new BlockFetchException(e);
-      } catch (final ExecutionException e1) {
-        throw new RuntimeException("Failed while reading side input from other stages " + e1);
-      }
-    });
-  }
-
-  /**
-   * As a preprocessing of side input data, get intra stage side input
-   * and form a map of source transform-side input.
-   * Assumption:  intra stage side input denotes a data element initially received
-   *              via side input reader from other stages.
-   *
-   * @param irVertex the IRVertex which receives the data element marked as side input.
-   * @param sideInputMap the map of source transform-side input to build.
-   */
-  private void sideInputFromThisStage(final IRVertex irVertex, final Map<Transform, Object> sideInputMap) {
-    vertexIdToDataHandler.get(irVertex.getId()).getSideInputFromThisStage().forEach(input -> {
-      // because sideInput is only 1 element in the outputCollector
-      Object sideInput = input.remove();
-      final RuntimeEdge inEdge = input.getSideInputRuntimeEdge();
-      final Transform srcTransform;
-      if (inEdge instanceof StageEdge) {
-        srcTransform = ((OperatorVertex) ((StageEdge) inEdge).getSrcVertex()).getTransform();
-      } else {
-        srcTransform = ((OperatorVertex) inEdge.getSrc()).getTransform();
-      }
-      sideInputMap.put(srcTransform, sideInput);
-    });
-  }
-
-
-  /**
-   * Puts read bytes metric if the input data size is known.
-   *
-   * @param serializedBytes size in serialized (encoded and optionally post-processed (e.g. compressed)) form
-   * @param encodedBytes    size in encoded form
-   * @param metricMap       the metric map to put written bytes metric.
-   */
-  private static void putReadBytesMetric(final boolean available,
-                                         final long serializedBytes,
-                                         final long encodedBytes,
-                                         final Map<String, Object> metricMap) {
-    if (available) {
-      if (serializedBytes != encodedBytes) {
-        metricMap.put("ReadBytes(raw)", serializedBytes);
-      }
-      metricMap.put("ReadBytes", encodedBytes);
-    }
-  }
-
-  /**
-   * Puts written bytes metric if the output data size is known.
-   *
-   * @param writtenBytesList the list of written bytes.
-   * @param metricMap        the metric map to put written bytes metric.
-   */
-  private static void putWrittenBytesMetric(final List<Long> writtenBytesList,
-                                            final Map<String, Object> metricMap) {
     if (!writtenBytesList.isEmpty()) {
       long totalWrittenBytes = 0;
       for (final Long writtenBytes : writtenBytesList) {
@@ -524,34 +389,6 @@ public final class TaskExecutor {
       }
       metricMap.put("WrittenBytes", totalWrittenBytes);
     }
-  }
-
-  /**
-   * Get sideInput from data from {@link InputReader}.
-   *
-   * @param iterator data from {@link InputReader#read()}
-   * @return The corresponding sideInput
-   */
-  private static Object getSideInput(final DataUtil.IteratorWithNumBytes iterator) {
-    final List copy = new ArrayList();
-    iterator.forEachRemaining(copy::add);
-    if (copy.size() == 1) {
-      return copy.get(0);
-    } else {
-      if (copy.get(0) instanceof Iterable) {
-        final List collect = new ArrayList();
-        copy.forEach(element -> ((Iterable) element).iterator().forEachRemaining(collect::add));
-        return collect;
-      } else if (copy.get(0) instanceof Map) {
-        final Map collect = new HashMap();
-        copy.forEach(element -> {
-          final Set keySet = ((Map) element).keySet();
-          keySet.forEach(key -> collect.put(key, ((Map) element).get(key)));
-        });
-        return collect;
-      } else {
-        return copy;
-      }
-    }
+    metricCollector.endMeasurement(irVertex.getId(), metric);
   }
 }

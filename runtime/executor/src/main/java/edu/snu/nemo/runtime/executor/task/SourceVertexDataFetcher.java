@@ -39,7 +39,9 @@ class SourceVertexDataFetcher extends DataFetcher {
   @Override
   Object fetchDataElement() throws IOException {
     if (iterator == null) {
+      final long start = System.currentTimeMillis();
       iterator = this.readable.read().iterator();
+      metricMap.put("BoundedSourceReadTime(ms)", System.currentTimeMillis() - start);
     }
 
     try {

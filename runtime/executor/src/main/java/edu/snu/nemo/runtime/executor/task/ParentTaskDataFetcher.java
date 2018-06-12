@@ -18,6 +18,8 @@ package edu.snu.nemo.runtime.executor.task;
 import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
@@ -27,6 +29,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
 class ParentTaskDataFetcher extends DataFetcher {
+  private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class.getName());
+
   private final List<InputReader> readersForParentTasks;
   private final LinkedBlockingQueue<DataUtil.IteratorWithNumBytes> dataQueue;
 
@@ -45,6 +49,29 @@ class ParentTaskDataFetcher extends DataFetcher {
     this.dataQueue = new LinkedBlockingQueue<>();
   }
 
+  private void handleMetric(final DataUtil.IteratorWithNumBytes iterator) {
+    long serBytes = 0;
+    long encodedBytes = 0;
+    try {
+      serBytes += iterator.getNumSerializedBytes();
+    } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+      serBytes = -1;
+    } catch (final IllegalStateException e) {
+      LOG.error("Failed to get the number of bytes of serialized data - the data is not ready yet ", e);
+    }
+    try {
+      encodedBytes += iterator.getNumEncodedBytes();
+    } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+      encodedBytes = -1;
+    } catch (final IllegalStateException e) {
+      LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
+    }
+    if (serBytes != encodedBytes) {
+      metricMap.put("ReadBytes(raw)", serBytes);
+    }
+    metricMap.put("ReadBytes", encodedBytes);
+  }
+
   private void fetchInBackground() {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTasks.stream()
         .map(InputReader::read)
@@ -56,6 +83,8 @@ class ParentTaskDataFetcher extends DataFetcher {
       if (exception != null) {
         throw new BlockFetchException(exception);
       }
+
+      handleMetric(iterator);
 
       try {
         dataQueue.put(iterator);
@@ -93,23 +122,5 @@ class ParentTaskDataFetcher extends DataFetcher {
     } catch (InterruptedException exception) {
       throw new IOException(exception);
     }
-    /*
-    try {
-      serBlockSize += iterator.getNumSerializedBytes();
-    } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-      serBlockSize = -1;
-    } catch (final IllegalStateException e) {
-      LOG.error("Failed to get the number of bytes of serialized data - the data is not ready yet ", e);
-    }
-    try {
-      encodedBlockSize += iterator.getNumEncodedBytes();
-    } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-      encodedBlockSize = -1;
-    } catch (final IllegalStateException e) {
-      LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
-    }
-    inputReadEndTime = System.currentTimeMillis();
-    metric.put("InputReadTime(ms)", inputReadEndTime - inputReadStartTime);
-    */
   }
 }
