@@ -15,31 +15,32 @@
  */
 package edu.snu.nemo.runtime.executor.task;
 
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
 class ParentTaskDataFetcher extends DataFetcher {
   private final List<InputReader> readersForParentTasks;
+  private final LinkedBlockingQueue<DataUtil.IteratorWithNumBytes> dataQueue;
 
   // Non-finals (lazy fetching)
-  private LinkedBlockingQueue<DataUtil.IteratorWithNumBytes> dataQueue;
-  private int expectedNumOfIterators;
   private boolean hasFetchStarted;
+  private int expectedNumOfIterators;
+  private DataUtil.IteratorWithNumBytes currentIterator;
+  private int currentIteratorIndex;
 
-  ParentTaskDataFetcher(final List<VertexHarness> children,
-                        final List<InputReader> readersForParentTasks) {
+  ParentTaskDataFetcher(final List<InputReader> readersForParentTasks,
+                        final List<VertexHarness> children) {
     super(children);
     this.readersForParentTasks = readersForParentTasks;
     this.hasFetchStarted = false;
+    this.dataQueue = new LinkedBlockingQueue<>();
   }
 
   private void fetchInBackground() {
@@ -65,41 +66,46 @@ class ParentTaskDataFetcher extends DataFetcher {
 
   @Override
   Object fetchDataElement() throws IOException {
-    if (!hasFetchStarted) {
-      fetchInBackground();
-      hasFetchStarted = true;
-    }
-
-
-
-    // Process data from other stages.
-    for (int currPartition = 0; currPartition < numPartitionsFromOtherStages; currPartition++) {
-      final DataUtil.IteratorWithNumBytes iterator = dataQueue.take();
-      try {
-        return iterator.next();
-      } catch (final NoSuchElementException e) {
-        return null;
+    try {
+      if (!hasFetchStarted) {
+        fetchInBackground();
+        hasFetchStarted = true;
+        this.currentIterator = dataQueue.take();
+        this.currentIteratorIndex = 1;
       }
 
-      /*
-      // Collect metrics on block size if possible.
-      try {
-        serBlockSize += iterator.getNumSerializedBytes();
-      } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-        serBlockSize = -1;
-      } catch (final IllegalStateException e) {
-        LOG.error("Failed to get the number of bytes of serialized data - the data is not ready yet ", e);
+      if (this.currentIterator.hasNext()) {
+        return this.currentIterator.next();
+      } else {
+        // This iterator is done, proceed to the next iterator
+        if (currentIteratorIndex == expectedNumOfIterators) {
+          // No more iterator left
+          return null;
+        } else {
+          // Try the next iterator
+          this.currentIteratorIndex += 1;
+          this.currentIterator = dataQueue.take();
+          return fetchDataElement();
+        }
       }
-      try {
-        encodedBlockSize += iterator.getNumEncodedBytes();
-      } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-        encodedBlockSize = -1;
-      } catch (final IllegalStateException e) {
-        LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
-      }
-      */
+    } catch (InterruptedException exception) {
+      throw new IOException(exception);
     }
     /*
+    try {
+      serBlockSize += iterator.getNumSerializedBytes();
+    } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+      serBlockSize = -1;
+    } catch (final IllegalStateException e) {
+      LOG.error("Failed to get the number of bytes of serialized data - the data is not ready yet ", e);
+    }
+    try {
+      encodedBlockSize += iterator.getNumEncodedBytes();
+    } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+      encodedBlockSize = -1;
+    } catch (final IllegalStateException e) {
+      LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
+    }
     inputReadEndTime = System.currentTimeMillis();
     metric.put("InputReadTime(ms)", inputReadEndTime - inputReadStartTime);
     */

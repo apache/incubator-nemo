@@ -17,6 +17,7 @@ package edu.snu.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
 import edu.snu.nemo.common.ContextImpl;
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.exception.BlockWriteException;
@@ -99,7 +100,9 @@ public final class TaskExecutor {
     this.idOfVertexPutOnHold = null;
 
     // Prepare data structures
-    this.sortedHarnesses = prepareHarnesses(task, irVertexDag);
+    final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag);
+    this.dataFetchers = pair.left();
+    this.sortedHarnesses = pair.right();
   }
 
   /**
@@ -110,10 +113,10 @@ public final class TaskExecutor {
    * - Sink vertex write: Implicitly handled within an OperatorVertex
    *
    * - Parent-task read: Explicitly handled (ParentTaskDataFetcher)
-   * - Children-task write: Explicitly handled
+   * - Children-task write: Explicitly handled (VertexHarness)
    *
    * - Intra-vertex read: Implicitly handled when performing Intra-vertex writes
-   * - Intra-vertex write: Explicitly handled
+   * - Intra-vertex write: Explicitly handled (VertexHarness)
    *
    * For element-wise data processing, we traverse vertex harnesses from the roots to the leaves for each element.
    * This means that overheads associated with jumping from one harness to the other should be minimal.
@@ -121,47 +124,52 @@ public final class TaskExecutor {
    *
    * @param task task.
    * @param irVertexDag dag.
-   * @return topologically-sorted harnesses.
+   * @return fetchers and harnesses.
    */
-  private List<VertexHarness> prepareHarnesses(final Task task,
-                                               final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
+  private Pair<List<DataFetcher>, List<VertexHarness>> prepare(final Task task,
+                                                               final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
     final int taskIndex = RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId());
 
     // Traverse in a reverse-topological order to ensure that each visited vertex's children vertices exist.
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
 
     // Create a harness for each vertex
+    final List<DataFetcher> dataFetchers = new ArrayList<>();
     final Map<String, VertexHarness> vertexIdToHarness = new HashMap<>();
     reverseTopologicallySorted.forEach(irVertex -> {
-      // Source vertex read
-      final List<Readable> sourceReaders = getSourceVertexReader(irVertex, task.getIrVertexIdToReadable());
+      // Children handlers
+      final List<VertexHarness> children = getChildrenHarnesses(irVertex, irVertexDag, vertexIdToHarness);
+      final Optional<Readable> sourceReader = getSourceVertexReader(irVertex, task.getIrVertexIdToReadable());
+      if (sourceReader.isPresent() != irVertex instanceof SourceVertex) {
+        // Sanity check
+        throw new IllegalStateException(irVertex.toString());
+      }
 
-      // Parent-task read
-      final List<InputReader> parentTaskReaders =
-          getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges());
+      if (irVertex instanceof SourceVertex) {
+        dataFetchers.add(new SourceVertexDataFetcher(sourceReader.get(), children)); // Source vertex read
+      } else {
+        final List<InputReader> parentTaskReaders =
+            getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges());
+        if (parentTaskReaders.size() > 0) {
+          dataFetchers.add(new ParentTaskDataFetcher(parentTaskReaders, children)); // Parent-task read
+        }
 
-      // Children-task write
-      final List<OutputWriter> childrenTaskWriters =
-          getChildrenTaskWriters(taskIndex, irVertex, task.getTaskOutgoingEdges());
+        final List<OutputWriter> childrenTaskWriters =
+            getChildrenTaskWriters(taskIndex, irVertex, task.getTaskOutgoingEdges()); // Children-task write
+        prepareTransform(irVertex);
+        final VertexHarness vertexHarness =
+            new VertexHarness(irVertex, new OutputCollectorImpl(), children, childrenTaskWriters); // Intra-vertex write
 
-      // Intra-task write
-      final List<VertexHarness> childrenHandlers = getChildrenHarnesses(irVertex, irVertexDag, vertexIdToHarness);
-
-      // Prepare transform, if one exists
-      final OutputCollectorImpl outputCollector = new OutputCollectorImpl();
-      prepareTransform(irVertex);
-
-      // Remember the created harness
-      final VertexHarness vertexHarness = new VertexHarness(irVertex, outputCollector, childrenHandlers,
-          sourceReaders, parentTaskReaders, childrenTaskWriters);
-      vertexIdToHarness.put(irVertex.getId(), vertexHarness);
+        vertexIdToHarness.put(irVertex.getId(), vertexHarness);
+      }
     });
 
-    // Track root harnesses
-    return irVertexDag.getTopologicalSort()
+    final List<VertexHarness> sortedHarnesses = irVertexDag.getTopologicalSort()
         .stream()
         .map(vertex -> vertexIdToHarness.get(vertex.getId()))
         .collect(Collectors.toList());
+
+    return Pair.of(dataFetchers, sortedHarnesses);
   }
 
   /**
@@ -172,26 +180,23 @@ public final class TaskExecutor {
   private void processElementRecursively(final VertexHarness vertexHarness, final Object dataElement) {
     final IRVertex irVertex = vertexHarness.getIRVertex();
     final OutputCollectorImpl outputCollector = vertexHarness.getOutputCollector();
-
-    // Process element-wise depending on the vertex type
-    /*
-    if (irVertex instanceof SourceVertex) {
-      handleNull(outputCollector, dataElement);
-    } else
-    */
-
     if (irVertex instanceof OperatorVertex) {
       final Transform transform = ((OperatorVertex) irVertex).getTransform();
       transform.onData(dataElement);
     } else if (irVertex instanceof MetricCollectionBarrierVertex) {
-      handleNull(outputCollector, dataElement);
+      if (dataElement == null) { // null used for Beam VoidCoders
+        final List<Object> nullForVoidCoder = Collections.singletonList(dataElement);
+        outputCollector.emit(nullForVoidCoder);
+      } else {
+        outputCollector.emit(dataElement);
+      }
       setIRVertexPutOnHold((MetricCollectionBarrierVertex) irVertex);
     } else {
       throw new UnsupportedOperationException("This type of IRVertex is not supported");
     }
 
-
-    // Handle this vertex's outputs
+    // Given a single input element, a vertex can produce many output elements.
+    // Here, we recursively process all of the output elements.
     while (!outputCollector.isEmpty()) {
       final Object element = outputCollector.remove();
       vertexHarness.getWritersToChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
@@ -199,19 +204,10 @@ public final class TaskExecutor {
     }
   }
 
-  private void handleNull(final OutputCollectorImpl outputCollector, final Object dataElement) {
-    if (dataElement == null) { // null used for Beam VoidCoders
-      final List<Object> nullForVoidCoder = Collections.singletonList(dataElement);
-      outputCollector.emit(nullForVoidCoder);
-    } else {
-      outputCollector.emit(dataElement);
-    }
-  }
-
   /**
    * The execution of a task is handled in the following two phases.
-   * - Phase 1: Recursively process source/parent-task input data elements in a topological order
-   * - Phase 2: Topologically close each harness's transform, and recursively process any resulting data.
+   * - Phase 1: Consume task-external input data
+   * - Phase 2: Finalize task-internal states and data elements
    */
   public void execute() {
     if (isExecuted) {
@@ -219,7 +215,8 @@ public final class TaskExecutor {
     }
     LOG.info("{} started", taskId);
 
-    // Phase 1
+    // Phase 1: Consume task-external input data.
+    // Recursively process each data element produced by a data fetcher.
     // TODO: stop when all inputs are fetched
     final List<DataFetcher> availableFetchers = new ArrayList<>(dataFetchers);
     for (final DataFetcher dataFetcher : availableFetchers) {
@@ -229,7 +226,8 @@ public final class TaskExecutor {
       }
     }
 
-    // Phase 2
+    // Phase 2: Finalize task-internal states and elements
+    // Topologically close each harness's transform, and recursively process any resulting data.
     for (final VertexHarness vertexHarness : sortedHarnesses) {
       closeTransform(vertexHarness);
       while (!vertexHarness.getOutputCollector().isEmpty()) {
@@ -321,7 +319,7 @@ public final class TaskExecutor {
     }
   }
 
-  private List<Readable> getSourceVertexReader(final IRVertex irVertex,
+  private Optional<Readable> getSourceVertexReader(final IRVertex irVertex,
                                                final Map<String, Readable> irVertexIdToReadable) {
     if (irVertex instanceof SourceVertex) {
       try {
@@ -329,7 +327,7 @@ public final class TaskExecutor {
         if (readable == null) {
           throw new IllegalStateException(irVertex.toString());
         }
-        return Arrays.asList(readable);
+        return Optional.of(readable);
       } catch (final BlockFetchException ex) {
         taskStateManager.onTaskStateChanged(TaskState.State.FAILED_RECOVERABLE,
             Optional.empty(), Optional.of(TaskState.RecoverableFailureCause.INPUT_READ_FAILURE));
@@ -342,7 +340,7 @@ public final class TaskExecutor {
         throw new RuntimeException(e);
       }
     } else {
-      return new ArrayList<>(0);
+      return Optional.empty();
     }
   }
 
@@ -388,19 +386,20 @@ public final class TaskExecutor {
   }
 
   /**
-   * Finalize the output write of this Task.
+   * Finalize the output write of this vertex.
    * As element-wise output write is done and the block is in memory,
    * flush the block into the designated data store and commit it.
-   *
-   * @param irVertex the IRVertex with OutputWriter to flush and commit output block.
+   * @param vertexHarness harness.
    */
-  private void finalizeOutputWriters(final IRVertex irVertex) {
+  private void finalizeOutputWriters(final VertexHarness vertexHarness) {
     final List<Long> writtenBytesList = new ArrayList<>();
     final Map<String, Object> metric = new HashMap<>();
+    final IRVertex irVertex = vertexHarness.getIRVertex();
+
     metricCollector.beginMeasurement(irVertex.getId(), metric);
     final long writeStartTime = System.currentTimeMillis();
 
-    vertexIdToDataHandler.get(irVertex.getId()).getOutputWriters().forEach(outputWriter -> {
+    vertexHarness.getWritersToChildrenTasks().forEach(outputWriter -> {
       outputWriter.close();
       final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
       writtenBytes.ifPresent(writtenBytesList::add);
