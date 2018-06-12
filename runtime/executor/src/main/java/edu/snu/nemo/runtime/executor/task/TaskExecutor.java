@@ -17,7 +17,6 @@ package edu.snu.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
 import edu.snu.nemo.common.ContextImpl;
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.exception.BlockWriteException;
@@ -54,8 +53,7 @@ public final class TaskExecutor {
   // Essential information
   private final String taskId;
   private final TaskStateManager taskStateManager;
-
-  // Harnesses sorted in a topological order
+  private final List<DataFetcher> dataFetchers;
   private final List<VertexHarness> sortedHarnesses;
 
   // Metrics information
@@ -221,6 +219,31 @@ public final class TaskExecutor {
     }
     LOG.info("{} started", taskId);
 
+    // Phase 1
+    // TODO: stop when all inputs are fetched
+    final List<DataFetcher> availableFetchers = new ArrayList<>(dataFetchers);
+    for (final DataFetcher dataFetcher : availableFetchers) {
+      final Object element = dataFetcher.fetchDataElement();
+      for (final VertexHarness harness : dataFetcher.getConsumers()) {
+        processElementRecursively(harness, element);
+      }
+    }
+
+    // Phase 2
+    for (final VertexHarness vertexHarness : sortedHarnesses) {
+      closeTransform(vertexHarness);
+      while (!vertexHarness.getOutputCollector().isEmpty()) {
+        final Object element = vertexHarness.getOutputCollector().remove();
+        for (final VertexHarness harness : vertexHarness.getChildren()) {
+          processElementRecursively(harness, element);
+        }
+        finalizeOutputWriters(vertexHarness);
+      }
+    }
+
+
+
+
     final Map<String, Object> metric = new HashMap<>();
     metricCollector.beginMeasurement(taskId, metric);
     long boundedSrcReadStartTime = 0;
@@ -290,7 +313,8 @@ public final class TaskExecutor {
     }
   }
 
-  private void closeTransform(final IRVertex irVertex) {
+  private void closeTransform(final VertexHarness vertexHarness) {
+    final IRVertex irVertex = vertexHarness.getIRVertex();
     if (irVertex instanceof OperatorVertex) {
       Transform transform = ((OperatorVertex) irVertex).getTransform();
       transform.close();
@@ -370,7 +394,7 @@ public final class TaskExecutor {
    *
    * @param irVertex the IRVertex with OutputWriter to flush and commit output block.
    */
-  private void writeAndCloseOutputWriters(final IRVertex irVertex) {
+  private void finalizeOutputWriters(final IRVertex irVertex) {
     final List<Long> writtenBytesList = new ArrayList<>();
     final Map<String, Object> metric = new HashMap<>();
     metricCollector.beginMeasurement(irVertex.getId(), metric);
@@ -386,16 +410,6 @@ public final class TaskExecutor {
     metric.put("OutputWriteTime(ms)", writeEndTime - writeStartTime);
     putWrittenBytesMetric(writtenBytesList, metric);
     metricCollector.endMeasurement(irVertex.getId(), metric);
-  }
-
-
-  /**
-   * Get input iterator from other stages received in the form of CompletableFuture
-   * and bind it with id.
-   */
-  private void prepareInputFromOtherStages() {
-    inputReaderToDataHandlersMap.forEach((inputReader, dataHandlers) -> {
-    });
   }
 
 

@@ -20,25 +20,35 @@ import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.stream.Collectors;
 
 class ParentTaskDataFetcher extends DataFetcher {
-  private final List<InputReader> readersForParentTasks;(
-  private final LinkedBlockingQueue<DataUtil.IteratorWithNumBytes> dataQueue;
+  private final List<InputReader> readersForParentTasks;
+
+  // Non-finals (lazy fetching)
+  private LinkedBlockingQueue<DataUtil.IteratorWithNumBytes> dataQueue;
+  private int expectedNumOfIterators;
+  private boolean hasFetchStarted;
 
   ParentTaskDataFetcher(final List<VertexHarness> children,
                         final List<InputReader> readersForParentTasks) {
     super(children);
     this.readersForParentTasks = readersForParentTasks;
+    this.hasFetchStarted = false;
+  }
 
-    readersForParentTasks.stream().map(InputReader::read);
+  private void fetchInBackground() {
+    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTasks.stream()
+        .map(InputReader::read)
+        .flatMap(List::stream)
+        .collect(Collectors.toList());
+    this.expectedNumOfIterators = futures.size();
 
-    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader.read();
-    numPartitionsFromOtherStages += futures.size();
-
-    // Add consumers which will push iterator when the futures are complete.
     futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
       if (exception != null) {
         throw new BlockFetchException(exception);
@@ -54,19 +64,24 @@ class ParentTaskDataFetcher extends DataFetcher {
   }
 
   @Override
-  Object fetchDataElement() throws Exception {
+  Object fetchDataElement() throws IOException {
+    if (!hasFetchStarted) {
+      fetchInBackground();
+      hasFetchStarted = true;
+    }
+
+
+
     // Process data from other stages.
     for (int currPartition = 0; currPartition < numPartitionsFromOtherStages; currPartition++) {
-      Pair<String, DataUtil.IteratorWithNumBytes> idToIteratorPair = dataQueue.take();
-      final String iteratorId = idToIteratorPair.left();
-      final DataUtil.IteratorWithNumBytes iterator = idToIteratorPair.right();
-      List<VertexHarness> vertexHarnesses = iteratorIdToDataHandlersMap.get(iteratorId);
-      iterator.forEachRemaining(element -> {
-        for (final VertexHarness vertexHarness : vertexHarnesses) {
-          processElementRecursively(vertexHarness, element);
-        }
-      });
+      final DataUtil.IteratorWithNumBytes iterator = dataQueue.take();
+      try {
+        return iterator.next();
+      } catch (final NoSuchElementException e) {
+        return null;
+      }
 
+      /*
       // Collect metrics on block size if possible.
       try {
         serBlockSize += iterator.getNumSerializedBytes();
@@ -82,8 +97,11 @@ class ParentTaskDataFetcher extends DataFetcher {
       } catch (final IllegalStateException e) {
         LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
       }
+      */
     }
+    /*
     inputReadEndTime = System.currentTimeMillis();
     metric.put("InputReadTime(ms)", inputReadEndTime - inputReadStartTime);
+    */
   }
 }

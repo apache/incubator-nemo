@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.executor.task;
 
+import java.io.IOException;
 import java.util.List;
 
 abstract class DataFetcher {
@@ -26,9 +27,9 @@ abstract class DataFetcher {
 
   /**
    * @return null if there's no more data element.
-   * @throws Exception while fetching data
+   * @throws IOException while fetching data
    */
-  abstract Object fetchDataElement() throws Exception;
+  abstract Object fetchDataElement() throws IOException;
 
   List<VertexHarness> getConsumers() {
     return consumers;

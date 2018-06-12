@@ -24,6 +24,8 @@ import java.util.NoSuchElementException;
 
 class SourceVertexDataFetcher extends DataFetcher {
   private final Readable readable;
+
+  // Non-finals (lazy fetching)
   private Iterator iterator;
 
   SourceVertexDataFetcher(final Readable readable,
@@ -33,7 +35,7 @@ class SourceVertexDataFetcher extends DataFetcher {
   }
 
   @Override
-  Object fetchDataElement() throws IOException, NoSuchElementException {
+  Object fetchDataElement() throws IOException {
     if (iterator == null) {
       iterator = this.readable.read().iterator();
     }
