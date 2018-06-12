@@ -25,7 +25,7 @@ import java.util.List;
 /**
  * Captures the relationship between an IRVertex's outputCollector, and children vertices.
  */
-abstract class VertexHarness {
+class VertexHarness {
   // IRVertex and its corresponding output collector.
   private final IRVertex irVertex;
   private final OutputCollectorImpl outputCollector;
