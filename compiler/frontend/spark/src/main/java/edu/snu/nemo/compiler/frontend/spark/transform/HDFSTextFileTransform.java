@@ -30,9 +30,8 @@ import java.util.UUID;
 /**
  * Transform which saves elements to a HDFS text file for Spark.
  * @param <I> input type.
- * @param <O> output type.
  */
-public final class HDFSTextFileTransform<I, O> implements Transform<I, O> {
+public final class HDFSTextFileTransform<I> implements Transform<I, String> {
   private final String path;
   private Path fileName;
   private List<I> elements;
@@ -47,7 +46,7 @@ public final class HDFSTextFileTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> outputCollector) {
+  public void prepare(final Transform.Context context, final OutputCollector<String> outputCollector) {
     fileName = new Path(path + UUID.randomUUID().toString());
     this.elements = new ArrayList<>();
   }
