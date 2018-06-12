@@ -46,7 +46,6 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   private final DoFn doFn;
   private final ObjectMapper mapper;
   private final String serializedOptions;
-  private Map<PCollectionView, Object> sideInputs;
   private OutputCollector<O> outputCollector;
   private StartBundleContext startBundleContext;
   private FinishBundleContext finishBundleContext;
@@ -72,11 +71,9 @@ public final class DoTransform<I, O> implements Transform<I, O> {
   @Override
   public void prepare(final Context context, final OutputCollector<O> oc) {
     this.outputCollector = oc;
-    this.sideInputs = new HashMap<>();
-    context.getSideInputs().forEach((k, v) -> this.sideInputs.put(((CreateViewTransform) k).getTag(), v));
     this.startBundleContext = new StartBundleContext(doFn, serializedOptions);
     this.finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
-    this.processContext = new ProcessContext(doFn, outputCollector, sideInputs, serializedOptions);
+    this.processContext = new ProcessContext(doFn, outputCollector, context.getSideInputs(), serializedOptions);
     this.invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
@@ -195,7 +192,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
       implements DoFnInvoker.ArgumentProvider<I, O> {
     private I input;
     private final OutputCollector<O> outputCollector;
-    private final Map<PCollectionView, Object> sideInputs;
+    private final Map sideInputs;
     private final ObjectMapper mapper;
     private final PipelineOptions options;
 
@@ -209,7 +206,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
      */
     ProcessContext(final DoFn<I, O> fn,
                    final OutputCollector<O> outputCollector,
-                   final Map<PCollectionView, Object> sideInputs,
+                   final Map sideInputs,
                    final String serializedOptions) {
       fn.super();
       this.outputCollector = outputCollector;

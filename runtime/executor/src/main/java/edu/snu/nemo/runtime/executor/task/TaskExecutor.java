@@ -145,10 +145,10 @@ public final class TaskExecutor {
 
         final List<OutputWriter> childrenTaskWriters = getChildrenTaskWriters(
             taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory); // Children-task write
-        prepareTransform(irVertex);
-        final VertexHarness vertexHarness =
-            new VertexHarness(irVertex, new OutputCollectorImpl(), children, childrenTaskWriters); // Intra-vertex write
+        final VertexHarness vertexHarness = new VertexHarness(irVertex, new OutputCollectorImpl(), children,
+            childrenTaskWriters, new ContextImpl(new HashMap())); // Intra-vertex write
 
+        prepareTransform(vertexHarness);
         vertexIdToHarness.put(irVertex.getId(), vertexHarness);
       }
     });
@@ -190,6 +190,9 @@ public final class TaskExecutor {
       final Object element = outputCollector.remove();
       vertexHarness.getWritersToChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
       vertexHarness.getChildren().forEach(child -> processElementRecursively(child, element)); // Recursive call
+
+      // TODO: handle sideinput haere
+      context.getSideInputs().forEach((k, v) -> this.sideInputs.put(((CreateViewTransform) k).getTag(), v));
     }
   }
 
@@ -229,7 +232,7 @@ public final class TaskExecutor {
     // Recursively process each data element produced by a data fetcher.
     final List<DataFetcher> availableFetchers = new ArrayList<>(dataFetchers);
     int finishedFetcherIndex = NONE_FINISHED;
-    while (!availableFetchers.isEmpty()) {
+    while (!availableFetchers.isEmpty()) { // empty means we've consumed all task-external input data
       for (int i = 0; i < availableFetchers.size(); i++) {
         final DataFetcher dataFetcher = dataFetchers.get(i);
         final Object element = dataFetcher.fetchDataElement();
@@ -277,32 +280,7 @@ public final class TaskExecutor {
     }
   }
 
-  private void prepareTransform(final IRVertex irVertex) {
-    if (irVertex instanceof OperatorVertex) {
-      final Transform transform = ((OperatorVertex) irVertex).getTransform();
-      final Map<Transform, Object> sideInputMap = new HashMap<>();
-      final VertexHarness vertexHarness = vertexIdToDataHandler.get(irVertex.getId());
-      // Check and collect side inputs.
-      if (!vertexHarness.getSideInputFromOtherStages().isEmpty()) {
-        sideInputFromOtherStages(irVertex, sideInputMap);
-      }
-      if (!vertexHarness.getSideInputFromThisStage().isEmpty()) {
-        sideInputFromThisStage(irVertex, sideInputMap);
-      }
-
-      final Transform.Context transformContext = new ContextImpl(sideInputMap);
-      final OutputCollectorImpl outputCollector = vertexHarness.getOutputCollector();
-      transform.prepare(transformContext, outputCollector);
-    }
-  }
-
-  private void closeTransform(final VertexHarness vertexHarness) {
-    final IRVertex irVertex = vertexHarness.getIRVertex();
-    if (irVertex instanceof OperatorVertex) {
-      Transform transform = ((OperatorVertex) irVertex).getTransform();
-      transform.close();
-    }
-  }
+  ////////////////////////////////////////////// Helper methods for setting up initial data structures
 
   private Optional<Readable> getSourceVertexReader(final IRVertex irVertex,
                                                    final Map<String, Readable> irVertexIdToReadable) {
@@ -356,6 +334,26 @@ public final class TaskExecutor {
     return childrenHandlers;
   }
 
+  ////////////////////////////////////////////// Transform-specific helper methods
+
+  private void prepareTransform(final VertexHarness vertexHarness) {
+    final IRVertex irVertex = vertexHarness.getIRVertex();
+    if (irVertex instanceof OperatorVertex) {
+      final Transform transform = ((OperatorVertex) irVertex).getTransform();
+      transform.prepare(vertexHarness.getContext(), vertexHarness.getOutputCollector());
+    }
+  }
+
+  private void closeTransform(final VertexHarness vertexHarness) {
+    final IRVertex irVertex = vertexHarness.getIRVertex();
+    if (irVertex instanceof OperatorVertex) {
+      Transform transform = ((OperatorVertex) irVertex).getTransform();
+      transform.close();
+    }
+  }
+
+  ////////////////////////////////////////////// Misc
+
   private void setIRVertexPutOnHold(final MetricCollectionBarrierVertex irVertex) {
     idOfVertexPutOnHold = irVertex.getId();
   }
@@ -391,4 +389,5 @@ public final class TaskExecutor {
     }
     metricCollector.endMeasurement(irVertex.getId(), metric);
   }
+
 }
