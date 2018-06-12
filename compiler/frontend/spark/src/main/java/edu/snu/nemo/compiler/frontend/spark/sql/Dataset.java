@@ -15,7 +15,8 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.sql;
 
-import edu.snu.nemo.compiler.frontend.spark.core.java.JavaRDD;
+import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
+import edu.snu.nemo.compiler.frontend.spark.core.rdd.RDD;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.api.java.function.MapPartitionsFunction;
 import org.apache.spark.sql.Column;
@@ -72,6 +73,32 @@ public final class Dataset<T> extends org.apache.spark.sql.Dataset<T> implements
   public JavaRDD<T> toJavaRDD() {
     return JavaRDD.of((SparkSession) super.sparkSession(), this);
   }
+
+  /**
+   * Create a actual {@link RDD} component of Spark to get the source data.
+   * This method should not be called by any user program.
+   *
+   * @return a Spark RDD from this dataset.
+   */
+  public org.apache.spark.rdd.RDD<T> sparkRDD() {
+    return super.rdd();
+  }
+
+  /**
+   * Create a {@link RDD} component from this data set.
+   * To transparently give our RDD to user programs, this method have to be overridden.
+   *
+   * By overriding this method, if a method (such as reduce) of super ({@link org.apache.spark.sql.Dataset}) is called
+   * and it uses super's rdd, the rdd will be our rdd returned by this method.
+   * This is an intended behavior and the result will be calculated by our system.
+   *
+   * @return the new RDD component.
+   */
+   @Override
+   public RDD<T> rdd() {
+     final JavaRDD<T> javaRDD = JavaRDD.of((SparkSession) super.sparkSession(), this);
+     return javaRDD.rdd();
+   }
 
   @Override
   public Dataset<Row> agg(final Column expr, final Column... exprs) {

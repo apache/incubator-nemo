@@ -23,7 +23,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.io.Serializable;
 
-import edu.snu.nemo.compiler.frontend.spark.core.java.JavaRDD;
+import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 import edu.snu.nemo.compiler.frontend.spark.sql.Dataset;
 import edu.snu.nemo.compiler.frontend.spark.sql.SparkSession;
 import org.apache.spark.api.java.function.Function;

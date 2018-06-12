@@ -17,7 +17,7 @@ package edu.snu.nemo.compiler.frontend.spark.transform;
 
 import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.compiler.frontend.spark.core.java.JavaRDD;
+import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 
 import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;
@@ -57,11 +57,14 @@ public final class CollectTransform<T> implements Transform<T, T> {
   @Override
   public void close() {
     try (
-        FileOutputStream fos = new FileOutputStream(filename);
-        ObjectOutputStream oos = new ObjectOutputStream(fos)
+        final FileOutputStream fos = new FileOutputStream(filename);
+        final ObjectOutputStream oos = new ObjectOutputStream(fos)
     ) {
-      oos.writeObject(list);
-      oos.close();
+      // Write the length of list at first. This is needed internally and must not shown in the collected result.
+      oos.writeInt(list.size());
+      for (final T t : list) {
+        oos.writeObject(t);
+      }
     } catch (Exception e) {
       throw new RuntimeException("Exception while file closing in CollectTransform " + e);
     }

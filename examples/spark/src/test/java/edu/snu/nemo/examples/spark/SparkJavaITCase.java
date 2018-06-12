@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 @PowerMockIgnore("javax.management.*")
-public final class SparkITCase {
+public final class SparkJavaITCase {
   private static final int TIMEOUT = 180000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
@@ -53,7 +53,6 @@ public final class SparkITCase {
     final String testResourceFilename = "test_output_wordcount_spark";
     final String inputFilePath = fileBasePath + inputFileName;
     final String outputFilePath = fileBasePath + outputFileName;
-
 
     JobLauncher.main(builder
         .addJobId(JavaWordCount.class.getSimpleName() + "_test")
