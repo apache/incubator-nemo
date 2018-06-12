@@ -4,7 +4,7 @@
 * Ubuntu 14.04.4 LTS
 * Other OS/versions not tested
 
-## Initialize the fresh OS 
+## Initialize the fresh OS
 * Run `initialize_fresh_ubuntu.sh` on each node
 
 ## Set hostnames
@@ -15,7 +15,7 @@
 ## Set up YARN/HDFS cluster
 * Set up the conf files(core-site.xml, hdfs-site.xml, yarn-site.xml, slaves, ...) on v-m, and `pscp` them to all v-w
 * hdfs namenode -format (does not always cleanly format... may need to delete the hdfs directory)
-* start-yarn.sh && start-dfs.sh 
+* start-yarn.sh && start-dfs.sh
 * For more information, refer to the official Hadoop website
 
 ## Viewing the YARN/HDFS Web UI (when the nodes can't be directly accessed from the internet)
@@ -29,7 +29,7 @@
 * git clone Nemo on v-m and install
 * Upload a local input file to HDFS with `hdfs -put`
 * Launch a Nemo job with `-deploy_mode yarn`, and hdfs paths as the input/output
-* Example: `./bin/run.sh -deploy_mode yarn -job_id mr -user_main edu.snu.nemo.examples.beam.MapReduce -user_args "hdfs://v-m:9000/sample_input_mr hdfs://v-m:9000/sample_output_mr"`
+* Example: `./bin/run.sh -deploy_mode yarn -job_id mr -user_main edu.snu.nemo.examples.beam.WordCount -user_args "hdfs://v-m:9000/sample_input_mr hdfs://v-m:9000/sample_output_mr"`
 
 ## And you're all set.....?
 * I hope so
@@ -41,7 +41,7 @@
 ## Some Example Commands for copying files
 ```bash
 # miss any of these and you'll have a very intersting(?) YARN/HDFS cluster
-pscp -h ~/parallel/hostfile /etc/hosts /etc/hosts 
+pscp -h ~/parallel/hostfile /etc/hosts /etc/hosts
 pscp -h ~/parallel/hostfile /home/ubuntu/hadoop/etc/hadoop/core-site.xml /home/ubuntu/hadoop/etc/hadoop/core-site.xml
 pscp -h ~/parallel/hostfile /home/ubuntu/hadoop/etc/hadoop/yarn-site.xml /home/ubuntu/hadoop/etc/hadoop/yarn-site.xml
 ```

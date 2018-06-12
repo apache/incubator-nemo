@@ -31,15 +31,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Sample MapReduce application for skew experiment.
+ * IP stat analysis example used in skew experiment.
  */
-public final class MapReduceSkew {
-  private static final Logger LOG = LoggerFactory.getLogger(MapReduceSkew.class.getName());
+public final class PerKeyMedian {
+  private static final Logger LOG = LoggerFactory.getLogger(PerKeyMedian.class.getName());
 
   /**
    * Private Constructor.
    */
-  private MapReduceSkew() {
+  private PerKeyMedian() {
   }
 
   /**
@@ -51,7 +51,7 @@ public final class MapReduceSkew {
     final String outputFilePath = args[1];
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
     options.setRunner(NemoPipelineRunner.class);
-    options.setJobName("MapReduceSkew");
+    options.setJobName("PerKeyMedian");
 
     final Pipeline p = Pipeline.create(options);
 

@@ -25,11 +25,12 @@ import java.util.*;
  * IRVertex that collects statistics to send them to the optimizer for dynamic optimization.
  * This class is generated in the DAG through
  * {edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.DataSkewCompositePass}.
- * @param <T> type of the metric data.
+ * @param <K> type of the key of metric data.
+ * @param <V> type of the value of metric data.
  */
-public final class MetricCollectionBarrierVertex<T> extends IRVertex {
-  // Partition ID to Size data
-  private T metricData;
+public final class MetricCollectionBarrierVertex<K, V> extends IRVertex {
+  // Metric data used for dynamic optimization.
+  private Map<K, V> metricData;
   private final List<String> blockIds;
 
   // This DAG snapshot is taken at the end of the DataSkewCompositePass, for the vertex to know the state of the DAG at
@@ -74,9 +75,9 @@ public final class MetricCollectionBarrierVertex<T> extends IRVertex {
 
   /**
    * Method for accumulating metrics in the vertex.
-   * @param metric the block size information of the partition.
+   * @param metric map of hash value of the key of the block to the block size.
    */
-  public void updateMetricData(final T metric) {
+  public void updateMetricData(final Map<K, V> metric) {
     metricData = metric;
   }
 
@@ -84,14 +85,22 @@ public final class MetricCollectionBarrierVertex<T> extends IRVertex {
    * Method for retrieving metrics from the vertex.
    * @return the accumulated metric data.
    */
-  public T getMetricData() {
+  public Map<K, V> getMetricData() {
     return metricData;
   }
 
+  /**
+   * Add block id that is needed for optimization in RuntimePass.
+   * @param blockId the block id subjected to the optimization.
+   */
   public void addBlockId(final String blockId) {
     blockIds.add(blockId);
   }
 
+  /**
+   * Retrieve block ids.
+   * @return the block ids subjected to optimization.
+   */
   public List<String> getBlockIds() {
     return blockIds;
   }

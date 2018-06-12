@@ -60,12 +60,12 @@ public final class CompilerTestUtil {
   }
 
   public static DAG<IRVertex, IREdge> compileMRDAG() throws Exception {
-    final String input = rootDir + "/../examples/resources/sample_input_mr";
+    final String input = rootDir + "/../examples/resources/sample_input_wordcount";
     final String output = rootDir + "/../examples/resources/sample_output";
-    final String main = "edu.snu.nemo.examples.beam.MapReduce";
+    final String main = "edu.snu.nemo.examples.beam.WordCount";
 
     final ArgBuilder mrArgBuilder = new ArgBuilder()
-        .addJobId("MapReduce")
+        .addJobId("WordCount")
         .addUserMain(main)
         .addUserArgs(input, output);
     return compileDAG(mrArgBuilder.build());

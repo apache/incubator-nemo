@@ -335,7 +335,7 @@ public final class RuntimeMaster {
     });
 
     if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
-      final MetricCollectionBarrierVertex<Map<Integer, Long>> metricCollectionBarrierVertex =
+      final MetricCollectionBarrierVertex<Integer, Long> metricCollectionBarrierVertex =
           (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
       metricCollectionBarrierVertex.addBlockId(blockId);
       metricCollectionBarrierVertex.updateMetricData(aggregatedMetricData);
