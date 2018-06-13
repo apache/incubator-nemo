@@ -19,6 +19,7 @@ import com.google.common.collect.Lists;
 import edu.snu.nemo.common.ContextImpl;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
@@ -134,28 +135,30 @@ public final class TaskExecutor {
         throw new IllegalStateException(irVertex.toString());
       }
 
+      final List<Boolean> isSideInputs = children.stream()
+          .map(VertexHarness::getIRVertex)
+          .map(childVertex -> irVertexDag.getEdgeBetween(irVertex.getId(), childVertex.getId()))
+          .map(RuntimeEdge::isSideInput)
+          .collect(Collectors.toList());
+
+      // Handle writes
+      final List<OutputWriter> childrenTaskWriters = getChildrenTaskWriters(
+          taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory); // Children-task write
+      final VertexHarness vertexHarness = new VertexHarness(irVertex, new OutputCollectorImpl(), children,
+          isSideInputs, childrenTaskWriters, new ContextImpl(new HashMap())); // Intra-vertex write
+      prepareTransform(vertexHarness);
+      vertexIdToHarness.put(irVertex.getId(), vertexHarness);
+
+      // Handle reads
       if (irVertex instanceof SourceVertex) {
-        dataFetcherList.add(new SourceVertexDataFetcher(sourceReader.get(), children, metricMap)); // Source vertex read
-      } else {
-        final List<InputReader> parentTaskReaders =
-            getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges(), dataTransferFactory);
-        if (parentTaskReaders.size() > 0) {
-          dataFetcherList.add(new ParentTaskDataFetcher(parentTaskReaders, children, metricMap)); // Parent-task read
-        }
-
-        final List<OutputWriter> childrenTaskWriters = getChildrenTaskWriters(
-            taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory); // Children-task write
-
-        final List<Boolean> isSideInputs = children.stream()
-            .map(VertexHarness::getIRVertex)
-            .map(childVertex -> irVertexDag.getEdgeBetween(irVertex.getId(), childVertex.getId()))
-            .map(RuntimeEdge::isSideInput)
-            .collect(Collectors.toList());
-        final VertexHarness vertexHarness = new VertexHarness(irVertex, new OutputCollectorImpl(), children,
-            isSideInputs, childrenTaskWriters, new ContextImpl(new HashMap())); // Intra-vertex write
-
-        prepareTransform(vertexHarness);
-        vertexIdToHarness.put(irVertex.getId(), vertexHarness);
+        dataFetcherList.add(new SourceVertexDataFetcher(
+            sourceReader.get(), Arrays.asList(vertexHarness), metricMap)); // Source vertex read
+      }
+      final List<InputReader> parentTaskReaders =
+          getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges(), dataTransferFactory);
+      if (parentTaskReaders.size() > 0) {
+        dataFetcherList.add(new ParentTaskDataFetcher(
+            parentTaskReaders, Arrays.asList(vertexHarness), metricMap)); // Parent-task read
       }
     });
 
@@ -175,16 +178,13 @@ public final class TaskExecutor {
   private void processElementRecursively(final VertexHarness vertexHarness, final Object dataElement) {
     final IRVertex irVertex = vertexHarness.getIRVertex();
     final OutputCollectorImpl outputCollector = vertexHarness.getOutputCollector();
-    if (irVertex instanceof OperatorVertex) {
+    if (irVertex instanceof SourceVertex) {
+      relayElement(outputCollector, dataElement);
+    } else if (irVertex instanceof OperatorVertex) {
       final Transform transform = ((OperatorVertex) irVertex).getTransform();
       transform.onData(dataElement);
     } else if (irVertex instanceof MetricCollectionBarrierVertex) {
-      if (dataElement == null) { // null used for Beam VoidCoders
-        final List<Object> nullForVoidCoder = Collections.singletonList(dataElement);
-        outputCollector.emit(nullForVoidCoder);
-      } else {
-        outputCollector.emit(dataElement);
-      }
+      relayElement(outputCollector, dataElement);
       setIRVertexPutOnHold((MetricCollectionBarrierVertex) irVertex);
     } else {
       throw new UnsupportedOperationException("This type of IRVertex is not supported");
@@ -197,6 +197,15 @@ public final class TaskExecutor {
       vertexHarness.getWritersToChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
       vertexHarness.getSideInputChildren().forEach(child -> child.getContext().getSideInputs().put(irVertex, element));
       vertexHarness.getNonSideInputChildren().forEach(child -> processElementRecursively(child, element)); // Recursion
+    }
+  }
+
+  private void relayElement(final OutputCollector outputCollector, final Object dataElement) {
+    if (dataElement == null) { // null used for Beam VoidCoders
+      final List<Object> nullForVoidCoder = Collections.singletonList(dataElement);
+      outputCollector.emit(nullForVoidCoder);
+    } else {
+      outputCollector.emit(dataElement);
     }
   }
 

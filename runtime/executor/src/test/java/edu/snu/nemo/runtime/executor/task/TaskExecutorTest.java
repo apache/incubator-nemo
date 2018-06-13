@@ -47,6 +47,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertEquals;
@@ -70,10 +71,17 @@ public final class TaskExecutorTest {
   private DataTransferFactory dataTransferFactory;
   private TaskStateManager taskStateManager;
   private MetricMessageSender metricMessageSender;
+  private AtomicInteger stageId;
+
+  private String generateTaskId() {
+    return RuntimeIdGenerator.generateTaskId(0,
+        RuntimeIdGenerator.generateStageId(stageId.getAndIncrement()));
+  }
 
   @Before
   public void setUp() throws Exception {
     elements = getRangedNumList(0, DATA_SIZE);
+    stageId = new AtomicInteger(1);
 
     // Mock a TaskStateManager. It accumulates the state change into a list.
     taskStateManager = mock(TaskStateManager.class);
@@ -91,12 +99,11 @@ public final class TaskExecutorTest {
   }
 
   /**
-   * Test the {@link edu.snu.nemo.common.ir.vertex.SourceVertex} processing in {@link TaskExecutor}.
+   * Test source vertex data fetching.
    */
   @Test(timeout=5000)
   public void testSourceVertexDataFetching() throws Exception {
     final IRVertex sourceIRVertex = new InMemorySourceVertex<>(elements);
-    final String stageId = RuntimeIdGenerator.generateStageId(0);
 
     final Readable readable = new Readable() {
       @Override
@@ -111,25 +118,20 @@ public final class TaskExecutorTest {
     final Map<String, Readable> vertexIdToReadable = new HashMap<>();
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
 
-    final IRVertex operatorVertex = new OperatorVertex(new IdentityFunctionTransform());
-
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
         new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
             .addVertex(sourceIRVertex)
-            .addVertex(operatorVertex)
-            .connectVertices(createEdge(sourceIRVertex, operatorVertex))
             .buildWithoutSourceSinkCheck();
 
-    final String taskId = RuntimeIdGenerator.generateTaskId(0, stageId);
     final Task task =
         new Task(
             "testSourceVertexDataFetching",
-            taskId,
+            generateTaskId(),
             0,
             CONTAINER_TYPE,
             new byte[0],
             Collections.emptyList(),
-            Collections.singletonList(mockStageEdgeFrom(operatorVertex)),
+            Collections.singletonList(mockStageEdgeFrom(sourceIRVertex)),
             vertexIdToReadable);
 
     // Execute the task.
@@ -138,8 +140,38 @@ public final class TaskExecutorTest {
     taskExecutor.execute();
 
     // Check the output.
-    assertEquals(DATA_SIZE, vertexIdToOutputData.get(operatorVertex.getId()).size());
-    assertEquals(elements.get(0), vertexIdToOutputData.get(operatorVertex.getId()).get(0));
+    assertEquals(DATA_SIZE, vertexIdToOutputData.get(sourceIRVertex.getId()).size());
+    assertEquals(elements.get(0), vertexIdToOutputData.get(sourceIRVertex.getId()).get(0));
+  }
+
+  /**
+   * Test parent task data fetching.
+   */
+  @Test(timeout=5000)
+  public void testParentTaskDataFetching() throws Exception {
+    final IRVertex vertex = new OperatorVertex(new IdentityFunctionTransform());
+
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
+        .addVertex(vertex)
+        .buildWithoutSourceSinkCheck();
+
+    final Task task = new Task(
+        "testSourceVertexDataFetching",
+        generateTaskId(),
+        0,
+        CONTAINER_TYPE,
+        new byte[0],
+        Collections.singletonList(mockStageEdgeTo(vertex)),
+        Collections.singletonList(mockStageEdgeFrom(vertex)),
+        Collections.emptyMap());
+
+    // Execute the task.
+    final TaskExecutor taskExecutor = new TaskExecutor(
+        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
+    taskExecutor.execute();
+
+    // Check the output.
+    assertEquals(100, vertexIdToOutputData.get(vertex.getId()).size());
   }
 
   /**
@@ -151,22 +183,19 @@ public final class TaskExecutorTest {
    * On the other hand, task 2 will receive the output data once and produce a single output.
    */
   @Test(timeout=5000)
-  public void testParentTaskDataFetching() throws Exception {
+  public void testTwoOperators() throws Exception {
     final IRVertex operatorIRVertex1 = new OperatorVertex(new IdentityFunctionTransform());
     final IRVertex operatorIRVertex2 = new OperatorVertex(new IdentityFunctionTransform());
-
-    final String stageId = RuntimeIdGenerator.generateStageId(1);
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
         .addVertex(operatorIRVertex1)
         .addVertex(operatorIRVertex2)
         .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2))
         .buildWithoutSourceSinkCheck();
-    final String taskId = RuntimeIdGenerator.generateTaskId(0, stageId);
 
     final Task task = new Task(
         "testSourceVertexDataFetching",
-        taskId,
+        generateTaskId(),
         0,
         CONTAINER_TYPE,
         new byte[0],

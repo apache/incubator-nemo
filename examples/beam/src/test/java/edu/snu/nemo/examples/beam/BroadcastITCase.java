@@ -33,7 +33,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class BroadcastITCase {
-  private static final int TIMEOUT = 180000;
+  private static final int TIMEOUT = 30000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
