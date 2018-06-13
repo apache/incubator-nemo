@@ -201,9 +201,7 @@ public final class TaskExecutor {
   }
 
   /**
-   * The execution of a task is handled in the following two phases.
-   * - Phase 1: Consume task-external input data
-   * - Phase 2: Finalize task-internal states and data elements
+   * Execute a task, while handling unrecoverable errors and exceptions.
    */
   public void execute() {
     try {
@@ -215,6 +213,11 @@ public final class TaskExecutor {
     }
   }
 
+  /**
+   * The task is executed in the following two phases.
+   * - Phase 1: Consume task-external input data
+   * - Phase 2: Finalize task-internal states and data elements
+   */
   private void doExecute() {
     if (isExecuted) {
       throw new RuntimeException("Task {" + taskId + "} execution called again");

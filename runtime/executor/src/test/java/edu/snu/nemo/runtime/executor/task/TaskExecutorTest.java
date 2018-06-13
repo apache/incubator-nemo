@@ -81,8 +81,8 @@ public final class TaskExecutorTest {
     // Mock a DataTransferFactory.
     vertexIdToOutputData = new HashMap<>();
     dataTransferFactory = mock(DataTransferFactory.class);
-    when(dataTransferFactory.createReader(anyInt(), any(), any())).then(new InterStageReaderAnswer());
-    when(dataTransferFactory.createWriter(any(), anyInt(), any(), any())).then(new WriterAnswer());
+    when(dataTransferFactory.createReader(anyInt(), any(), any())).then(new ParentTaskReaderAnswer());
+    when(dataTransferFactory.createWriter(any(), anyInt(), any(), any())).then(new ChildTaskWriterAnswer());
 
     // Mock a MetricMessageSender.
     metricMessageSender = mock(MetricMessageSender.class);
@@ -94,7 +94,7 @@ public final class TaskExecutorTest {
    * Test the {@link edu.snu.nemo.common.ir.vertex.SourceVertex} processing in {@link TaskExecutor}.
    */
   @Test(timeout=5000)
-  public void testSourceVertex() throws Exception {
+  public void testSourceVertexDataFetching() throws Exception {
     final IRVertex sourceIRVertex = new InMemorySourceVertex<>(elements);
     final String stageId = RuntimeIdGenerator.generateStageId(0);
 
@@ -111,22 +111,25 @@ public final class TaskExecutorTest {
     final Map<String, Readable> vertexIdToReadable = new HashMap<>();
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
 
+    final IRVertex operatorVertex = new OperatorVertex(new IdentityFunctionTransform());
+
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
-        new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>().addVertex(sourceIRVertex).buildWithoutSourceSinkCheck();
+        new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
+            .addVertex(sourceIRVertex)
+            .addVertex(operatorVertex)
+            .connectVertices(createEdge(sourceIRVertex, operatorVertex))
+            .buildWithoutSourceSinkCheck();
 
-
-    final StageEdge stageOutEdge = mock(StageEdge.class);
-    when(stageOutEdge.getSrcVertex()).thenReturn(sourceIRVertex);
     final String taskId = RuntimeIdGenerator.generateTaskId(0, stageId);
     final Task task =
         new Task(
-            "testSourceVertex",
+            "testSourceVertexDataFetching",
             taskId,
             0,
             CONTAINER_TYPE,
             new byte[0],
             Collections.emptyList(),
-            Collections.singletonList(stageOutEdge),
+            Collections.singletonList(mockStageEdgeFrom(operatorVertex)),
             vertexIdToReadable);
 
     // Execute the task.
@@ -135,53 +138,41 @@ public final class TaskExecutorTest {
     taskExecutor.execute();
 
     // Check the output.
-    assertEquals(100, vertexIdToOutputData.get(sourceIRVertex.getId()).size());
-    assertEquals(elements.get(0), vertexIdToOutputData.get(sourceIRVertex.getId()).get(0));
+    assertEquals(DATA_SIZE, vertexIdToOutputData.get(operatorVertex.getId()).size());
+    assertEquals(elements.get(0), vertexIdToOutputData.get(operatorVertex.getId()).get(0));
   }
 
   /**
-   * Test the {@link edu.snu.nemo.common.ir.vertex.OperatorVertex} processing in {@link TaskExecutor}.
-   *
    * The DAG of the task to test will looks like:
-   * operator task 1 -> operator task 2
+   * parent task -> task (vertex 1 -> task 2) -> child task
    *
-   * The output data from upstream stage will be split
-   * according to source parallelism through {@link InterStageReaderAnswer}.
-   * Because of this, the operator task 1 will process multiple partitions and emit data in multiple times also.
-   * On the other hand, operator task 2 will receive the output data once and produce a single output.
+   * The output data from task 1 will be split according to source parallelism through {@link ParentTaskReaderAnswer}.
+   * Because of this, task 1 will process multiple partitions and emit data in multiple times also.
+   * On the other hand, task 2 will receive the output data once and produce a single output.
    */
   @Test(timeout=5000)
-  public void testOperatorVertex() throws Exception {
+  public void testParentTaskDataFetching() throws Exception {
     final IRVertex operatorIRVertex1 = new OperatorVertex(new IdentityFunctionTransform());
     final IRVertex operatorIRVertex2 = new OperatorVertex(new IdentityFunctionTransform());
-    final String runtimeIREdgeId = "Runtime edge between operator tasks";
 
     final String stageId = RuntimeIdGenerator.generateStageId(1);
 
-    final Coder coder = Coder.DUMMY_CODER;
-    ExecutionPropertyMap edgeProperties = new ExecutionPropertyMap(runtimeIREdgeId);
-    edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
         .addVertex(operatorIRVertex1)
         .addVertex(operatorIRVertex2)
-        .connectVertices(new RuntimeEdge<IRVertex>(
-            runtimeIREdgeId, edgeProperties, operatorIRVertex1, operatorIRVertex2, coder))
+        .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2))
         .buildWithoutSourceSinkCheck();
     final String taskId = RuntimeIdGenerator.generateTaskId(0, stageId);
-    final StageEdge stageInEdge = mock(StageEdge.class);
-    when(stageInEdge.getDstVertex()).thenReturn(operatorIRVertex1);
-    final StageEdge stageOutEdge = mock(StageEdge.class);
-    when(stageOutEdge.getSrcVertex()).thenReturn(operatorIRVertex2);
-    final Task task =
-        new Task(
-            "testSourceVertex",
-            taskId,
-            0,
-            CONTAINER_TYPE,
-            new byte[0],
-            Collections.singletonList(stageInEdge),
-            Collections.singletonList(stageOutEdge),
-            Collections.emptyMap());
+
+    final Task task = new Task(
+        "testSourceVertexDataFetching",
+        taskId,
+        0,
+        CONTAINER_TYPE,
+        new byte[0],
+        Collections.singletonList(mockStageEdgeTo(operatorIRVertex1)),
+        Collections.singletonList(mockStageEdgeFrom(operatorIRVertex2)),
+        Collections.emptyMap());
 
     // Execute the task.
     final TaskExecutor taskExecutor = new TaskExecutor(
@@ -192,30 +183,32 @@ public final class TaskExecutorTest {
     assertEquals(100, vertexIdToOutputData.get(operatorIRVertex2.getId()).size());
   }
 
-  /**
-   * Represents the answer return an intra-stage {@link InputReader},
-   * which will have a single iterable from the upstream task.
-   */
-  private class IntraStageReaderAnswer implements Answer<InputReader> {
-    @Override
-    public InputReader answer(final InvocationOnMock invocationOnMock) throws Throwable {
-      // Read the data.
-      final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> inputFutures = new ArrayList<>();
-      inputFutures.add(CompletableFuture.completedFuture(
-          DataUtil.IteratorWithNumBytes.of(elements.iterator())));
-      final InputReader inputReader = mock(InputReader.class);
-      when(inputReader.read()).thenReturn(inputFutures);
-      when(inputReader.isSideInputReader()).thenReturn(false);
-      when(inputReader.getSourceParallelism()).thenReturn(1);
-      return inputReader;
-    }
+  private RuntimeEdge<IRVertex> createEdge(final IRVertex src, final IRVertex dst) {
+    final String runtimeIREdgeId = "Runtime edge between operator tasks";
+    final Coder coder = Coder.DUMMY_CODER;
+    ExecutionPropertyMap edgeProperties = new ExecutionPropertyMap(runtimeIREdgeId);
+    edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+    return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, src, dst, coder);
+
+  }
+
+  private StageEdge mockStageEdgeFrom(final IRVertex irVertex) {
+    final StageEdge edge = mock(StageEdge.class);
+    when(edge.getSrcVertex()).thenReturn(irVertex);
+    return edge;
+  }
+
+  private StageEdge mockStageEdgeTo(final IRVertex irVertex) {
+    final StageEdge edge = mock(StageEdge.class);
+    when(edge.getDstVertex()).thenReturn(irVertex);
+    return edge;
   }
 
   /**
    * Represents the answer return an inter-stage {@link InputReader},
    * which will have multiple iterable according to the source parallelism.
    */
-  private class InterStageReaderAnswer implements Answer<InputReader> {
+  private class ParentTaskReaderAnswer implements Answer<InputReader> {
     @Override
     public InputReader answer(final InvocationOnMock invocationOnMock) throws Throwable {
       final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> inputFutures = new ArrayList<>(SOURCE_PARALLELISM);
@@ -237,7 +230,7 @@ public final class TaskExecutorTest {
    * Represents the answer return a {@link OutputWriter},
    * which will stores the data to the map between task id and output data.
    */
-  private class WriterAnswer implements Answer<OutputWriter> {
+  private class ChildTaskWriterAnswer implements Answer<OutputWriter> {
     @Override
     public OutputWriter answer(final InvocationOnMock invocationOnMock) throws Throwable {
       final Object[] args = invocationOnMock.getArguments();

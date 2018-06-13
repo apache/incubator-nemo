@@ -115,14 +115,14 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
 
       try {
         final Dataset<T> dataset = SparkSession.initializeDataset(spark, commands);
+
+        // Spark does lazy evaluation: it doesn't load the full dataset, but only the partition it is asked for.
+        final RDD<T> rdd = dataset.rdd();
+        return () -> JavaConverters.asJavaIteratorConverter(
+            rdd.iterator(rdd.getPartitions()[partitionIndex], TaskContext$.MODULE$.empty())).asJava();
       } catch (OperationNotSupportedException exception) {
         throw new RuntimeException(exception);
       }
-
-      // Spark does lazy evaluation: it doesn't load the full dataset, but only the partition it is asked for.
-      final RDD<T> rdd = dataset.rdd();
-      return () -> JavaConverters.asJavaIteratorConverter(
-          rdd.iterator(rdd.getPartitions()[partitionIndex], TaskContext$.MODULE$.empty())).asJava();
     }
 
     @Override
