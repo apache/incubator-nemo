@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 
 /**
  * Fetches data from a data source.
@@ -47,9 +46,9 @@ class SourceVertexDataFetcher extends DataFetcher {
       getMetricMap().put("BoundedSourceReadTime(ms)", System.currentTimeMillis() - start);
     }
 
-    try {
+    if (iterator.hasNext()) {
       return iterator.next();
-    } catch (final NoSuchElementException e) {
+    } else {
       return null;
     }
   }

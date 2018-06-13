@@ -33,7 +33,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PrepareForTest(JobLauncher.class)
 @PowerMockIgnore("javax.management.*")
 public final class SparkScalaITCase {
-  private static final int TIMEOUT = 120000;
+  private static final int TIMEOUT = 60000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
   private static final String executorResourceFileName = fileBasePath + "spark_sample_executor_resources.json";
