@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.executor.task;
 
+import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.DAG;
@@ -48,9 +49,12 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Matchers.any;
@@ -66,8 +70,8 @@ public final class TaskExecutorTest {
   private static final int DATA_SIZE = 100;
   private static final String CONTAINER_TYPE = "CONTAINER_TYPE";
   private static final int SOURCE_PARALLELISM = 5;
-  private List elements;
-  private Map<String, List<Object>> vertexIdToOutputData;
+  private List<Integer> elements;
+  private Map<String, List> vertexIdToOutputData;
   private DataTransferFactory dataTransferFactory;
   private TaskStateManager taskStateManager;
   private MetricMessageSender metricMessageSender;
@@ -96,6 +100,12 @@ public final class TaskExecutorTest {
     metricMessageSender = mock(MetricMessageSender.class);
     doNothing().when(metricMessageSender).send(anyString(), anyString());
     doNothing().when(metricMessageSender).close();
+  }
+
+  private boolean checkEqualElements(final List<Integer> left, final List<Integer> right) {
+    Collections.sort(left);
+    Collections.sort(right);
+    return left.equals(right);
   }
 
   /**
@@ -140,8 +150,7 @@ public final class TaskExecutorTest {
     taskExecutor.execute();
 
     // Check the output.
-    assertEquals(DATA_SIZE, vertexIdToOutputData.get(sourceIRVertex.getId()).size());
-    assertEquals(elements.get(0), vertexIdToOutputData.get(sourceIRVertex.getId()).get(0));
+    assertTrue(checkEqualElements(elements, vertexIdToOutputData.get(sourceIRVertex.getId())));
   }
 
   /**
@@ -149,7 +158,7 @@ public final class TaskExecutorTest {
    */
   @Test(timeout=5000)
   public void testParentTaskDataFetching() throws Exception {
-    final IRVertex vertex = new OperatorVertex(new IdentityFunctionTransform());
+    final IRVertex vertex = new OperatorVertex(new RelayTransform());
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
         .addVertex(vertex)
@@ -171,7 +180,7 @@ public final class TaskExecutorTest {
     taskExecutor.execute();
 
     // Check the output.
-    assertEquals(100, vertexIdToOutputData.get(vertex.getId()).size());
+    assertTrue(checkEqualElements(elements, vertexIdToOutputData.get(vertex.getId())));
   }
 
   /**
@@ -184,13 +193,13 @@ public final class TaskExecutorTest {
    */
   @Test(timeout=5000)
   public void testTwoOperators() throws Exception {
-    final IRVertex operatorIRVertex1 = new OperatorVertex(new IdentityFunctionTransform());
-    final IRVertex operatorIRVertex2 = new OperatorVertex(new IdentityFunctionTransform());
+    final IRVertex operatorIRVertex1 = new OperatorVertex(new RelayTransform());
+    final IRVertex operatorIRVertex2 = new OperatorVertex(new RelayTransform());
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
         .addVertex(operatorIRVertex1)
         .addVertex(operatorIRVertex2)
-        .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2))
+        .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2, false))
         .buildWithoutSourceSinkCheck();
 
     final Task task = new Task(
@@ -209,15 +218,52 @@ public final class TaskExecutorTest {
     taskExecutor.execute();
 
     // Check the output.
-    assertEquals(100, vertexIdToOutputData.get(operatorIRVertex2.getId()).size());
+    assertTrue(checkEqualElements(elements, vertexIdToOutputData.get(operatorIRVertex2.getId())));
   }
 
-  private RuntimeEdge<IRVertex> createEdge(final IRVertex src, final IRVertex dst) {
+  @Test(timeout=5000)
+  public void testTwoOperatorsWithSideInput() throws Exception {
+    final Object tag = new Object();
+    final Transform singleListTransform = new CreateSingleListTransform();
+    final IRVertex operatorIRVertex1 = new OperatorVertex(singleListTransform);
+    final IRVertex operatorIRVertex2 = new OperatorVertex(new SideInputPairTransform(singleListTransform.getTag()));
+
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
+        .addVertex(operatorIRVertex1)
+        .addVertex(operatorIRVertex2)
+        .connectVertices(createEdge(operatorIRVertex1, operatorIRVertex2, true))
+        .buildWithoutSourceSinkCheck();
+
+    final Task task = new Task(
+        "testSourceVertexDataFetching",
+        generateTaskId(),
+        0,
+        CONTAINER_TYPE,
+        new byte[0],
+        Arrays.asList(mockStageEdgeTo(operatorIRVertex1), mockStageEdgeTo(operatorIRVertex2)),
+        Collections.singletonList(mockStageEdgeFrom(operatorIRVertex2)),
+        Collections.emptyMap());
+
+    // Execute the task.
+    final TaskExecutor taskExecutor = new TaskExecutor(
+        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
+    taskExecutor.execute();
+
+    // Check the output.
+    final List<Pair<List<Integer>, Integer>> pairs = vertexIdToOutputData.get(operatorIRVertex2.getId());
+    final List<Integer> values = pairs.stream().map(Pair::right).collect(Collectors.toList());
+    assertTrue(checkEqualElements(elements, values));
+    assertTrue(pairs.stream().map(Pair::left).allMatch(sideInput -> checkEqualElements(sideInput, values)));
+  }
+
+  private RuntimeEdge<IRVertex> createEdge(final IRVertex src,
+                                           final IRVertex dst,
+                                           final boolean isSideInput) {
     final String runtimeIREdgeId = "Runtime edge between operator tasks";
     final Coder coder = Coder.DUMMY_CODER;
     ExecutionPropertyMap edgeProperties = new ExecutionPropertyMap(runtimeIREdgeId);
     edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
-    return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, src, dst, coder);
+    return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, src, dst, coder, isSideInput);
 
   }
 
@@ -283,7 +329,7 @@ public final class TaskExecutorTest {
    * Simple identity function for testing.
    * @param <T> input/output type.
    */
-  private class IdentityFunctionTransform<T> implements Transform<T, T> {
+  private class RelayTransform<T> implements Transform<T, T> {
     private OutputCollector<T> outputCollector;
 
     @Override
@@ -303,13 +349,75 @@ public final class TaskExecutorTest {
   }
 
   /**
+   * Creates a view.
+   * @param <T> input type.
+   */
+  private class CreateSingleListTransform<T> implements Transform<T, List<T>> {
+    private List<T> list;
+    private OutputCollector<List<T>> outputCollector;
+    private final Object tag = new Object();
+
+    @Override
+    public void prepare(final Context context, final OutputCollector<List<T>> outputCollector) {
+      this.list = new ArrayList<>();
+      this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public void onData(final Object element) {
+      list.add((T) element);
+    }
+
+    @Override
+    public void close() {
+      outputCollector.emit(list);
+    }
+
+    @Override
+    public Object getTag() {
+      return tag;
+    }
+  }
+
+  /**
+   * Pairs data element with a side input.
+   * @param <T> input/output type.
+   */
+  private class SideInputPairTransform<T> implements Transform<T, T> {
+    private final Object sideInputTag;
+    private Context context;
+    private OutputCollector<T> outputCollector;
+
+    public SideInputPairTransform(final Object sideInputTag) {
+      this.sideInputTag = sideInputTag;
+    }
+
+    @Override
+    public void prepare(final Context context, final OutputCollector<T> outputCollector) {
+      this.context = context;
+      this.outputCollector = outputCollector;
+    }
+
+    @Override
+    public void onData(final Object element) {
+      final Object sideInput = context.getSideInputs().get(sideInputTag);
+      outputCollector.emit((T) Pair.of(sideInput, element));
+    }
+
+    @Override
+    public void close() {
+      // Do nothing.
+    }
+  }
+
+  /**
    * Gets a list of integer pair elements in range.
    * @param start value of the range (inclusive).
    * @param end   value of the range (exclusive).
    * @return the list of elements.
    */
-  private List getRangedNumList(final int start, final int end) {
-    final List numList = new ArrayList<>(end - start);
+  private List<Integer> getRangedNumList(final int start, final int end) {
+    final List<Integer> numList = new ArrayList<>(end - start);
     IntStream.range(start, end).forEach(number -> numList.add(number));
     return numList;
   }

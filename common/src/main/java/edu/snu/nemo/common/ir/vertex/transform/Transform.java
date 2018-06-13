@@ -46,6 +46,13 @@ public interface Transform<I, O> extends Serializable {
   void close();
 
   /**
+   * @return tag
+   */
+  default Object getTag() {
+    return null;
+  }
+
+  /**
    * Context of the transform.
    */
   interface Context {

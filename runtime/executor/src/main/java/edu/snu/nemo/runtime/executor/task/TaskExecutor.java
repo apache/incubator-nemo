@@ -108,10 +108,10 @@ public final class TaskExecutor {
    *
    * - Intra-task read: Implicitly handled when performing Intra-task writes
    * - Intra-task write: Explicitly handled (VertexHarness)
-   *
+
    * For element-wise data processing, we traverse vertex harnesses from the roots to the leaves for each element.
    * This means that overheads associated with jumping from one harness to the other should be minimal.
-   * For example, we should never perform an expensive hash operation while traversing the harnesses.
+   * For example, we should never perform an expensive hash operation to traverse the harnesses.
    *
    * @param task task.
    * @param irVertexDag dag.
@@ -150,15 +150,16 @@ public final class TaskExecutor {
       vertexIdToHarness.put(irVertex.getId(), vertexHarness);
 
       // Handle reads
+      final boolean isForSideInput = isSideInputs.stream().anyMatch(bool -> bool);
       if (irVertex instanceof SourceVertex) {
         dataFetcherList.add(new SourceVertexDataFetcher(
-            sourceReader.get(), Arrays.asList(vertexHarness), metricMap)); // Source vertex read
+            sourceReader.get(), Arrays.asList(vertexHarness), metricMap, isForSideInput)); // Source vertex read
       }
       final List<InputReader> parentTaskReaders =
           getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges(), dataTransferFactory);
       if (parentTaskReaders.size() > 0) {
         dataFetcherList.add(new ParentTaskDataFetcher(
-            parentTaskReaders, Arrays.asList(vertexHarness), metricMap)); // Parent-task read
+            parentTaskReaders, Arrays.asList(vertexHarness), metricMap, isForSideInput)); // Parent-task read
       }
     });
 
@@ -194,9 +195,7 @@ public final class TaskExecutor {
     // Here, we recursively process all of the output elements.
     while (!outputCollector.isEmpty()) {
       final Object element = outputCollector.remove();
-      vertexHarness.getWritersToChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
-      vertexHarness.getSideInputChildren().forEach(child -> child.getContext().getSideInputs().put(irVertex, element));
-      vertexHarness.getNonSideInputChildren().forEach(child -> processElementRecursively(child, element)); // Recursion
+      handleOutputElement(vertexHarness, element); // Recursion
     }
   }
 
@@ -228,22 +227,73 @@ public final class TaskExecutor {
    * - Phase 2: Finalize task-internal states and data elements
    */
   private void doExecute() {
+    // Housekeeping stuff
     if (isExecuted) {
       throw new RuntimeException("Task {" + taskId + "} execution called again");
     }
     LOG.info("{} started", taskId);
     taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
-
-    // Metric start
     metricCollector.beginMeasurement(taskId, metricMap);
 
     // Phase 1: Consume task-external input data.
     // Recursively process each data element produced by a data fetcher.
-    final List<DataFetcher> availableFetchers = new ArrayList<>(dataFetchers);
+    // Handle the ones for sideInputs first, and then handle the ones for non-sideinputs.
+    final Map<Boolean, List<DataFetcher>> partitionedFetchers =
+        dataFetchers.stream().collect(Collectors.partitioningBy(DataFetcher::isForSideInput));
+    handleDataFetchers(partitionedFetchers.get(true));
+    final Set<VertexHarness> sideInputProducers = partitionedFetchers.get(true).stream()
+        .flatMap(dataFetcher -> dataFetcher.getConsumers().stream()).collect(Collectors.toSet());
+    sideInputProducers.forEach(this::finalizeVertex); // To materialize side inputs.
+    handleDataFetchers(partitionedFetchers.get(false));
+
+    // Phase 2: Finalize task-internal states and elements
+    // Topologically close each harness's transform, and recursively process any resulting data.
+    for (final VertexHarness vertexHarness : sortedHarnesses) {
+      if (!sideInputProducers.contains(vertexHarness)) {
+        finalizeVertex(vertexHarness);
+      }
+    }
+
+    // Miscellaneous: Metrics, DynOpt, etc
+    metricCollector.endMeasurement(taskId, metricMap);
+    if (idOfVertexPutOnHold == null) {
+      taskStateManager.onTaskStateChanged(TaskState.State.COMPLETE, Optional.empty(), Optional.empty());
+      LOG.info("{} completed", taskId);
+    } else {
+      taskStateManager.onTaskStateChanged(TaskState.State.ON_HOLD,
+          Optional.of(idOfVertexPutOnHold),
+          Optional.empty());
+      LOG.info("{} on hold", taskId);
+    }
+  }
+
+  private void finalizeVertex(final VertexHarness vertexHarness) {
+    closeTransform(vertexHarness);
+    while (!vertexHarness.getOutputCollector().isEmpty()) {
+      final Object element = vertexHarness.getOutputCollector().remove();
+      handleOutputElement(vertexHarness, element);
+    }
+    finalizeOutputWriters(vertexHarness);
+  }
+
+  private void handleOutputElement(final VertexHarness vertexHarness, final Object element) {
+    vertexHarness.getWritersToChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
+    vertexHarness.getSideInputChildren().forEach(child ->
+        child.getContext().getSideInputs().put(
+            ((OperatorVertex) vertexHarness.getIRVertex()).getTransform().getTag(), element));
+    vertexHarness.getNonSideInputChildren().forEach(child -> processElementRecursively(child, element));
+  }
+
+  /**
+   * @param fetchers to handle.
+   * @return false if IOException.
+   */
+  private boolean handleDataFetchers(final List<DataFetcher> fetchers) {
+    final List<DataFetcher> availableFetchers = new ArrayList<>(fetchers);
     int finishedFetcherIndex = NONE_FINISHED;
     while (!availableFetchers.isEmpty()) { // empty means we've consumed all task-external input data
       for (int i = 0; i < availableFetchers.size(); i++) {
-        final DataFetcher dataFetcher = dataFetchers.get(i);
+        final DataFetcher dataFetcher = fetchers.get(i);
         final Object element;
         try {
           element = dataFetcher.fetchDataElement();
@@ -251,7 +301,7 @@ public final class TaskExecutor {
           taskStateManager.onTaskStateChanged(TaskState.State.FAILED_RECOVERABLE,
               Optional.empty(), Optional.of(TaskState.RecoverableFailureCause.INPUT_READ_FAILURE));
           LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e.toString());
-          return;
+          return false;
         }
 
         if (element == null) {
@@ -269,34 +319,7 @@ public final class TaskExecutor {
         availableFetchers.remove(finishedFetcherIndex);
       }
     }
-
-    // Phase 2: Finalize task-internal states and elements
-    // Topologically close each harness's transform, and recursively process any resulting data.
-    for (final VertexHarness vertexHarness : sortedHarnesses) {
-      closeTransform(vertexHarness);
-      while (!vertexHarness.getOutputCollector().isEmpty()) {
-        final Object element = vertexHarness.getOutputCollector().remove();
-        for (final VertexHarness harness : vertexHarness.getNonSideInputChildren()) {
-          processElementRecursively(harness, element);
-        }
-      }
-      finalizeOutputWriters(vertexHarness);
-    }
-
-    // Metric done
-    metricCollector.endMeasurement(taskId, metricMap);
-
-    // DynOpt
-    if (idOfVertexPutOnHold == null) {
-      taskStateManager.onTaskStateChanged(TaskState.State.COMPLETE, Optional.empty(), Optional.empty());
-      LOG.info("{} completed", taskId);
-    } else {
-      taskStateManager.onTaskStateChanged(TaskState.State.ON_HOLD,
-          Optional.of(idOfVertexPutOnHold),
-          Optional.empty());
-      LOG.info("{} on hold", taskId);
-    }
-
+    return true;
   }
 
   ////////////////////////////////////////////// Helper methods for setting up initial data structures

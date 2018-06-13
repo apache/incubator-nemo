@@ -25,11 +25,14 @@ import java.util.Map;
 abstract class DataFetcher {
   private final List<VertexHarness> consumers;
   private final Map<String, Object> metricMap;
+  private final boolean isForSideInput;
 
   DataFetcher(final List<VertexHarness> consumers,
-              final Map<String, Object> metricMap) {
+              final Map<String, Object> metricMap,
+              final boolean isForSideInput) {
     this.consumers = consumers;
     this.metricMap = metricMap;
+    this.isForSideInput = isForSideInput;
   }
 
   /**
@@ -44,5 +47,9 @@ abstract class DataFetcher {
 
   List<VertexHarness> getConsumers() {
     return consumers;
+  }
+
+  boolean isForSideInput() {
+    return isForSideInput;
   }
 }

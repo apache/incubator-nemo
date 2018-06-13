@@ -33,8 +33,9 @@ class SourceVertexDataFetcher extends DataFetcher {
 
   SourceVertexDataFetcher(final Readable readable,
                           final List<VertexHarness> children,
-                          final Map<String, Object> metricMap) {
-    super(children, metricMap);
+                          final Map<String, Object> metricMap,
+                          final boolean isForSideInput) {
+    super(children, metricMap, isForSideInput);
     this.readable = readable;
   }
 
