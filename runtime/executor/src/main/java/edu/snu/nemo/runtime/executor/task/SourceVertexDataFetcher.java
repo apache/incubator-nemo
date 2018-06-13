@@ -16,10 +16,10 @@
 package edu.snu.nemo.runtime.executor.task;
 
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,11 +31,13 @@ class SourceVertexDataFetcher extends DataFetcher {
   // Non-finals (lazy fetching)
   private Iterator iterator;
 
-  SourceVertexDataFetcher(final Readable readable,
-                          final List<VertexHarness> children,
+  SourceVertexDataFetcher(final IRVertex dataSource,
+                          final Readable readable,
+                          final VertexHarness child,
                           final Map<String, Object> metricMap,
-                          final boolean isForSideInput) {
-    super(children, metricMap, isForSideInput);
+                          final boolean isFromSideInput,
+                          final boolean isToSideInput) {
+    super(dataSource, child, metricMap, isFromSideInput, isToSideInput);
     this.readable = readable;
   }
 

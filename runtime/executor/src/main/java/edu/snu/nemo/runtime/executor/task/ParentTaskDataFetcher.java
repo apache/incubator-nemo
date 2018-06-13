@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.executor.task;
 
 import edu.snu.nemo.common.exception.BlockFetchException;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
 import org.slf4j.Logger;
@@ -26,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
 
 /**
  * Fetches data from parent tasks.
@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 class ParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class.getName());
 
-  private final List<InputReader> readersForParentTasks;
+  private final InputReader readersForParentTask;
   private final LinkedBlockingQueue<DataUtil.IteratorWithNumBytes> dataQueue;
 
   // Non-finals (lazy fetching)
@@ -42,13 +42,16 @@ class ParentTaskDataFetcher extends DataFetcher {
   private int expectedNumOfIterators;
   private DataUtil.IteratorWithNumBytes currentIterator;
   private int currentIteratorIndex;
+  private boolean noElementAtAll = true;
 
-  ParentTaskDataFetcher(final List<InputReader> readersForParentTasks,
-                        final List<VertexHarness> children,
+  ParentTaskDataFetcher(final IRVertex dataSource,
+                        final InputReader readerForParentTask,
+                        final VertexHarness child,
                         final Map<String, Object> metricMap,
-                        final boolean isForSideInput) {
-    super(children, metricMap, isForSideInput);
-    this.readersForParentTasks = readersForParentTasks;
+                        final boolean isFromSideInput,
+                        final boolean isToSideInput) {
+    super(dataSource, child, metricMap, isFromSideInput, isToSideInput);
+    this.readersForParentTask = readerForParentTask;
     this.hasFetchStarted = false;
     this.dataQueue = new LinkedBlockingQueue<>();
   }
@@ -77,18 +80,13 @@ class ParentTaskDataFetcher extends DataFetcher {
   }
 
   private void fetchInBackground() {
-    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTasks.stream()
-        .map(InputReader::read)
-        .flatMap(List::stream)
-        .collect(Collectors.toList());
+    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
     this.expectedNumOfIterators = futures.size();
 
     futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
       if (exception != null) {
         throw new BlockFetchException(exception);
       }
-
-      handleMetric(iterator);
 
       try {
         dataQueue.put(iterator);
@@ -110,13 +108,22 @@ class ParentTaskDataFetcher extends DataFetcher {
       }
 
       if (this.currentIterator.hasNext()) {
+        noElementAtAll = false;
         return this.currentIterator.next();
       } else {
         // This iterator is done, proceed to the next iterator
         if (currentIteratorIndex == expectedNumOfIterators) {
           // No more iterator left
-          return null;
+          if (noElementAtAll) {
+            // This shouldn't normally happen, except for cases such as when Beam's VoidCoder is used.
+            noElementAtAll = false;
+            return Void.TYPE;
+          } else {
+            // This whole fetcher's done
+            return null;
+          }
         } else {
+          handleMetric(currentIterator);
           // Try the next iterator
           this.currentIteratorIndex += 1;
           this.currentIterator = dataQueue.take();

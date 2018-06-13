@@ -154,8 +154,8 @@ public final class InputReader extends DataTransfer {
     return RuntimeIdGenerator.generateBlockId(duplicateEdgeId, taskIdx);
   }
 
-  public String getSrcIrVertexId() {
-    return srcVertex.getId();
+  public IRVertex getSrcIrVertex() {
+    return srcVertex;
   }
 
   public boolean isSideInputReader() {

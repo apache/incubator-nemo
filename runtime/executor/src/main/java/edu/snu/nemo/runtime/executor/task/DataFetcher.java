@@ -15,24 +15,31 @@
  */
 package edu.snu.nemo.runtime.executor.task;
 
+import edu.snu.nemo.common.ir.vertex.IRVertex;
+
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 
 /**
  * An abstraction for fetching data from task-external sources.
  */
 abstract class DataFetcher {
-  private final List<VertexHarness> consumers;
+  private final IRVertex dataSource;
+  private final VertexHarness child;
   private final Map<String, Object> metricMap;
-  private final boolean isForSideInput;
+  private final boolean isToSideInput;
+  private final boolean isFromSideInput;
 
-  DataFetcher(final List<VertexHarness> consumers,
+  DataFetcher(final IRVertex dataSource,
+              final VertexHarness child,
               final Map<String, Object> metricMap,
-              final boolean isForSideInput) {
-    this.consumers = consumers;
+              final boolean isFromSideInput,
+              final boolean isToSideInput) {
+    this.dataSource = dataSource;
+    this.child = child;
     this.metricMap = metricMap;
-    this.isForSideInput = isForSideInput;
+    this.isToSideInput = isToSideInput;
+    this.isFromSideInput = isFromSideInput;
   }
 
   /**
@@ -45,11 +52,19 @@ abstract class DataFetcher {
     return metricMap;
   }
 
-  List<VertexHarness> getConsumers() {
-    return consumers;
+  VertexHarness getChild() {
+    return child;
   }
 
-  boolean isForSideInput() {
-    return isForSideInput;
+  public IRVertex getDataSource() {
+    return dataSource;
+  }
+
+  boolean isFromSideInput() {
+    return isFromSideInput;
+  }
+
+  boolean isToSideInput() {
+    return isToSideInput;
   }
 }
