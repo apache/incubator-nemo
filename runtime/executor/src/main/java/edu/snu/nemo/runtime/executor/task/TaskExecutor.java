@@ -19,7 +19,6 @@ import com.google.common.collect.Lists;
 import edu.snu.nemo.common.ContextImpl;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
@@ -33,6 +32,7 @@ import edu.snu.nemo.runtime.executor.MetricMessageSender;
 import edu.snu.nemo.runtime.executor.TaskStateManager;
 import edu.snu.nemo.runtime.executor.datatransfer.*;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -125,7 +125,7 @@ public final class TaskExecutor {
     final List<IRVertex> reverseTopologicallySorted = Lists.reverse(irVertexDag.getTopologicalSort());
 
     // Create a harness for each vertex
-    final List<DataFetcher> dataFetchers = new ArrayList<>();
+    final List<DataFetcher> dataFetcherList = new ArrayList<>();
     final Map<String, VertexHarness> vertexIdToHarness = new HashMap<>();
     reverseTopologicallySorted.forEach(irVertex -> {
       final List<VertexHarness> children = getChildrenHarnesses(irVertex, irVertexDag, vertexIdToHarness);
@@ -135,30 +135,36 @@ public final class TaskExecutor {
       }
 
       if (irVertex instanceof SourceVertex) {
-        dataFetchers.add(new SourceVertexDataFetcher(sourceReader.get(), children, metricMap)); // Source vertex read
+        dataFetcherList.add(new SourceVertexDataFetcher(sourceReader.get(), children, metricMap)); // Source vertex read
       } else {
         final List<InputReader> parentTaskReaders =
             getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges(), dataTransferFactory);
         if (parentTaskReaders.size() > 0) {
-          dataFetchers.add(new ParentTaskDataFetcher(parentTaskReaders, children, metricMap)); // Parent-task read
+          dataFetcherList.add(new ParentTaskDataFetcher(parentTaskReaders, children, metricMap)); // Parent-task read
         }
 
         final List<OutputWriter> childrenTaskWriters = getChildrenTaskWriters(
             taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory); // Children-task write
+
+        final List<Boolean> isSideInputs = children.stream()
+            .map(VertexHarness::getIRVertex)
+            .map(childVertex -> irVertexDag.getEdgeBetween(irVertex.getId(), childVertex.getId()))
+            .map(RuntimeEdge::isSideInput)
+            .collect(Collectors.toList());
         final VertexHarness vertexHarness = new VertexHarness(irVertex, new OutputCollectorImpl(), children,
-            childrenTaskWriters, new ContextImpl(new HashMap())); // Intra-vertex write
+            isSideInputs, childrenTaskWriters, new ContextImpl(new HashMap())); // Intra-vertex write
 
         prepareTransform(vertexHarness);
         vertexIdToHarness.put(irVertex.getId(), vertexHarness);
       }
     });
 
-    final List<VertexHarness> sortedHarnesses = irVertexDag.getTopologicalSort()
+    final List<VertexHarness> sortedHarnessList = irVertexDag.getTopologicalSort()
         .stream()
         .map(vertex -> vertexIdToHarness.get(vertex.getId()))
         .collect(Collectors.toList());
 
-    return Pair.of(dataFetchers, sortedHarnesses);
+    return Pair.of(dataFetcherList, sortedHarnessList);
   }
 
   /**
@@ -189,10 +195,8 @@ public final class TaskExecutor {
     while (!outputCollector.isEmpty()) {
       final Object element = outputCollector.remove();
       vertexHarness.getWritersToChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
-      vertexHarness.getChildren().forEach(child -> processElementRecursively(child, element)); // Recursive call
-
-      // TODO: handle sideinput haere
-      context.getSideInputs().forEach((k, v) -> this.sideInputs.put(((CreateViewTransform) k).getTag(), v));
+      vertexHarness.getSideInputChildren().forEach(child -> child.getContext().getSideInputs().put(irVertex, element));
+      vertexHarness.getNonSideInputChildren().forEach(child -> processElementRecursively(child, element)); // Recursion
     }
   }
 
@@ -202,6 +206,16 @@ public final class TaskExecutor {
    * - Phase 2: Finalize task-internal states and data elements
    */
   public void execute() {
+    try {
+      doExecute();
+    } catch (Throwable throwable) {
+      // ANY uncaught throwable is reported to the master
+      taskStateManager.onTaskStateChanged(TaskState.State.FAILED_UNRECOVERABLE, Optional.empty(), Optional.empty());
+      LOG.error("{} Execution Failed! Exception: {}", taskId, throwable.toString());
+    }
+  }
+
+  private void doExecute() {
     if (isExecuted) {
       throw new RuntimeException("Task {" + taskId + "} execution called again");
     }
@@ -211,23 +225,6 @@ public final class TaskExecutor {
     // Metric start
     metricCollector.beginMeasurement(taskId, metricMap);
 
-    /*
-    try {
-    } catch () {
-      taskStateManager.onTaskStateChanged(TaskState.State.FAILED_UNRECOVERABLE,
-          Optional.empty(), Optional.empty());
-      LOG.error("{} Execution Failed! Exception: {}",
-          taskId, e.toString());
-      throw new RuntimeException(e);
-    }
-
-      } catch (final BlockFetchException ex) {
-        taskStateManager.onTaskStateChanged(TaskState.State.FAILED_RECOVERABLE,
-            Optional.empty(), Optional.of(TaskState.RecoverableFailureCause.INPUT_READ_FAILURE));
-        LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}",
-            taskId, ex.toString());
-    */
-
     // Phase 1: Consume task-external input data.
     // Recursively process each data element produced by a data fetcher.
     final List<DataFetcher> availableFetchers = new ArrayList<>(dataFetchers);
@@ -235,7 +232,16 @@ public final class TaskExecutor {
     while (!availableFetchers.isEmpty()) { // empty means we've consumed all task-external input data
       for (int i = 0; i < availableFetchers.size(); i++) {
         final DataFetcher dataFetcher = dataFetchers.get(i);
-        final Object element = dataFetcher.fetchDataElement();
+        final Object element;
+        try {
+          element = dataFetcher.fetchDataElement();
+        } catch (IOException e) {
+          taskStateManager.onTaskStateChanged(TaskState.State.FAILED_RECOVERABLE,
+              Optional.empty(), Optional.of(TaskState.RecoverableFailureCause.INPUT_READ_FAILURE));
+          LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e.toString());
+          return;
+        }
+
         if (element == null) {
           finishedFetcherIndex = i;
           break;
@@ -258,7 +264,7 @@ public final class TaskExecutor {
       closeTransform(vertexHarness);
       while (!vertexHarness.getOutputCollector().isEmpty()) {
         final Object element = vertexHarness.getOutputCollector().remove();
-        for (final VertexHarness harness : vertexHarness.getChildren()) {
+        for (final VertexHarness harness : vertexHarness.getNonSideInputChildren()) {
           processElementRecursively(harness, element);
         }
         finalizeOutputWriters(vertexHarness);
@@ -278,6 +284,7 @@ public final class TaskExecutor {
           Optional.empty());
       LOG.info("{} on hold", taskId);
     }
+
   }
 
   ////////////////////////////////////////////// Helper methods for setting up initial data structures

@@ -28,6 +28,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 
+/**
+ * Fetches data from parent tasks.
+ */
 class ParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class.getName());
 
@@ -42,7 +45,7 @@ class ParentTaskDataFetcher extends DataFetcher {
 
   ParentTaskDataFetcher(final List<InputReader> readersForParentTasks,
                         final List<VertexHarness> children,
-                        final Map<String, Object> metricMap ) {
+                        final Map<String, Object> metricMap) {
     super(children, metricMap);
     this.readersForParentTasks = readersForParentTasks;
     this.hasFetchStarted = false;
@@ -67,9 +70,9 @@ class ParentTaskDataFetcher extends DataFetcher {
       LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
     }
     if (serBytes != encodedBytes) {
-      metricMap.put("ReadBytes(raw)", serBytes);
+      getMetricMap().put("ReadBytes(raw)", serBytes);
     }
-    metricMap.put("ReadBytes", encodedBytes);
+    getMetricMap().put("ReadBytes", encodedBytes);
   }
 
   private void fetchInBackground() {

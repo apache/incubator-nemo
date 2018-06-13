@@ -20,6 +20,7 @@ import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.vertex.InMemorySourceVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
@@ -30,7 +31,6 @@ import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.executor.MetricMessageSender;
-import edu.snu.nemo.runtime.executor.TaskExecutor;
 import edu.snu.nemo.runtime.executor.TaskStateManager;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.DataTransferFactory;
@@ -95,7 +95,7 @@ public final class TaskExecutorTest {
    */
   @Test(timeout=5000)
   public void testSourceVertex() throws Exception {
-    final IRVertex sourceIRVertex = new EmptyComponents.EmptySourceVertex("empty");
+    final IRVertex sourceIRVertex = new InMemorySourceVertex<>(elements);
     final String stageId = RuntimeIdGenerator.generateStageId(0);
 
     final Readable readable = new Readable() {
@@ -113,6 +113,8 @@ public final class TaskExecutorTest {
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
         new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>().addVertex(sourceIRVertex).buildWithoutSourceSinkCheck();
+
+
     final StageEdge stageOutEdge = mock(StageEdge.class);
     when(stageOutEdge.getSrcVertex()).thenReturn(sourceIRVertex);
     final String taskId = RuntimeIdGenerator.generateTaskId(0, stageId);

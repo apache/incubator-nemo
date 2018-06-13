@@ -19,9 +19,12 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * An abstraction for fetching data from task-external sources.
+ */
 abstract class DataFetcher {
   private final List<VertexHarness> consumers;
-  protected final Map<String, Object> metricMap;
+  private final Map<String, Object> metricMap;
 
   DataFetcher(final List<VertexHarness> consumers,
               final Map<String, Object> metricMap) {
@@ -34,6 +37,10 @@ abstract class DataFetcher {
    * @throws IOException while fetching data
    */
   abstract Object fetchDataElement() throws IOException;
+
+  protected Map<String, Object> getMetricMap() {
+    return metricMap;
+  }
 
   List<VertexHarness> getConsumers() {
     return consumers;

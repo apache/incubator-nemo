@@ -20,6 +20,7 @@ import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
 import edu.snu.nemo.runtime.executor.datatransfer.OutputWriter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -32,17 +33,33 @@ final class VertexHarness {
   private final Transform.Context context;
 
   // These lists can be empty
-  private final List<VertexHarness> children;
+  private final List<VertexHarness> sideInputChildren;
+  private final List<VertexHarness> nonSideInputChildren;
   private final List<OutputWriter> writersToChildrenTasks;
 
   VertexHarness(final IRVertex irVertex,
                 final OutputCollectorImpl outputCollector,
                 final List<VertexHarness> children,
+                final List<Boolean> isSideInputs,
                 final List<OutputWriter> writersToChildrenTasks,
                 final Transform.Context context) {
     this.irVertex = irVertex;
     this.outputCollector = outputCollector;
-    this.children = children;
+    if (children.size() != isSideInputs.size()) {
+      throw new IllegalStateException(irVertex.toString());
+    }
+    final List<VertexHarness> sides = new ArrayList<>();
+    final List<VertexHarness> nonSides = new ArrayList<>();
+    for (int i = 0; i < children.size(); i++) {
+      final VertexHarness child = children.get(i);
+      if (isSideInputs.get(0)) {
+        sides.add(child);
+      } else {
+        nonSides.add(child);
+      }
+    }
+    this.sideInputChildren = sides;
+    this.nonSideInputChildren = nonSides;
     this.writersToChildrenTasks = writersToChildrenTasks;
     this.context = context;
   }
@@ -62,11 +79,19 @@ final class VertexHarness {
   }
 
   /**
-   * @return list of children. (empty if none exists)
+   * @return list of non-sideinput children. (empty if none exists)
    */
-  List<VertexHarness> getChildren() {
-    return children;
+  List<VertexHarness> getNonSideInputChildren() {
+    return nonSideInputChildren;
   }
+
+  /**
+   * @return list of sideinput children. (empty if none exists)
+   */
+  List<VertexHarness> getSideInputChildren() {
+    return sideInputChildren;
+  }
+
   /**
    * @return OutputWriters of this irVertex. (empty if none exists)
    */
