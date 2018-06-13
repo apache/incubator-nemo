@@ -194,6 +194,7 @@ public final class TaskExecutor {
     // Here, we recursively process all of the output elements.
     while (!outputCollector.isEmpty()) {
       final Object element = outputCollector.remove();
+      System.out.println("RECURSIVE: " + element);
       vertexHarness.getWritersToChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
       vertexHarness.getSideInputChildren().forEach(child -> child.getContext().getSideInputs().put(irVertex, element));
       vertexHarness.getNonSideInputChildren().forEach(child -> processElementRecursively(child, element)); // Recursion
@@ -247,7 +248,9 @@ public final class TaskExecutor {
         final Object element;
         try {
           element = dataFetcher.fetchDataElement();
+          System.out.println("Fetched: " + element);
         } catch (IOException e) {
+          System.out.println(e.toString());
           taskStateManager.onTaskStateChanged(TaskState.State.FAILED_RECOVERABLE,
               Optional.empty(), Optional.of(TaskState.RecoverableFailureCause.INPUT_READ_FAILURE));
           LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e.toString());
@@ -266,6 +269,7 @@ public final class TaskExecutor {
 
       // Remove the finished fetcher from the list
       if (finishedFetcherIndex != NONE_FINISHED) {
+        System.out.println("DONE index: " + finishedFetcherIndex);
         availableFetchers.remove(finishedFetcherIndex);
       }
     }
