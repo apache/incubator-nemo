@@ -30,7 +30,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class MultinomialLogisticRegressionITCase {
-  private static final int TIMEOUT = 60000;
+  private static final int TIMEOUT = 120000;
   private static ArgBuilder builder = new ArgBuilder();
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
   private static final String executorResourceFileName = fileBasePath + "beam_sample_executor_resources.json";
