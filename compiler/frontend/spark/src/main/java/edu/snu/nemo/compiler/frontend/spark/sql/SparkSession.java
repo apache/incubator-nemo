@@ -15,9 +15,15 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.sql;
 
+import edu.snu.nemo.client.JobLauncher;
+import edu.snu.nemo.compiler.frontend.spark.core.SparkContext;
+import edu.snu.nemo.conf.JobConf;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.spark.SparkConf;
-import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.Encoder;
@@ -46,9 +52,10 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
    * Constructor.
    *
    * @param sparkContext the spark context for the session.
-   * @param initialConf initial spark session configuration.
+   * @param initialConf  initial spark session configuration.
    */
-  private SparkSession(final SparkContext sparkContext, final Map<String, String> initialConf) {
+  private SparkSession(final SparkContext sparkContext,
+                       final Map<String, String> initialConf) {
     super(sparkContext);
     this.datasetCommandsList = new LinkedHashMap<>();
     this.initialConf = initialConf;
@@ -251,9 +258,9 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
    * @param initialConf  initial configuration of the spark session.
    * @return our spark session class.
    */
-  public static SparkSession from(final org.apache.spark.sql.SparkSession sparkSession,
-                                  final Map<String, String> initialConf) {
-    return new SparkSession(sparkSession.sparkContext(), initialConf);
+  private static SparkSession from(final org.apache.spark.sql.SparkSession sparkSession,
+                                   final Map<String, String> initialConf) {
+    return new SparkSession((SparkContext) sparkSession.sparkContext(), initialConf);
   }
 
   /**
@@ -306,7 +313,7 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
 
     @Override
     public Builder master(final String master) {
-      return (Builder) super.master(master);
+      return config("spark.master", master);
     }
 
     @Override
@@ -316,6 +323,22 @@ public final class SparkSession extends org.apache.spark.sql.SparkSession implem
       }
 
       UserGroupInformation.setLoginUser(UserGroupInformation.createRemoteUser("ubuntu"));
+
+      // Set up spark context with given options.
+      final SparkConf sparkConf = new SparkConf();
+      if (!options.containsKey("spark.app.name")) {
+        try {
+          // get and override configurations from JobLauncher.
+          final Configuration configurations = JobLauncher.getBuiltJobConf();
+          final Injector injector = Tang.Factory.getTang().newInjector(configurations);
+          options.put("spark.app.name", injector.getNamedInstance(JobConf.JobId.class));
+        } catch (final InjectionException e) {
+          throw new RuntimeException(e);
+        }
+      }
+      options.forEach(sparkConf::set);
+      final SparkContext sparkContext = new edu.snu.nemo.compiler.frontend.spark.core.SparkContext(sparkConf);
+      super.sparkContext(sparkContext);
 
       return SparkSession.from(super.getOrCreate(), this.options);
     }

@@ -42,7 +42,7 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
    */
   public SparkDatasetBoundedSourceVertex(final SparkSession sparkSession, final Dataset<T> dataset) {
     this.readables = new ArrayList<>();
-    final RDD rdd = dataset.rdd();
+    final RDD rdd = dataset.sparkRDD();
     final Partition[] partitions = rdd.getPartitions();
     for (int i = 0; i < partitions.length; i++) {
       readables.add(new SparkDatasetBoundedSourceReadable(
@@ -112,21 +112,18 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
       final SparkSession spark = SparkSession.builder()
           .config(sessionInitialConf)
           .getOrCreate();
+      final Dataset<T> dataset;
 
       try {
-        final Dataset<T> dataset = SparkSession.initializeDataset(spark, commands);
-
-        // Spark does lazy evaluation: it doesn't load the full dataset, but only the partition it is asked for.
-        final RDD<T> rdd = dataset.rdd();
-        final Iterable<T> iterable = () -> JavaConverters.asJavaIteratorConverter(
-            rdd.iterator(rdd.getPartitions()[partitionIndex], TaskContext$.MODULE$.empty())).asJava();
-        System.out.println("print X");
-        iterable.iterator().forEachRemaining(x -> System.out.println(x));
-        return iterable;
-      } catch (OperationNotSupportedException exception) {
-        exception.printStackTrace();
-        throw new RuntimeException(exception);
+        dataset = SparkSession.initializeDataset(spark, commands);
+      } catch (OperationNotSupportedException e) {
+        throw new IllegalStateException(e);
       }
+
+      // Spark does lazy evaluation: it doesn't load the full dataset, but only the partition it is asked for.
+      final RDD<T> rdd = dataset.sparkRDD();
+      return () -> JavaConverters.asJavaIteratorConverter(
+          rdd.iterator(rdd.getPartitions()[partitionIndex], TaskContext$.MODULE$.empty())).asJava();
     }
 
     @Override
