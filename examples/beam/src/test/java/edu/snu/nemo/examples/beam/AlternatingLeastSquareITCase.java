@@ -33,7 +33,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class AlternatingLeastSquareITCase {
-  private static final int TIMEOUT = 120000;
+  private static final int TIMEOUT = 240000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
