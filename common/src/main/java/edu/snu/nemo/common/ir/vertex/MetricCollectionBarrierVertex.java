@@ -77,7 +77,7 @@ public final class MetricCollectionBarrierVertex<K, V> extends IRVertex {
    * Method for accumulating metrics in the vertex.
    * @param metric map of hash value of the key of the block to the block size.
    */
-  public void updateMetricData(final Map<K, V> metric) {
+  public void setMetricData(final Map<K, V> metric) {
     metricData = metric;
   }
 

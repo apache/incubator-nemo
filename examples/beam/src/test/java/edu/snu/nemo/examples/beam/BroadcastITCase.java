@@ -37,7 +37,7 @@ public final class BroadcastITCase {
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
-  private static final String inputFileName = "sample_input_broadcast";
+  private static final String inputFileName = "sample_input_wordcount";
   private static final String outputFileName = "sample_output_broadcast";
   private static final String testResourceFileName = "test_output_broadcast";
   private static final String executorResourceFileName = fileBasePath + "beam_sample_executor_resources.json";
