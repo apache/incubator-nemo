@@ -27,7 +27,8 @@ import re
 nextIdx = 0
 
 def edgePropertiesString(properties):
-    return '/'.join(['SideInput' if x[0] == 'IsSideInput' else x[1].split('.')[-1] for x in sorted(properties.items())])
+    prop = {p[0]: p[1] for p in properties.items() if p[0] != 'Coder'}
+    return '/'.join(['SideInput' if x[0] == 'IsSideInput' else x[1].split('.')[-1] for x in sorted(prop.items())])
 
 def getIdx():
     global nextIdx
@@ -275,10 +276,6 @@ class Stage:
         return 'cluster_{}'.format(self.idx)
 
 def Edge(src, dst, properties):
-    try:
-        return StageEdge(src, dst, properties)
-    except:
-        pass
     try:
         return StageEdge(src, dst, properties)
     except:
