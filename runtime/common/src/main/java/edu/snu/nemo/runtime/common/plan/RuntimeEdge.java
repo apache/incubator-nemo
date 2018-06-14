@@ -25,41 +25,41 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
  * @param <V> the vertex type.
  */
 public class RuntimeEdge<V extends Vertex> extends Edge<V> {
-  private final ExecutionPropertyMap edgeProperties;
+  private final ExecutionPropertyMap executionProperties;
   private final Boolean isSideInput;
 
   /**
    * Constructs the edge given the below parameters.
    * This constructor assumes that this edge is not for a side input.
    *
-   * @param runtimeEdgeId  the id of this edge.
-   * @param edgeProperties to control the data flow on this edge.
-   * @param src            the source vertex.
-   * @param dst            the destination vertex.
+   * @param runtimeEdgeId       the id of this edge.
+   * @param executionProperties to control the data flow on this edge.
+   * @param src                 the source vertex.
+   * @param dst                 the destination vertex.
    */
   public RuntimeEdge(final String runtimeEdgeId,
-                     final ExecutionPropertyMap edgeProperties,
+                     final ExecutionPropertyMap executionProperties,
                      final V src,
                      final V dst) {
-    this(runtimeEdgeId, edgeProperties, src, dst, false);
+    this(runtimeEdgeId, executionProperties, src, dst, false);
   }
 
   /**
    * Constructs the edge given the below parameters.
    *
    * @param runtimeEdgeId  the id of this edge.
-   * @param edgeProperties to control the data flow on this edge.
+   * @param executionProperties to control the data flow on this edge.
    * @param src            the source vertex.
    * @param dst            the destination vertex.
    * @param isSideInput    Whether or not the RuntimeEdge is a side input edge.
    */
   public RuntimeEdge(final String runtimeEdgeId,
-                     final ExecutionPropertyMap edgeProperties,
+                     final ExecutionPropertyMap executionProperties,
                      final V src,
                      final V dst,
                      final Boolean isSideInput) {
     super(runtimeEdgeId, src, dst);
-    this.edgeProperties = edgeProperties;
+    this.executionProperties = executionProperties;
     this.isSideInput = isSideInput;
   }
 
@@ -71,14 +71,14 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
    * @return the execution property.
    */
   public final <T> T getProperty(final ExecutionProperty.Key executionPropertyKey) {
-    return edgeProperties.get(executionPropertyKey);
+    return executionProperties.get(executionPropertyKey);
   }
 
   /**
    * @return the ExecutionPropertyMap of the Runtime Edge.
    */
   public final ExecutionPropertyMap getExecutionProperties() {
-    return edgeProperties;
+    return executionProperties;
   }
 
   /**
@@ -96,7 +96,7 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"runtimeEdgeId\": \"").append(getId());
-    sb.append("\", \"edgeProperties\": ").append(edgeProperties);
+    sb.append("\", \"executionProperties\": ").append(executionProperties);
     sb.append("}");
     return sb.toString();
   }
