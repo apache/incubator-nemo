@@ -48,8 +48,11 @@ public final class RuntimeOptimizer {
 
     switch (dynamicOptimizationType) {
       case DataSkewRuntimePass:
-        // Map between a partition ID to corresponding metric data (e.g., the size of each block).
-        final Map<String, List<Pair<Integer, Long>>> metricData = metricCollectionBarrierVertex.getMetricData();
+        // Metric data for DataSkewRuntimePass is
+        // a pair of blockIds and map of hashrange, partition size.
+        final Pair<List<String>, Map<Integer, Long>> metricData =
+            Pair.of(metricCollectionBarrierVertex.getBlockIds(),
+                (Map<Integer, Long>) metricCollectionBarrierVertex.getMetricData());
         return new DataSkewRuntimePass().apply(originalPlan, metricData);
       default:
         throw new UnsupportedOperationException("Unknown runtime pass: " + dynamicOptimizationType);
