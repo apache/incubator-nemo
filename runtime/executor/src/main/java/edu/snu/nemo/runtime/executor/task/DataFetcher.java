@@ -43,6 +43,8 @@ abstract class DataFetcher {
   }
 
   /**
+   * Can block until the next data element becomes available.
+   *
    * @return null if there's no more data element.
    * @throws IOException while fetching data
    */

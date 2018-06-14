@@ -116,7 +116,7 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
 
       try {
         dataset = SparkSession.initializeDataset(spark, commands);
-      } catch (OperationNotSupportedException e) {
+      } catch (final OperationNotSupportedException e) {
         throw new IllegalStateException(e);
       }
 

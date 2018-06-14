@@ -22,6 +22,7 @@ import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -31,8 +32,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 /**
  * Fetches data from parent tasks.
  */
+@NotThreadSafe
 class ParentTaskDataFetcher extends DataFetcher {
-  private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class);
 
   private final InputReader readersForParentTask;
   private final LinkedBlockingQueue<DataUtil.IteratorWithNumBytes> dataQueue;
@@ -79,6 +81,9 @@ class ParentTaskDataFetcher extends DataFetcher {
     getMetricMap().put("ReadBytes", encodedBytes);
   }
 
+  /**
+   * Blocking call.
+   */
   private void fetchInBackground() {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = readersForParentTask.read();
     this.expectedNumOfIterators = futures.size();
@@ -89,7 +94,7 @@ class ParentTaskDataFetcher extends DataFetcher {
       }
 
       try {
-        dataQueue.put(iterator);
+        dataQueue.put(iterator); // can block here
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new BlockFetchException(e);
