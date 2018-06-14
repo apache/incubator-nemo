@@ -186,8 +186,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
                 irEdge.getId(),
                 irEdge.getExecutionProperties(),
                 irEdge.getSrc(),
-                irEdge.getDst(),
-                irEdge.getCoder()));
+                irEdge.getDst()));
           } else { // edge comes from another stage
             final Stage srcStage = vertexStageMap.get(srcVertex);
 
@@ -201,7 +200,6 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
                 .setSrcVertex(srcVertex)
                 .setDstVertex(dstVertex)
                 .setSrcStage(srcStage)
-                .setCoder(irEdge.getCoder())
                 .setSideInputFlag(irEdge.isSideInput());
             currentStageIncomingEdges.add(newEdgeBuilder);
           }

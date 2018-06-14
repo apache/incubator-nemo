@@ -156,14 +156,13 @@ public final class TaskExecutorTest {
 
     final String stageId = RuntimeIdGenerator.generateStageId(1);
 
-    final Coder coder = Coder.DUMMY_CODER;
     ExecutionPropertyMap edgeProperties = new ExecutionPropertyMap(runtimeIREdgeId);
     edgeProperties.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
         .addVertex(operatorIRVertex1)
         .addVertex(operatorIRVertex2)
         .connectVertices(new RuntimeEdge<IRVertex>(
-            runtimeIREdgeId, edgeProperties, operatorIRVertex1, operatorIRVertex2, coder))
+            runtimeIREdgeId, edgeProperties, operatorIRVertex1, operatorIRVertex2))
         .buildWithoutSourceSinkCheck();
     final String taskId = RuntimeIdGenerator.generateTaskId(0, stageId);
     final StageEdge stageInEdge = mock(StageEdge.class);

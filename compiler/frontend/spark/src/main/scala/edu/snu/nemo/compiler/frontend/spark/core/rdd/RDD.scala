@@ -20,7 +20,8 @@ import java.util
 import edu.snu.nemo.client.JobLauncher
 import edu.snu.nemo.common.dag.{DAG, DAGBuilder}
 import edu.snu.nemo.common.ir.edge.IREdge
-import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty
+import edu.snu.nemo.common.ir.edge.executionproperty.{CoderProperty, KeyExtractorProperty}
+import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty
 import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
 import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder
@@ -48,8 +49,11 @@ final class RDD[T: ClassTag] protected[rdd] (
     protected[rdd] val lastVertex: IRVertex,
     private val sourceRDD: Option[org.apache.spark.rdd.RDD[T]]) extends org.apache.spark.rdd.RDD[T](_sc, deps) {
 
-  private val loopVertexStack = new util.Stack[LoopVertex]
   protected[rdd] val serializer: Serializer = SparkFrontendUtils.deriveSerializerFrom(_sc)
+  private val loopVertexStack = new util.Stack[LoopVertex]
+  private val coderProperty: ExecutionProperty[_] =
+    CoderProperty.of(new SparkCoder[T](serializer)).asInstanceOf[ExecutionProperty[_]]
+  private val keyExtractorProperty: KeyExtractorProperty = KeyExtractorProperty.of(new SparkKeyExtractor)
 
   /**
    * Constructor without dependencies (not needed in Nemo RDD).
@@ -132,8 +136,9 @@ final class RDD[T: ClassTag] protected[rdd] (
     builder.addVertex(mapVertex, loopVertexStack)
 
     val newEdge: IREdge = new IREdge(SparkFrontendUtils.getEdgeCommunicationPattern(lastVertex, mapVertex),
-      lastVertex, mapVertex, new SparkCoder[T](serializer))
-    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor))
+      lastVertex, mapVertex)
+    newEdge.setProperty(coderProperty)
+    newEdge.setProperty(keyExtractorProperty)
     builder.connectVertices(newEdge)
 
     new RDD[U](_sc, builder.buildWithoutSourceSinkCheck, mapVertex, Option.empty)
@@ -150,8 +155,9 @@ final class RDD[T: ClassTag] protected[rdd] (
     builder.addVertex(flatMapVertex, loopVertexStack)
 
     val newEdge = new IREdge(SparkFrontendUtils.getEdgeCommunicationPattern(lastVertex, flatMapVertex),
-      lastVertex, flatMapVertex, new SparkCoder[T](serializer))
-    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor))
+      lastVertex, flatMapVertex)
+    newEdge.setProperty(coderProperty)
+    newEdge.setProperty(keyExtractorProperty)
     builder.connectVertices(newEdge)
 
     new RDD[U](_sc, builder.buildWithoutSourceSinkCheck, flatMapVertex, Option.empty)
@@ -179,8 +185,9 @@ final class RDD[T: ClassTag] protected[rdd] (
     builder.addVertex(reduceVertex, loopVertexStack)
 
     val newEdge = new IREdge(SparkFrontendUtils.getEdgeCommunicationPattern(lastVertex, reduceVertex),
-      lastVertex, reduceVertex, new SparkCoder[T](serializer))
-    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor))
+      lastVertex, reduceVertex)
+    newEdge.setProperty(coderProperty)
+    newEdge.setProperty(keyExtractorProperty)
 
     builder.connectVertices(newEdge)
     ReduceTransform.reduceIterator(
@@ -202,8 +209,9 @@ final class RDD[T: ClassTag] protected[rdd] (
 
     builder.addVertex(flatMapVertex, loopVertexStack)
     val newEdge = new IREdge(SparkFrontendUtils.getEdgeCommunicationPattern(lastVertex, flatMapVertex),
-      lastVertex, flatMapVertex, new SparkCoder[T](serializer))
-    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor))
+      lastVertex, flatMapVertex)
+    newEdge.setProperty(coderProperty)
+    newEdge.setProperty(keyExtractorProperty)
 
     builder.connectVertices(newEdge)
     JobLauncher.launchDAG(builder.build)
