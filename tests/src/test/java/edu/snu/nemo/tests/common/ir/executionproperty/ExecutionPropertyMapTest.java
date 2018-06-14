@@ -66,7 +66,7 @@ public class ExecutionPropertyMapTest {
     edgeMap.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
     assertEquals(DataFlowModelProperty.Value.Pull, edgeMap.get(ExecutionProperty.Key.DataFlowModel));
     edgeMap.put(CoderProperty.of(Coder.DUMMY_CODER));
-    assertEquals(CoderProperty.of(Coder.DUMMY_CODER), edgeMap.get(ExecutionProperty.Key.Coder));
+    assertEquals(Coder.DUMMY_CODER, edgeMap.get(ExecutionProperty.Key.Coder));
 
     edgeMap.remove(ExecutionProperty.Key.DataFlowModel);
     assertNull(edgeMap.get(ExecutionProperty.Key.DataFlowModel));
