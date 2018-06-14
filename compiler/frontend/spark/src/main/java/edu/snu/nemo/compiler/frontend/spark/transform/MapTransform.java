@@ -41,6 +41,7 @@ public final class MapTransform<I, O> implements Transform<I, O> {
     this.outputCollector = oc;
   }
 
+  @Override
   public void onData(final I element) {
       try {
         outputCollector.emit(func.call(element));

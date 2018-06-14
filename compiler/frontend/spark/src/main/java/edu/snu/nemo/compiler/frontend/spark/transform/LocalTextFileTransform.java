@@ -26,9 +26,8 @@ import java.util.UUID;
 /**
  * Transform which saves elements to a local text file for Spark.
  * @param <I> input type.
- * @param <O> output type.
  */
-public final class LocalTextFileTransform<I, O> implements Transform<I, O> {
+public final class LocalTextFileTransform<I> implements Transform<I, String> {
   private final String path;
   private String fileName;
   private List<I> elements;
@@ -43,7 +42,7 @@ public final class LocalTextFileTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> outputCollector) {
+  public void prepare(final Context context, final OutputCollector<String> outputCollector) {
     fileName = path + UUID.randomUUID().toString();
     this.elements = new ArrayList<>();
   }

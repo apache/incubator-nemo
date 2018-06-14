@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.spark.core.java;
+package edu.snu.nemo.compiler.frontend.spark.core;
 
+import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
 import org.apache.spark.SparkContext;
 
 import java.util.List;

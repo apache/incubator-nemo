@@ -16,8 +16,8 @@
  */
 package edu.snu.nemo.examples.spark;
 
-import edu.snu.nemo.compiler.frontend.spark.core.java.JavaRDD;
-import edu.snu.nemo.compiler.frontend.spark.core.java.JavaSparkContext;
+import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
+import edu.snu.nemo.compiler.frontend.spark.core.JavaSparkContext;
 import edu.snu.nemo.compiler.frontend.spark.sql.SparkSession;
 
 import java.util.ArrayList;
