@@ -25,13 +25,13 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 
 /**
- * Sample MapReduce application.
+ * WordCount application.
  */
-public final class MapReduce {
+public final class WordCount {
   /**
    * Private Constructor.
    */
-  private MapReduce() {
+  private WordCount() {
   }
 
   /**
@@ -43,7 +43,7 @@ public final class MapReduce {
     final String outputFilePath = args[1];
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
     options.setRunner(NemoPipelineRunner.class);
-    options.setJobName("MapReduce");
+    options.setJobName("WordCount");
 
     final Pipeline p = Pipeline.create(options);
     final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
