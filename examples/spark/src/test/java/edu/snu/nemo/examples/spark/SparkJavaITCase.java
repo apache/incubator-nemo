@@ -48,9 +48,9 @@ public final class SparkJavaITCase {
 
   @Test(timeout = TIMEOUT)
   public void testSparkWordCount() throws Exception {
-    final String inputFileName = "sample_input_wordcount";
-    final String outputFileName = "sample_output_wordcount";
-    final String testResourceFilename = "test_output_wordcount";
+    final String inputFileName = "sample_input_wordcount_spark";
+    final String outputFileName = "sample_output_wordcount_spark";
+    final String testResourceFilename = "test_output_wordcount_spark";
     final String inputFilePath = fileBasePath + inputFileName;
     final String outputFilePath = fileBasePath + outputFileName;
 

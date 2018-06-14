@@ -18,7 +18,7 @@ package edu.snu.nemo.examples.beam;
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
-import edu.snu.nemo.examples.beam.policy.*;
+import edu.snu.nemo.examples.beam.policy.DataSkewPolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -27,18 +27,18 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 /**
- * Test MapReduce program with JobLauncher.
+ * Test PerKeyMedian program with JobLauncher.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class MapReduceITCase {
+public final class PerKeyMedianITCase {
   private static final int TIMEOUT = 120000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
-  private static final String inputFileName = "sample_input_mr";
-  private static final String outputFileName = "sample_output_mr";
-  private static final String testResourceFileName = "test_output_mr";
+  private static final String inputFileName = "sample_input_median";
+  private static final String outputFileName = "sample_output_median";
+  private static final String testResourceFileName = "test_output_median";
   private static final String executorResourceFileName = fileBasePath + "beam_sample_executor_resources.json";
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
@@ -47,7 +47,7 @@ public final class MapReduceITCase {
   public void setUp() throws Exception {
     builder = new ArgBuilder()
         .addResourceJson(executorResourceFileName)
-        .addUserMain(MapReduce.class.getCanonicalName())
+        .addUserMain(PerKeyMedian.class.getCanonicalName())
         .addUserArgs(inputFilePath, outputFilePath);
   }
 
@@ -60,30 +60,6 @@ public final class MapReduceITCase {
     }
   }
 
-  @Test (timeout = TIMEOUT)
-  public void test() throws Exception {
-    JobLauncher.main(builder
-        .addJobId(MapReduceITCase.class.getSimpleName())
-        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-        .build());
-  }
-
-  @Test (timeout = TIMEOUT)
-  public void testSailfish() throws Exception {
-    JobLauncher.main(builder
-        .addJobId(MapReduceITCase.class.getSimpleName() + "_sailfish")
-        .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
-        .build());
-  }
-
-  @Test (timeout = TIMEOUT)
-  public void testPado() throws Exception {
-    JobLauncher.main(builder
-        .addJobId(MapReduceITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
-        .build());
-  }
-
   /**
    * Testing data skew dynamic optimization.
    * @throws Exception exception on the way.
@@ -91,7 +67,7 @@ public final class MapReduceITCase {
   @Test (timeout = TIMEOUT)
   public void testDataSkew() throws Exception {
     JobLauncher.main(builder
-        .addJobId(MapReduceITCase.class.getSimpleName() + "_dataskew")
+        .addJobId(PerKeyMedianITCase.class.getSimpleName())
         .addOptimizationPolicy(DataSkewPolicyParallelismFive.class.getCanonicalName())
         .build());
   }

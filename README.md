@@ -91,7 +91,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 	-job_id mr_default \
 	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
 	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy \
-	-user_main edu.snu.nemo.examples.beam.MapReduce \
+	-user_main edu.snu.nemo.examples.beam.WordCount \
 	-user_args "`pwd`/examples/resources/sample_input_mr `pwd`/examples/resources/sample_output_mr"
 
 ## YARN cluster example
@@ -99,7 +99,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 	-deploy_mode yarn \
   	-job_id mr_pado \
 	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
-  	-user_main edu.snu.nemo.examples.beam.MapReduce \
+  	-user_main edu.snu.nemo.examples.beam.WordCount \
   	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.PadoPolicy \
   	-user_args "hdfs://v-m:9000/sample_input_mr hdfs://v-m:9000/sample_output_mr"
 ```

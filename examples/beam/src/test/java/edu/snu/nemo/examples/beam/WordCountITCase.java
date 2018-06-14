@@ -18,8 +18,7 @@ package edu.snu.nemo.examples.beam;
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
-import edu.snu.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
-import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelismFive;
+import edu.snu.nemo.examples.beam.policy.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -28,18 +27,18 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 /**
- * Test Broadcast program with JobLauncher.
+ * Test WordCount program with JobLauncher.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class BroadcastITCase {
-  private static final int TIMEOUT = 180000;
+public final class WordCountITCase {
+  private static final int TIMEOUT = 120000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
   private static final String inputFileName = "sample_input_wordcount";
-  private static final String outputFileName = "sample_output_broadcast";
-  private static final String testResourceFileName = "test_output_broadcast";
+  private static final String outputFileName = "sample_output_wordcount";
+  private static final String testResourceFileName = "test_output_wordcount";
   private static final String executorResourceFileName = fileBasePath + "beam_sample_executor_resources.json";
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
@@ -47,9 +46,9 @@ public final class BroadcastITCase {
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-        .addUserMain(Broadcast.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath)
-        .addResourceJson(executorResourceFileName);
+        .addResourceJson(executorResourceFileName)
+        .addUserMain(WordCount.class.getCanonicalName())
+        .addUserArgs(inputFilePath, outputFilePath);
   }
 
   @After
@@ -64,15 +63,23 @@ public final class BroadcastITCase {
   @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
-        .addJobId(BroadcastITCase.class.getSimpleName())
+        .addJobId(WordCountITCase.class.getSimpleName())
         .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+        .build());
+  }
+
+  @Test (timeout = TIMEOUT)
+  public void testSailfish() throws Exception {
+    JobLauncher.main(builder
+        .addJobId(WordCountITCase.class.getSimpleName() + "_sailfish")
+        .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 
   @Test (timeout = TIMEOUT)
   public void testPado() throws Exception {
     JobLauncher.main(builder
-        .addJobId(BroadcastITCase.class.getSimpleName() + "_pado")
+        .addJobId(WordCountITCase.class.getSimpleName() + "_pado")
         .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
         .build());
   }

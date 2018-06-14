@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
-import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
@@ -56,7 +55,7 @@ public final class DataSkewReshapingPass extends ReshapingPass {
       if (v instanceof OperatorVertex && dag.getIncomingEdgesOf(v).stream().anyMatch(irEdge ->
           DataCommunicationPatternProperty.Value.Shuffle
           .equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))) {
-        final MetricCollectionBarrierVertex<Pair<Integer, Long>> metricCollectionBarrierVertex
+        final MetricCollectionBarrierVertex<Integer, Long> metricCollectionBarrierVertex
             = new MetricCollectionBarrierVertex<>();
         metricCollectionVertices.add(metricCollectionBarrierVertex);
         builder.addVertex(v);
