@@ -97,7 +97,7 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"runtimeEdgeId\": \"").append(getId());
     sb.append("\", \"edgeProperties\": ").append(edgeProperties);
-    sb.append("\"}");
+    sb.append("}");
     return sb.toString();
   }
 }

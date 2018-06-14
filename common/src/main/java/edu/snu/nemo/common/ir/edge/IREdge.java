@@ -143,7 +143,7 @@ public final class IREdge extends Edge<IRVertex> {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"id\": \"").append(getId());
     sb.append("\", \"executionProperties\": ").append(executionProperties);
-    sb.append("\"}");
+    sb.append("}");
     return sb.toString();
   }
 }
