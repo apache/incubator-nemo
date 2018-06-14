@@ -53,6 +53,12 @@ public interface Scheduler {
   void updateJob(String jobId, PhysicalPlan newPhysicalPlan, Pair<String, String> taskInfo);
 
   /**
+   * Receives an additional physical plan when a job is running in progress, and appends the job in the scheduler queue.
+   * @param physicalPlanToAppend an additional physical plan to append to the job.
+   */
+  void appendJob(PhysicalPlan physicalPlanToAppend);
+
+  /**
    * Called when an executor is added to Runtime, so that the extra resource can be used to execute the job.
    * @param executorRepresenter a representation of the added executor.
    */
