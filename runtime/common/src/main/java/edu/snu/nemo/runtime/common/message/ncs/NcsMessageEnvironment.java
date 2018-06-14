@@ -36,15 +36,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Message environment for NCS.
  */
 public final class NcsMessageEnvironment implements MessageEnvironment {
-  private static final Logger LOG = LoggerFactory.getLogger(NcsMessageEnvironment.class.getName());
-
   private static final String NCS_CONN_FACTORY_ID = "NCS_CONN_FACTORY_ID";
 
   private final NetworkConnectionService networkConnectionService;
@@ -124,7 +120,6 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
     public void onNext(final Message<ControlMessage.Message> messages) {
       final ControlMessage.Message controlMessage = extractSingleMessage(messages);
-      LOG.debug("[RECEIVED]: msg={}", controlMessage);
       final MessageType messageType = getMsgType(controlMessage);
       switch (messageType) {
         case Send:

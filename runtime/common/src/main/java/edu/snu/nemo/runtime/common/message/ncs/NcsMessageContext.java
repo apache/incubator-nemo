@@ -49,7 +49,6 @@ final class NcsMessageContext implements MessageContext {
   @Override
   @SuppressWarnings("squid:S2095")
   public <U> void reply(final U replyMessage) {
-    LOG.debug("[REPLY]: {}", replyMessage);
     final Connection connection = connectionFactory.newConnection(idFactory.getNewInstance(senderId));
     try {
       connection.open();
