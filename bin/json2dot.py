@@ -308,7 +308,7 @@ class IREdge:
         self.dst = dst
         self.id = properties['id']
         self.executionProperties = properties['executionProperties']
-        self.coder = properties['coder']
+        self.coder = self.executionProperties['Coder']
     @property
     def dot(self):
         src = self.src
@@ -327,37 +327,14 @@ class IREdge:
 
 class StageEdge:
     def __init__(self, src, dst, properties):
-        self.src = src
-        self.dst = dst
-        self.runtimeEdgeId = properties['runtimeEdgeId']
-        self.edgeProperties = properties['edgeProperties']
-        self.externalVertexAttr = properties['externalVertexAttr']
-        self.parallelism = self.externalVertexAttr['Parallelism']
-        self.coder = properties['coder']
-    @property
-    def dot(self):
-        color = 'black'
-        try:
-            if self.externalVertexAttr['ContainerType'] == 'Transient':
-                color = 'orange'
-            if self.externalVertexAttr['ContainerType'] == 'Reserved':
-                color = 'green'
-        except:
-            pass
-        label = '{} (p{})<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, self.parallelism, edgePropertiesString(self.edgeProperties), self.coder)
-        return '{} -> {} [ltail = {}, lhead = {}, label = <{}>, color = {}];'.format(self.src.oneVertex.idx,
-                self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label, color)
-
-class StageEdge:
-    def __init__(self, src, dst, properties):
         self.src = src.internalDAG.vertices[properties['srcVertex']]
         self.dst = dst.internalDAG.vertices[properties['dstVertex']]
         self.runtimeEdgeId = properties['runtimeEdgeId']
-        self.edgeProperties = properties['edgeProperties']
-        self.coder = properties['coder']
+        self.executionProperties = properties['executionProperties']
+        self.coder = self.executionProperties['Coder']
     @property
     def dot(self):
-        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, edgePropertiesString(self.edgeProperties), self.coder)
+        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, edgePropertiesString(self.executionProperties), self.coder)
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 
@@ -366,11 +343,11 @@ class RuntimeEdge:
         self.src = src
         self.dst = dst
         self.runtimeEdgeId = properties['runtimeEdgeId']
-        self.edgeProperties = properties['edgeProperties']
-        self.coder = properties['coder']
+        self.executionProperties = properties['executionProperties']
+        self.coder = self.executionProperties['Coder']
     @property
     def dot(self):
-        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, edgePropertiesString(self.edgeProperties), self.coder)
+        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, edgePropertiesString(self.executionProperties), self.coder)
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 
