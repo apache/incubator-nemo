@@ -65,7 +65,7 @@ public final class PerKeyMedianITCase {
    * @throws Exception exception on the way.
    */
   @Test (timeout = TIMEOUT)
-  public void test() throws Exception {
+  public void testDataSkew() throws Exception {
     JobLauncher.main(builder
         .addJobId(PerKeyMedianITCase.class.getSimpleName())
         .addOptimizationPolicy(DataSkewPolicyParallelismFive.class.getCanonicalName())
