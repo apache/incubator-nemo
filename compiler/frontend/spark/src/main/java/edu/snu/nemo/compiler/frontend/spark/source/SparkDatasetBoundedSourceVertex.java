@@ -23,6 +23,8 @@ import org.apache.spark.*;
 import org.apache.spark.rdd.RDD;
 import scala.collection.JavaConverters;
 
+import javax.naming.OperationNotSupportedException;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -105,12 +107,18 @@ public final class SparkDatasetBoundedSourceVertex<T> extends SourceVertex<T> {
     }
 
     @Override
-    public Iterable<T> read() throws Exception {
+    public Iterable<T> read() throws IOException {
       // for setting up the same environment in the executors.
       final SparkSession spark = SparkSession.builder()
           .config(sessionInitialConf)
           .getOrCreate();
-      final Dataset<T> dataset = SparkSession.initializeDataset(spark, commands);
+      final Dataset<T> dataset;
+
+      try {
+        dataset = SparkSession.initializeDataset(spark, commands);
+      } catch (final OperationNotSupportedException e) {
+        throw new IllegalStateException(e);
+      }
 
       // Spark does lazy evaluation: it doesn't load the full dataset, but only the partition it is asked for.
       final RDD<T> rdd = dataset.sparkRDD();
