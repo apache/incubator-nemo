@@ -30,22 +30,6 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
 
   /**
    * Constructs the edge given the below parameters.
-   * This constructor assumes that this edge is not for a side input.
-   *
-   * @param runtimeEdgeId       the id of this edge.
-   * @param executionProperties to control the data flow on this edge.
-   * @param src                 the source vertex.
-   * @param dst                 the destination vertex.
-   */
-  public RuntimeEdge(final String runtimeEdgeId,
-                     final ExecutionPropertyMap executionProperties,
-                     final V src,
-                     final V dst) {
-    this(runtimeEdgeId, executionProperties, src, dst, false);
-  }
-
-  /**
-   * Constructs the edge given the below parameters.
    *
    * @param runtimeEdgeId  the id of this edge.
    * @param executionProperties to control the data flow on this edge.
