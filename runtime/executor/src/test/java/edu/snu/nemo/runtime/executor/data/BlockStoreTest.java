@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.tests.runtime.executor.data;
+package edu.snu.nemo.runtime.executor.data;
 
+import edu.snu.nemo.common.Pair;
+import edu.snu.nemo.common.coder.IntCoder;
+import edu.snu.nemo.common.coder.PairCoder;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.compiler.frontend.beam.coder.BeamCoder;
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.data.HashRange;
@@ -26,7 +28,6 @@ import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.state.BlockState;
-import edu.snu.nemo.runtime.executor.data.*;
 import edu.snu.nemo.runtime.executor.data.block.Block;
 import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import edu.snu.nemo.runtime.executor.data.streamchainer.CompressionStreamChainer;
@@ -34,9 +35,6 @@ import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.nemo.runtime.executor.data.stores.*;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.RuntimeMaster;
-import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.VarIntCoder;
-import org.apache.beam.sdk.values.KV;
 import org.apache.commons.io.FileUtils;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -59,7 +57,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static edu.snu.nemo.tests.runtime.RuntimeTestUtil.getRangedNumList;
+import static edu.snu.nemo.runtime.common.RuntimeTestUtil.getRangedNumList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
@@ -73,7 +71,7 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({BlockManagerMaster.class, RuntimeMaster.class, SerializerManager.class})
 public final class BlockStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
-  private static final Coder CODER = new BeamCoder(KvCoder.of(VarIntCoder.of(), VarIntCoder.of()));
+  private static final Coder CODER = PairCoder.of(IntCoder.of(), IntCoder.of());
   private static final Serializer SERIALIZER = new Serializer(CODER,
       Collections.singletonList(new CompressionStreamChainer(CompressionProperty.Compression.LZ4)));
   private static final SerializerManager serializerManager = mock(SerializerManager.class);
@@ -575,7 +573,7 @@ public final class BlockStoreTest {
                                         final int start,
                                         final int end) {
     final List numList = new ArrayList<>(end - start);
-    IntStream.range(start, end).forEach(number -> numList.add(KV.of(key, number)));
+    IntStream.range(start, end).forEach(number -> numList.add(Pair.of(key, number)));
     return numList;
   }
 
