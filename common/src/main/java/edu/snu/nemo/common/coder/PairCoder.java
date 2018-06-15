@@ -68,7 +68,7 @@ public final class PairCoder<A, B> implements Coder<Pair<A, B>> {
   @Override
   public void encode(final Pair<A, B> pair, final OutputStream outStream) throws IOException {
     if (pair == null) {
-      throw new IOException("cannot encode a null KV");
+      throw new IOException("cannot encode a null pair");
     }
     leftCoder.encode(pair.left(), outStream);
     rightCoder.encode(pair.right(), outStream);
