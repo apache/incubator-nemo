@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.tests.runtime.executor.data;
+package edu.snu.nemo.runtime.executor.data;
 
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.executor.data.BlockTransferConnectionQueue;
