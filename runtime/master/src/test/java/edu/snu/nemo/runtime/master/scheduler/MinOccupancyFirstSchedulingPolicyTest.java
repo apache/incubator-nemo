@@ -29,11 +29,11 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests {@link RoundRobinSchedulingPolicy}
+ * Tests {@link MinOccupancyFirstSchedulingPolicy}
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ExecutorRepresenter.class, Task.class})
-public final class RoundRobinSchedulingPolicyTest {
+public final class MinOccupancyFirstSchedulingPolicyTest {
 
   private static ExecutorRepresenter mockExecutorRepresenter(final int numRunningTasks) {
     final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
@@ -45,7 +45,7 @@ public final class RoundRobinSchedulingPolicyTest {
 
   @Test
   public void testRoundRobin() {
-    final SchedulingPolicy schedulingPolicy = new RoundRobinSchedulingPolicy();
+    final SchedulingPolicy schedulingPolicy = new MinOccupancyFirstSchedulingPolicy();
     final ExecutorRepresenter a0 = mockExecutorRepresenter(1);
     final ExecutorRepresenter a1 = mockExecutorRepresenter(2);
     final ExecutorRepresenter a2 = mockExecutorRepresenter(2);

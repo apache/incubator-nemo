@@ -263,7 +263,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     if (dstTransform instanceof GroupByKeyTransform) {
       return DataCommunicationPatternProperty.Value.Shuffle;
     }
-    if (srcTransform instanceof CreateViewTransform || dstTransform instanceof CreateViewTransform) {
+    if (dstTransform instanceof CreateViewTransform) {
       return DataCommunicationPatternProperty.Value.BroadCast;
     }
     return DataCommunicationPatternProperty.Value.OneToOne;
