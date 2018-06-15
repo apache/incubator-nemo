@@ -34,14 +34,14 @@ public final class CompositeSchedulingPolicy implements SchedulingPolicy {
 
   @Inject
   private CompositeSchedulingPolicy(final SourceLocationAwareSchedulingPolicy sourceLocationAwareSchedulingPolicy,
-                                    final RoundRobinSchedulingPolicy roundRobinSchedulingPolicy,
+                                    final MinOccupancyFirstSchedulingPolicy minOccupancyFirstSchedulingPolicy,
                                     final FreeSlotSchedulingPolicy freeSlotSchedulingPolicy,
                                     final ContainerTypeAwareSchedulingPolicy containerTypeAwareSchedulingPolicy) {
     schedulingPolicies = Arrays.asList(
         freeSlotSchedulingPolicy,
         containerTypeAwareSchedulingPolicy,
         sourceLocationAwareSchedulingPolicy,
-        roundRobinSchedulingPolicy);
+        minOccupancyFirstSchedulingPolicy);
   }
 
   @Override
