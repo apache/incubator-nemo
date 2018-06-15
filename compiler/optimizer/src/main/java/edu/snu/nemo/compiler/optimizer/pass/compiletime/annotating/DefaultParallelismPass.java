@@ -78,7 +78,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
           // No reason to propagate via Broadcast edges, as the data streams that will use the broadcasted data
           // as a sideInput will have their own number of parallelism
           final Integer o2oParallelism = inEdges.stream()
-             .filter(edge -> DataCommunicationPatternProperty.Value.OneToOne
+              .filter(edge -> DataCommunicationPatternProperty.Value.OneToOne
                   .equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
               .mapToInt(edge -> edge.getSrc().getProperty(ExecutionProperty.Key.Parallelism))
               .max().orElse(1);
