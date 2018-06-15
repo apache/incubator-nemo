@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.tests.runtime;
+package edu.snu.nemo.runtime.common;
 
-import org.apache.beam.sdk.values.KV;
+import edu.snu.nemo.common.Pair;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -25,6 +25,13 @@ import java.util.stream.IntStream;
  * Utility class for runtime unit tests.
  */
 public final class RuntimeTestUtil {
+
+  /**
+   * Private constructor for utility class.
+   */
+  private RuntimeTestUtil() {
+  }
+
   /**
    * Gets a list of integer pair elements in range.
    * @param start value of the range (inclusive).
@@ -34,7 +41,7 @@ public final class RuntimeTestUtil {
   public static List getRangedNumList(final int start,
                                                final int end) {
     final List numList = new ArrayList<>(end - start);
-    IntStream.range(start, end).forEach(number -> numList.add(KV.of(number, number)));
+    IntStream.range(start, end).forEach(number -> numList.add(Pair.of(number, number)));
     return numList;
   }
 
