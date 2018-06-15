@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
+import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
@@ -149,7 +150,10 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
               outListToModify.remove(e);
               final IREdge newIrEdge = new IREdge(e.getPropertyValue(DataCommunicationPatternProperty.class).get(),
                   operatorVertexToUse, e.getDst());
-              newIrEdge.setProperty(CoderProperty.of(e.getPropertyValue(CoderProperty.class).get()));
+              final Optional<Coder> coderProperty = e.getPropertyValue(CoderProperty.class);
+              if (coderProperty.isPresent()) {
+                newIrEdge.setProperty(CoderProperty.of(coderProperty.get()));
+              }
               outListToModify.add(newIrEdge);
             });
             outEdges.remove(ov);

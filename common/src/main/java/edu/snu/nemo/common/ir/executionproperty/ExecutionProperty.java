@@ -16,7 +16,6 @@
 package edu.snu.nemo.common.ir.executionproperty;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 /**
  * An abstract class for each execution factors.

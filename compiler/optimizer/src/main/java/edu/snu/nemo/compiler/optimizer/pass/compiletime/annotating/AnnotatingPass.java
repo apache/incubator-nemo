@@ -18,7 +18,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.Set;
 
 /**
@@ -45,7 +45,7 @@ public abstract class AnnotatingPass implements CompileTimePass {
    * @param keyOfExecutionPropertyToModify key of execution property to modify.
    */
   public AnnotatingPass(final Class<? extends ExecutionProperty> keyOfExecutionPropertyToModify) {
-    this(keyOfExecutionPropertyToModify, new HashSet<>());
+    this(keyOfExecutionPropertyToModify, Collections.emptySet());
   }
 
   /**

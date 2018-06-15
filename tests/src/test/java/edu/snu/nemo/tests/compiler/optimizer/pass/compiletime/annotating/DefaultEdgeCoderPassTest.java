@@ -19,7 +19,7 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultEdgeCoderPass;
@@ -48,19 +48,19 @@ public class DefaultEdgeCoderPassTest {
   @Test
   public void testAnnotatingPass() {
     final AnnotatingPass coderPass = new DefaultEdgeCoderPass();
-    assertEquals(ExecutionProperty.Key.Coder, coderPass.getExecutionPropertyToModify());
+    assertEquals(CoderProperty.class, coderPass.getExecutionPropertyToModify());
   }
 
   @Test
   public void testNotOverride() {
     // Get the first coder from the compiled DAG
     final Coder compiledCoder = compiledDAG
-        .getOutgoingEdgesOf(compiledDAG.getTopologicalSort().get(0)).get(0).getProperty(ExecutionProperty.Key.Coder);
+        .getOutgoingEdgesOf(compiledDAG.getTopologicalSort().get(0)).get(0).getPropertyValue(CoderProperty.class).get();
     final DAG<IRVertex, IREdge> processedDAG = new DefaultEdgeCoderPass().apply(compiledDAG);
 
     // Get the first coder from the processed DAG
-    final Coder processedCoder = processedDAG
-        .getOutgoingEdgesOf(processedDAG.getTopologicalSort().get(0)).get(0).getProperty(ExecutionProperty.Key.Coder);
+    final Coder processedCoder = processedDAG.getOutgoingEdgesOf(processedDAG.getTopologicalSort().get(0))
+        .get(0).getPropertyValue(CoderProperty.class).get();
     assertEquals(compiledCoder, processedCoder); // It must not be changed.
   }
 
@@ -68,12 +68,12 @@ public class DefaultEdgeCoderPassTest {
   public void testSetToDefault() throws Exception {
     // Remove the first coder from the compiled DAG (to let our pass to set as default coder).
     compiledDAG.getOutgoingEdgesOf(compiledDAG.getTopologicalSort().get(0))
-        .get(0).getExecutionProperties().remove(ExecutionProperty.Key.Coder);
+        .get(0).getExecutionProperties().remove(CoderProperty.class);
     final DAG<IRVertex, IREdge> processedDAG = new DefaultEdgeCoderPass().apply(compiledDAG);
 
     // Check whether the pass set the empty coder to our default coder.
-    final Coder processedCoder = processedDAG
-        .getOutgoingEdgesOf(processedDAG.getTopologicalSort().get(0)).get(0).getProperty(ExecutionProperty.Key.Coder);
+    final Coder processedCoder = processedDAG.getOutgoingEdgesOf(processedDAG.getTopologicalSort().get(0))
+        .get(0).getPropertyValue(CoderProperty.class).get();
     assertEquals(Coder.DUMMY_CODER, processedCoder);
   }
 }
