@@ -252,6 +252,7 @@ public final class BlockManagerMaster {
           } catch (final InterruptedException | ExecutionException e) {
             // Cannot reach here because we check the completion of the future already.
             LOG.error("Exception while getting the location of a block!", e);
+            Thread.currentThread().interrupt();
           }
         }
       });
