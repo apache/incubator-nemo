@@ -15,20 +15,20 @@
  */
 package edu.snu.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.nemo.common.KeyExtractor;
+import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 
 /**
- * KeyExtractor ExecutionProperty.
+ * Coder ExecutionProperty.
  */
-public final class KeyExtractorProperty extends ExecutionProperty<KeyExtractor> {
+public final class CoderProperty extends ExecutionProperty<Coder> {
   /**
    * Constructor.
    *
    * @param value value of the execution property.
    */
-  private KeyExtractorProperty(final KeyExtractor value) {
-    super(Key.KeyExtractor, value);
+  private CoderProperty(final Coder value) {
+    super(Key.Coder, value);
   }
 
   /**
@@ -37,7 +37,7 @@ public final class KeyExtractorProperty extends ExecutionProperty<KeyExtractor> 
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static KeyExtractorProperty of(final KeyExtractor value) {
-    return new KeyExtractorProperty(value);
+  public static CoderProperty of(final Coder value) {
+    return new CoderProperty(value);
   }
 }

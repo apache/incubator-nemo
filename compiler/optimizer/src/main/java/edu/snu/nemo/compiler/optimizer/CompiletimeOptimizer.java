@@ -71,7 +71,7 @@ public final class CompiletimeOptimizer {
       if ((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(dag, processedDAG))
           || (passToApply instanceof ReshapingPass && !checkReshapingPass(dag, processedDAG))) {
         throw new CompileTimeOptimizationException(passToApply.getClass().getSimpleName()
-            + "is implemented in a way that doesn't follow its original intention of annotating or reshaping. "
+            + " is implemented in a way that doesn't follow its original intention of annotating or reshaping. "
             + "Modify it or use a general CompileTimePass");
       }
       // Save the processed JSON DAG.
