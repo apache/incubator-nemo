@@ -151,7 +151,6 @@ public final class DAGConverterTest {
     irDAGBuilder.addVertex(v6);
     irDAGBuilder.addVertex(v8);
 
-    // TODO #13: Implement Join Node
 //    irDAGBuilder.addVertex(v7);
 
     final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v1, v2);
@@ -221,7 +220,6 @@ public final class DAGConverterTest {
     final Stage stage4 = sortedLogicalDAG.get(3);
     final Stage stage5 = sortedLogicalDAG.get(3);
 
-    // TODO #148: Optimize Stage Partitioner Algorithm in NemoBackend
     // The following asserts depend on how stage partitioning is defined; test must be rewritten accordingly.
 //    assertEquals(logicalDAG.getVertices().size(), 5);
 //    assertEquals(logicalDAG.getIncomingEdgesOf(stage1).size(), 0);
