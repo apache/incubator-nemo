@@ -19,7 +19,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 * Java 8
 * Maven
 * YARN settings
-    * Download Hadoop 2.7.4 at http://apache.tt.co.kr/hadoop/common/hadoop-2.7.4/
+    * Download Hadoop 2.7.4 at https://archive.apache.org/dist/hadoop/common/hadoop-2.7.4/
     * Set the shell profile as following:
         ```bash
         export HADOOP_HOME=/path/to/hadoop-2.7.4
@@ -139,7 +139,7 @@ This example configuration specifies
 ## Monitoring your job using web UI
 Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
 * `-dag_dir` command line option is used to specify the directory where the JSON files are stored. The default directory is `./dag`.
-  Using our [online visualizer](https://service.jangho.io/nemo-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
+  Using our [online visualizer](http://cmscluster.snu.ac.kr:50080/nemo-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
 
 ### Examples
 ```bash
