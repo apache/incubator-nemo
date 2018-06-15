@@ -63,6 +63,7 @@ public final class JobLauncher {
   private static Configuration jobAndDriverConf = null;
   private static Configuration deployModeConf = null;
   private static Configuration builtJobConf = null;
+
   private static DriverRPCServer driverRPCServer;
   private static ExecutorService reefRunThread;
   private static CountDownLatch resourceReadyLatch;
@@ -82,6 +83,7 @@ public final class JobLauncher {
    * @throws Exception exception on the way.
    */
   public static void main(final String[] args) throws Exception {
+    reefRunThread = Executors.newSingleThreadExecutor();
     resourceReadyLatch = new CountDownLatch(1);
     reefJobFinishLatch = new CountDownLatch(1);
     nemoDriverRunning = false;
@@ -111,6 +113,7 @@ public final class JobLauncher {
     // Launch client main
     runUserProgramMain(builtJobConf);
     reefJobFinishLatch.await();
+    reefRunThread.shutdown();
   }
 
   private static void launchNemo() {
@@ -121,7 +124,6 @@ public final class JobLauncher {
     if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
       throw new RuntimeException("Configuration for launching driver is not ready");
     }
-    reefRunThread = Executors.newSingleThreadExecutor();
     reefRunThread.submit(() -> {
       try {
         final LauncherStatus launcherStatus = DriverLauncher.getLauncher(deployModeConf)
@@ -133,7 +135,6 @@ public final class JobLauncher {
         } else {
           LOG.info("Job successfully completed");
           driverRPCServer.shutdown();
-          reefRunThread.shutdown();
           reefJobFinishLatch.countDown();
         }
       } catch (final InjectionException e) {
