@@ -13,26 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.compiler.frontend.beam.coder;
+package edu.snu.nemo.common.coder;
 
 import edu.snu.nemo.common.Pair;
-import org.apache.beam.sdk.coders.Coder;
-import org.apache.beam.sdk.coders.CoderException;
-import org.apache.beam.sdk.coders.StructuredCoder;
-import org.apache.beam.sdk.util.common.ElementByteSizeObserver;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.List;
 
 /**
- * BEAM Coder for {@link edu.snu.nemo.common.Pair}. Reference: KvCoder in BEAM.
+ * A Coder for {@link edu.snu.nemo.common.Pair}. Reference: KvCoder in BEAM.
  * @param <A> type for the left coder.
  * @param <B> type for the right coder.
  */
-public final class PairCoder<A, B> extends StructuredCoder<Pair<A, B>> {
+public final class PairCoder<A, B> implements Coder<Pair<A, B>> {
   private final Coder<A> leftCoder;
   private final Coder<B> rightCoder;
 
@@ -64,6 +57,7 @@ public final class PairCoder<A, B> extends StructuredCoder<Pair<A, B>> {
   Coder<A> getLeftCoder() {
     return leftCoder;
   }
+
   /**
    * @return the right coder.
    */
@@ -71,12 +65,10 @@ public final class PairCoder<A, B> extends StructuredCoder<Pair<A, B>> {
     return rightCoder;
   }
 
-  //=====================================================================================================
-
   @Override
   public void encode(final Pair<A, B> pair, final OutputStream outStream) throws IOException {
     if (pair == null) {
-      throw new CoderException("cannot encode a null KV");
+      throw new IOException("cannot encode a null pair");
     }
     leftCoder.encode(pair.left(), outStream);
     rightCoder.encode(pair.right(), outStream);
@@ -87,53 +79,5 @@ public final class PairCoder<A, B> extends StructuredCoder<Pair<A, B>> {
     final A key = leftCoder.decode(inStream);
     final B value = rightCoder.decode(inStream);
     return Pair.of(key, value);
-  }
-
-  @Override
-  public List<? extends Coder<?>> getCoderArguments() {
-    return Arrays.asList(leftCoder, rightCoder);
-  }
-
-  @Override
-  public void verifyDeterministic() throws NonDeterministicException {
-    verifyDeterministic(this, "Key coder must be deterministic", getLeftCoder());
-    verifyDeterministic(this, "Value coder must be deterministic", getRightCoder());
-  }
-
-  @Override
-  public boolean consistentWithEquals() {
-    return leftCoder.consistentWithEquals() && rightCoder.consistentWithEquals();
-  }
-
-  @Override
-  public Object structuralValue(final Pair<A, B> pair) {
-    if (consistentWithEquals()) {
-      return pair;
-    } else {
-      return Pair.of(getLeftCoder().structuralValue(pair.left()), getRightCoder().structuralValue(pair.right()));
-    }
-  }
-
-  /**
-   * Returns whether both leftCoder and rightCoder are considered not expensive.
-   */
-  @Override
-  public boolean isRegisterByteSizeObserverCheap(final Pair<A, B> pair) {
-    return leftCoder.isRegisterByteSizeObserverCheap(pair.left())
-        && rightCoder.isRegisterByteSizeObserverCheap(pair.right());
-  }
-
-  /**
-   * Notifies ElementByteSizeObserver about the byte size of the
-   * encoded value using this coder.
-   */
-  @Override
-  public void registerByteSizeObserver(final Pair<A, B> pair,
-                                       final ElementByteSizeObserver observer) throws Exception {
-    if (pair == null) {
-      throw new CoderException("cannot encode a null Pair");
-    }
-    leftCoder.registerByteSizeObserver(pair.left(), observer);
-    rightCoder.registerByteSizeObserver(pair.right(), observer);
   }
 }
