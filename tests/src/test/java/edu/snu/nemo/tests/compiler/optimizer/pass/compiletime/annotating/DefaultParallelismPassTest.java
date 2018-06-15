@@ -38,7 +38,7 @@ import static org.junit.Assert.assertEquals;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public class DefaultParallelismPassTest {
-  DAG<IRVertex, IREdge> compiledDAG;
+  private DAG<IRVertex, IREdge> compiledDAG;
 
   @Before
   public void setUp() throws Exception {

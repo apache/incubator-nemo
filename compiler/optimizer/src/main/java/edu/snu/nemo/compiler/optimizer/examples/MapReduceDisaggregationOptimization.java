@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.compiler.optimizer.examples;
 
-import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
@@ -58,12 +57,10 @@ public final class MapReduceDisaggregationOptimization {
     builder.addVertex(map);
     builder.addVertex(reduce);
 
-    final IREdge edge1 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
-        source, map, Coder.DUMMY_CODER);
+    final IREdge edge1 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, source, map);
     builder.connectVertices(edge1);
 
-    final IREdge edge2 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle,
-        map, reduce, Coder.DUMMY_CODER);
+    final IREdge edge2 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, map, reduce);
     builder.connectVertices(edge2);
 
     final DAG<IRVertex, IREdge> dag = builder.build();

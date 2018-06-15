@@ -16,6 +16,7 @@
 package edu.snu.nemo.common.ir.executionproperty;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * An abstract class for each execution factors.
@@ -59,6 +60,24 @@ public abstract class ExecutionProperty<T> implements Serializable {
     };
   }
 
+  @Override
+  public final boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final ExecutionProperty<?> that = (ExecutionProperty<?>) o;
+    return getKey() == that.getKey()
+        && Objects.equals(getValue(), that.getValue());
+  }
+
+  @Override
+  public final int hashCode() {
+    return Objects.hash(getKey(), getValue());
+  }
+
   /**
    * Key for different types of execution property.
    */
@@ -73,6 +92,7 @@ public abstract class ExecutionProperty<T> implements Serializable {
     UsedDataHandling,
     Compression,
     DuplicateEdgeGroup,
+    Coder,
 
     // Applies to IRVertex
     DynamicOptimizationType,
