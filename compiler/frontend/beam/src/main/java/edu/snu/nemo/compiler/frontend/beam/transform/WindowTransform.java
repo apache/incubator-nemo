@@ -44,7 +44,7 @@ public final class WindowTransform<T> implements Transform<T, T> {
 
   @Override
   public void onData(final T element) {
-    // TODO #36: Actually assign windows
+    // TODO #1: Support Beam Streaming in Compiler.
     outputCollector.emit(element);
   }
 

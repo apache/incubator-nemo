@@ -40,7 +40,6 @@ import java.util.stream.StreamSupport;
 
 /**
  * Represents the input data transfer to a task.
- * TODO #492: Modularize the data communication pattern.
  */
 public final class InputReader extends DataTransfer {
   private final int dstTaskIndex;
