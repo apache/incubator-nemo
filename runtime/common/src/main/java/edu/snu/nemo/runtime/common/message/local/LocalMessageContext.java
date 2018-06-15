@@ -28,8 +28,8 @@ final class LocalMessageContext implements MessageContext {
   private Object replyMessage;
 
   /**
-   *  TODO #119.
-   * @param senderId  TODO #119.
+   *  TODO #10: Handle Method Javadocs Requirements for Checkstyle Warnings.
+   * @param senderId  TODO #10: Handle Method Javadocs Requirements for Checkstyle Warnings.
    */
   LocalMessageContext(final String senderId) {
     this.senderId = senderId;
@@ -45,8 +45,8 @@ final class LocalMessageContext implements MessageContext {
   }
 
   /**
-   *  TODO #119.
-   * @return TODO #119.
+   *  TODO #10: Handle Method Javadocs Requirements for Checkstyle Warnings.
+   * @return TODO #10: Handle Method Javadocs Requirements for Checkstyle Warnings.
    */
   public Optional<Object> getReplyMessage() {
     return Optional.ofNullable(replyMessage);

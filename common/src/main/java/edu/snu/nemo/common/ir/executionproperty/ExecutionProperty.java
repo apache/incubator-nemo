@@ -83,7 +83,7 @@ public abstract class ExecutionProperty<T> implements Serializable {
    */
   public enum Key {
     // Applies to IREdge
-    DataCommunicationPattern, // TODO #492: modularizing runtime components for data communication pattern.
+    DataCommunicationPattern,
     DataFlowModel,
     DataStore,
     MetricCollection,
