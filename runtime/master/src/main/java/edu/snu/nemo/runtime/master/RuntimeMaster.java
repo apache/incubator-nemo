@@ -291,7 +291,7 @@ public final class RuntimeMaster {
         throw new RuntimeException(exception);
       case DataSizeMetric:
         final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
-        // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
+        // TODO #4: Refactor metric aggregation with separate collect & aggregate vertex.
         accumulateBarrierMetric(dataSizeMetricMsg.getPartitionSizeList(),
             dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getBlockId());
         break;
@@ -309,8 +309,8 @@ public final class RuntimeMaster {
 
   /**
    * Accumulates the metric data for a barrier vertex.
-   * TODO #511: Refactor metric aggregation for (general) run-rime optimization.
-   * TODO #513: Replace MetricCollectionBarrierVertex with a Customizable IRVertex.
+   * TODO #4: Refactor metric aggregation with separate collect & aggregate vertex.
+   * TODO #19: Replace MetricCollectionBarrierVertex with a Customizable IRVertex.
    *
    * @param partitionSizeInfo the size of partitions in a block to accumulate.
    * @param srcVertexId       the ID of the source vertex.
@@ -344,7 +344,6 @@ public final class RuntimeMaster {
     }
   }
 
-  // TODO #164: Cleanup Protobuf Usage
   private static TaskState.State convertTaskState(final ControlMessage.TaskStateFromExecutor state) {
     switch (state) {
       case READY:
@@ -379,7 +378,6 @@ public final class RuntimeMaster {
 
   /**
    * Schedules a periodic DAG logging thread.
-   * TODO #58: Web UI (Real-time visualization)
    * @param jobStateManager for the job the DAG should be logged.
    *
    * @return the scheduled executor service.

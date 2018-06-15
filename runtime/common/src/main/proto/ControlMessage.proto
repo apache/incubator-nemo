@@ -81,7 +81,7 @@ message BlockStateChangedMsg {
 }
 
 message DataSizeMetricMsg {
-    // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
+    // TODO #4: Refactor metric aggregation with separate collect & aggregate vertex.
     repeated PartitionSizeEntry partitionSize = 1;
     required string blockId = 2;
     required string srcIRVertexId = 3;
