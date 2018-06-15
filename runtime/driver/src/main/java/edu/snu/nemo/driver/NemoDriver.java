@@ -71,7 +71,6 @@ public final class NemoDriver {
   private final ClientRPC clientRPC;
 
   // Client for sending log messages
-  private final JobMessageObserver client;
   private final RemoteClientMessageLoggingHandler handler;
 
   @Inject
@@ -94,7 +93,6 @@ public final class NemoDriver {
     this.jobId = jobId;
     this.localDirectory = localDirectory;
     this.glusterDirectory = glusterDirectory;
-    this.client = client;
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
     clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
@@ -143,15 +141,17 @@ public final class NemoDriver {
       if (finalExecutorLaunched) {
         clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
             .setType(ControlMessage.DriverToClientMessageType.ResourceReady).build());
-        startSchedulingUserApplication();
       }
     }
   }
 
-  private void startSchedulingUserApplication() {
+  /**
+   * Start user application.
+   */
+  public void startSchedulingUserApplication(final String dagString) {
     // Launch user application (with a new thread)
     final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor();
-    userApplicationRunnerThread.execute(userApplicationRunner);
+    userApplicationRunnerThread.execute(() -> userApplicationRunner.run(dagString));
     userApplicationRunnerThread.shutdown();
   }
 

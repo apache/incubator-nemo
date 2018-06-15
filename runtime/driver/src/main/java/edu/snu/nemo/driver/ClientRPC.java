@@ -18,6 +18,7 @@ package edu.snu.nemo.driver;
 import com.google.protobuf.InvalidProtocolBufferException;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
+import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.impl.SyncStage;
@@ -40,6 +41,7 @@ import java.net.SocketAddress;
 public final class ClientRPC {
   private final Transport transport;
   private final Link<ControlMessage.DriverToClientMessage> link;
+  private final InjectionFuture<NemoDriver> nemoDriver;
   private volatile boolean isClosed = false;
   private static final DriverToClientMessageEncoder ENCODER = new DriverToClientMessageEncoder();
   private static final ClientRPCLinkListener LINK_LISTENER = new ClientRPCLinkListener();
@@ -48,8 +50,10 @@ public final class ClientRPC {
   @Inject
   private ClientRPC(final TransportFactory transportFactory,
                     final LocalAddressProvider localAddressProvider,
+                    final InjectionFuture<NemoDriver> nemoDriver,
                     @Parameter(JobConf.ClientSideRPCServerHost.class) final String clientHost,
                     @Parameter(JobConf.ClientSideRPCServerPort.class) final int clientPort) throws IOException {
+    this.nemoDriver = nemoDriver;
     transport = transportFactory.newInstance(localAddressProvider.getLocalAddress(),
         0, new SyncStage<>(new RPCEventHandler()), null, RETRY_COUNT, RETRY_TIMEOUT);
     final SocketAddress clientAddress = new InetSocketAddress(clientHost, clientPort);
@@ -84,7 +88,9 @@ public final class ClientRPC {
    * @param message message to process
    */
   private void handleMessage(final ControlMessage.ClientToDriverMessage message) {
-
+    if (message.getType() == ControlMessage.ClientToDriverMessageType.LaunchDAG) {
+      nemoDriver.get().startSchedulingUserApplication(message.getLaunchDAG().getDag());
+    }
   }
 
   /**

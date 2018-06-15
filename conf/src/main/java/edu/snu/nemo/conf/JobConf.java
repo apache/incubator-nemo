@@ -243,13 +243,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class ExecutorId implements Name<String> {
   }
 
-  /**
-   * Serialized {edu.snu.nemo.common.dag.DAG} from user main method.
-   */
-  @NamedParameter(doc = "String serialized DAG")
-  public final class SerializedDAG implements Name<String> {
-  }
-
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();
   public static final RequiredParameter<String> JOB_ID = new RequiredParameter<>();
   public static final OptionalParameter<String> LOCAL_DISK_DIRECTORY = new OptionalParameter<>();

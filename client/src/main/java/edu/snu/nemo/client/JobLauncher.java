@@ -48,17 +48,24 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Base64;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Job launcher.
  */
 public final class JobLauncher {
+  private static final DriverRPCServer DRIVER_RPC_SERVER = new DriverRPCServer();
+  private static final ExecutorService REEF_RUN_THREAD = Executors.newSingleThreadExecutor();
+  private static final CountDownLatch RESOURCE_READY_LATCH = new CountDownLatch(1);
   private static final Tang TANG = Tang.Factory.getTang();
   private static final Logger LOG = LoggerFactory.getLogger(JobLauncher.class.getName());
   private static final int LOCAL_NUMBER_OF_EVALUATORS = 100; // hopefully large enough for our use....
   private static Configuration jobAndDriverConf = null;
   private static Configuration deployModeConf = null;
   private static Configuration builtJobConf = null;
+  private static volatile boolean nemoDriverRunning = false;
 
   /**
    * private constructor.
@@ -74,10 +81,10 @@ public final class JobLauncher {
    */
   public static void main(final String[] args) throws Exception {
     // Launch RPC server
-    final DriverRPCServer driverRPCServer = new DriverRPCServer();
-    driverRPCServer
+    DRIVER_RPC_SERVER
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, message -> { })
-        .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, message -> { })
+        .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady,
+            message -> RESOURCE_READY_LATCH.countDown())
         .run();
 
     // Get Job and Driver Confs
@@ -90,14 +97,40 @@ public final class JobLauncher {
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfg,
-        executorResourceConfig, driverRPCServer.getListeningConfiguration());
+        executorResourceConfig, DRIVER_RPC_SERVER.getListeningConfiguration());
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
 
     // Launch client main
     runUserProgramMain(builtJobConf);
-    driverRPCServer.shutdown();
+  }
+
+  private static void launchNemo() {
+    if (nemoDriverRunning) {
+      throw new RuntimeException("Nemo Driver is already running");
+    }
+    nemoDriverRunning = true;
+    if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
+      throw new RuntimeException("Configuration for launching driver is not ready");
+    }
+    REEF_RUN_THREAD.submit(() -> {
+      try {
+        final LauncherStatus launcherStatus = DriverLauncher.getLauncher(deployModeConf)
+            .run(jobAndDriverConf);
+        // Launch and wait indefinitely for the job to finish
+        final Optional<Throwable> possibleError = launcherStatus.getError();
+        if (possibleError.isPresent()) {
+          throw new RuntimeException(possibleError.get());
+        } else {
+          LOG.info("Job successfully completed");
+          DRIVER_RPC_SERVER.shutdown();
+          REEF_RUN_THREAD.shutdown();
+        }
+      } catch (final InjectionException e) {
+        throw new RuntimeException(e);
+      }
+    });
   }
 
   /**
@@ -107,26 +140,19 @@ public final class JobLauncher {
    */
   // When modifying the signature of this method, see CompilerTestUtil#compileDAG and make corresponding changes
   public static void launchDAG(final DAG dag) {
+    if (!nemoDriverRunning) {
+      launchNemo();
+    }
     try {
-      if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
-        throw new RuntimeException("Configuration for launching driver is not ready");
-      }
-      final String serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
-      final Configuration dagConf = TANG.newConfigurationBuilder()
-          .bindNamedParameter(JobConf.SerializedDAG.class, serializedDAG)
-          .build();
-      // Launch and wait indefinitely for the job to finish
-      final LauncherStatus launcherStatus = DriverLauncher.getLauncher(deployModeConf)
-          .run(Configurations.merge(jobAndDriverConf, dagConf));
-      final Optional<Throwable> possibleError = launcherStatus.getError();
-      if (possibleError.isPresent()) {
-        throw new RuntimeException(possibleError.get());
-      } else {
-        LOG.info("Job successfully completed");
-      }
-    } catch (final InjectionException e) {
+      RESOURCE_READY_LATCH.await();
+    } catch (final InterruptedException e) {
       throw new RuntimeException(e);
     }
+    final String serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
+    DRIVER_RPC_SERVER.send(ControlMessage.ClientToDriverMessage.newBuilder()
+        .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
+        .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build())
+        .build());
   }
 
   /**
