@@ -135,6 +135,7 @@ class ParentTaskDataFetcher extends DataFetcher {
         }
       }
     } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
       throw new IOException(exception);
     }
   }

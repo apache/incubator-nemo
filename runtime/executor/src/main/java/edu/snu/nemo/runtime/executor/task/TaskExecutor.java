@@ -35,6 +35,7 @@ import edu.snu.nemo.runtime.executor.datatransfer.*;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -209,7 +210,7 @@ public final class TaskExecutor {
     } catch (Throwable throwable) {
       // ANY uncaught throwable is reported to the master
       taskStateManager.onTaskStateChanged(TaskState.State.FAILED_UNRECOVERABLE, Optional.empty(), Optional.empty());
-      throwable.printStackTrace();
+      LOG.error(ExceptionUtils.getStackTrace(throwable));
     }
   }
 
