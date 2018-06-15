@@ -59,6 +59,7 @@ public final class JobLauncher {
   private static final DriverRPCServer DRIVER_RPC_SERVER = new DriverRPCServer();
   private static final ExecutorService REEF_RUN_THREAD = Executors.newSingleThreadExecutor();
   private static final CountDownLatch RESOURCE_READY_LATCH = new CountDownLatch(1);
+  private static final CountDownLatch REEF_INSTANCE_FINISH_LATCH = new CountDownLatch(1);
   private static final Tang TANG = Tang.Factory.getTang();
   private static final Logger LOG = LoggerFactory.getLogger(JobLauncher.class.getName());
   private static final int LOCAL_NUMBER_OF_EVALUATORS = 100; // hopefully large enough for our use....
@@ -104,6 +105,7 @@ public final class JobLauncher {
 
     // Launch client main
     runUserProgramMain(builtJobConf);
+    REEF_INSTANCE_FINISH_LATCH.await();
   }
 
   private static void launchNemo() {
@@ -126,6 +128,7 @@ public final class JobLauncher {
           LOG.info("Job successfully completed");
           DRIVER_RPC_SERVER.shutdown();
           REEF_RUN_THREAD.shutdown();
+          REEF_INSTANCE_FINISH_LATCH.countDown();
         }
       } catch (final InjectionException e) {
         throw new RuntimeException(e);
