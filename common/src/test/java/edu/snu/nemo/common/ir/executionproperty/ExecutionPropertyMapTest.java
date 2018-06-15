@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.tests.common.ir.executionproperty;
+package edu.snu.nemo.common.ir.executionproperty;
 
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.ir.edge.IREdge;
@@ -26,7 +26,7 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.compiler.optimizer.examples.EmptyComponents;
+import edu.snu.nemo.common.test.EmptyComponents;
 import org.junit.Before;
 import org.junit.Test;
 
