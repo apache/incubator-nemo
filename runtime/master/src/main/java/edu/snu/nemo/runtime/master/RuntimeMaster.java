@@ -291,7 +291,7 @@ public final class RuntimeMaster {
         throw new RuntimeException(exception);
       case DataSizeMetric:
         final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
-        // TODO #4: Refactor metric aggregation with separate collect & aggregate vertex.
+        // TODO #96: Modularize DataSkewPolicy to use MetricVertex and BarrierVertex.
         accumulateBarrierMetric(dataSizeMetricMsg.getPartitionSizeList(),
             dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getBlockId());
         break;
@@ -309,8 +309,8 @@ public final class RuntimeMaster {
 
   /**
    * Accumulates the metric data for a barrier vertex.
-   * TODO #4: Refactor metric aggregation with separate collect & aggregate vertex.
-   * TODO #19: Replace MetricCollectionBarrierVertex with a Customizable IRVertex.
+   * TODO #96: Modularize DataSkewPolicy to use MetricVertex and BarrierVertex.
+   * TODO #98: Implement MetricVertex that collect metric used for dynamic optimization.
    *
    * @param partitionSizeInfo the size of partitions in a block to accumulate.
    * @param srcVertexId       the ID of the source vertex.
@@ -379,7 +379,7 @@ public final class RuntimeMaster {
   /**
    * Schedules a periodic DAG logging thread.
    * @param jobStateManager for the job the DAG should be logged.
-   *
+   * TODO #20: RESTful APIs to Access Job State and Metric.
    * @return the scheduled executor service.
    */
   private ScheduledExecutorService scheduleDagLogging(final JobStateManager jobStateManager) {

@@ -99,7 +99,6 @@ public final class ReduceTransform<T> implements Transform<T, T> {
   @Override
   public void close() {
     // Write result to a temporary file.
-    // TODO #16: Implement collection of data from executor to client
     try {
       final Kryo kryo = new Kryo();
       final Output output = new Output(new FileOutputStream(filename));

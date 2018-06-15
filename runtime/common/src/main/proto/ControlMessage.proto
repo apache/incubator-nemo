@@ -81,7 +81,7 @@ message BlockStateChangedMsg {
 }
 
 message DataSizeMetricMsg {
-    // TODO #4: Refactor metric aggregation with separate collect & aggregate vertex.
+    // TODO #96: Modularize DataSkewPolicy to use MetricVertex and BarrierVertex.
     repeated PartitionSizeEntry partitionSize = 1;
     required string blockId = 2;
     required string srcIRVertexId = 3;
