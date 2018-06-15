@@ -56,16 +56,16 @@ import java.util.concurrent.Executors;
  * Job launcher.
  */
 public final class JobLauncher {
-  private static final DriverRPCServer DRIVER_RPC_SERVER = new DriverRPCServer();
-  private static final ExecutorService REEF_RUN_THREAD = Executors.newSingleThreadExecutor();
-  private static final CountDownLatch RESOURCE_READY_LATCH = new CountDownLatch(1);
-  private static final CountDownLatch REEF_INSTANCE_FINISH_LATCH = new CountDownLatch(1);
   private static final Tang TANG = Tang.Factory.getTang();
   private static final Logger LOG = LoggerFactory.getLogger(JobLauncher.class.getName());
   private static final int LOCAL_NUMBER_OF_EVALUATORS = 100; // hopefully large enough for our use....
   private static Configuration jobAndDriverConf = null;
   private static Configuration deployModeConf = null;
   private static Configuration builtJobConf = null;
+  private static DriverRPCServer driverRPCServer;
+  private static ExecutorService reefRunThread;
+  private static CountDownLatch resourceReadyLatchH;
+  private static CountDownLatch reefJobFinishLatch;
   private static volatile boolean nemoDriverRunning = false;
 
   /**
@@ -82,10 +82,13 @@ public final class JobLauncher {
    */
   public static void main(final String[] args) throws Exception {
     // Launch RPC server
-    DRIVER_RPC_SERVER
+    resourceReadyLatchH = new CountDownLatch(1);
+    reefJobFinishLatch = new CountDownLatch(1);
+    driverRPCServer = new DriverRPCServer();
+    driverRPCServer
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, message -> { })
         .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady,
-            message -> RESOURCE_READY_LATCH.countDown())
+            message -> resourceReadyLatchH.countDown())
         .run();
 
     // Get Job and Driver Confs
@@ -98,14 +101,14 @@ public final class JobLauncher {
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfg,
-        executorResourceConfig, DRIVER_RPC_SERVER.getListeningConfiguration());
+        executorResourceConfig, driverRPCServer.getListeningConfiguration());
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
 
     // Launch client main
     runUserProgramMain(builtJobConf);
-    REEF_INSTANCE_FINISH_LATCH.await();
+    reefJobFinishLatch.await();
   }
 
   private static void launchNemo() {
@@ -116,7 +119,8 @@ public final class JobLauncher {
     if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
       throw new RuntimeException("Configuration for launching driver is not ready");
     }
-    REEF_RUN_THREAD.submit(() -> {
+    reefRunThread = Executors.newSingleThreadExecutor();
+    reefRunThread.submit(() -> {
       try {
         final LauncherStatus launcherStatus = DriverLauncher.getLauncher(deployModeConf)
             .run(jobAndDriverConf);
@@ -126,9 +130,9 @@ public final class JobLauncher {
           throw new RuntimeException(possibleError.get());
         } else {
           LOG.info("Job successfully completed");
-          DRIVER_RPC_SERVER.shutdown();
-          REEF_RUN_THREAD.shutdown();
-          REEF_INSTANCE_FINISH_LATCH.countDown();
+          driverRPCServer.shutdown();
+          reefRunThread.shutdown();
+          reefJobFinishLatch.countDown();
         }
       } catch (final InjectionException e) {
         throw new RuntimeException(e);
@@ -147,12 +151,12 @@ public final class JobLauncher {
       launchNemo();
     }
     try {
-      RESOURCE_READY_LATCH.await();
+      resourceReadyLatchH.await();
     } catch (final InterruptedException e) {
       throw new RuntimeException(e);
     }
     final String serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
-    DRIVER_RPC_SERVER.send(ControlMessage.ClientToDriverMessage.newBuilder()
+    driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
         .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
         .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build())
         .build());
