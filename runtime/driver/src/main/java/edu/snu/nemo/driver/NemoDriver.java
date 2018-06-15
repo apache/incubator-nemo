@@ -18,6 +18,7 @@ package edu.snu.nemo.driver;
 import edu.snu.nemo.common.ir.IdManager;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageParameters;
 import edu.snu.nemo.runtime.master.RuntimeMaster;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -67,6 +68,7 @@ public final class NemoDriver {
   private final String jobId;
   private final String localDirectory;
   private final String glusterDirectory;
+  private final ClientRPC clientRPC;
 
   // Client for sending log messages
   private final JobMessageObserver client;
@@ -78,6 +80,7 @@ public final class NemoDriver {
                      final NameServer nameServer,
                      final LocalAddressProvider localAddressProvider,
                      final JobMessageObserver client,
+                     final ClientRPC clientRPC,
                      @Parameter(JobConf.ExecutorJsonContents.class) final String resourceSpecificationString,
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
@@ -93,6 +96,9 @@ public final class NemoDriver {
     this.glusterDirectory = glusterDirectory;
     this.client = client;
     this.handler = new RemoteClientMessageLoggingHandler(client);
+    this.clientRPC = clientRPC;
+    clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+        .setType(ControlMessage.DriverToClientMessageType.DriverStarted).build());
   }
 
   /**
@@ -135,6 +141,8 @@ public final class NemoDriver {
       final boolean finalExecutorLaunched = runtimeMaster.onExecutorLaunched(activeContext);
 
       if (finalExecutorLaunched) {
+        clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+            .setType(ControlMessage.DriverToClientMessageType.ResourceReady).build());
         startSchedulingUserApplication();
       }
     }
@@ -175,6 +183,7 @@ public final class NemoDriver {
     @Override
     public void onNext(final StopTime stopTime) {
       handler.close();
+      clientRPC.shutdown();
     }
   }
 

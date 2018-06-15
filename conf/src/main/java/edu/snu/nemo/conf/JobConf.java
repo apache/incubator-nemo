@@ -73,6 +73,22 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class GlusterVolumeDirectory implements Name<String> {
   }
 
+  //////////////////////////////// Client-Driver RPC
+
+  /**
+   * Host of the client-side RPC server.
+   */
+  @NamedParameter
+  public final class ClientSideRPCServerHost implements Name<String> {
+  }
+
+  /**
+   * Port of the client-side RPC server.
+   */
+  @NamedParameter
+  public final class ClientSideRPCServerPort implements Name<Integer> {
+  }
+
   //////////////////////////////// Compiler Configurations
 
   /**

@@ -19,6 +19,7 @@ import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.driver.NemoDriver;
+import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageParameters;
 import org.apache.commons.lang3.SerializationUtils;
@@ -72,6 +73,13 @@ public final class JobLauncher {
    * @throws Exception exception on the way.
    */
   public static void main(final String[] args) throws Exception {
+    // Launch RPC server
+    final DriverRPCServer driverRPCServer = new DriverRPCServer();
+    driverRPCServer
+        .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, message -> { })
+        .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, message -> { })
+        .run();
+
     // Get Job and Driver Confs
     builtJobConf = getJobConf(args);
     final Configuration driverConf = getDriverConf(builtJobConf);
@@ -82,13 +90,14 @@ public final class JobLauncher {
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfg,
-        executorResourceConfig);
+        executorResourceConfig, driverRPCServer.getListeningConfiguration());
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
 
     // Launch client main
     runUserProgramMain(builtJobConf);
+    driverRPCServer.shutdown();
   }
 
   /**
