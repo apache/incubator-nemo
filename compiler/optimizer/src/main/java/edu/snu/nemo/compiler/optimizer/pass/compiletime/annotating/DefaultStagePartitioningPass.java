@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,7 +79,7 @@ public final class DefaultStagePartitioningPass extends AnnotatingPass {
       final Optional<List<IREdge>> inEdgeList = (inEdges == null || inEdges.isEmpty())
               ? Optional.empty() : Optional.of(inEdges);
 
-      if (!inEdgeList.isPresent() || inEdgeList.get().size() > 1) { // If Source vertex or has multiple inEdges
+      if (!inEdgeList.isPresent()) { // If Source vertex
         createNewStage(vertex, vertexStageNumHashMap, stageNumber, vertexListForEachStage);
       } else {
         // Filter candidate incoming edges that can be included in a stage with the vertex.

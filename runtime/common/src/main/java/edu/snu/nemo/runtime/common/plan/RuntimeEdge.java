@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,22 +27,6 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 public class RuntimeEdge<V extends Vertex> extends Edge<V> {
   private final ExecutionPropertyMap executionProperties;
   private final Boolean isSideInput;
-
-  /**
-   * Constructs the edge given the below parameters.
-   * This constructor assumes that this edge is not for a side input.
-   *
-   * @param runtimeEdgeId       the id of this edge.
-   * @param executionProperties to control the data flow on this edge.
-   * @param src                 the source vertex.
-   * @param dst                 the destination vertex.
-   */
-  public RuntimeEdge(final String runtimeEdgeId,
-                     final ExecutionPropertyMap executionProperties,
-                     final V src,
-                     final V dst) {
-    this(runtimeEdgeId, executionProperties, src, dst, false);
-  }
 
   /**
    * Constructs the edge given the below parameters.

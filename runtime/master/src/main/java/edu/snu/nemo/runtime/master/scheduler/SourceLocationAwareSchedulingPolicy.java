@@ -29,7 +29,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * This policy is same as {@link RoundRobinSchedulingPolicy}, however for Tasks
+ * This policy is same as {@link MinOccupancyFirstSchedulingPolicy}, however for Tasks
  * with {@link edu.snu.nemo.common.ir.vertex.SourceVertex}, it tries to pick one of the executors
  * where the corresponding data resides.
  */

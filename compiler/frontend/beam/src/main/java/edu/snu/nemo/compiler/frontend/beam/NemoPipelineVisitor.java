@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -263,7 +263,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     if (dstTransform instanceof GroupByKeyTransform) {
       return DataCommunicationPatternProperty.Value.Shuffle;
     }
-    if (srcTransform instanceof CreateViewTransform || dstTransform instanceof CreateViewTransform) {
+    if (dstTransform instanceof CreateViewTransform) {
       return DataCommunicationPatternProperty.Value.BroadCast;
     }
     return DataCommunicationPatternProperty.Value.OneToOne;
