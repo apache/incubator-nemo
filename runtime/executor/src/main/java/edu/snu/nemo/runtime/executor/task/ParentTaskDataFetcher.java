@@ -50,9 +50,8 @@ class ParentTaskDataFetcher extends DataFetcher {
                         final InputReader readerForParentTask,
                         final VertexHarness child,
                         final Map<String, Object> metricMap,
-                        final boolean isFromSideInput,
                         final boolean isToSideInput) {
-    super(dataSource, child, metricMap, isFromSideInput, isToSideInput);
+    super(dataSource, child, metricMap, readerForParentTask.isSideInputReader(), isToSideInput);
     this.readersForParentTask = readerForParentTask;
     this.hasFetchStarted = false;
     this.dataQueue = new LinkedBlockingQueue<>();
