@@ -30,23 +30,22 @@ import java.util.stream.Collectors;
 
 /**
  * {@inheritDoc}
- * A Round-Robin implementation used by {@link BatchSingleJobScheduler}.
+ * A scheduling policy used by {@link BatchSingleJobScheduler}.
  *
- * This policy keeps a list of available {@link ExecutorRepresenter} for each type of container.
- * The RR policy is used for each container type when trying to schedule a task.
+ * This policy chooses a set of Executors, on which have minimum running Tasks.
  */
 @ThreadSafe
 @DriverSide
-public final class RoundRobinSchedulingPolicy implements SchedulingPolicy {
-  private static final Logger LOG = LoggerFactory.getLogger(RoundRobinSchedulingPolicy.class.getName());
+public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy {
+  private static final Logger LOG = LoggerFactory.getLogger(MinOccupancyFirstSchedulingPolicy.class.getName());
 
   @VisibleForTesting
   @Inject
-  public RoundRobinSchedulingPolicy() {
+  public MinOccupancyFirstSchedulingPolicy() {
   }
 
   /**
-   * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by round robin behaviour.
+   * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by the occupancy of the Executors.
    * @param task {@link Task} to be scheduled.
    * @return filtered Set of {@link ExecutorRepresenter}.
    */
