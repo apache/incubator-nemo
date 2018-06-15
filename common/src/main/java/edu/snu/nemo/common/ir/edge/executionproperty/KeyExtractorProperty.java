@@ -24,6 +24,7 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 public final class KeyExtractorProperty extends ExecutionProperty<KeyExtractor> {
   /**
    * Constructor.
+   *
    * @param value value of the execution property.
    */
   private KeyExtractorProperty(final KeyExtractor value) {
@@ -32,6 +33,7 @@ public final class KeyExtractorProperty extends ExecutionProperty<KeyExtractor> 
 
   /**
    * Static method exposing the constructor.
+   *
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */

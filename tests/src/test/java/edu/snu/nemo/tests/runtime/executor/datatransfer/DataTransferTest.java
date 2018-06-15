@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.compiler.optimizer.examples.EmptyComponents;
+import edu.snu.nemo.common.test.EmptyComponents;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.coder.Coder;
@@ -38,7 +38,7 @@ import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.plan.StageEdge;
+import edu.snu.nemo.runtime.common.plan.StageEdgeBuilder;
 import edu.snu.nemo.runtime.executor.Executor;
 import edu.snu.nemo.runtime.executor.MetricManagerWorker;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
@@ -308,22 +308,30 @@ public final class DataTransferTest {
     final IRVertex dstVertex = verticesPair.right();
 
     // Edge setup
-    final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex, CODER);
+    final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex);
+    dummyIREdge.setProperty(CoderProperty.of(CODER));
     dummyIREdge.setProperty(KeyExtractorProperty.of((element -> element)));
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
     edgeProperties.put(DataCommunicationPatternProperty.of(commPattern));
     edgeProperties.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-
     edgeProperties.put(DataStoreProperty.of(store));
     edgeProperties.put(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
+    edgeProperties.put(CoderProperty.of(CODER));
     final RuntimeEdge dummyEdge;
 
     final IRVertex srcMockVertex = mock(IRVertex.class);
     final IRVertex dstMockVertex = mock(IRVertex.class);
     final Stage srcStage = setupStages("srcStage-" + testIndex);
     final Stage dstStage = setupStages("dstStage-" + testIndex);
-    dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
-        srcStage, dstStage, CODER, false);
+    dummyEdge = new StageEdgeBuilder(edgeId)
+        .setEdgeProperties(edgeProperties)
+        .setSrcVertex(srcMockVertex)
+        .setDstVertex(dstMockVertex)
+        .setSrcStage(srcStage)
+        .setDstStage(dstStage)
+        .setSideInputFlag(false)
+        .build();
+
     // Initialize states in Master
     srcStage.getTaskIds().forEach(srcTaskId -> {
       final String blockId = RuntimeIdGenerator.generateBlockId(
@@ -391,7 +399,8 @@ public final class DataTransferTest {
     final IRVertex dstVertex = verticesPair.right();
 
     // Edge setup
-    final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex, CODER);
+    final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex);
+    dummyIREdge.setProperty(CoderProperty.of(CODER));
     dummyIREdge.setProperty(KeyExtractorProperty.of((element -> element)));
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
     edgeProperties.put(DataCommunicationPatternProperty.of(commPattern));
@@ -409,12 +418,24 @@ public final class DataTransferTest {
     final IRVertex dstMockVertex = mock(IRVertex.class);
     final Stage srcStage = setupStages("srcStage-" + testIndex);
     final Stage dstStage = setupStages("dstStage-" + testIndex);
-    dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
-        srcStage, dstStage, CODER, false);
+    dummyEdge = new StageEdgeBuilder(edgeId)
+        .setEdgeProperties(edgeProperties)
+        .setSrcVertex(srcMockVertex)
+        .setDstVertex(dstMockVertex)
+        .setSrcStage(srcStage)
+        .setDstStage(dstStage)
+        .setSideInputFlag(false)
+        .build();
     final IRVertex dstMockVertex2 = mock(IRVertex.class);
     final Stage dstStage2 = setupStages("dstStage-" + testIndex2);
-    dummyEdge2 = new StageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2,
-        srcStage, dstStage2, CODER, false);
+    dummyEdge2 = new StageEdgeBuilder(edgeId2)
+        .setEdgeProperties(edgeProperties)
+        .setSrcVertex(srcMockVertex)
+        .setDstVertex(dstMockVertex2)
+        .setSrcStage(srcStage)
+        .setDstStage(dstStage2)
+        .setSideInputFlag(false)
+        .build();
     // Initialize states in Master
     srcStage.getTaskIds().forEach(srcTaskId -> {
       final String blockId = RuntimeIdGenerator.generateBlockId(

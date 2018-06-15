@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,8 @@ import java.io.OutputStream;
 import java.io.Serializable;
 
 /**
- * A {@link Coder Coder&lt;T&gt;} object encodes or decodes values of type {@code T} into byte streams.
+ * A coder object encodes or decodes values of type {@code T} into byte streams.
+ *
  * @param <T> element type.
  */
 public interface Coder<T> extends Serializable {
@@ -31,7 +32,7 @@ public interface Coder<T> extends Serializable {
    * Because the user can want to keep a single output stream and continuously concatenate elements,
    * the output stream should not be closed.
    *
-   * @param element the element to be encoded
+   * @param element   the element to be encoded
    * @param outStream the stream on which encoded bytes are written
    * @throws IOException if fail to encode
    */

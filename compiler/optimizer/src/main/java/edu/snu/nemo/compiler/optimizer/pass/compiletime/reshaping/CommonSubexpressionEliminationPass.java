@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
@@ -147,7 +148,8 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
             outEdges.getOrDefault(ov, new HashSet<>()).forEach(e -> {
               outListToModify.remove(e);
               final IREdge newIrEdge = new IREdge(e.getProperty(ExecutionProperty.Key.DataCommunicationPattern),
-                  operatorVertexToUse, e.getDst(), e.getCoder());
+                  operatorVertexToUse, e.getDst());
+              newIrEdge.setProperty(CoderProperty.of(e.getProperty(ExecutionProperty.Key.Coder)));
               outListToModify.add(newIrEdge);
             });
             outEdges.remove(ov);

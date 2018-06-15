@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ public final class CompiletimeOptimizer {
       if ((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(dag, processedDAG))
           || (passToApply instanceof ReshapingPass && !checkReshapingPass(dag, processedDAG))) {
         throw new CompileTimeOptimizationException(passToApply.getClass().getSimpleName()
-            + "is implemented in a way that doesn't follow its original intention of annotating or reshaping. "
+            + " is implemented in a way that doesn't follow its original intention of annotating or reshaping. "
             + "Modify it or use a general CompileTimePass");
       }
       // Save the processed JSON DAG.

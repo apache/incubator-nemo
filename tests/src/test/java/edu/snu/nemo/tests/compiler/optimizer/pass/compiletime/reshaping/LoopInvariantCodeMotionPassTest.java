@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
@@ -87,11 +88,11 @@ public class LoopInvariantCodeMotionPassTest {
           if (!e.getSrc().equals(vertex7)) {
             builder.connectVertices(e);
           } else {
-            final Optional<IREdge> theIncomingEdge = newDAGIncomingEdge.stream().findFirst();
-            assertTrue(theIncomingEdge.isPresent());
-            final IREdge newIREdge =
-                new IREdge(theIncomingEdge.get().getProperty(ExecutionProperty.Key.DataCommunicationPattern),
-                    theIncomingEdge.get().getSrc(), alsLoop, theIncomingEdge.get().getCoder());
+            final Optional<IREdge> incomingEdge = newDAGIncomingEdge.stream().findFirst();
+            assertTrue(incomingEdge.isPresent());
+            final IREdge newIREdge = new IREdge(incomingEdge.get().getProperty(
+                ExecutionProperty.Key.DataCommunicationPattern), incomingEdge.get().getSrc(), alsLoop);
+            newIREdge.setProperty(CoderProperty.of(incomingEdge.get().getProperty(ExecutionProperty.Key.Coder)));
             builder.connectVertices(newIREdge);
           }
         });

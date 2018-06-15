@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,12 +46,19 @@ public interface Transform<I, O> extends Serializable {
   void close();
 
   /**
+   * @return tag
+   */
+  default Object getTag() {
+    return null;
+  }
+
+  /**
    * Context of the transform.
    */
   interface Context {
     /**
      * @return sideInputs.
      */
-    Map<Transform, Object> getSideInputs();
+    Map getSideInputs();
   }
 }

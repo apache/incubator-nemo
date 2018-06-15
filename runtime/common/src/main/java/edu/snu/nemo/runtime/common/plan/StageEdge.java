@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.common.plan;
 
-import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.runtime.common.data.KeyRange;
@@ -48,24 +47,23 @@ public final class StageEdge extends RuntimeEdge<Stage> {
 
   /**
    * Constructor.
-   * @param runtimeEdgeId id of the runtime edge.
+   *
+   * @param runtimeEdgeId  id of the runtime edge.
    * @param edgeProperties edge execution properties.
-   * @param srcVertex source IRVertex in the srcStage of this edge.
-   * @param dstVertex destination IRVertex in the dstStage of this edge.
-   * @param srcStage source stage.
-   * @param dstStage destination stage.
-   * @param coder the coder for enconding and deconding.
-   * @param isSideInput whether or not the edge is a sideInput edge.
+   * @param srcVertex      source IRVertex in the srcStage of this edge.
+   * @param dstVertex      destination IRVertex in the dstStage of this edge.
+   * @param srcStage       source stage.
+   * @param dstStage       destination stage.
+   * @param isSideInput    whether or not the edge is a sideInput edge.
    */
-  public StageEdge(final String runtimeEdgeId,
-                   final ExecutionPropertyMap edgeProperties,
-                   final IRVertex srcVertex,
-                   final IRVertex dstVertex,
-                   final Stage srcStage,
-                   final Stage dstStage,
-                   final Coder coder,
-                   final Boolean isSideInput) {
-    super(runtimeEdgeId, edgeProperties, srcStage, dstStage, coder, isSideInput);
+  StageEdge(final String runtimeEdgeId,
+            final ExecutionPropertyMap edgeProperties,
+            final IRVertex srcVertex,
+            final IRVertex dstVertex,
+            final Stage srcStage,
+            final Stage dstStage,
+            final Boolean isSideInput) {
+    super(runtimeEdgeId, edgeProperties, srcStage, dstStage, isSideInput);
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
     // Initialize the key range of each dst task.
@@ -96,7 +94,6 @@ public final class StageEdge extends RuntimeEdge<Stage> {
     sb.append("\", \"edgeProperties\": ").append(getExecutionProperties());
     sb.append(", \"externalSrcVertexId\": \"").append(srcVertex.getId());
     sb.append("\", \"externalDstVertexId\": \"").append(dstVertex.getId());
-    sb.append("\", \"coder\": \"").append(getCoder().toString());
     sb.append("\"}");
     return sb.toString();
   }
@@ -110,6 +107,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
 
   /**
    * Sets the task idx to key range list.
+   *
    * @param taskIdxToKeyRange the list to set.
    */
   public void setTaskIdxToKeyRange(final List<KeyRange> taskIdxToKeyRange) {

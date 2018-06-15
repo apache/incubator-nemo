@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 
 import java.io.Serializable;
 import java.util.List;
@@ -28,7 +27,6 @@ import java.util.Map;
 public final class Task implements Serializable {
   private final String jobId;
   private final String taskId;
-  private final int taskIdx;
   private final List<StageEdge> taskIncomingEdges;
   private final List<StageEdge> taskOutgoingEdges;
   private final int attemptIdx;
@@ -58,7 +56,6 @@ public final class Task implements Serializable {
               final Map<String, Readable> irVertexIdToReadable) {
     this.jobId = jobId;
     this.taskId = taskId;
-    this.taskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
     this.attemptIdx = attemptIdx;
     this.containerType = containerType;
     this.serializedIRDag = serializedIRDag;
@@ -86,13 +83,6 @@ public final class Task implements Serializable {
    */
   public String getTaskId() {
     return taskId;
-  }
-
-  /**
-   * @return the idx of the task.
-   */
-  public int getTaskIdx() {
-    return taskIdx;
   }
 
   /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
  */
 package edu.snu.nemo.runtime.common.plan;
 
-
-import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 
@@ -30,19 +28,20 @@ public final class StageEdgeBuilder {
   private Stage dstStage;
   private IRVertex srcVertex;
   private IRVertex dstVertex;
-  private Coder coder;
   private Boolean isSideInput;
 
   /**
    * Represents the edge between vertices in a logical plan.
+   *
    * @param irEdgeId id of this edge.
    */
-  StageEdgeBuilder(final String irEdgeId) {
+  public StageEdgeBuilder(final String irEdgeId) {
     this.stageEdgeId = irEdgeId;
   }
 
   /**
    * Setter for edge properties.
+   *
    * @param ea the edge properties.
    * @return the updated StageEdgeBuilder.
    */
@@ -53,6 +52,7 @@ public final class StageEdgeBuilder {
 
   /**
    * Setter for the source stage.
+   *
    * @param ss the source stage.
    * @return the updated StageEdgeBuilder.
    */
@@ -63,6 +63,7 @@ public final class StageEdgeBuilder {
 
   /**
    * Setter for the destination stage.
+   *
    * @param ds the destination stage.
    * @return the updated StageEdgeBuilder.
    */
@@ -73,6 +74,7 @@ public final class StageEdgeBuilder {
 
   /**
    * Setter for the source vertex.
+   *
    * @param sv the source vertex.
    * @return the updated StageEdgeBuilder.
    */
@@ -83,6 +85,7 @@ public final class StageEdgeBuilder {
 
   /**
    * Setter for the destination vertex.
+   *
    * @param dv the destination vertex.
    * @return the updated StageEdgeBuilder.
    */
@@ -92,17 +95,8 @@ public final class StageEdgeBuilder {
   }
 
   /**
-   * Setter for coder.
-   * @param c the coder.
-   * @return the updated StageEdgeBuilder.
-   */
-  public StageEdgeBuilder setCoder(final Coder c) {
-    this.coder = c;
-    return this;
-  }
-
-  /**
    * Setter for side input flag.
+   *
    * @param sideInputFlag the side input flag.
    * @return the updated StageEdgeBuilder.
    */
@@ -111,7 +105,10 @@ public final class StageEdgeBuilder {
     return this;
   }
 
+  /**
+   * @return the built stage edge.
+   */
   public StageEdge build() {
-    return new StageEdge(stageEdgeId, edgeProperties, srcVertex, dstVertex, srcStage, dstStage, coder, isSideInput);
+    return new StageEdge(stageEdgeId, edgeProperties, srcVertex, dstVertex, srcStage, dstStage, isSideInput);
   }
 }

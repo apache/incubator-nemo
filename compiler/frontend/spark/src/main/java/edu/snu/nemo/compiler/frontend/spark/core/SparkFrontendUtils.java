@@ -19,6 +19,7 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -53,6 +54,8 @@ import java.util.Stack;
  * Utility class for RDDs.
  */
 public final class SparkFrontendUtils {
+  private static final KeyExtractorProperty SPARK_KEY_EXTRACTOR_PROP = KeyExtractorProperty.of(new SparkKeyExtractor());
+
   /**
    * Private constructor.
    */
@@ -96,8 +99,9 @@ public final class SparkFrontendUtils {
     builder.addVertex(collectVertex, loopVertexStack);
 
     final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, collectVertex),
-        lastVertex, collectVertex, new SparkCoder(serializer));
-    newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor()));
+        lastVertex, collectVertex);
+    newEdge.setProperty(CoderProperty.of(new SparkCoder(serializer)));
+    newEdge.setProperty(SPARK_KEY_EXTRACTOR_PROP);
     builder.connectVertices(newEdge);
 
     // launch DAG

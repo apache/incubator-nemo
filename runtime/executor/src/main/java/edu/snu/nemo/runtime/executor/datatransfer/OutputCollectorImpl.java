@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,9 @@
 package edu.snu.nemo.runtime.executor.datatransfer;
 
 import edu.snu.nemo.common.ir.OutputCollector;
-import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Queue;
 
 /**
  * OutputCollector implementation.
@@ -28,17 +26,13 @@ import java.util.List;
  * @param <O> output type.
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
-  private final ArrayDeque<O> outputQueue;
-  private RuntimeEdge sideInputRuntimeEdge;
-  private List<String> sideInputReceivers;
+  private final Queue<O> outputQueue;
 
   /**
    * Constructor of a new OutputCollectorImpl.
    */
   public OutputCollectorImpl() {
-    this.outputQueue = new ArrayDeque<>();
-    this.sideInputRuntimeEdge = null;
-    this.sideInputReceivers = new ArrayList<>();
+    this.outputQueue = new ArrayDeque<>(1);
   }
 
   @Override
@@ -68,51 +62,5 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    */
   public boolean isEmpty() {
     return outputQueue.isEmpty();
-  }
-
-  /**
-   * Return the size of this OutputCollector.
-   *
-   * @return the total number of elements in this OutputCollector.
-   */
-  public int size() {
-    return outputQueue.size();
-  }
-
-  /**
-   * Mark this edge as side input so that TaskExecutor can retrieve
-   * source transform using it.
-   *
-   * @param edge the RuntimeEdge to mark as side input.
-   */
-  public void setSideInputRuntimeEdge(final RuntimeEdge edge) {
-    sideInputRuntimeEdge = edge;
-  }
-
-  /**
-   * Get the RuntimeEdge marked as side input.
-   *
-   * @return the RuntimeEdge marked as side input.
-   */
-  public RuntimeEdge getSideInputRuntimeEdge() {
-    return sideInputRuntimeEdge;
-  }
-
-  /**
-   * Set this OutputCollector as having side input for the given child task.
-   *
-   * @param physicalTaskId the id of child task whose side input will be put into this OutputCollector.
-   */
-  public void setAsSideInputFor(final String physicalTaskId) {
-    sideInputReceivers.add(physicalTaskId);
-  }
-
-  /**
-   * Check if this OutputCollector has side input for the given child task.
-   *
-   * @return true if it contains side input for child task of the given id.
-   */
-  public boolean hasSideInputFor(final String physicalTaskId) {
-    return sideInputReceivers.contains(physicalTaskId);
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.tests.common.ir;
+package edu.snu.nemo.common.ir;
 
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.DAG;
@@ -24,7 +24,7 @@ import edu.snu.nemo.common.ir.vertex.LoopVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAGBuilder;
-import edu.snu.nemo.compiler.optimizer.examples.EmptyComponents;
+import edu.snu.nemo.common.test.EmptyComponents;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -54,26 +54,17 @@ public class LoopVertexTest {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
     loopDAGBuilder.addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.Shuffle,
-            map1, groupByKey, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
-            groupByKey, combine, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
-            combine, map2, Coder.DUMMY_CODER));
-    loopVertex.addDagIncomingEdge(new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
-        source, map1, Coder.DUMMY_CODER));
-    loopVertex.addIterativeIncomingEdge(new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
-        map2, map1, Coder.DUMMY_CODER));
+        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.Shuffle, map1, groupByKey))
+        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
+        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, combine, map2));
+    loopVertex.addDagIncomingEdge(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, source, map1));
+    loopVertex.addIterativeIncomingEdge(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, map2, map1));
 
     originalDAG = builder.addVertex(source).addVertex(map1).addVertex(groupByKey).addVertex(combine).addVertex(map2)
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
-            source, map1, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.Shuffle,
-            map1, groupByKey, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
-            groupByKey, combine, Coder.DUMMY_CODER))
-        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
-            combine, map2, Coder.DUMMY_CODER))
+        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, source, map1))
+        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.Shuffle, map1, groupByKey))
+        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, groupByKey, combine))
+        .connectVertices(new IREdge(DataCommunicationPatternProperty.Value.OneToOne, combine, map2))
         .build();
   }
 

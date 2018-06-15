@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.compiler.frontend.beam;
 
+import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamCoder;
 import edu.snu.nemo.common.dag.DAGBuilder;
@@ -105,8 +106,8 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     beamNode.getInputs().values().stream().filter(pValueToVertex::containsKey)
         .forEach(pValue -> {
           final IRVertex src = pValueToVertex.get(pValue);
-          final BeamCoder coder = pValueToCoder.get(pValue);
-          final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, irVertex), src, irVertex, coder);
+          final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, irVertex), src, irVertex);
+          edge.setProperty(CoderProperty.of(pValueToCoder.get(pValue)));
           edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
           this.builder.connectVertices(edge);
         });
@@ -200,9 +201,9 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     sideInputs.stream().filter(pValueToVertex::containsKey)
         .forEach(pValue -> {
           final IRVertex src = pValueToVertex.get(pValue);
-          final BeamCoder coder = pValueToCoder.get(pValue);
           final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, irVertex),
-              src, irVertex, coder, true);
+              src, irVertex, true);
+          edge.setProperty(CoderProperty.of(pValueToCoder.get(pValue)));
           edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
           builder.connectVertices(edge);
         });

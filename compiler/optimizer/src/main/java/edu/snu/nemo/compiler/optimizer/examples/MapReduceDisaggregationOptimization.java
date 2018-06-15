@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,13 +15,13 @@
  */
 package edu.snu.nemo.compiler.optimizer.examples;
 
-import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
+import edu.snu.nemo.common.test.EmptyComponents;
 import edu.snu.nemo.compiler.optimizer.policy.DisaggregationPolicy;
 import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 
@@ -58,12 +58,10 @@ public final class MapReduceDisaggregationOptimization {
     builder.addVertex(map);
     builder.addVertex(reduce);
 
-    final IREdge edge1 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
-        source, map, Coder.DUMMY_CODER);
+    final IREdge edge1 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, source, map);
     builder.connectVertices(edge1);
 
-    final IREdge edge2 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle,
-        map, reduce, Coder.DUMMY_CODER);
+    final IREdge edge2 = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, map, reduce);
     builder.connectVertices(edge2);
 
     final DAG<IRVertex, IREdge> dag = builder.build();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,18 +23,18 @@ import java.util.Map;
  * Transform Context Implementation.
  */
 public final class ContextImpl implements Transform.Context {
-  private final Map<Transform, Object> sideInputs;
+  private final Map sideInputs;
 
   /**
    * Constructor of Context Implementation.
    * @param sideInputs side inputs.
    */
-  public ContextImpl(final Map<Transform, Object> sideInputs) {
+  public ContextImpl(final Map sideInputs) {
     this.sideInputs = sideInputs;
   }
 
   @Override
-  public Map<Transform, Object> getSideInputs() {
+  public Map getSideInputs() {
     return this.sideInputs;
   }
 }
