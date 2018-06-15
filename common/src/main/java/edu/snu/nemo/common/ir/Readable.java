@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.common.ir;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
 
@@ -27,9 +28,9 @@ public interface Readable<O> extends Serializable {
    * Method to read data from the source.
    *
    * @return an {@link Iterable} of the data read by the readable.
-   * @throws Exception exception while reading data.
+   * @throws IOException exception while reading data.
    */
-  Iterable<O> read() throws Exception;
+  Iterable<O> read() throws IOException;
 
   /**
    * Returns the list of locations where this readable resides.

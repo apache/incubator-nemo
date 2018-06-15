@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.common.ir.edge;
 
-import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.Edge;
 import edu.snu.nemo.common.ir.IdManager;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
@@ -34,44 +33,42 @@ import java.util.function.Consumer;
  */
 public final class IREdge extends Edge<IRVertex> {
   private final ExecutionPropertyMap<EdgeExecutionProperty> executionProperties;
-  private final Coder coder;
   private final Boolean isSideInput;
 
   /**
    * Constructor of IREdge.
+   * This constructor assumes that this edge is not for a side input.
+   *
    * @param commPattern data communication pattern type of the edge.
-   * @param src source vertex.
-   * @param dst destination vertex.
-   * @param coder coder.
+   * @param src         source vertex.
+   * @param dst         destination vertex.
    */
   public IREdge(final DataCommunicationPatternProperty.Value commPattern,
                 final IRVertex src,
-                final IRVertex dst,
-                final Coder coder) {
-    this(commPattern, src, dst, coder, false);
+                final IRVertex dst) {
+    this(commPattern, src, dst, false);
   }
 
   /**
    * Constructor of IREdge.
+   *
    * @param commPattern data communication pattern type of the edge.
-   * @param src source vertex.
-   * @param dst destination vertex.
-   * @param coder coder.
+   * @param src         source vertex.
+   * @param dst         destination vertex.
    * @param isSideInput flag for whether or not the edge is a sideInput.
    */
   public IREdge(final DataCommunicationPatternProperty.Value commPattern,
                 final IRVertex src,
                 final IRVertex dst,
-                final Coder coder,
                 final Boolean isSideInput) {
     super(IdManager.newEdgeId(), src, dst);
-    this.coder = coder;
     this.isSideInput = isSideInput;
     this.executionProperties = ExecutionPropertyMap.of(this, commPattern);
   }
 
   /**
    * Set an executionProperty of the IREdge.
+   *
    * @param executionProperty the execution property.
    * @return the IREdge with the execution property set.
    */
@@ -82,7 +79,8 @@ public final class IREdge extends Edge<IRVertex> {
 
   /**
    * Get the executionProperty of the IREdge.
-   * @param <T> Type of the return value.
+   *
+   * @param <T>                  Type of the return value.
    * @param executionPropertyKey key of the execution property.
    * @return the execution property.
    */
@@ -96,13 +94,6 @@ public final class IREdge extends Edge<IRVertex> {
    */
   public ExecutionPropertyMap getExecutionProperties() {
     return executionProperties;
-  }
-
-  /**
-   * @return coder for the edge.
-   */
-  public Coder getCoder() {
-    return coder;
   }
 
   /**
@@ -122,6 +113,7 @@ public final class IREdge extends Edge<IRVertex> {
 
   /**
    * Static function to copy executionProperties from an edge to the other.
+   *
    * @param thatEdge the edge to copy executionProperties to.
    */
   public void copyExecutionPropertiesTo(final IREdge thatEdge) {
@@ -137,7 +129,7 @@ public final class IREdge extends Edge<IRVertex> {
       return false;
     }
 
-    IREdge irEdge = (IREdge) o;
+    final IREdge irEdge = (IREdge) o;
 
     return executionProperties.equals(irEdge.getExecutionProperties()) && hasSameItineraryAs(irEdge);
   }
@@ -156,8 +148,7 @@ public final class IREdge extends Edge<IRVertex> {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"id\": \"").append(getId());
     sb.append("\", \"executionProperties\": ").append(executionProperties);
-    sb.append(", \"coder\": \"").append(coder.toString());
-    sb.append("\"}");
+    sb.append("}");
     return sb.toString();
   }
 }

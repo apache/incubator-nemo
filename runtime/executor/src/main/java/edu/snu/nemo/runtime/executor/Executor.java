@@ -17,7 +17,9 @@ package edu.snu.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
 import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
+import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.IllegalMessageException;
@@ -32,6 +34,7 @@ import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.executor.data.SerializerManager;
 import edu.snu.nemo.runtime.executor.datatransfer.DataTransferFactory;
+import edu.snu.nemo.runtime.executor.task.TaskExecutor;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.tang.annotations.Parameter;
 
@@ -105,14 +108,13 @@ public final class Executor {
       final TaskStateManager taskStateManager =
           new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
 
-      task.getTaskIncomingEdges().forEach(e -> serializerManager.register(e.getId(), e.getCoder(),
-          e.getPropertyValue(CompressionProperty.class)));
-      task.getTaskOutgoingEdges().forEach(e -> serializerManager.register(e.getId(), e.getCoder(),
-          e.getPropertyValue(CompressionProperty.class)));
+      task.getTaskIncomingEdges().forEach(e -> serializerManager.register(e.getId(),
+          e.getPropertyValue(CoderProperty.class).get(), e.getPropertyValue(CompressionProperty.class)));
+      task.getTaskOutgoingEdges().forEach(e -> serializerManager.register(e.getId(),
+          e.getPropertyValue(CoderProperty.class).get(), e.getPropertyValue(CompressionProperty.class)));
       irDag.getVertices().forEach(v -> {
-        irDag.getOutgoingEdgesOf(v)
-            .forEach(e -> serializerManager.register(e.getId(), e.getCoder(),
-                e.getPropertyValue(CompressionProperty.class)));
+        irDag.getOutgoingEdgesOf(v).forEach(e -> serializerManager.register(e.getId(),
+            e.getPropertyValue(CoderProperty.class).get(), e.getPropertyValue(CompressionProperty.class)));
       });
 
       new TaskExecutor(

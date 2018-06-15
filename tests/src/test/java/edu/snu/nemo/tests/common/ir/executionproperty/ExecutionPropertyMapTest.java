@@ -17,6 +17,7 @@ package edu.snu.nemo.tests.common.ir.executionproperty;
 
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
@@ -40,8 +41,7 @@ public class ExecutionPropertyMapTest {
   private final IRVertex source = new EmptyComponents.EmptySourceVertex<>("Source");
   private final IRVertex destination = new OperatorVertex(new EmptyComponents.EmptyTransform("MapElements"));
   private final DataCommunicationPatternProperty.Value comPattern = DataCommunicationPatternProperty.Value.OneToOne;
-  private final IREdge edge = new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
-      source, destination, Coder.DUMMY_CODER);
+  private final IREdge edge = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, source, destination);
 
   private ExecutionPropertyMap<EdgeExecutionProperty> edgeMap;
   private ExecutionPropertyMap<VertexExecutionProperty> vertexMap;
@@ -66,6 +66,8 @@ public class ExecutionPropertyMapTest {
     assertEquals(DataStoreProperty.Value.MemoryStore, edgeMap.get(DataStoreProperty.class).get());
     edgeMap.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
     assertEquals(DataFlowModelProperty.Value.Pull, edgeMap.get(DataFlowModelProperty.class).get());
+    edgeMap.put(CoderProperty.of(Coder.DUMMY_CODER));
+    assertEquals(Coder.DUMMY_CODER, edgeMap.get(CoderProperty.class).get());
 
     edgeMap.remove(DataFlowModelProperty.class);
     assertFalse(edgeMap.get(DataFlowModelProperty.class).isPresent());

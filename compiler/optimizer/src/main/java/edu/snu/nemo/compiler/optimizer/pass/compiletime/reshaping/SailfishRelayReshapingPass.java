@@ -17,6 +17,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
+import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -58,10 +59,11 @@ public final class SailfishRelayReshapingPass extends ReshapingPass {
             final OperatorVertex iFileMergerVertex = new OperatorVertex(new RelayTransform());
             builder.addVertex(iFileMergerVertex);
             final IREdge newEdgeToMerger = new IREdge(DataCommunicationPatternProperty.Value.Shuffle,
-                edge.getSrc(), iFileMergerVertex, edge.getCoder(), edge.isSideInput());
-            final IREdge newEdgeFromMerger = new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
-                iFileMergerVertex, v, edge.getCoder());
+                edge.getSrc(), iFileMergerVertex, edge.isSideInput());
             edge.copyExecutionPropertiesTo(newEdgeToMerger);
+            final IREdge newEdgeFromMerger = new IREdge(DataCommunicationPatternProperty.Value.OneToOne,
+                iFileMergerVertex, v);
+            newEdgeFromMerger.setProperty(CoderProperty.of(edge.getProperty(ExecutionProperty.Key.Coder)));
             builder.connectVertices(newEdgeToMerger);
             builder.connectVertices(newEdgeFromMerger);
           } else {
