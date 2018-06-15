@@ -23,9 +23,9 @@ import java.io.*;
 public final class IntCoder implements Coder<Integer> {
 
   /**
-   * Constructor.
+   * A private constructor.
    */
-  public IntCoder() {
+  private IntCoder() {
   }
 
   /**
@@ -47,7 +47,6 @@ public final class IntCoder implements Coder<Integer> {
     // because the DataInputStream itself will not contain any extra information.
     // (when we close this stream, the inStream will be closed together.)
     final DataInputStream dataInputStream = new DataInputStream(inStream);
-    final int value = dataInputStream.readInt();
-    return value;
+    return dataInputStream.readInt();
   }
 }
