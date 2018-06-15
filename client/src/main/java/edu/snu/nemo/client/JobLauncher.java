@@ -59,14 +59,15 @@ public final class JobLauncher {
   private static final Tang TANG = Tang.Factory.getTang();
   private static final Logger LOG = LoggerFactory.getLogger(JobLauncher.class.getName());
   private static final int LOCAL_NUMBER_OF_EVALUATORS = 100; // hopefully large enough for our use....
+
   private static Configuration jobAndDriverConf = null;
   private static Configuration deployModeConf = null;
   private static Configuration builtJobConf = null;
   private static DriverRPCServer driverRPCServer;
   private static ExecutorService reefRunThread;
-  private static CountDownLatch resourceReadyLatchH;
+  private static CountDownLatch resourceReadyLatch;
   private static CountDownLatch reefJobFinishLatch;
-  private static volatile boolean nemoDriverRunning = false;
+  private static volatile boolean nemoDriverRunning;
 
   /**
    * private constructor.
@@ -81,14 +82,15 @@ public final class JobLauncher {
    * @throws Exception exception on the way.
    */
   public static void main(final String[] args) throws Exception {
-    // Launch RPC server
-    resourceReadyLatchH = new CountDownLatch(1);
+    resourceReadyLatch = new CountDownLatch(1);
     reefJobFinishLatch = new CountDownLatch(1);
+    nemoDriverRunning = false;
+    // Launch RPC server
     driverRPCServer = new DriverRPCServer();
     driverRPCServer
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, message -> { })
         .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady,
-            message -> resourceReadyLatchH.countDown())
+            message -> resourceReadyLatch.countDown())
         .run();
 
     // Get Job and Driver Confs
@@ -151,7 +153,7 @@ public final class JobLauncher {
       launchNemo();
     }
     try {
-      resourceReadyLatchH.await();
+      resourceReadyLatch.await();
     } catch (final InterruptedException e) {
       throw new RuntimeException(e);
     }
