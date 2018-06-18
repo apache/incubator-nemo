@@ -106,11 +106,10 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
   /**
    * Put the given execution property  in the ExecutionPropertyMap.
    * @param executionProperty execution property to insert.
-   * @return this map
+   * @return the previous execution property, or null if there was no execution property with the specified property key
    */
-  public ExecutionPropertyMap put(final T executionProperty) {
-    properties.put(executionProperty.getClass(), executionProperty);
-    return this;
+  public T put(final T executionProperty) {
+    return properties.put(executionProperty.getClass(), executionProperty);
   }
 
   /**

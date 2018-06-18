@@ -523,8 +523,8 @@ public final class DataTransferTest {
   private Pair<IRVertex, IRVertex> setupVertices(final String edgeId,
                                                  final BlockManagerWorker sender,
                                                  final BlockManagerWorker receiver) {
-    serializerManagers.get(sender).register(edgeId, CODER, Optional.empty());
-    serializerManagers.get(receiver).register(edgeId, CODER, Optional.empty());
+    serializerManagers.get(sender).register(edgeId, CODER);
+    serializerManagers.get(receiver).register(edgeId, CODER);
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
@@ -543,10 +543,10 @@ public final class DataTransferTest {
                                                  final String edgeId2,
                                                  final BlockManagerWorker sender,
                                                  final BlockManagerWorker receiver) {
-    serializerManagers.get(sender).register(edgeId, CODER, Optional.empty());
-    serializerManagers.get(receiver).register(edgeId, CODER, Optional.empty());
-    serializerManagers.get(sender).register(edgeId2, CODER, Optional.empty());
-    serializerManagers.get(receiver).register(edgeId2, CODER, Optional.empty());
+    serializerManagers.get(sender).register(edgeId, CODER);
+    serializerManagers.get(receiver).register(edgeId, CODER);
+    serializerManagers.get(sender).register(edgeId2, CODER);
+    serializerManagers.get(receiver).register(edgeId2, CODER);
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");

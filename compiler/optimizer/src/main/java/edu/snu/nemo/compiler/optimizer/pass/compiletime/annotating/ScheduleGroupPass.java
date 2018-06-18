@@ -56,8 +56,8 @@ public final class ScheduleGroupPass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     // We assume that the input dag is tagged with stage ids.
-    if (!dag.getVertices().stream()
-        .anyMatch(irVertex -> irVertex.getPropertyValue(StageIdProperty.class).isPresent())) {
+    if (dag.getVertices().stream()
+        .anyMatch(irVertex -> !irVertex.getPropertyValue(StageIdProperty.class).isPresent())) {
       throw new RuntimeException("There exists an IR vertex going through ScheduleGroupPass "
           + "without stage id tagged.");
     }

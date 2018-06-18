@@ -50,11 +50,22 @@ public final class SerializerManager {
    *
    * @param runtimeEdgeId id of the runtime edge.
    * @param coder         the corresponding coder.
-   * @param compressionProperty   compression property
+   */
+  public void register(final String runtimeEdgeId,
+                       final Coder coder) {
+    register(runtimeEdgeId, coder, null);
+  }
+
+  /**
+   * Register a coder for runtime edge.
+   *
+   * @param runtimeEdgeId id of the runtime edge.
+   * @param coder         the corresponding coder.
+   * @param compressionProperty   compression property, or null not to enable compression
    */
   public void register(final String runtimeEdgeId,
                        final Coder coder,
-                       final Optional<CompressionProperty.Value> compressionProperty) {
+                       final CompressionProperty.Value compressionProperty) {
     LOG.debug("{} edge id registering to SerializerManager", runtimeEdgeId);
     final Serializer serializer = new Serializer(coder, Collections.emptyList());
     runtimeEdgeIdToSerializer.putIfAbsent(runtimeEdgeId, serializer);
@@ -62,10 +73,10 @@ public final class SerializerManager {
     final List<StreamChainer> streamChainerList = new ArrayList<>();
 
     // Compression chain
-    if (compressionProperty.isPresent()) {
+    if (compressionProperty != null) {
       LOG.debug("Adding {} compression chain for {}",
-          compressionProperty.get(), runtimeEdgeId);
-      streamChainerList.add(new CompressionStreamChainer(compressionProperty.get()));
+          compressionProperty, runtimeEdgeId);
+      streamChainerList.add(new CompressionStreamChainer(compressionProperty));
     }
 
     serializer.setStreamChainers(streamChainerList);

@@ -61,11 +61,7 @@ public final class LoopExtractionPass extends ReshapingPass {
 
   /**
    * This part groups each iteration of loops together by observing the LoopVertex assigned to primitive operators,
-<<<<<<< HEAD
-   * which is assigned by the Nemo PipelineVisitor. This also shows in which depth of
-=======
    * which is assigned by the NemoPipelineVisitor. This also shows in which depth of
->>>>>>> apache/master
    * nested loops the function handles. It recursively calls itself from the maximum depth until 0.
    * @param dag DAG to process
    * @param depth the depth of the stack to process. Must be greater than 0.

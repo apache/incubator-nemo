@@ -108,12 +108,15 @@ public final class Executor {
           new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
 
       task.getTaskIncomingEdges().forEach(e -> serializerManager.register(e.getId(),
-          e.getPropertyValue(CoderProperty.class).get(), e.getPropertyValue(CompressionProperty.class)));
+          e.getPropertyValue(CoderProperty.class).get(), e.getPropertyValue(CompressionProperty.class)
+              .orElse(null)));
       task.getTaskOutgoingEdges().forEach(e -> serializerManager.register(e.getId(),
-          e.getPropertyValue(CoderProperty.class).get(), e.getPropertyValue(CompressionProperty.class)));
+          e.getPropertyValue(CoderProperty.class).get(), e.getPropertyValue(CompressionProperty.class).
+              orElse(null)));
       irDag.getVertices().forEach(v -> {
         irDag.getOutgoingEdgesOf(v).forEach(e -> serializerManager.register(e.getId(),
-            e.getPropertyValue(CoderProperty.class).get(), e.getPropertyValue(CompressionProperty.class)));
+            e.getPropertyValue(CoderProperty.class).get(), e.getPropertyValue(CompressionProperty.class)
+                .orElse(null)));
       });
 
       new TaskExecutor(
