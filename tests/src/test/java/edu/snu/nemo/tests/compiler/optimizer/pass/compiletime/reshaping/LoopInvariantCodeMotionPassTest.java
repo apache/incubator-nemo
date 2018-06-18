@@ -19,8 +19,8 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.LoopExtractionPass;
@@ -90,9 +90,9 @@ public class LoopInvariantCodeMotionPassTest {
           } else {
             final Optional<IREdge> incomingEdge = newDAGIncomingEdge.stream().findFirst();
             assertTrue(incomingEdge.isPresent());
-            final IREdge newIREdge = new IREdge(incomingEdge.get().getProperty(
-                ExecutionProperty.Key.DataCommunicationPattern), incomingEdge.get().getSrc(), alsLoop);
-            newIREdge.setProperty(CoderProperty.of(incomingEdge.get().getProperty(ExecutionProperty.Key.Coder)));
+            final IREdge newIREdge = new IREdge(incomingEdge.get().getPropertyValue(
+                DataCommunicationPatternProperty.class).get(), incomingEdge.get().getSrc(), alsLoop);
+            newIREdge.setProperty(CoderProperty.of(incomingEdge.get().getPropertyValue(CoderProperty.class).get()));
             builder.connectVertices(newIREdge);
           }
         });

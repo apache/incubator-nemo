@@ -19,7 +19,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
 
 /**
@@ -31,7 +30,7 @@ public final class DataSkewVertexPass extends AnnotatingPass {
    * Default constructor.
    */
   public DataSkewVertexPass() {
-    super(ExecutionProperty.Key.DynamicOptimizationType);
+    super(DynamicOptimizationProperty.class);
   }
 
   @Override

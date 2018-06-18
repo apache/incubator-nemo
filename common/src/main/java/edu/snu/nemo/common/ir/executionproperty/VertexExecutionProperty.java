@@ -13,28 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.ir.vertex.executionproperty;
+package edu.snu.nemo.common.ir.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import java.io.Serializable;
 
 /**
- * StageId ExecutionProperty.
+ * {@link ExecutionProperty} for {@link edu.snu.nemo.common.ir.vertex.IRVertex}.
+ * @param <T> Type of the value.
  */
-public final class StageIdProperty extends VertexExecutionProperty<Integer> {
+public abstract class VertexExecutionProperty<T extends Serializable> extends ExecutionProperty<T> {
   /**
-   * Constructor.
-   * @param value value of the execution property.
+   * Default constructor.
+   * @param value value of the VertexExecutionProperty.
    */
-  private StageIdProperty(final Integer value) {
+  public VertexExecutionProperty(final T value) {
     super(value);
-  }
-
-  /**
-   * Static method exposing the constructor.
-   * @param value value of the new execution property.
-   * @return the newly created execution property.
-   */
-  public static StageIdProperty of(final Integer value) {
-    return new StageIdProperty(value);
   }
 }

@@ -21,9 +21,10 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
 import edu.snu.nemo.common.exception.IllegalVertexOperationException;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.StageIdProperty;
 
 import java.io.Serializable;
 import java.util.*;
@@ -244,16 +245,16 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     // SideInput is not compatible with Push
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
         .filter(e -> Boolean.TRUE.equals(e.isSideInput()))
-        .filter(e -> DataFlowModelProperty.Value.Push.equals(e.getProperty(ExecutionProperty.Key.DataFlowModel)))
+        .filter(e -> DataFlowModelProperty.Value.Push.equals(e.getPropertyValue(DataFlowModelProperty.class).get()))
         .forEach(e -> {
           throw new RuntimeException("DAG execution property check: "
               + "SideInput edge is not compatible with push" + e.getId());
         }));
     // DataSizeMetricCollection is not compatible with Push (All data have to be stored before the data collection)
     vertices.forEach(v -> incomingEdges.get(v).stream().filter(e -> e instanceof IREdge).map(e -> (IREdge) e)
-        .filter(e -> MetricCollectionProperty.Value.DataSkewRuntimePass
-                      .equals(e.getProperty(ExecutionProperty.Key.MetricCollection)))
-        .filter(e -> DataFlowModelProperty.Value.Push.equals(e.getProperty(ExecutionProperty.Key.DataFlowModel)))
+        .filter(e -> Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
+                      .equals(e.getPropertyValue(MetricCollectionProperty.class)))
+        .filter(e -> DataFlowModelProperty.Value.Push.equals(e.getPropertyValue(DataFlowModelProperty.class).get()))
         .forEach(e -> {
           throw new RuntimeException("DAG execution property check: "
               + "DataSizeMetricCollection edge is not compatible with push" + e.getId());
@@ -263,13 +264,14 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
     vertices.stream().filter(v -> v instanceof IRVertex)
         .map(v -> (IRVertex) v)
         .forEach(v -> {
-          final Integer stageId = v.getProperty(ExecutionProperty.Key.StageId);
-          if (stageId != null) {
-            if (!stageIdToParallelismMap.containsKey(stageId)) {
-              stageIdToParallelismMap.put(stageId, v.getProperty(ExecutionProperty.Key.Parallelism));
-            } else if (!stageIdToParallelismMap.get(stageId).equals(v.getProperty(ExecutionProperty.Key.Parallelism))) {
+          final Optional<Integer> stageId = v.getPropertyValue(StageIdProperty.class);
+          if (stageId.isPresent()) {
+            if (!stageIdToParallelismMap.containsKey(stageId.get())) {
+              stageIdToParallelismMap.put(stageId.get(), v.getPropertyValue(ParallelismProperty.class).get());
+            } else if (!stageIdToParallelismMap.get(stageId.get())
+                .equals(v.getPropertyValue(ParallelismProperty.class).get())) {
               throw new RuntimeException("DAG execution property check: vertices are in a same stage, "
-                  + "but has different parallelism execution properties: Stage" + stageId + ": " + v.getId());
+                  + "but has different parallelism execution properties: Stage" + stageId.get() + ": " + v.getId());
             }
           }
         });

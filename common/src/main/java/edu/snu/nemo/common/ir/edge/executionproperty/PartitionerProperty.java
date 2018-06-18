@@ -15,18 +15,18 @@
  */
 package edu.snu.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
  * Partitioner ExecutionProperty.
  */
-public final class PartitionerProperty extends ExecutionProperty<PartitionerProperty.Value> {
+public final class PartitionerProperty extends EdgeExecutionProperty<PartitionerProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
   private PartitionerProperty(final Value value) {
-    super(Key.Partitioner, value);
+    super(value);
   }
 
   /**

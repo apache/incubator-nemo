@@ -15,18 +15,18 @@
  */
 package edu.snu.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
  * MetricCollection ExecutionProperty.
  */
-public final class MetricCollectionProperty extends ExecutionProperty<MetricCollectionProperty.Value> {
+public final class MetricCollectionProperty extends EdgeExecutionProperty<MetricCollectionProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
   private MetricCollectionProperty(final Value value) {
-    super(Key.MetricCollection, value);
+    super(value);
   }
 
   /**

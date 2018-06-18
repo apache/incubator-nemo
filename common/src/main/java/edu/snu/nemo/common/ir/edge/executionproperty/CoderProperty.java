@@ -16,19 +16,19 @@
 package edu.snu.nemo.common.ir.edge.executionproperty;
 
 import edu.snu.nemo.common.coder.Coder;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
  * Coder ExecutionProperty.
  */
-public final class CoderProperty extends ExecutionProperty<Coder> {
+public final class CoderProperty extends EdgeExecutionProperty<Coder> {
   /**
    * Constructor.
    *
    * @param value value of the execution property.
    */
   private CoderProperty(final Coder value) {
-    super(Key.Coder, value);
+    super(value);
   }
 
   /**

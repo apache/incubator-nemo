@@ -18,9 +18,9 @@ package edu.snu.nemo.common.ir.vertex;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 
 import java.io.Serializable;
 import java.util.*;
@@ -217,7 +217,7 @@ public final class LoopVertex extends IRVertex {
       dagBuilder.addVertex(newIrVertex, dagToAdd);
       dagToAdd.getIncomingEdgesOf(irVertex).forEach(edge -> {
         final IRVertex newSrc = originalToNewIRVertex.get(edge.getSrc());
-        final IREdge newIrEdge = new IREdge(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern),
+        final IREdge newIrEdge = new IREdge(edge.getPropertyValue(DataCommunicationPatternProperty.class).get(),
             newSrc, newIrVertex, edge.isSideInput());
         edge.copyExecutionPropertiesTo(newIrEdge);
         dagBuilder.connectVertices(newIrEdge);
@@ -226,7 +226,7 @@ public final class LoopVertex extends IRVertex {
 
     // process DAG incoming edges.
     getDagIncomingEdges().forEach((dstVertex, irEdges) -> irEdges.forEach(edge -> {
-      final IREdge newIrEdge = new IREdge(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern),
+      final IREdge newIrEdge = new IREdge(edge.getPropertyValue(DataCommunicationPatternProperty.class).get(),
           edge.getSrc(), originalToNewIRVertex.get(dstVertex), edge.isSideInput());
       edge.copyExecutionPropertiesTo(newIrEdge);
       dagBuilder.connectVertices(newIrEdge);
@@ -235,7 +235,7 @@ public final class LoopVertex extends IRVertex {
     if (loopTerminationConditionMet()) {
       // if termination condition met, we process the DAG outgoing edge.
       getDagOutgoingEdges().forEach((srcVertex, irEdges) -> irEdges.forEach(edge -> {
-        final IREdge newIrEdge = new IREdge(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern),
+        final IREdge newIrEdge = new IREdge(edge.getPropertyValue(DataCommunicationPatternProperty.class).get(),
             originalToNewIRVertex.get(srcVertex), edge.getDst(), edge.isSideInput());
         edge.copyExecutionPropertiesTo(newIrEdge);
         dagBuilder.addVertex(edge.getDst()).connectVertices(newIrEdge);
@@ -246,7 +246,7 @@ public final class LoopVertex extends IRVertex {
     this.getDagIncomingEdges().clear();
     this.nonIterativeIncomingEdges.forEach((dstVertex, irEdges) -> irEdges.forEach(this::addDagIncomingEdge));
     this.iterativeIncomingEdges.forEach((dstVertex, irEdges) -> irEdges.forEach(edge -> {
-      final IREdge newIrEdge = new IREdge(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern),
+      final IREdge newIrEdge = new IREdge(edge.getPropertyValue(DataCommunicationPatternProperty.class).get(),
           originalToNewIRVertex.get(edge.getSrc()), dstVertex, edge.isSideInput());
       edge.copyExecutionPropertiesTo(newIrEdge);
       this.addDagIncomingEdge(newIrEdge);
