@@ -68,7 +68,6 @@ public final class JobLauncher {
   private static ExecutorService reefRunThread;
   private static CountDownLatch resourceReadyLatch;
   private static CountDownLatch reefJobFinishLatch;
-  private static volatile boolean nemoDriverRunning;
 
   /**
    * private constructor.
@@ -86,7 +85,6 @@ public final class JobLauncher {
     reefRunThread = Executors.newSingleThreadExecutor();
     resourceReadyLatch = new CountDownLatch(1);
     reefJobFinishLatch = new CountDownLatch(1);
-    nemoDriverRunning = false;
     // Launch RPC server
     driverRPCServer = new DriverRPCServer();
     driverRPCServer
@@ -110,6 +108,9 @@ public final class JobLauncher {
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
 
+    // Launch Nemo
+    launchNemo();
+
     // Launch client main
     runUserProgramMain(builtJobConf);
     reefJobFinishLatch.await();
@@ -117,10 +118,6 @@ public final class JobLauncher {
   }
 
   private static void launchNemo() {
-    if (nemoDriverRunning) {
-      throw new RuntimeException("Nemo Driver is already running");
-    }
-    nemoDriverRunning = true;
     if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
       throw new RuntimeException("Configuration for launching driver is not ready");
     }
@@ -150,9 +147,6 @@ public final class JobLauncher {
    */
   // When modifying the signature of this method, see CompilerTestUtil#compileDAG and make corresponding changes
   public static void launchDAG(final DAG dag) {
-    if (!nemoDriverRunning) {
-      launchNemo();
-    }
     try {
       resourceReadyLatch.await();
     } catch (final InterruptedException e) {
