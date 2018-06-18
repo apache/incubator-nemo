@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +15,20 @@
  */
 package edu.snu.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
+// TODO #492: modularizing runtime components for data communication pattern.
 /**
  * DataCommunicationPattern ExecutionProperty.
  */
 public final class DataCommunicationPatternProperty
-    extends ExecutionProperty<DataCommunicationPatternProperty.Value>  {
+    extends EdgeExecutionProperty<DataCommunicationPatternProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
   private DataCommunicationPatternProperty(final Value value) {
-    super(Key.DataCommunicationPattern, value);
+    super(value);
   }
 
   /**

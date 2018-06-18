@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,13 +21,10 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternPro
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import java.util.Collections;
 import java.util.List;
-
-import static edu.snu.nemo.common.ir.executionproperty.ExecutionProperty.Key.DataCommunicationPattern;
 
 /**
  * Optimization pass for tagging parallelism execution property.
@@ -52,7 +49,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
    */
   public DefaultParallelismPass(final int desiredSourceParallelism,
                                 final int shuffleDecreaseFactor) {
-    super(ExecutionProperty.Key.Parallelism, Collections.singleton(DataCommunicationPattern));
+    super(ParallelismProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
     this.desiredSourceParallelism = desiredSourceParallelism;
     this.shuffleDecreaseFactor = shuffleDecreaseFactor;
   }
@@ -68,7 +65,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
           // After that, we set the parallelism as the number of split readers.
           // (It can be more/less than the desired value.)
           final SourceVertex sourceVertex = (SourceVertex) vertex;
-          final Integer originalParallelism = vertex.getProperty(ExecutionProperty.Key.Parallelism);
+          final Integer originalParallelism = vertex.getPropertyValue(ParallelismProperty.class).get();
           // We manipulate them if it is set as default value of 1.
           if (originalParallelism.equals(1)) {
             vertex.setProperty(ParallelismProperty.of(
@@ -79,13 +76,13 @@ public final class DefaultParallelismPass extends AnnotatingPass {
           // as a sideInput will have their own number of parallelism
           final Integer o2oParallelism = inEdges.stream()
              .filter(edge -> DataCommunicationPatternProperty.Value.OneToOne
-                  .equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
-              .mapToInt(edge -> edge.getSrc().getProperty(ExecutionProperty.Key.Parallelism))
+                  .equals(edge.getPropertyValue(DataCommunicationPatternProperty.class).get()))
+              .mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
               .max().orElse(1);
           final Integer shuffleParallelism = inEdges.stream()
               .filter(edge -> DataCommunicationPatternProperty.Value.Shuffle
-                  .equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
-              .mapToInt(edge -> edge.getSrc().getProperty(ExecutionProperty.Key.Parallelism))
+                  .equals(edge.getPropertyValue(DataCommunicationPatternProperty.class).get()))
+              .mapToInt(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get())
               .map(i -> i / shuffleDecreaseFactor)
               .max().orElse(1);
           // We set the greater value as the parallelism.
@@ -93,7 +90,7 @@ public final class DefaultParallelismPass extends AnnotatingPass {
           vertex.setProperty(ParallelismProperty.of(parallelism));
           // synchronize one-to-one edges parallelism
           recursivelySynchronizeO2OParallelism(dag, vertex, parallelism);
-        } else if (vertex.getProperty(ExecutionProperty.Key.Parallelism) == null) {
+        } else if (!vertex.getPropertyValue(ParallelismProperty.class).isPresent()) {
           throw new RuntimeException("There is a non-source vertex that doesn't have any inEdges "
               + "(excluding SideInput edges)");
         } // No problem otherwise.
@@ -117,12 +114,12 @@ public final class DefaultParallelismPass extends AnnotatingPass {
     final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
     final Integer ancestorParallelism = inEdges.stream()
         .filter(edge -> DataCommunicationPatternProperty.Value.OneToOne
-            .equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
+            .equals(edge.getPropertyValue(DataCommunicationPatternProperty.class).get()))
         .map(IREdge::getSrc)
         .mapToInt(inVertex -> recursivelySynchronizeO2OParallelism(dag, inVertex, parallelism))
         .max().orElse(1);
     final Integer maxParallelism = ancestorParallelism > parallelism ? ancestorParallelism : parallelism;
-    final Integer myParallelism = vertex.getProperty(ExecutionProperty.Key.Parallelism);
+    final Integer myParallelism = vertex.getPropertyValue(ParallelismProperty.class).get();
 
     // update the vertex with the max value.
     if (maxParallelism > myParallelism) {

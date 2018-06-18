@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,18 +15,18 @@
  */
 package edu.snu.nemo.common.ir.vertex.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
  * ExecutionPlacement ExecutionProperty.
  */
-public final class ExecutorPlacementProperty extends ExecutionProperty<String> {
+public final class ExecutorPlacementProperty extends VertexExecutionProperty<String> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
   private ExecutorPlacementProperty(final String value) {
-    super(Key.ExecutorPlacement, value);
+    super(value);
   }
 
   /**

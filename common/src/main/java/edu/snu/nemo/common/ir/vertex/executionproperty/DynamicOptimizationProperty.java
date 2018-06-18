@@ -15,18 +15,18 @@
  */
 package edu.snu.nemo.common.ir.vertex.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
  * DynamicOptimizationType ExecutionProperty.
  */
-public final class DynamicOptimizationProperty extends ExecutionProperty<DynamicOptimizationProperty.Value> {
+public final class DynamicOptimizationProperty extends VertexExecutionProperty<DynamicOptimizationProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
   private DynamicOptimizationProperty(final Value value) {
-    super(Key.DynamicOptimizationType, value);
+    super(value);
   }
 
   /**

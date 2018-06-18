@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import edu.snu.nemo.common.KeyExtractor;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
@@ -65,22 +65,22 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     this.srcVertexId = srcRuntimeVertexId;
     this.dstIrVertex = dstIrVertex;
     this.blockManagerWorker = blockManagerWorker;
-    this.blockStoreValue = runtimeEdge.getProperty(ExecutionProperty.Key.DataStore);
+    this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class).get();
 
     // Setup partitioner
     final int dstParallelism = getDstParallelism();
-    final KeyExtractor keyExtractor = runtimeEdge.getProperty(ExecutionProperty.Key.KeyExtractor);
+    final Optional<KeyExtractor> keyExtractor = runtimeEdge.getPropertyValue(KeyExtractorProperty.class);
     final PartitionerProperty.Value partitionerPropertyValue =
-        runtimeEdge.getProperty(ExecutionProperty.Key.Partitioner);
+        runtimeEdge.getPropertyValue(PartitionerProperty.class).get();
     switch (partitionerPropertyValue) {
       case IntactPartitioner:
         this.partitioner = new IntactPartitioner();
         break;
       case HashPartitioner:
-        this.partitioner = new HashPartitioner(dstParallelism, keyExtractor);
+        this.partitioner = new HashPartitioner(dstParallelism, keyExtractor.get());
         break;
       case DataSkewHashPartitioner:
-        this.partitioner = new DataSkewHashPartitioner(hashRangeMultiplier, dstParallelism, keyExtractor);
+        this.partitioner = new DataSkewHashPartitioner(hashRangeMultiplier, dstParallelism, keyExtractor.get());
         break;
       default:
         throw new UnsupportedPartitionerException(
@@ -88,11 +88,11 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     }
     blockToWrite = blockManagerWorker.createBlock(blockId, blockStoreValue);
 
-    final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
-        runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
-    nonDummyBlock = duplicateDataProperty == null
-        || duplicateDataProperty.getRepresentativeEdgeId().equals(runtimeEdge.getId())
-        || duplicateDataProperty.getGroupSize() <= 1;
+    final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
+        runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
+    nonDummyBlock = !duplicateDataProperty.isPresent()
+        || duplicateDataProperty.get().getRepresentativeEdgeId().equals(runtimeEdge.getId())
+        || duplicateDataProperty.get().getGroupSize() <= 1;
   }
 
   /**
@@ -113,13 +113,13 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   public void close() {
     // Commit block.
     final UsedDataHandlingProperty.Value usedDataHandling =
-        runtimeEdge.getProperty(ExecutionProperty.Key.UsedDataHandling);
-    final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
-        runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
-    final int multiplier = duplicateDataProperty == null ? 1 : duplicateDataProperty.getGroupSize();
+        runtimeEdge.getPropertyValue(UsedDataHandlingProperty.class).get();
+    final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
+        runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
+    final int multiplier = duplicateDataProperty.isPresent() ? duplicateDataProperty.get().getGroupSize() : 1;
 
-    final boolean isDataSizeMetricCollectionEdge = MetricCollectionProperty.Value.DataSkewRuntimePass
-        .equals(runtimeEdge.getProperty(ExecutionProperty.Key.MetricCollection));
+    final boolean isDataSizeMetricCollectionEdge = Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
+        .equals(runtimeEdge.getPropertyValue(MetricCollectionProperty.class));
     final Optional<Map<Integer, Long>> partitionSizeMap = blockToWrite.commit();
     // Return the total size of the committed block.
     if (partitionSizeMap.isPresent()) {
@@ -155,7 +155,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    */
   private int getDstParallelism() {
     return DataCommunicationPatternProperty.Value.OneToOne.equals(
-        runtimeEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))
-        ? 1 : dstIrVertex.getProperty(ExecutionProperty.Key.Parallelism);
+        runtimeEdge.getPropertyValue(DataCommunicationPatternProperty.class).get())
+        ? 1 : dstIrVertex.getPropertyValue(ParallelismProperty.class).get();
   }
 }

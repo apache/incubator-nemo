@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,5 +33,5 @@ public interface CompileTimePass extends Function<DAG<IRVertex, IREdge>, DAG<IRV
    * Getter for prerequisite execution properties.
    * @return set of prerequisite execution properties.
    */
-  Set<ExecutionProperty.Key> getPrerequisiteExecutionProperties();
+  Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties();
 }

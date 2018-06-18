@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 
 import java.util.Collections;
@@ -33,7 +32,7 @@ public final class DisaggregationEdgeDataStorePass extends AnnotatingPass {
    * Default constructor.
    */
   public DisaggregationEdgeDataStorePass() {
-    super(ExecutionProperty.Key.DataStore, Collections.singleton(ExecutionProperty.Key.DataStore));
+    super(DataStoreProperty.class, Collections.singleton(DataStoreProperty.class));
   }
 
   @Override
@@ -42,7 +41,7 @@ public final class DisaggregationEdgeDataStorePass extends AnnotatingPass {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       inEdges.forEach(edge -> {
         if (DataStoreProperty.Value.LocalFileStore
-              .equals(edge.getProperty(ExecutionProperty.Key.DataStore))) {
+              .equals(edge.getPropertyValue(DataStoreProperty.class).get())) {
           edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.GlusterFileStore));
         }
       });

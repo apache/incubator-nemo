@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,10 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Pado pass for tagging vertices.
@@ -34,9 +32,7 @@ public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
    * Default constructor.
    */
   public PadoVertexExecutorPlacementPass() {
-    super(ExecutionProperty.Key.ExecutorPlacement, Stream.of(
-        ExecutionProperty.Key.DataCommunicationPattern
-    ).collect(Collectors.toSet()));
+    super(ExecutorPlacementProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
   }
 
   @Override
@@ -63,7 +59,7 @@ public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
    */
   private boolean hasM2M(final List<IREdge> irEdges) {
     return irEdges.stream().anyMatch(edge ->
-        edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
+        edge.getPropertyValue(DataCommunicationPatternProperty.class).get()
           .equals(DataCommunicationPatternProperty.Value.Shuffle));
   }
 
@@ -75,8 +71,8 @@ public final class PadoVertexExecutorPlacementPass extends AnnotatingPass {
   private boolean allO2OFromReserved(final List<IREdge> irEdges) {
     return irEdges.stream()
         .allMatch(edge -> DataCommunicationPatternProperty.Value.OneToOne.equals(
-            edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))
-            && edge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement).equals(
+            edge.getPropertyValue(DataCommunicationPatternProperty.class).get())
+            && edge.getSrc().getPropertyValue(ExecutorPlacementProperty.class).get().equals(
                 ExecutorPlacementProperty.RESERVED));
   }
 }

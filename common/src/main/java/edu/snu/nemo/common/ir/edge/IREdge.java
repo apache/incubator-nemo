@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,21 @@ package edu.snu.nemo.common.ir.edge;
 import edu.snu.nemo.common.dag.Edge;
 import edu.snu.nemo.common.ir.IdManager;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
+
+import java.io.Serializable;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * Physical execution plan of intermediate data movement.
  */
 public final class IREdge extends Edge<IRVertex> {
-  private final ExecutionPropertyMap executionProperties;
+  private final ExecutionPropertyMap<EdgeExecutionProperty> executionProperties;
   private final Boolean isSideInput;
 
   /**
@@ -68,7 +72,7 @@ public final class IREdge extends Edge<IRVertex> {
    * @param executionProperty the execution property.
    * @return the IREdge with the execution property set.
    */
-  public IREdge setProperty(final ExecutionProperty<?> executionProperty) {
+  public IREdge setProperty(final EdgeExecutionProperty<?> executionProperty) {
     executionProperties.put(executionProperty);
     return this;
   }
@@ -80,7 +84,8 @@ public final class IREdge extends Edge<IRVertex> {
    * @param executionPropertyKey key of the execution property.
    * @return the execution property.
    */
-  public <T> T getProperty(final ExecutionProperty.Key executionPropertyKey) {
+  public <T extends Serializable> Optional<T> getPropertyValue(
+      final Class<? extends EdgeExecutionProperty<T>> executionPropertyKey) {
     return executionProperties.get(executionPropertyKey);
   }
 
@@ -112,7 +117,7 @@ public final class IREdge extends Edge<IRVertex> {
    * @param thatEdge the edge to copy executionProperties to.
    */
   public void copyExecutionPropertiesTo(final IREdge thatEdge) {
-    this.getExecutionProperties().forEachProperties(thatEdge::setProperty);
+    this.getExecutionProperties().forEachProperties((Consumer<EdgeExecutionProperty>) thatEdge::setProperty);
   }
 
   @Override

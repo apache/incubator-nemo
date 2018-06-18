@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,11 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.executionproperty.StageIdProperty;
 
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Edge data store pass to process inter-stage memory store edges.
@@ -33,9 +32,7 @@ public final class ReviseInterStageEdgeDataStorePass extends AnnotatingPass {
    * Default constructor.
    */
   public ReviseInterStageEdgeDataStorePass() {
-    super(ExecutionProperty.Key.DataStore, Stream.of(
-        ExecutionProperty.Key.StageId
-    ).collect(Collectors.toSet()));
+    super(DataStoreProperty.class, Collections.singleton(StageIdProperty.class));
   }
 
   @Override
@@ -44,9 +41,9 @@ public final class ReviseInterStageEdgeDataStorePass extends AnnotatingPass {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
-          if (DataStoreProperty.Value.MemoryStore.equals(edge.getProperty(ExecutionProperty.Key.DataStore))
-              && !edge.getSrc().getProperty(ExecutionProperty.Key.StageId)
-              .equals(edge.getDst().getProperty(ExecutionProperty.Key.StageId))) {
+          if (DataStoreProperty.Value.MemoryStore.equals(edge.getPropertyValue(DataStoreProperty.class).get())
+              && !edge.getSrc().getPropertyValue(StageIdProperty.class).get()
+              .equals(edge.getDst().getPropertyValue(StageIdProperty.class).get())) {
             edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
           }
         });

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,9 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.Collections;
 
 /**
  * Pass to annotate the DAG for a job to perform data skew.
@@ -36,9 +34,7 @@ public final class DataSkewEdgeMetricCollectionPass extends AnnotatingPass {
    * Default constructor.
    */
   public DataSkewEdgeMetricCollectionPass() {
-    super(ExecutionProperty.Key.MetricCollection, Stream.of(
-        ExecutionProperty.Key.DataCommunicationPattern
-    ).collect(Collectors.toSet()));
+    super(MetricCollectionProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
   }
 
   @Override
@@ -48,7 +44,7 @@ public final class DataSkewEdgeMetricCollectionPass extends AnnotatingPass {
       if (v instanceof MetricCollectionBarrierVertex) {
         dag.getOutgoingEdgesOf(v).forEach(edge -> {
           // double checking.
-          if (edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
+          if (edge.getPropertyValue(DataCommunicationPatternProperty.class).get()
               .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
             edge.setProperty(MetricCollectionProperty.of(MetricCollectionProperty.Value.DataSkewRuntimePass));
           }

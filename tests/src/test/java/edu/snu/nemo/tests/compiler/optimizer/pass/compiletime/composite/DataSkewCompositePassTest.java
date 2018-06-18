@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -62,7 +63,7 @@ public class DataSkewCompositePassTest {
     final CompositePass dataSkewPass = new DataSkewCompositePass();
     assertEquals(NUM_OF_PASSES_IN_DATA_SKEW_PASS, dataSkewPass.getPassList().size());
 
-    final Set<ExecutionProperty.Key> prerequisites = new HashSet<>();
+    final Set<Class<? extends ExecutionProperty>> prerequisites = new HashSet<>();
     dataSkewPass.getPassList().forEach(compileTimePass ->
         prerequisites.addAll(compileTimePass.getPrerequisiteExecutionProperties()));
     dataSkewPass.getPassList().forEach(compileTimePass -> {
@@ -85,7 +86,7 @@ public class DataSkewCompositePassTest {
     final Long numOfShuffleGatherEdges = mrDAG.getVertices().stream().filter(irVertex ->
         mrDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
             DataCommunicationPatternProperty.Value.Shuffle
-            .equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))))
+            .equals(irEdge.getPropertyValue(DataCommunicationPatternProperty.class).get())))
         .count();
     final DAG<IRVertex, IREdge> processedDAG = new DataSkewCompositePass().apply(mrDAG);
 
@@ -93,14 +94,14 @@ public class DataSkewCompositePassTest {
     processedDAG.getVertices().stream().map(processedDAG::getIncomingEdgesOf)
         .flatMap(List::stream)
         .filter(irEdge -> DataCommunicationPatternProperty.Value.Shuffle
-            .equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))
+            .equals(irEdge.getPropertyValue(DataCommunicationPatternProperty.class).get()))
         .map(IREdge::getSrc)
         .forEach(irVertex -> assertTrue(irVertex instanceof MetricCollectionBarrierVertex));
 
     processedDAG.getVertices().forEach(v -> processedDAG.getOutgoingEdgesOf(v).stream()
-        .filter(e -> MetricCollectionProperty.Value.DataSkewRuntimePass
-                  .equals(e.getProperty(ExecutionProperty.Key.MetricCollection)))
-        .forEach(e -> assertEquals(e.getProperty(ExecutionProperty.Key.Partitioner),
-            PartitionerProperty.Value.DataSkewHashPartitioner)));
+        .filter(e -> Optional.of(MetricCollectionProperty.Value.DataSkewRuntimePass)
+                  .equals(e.getPropertyValue(MetricCollectionProperty.class)))
+        .forEach(e -> assertEquals(PartitionerProperty.Value.DataSkewHashPartitioner,
+            e.getPropertyValue(PartitionerProperty.class).get())));
   }
 }

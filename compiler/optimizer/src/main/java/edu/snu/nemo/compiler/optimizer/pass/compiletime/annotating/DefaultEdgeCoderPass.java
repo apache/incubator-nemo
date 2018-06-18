@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,7 @@ import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-
-import java.util.Collections;
 
 /**
  * Pass for initiating IREdge Coder ExecutionProperty with default dummy coder.
@@ -35,14 +32,14 @@ public final class DefaultEdgeCoderPass extends AnnotatingPass {
    * Default constructor.
    */
   public DefaultEdgeCoderPass() {
-    super(ExecutionProperty.Key.Coder, Collections.emptySet());
+    super(CoderProperty.class);
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(irVertex ->
         dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          if (irEdge.getProperty(ExecutionProperty.Key.Coder) == null) {
+          if (!irEdge.getPropertyValue(CoderProperty.class).isPresent()) {
             irEdge.setProperty(DEFAULT_CODER_PROPERTY);
           }
         }));

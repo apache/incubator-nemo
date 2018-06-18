@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import edu.snu.nemo.runtime.executor.datatransfer.*;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -153,15 +154,14 @@ public final class TaskExecutor {
       // Handle reads
       final boolean isToSideInput = isToSideInputs.stream().anyMatch(bool -> bool);
       if (irVertex instanceof SourceVertex) {
-        dataFetcherList.add(new SourceVertexDataFetcher(irVertex, sourceReader.get(), vertexHarness, metricMap,
-            false, isToSideInput)); // Source vertex read
+        dataFetcherList.add(new SourceVertexDataFetcher(
+            irVertex, sourceReader.get(), vertexHarness, metricMap, isToSideInput)); // Source vertex read
       }
       final List<InputReader> parentTaskReaders =
           getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges(), dataTransferFactory);
       parentTaskReaders.forEach(parentTaskReader -> {
-        final boolean isFromSideInput = parentTaskReader.isSideInputReader();
         dataFetcherList.add(new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
-            vertexHarness, metricMap, isFromSideInput, isToSideInput)); // Parent-task read
+            vertexHarness, metricMap, isToSideInput)); // Parent-task read
       });
     });
 
@@ -210,7 +210,7 @@ public final class TaskExecutor {
     } catch (Throwable throwable) {
       // ANY uncaught throwable is reported to the master
       taskStateManager.onTaskStateChanged(TaskState.State.FAILED_UNRECOVERABLE, Optional.empty(), Optional.empty());
-      throwable.printStackTrace();
+      LOG.error(ExceptionUtils.getStackTrace(throwable));
     }
   }
 

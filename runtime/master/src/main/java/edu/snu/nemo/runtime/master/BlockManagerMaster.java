@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -252,6 +252,7 @@ public final class BlockManagerMaster {
           } catch (final InterruptedException | ExecutionException e) {
             // Cannot reach here because we check the completion of the future already.
             LOG.error("Exception while getting the location of a block!", e);
+            Thread.currentThread().interrupt();
           }
         }
       });

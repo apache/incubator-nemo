@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Test Utils for Examples.
@@ -42,27 +43,34 @@ public final class ExampleTestUtil {
    * @param outputFileName output file name.
    * @param testResourceFileName the test result file name.
    * @throws RuntimeException if the output is invalid.
-   * @throws IOException IOException while testing.
    */
   public static void ensureOutputValidity(final String resourcePath,
                                           final String outputFileName,
                                           final String testResourceFileName) throws IOException {
-    final String testOutput = Files.list(Paths.get(resourcePath))
-        .filter(Files::isRegularFile)
-        .filter(path -> path.getFileName().toString().startsWith(outputFileName))
-        .flatMap(path -> {
-          try {
-            return Files.lines(path);
-          } catch (final IOException e) {
-            throw new RuntimeException(e);
-          }
-        })
-        .sorted()
-        .reduce("", (p, q) -> (p + "\n" + q));
 
-    final String resourceOutput = Files.lines(Paths.get(resourcePath + testResourceFileName))
-        .sorted()
-        .reduce("", (p, q) -> (p + "\n" + q));
+    final String testOutput;
+    try (final Stream<Path> fileStream = Files.list(Paths.get(resourcePath))) {
+      testOutput = fileStream
+          .filter(Files::isRegularFile)
+          .filter(path -> path.getFileName().toString().startsWith(outputFileName))
+          .flatMap(path -> {
+            try {
+              return Files.lines(path);
+            } catch (final IOException e) {
+              throw new RuntimeException(e);
+            }
+          })
+          .sorted()
+          .reduce("", (p, q) -> (p + "\n" + q));
+    }
+
+    final String resourceOutput;
+
+    try (final Stream<String> lineStream = Files.lines(Paths.get(resourcePath + testResourceFileName))) {
+      resourceOutput = lineStream
+          .sorted()
+          .reduce("", (p, q) -> (p + "\n" + q));
+    }
 
     if (!testOutput.equals(resourceOutput)) {
       final String outputMsg =
@@ -91,28 +99,35 @@ public final class ExampleTestUtil {
   public static void ensureALSOutputValidity(final String resourcePath,
                                              final String outputFileName,
                                              final String testResourceFileName) throws IOException {
-    final List<List<Double>> testOutput = Files.list(Paths.get(resourcePath))
-        .filter(Files::isRegularFile)
-        .filter(path -> path.getFileName().toString().startsWith(outputFileName))
-        .flatMap(path -> {
-          try {
-            return Files.lines(path);
-          } catch (final IOException e) {
-            throw new RuntimeException(e);
-          }
-        })
-        .sorted()
-        .filter(line -> !line.trim().equals(""))
-        .map(line -> Arrays.asList(line.split("\\s*,\\s*"))
-            .stream().map(s -> Double.valueOf(s)).collect(Collectors.toList()))
-        .collect(Collectors.toList());
 
-    final List<List<Double>> resourceOutput = Files.lines(Paths.get(resourcePath + testResourceFileName))
-        .sorted()
-        .filter(line -> !line.trim().equals(""))
-        .map(line -> Arrays.asList(line.split("\\s*,\\s*"))
-            .stream().map(s -> Double.valueOf(s)).collect(Collectors.toList()))
-        .collect(Collectors.toList());
+    final List<List<Double>> testOutput;
+    try (final Stream<Path> fileStream = Files.list(Paths.get(resourcePath))) {
+      testOutput = fileStream
+          .filter(Files::isRegularFile)
+          .filter(path -> path.getFileName().toString().startsWith(outputFileName))
+          .flatMap(path -> {
+            try {
+              return Files.lines(path);
+            } catch (final IOException e) {
+              throw new RuntimeException(e);
+            }
+          })
+          .sorted()
+          .filter(line -> !line.trim().equals(""))
+          .map(line -> Arrays.asList(line.split("\\s*,\\s*"))
+              .stream().map(s -> Double.valueOf(s)).collect(Collectors.toList()))
+          .collect(Collectors.toList());
+    }
+
+    final List<List<Double>> resourceOutput;
+    try (final Stream<String> lineStream = Files.lines(Paths.get(resourcePath + testResourceFileName))) {
+      resourceOutput = lineStream
+          .sorted()
+          .filter(line -> !line.trim().equals(""))
+          .map(line -> Arrays.asList(line.split("\\s*,\\s*"))
+              .stream().map(s -> Double.valueOf(s)).collect(Collectors.toList()))
+          .collect(Collectors.toList());
+    }
 
     if (testOutput.size() != resourceOutput.size()) {
       throw new RuntimeException("output mismatch");
@@ -138,12 +153,14 @@ public final class ExampleTestUtil {
    */
   public static void deleteOutputFile(final String directory,
                                       final String outputFileName) throws IOException {
-    final Set<Path> outputFilePaths = Files.list(Paths.get(directory))
-        .filter(Files::isRegularFile)
-        .filter(path -> path.getFileName().toString().startsWith(outputFileName))
-        .collect(Collectors.toSet());
-    for (final Path outputFilePath : outputFilePaths) {
-      Files.delete(outputFilePath);
+    try (final Stream<Path> fileStream = Files.list(Paths.get(directory))) {
+      final Set<Path> outputFilePaths = fileStream
+          .filter(Files::isRegularFile)
+          .filter(path -> path.getFileName().toString().startsWith(outputFileName))
+          .collect(Collectors.toSet());
+      for (final Path outputFilePath : outputFilePaths) {
+        Files.delete(outputFilePath);
+      }
     }
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package edu.snu.nemo.runtime.common.optimizer;
 
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
@@ -44,7 +43,7 @@ public final class RuntimeOptimizer {
           final PhysicalPlan originalPlan,
           final MetricCollectionBarrierVertex metricCollectionBarrierVertex) {
     final DynamicOptimizationProperty.Value dynamicOptimizationType =
-        metricCollectionBarrierVertex.getProperty(ExecutionProperty.Key.DynamicOptimizationType);
+        metricCollectionBarrierVertex.getPropertyValue(DynamicOptimizationProperty.class).get();
 
     switch (dynamicOptimizationType) {
       case DataSkewRuntimePass:

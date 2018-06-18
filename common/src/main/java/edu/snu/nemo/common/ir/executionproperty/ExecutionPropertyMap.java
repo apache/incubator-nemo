@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import java.io.Serializable;
 import java.util.*;
 import java.util.function.Consumer;
@@ -35,10 +36,12 @@ import java.util.stream.Collectors;
 
 /**
  * ExecutionPropertyMap Class, which uses HashMap for keeping track of ExecutionProperties for vertices and edges.
+ * @param <T> Type of {@link ExecutionProperty} this map stores.
  */
-public final class ExecutionPropertyMap implements Serializable {
+@NotThreadSafe
+public final class ExecutionPropertyMap<T extends ExecutionProperty> implements Serializable {
   private final String id;
-  private final Map<ExecutionProperty.Key, ExecutionProperty<?>> properties;
+  private final Map<Class<? extends ExecutionProperty>, T> properties = new HashMap<>();
 
   /**
    * Constructor for ExecutionPropertyMap class.
@@ -47,7 +50,6 @@ public final class ExecutionPropertyMap implements Serializable {
   @VisibleForTesting
   public ExecutionPropertyMap(final String id) {
     this.id = id;
-    properties = new EnumMap<>(ExecutionProperty.Key.class);
   }
 
   /**
@@ -56,9 +58,10 @@ public final class ExecutionPropertyMap implements Serializable {
    * @param commPattern Data communication pattern type of the edge.
    * @return The corresponding ExecutionPropertyMap.
    */
-  public static ExecutionPropertyMap of(final IREdge irEdge,
-                                        final DataCommunicationPatternProperty.Value commPattern) {
-    final ExecutionPropertyMap map = new ExecutionPropertyMap(irEdge.getId());
+  public static ExecutionPropertyMap<EdgeExecutionProperty> of(
+      final IREdge irEdge,
+      final DataCommunicationPatternProperty.Value commPattern) {
+    final ExecutionPropertyMap<EdgeExecutionProperty> map = new ExecutionPropertyMap<>(irEdge.getId());
     map.put(DataCommunicationPatternProperty.of(commPattern));
     map.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
     switch (commPattern) {
@@ -85,8 +88,8 @@ public final class ExecutionPropertyMap implements Serializable {
    * @param irVertex irVertex to keep the execution property of.
    * @return The corresponding ExecutionPropertyMap.
    */
-  public static ExecutionPropertyMap of(final IRVertex irVertex) {
-    final ExecutionPropertyMap map = new ExecutionPropertyMap(irVertex.getId());
+  public static ExecutionPropertyMap<VertexExecutionProperty> of(final IRVertex irVertex) {
+    final ExecutionPropertyMap<VertexExecutionProperty> map = new ExecutionPropertyMap<>(irVertex.getId());
     map.put(ParallelismProperty.of(1));
     map.put(ExecutorPlacementProperty.of(ExecutorPlacementProperty.NONE));
     return map;
@@ -103,22 +106,21 @@ public final class ExecutionPropertyMap implements Serializable {
   /**
    * Put the given execution property  in the ExecutionPropertyMap.
    * @param executionProperty execution property to insert.
-   * @return the inserted execution property.
+   * @return the previous execution property, or null if there was no execution property with the specified property key
    */
-  public ExecutionProperty<?> put(final ExecutionProperty<?> executionProperty) {
-    return properties.put(executionProperty.getKey(), executionProperty);
+  public T put(final T executionProperty) {
+    return properties.put(executionProperty.getClass(), executionProperty);
   }
 
   /**
    * Get the value of the given execution property type.
-   * @param <T> Type of the return value.
+   * @param <U> Type of the return value.
    * @param executionPropertyKey the execution property type to find the value of.
    * @return the value of the given execution property.
    */
-  public <T> T get(final ExecutionProperty.Key executionPropertyKey) {
-    ExecutionProperty<T> property = (ExecutionProperty<T>) properties.getOrDefault(executionPropertyKey,
-     ExecutionProperty.<T>emptyExecutionProperty());
-    return property.getValue();
+  public <U extends Serializable> Optional<U> get(final Class<? extends ExecutionProperty<U>> executionPropertyKey) {
+    final ExecutionProperty<U> property = properties.get(executionPropertyKey);
+    return property == null ? Optional.empty() : Optional.of(property.getValue());
   }
 
   /**
@@ -126,7 +128,7 @@ public final class ExecutionPropertyMap implements Serializable {
    * @param key key of the execution property to remove.
    * @return the removed execution property
    */
-  public ExecutionProperty<?> remove(final ExecutionProperty.Key key) {
+  public T remove(final Class<? extends T> key) {
     return properties.remove(key);
   }
 
@@ -134,7 +136,7 @@ public final class ExecutionPropertyMap implements Serializable {
    * @param key key to look for.
    * @return whether or not the execution property map contains the key.
    */
-  public boolean containsKey(final ExecutionProperty.Key key) {
+  public boolean containsKey(final Class<? extends T> key) {
     return properties.containsKey(key);
   }
 
@@ -142,7 +144,7 @@ public final class ExecutionPropertyMap implements Serializable {
    * Same as forEach function in Java 8, but for execution properties.
    * @param action action to apply to each of the execution properties.
    */
-  public void forEachProperties(final Consumer<? super ExecutionProperty> action) {
+  public void forEachProperties(final Consumer<? super T> action) {
     properties.values().forEach(action);
   }
 
@@ -151,7 +153,7 @@ public final class ExecutionPropertyMap implements Serializable {
     final StringBuilder sb = new StringBuilder();
     sb.append("{");
     boolean isFirstPair = true;
-    for (final Map.Entry<ExecutionProperty.Key, ExecutionProperty<?>> entry : properties.entrySet()) {
+    for (final Map.Entry<Class<? extends ExecutionProperty>, T> entry : properties.entrySet()) {
       if (!isFirstPair) {
         sb.append(", ");
       }
@@ -180,8 +182,8 @@ public final class ExecutionPropertyMap implements Serializable {
     ExecutionPropertyMap that = (ExecutionPropertyMap) obj;
 
     return new EqualsBuilder()
-        .append(properties.values().stream().map(ExecutionProperty::getValue).collect(Collectors.toSet()),
-            that.properties.values().stream().map(ExecutionProperty::getValue).collect(Collectors.toSet()))
+        .append(properties.values().stream().collect(Collectors.toSet()),
+            that.properties.values().stream().collect(Collectors.toSet()))
         .isEquals();
   }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ public final class WindowTransform<T> implements Transform<T, T> {
 
   @Override
   public void onData(final T element) {
-    // TODO #36: Actually assign windows
+    // TODO #1: Support Beam Streaming in Compiler.
     outputCollector.emit(element);
   }
 

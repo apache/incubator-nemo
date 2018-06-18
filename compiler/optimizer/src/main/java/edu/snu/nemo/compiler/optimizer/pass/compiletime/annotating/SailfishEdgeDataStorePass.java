@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 
 import java.util.Collections;
@@ -33,7 +32,7 @@ public final class SailfishEdgeDataStorePass extends AnnotatingPass {
    * Default constructor.
    */
   public SailfishEdgeDataStorePass() {
-    super(ExecutionProperty.Key.DataStore, Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
+    super(DataStoreProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
   }
 
   @Override
@@ -42,10 +41,10 @@ public final class SailfishEdgeDataStorePass extends AnnotatingPass {
       // Find the merger vertex inserted by reshaping pass.
       if (dag.getIncomingEdgesOf(vertex).stream().anyMatch(irEdge ->
               DataCommunicationPatternProperty.Value.Shuffle
-          .equals(irEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)))) {
+          .equals(irEdge.getPropertyValue(DataCommunicationPatternProperty.class).get()))) {
         dag.getIncomingEdgesOf(vertex).forEach(edgeToMerger -> {
           if (DataCommunicationPatternProperty.Value.Shuffle
-          .equals(edgeToMerger.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
+          .equals(edgeToMerger.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
             // Pass data through memory to the merger vertex.
             edgeToMerger.setProperty(DataStoreProperty.of(DataStoreProperty.Value.SerializedMemoryStore));
           }

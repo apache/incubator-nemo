@@ -17,11 +17,12 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.util.HashMap;
+import java.util.Optional;
 
 /**
  * A pass for annotate duplicate data for each edge.
@@ -32,7 +33,7 @@ public final class DuplicateEdgeGroupSizePass extends AnnotatingPass {
    * Default constructor.
    */
   public DuplicateEdgeGroupSizePass() {
-    super(ExecutionProperty.Key.DuplicateEdgeGroup);
+    super(DuplicateEdgeGroupProperty.class);
   }
 
   @Override
@@ -40,10 +41,10 @@ public final class DuplicateEdgeGroupSizePass extends AnnotatingPass {
     final HashMap<String, Integer> groupIdToGroupSize = new HashMap<>();
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
         .forEach(e -> {
-          final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupProperty =
-              e.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
-          if (duplicateEdgeGroupProperty != null) {
-            final String groupId = duplicateEdgeGroupProperty.getGroupId();
+          final Optional<DuplicateEdgeGroupPropertyValue> duplicateEdgeGroupProperty =
+              e.getPropertyValue(DuplicateEdgeGroupProperty.class);
+          if (duplicateEdgeGroupProperty.isPresent()) {
+            final String groupId = duplicateEdgeGroupProperty.get().getGroupId();
             final Integer currentCount = groupIdToGroupSize.getOrDefault(groupId, 0);
             groupIdToGroupSize.put(groupId, currentCount + 1);
           }
@@ -51,12 +52,12 @@ public final class DuplicateEdgeGroupSizePass extends AnnotatingPass {
 
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex)
         .forEach(e -> {
-          final DuplicateEdgeGroupPropertyValue duplicateEdgeGroupProperty =
-              e.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
-          if (duplicateEdgeGroupProperty != null) {
-            final String groupId = duplicateEdgeGroupProperty.getGroupId();
+          final Optional<DuplicateEdgeGroupPropertyValue> duplicateEdgeGroupProperty =
+              e.getPropertyValue(DuplicateEdgeGroupProperty.class);
+          if (duplicateEdgeGroupProperty.isPresent()) {
+            final String groupId = duplicateEdgeGroupProperty.get().getGroupId();
             if (groupIdToGroupSize.containsKey(groupId)) {
-              duplicateEdgeGroupProperty.setGroupSize(groupIdToGroupSize.get(groupId));
+              duplicateEdgeGroupProperty.get().setGroupSize(groupIdToGroupSize.get(groupId));
             }
           }
         }));

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,11 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Pado pass for tagging edges with DataStore ExecutionProperty.
@@ -35,9 +33,7 @@ public final class PadoEdgeDataStorePass extends AnnotatingPass {
    * Default constructor.
    */
   public PadoEdgeDataStorePass() {
-    super(ExecutionProperty.Key.DataStore, Stream.of(
-        ExecutionProperty.Key.ExecutorPlacement
-    ).collect(Collectors.toSet()));
+    super(DataStoreProperty.class, Collections.singleton(ExecutorPlacementProperty.class));
   }
 
   @Override
@@ -49,7 +45,7 @@ public final class PadoEdgeDataStorePass extends AnnotatingPass {
           if (fromTransientToReserved(edge) || fromReservedToTransient(edge)) {
             edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
           } else if (DataCommunicationPatternProperty.Value.OneToOne
-              .equals(edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
+              .equals(edge.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
             edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
           } else {
             edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
@@ -67,9 +63,9 @@ public final class PadoEdgeDataStorePass extends AnnotatingPass {
    */
   static boolean fromTransientToReserved(final IREdge irEdge) {
     return ExecutorPlacementProperty.TRANSIENT
-        .equals(irEdge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement))
+        .equals(irEdge.getSrc().getPropertyValue(ExecutorPlacementProperty.class).get())
         && ExecutorPlacementProperty.RESERVED
-        .equals(irEdge.getDst().getProperty(ExecutionProperty.Key.ExecutorPlacement));
+        .equals(irEdge.getDst().getPropertyValue(ExecutorPlacementProperty.class).get());
   }
 
   /**
@@ -79,8 +75,8 @@ public final class PadoEdgeDataStorePass extends AnnotatingPass {
    */
   static boolean fromReservedToTransient(final IREdge irEdge) {
     return ExecutorPlacementProperty.RESERVED
-        .equals(irEdge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement))
+        .equals(irEdge.getSrc().getPropertyValue(ExecutorPlacementProperty.class).get())
         && ExecutorPlacementProperty.TRANSIENT
-        .equals(irEdge.getDst().getProperty(ExecutionProperty.Key.ExecutorPlacement));
+        .equals(irEdge.getDst().getPropertyValue(ExecutorPlacementProperty.class).get());
   }
 }

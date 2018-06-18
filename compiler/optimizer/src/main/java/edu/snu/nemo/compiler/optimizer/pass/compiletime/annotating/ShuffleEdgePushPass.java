@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
 
 import java.util.Collections;
@@ -34,7 +33,7 @@ public final class ShuffleEdgePushPass extends AnnotatingPass {
    * Default constructor.
    */
   public ShuffleEdgePushPass() {
-    super(ExecutionProperty.Key.DataFlowModel, Collections.singleton(ExecutionProperty.Key.DataCommunicationPattern));
+    super(DataFlowModelProperty.class, Collections.singleton(DataCommunicationPatternProperty.class));
   }
 
   @Override
@@ -43,7 +42,7 @@ public final class ShuffleEdgePushPass extends AnnotatingPass {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
-          if (edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
+          if (edge.getPropertyValue(DataCommunicationPatternProperty.class).get()
               .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
             edge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
           }

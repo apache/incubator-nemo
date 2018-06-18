@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.UsedDataHandlingProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.util.Collections;
@@ -33,15 +32,15 @@ public final class DefaultEdgeUsedDataHandlingPass extends AnnotatingPass {
    * Default constructor.
    */
   public DefaultEdgeUsedDataHandlingPass() {
-    super(ExecutionProperty.Key.UsedDataHandling, Collections.singleton(ExecutionProperty.Key.DataStore));
+    super(UsedDataHandlingProperty.class, Collections.singleton(DataStoreProperty.class));
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(irVertex ->
         dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          if (irEdge.getProperty(ExecutionProperty.Key.UsedDataHandling) == null) {
-            final DataStoreProperty.Value dataStoreValue = irEdge.getProperty(ExecutionProperty.Key.DataStore);
+          if (!irEdge.getPropertyValue(UsedDataHandlingProperty.class).isPresent()) {
+            final DataStoreProperty.Value dataStoreValue = irEdge.getPropertyValue(DataStoreProperty.class).get();
             if (DataStoreProperty.Value.MemoryStore.equals(dataStoreValue)
                 || DataStoreProperty.Value.SerializedMemoryStore.equals(dataStoreValue)) {
               irEdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Discard));

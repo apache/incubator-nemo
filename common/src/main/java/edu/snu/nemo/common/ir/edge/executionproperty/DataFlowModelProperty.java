@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,18 +15,18 @@
  */
 package edu.snu.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
  * DataFlowModel ExecutionProperty.
  */
-public final class DataFlowModelProperty extends ExecutionProperty<DataFlowModelProperty.Value> {
+public final class DataFlowModelProperty extends EdgeExecutionProperty<DataFlowModelProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
   private DataFlowModelProperty(final Value value) {
-    super(Key.DataFlowModel, value);
+    super(value);
   }
 
   /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,18 @@ package edu.snu.nemo.common.ir.vertex;
 import edu.snu.nemo.common.ir.IdManager;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.dag.Vertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
+
+import java.io.Serializable;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * The basic unit of operation in a dataflow program, as well as the most important data structure in Nemo.
  * An IRVertex is created and modified in the compiler, and executed in the runtime.
  */
 public abstract class IRVertex extends Vertex {
-  private final ExecutionPropertyMap executionProperties;
+  private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
 
   /**
    * Constructor of IRVertex.
@@ -45,7 +49,7 @@ public abstract class IRVertex extends Vertex {
    * @param thatVertex the edge to copy executionProperties to.
    */
   public final void copyExecutionPropertiesTo(final IRVertex thatVertex) {
-    this.getExecutionProperties().forEachProperties(thatVertex::setProperty);
+    this.getExecutionProperties().forEachProperties((Consumer<VertexExecutionProperty>) thatVertex::setProperty);
   }
 
   /**
@@ -53,7 +57,7 @@ public abstract class IRVertex extends Vertex {
    * @param executionProperty new execution property.
    * @return the IRVertex with the execution property set.
    */
-  public final IRVertex setProperty(final ExecutionProperty<?> executionProperty) {
+  public final IRVertex setProperty(final VertexExecutionProperty<?> executionProperty) {
     executionProperties.put(executionProperty);
     return this;
   }
@@ -64,7 +68,8 @@ public abstract class IRVertex extends Vertex {
    * @param executionPropertyKey key of the execution property.
    * @return the execution property.
    */
-  public final <T> T getProperty(final ExecutionProperty.Key executionPropertyKey) {
+  public final <T extends Serializable> Optional<T> getPropertyValue(
+      final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
     return executionProperties.get(executionPropertyKey);
   }
 

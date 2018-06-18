@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 
 /**
@@ -32,7 +31,7 @@ public final class DataSkewEdgeDataStorePass extends AnnotatingPass {
    * Default constructor.
    */
   public DataSkewEdgeDataStorePass() {
-    super(ExecutionProperty.Key.DataStore);
+    super(DataStoreProperty.class);
   }
 
   @Override

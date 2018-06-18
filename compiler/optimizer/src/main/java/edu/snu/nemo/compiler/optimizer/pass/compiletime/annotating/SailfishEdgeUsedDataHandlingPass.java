@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.UsedDataHandlingProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.util.Collections;
@@ -34,14 +33,14 @@ public final class SailfishEdgeUsedDataHandlingPass extends AnnotatingPass {
    * Default constructor.
    */
   public SailfishEdgeUsedDataHandlingPass() {
-    super(ExecutionProperty.Key.UsedDataHandling, Collections.singleton(ExecutionProperty.Key.DataFlowModel));
+    super(UsedDataHandlingProperty.class, Collections.singleton(DataFlowModelProperty.class));
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(irVertex ->
         dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
-          final DataFlowModelProperty.Value dataFlowModel = irEdge.getProperty(ExecutionProperty.Key.DataFlowModel);
+          final DataFlowModelProperty.Value dataFlowModel = irEdge.getPropertyValue(DataFlowModelProperty.class).get();
           if (DataFlowModelProperty.Value.Push.equals(dataFlowModel)) {
             irEdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Discard));
           }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@ import edu.snu.nemo.runtime.executor.data.streamchainer.CompressionStreamChainer
 import edu.snu.nemo.runtime.executor.data.streamchainer.StreamChainer;
 import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,11 +49,22 @@ public final class SerializerManager {
    *
    * @param runtimeEdgeId id of the runtime edge.
    * @param coder         the corresponding coder.
-   * @param propertyMap   ExecutionPropertyMap of runtime edge
+   */
+  public void register(final String runtimeEdgeId,
+                       final Coder coder) {
+    register(runtimeEdgeId, coder, null);
+  }
+
+  /**
+   * Register a coder for runtime edge.
+   *
+   * @param runtimeEdgeId id of the runtime edge.
+   * @param coder         the corresponding coder.
+   * @param compressionProperty   compression property, or null not to enable compression
    */
   public void register(final String runtimeEdgeId,
                        final Coder coder,
-                       final ExecutionPropertyMap propertyMap) {
+                       final CompressionProperty.Value compressionProperty) {
     LOG.debug("{} edge id registering to SerializerManager", runtimeEdgeId);
     final Serializer serializer = new Serializer(coder, Collections.emptyList());
     runtimeEdgeIdToSerializer.putIfAbsent(runtimeEdgeId, serializer);
@@ -63,7 +72,6 @@ public final class SerializerManager {
     final List<StreamChainer> streamChainerList = new ArrayList<>();
 
     // Compression chain
-    CompressionProperty.Compression compressionProperty = propertyMap.get(ExecutionProperty.Key.Compression);
     if (compressionProperty != null) {
       LOG.debug("Adding {} compression chain for {}",
           compressionProperty, runtimeEdgeId);

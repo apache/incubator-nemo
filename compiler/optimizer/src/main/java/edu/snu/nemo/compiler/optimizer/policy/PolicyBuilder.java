@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,13 @@
 package edu.snu.nemo.compiler.optimizer.policy;
 
 import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.CompositePass;
@@ -33,8 +39,8 @@ import java.util.Set;
 public final class PolicyBuilder {
   private final List<CompileTimePass> compileTimePasses;
   private final List<RuntimePass<?>> runtimePasses;
-  private final Set<ExecutionProperty.Key> finalizedExecutionProperties;
-  private final Set<ExecutionProperty.Key> annotatedExecutionProperties;
+  private final Set<Class<? extends ExecutionProperty>> finalizedExecutionProperties;
+  private final Set<Class<? extends ExecutionProperty>> annotatedExecutionProperties;
   private final Boolean strictPrerequisiteCheckMode;
 
   /**
@@ -56,13 +62,13 @@ public final class PolicyBuilder {
     this.annotatedExecutionProperties = new HashSet<>();
     this.strictPrerequisiteCheckMode = strictPrerequisiteCheckMode;
     // DataCommunicationPattern is already set when creating the IREdge itself.
-    annotatedExecutionProperties.add(ExecutionProperty.Key.DataCommunicationPattern);
+    annotatedExecutionProperties.add(DataCommunicationPatternProperty.class);
     // Some default values are already annotated.
-    annotatedExecutionProperties.add(ExecutionProperty.Key.ExecutorPlacement);
-    annotatedExecutionProperties.add(ExecutionProperty.Key.Parallelism);
-    annotatedExecutionProperties.add(ExecutionProperty.Key.DataFlowModel);
-    annotatedExecutionProperties.add(ExecutionProperty.Key.DataStore);
-    annotatedExecutionProperties.add(ExecutionProperty.Key.Partitioner);
+    annotatedExecutionProperties.add(ExecutorPlacementProperty.class);
+    annotatedExecutionProperties.add(ParallelismProperty.class);
+    annotatedExecutionProperties.add(DataFlowModelProperty.class);
+    annotatedExecutionProperties.add(DataStoreProperty.class);
+    annotatedExecutionProperties.add(PartitionerProperty.class);
   }
 
   /**

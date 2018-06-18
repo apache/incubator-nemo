@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.MetricCollectionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 
 import java.util.Collections;
@@ -34,7 +33,7 @@ public final class DataSkewEdgePartitionerPass extends AnnotatingPass {
    * Default constructor.
    */
   public DataSkewEdgePartitionerPass() {
-    super(ExecutionProperty.Key.Partitioner, Collections.singleton(ExecutionProperty.Key.MetricCollection));
+    super(PartitionerProperty.class, Collections.singleton(MetricCollectionProperty.class));
   }
 
   @Override
@@ -45,7 +44,7 @@ public final class DataSkewEdgePartitionerPass extends AnnotatingPass {
         outEdges.forEach(edge -> {
           // double checking.
           if (MetricCollectionProperty.Value.DataSkewRuntimePass
-            .equals(edge.getProperty(ExecutionProperty.Key.MetricCollection))) {
+            .equals(edge.getPropertyValue(MetricCollectionProperty.class).get())) {
             edge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.DataSkewHashPartitioner));
           }
         });

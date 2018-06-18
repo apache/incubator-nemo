@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,12 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.StageIdProperty;
 
 import java.util.ArrayList;
@@ -42,12 +45,12 @@ public final class DefaultStagePartitioningPass extends AnnotatingPass {
    * Default constructor.
    */
   public DefaultStagePartitioningPass() {
-    super(ExecutionProperty.Key.StageId, Stream.of(
-        ExecutionProperty.Key.DataCommunicationPattern,
-        ExecutionProperty.Key.ExecutorPlacement,
-        ExecutionProperty.Key.DataFlowModel,
-        ExecutionProperty.Key.Partitioner,
-        ExecutionProperty.Key.Parallelism
+    super(StageIdProperty.class, Stream.of(
+        DataCommunicationPatternProperty.class,
+        ExecutorPlacementProperty.class,
+        DataFlowModelProperty.class,
+        PartitionerProperty.class,
+        ParallelismProperty.class
     ).collect(Collectors.toSet()));
   }
 
@@ -79,23 +82,23 @@ public final class DefaultStagePartitioningPass extends AnnotatingPass {
       final Optional<List<IREdge>> inEdgeList = (inEdges == null || inEdges.isEmpty())
               ? Optional.empty() : Optional.of(inEdges);
 
-      if (!inEdgeList.isPresent() || inEdgeList.get().size() > 1) { // If Source vertex or has multiple inEdges
+      if (!inEdgeList.isPresent()) { // If Source vertex
         createNewStage(vertex, vertexStageNumHashMap, stageNumber, vertexListForEachStage);
       } else {
         // Filter candidate incoming edges that can be included in a stage with the vertex.
         final Optional<List<IREdge>> inEdgesForStage = inEdgeList.map(e -> e.stream()
             // One to one edges
-            .filter(edge -> edge.getProperty(ExecutionProperty.Key.DataCommunicationPattern)
+            .filter(edge -> edge.getPropertyValue(DataCommunicationPatternProperty.class).get()
                               .equals(DataCommunicationPatternProperty.Value.OneToOne))
             // MemoryStore placement
-            .filter(edge -> edge.getProperty(ExecutionProperty.Key.DataStore)
+            .filter(edge -> edge.getPropertyValue(DataStoreProperty.class).get()
                               .equals(DataStoreProperty.Value.MemoryStore))
             // if src and dst are placed on same container types
-            .filter(edge -> edge.getSrc().getProperty(ExecutionProperty.Key.ExecutorPlacement)
-                .equals(edge.getDst().getProperty(ExecutionProperty.Key.ExecutorPlacement)))
+            .filter(edge -> edge.getSrc().getPropertyValue(ExecutorPlacementProperty.class).get()
+                .equals(edge.getDst().getPropertyValue(ExecutorPlacementProperty.class).get()))
             // if src and dst have same parallelism
-            .filter(edge -> edge.getSrc().getProperty(ExecutionProperty.Key.Parallelism)
-                .equals(edge.getDst().getProperty(ExecutionProperty.Key.Parallelism)))
+            .filter(edge -> edge.getSrc().getPropertyValue(ParallelismProperty.class).get()
+                .equals(edge.getDst().getPropertyValue(ParallelismProperty.class).get()))
             // Src that is already included in a stage
             .filter(edge -> vertexStageNumHashMap.containsKey(edge.getSrc()))
             .collect(Collectors.toList()));

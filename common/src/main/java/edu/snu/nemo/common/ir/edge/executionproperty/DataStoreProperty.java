@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,18 +15,18 @@
  */
 package edu.snu.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
  * DataStore ExecutionProperty.
  */
-public final class DataStoreProperty extends ExecutionProperty<DataStoreProperty.Value> {
+public final class DataStoreProperty extends EdgeExecutionProperty<DataStoreProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
   private DataStoreProperty(final Value value) {
-    super(Key.DataStore, value);
+    super(value);
   }
 
   /**

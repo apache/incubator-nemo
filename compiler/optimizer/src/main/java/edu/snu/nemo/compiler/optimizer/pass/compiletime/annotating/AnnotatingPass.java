@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.Set;
 
 /**
@@ -26,16 +26,16 @@ import java.util.Set;
  * It is ensured by the compiler that the shape of the IR DAG itself is not modified by an AnnotatingPass.
  */
 public abstract class AnnotatingPass implements CompileTimePass {
-  private final ExecutionProperty.Key keyOfExecutionPropertyToModify;
-  private final Set<ExecutionProperty.Key> prerequisiteExecutionProperties;
+  private final Class<? extends ExecutionProperty> keyOfExecutionPropertyToModify;
+  private final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties;
 
   /**
    * Constructor.
    * @param keyOfExecutionPropertyToModify key of execution property to modify.
    * @param prerequisiteExecutionProperties prerequisite execution properties.
    */
-  public AnnotatingPass(final ExecutionProperty.Key keyOfExecutionPropertyToModify,
-                        final Set<ExecutionProperty.Key> prerequisiteExecutionProperties) {
+  public AnnotatingPass(final Class<? extends ExecutionProperty> keyOfExecutionPropertyToModify,
+                        final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties) {
     this.keyOfExecutionPropertyToModify = keyOfExecutionPropertyToModify;
     this.prerequisiteExecutionProperties = prerequisiteExecutionProperties;
   }
@@ -44,21 +44,20 @@ public abstract class AnnotatingPass implements CompileTimePass {
    * Constructor.
    * @param keyOfExecutionPropertyToModify key of execution property to modify.
    */
-  public AnnotatingPass(final ExecutionProperty.Key keyOfExecutionPropertyToModify) {
-    this.keyOfExecutionPropertyToModify = keyOfExecutionPropertyToModify;
-    this.prerequisiteExecutionProperties = new HashSet<>();
+  public AnnotatingPass(final Class<? extends ExecutionProperty> keyOfExecutionPropertyToModify) {
+    this(keyOfExecutionPropertyToModify, Collections.emptySet());
   }
 
   /**
    * Getter for key of execution property to modify.
    * @return key of execution property to modify.
    */
-  public final ExecutionProperty.Key getExecutionPropertyToModify() {
+  public final Class<? extends ExecutionProperty> getExecutionPropertyToModify() {
     return keyOfExecutionPropertyToModify;
   }
 
   @Override
-  public final Set<ExecutionProperty.Key> getPrerequisiteExecutionProperties() {
+  public final Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties() {
     return prerequisiteExecutionProperties;
   }
 }

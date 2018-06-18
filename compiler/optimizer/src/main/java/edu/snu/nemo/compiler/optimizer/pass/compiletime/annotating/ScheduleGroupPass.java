@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,18 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 import com.google.common.collect.Lists;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.StageIdProperty;
 
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static edu.snu.nemo.common.ir.executionproperty.ExecutionProperty.Key.DataFlowModel;
-import static edu.snu.nemo.common.ir.executionproperty.ExecutionProperty.Key.StageId;
 
 /**
  * A pass for assigning each stages in schedule groups.
@@ -40,13 +41,13 @@ public final class ScheduleGroupPass extends AnnotatingPass {
    * Default constructor.
    */
   public ScheduleGroupPass() {
-    super(ExecutionProperty.Key.ScheduleGroupIndex, Stream.of(
-        ExecutionProperty.Key.StageId,
-        ExecutionProperty.Key.DataCommunicationPattern,
-        ExecutionProperty.Key.ExecutorPlacement,
-        ExecutionProperty.Key.DataFlowModel,
-        ExecutionProperty.Key.Partitioner,
-        ExecutionProperty.Key.Parallelism
+    super(ScheduleGroupIndexProperty.class, Stream.of(
+        StageIdProperty.class,
+        DataCommunicationPatternProperty.class,
+        ExecutorPlacementProperty.class,
+        DataFlowModelProperty.class,
+        PartitionerProperty.class,
+        ParallelismProperty.class
     ).collect(Collectors.toSet()));
   }
 
@@ -55,7 +56,8 @@ public final class ScheduleGroupPass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     // We assume that the input dag is tagged with stage ids.
-    if (dag.getVertices().stream().anyMatch(irVertex -> irVertex.getProperty(StageId) == null)) {
+    if (dag.getVertices().stream()
+        .anyMatch(irVertex -> !irVertex.getPropertyValue(StageIdProperty.class).isPresent())) {
       throw new RuntimeException("There exists an IR vertex going through ScheduleGroupPass "
           + "without stage id tagged.");
     }
@@ -63,12 +65,12 @@ public final class ScheduleGroupPass extends AnnotatingPass {
     // Map of stage id to the stage ids that it depends on.
     final Map<Integer, Set<Integer>> dependentStagesMap = new HashMap<>();
     dag.topologicalDo(irVertex -> {
-      final Integer currentStageId = irVertex.getProperty(StageId);
+      final Integer currentStageId = irVertex.getPropertyValue(StageIdProperty.class).get();
       dependentStagesMap.putIfAbsent(currentStageId, new HashSet<>());
       // while traversing, we find the stages that point to the current stage and add them to the list.
       dag.getIncomingEdgesOf(irVertex).stream()
           .map(IREdge::getSrc)
-          .mapToInt(vertex -> vertex.getProperty(StageId))
+          .mapToInt(vertex -> vertex.getPropertyValue(StageIdProperty.class).get())
           .filter(n -> n != currentStageId)
           .forEach(n -> dependentStagesMap.get(currentStageId).add(n));
     });
@@ -107,17 +109,19 @@ public final class ScheduleGroupPass extends AnnotatingPass {
     Lists.reverse(dag.getTopologicalSort()).forEach(v -> {
       // get the destination vertices of the edges that are marked as push
       final List<IRVertex> pushConnectedVertices = dag.getOutgoingEdgesOf(v).stream()
-          .filter(e -> DataFlowModelProperty.Value.Push.equals(e.getProperty(DataFlowModel)))
+          .filter(e -> DataFlowModelProperty.Value.Push.equals(e.getPropertyValue(DataFlowModelProperty.class).get()))
           .map(IREdge::getDst)
           .collect(Collectors.toList());
       if (!pushConnectedVertices.isEmpty()) { // if we need to do something,
         // we find the min value of the destination schedule groups.
         final Integer newSchedulerGroupIndex = pushConnectedVertices.stream()
-            .mapToInt(irVertex -> stageIdToScheduleGroupIndexMap.get(irVertex.<Integer>getProperty(StageId)))
+            .mapToInt(irVertex -> stageIdToScheduleGroupIndexMap
+                .get(irVertex.getPropertyValue(StageIdProperty.class).get()))
             .min().orElseThrow(() -> new RuntimeException("a list was not empty, but produced an empty result"));
         // overwrite
-        final Integer originalScheduleGroupIndex = stageIdToScheduleGroupIndexMap.get(v.<Integer>getProperty(StageId));
-        stageIdToScheduleGroupIndexMap.replace(v.getProperty(StageId), newSchedulerGroupIndex);
+        final Integer originalScheduleGroupIndex = stageIdToScheduleGroupIndexMap
+            .get(v.getPropertyValue(StageIdProperty.class).get());
+        stageIdToScheduleGroupIndexMap.replace(v.getPropertyValue(StageIdProperty.class).get(), newSchedulerGroupIndex);
         // shift those if it came too far
         if (stageIdToScheduleGroupIndexMap.values().stream()
             .noneMatch(stageIndex -> stageIndex.equals(originalScheduleGroupIndex))) { // if it doesn't exist
@@ -133,9 +137,8 @@ public final class ScheduleGroupPass extends AnnotatingPass {
     });
 
     // do the tagging
-    dag.topologicalDo(irVertex ->
-        irVertex.setProperty(
-            ScheduleGroupIndexProperty.of(stageIdToScheduleGroupIndexMap.get(irVertex.<Integer>getProperty(StageId)))));
+    dag.topologicalDo(irVertex -> irVertex.setProperty(ScheduleGroupIndexProperty.of(
+        stageIdToScheduleGroupIndexMap.get(irVertex.getPropertyValue(StageIdProperty.class).get()))));
 
     return dag;
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@ package edu.snu.nemo.tests.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
 import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.nemo.tests.compiler.optimizer.policy.TestPolicy;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
@@ -47,7 +47,7 @@ public final class ScheduleGroupPassTest {
   @Test
   public void testAnnotatingPass() {
     final AnnotatingPass scheduleGroupPass = new ScheduleGroupPass();
-    assertEquals(ExecutionProperty.Key.ScheduleGroupIndex, scheduleGroupPass.getExecutionPropertyToModify());
+    assertEquals(ScheduleGroupIndexProperty.class, scheduleGroupPass.getExecutionPropertyToModify());
   }
 
   /**
@@ -60,10 +60,9 @@ public final class ScheduleGroupPassTest {
         new TestPolicy(), "");
 
     for (final IRVertex irVertex : processedDAG.getTopologicalSort()) {
-      assertTrue(irVertex.getProperty(ExecutionProperty.Key.ScheduleGroupIndex) != null);
-      final Integer currentScheduleGroupIndex = irVertex.getProperty(ExecutionProperty.Key.ScheduleGroupIndex);
+      final Integer currentScheduleGroupIndex = irVertex.getPropertyValue(ScheduleGroupIndexProperty.class).get();
       final Integer largestScheduleGroupIndexOfParent = processedDAG.getParents(irVertex.getId()).stream()
-          .mapToInt(v -> v.getProperty(ExecutionProperty.Key.ScheduleGroupIndex))
+          .mapToInt(v -> v.getPropertyValue(ScheduleGroupIndexProperty.class).get())
           .max().orElse(0);
       assertTrue(currentScheduleGroupIndex >= largestScheduleGroupIndexOfParent);
     }

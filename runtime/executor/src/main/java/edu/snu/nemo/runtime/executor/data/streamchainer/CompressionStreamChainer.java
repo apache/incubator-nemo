@@ -30,14 +30,14 @@ import java.util.zip.GZIPOutputStream;
  * {@link StreamChainer} for applying compression.
  */
 public class CompressionStreamChainer implements StreamChainer {
-  private final CompressionProperty.Compression compression;
+  private final CompressionProperty.Value compression;
 
   /**
    * Constructor.
    *
    * @param compression compression method.
    */
-  public CompressionStreamChainer(final CompressionProperty.Compression compression) {
+  public CompressionStreamChainer(final CompressionProperty.Value compression) {
     this.compression = compression;
   }
 

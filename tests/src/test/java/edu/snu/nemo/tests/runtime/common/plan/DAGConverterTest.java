@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.tests.runtime.common.plan;
 
-import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
@@ -30,7 +29,7 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.beam.transform.DoTransform;
 import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
-import edu.snu.nemo.compiler.optimizer.examples.EmptyComponents;
+import edu.snu.nemo.common.test.EmptyComponents;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlanGenerator;
 import edu.snu.nemo.runtime.common.plan.Stage;
@@ -152,7 +151,6 @@ public final class DAGConverterTest {
     irDAGBuilder.addVertex(v6);
     irDAGBuilder.addVertex(v8);
 
-    // TODO #13: Implement Join Node
 //    irDAGBuilder.addVertex(v7);
 
     final IREdge e1 = new IREdge(DataCommunicationPatternProperty.Value.OneToOne, v1, v2);
@@ -222,7 +220,6 @@ public final class DAGConverterTest {
     final Stage stage4 = sortedLogicalDAG.get(3);
     final Stage stage5 = sortedLogicalDAG.get(3);
 
-    // TODO #148: Optimize Stage Partitioner Algorithm in NemoBackend
     // The following asserts depend on how stage partitioning is defined; test must be rewritten accordingly.
 //    assertEquals(logicalDAG.getVertices().size(), 5);
 //    assertEquals(logicalDAG.getIncomingEdgesOf(stage1).size(), 0);

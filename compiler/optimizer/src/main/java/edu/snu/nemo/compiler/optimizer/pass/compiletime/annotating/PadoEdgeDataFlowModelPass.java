@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,11 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.PadoEdgeDataStorePass.fromTransientToReserved;
 
@@ -35,9 +34,7 @@ public final class PadoEdgeDataFlowModelPass extends AnnotatingPass {
    * Default constructor.
    */
   public PadoEdgeDataFlowModelPass() {
-    super(ExecutionProperty.Key.DataFlowModel, Stream.of(
-        ExecutionProperty.Key.ExecutorPlacement
-    ).collect(Collectors.toSet()));
+    super(DataFlowModelProperty.class, Collections.singleton(ExecutorPlacementProperty.class));
   }
 
   @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.executionproperty.StageIdProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultStagePartitioningPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DisaggregationEdgeDataStorePass;
@@ -59,13 +59,13 @@ public class DisaggregationPassTest {
     processedDAG.getTopologicalSort().forEach(irVertex -> {
       processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger -> {
         if (DataCommunicationPatternProperty.Value.OneToOne
-            .equals(edgeToMerger.getProperty(ExecutionProperty.Key.DataCommunicationPattern))
-            && edgeToMerger.getSrc().getProperty(ExecutionProperty.Key.StageId)
-            .equals(edgeToMerger.getDst().getProperty(ExecutionProperty.Key.StageId))) {
-          assertEquals(DataStoreProperty.Value.MemoryStore, edgeToMerger.getProperty(ExecutionProperty.Key.DataStore));
+            .equals(edgeToMerger.getPropertyValue(DataCommunicationPatternProperty.class).get())
+            && edgeToMerger.getSrc().getPropertyValue(StageIdProperty.class).get()
+            .equals(edgeToMerger.getDst().getPropertyValue(StageIdProperty.class).get())) {
+          assertEquals(DataStoreProperty.Value.MemoryStore, edgeToMerger.getPropertyValue(DataStoreProperty.class).get());
         } else {
           assertEquals(DataStoreProperty.Value.GlusterFileStore,
-              edgeToMerger.getProperty(ExecutionProperty.Key.DataStore));
+              edgeToMerger.getPropertyValue(DataStoreProperty.class).get());
         }
       });
     });
