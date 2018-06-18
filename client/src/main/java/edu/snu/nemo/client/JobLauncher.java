@@ -72,6 +72,8 @@ public final class JobLauncher {
    * @throws Exception exception on the way.
    */
   public static void main(final String[] args) throws Exception {
+    final DriverRPCServer driverRPCServer = new DriverRPCServer();
+    driverRPCServer.run();
     // Get Job and Driver Confs
     builtJobConf = getJobConf(args);
     final Configuration driverConf = getDriverConf(builtJobConf);
@@ -82,13 +84,15 @@ public final class JobLauncher {
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfg,
-        executorResourceConfig);
+        executorResourceConfig, driverRPCServer.getListeningConfiguration());
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
 
     // Launch client main
     runUserProgramMain(builtJobConf);
+
+    driverRPCServer.shutdown();
   }
 
   /**
