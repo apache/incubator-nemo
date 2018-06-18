@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,15 @@
 package edu.snu.nemo.common;
 
 import edu.snu.nemo.common.exception.IllegalStateTransitionException;
-
-import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.*;
 
 /**
  * A finite state machine that can be created with user defined states and transitions.
  */
-// TODO #171: Enable StateMachine with Handlers for State Transitions
-// TODO #306: StateMachine Visualization
+// TODO #17: StateMachine Visualization
 public final class StateMachine {
   private static final Logger LOG = LoggerFactory.getLogger(StateMachine.class.getName());
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,6 @@ import java.util.stream.StreamSupport;
 
 /**
  * Represents the input data transfer to a task.
- * TODO #492: Modularize the data communication pattern.
  */
 public final class InputReader extends DataTransfer {
   private final int dstTaskIndex;

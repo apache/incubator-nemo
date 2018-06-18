@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -428,22 +428,31 @@ public final class BlockManagerWorker {
       @Override
       public void run() {
         try {
-          if (DataStoreProperty.Value.LocalFileStore.equals(blockStore)
-              || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
-            final List<FileArea> fileAreas = ((FileBlock) getBlockStore(blockStore)
-                .readBlock(blockId).get()).asFileAreas(keyRange);
-            for (final FileArea fileArea : fileAreas) {
-              outputContext.newOutputStream().writeFileArea(fileArea).close();
+          final Optional<Block> optionalBlock = getBlockStore(blockStore).readBlock(blockId);
+          if (optionalBlock.isPresent()) {
+            if (DataStoreProperty.Value.LocalFileStore.equals(blockStore)
+                || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+              final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
+              for (final FileArea fileArea : fileAreas) {
+                try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
+                  os.writeFileArea(fileArea);
+                }
+              }
+            } else {
+              final Iterable<SerializedPartition> partitions = optionalBlock.get().readSerializedPartitions(keyRange);
+              for (final SerializedPartition partition : partitions) {
+                try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
+                  os.writeSerializedPartition(partition);
+                }
+              }
             }
+            handleUsedData(blockStore, blockId);
+            outputContext.close();
+
           } else {
-            final Iterable<SerializedPartition> partitions = getBlockStore(blockStore)
-                .readBlock(blockId).get().readSerializedPartitions(keyRange);
-            for (final SerializedPartition partition : partitions) {
-              outputContext.newOutputStream().writeSerializedPartition(partition).close();
-            }
+            // We don't have the block here...
+            throw new RuntimeException(String.format("Block %s not found in local BlockManagerWorker", blockId));
           }
-          handleUsedData(blockStore, blockId);
-          outputContext.close();
         } catch (final IOException | BlockFetchException e) {
           LOG.error("Closing a block request exceptionally", e);
           outputContext.onChannelError(e);

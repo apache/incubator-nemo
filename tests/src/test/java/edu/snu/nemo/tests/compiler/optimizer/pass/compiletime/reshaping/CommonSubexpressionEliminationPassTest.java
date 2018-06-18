@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternPro
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.dag.DAGBuilder;
-import edu.snu.nemo.compiler.optimizer.examples.EmptyComponents;
+import edu.snu.nemo.common.test.EmptyComponents;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.CommonSubexpressionEliminationPass;
 import org.junit.Before;
 import org.junit.Test;

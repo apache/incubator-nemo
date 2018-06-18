@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -408,8 +408,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
 
     final File file = new File(directory, name + ".json");
     file.getParentFile().mkdirs();
-    try {
-      final PrintWriter printWriter = new PrintWriter(file);
+    try (final PrintWriter printWriter = new PrintWriter(file)) {
       printWriter.println(toString());
       printWriter.close();
       LOG.info(String.format("DAG JSON for %s is saved at %s"

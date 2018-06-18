@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,9 @@ import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
@@ -32,10 +35,6 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import org.apache.reef.tang.annotations.Parameter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * (WARNING) This class is not thread-safe.
@@ -46,7 +45,6 @@ import org.slf4j.LoggerFactory;
  * Serves as a single point of container management in Runtime.
  * We define a unit of resource a container (an evaluator in REEF), and launch a single executor on each container.
  */
-// TODO #60: Specify Types in Requesting Containers
 // We need an overall cleanup of this class after #60 is resolved.
 @DriverSide
 @NotThreadSafe

@@ -19,7 +19,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 * Java 8
 * Maven
 * YARN settings
-    * Download Hadoop 2.7.4 at http://apache.tt.co.kr/hadoop/common/hadoop-2.7.4/
+    * Download Hadoop 2.7.4 at https://archive.apache.org/dist/hadoop/common/hadoop-2.7.4/
     * Set the shell profile as following:
         ```bash
         export HADOOP_HOME=/path/to/hadoop-2.7.4
@@ -92,7 +92,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
 	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy \
 	-user_main edu.snu.nemo.examples.beam.WordCount \
-	-user_args "`pwd`/examples/resources/sample_input_mr `pwd`/examples/resources/sample_output_mr"
+	-user_args "`pwd`/examples/resources/sample_input_wordcount `pwd`/examples/resources/sample_output_wordcount"
 
 ## YARN cluster example
 ./bin/run_beam.sh \
@@ -101,7 +101,7 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
   	-user_main edu.snu.nemo.examples.beam.WordCount \
   	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.PadoPolicy \
-  	-user_args "hdfs://v-m:9000/sample_input_mr hdfs://v-m:9000/sample_output_mr"
+  	-user_args "hdfs://v-m:9000/sample_input_wordcount hdfs://v-m:9000/sample_output_wordcount"
 ```
 ## Resource Configuration
 `-executor_json` command line option can be used to provide a path to the JSON file that describes resource configuration for executors. Its default value is `config/default.json`, which initializes one of each `Transient`, `Reserved`, and `Compute` executor, each of which has one core and 1024MB memory.
@@ -139,13 +139,13 @@ This example configuration specifies
 ## Monitoring your job using web UI
 Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
 * `-dag_dir` command line option is used to specify the directory where the JSON files are stored. The default directory is `./dag`.
-  Using our [online visualizer](https://service.jangho.io/nemo-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
+  Using our [online visualizer](http://cmscluster.snu.ac.kr:50080/nemo-dag/), you can easily visualize a DAG. Just drop the JSON file of the DAG as an input to it.
 
 ### Examples
 ```bash
 ./bin/run_beam.sh \
 	-job_id als \
-	-executor_json `pwd`/examples/resources/sample_executor_resources.json \
+	-executor_json `pwd`/examples/resources/beam_sample_executor_resources.json \
   	-user_main edu.snu.nemo.examples.beam.AlternatingLeastSquare \
   	-optimization_policy edu.snu.nemo.compiler.optimizer.policy.PadoPolicy \
   	-dag_dir "./dag/als" \

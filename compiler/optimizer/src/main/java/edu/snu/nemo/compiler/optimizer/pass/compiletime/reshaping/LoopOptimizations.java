@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Seoul National University
+ * Copyright (C) 2018 Seoul National University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -231,7 +231,7 @@ public final class LoopOptimizations {
      */
     private Boolean checkEqualityOfIntPredicates(final IntPredicate predicate1, final IntPredicate predicate2,
                                                  final Integer numberToTestUntil) {
-      // TODO #223: strengthen this bit of code where terminationCondition has to be checked for convergence.
+      // TODO #11: Generalize Equality of Int Predicates for Loops.
       if (numberToTestUntil.equals(0)) {
         return predicate1.test(numberToTestUntil) == predicate2.test(numberToTestUntil);
       } else if (predicate1.test(numberToTestUntil) != predicate2.test(numberToTestUntil)) {
