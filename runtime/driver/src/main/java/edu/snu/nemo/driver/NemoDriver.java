@@ -69,7 +69,6 @@ public final class NemoDriver {
   private final String localDirectory;
   private final String glusterDirectory;
   private final ClientRPC clientRPC;
-  private final String dagString;
 
   // Client for sending log messages
   private final RemoteClientMessageLoggingHandler handler;
@@ -84,8 +83,7 @@ public final class NemoDriver {
                      @Parameter(JobConf.ExecutorJsonContents.class) final String resourceSpecificationString,
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
-                     @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory,
-                     @Parameter(JobConf.SerializedDAG.class) final String dagString) {
+                     @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory) {
     IdManager.setInDriver();
     this.userApplicationRunner = userApplicationRunner;
     this.runtimeMaster = runtimeMaster;
@@ -97,7 +95,6 @@ public final class NemoDriver {
     this.glusterDirectory = glusterDirectory;
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
-    this.dagString = dagString;
     clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
         .setType(ControlMessage.DriverToClientMessageType.DriverStarted).build());
   }
@@ -151,10 +148,10 @@ public final class NemoDriver {
   /**
    * Start user application.
    */
-  public void startSchedulingUserApplication(final String dagStr) {
+  public void startSchedulingUserApplication(final String dagString) {
     // Launch user application (with a new thread)
     final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor();
-    userApplicationRunnerThread.execute(userApplicationRunner);
+    userApplicationRunnerThread.execute(() -> userApplicationRunner.run(dagString));
     userApplicationRunnerThread.shutdown();
   }
 

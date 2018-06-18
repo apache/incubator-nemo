@@ -59,6 +59,7 @@ public final class JobLauncher {
   private static Configuration jobAndDriverConf = null;
   private static Configuration deployModeConf = null;
   private static Configuration builtJobConf = null;
+  private static String serializedDAG;
 
   /**
    * private constructor.
@@ -76,11 +77,10 @@ public final class JobLauncher {
     final DriverRPCServer driverRPCServer = new DriverRPCServer();
     driverRPCServer
         .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, event -> { })
-        .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> {
+        .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event ->
           driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
               .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
-              .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag("").build()).build());
-        })
+              .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build()).build()))
         .run();
 
     // Get Job and Driver Confs
@@ -115,13 +115,10 @@ public final class JobLauncher {
       if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
         throw new RuntimeException("Configuration for launching driver is not ready");
       }
-      final String serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
-      final Configuration dagConf = TANG.newConfigurationBuilder()
-          .bindNamedParameter(JobConf.SerializedDAG.class, serializedDAG)
-          .build();
+      serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
       // Launch and wait indefinitely for the job to finish
       final LauncherStatus launcherStatus = DriverLauncher.getLauncher(deployModeConf)
-          .run(Configurations.merge(jobAndDriverConf, dagConf));
+          .run(jobAndDriverConf);
       final Optional<Throwable> possibleError = launcherStatus.getError();
       if (possibleError.isPresent()) {
         throw new RuntimeException(possibleError.get());
