@@ -19,14 +19,16 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.KeyExtractorProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor;
-import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder;
+import edu.snu.nemo.compiler.frontend.spark.coder.SparkDecoder;
+import edu.snu.nemo.compiler.frontend.spark.coder.SparkEncoder;
 import edu.snu.nemo.compiler.frontend.spark.transform.CollectTransform;
 import edu.snu.nemo.compiler.frontend.spark.transform.GroupByKeyTransform;
 import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform;
@@ -87,8 +89,10 @@ public final class SparkFrontendUtils {
    * @param <T>             type of the return data.
    * @return the data collected.
    */
-  public static <T> List<T> collect(final DAG<IRVertex, IREdge> dag, final Stack<LoopVertex> loopVertexStack,
-                                    final IRVertex lastVertex, final Serializer serializer) {
+  public static <T> List<T> collect(final DAG<IRVertex, IREdge> dag,
+                                    final Stack<LoopVertex> loopVertexStack,
+                                    final IRVertex lastVertex,
+                                    final Serializer serializer) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
 
     // save result in a temporary file
@@ -100,7 +104,8 @@ public final class SparkFrontendUtils {
 
     final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, collectVertex),
         lastVertex, collectVertex);
-    newEdge.setProperty(CoderProperty.of(new SparkCoder(serializer)));
+    newEdge.setProperty(EncoderProperty.of(new SparkEncoder(serializer)));
+    newEdge.setProperty(DecoderProperty.of(new SparkDecoder(serializer)));
     newEdge.setProperty(SPARK_KEY_EXTRACTOR_PROP);
     builder.connectVertices(newEdge);
 

@@ -15,8 +15,7 @@
  */
 package edu.snu.nemo.runtime.executor.datatransfer;
 
-import edu.snu.nemo.common.coder.IntCoder;
-import edu.snu.nemo.common.coder.PairCoder;
+import edu.snu.nemo.common.coder.*;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
@@ -26,7 +25,6 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.test.EmptyComponents;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
@@ -43,9 +41,6 @@ import edu.snu.nemo.runtime.executor.Executor;
 import edu.snu.nemo.runtime.executor.MetricManagerWorker;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.SerializerManager;
-import edu.snu.nemo.runtime.executor.datatransfer.DataTransferFactory;
-import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
-import edu.snu.nemo.runtime.executor.datatransfer.OutputWriter;
 import edu.snu.nemo.runtime.master.MetricMessageHandler;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
@@ -105,7 +100,8 @@ public final class DataTransferTest {
   private static final int PARALLELISM_TEN = 10;
   private static final String EDGE_PREFIX_TEMPLATE = "Dummy(%d)";
   private static final AtomicInteger TEST_INDEX = new AtomicInteger(0);
-  private static final Coder CODER = PairCoder.of(IntCoder.of(), IntCoder.of());
+  private static final Encoder ENCODER = PairEncoder.of(IntEncoder.of(), IntEncoder.of());
+  private static final Decoder DECODER = PairDecoder.of(IntDecoder.of(), IntDecoder.of());
   private static final Tang TANG = Tang.Factory.getTang();
   private static final int HASH_RANGE_MULTIPLIER = 10;
 
@@ -307,14 +303,14 @@ public final class DataTransferTest {
 
     // Edge setup
     final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex);
-    dummyIREdge.setProperty(CoderProperty.of(CODER));
     dummyIREdge.setProperty(KeyExtractorProperty.of((element -> element)));
+    dummyIREdge.setProperty(DataCommunicationPatternProperty.of(commPattern));
+    dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+    dummyIREdge.setProperty(DataStoreProperty.of(store));
+    dummyIREdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
+    dummyIREdge.setProperty(EncoderProperty.of(ENCODER));
+    dummyIREdge.setProperty(DecoderProperty.of(DECODER));
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
-    edgeProperties.put(DataCommunicationPatternProperty.of(commPattern));
-    edgeProperties.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-    edgeProperties.put(DataStoreProperty.of(store));
-    edgeProperties.put(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
-    edgeProperties.put(CoderProperty.of(CODER));
     final RuntimeEdge dummyEdge;
 
     final IRVertex srcMockVertex = mock(IRVertex.class);
@@ -398,20 +394,20 @@ public final class DataTransferTest {
 
     // Edge setup
     final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex);
-    dummyIREdge.setProperty(CoderProperty.of(CODER));
+    dummyIREdge.setProperty(EncoderProperty.of(ENCODER));
+    dummyIREdge.setProperty(DecoderProperty.of(DECODER));
     dummyIREdge.setProperty(KeyExtractorProperty.of((element -> element)));
-    final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
-    edgeProperties.put(DataCommunicationPatternProperty.of(commPattern));
-    edgeProperties.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-    edgeProperties.put(DuplicateEdgeGroupProperty.of(new DuplicateEdgeGroupPropertyValue("dummy")));
+    dummyIREdge.setProperty(DataCommunicationPatternProperty.of(commPattern));
+    dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
+    dummyIREdge.setProperty(DuplicateEdgeGroupProperty.of(new DuplicateEdgeGroupPropertyValue("dummy")));
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty
-        = edgeProperties.get(DuplicateEdgeGroupProperty.class);
+        = dummyIREdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     duplicateDataProperty.get().setRepresentativeEdgeId(edgeId);
     duplicateDataProperty.get().setGroupSize(2);
-
-    edgeProperties.put(DataStoreProperty.of(store));
-    edgeProperties.put(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
+    dummyIREdge.setProperty(DataStoreProperty.of(store));
+    dummyIREdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
     final RuntimeEdge dummyEdge, dummyEdge2;
+    final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
 
     final IRVertex srcMockVertex = mock(IRVertex.class);
     final IRVertex dstMockVertex = mock(IRVertex.class);
@@ -523,8 +519,8 @@ public final class DataTransferTest {
   private Pair<IRVertex, IRVertex> setupVertices(final String edgeId,
                                                  final BlockManagerWorker sender,
                                                  final BlockManagerWorker receiver) {
-    serializerManagers.get(sender).register(edgeId, CODER);
-    serializerManagers.get(receiver).register(edgeId, CODER);
+    serializerManagers.get(sender).register(edgeId, ENCODER, DECODER);
+    serializerManagers.get(receiver).register(edgeId, ENCODER, DECODER);
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
@@ -543,10 +539,10 @@ public final class DataTransferTest {
                                                  final String edgeId2,
                                                  final BlockManagerWorker sender,
                                                  final BlockManagerWorker receiver) {
-    serializerManagers.get(sender).register(edgeId, CODER);
-    serializerManagers.get(receiver).register(edgeId, CODER);
-    serializerManagers.get(sender).register(edgeId2, CODER);
-    serializerManagers.get(receiver).register(edgeId2, CODER);
+    serializerManagers.get(sender).register(edgeId, ENCODER, DECODER);
+    serializerManagers.get(receiver).register(edgeId, ENCODER, DECODER);
+    serializerManagers.get(sender).register(edgeId2, ENCODER, DECODER);
+    serializerManagers.get(receiver).register(edgeId2, ENCODER, DECODER);
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");

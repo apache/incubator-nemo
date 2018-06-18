@@ -19,11 +19,11 @@ import java.util
 
 import edu.snu.nemo.common.dag.DAGBuilder
 import edu.snu.nemo.common.ir.edge.IREdge
-import edu.snu.nemo.common.ir.edge.executionproperty.{CoderProperty, KeyExtractorProperty}
+import edu.snu.nemo.common.ir.edge.executionproperty.{DecoderProperty, EncoderProperty, KeyExtractorProperty}
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty
 import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
-import edu.snu.nemo.compiler.frontend.spark.coder.SparkCoder
+import edu.snu.nemo.compiler.frontend.spark.coder.{SparkDecoder, SparkEncoder}
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
 import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform
 import org.apache.hadoop.conf.Configuration
@@ -72,7 +72,10 @@ final class PairRDDFunctions[K: ClassTag, V: ClassTag] protected[rdd] (
     val newEdge = new IREdge(SparkFrontendUtils.getEdgeCommunicationPattern(self.lastVertex, reduceByKeyVertex),
       self.lastVertex, reduceByKeyVertex)
     newEdge.setProperty(
-      CoderProperty.of(new SparkCoder[Tuple2[K, V]](self.serializer))
+      EncoderProperty.of(new SparkEncoder[Tuple2[K, V]](self.serializer))
+        .asInstanceOf[EdgeExecutionProperty[_ <: Serializable]])
+    newEdge.setProperty(
+      DecoderProperty.of(new SparkDecoder[Tuple2[K, V]](self.serializer))
         .asInstanceOf[EdgeExecutionProperty[_ <: Serializable]])
     newEdge.setProperty(KeyExtractorProperty.of(new SparkKeyExtractor))
     builder.connectVertices(newEdge)

@@ -31,12 +31,14 @@ public final class PrimitiveCompositePass extends CompositePass {
   public PrimitiveCompositePass() {
     super(Arrays.asList(
         new DefaultParallelismPass(), // annotating after reshaping passes, before stage partitioning
-        new DefaultEdgeCoderPass(),
+        new DefaultEdgeEncoderPass(),
+        new DefaultEdgeDecoderPass(),
         new DefaultStagePartitioningPass(),
         new ReviseInterStageEdgeDataStorePass(), // after stage partitioning
         new DefaultEdgeUsedDataHandlingPass(),
         new ScheduleGroupPass(),
-        new CompressionPass()
+        new CompressionPass(),
+        new DecompressionPass()
     ));
   }
 }

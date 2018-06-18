@@ -15,15 +15,10 @@
  */
 package edu.snu.nemo.common.ir.executionproperty;
 
-import edu.snu.nemo.common.coder.Coder;
+import edu.snu.nemo.common.coder.Decoder;
+import edu.snu.nemo.common.coder.Encoder;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -66,8 +61,10 @@ public class ExecutionPropertyMapTest {
     assertEquals(DataStoreProperty.Value.MemoryStore, edgeMap.get(DataStoreProperty.class).get());
     edgeMap.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
     assertEquals(DataFlowModelProperty.Value.Pull, edgeMap.get(DataFlowModelProperty.class).get());
-    edgeMap.put(CoderProperty.of(Coder.DUMMY_CODER));
-    assertEquals(Coder.DUMMY_CODER, edgeMap.get(CoderProperty.class).get());
+    edgeMap.put(EncoderProperty.of(Encoder.DUMMY_ENCODER));
+    assertEquals(Encoder.DUMMY_ENCODER, edgeMap.get(EncoderProperty.class).get());
+    edgeMap.put(DecoderProperty.of(Decoder.DUMMY_DECODER));
+    assertEquals(Decoder.DUMMY_DECODER, edgeMap.get(DecoderProperty.class).get());
 
     edgeMap.remove(DataFlowModelProperty.class);
     assertFalse(edgeMap.get(DataFlowModelProperty.class).isPresent());

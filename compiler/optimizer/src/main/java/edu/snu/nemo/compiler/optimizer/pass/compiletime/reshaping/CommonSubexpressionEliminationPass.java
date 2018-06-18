@@ -15,9 +15,11 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
-import edu.snu.nemo.common.coder.Coder;
+import edu.snu.nemo.common.coder.Decoder;
+import edu.snu.nemo.common.coder.Encoder;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
@@ -150,9 +152,13 @@ public final class CommonSubexpressionEliminationPass extends ReshapingPass {
               outListToModify.remove(e);
               final IREdge newIrEdge = new IREdge(e.getPropertyValue(DataCommunicationPatternProperty.class).get(),
                   operatorVertexToUse, e.getDst());
-              final Optional<Coder> coderProperty = e.getPropertyValue(CoderProperty.class);
-              if (coderProperty.isPresent()) {
-                newIrEdge.setProperty(CoderProperty.of(coderProperty.get()));
+              final Optional<Encoder> encoderProperty = e.getPropertyValue(EncoderProperty.class);
+              if (encoderProperty.isPresent()) {
+                newIrEdge.setProperty(EncoderProperty.of(encoderProperty.get()));
+              }
+              final Optional<Decoder> decoderProperty = e.getPropertyValue(DecoderProperty.class);
+              if (decoderProperty.isPresent()) {
+                newIrEdge.setProperty(DecoderProperty.of(decoderProperty.get()));
               }
               outListToModify.add(newIrEdge);
             });

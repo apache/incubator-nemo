@@ -15,19 +15,19 @@
  */
 package edu.snu.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.nemo.common.coder.Coder;
+import edu.snu.nemo.common.coder.Decoder;
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
- * Coder ExecutionProperty.
+ * Decoder ExecutionProperty.
  */
-public final class CoderProperty extends EdgeExecutionProperty<Coder> {
+public final class DecoderProperty extends EdgeExecutionProperty<Decoder> {
   /**
    * Constructor.
    *
    * @param value value of the execution property.
    */
-  private CoderProperty(final Coder value) {
+  private DecoderProperty(final Decoder value) {
     super(value);
   }
 
@@ -37,7 +37,7 @@ public final class CoderProperty extends EdgeExecutionProperty<Coder> {
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static CoderProperty of(final Coder value) {
-    return new CoderProperty(value);
+  public static DecoderProperty of(final Decoder value) {
+    return new DecoderProperty(value);
   }
 }
