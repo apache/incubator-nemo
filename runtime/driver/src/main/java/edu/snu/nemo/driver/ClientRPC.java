@@ -89,7 +89,7 @@ public final class ClientRPC {
    */
   private void handleMessage(final ControlMessage.ClientToDriverMessage message) {
     if (message.getType() == ControlMessage.ClientToDriverMessageType.LaunchDAG) {
-      nemoDriver.get().startSchedulingUserApplication(message.getLaunchDAG().getDag());
+      // nemoDriver.get().startSchedulingUserApplication(message.getLaunchDAG().getDag());
     }
   }
 

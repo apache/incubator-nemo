@@ -234,6 +234,13 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class PartitionTransportClientNumThreads implements Name<Integer> {
   }
 
+  /**
+   * Serialized {edu.snu.nemo.common.dag.DAG} from user main method.
+   */
+  @NamedParameter(doc = "String serialized DAG")
+  public final class SerializedDAG implements Name<String> {
+  }
+
   //////////////////////////////// Intermediate Configurations
 
   /**

@@ -42,7 +42,7 @@ import java.util.concurrent.ScheduledExecutorService;
 /**
  * Compiles and runs User application.
  */
-public final class UserApplicationRunner {
+public final class UserApplicationRunner implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(UserApplicationRunner.class.getName());
 
   private final String dagDirectory;
@@ -52,6 +52,7 @@ public final class UserApplicationRunner {
   private final Injector injector;
   private final RuntimeMaster runtimeMaster;
   private final Backend<PhysicalPlan> backend;
+  private final String dagString;
 
   private final PubSubEventHandlerWrapper pubSubWrapper;
 
@@ -59,6 +60,7 @@ public final class UserApplicationRunner {
   private UserApplicationRunner(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
                                 @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy,
                                 @Parameter(JobConf.MaxScheduleAttempt.class) final int maxScheduleAttempt,
+                                @Parameter(JobConf.SerializedDAG.class) final String dagString,
                                 final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                                 final Injector injector,
                                 final RuntimeMaster runtimeMaster) {
@@ -69,9 +71,10 @@ public final class UserApplicationRunner {
     this.runtimeMaster = runtimeMaster;
     this.backend = new NemoBackend();
     this.pubSubWrapper = pubSubEventHandlerWrapper;
+    this.dagString = dagString;
   }
 
-  public void run(final String dagString) {
+  public void run() {
     try {
       LOG.info("##### Nemo Compiler #####");
 

@@ -108,23 +108,24 @@ public final class JobLauncher {
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
 
-    // Launch Nemo
-    launchNemo();
-
     // Launch client main
     runUserProgramMain(builtJobConf);
     reefJobFinishLatch.await();
     reefRunThread.shutdown();
   }
 
-  private static void launchNemo() {
+  private static void launchNemo(final DAG dag) {
+    final String serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
+    final Configuration dagConf = TANG.newConfigurationBuilder()
+        .bindNamedParameter(JobConf.SerializedDAG.class, serializedDAG)
+        .build();
     if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
       throw new RuntimeException("Configuration for launching driver is not ready");
     }
     reefRunThread.submit(() -> {
       try {
         final LauncherStatus launcherStatus = DriverLauncher.getLauncher(deployModeConf)
-            .run(jobAndDriverConf);
+            .run(Configurations.merge(jobAndDriverConf, dagConf));
         // Launch and wait indefinitely for the job to finish
         final Optional<Throwable> possibleError = launcherStatus.getError();
         if (possibleError.isPresent()) {
@@ -147,6 +148,8 @@ public final class JobLauncher {
    */
   // When modifying the signature of this method, see CompilerTestUtil#compileDAG and make corresponding changes
   public static void launchDAG(final DAG dag) {
+    // Launch Nemo
+    launchNemo(dag);
     try {
       resourceReadyLatch.await();
     } catch (final InterruptedException e) {
