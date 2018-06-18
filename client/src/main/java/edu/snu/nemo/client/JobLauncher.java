@@ -76,7 +76,11 @@ public final class JobLauncher {
     final DriverRPCServer driverRPCServer = new DriverRPCServer();
     driverRPCServer
         .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, event -> { })
-        .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> { })
+        .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> {
+          driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+              .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
+              .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag("").build()).build());
+        })
         .run();
 
     // Get Job and Driver Confs
