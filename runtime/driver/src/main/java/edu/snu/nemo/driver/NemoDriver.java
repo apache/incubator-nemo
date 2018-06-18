@@ -144,7 +144,6 @@ public final class NemoDriver {
       if (finalExecutorLaunched) {
         clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
             .setType(ControlMessage.DriverToClientMessageType.ResourceReady).build());
-        startSchedulingUserApplication(null);
       }
     }
   }
