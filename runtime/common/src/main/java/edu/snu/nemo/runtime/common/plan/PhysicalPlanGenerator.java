@@ -22,7 +22,6 @@ import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.StageIdProperty;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
@@ -41,16 +40,20 @@ import java.util.function.Function;
 public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdge>, DAG<Stage, StageEdge>> {
   private final Map<String, IRVertex> idToIRVertex;
   private final String dagDirectory;
+  private final StagePartitioner stagePartitioner;
 
   /**
    * Private constructor.
    *
+   * @param stagePartitioner provides stage partitioning
    * @param dagDirectory the directory in which to store DAG data.
    */
   @Inject
-  private PhysicalPlanGenerator(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
+  private PhysicalPlanGenerator(final StagePartitioner stagePartitioner,
+                                @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     this.idToIRVertex = new HashMap<>();
     this.dagDirectory = dagDirectory;
+    this.stagePartitioner = stagePartitioner;
   }
 
   /**

@@ -25,7 +25,6 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -33,6 +32,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * ExecutionPropertyMap Class, which uses HashMap for keeping track of ExecutionProperties for vertices and edges.
@@ -146,6 +146,13 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
    */
   public void forEachProperties(final Consumer<? super T> action) {
     properties.values().forEach(action);
+  }
+
+  /**
+   * @return {@link Stream} of execution properties.
+   */
+  public Stream<T> stream() {
+    return properties.values().stream();
   }
 
   @Override
