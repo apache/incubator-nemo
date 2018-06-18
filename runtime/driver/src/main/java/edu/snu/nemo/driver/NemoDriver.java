@@ -98,6 +98,8 @@ public final class NemoDriver {
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
     this.dagString = dagString;
+    clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+        .setType(ControlMessage.DriverToClientMessageType.DriverStarted).build());
   }
 
   /**
@@ -140,6 +142,8 @@ public final class NemoDriver {
       final boolean finalExecutorLaunched = runtimeMaster.onExecutorLaunched(activeContext);
 
       if (finalExecutorLaunched) {
+        clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+            .setType(ControlMessage.DriverToClientMessageType.ResourceReady).build());
         startSchedulingUserApplication(null);
       }
     }
