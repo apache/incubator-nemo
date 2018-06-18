@@ -68,7 +68,6 @@ public final class NemoDriver {
   private final String jobId;
   private final String localDirectory;
   private final String glusterDirectory;
-  private final ClientRPC clientRPC;
   private final String dagString;
 
   // Client for sending log messages
@@ -80,7 +79,6 @@ public final class NemoDriver {
                      final NameServer nameServer,
                      final LocalAddressProvider localAddressProvider,
                      final JobMessageObserver client,
-                     final ClientRPC clientRPC,
                      @Parameter(JobConf.ExecutorJsonContents.class) final String resourceSpecificationString,
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
@@ -96,10 +94,7 @@ public final class NemoDriver {
     this.localDirectory = localDirectory;
     this.glusterDirectory = glusterDirectory;
     this.handler = new RemoteClientMessageLoggingHandler(client);
-    this.clientRPC = clientRPC;
     this.dagString = dagString;
-    clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-        .setType(ControlMessage.DriverToClientMessageType.DriverStarted).build());
   }
 
   /**
@@ -142,8 +137,6 @@ public final class NemoDriver {
       final boolean finalExecutorLaunched = runtimeMaster.onExecutorLaunched(activeContext);
 
       if (finalExecutorLaunched) {
-        clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-            .setType(ControlMessage.DriverToClientMessageType.ResourceReady).build());
         startSchedulingUserApplication(null);
       }
     }
@@ -187,7 +180,6 @@ public final class NemoDriver {
     @Override
     public void onNext(final StopTime stopTime) {
       handler.close();
-      clientRPC.shutdown();
     }
   }
 
