@@ -21,7 +21,6 @@ import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.state.BlockState;
-import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Before;
@@ -88,25 +87,25 @@ public final class BlockManagerMasterTest {
     final String executorId = RuntimeIdGenerator.generateExecutorId();
     final String blockId = RuntimeIdGenerator.generateBlockId(edgeId, srcTaskIndex);
 
-    // Initially the block state is READY.
+    // Initially the block state is NOT_AVAILABLE.
     blockManagerMaster.initializeState(blockId, taskId);
     checkBlockAbsentException(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), blockId,
-        BlockState.State.READY);
+        BlockState.State.NOT_AVAILABLE);
 
-    // The block is being SCHEDULED.
+    // The block is being IN_PROGRESS.
     blockManagerMaster.onProducerTaskScheduled(taskId);
     final Future<String> future = blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture();
     checkPendingFuture(future);
 
-    // The block is COMMITTED
-    blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.COMMITTED, executorId);
-    checkBlockLocation(future, executorId); // A future, previously pending on SCHEDULED state, is now resolved.
+    // The block is AVAILABLE
+    blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE, executorId);
+    checkBlockLocation(future, executorId); // A future, previously pending on IN_PROGRESS state, is now resolved.
     checkBlockLocation(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), executorId);
 
-    // We LOST the block.
+    // We lost the block.
     blockManagerMaster.removeWorker(executorId);
     checkBlockAbsentException(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), blockId,
-        BlockState.State.LOST);
+        BlockState.State.NOT_AVAILABLE);
   }
 
   /**
@@ -130,10 +129,10 @@ public final class BlockManagerMasterTest {
     // Producer task fails.
     blockManagerMaster.onProducerTaskFailed(taskId);
 
-    // A future, previously pending on SCHEDULED state, is now completed exceptionally.
-    checkBlockAbsentException(future0, blockId, BlockState.State.LOST_BEFORE_COMMIT);
+    // A future, previously pending on IN_PROGRESS state, is now completed exceptionally.
+    checkBlockAbsentException(future0, blockId, BlockState.State.NOT_AVAILABLE);
     checkBlockAbsentException(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), blockId,
-        BlockState.State.LOST_BEFORE_COMMIT);
+        BlockState.State.NOT_AVAILABLE);
 
     // Re-scheduling the task.
     blockManagerMaster.onProducerTaskScheduled(taskId);
@@ -141,13 +140,13 @@ public final class BlockManagerMasterTest {
     checkPendingFuture(future1);
 
     // Committed.
-    blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.COMMITTED, executorId);
-    checkBlockLocation(future1, executorId); // A future, previously pending on SCHEDULED state, is now resolved.
+    blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE, executorId);
+    checkBlockLocation(future1, executorId); // A future, previously pending on IN_PROGRESS state, is now resolved.
     checkBlockLocation(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), executorId);
 
     // Then removed.
-    blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.REMOVED, executorId);
+    blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.NOT_AVAILABLE, executorId);
     checkBlockAbsentException(blockManagerMaster.getBlockLocationHandler(blockId).getLocationFuture(), blockId,
-        BlockState.State.REMOVED);
+        BlockState.State.NOT_AVAILABLE);
   }
 }
