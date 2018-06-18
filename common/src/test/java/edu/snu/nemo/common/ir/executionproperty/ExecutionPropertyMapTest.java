@@ -33,6 +33,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Test {@link ExecutionPropertyMap}.
@@ -74,5 +75,34 @@ public class ExecutionPropertyMapTest {
 
     vertexMap.put(ParallelismProperty.of(100));
     assertEquals(100, vertexMap.get(ParallelismProperty.class).get().longValue());
+  }
+
+  @Test
+  public void testEquality() {
+    final ExecutionPropertyMap<ExecutionProperty> map0 = new ExecutionPropertyMap<>("map0");
+    final ExecutionPropertyMap<ExecutionProperty> map1 = new ExecutionPropertyMap<>("map1");
+    assertTrue(map0.equals(map1));
+    assertTrue(map1.equals(map0));
+    map0.put(ParallelismProperty.of(1));
+    assertFalse(map0.equals(map1));
+    assertFalse(map1.equals(map0));
+    map1.put(ParallelismProperty.of(1));
+    assertTrue(map0.equals(map1));
+    assertTrue(map1.equals(map0));
+    map1.put(ParallelismProperty.of(2));
+    assertFalse(map0.equals(map1));
+    assertFalse(map1.equals(map0));
+    map0.put(ParallelismProperty.of(2));
+    assertTrue(map0.equals(map1));
+    assertTrue(map1.equals(map0));
+    map0.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    assertFalse(map0.equals(map1));
+    assertFalse(map1.equals(map0));
+    map1.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Push));
+    assertFalse(map0.equals(map1));
+    assertFalse(map1.equals(map0));
+    map1.put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    assertTrue(map0.equals(map1));
+    assertTrue(map1.equals(map0));
   }
 }

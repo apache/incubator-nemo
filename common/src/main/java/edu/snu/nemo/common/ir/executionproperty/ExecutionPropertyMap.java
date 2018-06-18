@@ -174,17 +174,12 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     if (this == obj) {
       return true;
     }
-
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-
-    ExecutionPropertyMap that = (ExecutionPropertyMap) obj;
-
-    return new EqualsBuilder()
-        .append(properties.values().stream().collect(Collectors.toSet()),
-            that.properties.values().stream().collect(Collectors.toSet()))
-        .isEquals();
+    final ExecutionPropertyMap that = (ExecutionPropertyMap) obj;
+    return properties.values().stream().collect(Collectors.toSet())
+        .equals(that.properties.values().stream().collect(Collectors.toSet()));
   }
 
   @Override
