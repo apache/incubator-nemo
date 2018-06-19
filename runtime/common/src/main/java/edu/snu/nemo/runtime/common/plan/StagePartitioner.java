@@ -63,7 +63,7 @@ public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, M
     final Map<IRVertex, Integer> vertexToStageIdMap = new HashMap<>();
     irDAG.topologicalDo(irVertex -> {
       // The base case: assign seed stage (stage number 0)
-      if (nextStageIndex.getValue() == 0) {
+      if (nextStageIndex.getValue().equals(0)) {
         vertexToStageIdMap.put(irVertex, nextStageIndex.getValue());
         nextStageIndex.increment();
       }

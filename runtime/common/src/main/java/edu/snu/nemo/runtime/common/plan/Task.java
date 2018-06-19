@@ -16,10 +16,13 @@
 package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * A Task is a self-contained executable that can be executed on a machine.
@@ -30,7 +33,7 @@ public final class Task implements Serializable {
   private final List<StageEdge> taskIncomingEdges;
   private final List<StageEdge> taskOutgoingEdges;
   private final int attemptIdx;
-  private final String containerType;
+  private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
   private final byte[] serializedIRDag;
   private final Map<String, Readable> irVertexIdToReadable;
 
@@ -40,7 +43,7 @@ public final class Task implements Serializable {
    * @param jobId                the id of the job.
    * @param taskId               the ID of the task.
    * @param attemptIdx           the attempt index.
-   * @param containerType        the type of container to execute the task on.
+   * @param executionProperties  {@link VertexExecutionProperty} map for the corresponding stage
    * @param serializedIRDag      the serialized DAG of the task.
    * @param taskIncomingEdges    the incoming edges of the task.
    * @param taskOutgoingEdges    the outgoing edges of the task.
@@ -49,7 +52,7 @@ public final class Task implements Serializable {
   public Task(final String jobId,
               final String taskId,
               final int attemptIdx,
-              final String containerType,
+              final ExecutionPropertyMap<VertexExecutionProperty> executionProperties,
               final byte[] serializedIRDag,
               final List<StageEdge> taskIncomingEdges,
               final List<StageEdge> taskOutgoingEdges,
@@ -57,7 +60,7 @@ public final class Task implements Serializable {
     this.jobId = jobId;
     this.taskId = taskId;
     this.attemptIdx = attemptIdx;
-    this.containerType = containerType;
+    this.executionProperties = executionProperties;
     this.serializedIRDag = serializedIRDag;
     this.taskIncomingEdges = taskIncomingEdges;
     this.taskOutgoingEdges = taskOutgoingEdges;
@@ -107,10 +110,22 @@ public final class Task implements Serializable {
   }
 
   /**
-   * @return the type of container to execute the task on.
+   * @return {@link VertexExecutionProperty} map for the corresponding stage
    */
-  public String getContainerType() {
-    return containerType;
+  public ExecutionPropertyMap<VertexExecutionProperty> getExecutionProperties() {
+    return executionProperties;
+  }
+
+  /**
+   * Get the executionProperty of this task.
+   *
+   * @param <T>                  Type of the return value.
+   * @param executionPropertyKey key of the execution property.
+   * @return the execution property.
+   */
+  public <T extends Serializable> Optional<T> getPropertyValue(
+      final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
+    return executionProperties.get(executionPropertyKey);
   }
 
   /**

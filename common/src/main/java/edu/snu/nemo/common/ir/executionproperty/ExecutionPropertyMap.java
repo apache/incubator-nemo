@@ -83,6 +83,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     }
     return map;
   }
+
   /**
    * Static initializer for irVertex.
    * @param irVertex irVertex to keep the execution property of.
