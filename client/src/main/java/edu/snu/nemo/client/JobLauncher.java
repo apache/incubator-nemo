@@ -76,8 +76,8 @@ public final class JobLauncher {
   public static void main(final String[] args) throws Exception {
     final DriverRPCServer driverRPCServer = new DriverRPCServer();
     driverRPCServer
-        .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, event -> { })
-        .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event ->
+        .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> { })
+        .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, event ->
           driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
               .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
               .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build()).build()))
