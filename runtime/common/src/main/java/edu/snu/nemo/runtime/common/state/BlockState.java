@@ -31,29 +31,22 @@ public final class BlockState {
     final StateMachine.Builder stateMachineBuilder = StateMachine.newBuilder();
 
     // Add states
-    stateMachineBuilder.addState(State.READY, "The block is ready to be created.");
-    stateMachineBuilder.addState(State.SCHEDULED, "The block is scheduled for creation.");
-    stateMachineBuilder.addState(State.COMMITTED, "The block has been committed.");
-    stateMachineBuilder.addState(State.LOST_BEFORE_COMMIT, "The task that produces the block is scheduled, "
-        + "but failed before committing");
-    stateMachineBuilder.addState(State.REMOVED, "The block has been removed (e.g., GC-ed).");
-    stateMachineBuilder.addState(State.LOST, "Block lost.");
+    stateMachineBuilder.addState(State.NOT_AVAILABLE, "The block is not available.");
+    stateMachineBuilder.addState(State.IN_PROGRESS, "The block is in the progress of being created.");
+    stateMachineBuilder.addState(State.AVAILABLE, "The block is available.");
 
     // Add transitions
-    stateMachineBuilder.addTransition(State.READY, State.SCHEDULED,
+    stateMachineBuilder.addTransition(State.NOT_AVAILABLE, State.IN_PROGRESS,
         "The task that produces the block is scheduled.");
-    stateMachineBuilder.addTransition(State.SCHEDULED, State.COMMITTED, "Successfully moved and committed");
-    stateMachineBuilder.addTransition(State.SCHEDULED, State.LOST_BEFORE_COMMIT, "The block is lost before commit");
-    stateMachineBuilder.addTransition(State.COMMITTED, State.LOST, "Lost after committed");
-    stateMachineBuilder.addTransition(State.COMMITTED, State.REMOVED, "Removed after committed");
-    stateMachineBuilder.addTransition(State.REMOVED, State.SCHEDULED,
-        "Re-scheduled after removal due to fault tolerance");
+    stateMachineBuilder.addTransition(State.IN_PROGRESS, State.AVAILABLE, "The block is successfully created");
 
-    stateMachineBuilder.addTransition(State.LOST, State.SCHEDULED, "The producer of the lost block is rescheduled");
-    stateMachineBuilder.addTransition(State.LOST_BEFORE_COMMIT, State.SCHEDULED,
-        "The producer of the lost block is rescheduled");
+    stateMachineBuilder.addTransition(State.IN_PROGRESS, State.NOT_AVAILABLE,
+        "The block is lost before being created");
+    stateMachineBuilder.addTransition(State.AVAILABLE, State.NOT_AVAILABLE, "The block is lost");
+    stateMachineBuilder.addTransition(State.NOT_AVAILABLE, State.NOT_AVAILABLE,
+        "A block can be reported lost from multiple sources");
 
-    stateMachineBuilder.setInitialState(State.READY);
+    stateMachineBuilder.setInitialState(State.NOT_AVAILABLE);
 
     return stateMachineBuilder.build();
   }
@@ -66,12 +59,9 @@ public final class BlockState {
    * BlockState.
    */
   public enum State {
-    READY,
-    SCHEDULED,
-    COMMITTED,
-    LOST_BEFORE_COMMIT,
-    LOST,
-    REMOVED
+    NOT_AVAILABLE,
+    IN_PROGRESS,
+    AVAILABLE,
   }
 
   @Override

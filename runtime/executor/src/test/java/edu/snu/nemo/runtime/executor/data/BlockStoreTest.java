@@ -129,7 +129,7 @@ public final class BlockStoreTest {
       blockIdList.add(blockId);
       blockManagerMaster.initializeState(blockId, "Unused");
       blockManagerMaster.onBlockStateChanged(
-          blockId, BlockState.State.SCHEDULED, null);
+          blockId, BlockState.State.IN_PROGRESS, null);
 
       // Create blocks for this block.
       final List<NonSerializedPartition<Integer>> partitionsForBlock = new ArrayList<>(NUM_READ_VERTICES);
@@ -150,7 +150,7 @@ public final class BlockStoreTest {
     concBlockId = RuntimeIdGenerator.generateBlockId(concEdge, NUM_WRITE_VERTICES + NUM_READ_VERTICES + 1);
     blockManagerMaster.initializeState(concBlockId, "unused");
     blockManagerMaster.onBlockStateChanged(
-        concBlockId, BlockState.State.SCHEDULED, null);
+        concBlockId, BlockState.State.IN_PROGRESS, null);
     IntStream.range(0, NUM_CONC_READ_TASKS).forEach(number -> concReadTaskIdList.add("conc_read_IR_vertex"));
     concBlockPartition = new NonSerializedPartition(0, getRangedNumList(0, CONC_READ_DATA_SIZE), -1, -1);
 
@@ -175,7 +175,7 @@ public final class BlockStoreTest {
       hashedBlockIdList.add(blockId);
       blockManagerMaster.initializeState(blockId, "Unused");
       blockManagerMaster.onBlockStateChanged(
-          blockId, BlockState.State.SCHEDULED, null);
+          blockId, BlockState.State.IN_PROGRESS, null);
       final List<NonSerializedPartition<Integer>> hashedBlock = new ArrayList<>(HASH_RANGE);
       // Generates the data having each hash value.
       IntStream.range(0, HASH_RANGE).forEach(hashValue ->
@@ -319,7 +319,7 @@ public final class BlockStoreTest {
               }
               block.commit();
               writerSideStore.writeBlock(block);
-              blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.COMMITTED,
+              blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE,
                   "Writer side of the shuffle edge");
               return true;
             } catch (final Exception e) {
@@ -413,7 +413,7 @@ public final class BlockStoreTest {
           block.commit();
           writerSideStore.writeBlock(block);
           blockManagerMaster.onBlockStateChanged(
-              concBlockId, BlockState.State.COMMITTED, "Writer side of the concurrent read edge");
+              concBlockId, BlockState.State.AVAILABLE, "Writer side of the concurrent read edge");
           return true;
         } catch (final Exception e) {
           e.printStackTrace();
@@ -501,7 +501,7 @@ public final class BlockStoreTest {
               }
               block.commit();
               writerSideStore.writeBlock(block);
-              blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.COMMITTED,
+              blockManagerMaster.onBlockStateChanged(blockId, BlockState.State.AVAILABLE,
                   "Writer side of the shuffle in hash range edge");
               return true;
             } catch (final Exception e) {
