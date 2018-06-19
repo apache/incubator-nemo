@@ -161,7 +161,7 @@ public final class SparkJavaITCase {
     final String inputFileJson = fileBasePath + peopleJson;
     final String inputFileTxt = fileBasePath + peopleTxt;
 
-    //    TODO#412: Enable this after implementation of RDDs.
+    //    TODO#12: Frontend support for Scala Spark.
     //    JobLauncher.main(builder
     //        .addJobId(JavaSparkSQLExample.class.getSimpleName() + "_test")
     //        .addUserMain(JavaSparkSQLExample.class.getCanonicalName())

@@ -182,7 +182,6 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
    *
    * Not sure these variable names are conventionally used in RPC frameworks...
    * Let's revisit them when we work on
-   * TODO #206: Rethink/Refactor NCS as our RPC stack
    */
   enum MessageType {
     Send,

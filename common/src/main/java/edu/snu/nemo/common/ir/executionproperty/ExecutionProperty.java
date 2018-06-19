@@ -16,23 +16,19 @@
 package edu.snu.nemo.common.ir.executionproperty;
 
 import java.io.Serializable;
-import java.util.Objects;
 
 /**
  * An abstract class for each execution factors.
- * @param <T> Key of the value.
+ * @param <T> Type of the value.
  */
-public abstract class ExecutionProperty<T> implements Serializable {
-  private Key key;
+public abstract class ExecutionProperty<T extends Serializable> implements Serializable {
   private T value;
 
   /**
    * Default constructor.
-   * @param key key of the ExecutionProperty, given by the enum in this class.
    * @param value value of the ExecutionProperty.
    */
-  public ExecutionProperty(final Key key, final T value) {
-    this.key = key;
+  public ExecutionProperty(final T value) {
     this.value = value;
   }
 
@@ -41,23 +37,6 @@ public abstract class ExecutionProperty<T> implements Serializable {
    */
   public final T getValue() {
     return this.value;
-  }
-
-  /**
-   * @return the key of the execution property.
-   */
-  public final Key getKey() {
-    return key;
-  }
-
-  /**
-   * Static method to get an empty execution property.
-   * @param <T> type of the value of the execution property.
-   * @return an empty execution property.
-   */
-  static <T> ExecutionProperty<T> emptyExecutionProperty() {
-    return new ExecutionProperty<T>(null, null) {
-    };
   }
 
   @Override
@@ -69,36 +48,11 @@ public abstract class ExecutionProperty<T> implements Serializable {
       return false;
     }
     final ExecutionProperty<?> that = (ExecutionProperty<?>) o;
-    return getKey() == that.getKey()
-        && Objects.equals(getValue(), that.getValue());
+    return value != null ? value.equals(that.value) : that.value == null;
   }
 
   @Override
   public final int hashCode() {
-    return Objects.hash(getKey(), getValue());
-  }
-
-  /**
-   * Key for different types of execution property.
-   */
-  public enum Key {
-    // Applies to IREdge
-    DataCommunicationPattern, // TODO #492: modularizing runtime components for data communication pattern.
-    DataFlowModel,
-    DataStore,
-    MetricCollection,
-    Partitioner,
-    KeyExtractor,
-    UsedDataHandling,
-    Compression,
-    DuplicateEdgeGroup,
-    Coder,
-
-    // Applies to IRVertex
-    DynamicOptimizationType,
-    ExecutorPlacement,
-    Parallelism,
-    ScheduleGroupIndex,
-    StageId,
+    return value != null ? value.hashCode() : 0;
   }
 }

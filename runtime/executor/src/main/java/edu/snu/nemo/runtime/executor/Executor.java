@@ -17,7 +17,10 @@ package edu.snu.nemo.runtime.executor;
 
 import com.google.protobuf.ByteString;
 import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DecompressionProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.IllegalMessageException;
@@ -107,12 +110,21 @@ public final class Executor {
           new TaskStateManager(task, executorId, persistentConnectionToMasterMap, metricMessageSender);
 
       task.getTaskIncomingEdges().forEach(e -> serializerManager.register(e.getId(),
-          e.getProperty(ExecutionProperty.Key.Coder), e.getExecutionProperties()));
+          e.getPropertyValue(EncoderProperty.class).get(),
+          e.getPropertyValue(DecoderProperty.class).get(),
+          e.getPropertyValue(CompressionProperty.class).orElse(null),
+          e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       task.getTaskOutgoingEdges().forEach(e -> serializerManager.register(e.getId(),
-          e.getProperty(ExecutionProperty.Key.Coder), e.getExecutionProperties()));
+          e.getPropertyValue(EncoderProperty.class).get(),
+          e.getPropertyValue(DecoderProperty.class).get(),
+          e.getPropertyValue(CompressionProperty.class).orElse(null),
+          e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       irDag.getVertices().forEach(v -> {
         irDag.getOutgoingEdgesOf(v).forEach(e -> serializerManager.register(e.getId(),
-            e.getProperty(ExecutionProperty.Key.Coder), e.getExecutionProperties()));
+            e.getPropertyValue(EncoderProperty.class).get(),
+            e.getPropertyValue(DecoderProperty.class).get(),
+            e.getPropertyValue(CompressionProperty.class).orElse(null),
+            e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       });
 
       new TaskExecutor(

@@ -42,7 +42,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static edu.snu.nemo.runtime.common.state.BlockState.State.SCHEDULED;
+import static edu.snu.nemo.runtime.common.state.BlockState.State.IN_PROGRESS;
 
 /**
  * Master-side block manager.
@@ -109,7 +109,7 @@ public final class BlockManagerMaster {
     try {
       // Set committed block states to lost
       getCommittedBlocksByWorker(executorId).forEach(blockId -> {
-        onBlockStateChanged(blockId, BlockState.State.LOST, executorId);
+        onBlockStateChanged(blockId, BlockState.State.NOT_AVAILABLE, executorId);
         // producerTaskForPartition should always be non-empty.
         final Set<String> producerTaskForPartition = getProducerTaskIds(blockId);
         producerTaskForPartition.forEach(tasksToRecompute::add);
@@ -126,7 +126,7 @@ public final class BlockManagerMaster {
    *
    * @param blockId id of the specified block.
    * @return the handler of block location requests, which completes exceptionally when the block
-   * is not {@code SCHEDULED} or {@code COMMITTED}.
+   * is not {@code IN_PROGRESS} or {@code AVAILABLE}.
    */
   public BlockLocationRequestHandler getBlockLocationHandler(final String blockId) {
     final Lock readLock = lock.readLock();
@@ -135,13 +135,10 @@ public final class BlockManagerMaster {
       final BlockState.State state =
           (BlockState.State) getBlockState(blockId).getStateMachine().getCurrentState();
       switch (state) {
-        case SCHEDULED:
-        case COMMITTED:
+        case IN_PROGRESS:
+        case AVAILABLE:
           return blockIdToMetadata.get(blockId).getLocationHandler();
-        case READY:
-        case LOST_BEFORE_COMMIT:
-        case LOST:
-        case REMOVED:
+        case NOT_AVAILABLE:
           final BlockLocationRequestHandler handler = new BlockLocationRequestHandler(blockId);
           handler.completeExceptionally(new AbsentBlockException(blockId, state));
           return handler;
@@ -191,8 +188,8 @@ public final class BlockManagerMaster {
       if (producerTaskIdToBlockIds.containsKey(scheduledTaskId)) {
         producerTaskIdToBlockIds.get(scheduledTaskId).forEach(blockId -> {
           if (!blockIdToMetadata.get(blockId).getBlockState()
-              .getStateMachine().getCurrentState().equals(SCHEDULED)) {
-            onBlockStateChanged(blockId, SCHEDULED, null);
+              .getStateMachine().getCurrentState().equals(IN_PROGRESS)) {
+            onBlockStateChanged(blockId, IN_PROGRESS, null);
           }
         });
       } // else this task does not produce any block
@@ -216,13 +213,8 @@ public final class BlockManagerMaster {
         producerTaskIdToBlockIds.get(failedTaskId).forEach(blockId -> {
           final BlockState.State state = (BlockState.State)
               blockIdToMetadata.get(blockId).getBlockState().getStateMachine().getCurrentState();
-          if (state == BlockState.State.COMMITTED) {
-            LOG.info("Partition lost: {}", blockId);
-            onBlockStateChanged(blockId, BlockState.State.LOST, null);
-          } else {
-            LOG.info("Partition lost_before_commit: {}", blockId);
-            onBlockStateChanged(blockId, BlockState.State.LOST_BEFORE_COMMIT, null);
-          }
+          LOG.info("Partition lost: {}", blockId);
+          onBlockStateChanged(blockId, BlockState.State.NOT_AVAILABLE, null);
         });
       } // else this task does not produce any block
     } finally {
@@ -252,6 +244,7 @@ public final class BlockManagerMaster {
           } catch (final InterruptedException | ExecutionException e) {
             // Cannot reach here because we check the completion of the future already.
             LOG.error("Exception while getting the location of a block!", e);
+            Thread.currentThread().interrupt();
           }
         }
       });
@@ -443,18 +436,12 @@ public final class BlockManagerMaster {
    */
   public static BlockState.State convertBlockState(final ControlMessage.BlockStateFromExecutor state) {
     switch (state) {
-      case BLOCK_READY:
-        return BlockState.State.READY;
-      case SCHEDULED:
-        return BlockState.State.SCHEDULED;
-      case COMMITTED:
-        return BlockState.State.COMMITTED;
-      case LOST_BEFORE_COMMIT:
-        return BlockState.State.LOST_BEFORE_COMMIT;
-      case LOST:
-        return BlockState.State.LOST;
-      case REMOVED:
-        return BlockState.State.REMOVED;
+      case NOT_AVAILABLE:
+        return BlockState.State.NOT_AVAILABLE;
+      case IN_PROGRESS:
+        return BlockState.State.IN_PROGRESS;
+      case AVAILABLE:
+        return BlockState.State.AVAILABLE;
       default:
         throw new UnknownExecutionStateException(new Exception("This BlockState is unknown: " + state));
     }
@@ -467,18 +454,12 @@ public final class BlockManagerMaster {
    */
   public static ControlMessage.BlockStateFromExecutor convertBlockState(final BlockState.State state) {
     switch (state) {
-      case READY:
-        return ControlMessage.BlockStateFromExecutor.BLOCK_READY;
-      case SCHEDULED:
-        return ControlMessage.BlockStateFromExecutor.SCHEDULED;
-      case COMMITTED:
-        return ControlMessage.BlockStateFromExecutor.COMMITTED;
-      case LOST_BEFORE_COMMIT:
-        return ControlMessage.BlockStateFromExecutor.LOST_BEFORE_COMMIT;
-      case LOST:
-        return ControlMessage.BlockStateFromExecutor.LOST;
-      case REMOVED:
-        return ControlMessage.BlockStateFromExecutor.REMOVED;
+      case NOT_AVAILABLE:
+        return ControlMessage.BlockStateFromExecutor.NOT_AVAILABLE;
+      case IN_PROGRESS:
+        return ControlMessage.BlockStateFromExecutor.IN_PROGRESS;
+      case AVAILABLE:
+        return ControlMessage.BlockStateFromExecutor.AVAILABLE;
       default:
         throw new UnknownExecutionStateException(new Exception("This BlockState is unknown: " + state));
     }

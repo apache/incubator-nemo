@@ -35,7 +35,7 @@ limitations under the License.
         <reef.version>0.17.0-SNAPSHOT</reef.version>
         <protobuf.version>2.5.0</protobuf.version>
         <hadoop.version>2.7.2</hadoop.version>
-        <log4j.configuration>file://log4j.properties</log4j.configuration> <!-- TODO: issue#645 -->
+        <log4j.configuration>file://log4j.properties</log4j.configuration>
         <netty.version>4.1.16.Final</netty.version>
         <guava.version>19.0</guava.version>
         <grpc.version>1.7.0</grpc.version>

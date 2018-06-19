@@ -92,6 +92,7 @@ public abstract class ClientEndpoint {
       }
     } catch (final InterruptedException e) {
       e.printStackTrace(System.err);
+      Thread.currentThread().interrupt();
       return false;
     } finally {
       connectionLock.unlock();
@@ -113,6 +114,7 @@ public abstract class ClientEndpoint {
       return true;
     } catch (final InterruptedException e) {
       e.printStackTrace(System.err);
+      Thread.currentThread().interrupt();
       return false;
     } finally {
       connectionLock.unlock();

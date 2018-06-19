@@ -15,18 +15,18 @@
  */
 package edu.snu.nemo.common.ir.vertex.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
  * ExecutionPlacement ExecutionProperty.
  */
-public final class ExecutorPlacementProperty extends ExecutionProperty<String> {
+public final class ExecutorPlacementProperty extends VertexExecutionProperty<String> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
   private ExecutorPlacementProperty(final String value) {
-    super(Key.ExecutorPlacement, value);
+    super(value);
   }
 
   /**

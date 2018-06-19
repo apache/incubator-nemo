@@ -17,8 +17,11 @@ package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.dag.Edge;
 import edu.snu.nemo.common.dag.Vertex;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+
+import java.io.Serializable;
+import java.util.Optional;
 
 /**
  * Represents the edge between vertices in a logical/physical plan in runtime.
@@ -27,22 +30,6 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 public class RuntimeEdge<V extends Vertex> extends Edge<V> {
   private final ExecutionPropertyMap executionProperties;
   private final Boolean isSideInput;
-
-  /**
-   * Constructs the edge given the below parameters.
-   * This constructor assumes that this edge is not for a side input.
-   *
-   * @param runtimeEdgeId       the id of this edge.
-   * @param executionProperties to control the data flow on this edge.
-   * @param src                 the source vertex.
-   * @param dst                 the destination vertex.
-   */
-  public RuntimeEdge(final String runtimeEdgeId,
-                     final ExecutionPropertyMap executionProperties,
-                     final V src,
-                     final V dst) {
-    this(runtimeEdgeId, executionProperties, src, dst, false);
-  }
 
   /**
    * Constructs the edge given the below parameters.
@@ -70,7 +57,8 @@ public class RuntimeEdge<V extends Vertex> extends Edge<V> {
    * @param executionPropertyKey key of the execution property.
    * @return the execution property.
    */
-  public final <T> T getProperty(final ExecutionProperty.Key executionPropertyKey) {
+  public final <T extends Serializable> Optional<T> getPropertyValue(
+      final Class<? extends EdgeExecutionProperty<T>> executionPropertyKey) {
     return executionProperties.get(executionPropertyKey);
   }
 

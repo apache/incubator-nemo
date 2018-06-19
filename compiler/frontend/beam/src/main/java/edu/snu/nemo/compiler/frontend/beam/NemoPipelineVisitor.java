@@ -15,9 +15,12 @@
  */
 package edu.snu.nemo.compiler.frontend.beam;
 
-import edu.snu.nemo.common.ir.edge.executionproperty.CoderProperty;
+import edu.snu.nemo.common.Pair;
+import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.compiler.frontend.beam.coder.BeamCoder;
+import edu.snu.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
+import edu.snu.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
@@ -55,10 +58,11 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
   private final PipelineOptions options;
   // loopVertexStack keeps track of where the beam program is: whether it is inside a composite transform or it is not.
   private final Stack<LoopVertex> loopVertexStack;
-  private final Map<PValue, BeamCoder> pValueToCoder;
+  private final Map<PValue, Pair<BeamEncoderFactory, BeamDecoderFactory>> pValueToCoder;
 
   /**
    * Constructor of the BEAM Visitor.
+   *
    * @param builder DAGBuilder to build the DAG with.
    * @param options Pipeline options.
    */
@@ -96,10 +100,11 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
       throw new UnsupportedOperationException(beamNode.toString());
     }
 
-    final IRVertex irVertex = convertToVertex(beamNode, builder, pValueToVertex, pValueToCoder, options,
-        loopVertexStack);
+    final IRVertex irVertex =
+        convertToVertex(beamNode, builder, pValueToVertex, pValueToCoder, options, loopVertexStack);
     beamNode.getOutputs().values().stream().filter(v -> v instanceof PCollection).map(v -> (PCollection) v)
-        .forEach(output -> pValueToCoder.put(output, new BeamCoder(output.getCoder())));
+        .forEach(output -> pValueToCoder.put(output,
+            Pair.of(new BeamEncoderFactory(output.getCoder()), new BeamDecoderFactory(output.getCoder()))));
 
     beamNode.getOutputs().values().forEach(output -> pValueToVertex.put(output, irVertex));
 
@@ -107,7 +112,9 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
         .forEach(pValue -> {
           final IRVertex src = pValueToVertex.get(pValue);
           final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, irVertex), src, irVertex);
-          edge.setProperty(CoderProperty.of(pValueToCoder.get(pValue)));
+          final Pair<BeamEncoderFactory, BeamDecoderFactory> coderPair = pValueToCoder.get(pValue);
+          edge.setProperty(EncoderProperty.of(coderPair.left()));
+          edge.setProperty(DecoderProperty.of(coderPair.right()));
           edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
           this.builder.connectVertices(edge);
         });
@@ -115,22 +122,24 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
 
   /**
    * Convert Beam node to IR vertex.
-   * @param beamNode input beam node.
-   * @param builder the DAG builder to add the vertex to.
-   * @param pValueToVertex PValue to Vertex map.
-   * @param pValueToCoder PValue to Coder map.
-   * @param options pipeline options.
+   *
+   * @param beamNode        input beam node.
+   * @param builder         the DAG builder to add the vertex to.
+   * @param pValueToVertex  PValue to Vertex map.
+   * @param pValueToCoder   PValue to EncoderFactory and DecoderFactory map.
+   * @param options         pipeline options.
    * @param loopVertexStack Stack to get the current loop vertex that the operator vertex will be assigned to.
-   * @param <I> input type.
-   * @param <O> output type.
+   * @param <I>             input type.
+   * @param <O>             output type.
    * @return newly created vertex.
    */
-  private static <I, O> IRVertex convertToVertex(final TransformHierarchy.Node beamNode,
-                                                 final DAGBuilder<IRVertex, IREdge> builder,
-                                                 final Map<PValue, IRVertex> pValueToVertex,
-                                                 final Map<PValue, BeamCoder> pValueToCoder,
-                                                 final PipelineOptions options,
-                                                 final Stack<LoopVertex> loopVertexStack) {
+  private static <I, O> IRVertex
+  convertToVertex(final TransformHierarchy.Node beamNode,
+                  final DAGBuilder<IRVertex, IREdge> builder,
+                  final Map<PValue, IRVertex> pValueToVertex,
+                  final Map<PValue, Pair<BeamEncoderFactory, BeamDecoderFactory>> pValueToCoder,
+                  final PipelineOptions options,
+                  final Stack<LoopVertex> loopVertexStack) {
     final PTransform beamTransform = beamNode.getTransform();
     final IRVertex irVertex;
     if (beamTransform instanceof Read.Bounded) {
@@ -147,13 +156,14 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
       pValueToVertex.put(view.getView(), irVertex);
       builder.addVertex(irVertex, loopVertexStack);
       // Coders for outgoing edges in CreateViewTransform.
-      // Since outgoing PValues for CreateViewTransform is PCollectionView, we cannot use PCollection::getCoder to
-      // obtain coders.
+      // Since outgoing PValues for CreateViewTransform is PCollectionView,
+      // we cannot use PCollection::getEncoderFactory to obtain coders.
       final Coder beamInputCoder = beamNode.getInputs().values().stream()
           .filter(v -> v instanceof PCollection).map(v -> (PCollection) v).findFirst()
           .orElseThrow(() -> new RuntimeException("No inputs provided to " + beamNode.getFullName())).getCoder();
       beamNode.getOutputs().values().stream()
-          .forEach(output -> pValueToCoder.put(output, getCoderForView(view.getView().getViewFn(), beamInputCoder)));
+          .forEach(output ->
+              pValueToCoder.put(output, getCoderPairForView(view.getView().getViewFn(), beamInputCoder)));
     } else if (beamTransform instanceof Window) {
       final Window<I> window = (Window<I>) beamTransform;
       final WindowTransform transform = new WindowTransform(window.getWindowFn());
@@ -187,35 +197,40 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
 
   /**
    * Connect side inputs to the vertex.
-   * @param builder the DAG builder to add the vertex to.
-   * @param sideInputs side inputs.
+   *
+   * @param builder        the DAG builder to add the vertex to.
+   * @param sideInputs     side inputs.
    * @param pValueToVertex PValue to Vertex map.
-   * @param pValueToCoder  PValue to Coder map.
-   * @param irVertex wrapper for a user operation in the IR. (Where the side input is headed to)
+   * @param pValueToCoder  PValue to Encoder/Decoder factory map.
+   * @param irVertex       wrapper for a user operation in the IR. (Where the side input is headed to)
    */
   private static void connectSideInputs(final DAGBuilder<IRVertex, IREdge> builder,
                                         final List<PCollectionView<?>> sideInputs,
                                         final Map<PValue, IRVertex> pValueToVertex,
-                                        final Map<PValue, BeamCoder> pValueToCoder,
+                                        final Map<PValue, Pair<BeamEncoderFactory, BeamDecoderFactory>> pValueToCoder,
                                         final IRVertex irVertex) {
     sideInputs.stream().filter(pValueToVertex::containsKey)
         .forEach(pValue -> {
           final IRVertex src = pValueToVertex.get(pValue);
           final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, irVertex),
               src, irVertex, true);
-          edge.setProperty(CoderProperty.of(pValueToCoder.get(pValue)));
+          final Pair<BeamEncoderFactory, BeamDecoderFactory> coder = pValueToCoder.get(pValue);
+          edge.setProperty(EncoderProperty.of(coder.left()));
+          edge.setProperty(DecoderProperty.of(coder.right()));
           edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
           builder.connectVertices(edge);
         });
   }
 
   /**
-   * Get appropriate coder for {@link PCollectionView}.
-   * @param viewFn {@link ViewFn} from the corresponding {@link View.CreatePCollectionView} transform
+   * Get appropriate encoder and decoder pair for {@link PCollectionView}.
+   *
+   * @param viewFn         {@link ViewFn} from the corresponding {@link View.CreatePCollectionView} transform
    * @param beamInputCoder Beam {@link Coder} for input value to {@link View.CreatePCollectionView}
-   * @return appropriate {@link BeamCoder}
+   * @return appropriate pair of {@link BeamEncoderFactory} and {@link BeamDecoderFactory}
    */
-  private static BeamCoder getCoderForView(final ViewFn viewFn, final Coder beamInputCoder) {
+  private static Pair<BeamEncoderFactory, BeamDecoderFactory> getCoderPairForView(final ViewFn viewFn,
+                                                                                  final Coder beamInputCoder) {
     final Coder beamOutputCoder;
     if (viewFn instanceof PCollectionViews.IterableViewFn) {
       beamOutputCoder = IterableCoder.of(beamInputCoder);
@@ -232,11 +247,12 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     } else {
       throw new UnsupportedOperationException("Unsupported viewFn: " + viewFn.getClass());
     }
-    return new BeamCoder(beamOutputCoder);
+    return Pair.of(new BeamEncoderFactory(beamOutputCoder), new BeamDecoderFactory(beamOutputCoder));
   }
 
   /**
    * Get the edge type for the src, dst vertex.
+   *
    * @param src source vertex.
    * @param dst destination vertex.
    * @return the appropriate edge type.
@@ -263,7 +279,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     if (dstTransform instanceof GroupByKeyTransform) {
       return DataCommunicationPatternProperty.Value.Shuffle;
     }
-    if (srcTransform instanceof CreateViewTransform || dstTransform instanceof CreateViewTransform) {
+    if (dstTransform instanceof CreateViewTransform) {
       return DataCommunicationPatternProperty.Value.BroadCast;
     }
     return DataCommunicationPatternProperty.Value.OneToOne;

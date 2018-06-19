@@ -18,9 +18,9 @@ package edu.snu.nemo.tests.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import edu.snu.nemo.tests.compiler.CompilerTestUtil;
@@ -48,25 +48,25 @@ public class DefaultParallelismPassTest {
   @Test
   public void testAnnotatingPass() {
     final AnnotatingPass parallelismPass = new DefaultParallelismPass();
-    assertEquals(ExecutionProperty.Key.Parallelism, parallelismPass.getExecutionPropertyToModify());
+    assertEquals(ParallelismProperty.class, parallelismPass.getExecutionPropertyToModify());
   }
 
   @Test
-  public void testParallelismOne() throws Exception {
+  public void testParallelismOne() {
     final DAG<IRVertex, IREdge> processedDAG = new DefaultParallelismPass().apply(compiledDAG);
 
     processedDAG.getTopologicalSort().forEach(irVertex ->
-        assertEquals(1, irVertex.<Integer>getProperty(ExecutionProperty.Key.Parallelism).longValue()));
+        assertEquals(1, irVertex.getPropertyValue(ParallelismProperty.class).get().longValue()));
   }
 
   @Test
-  public void testParallelismTen() throws Exception {
+  public void testParallelismTen() {
     final int desiredSourceParallelism = 10;
     final DAG<IRVertex, IREdge> processedDAG = new DefaultParallelismPass(desiredSourceParallelism, 2).apply(compiledDAG);
 
     processedDAG.getTopologicalSort().stream()
         .filter(irVertex -> irVertex instanceof SourceVertex)
         .forEach(irVertex -> assertEquals(desiredSourceParallelism,
-            irVertex.<Integer>getProperty(ExecutionProperty.Key.Parallelism).longValue()));
+            irVertex.getPropertyValue(ParallelismProperty.class).get().longValue()));
   }
 }

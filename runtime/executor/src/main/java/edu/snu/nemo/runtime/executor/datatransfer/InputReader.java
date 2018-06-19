@@ -18,9 +18,10 @@ package edu.snu.nemo.runtime.executor.datatransfer;
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.data.KeyRange;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
@@ -40,7 +41,6 @@ import java.util.stream.StreamSupport;
 
 /**
  * Represents the input data transfer to a task.
- * TODO #492: Modularize the data communication pattern.
  */
 public final class InputReader extends DataTransfer {
   private final int dstTaskIndex;
@@ -69,15 +69,14 @@ public final class InputReader extends DataTransfer {
    * @return the read data.
    */
   public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read() {
-    DataCommunicationPatternProperty.Value comValue =
-        (DataCommunicationPatternProperty.Value)
-            runtimeEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern);
+    final Optional<DataCommunicationPatternProperty.Value> comValue =
+            runtimeEdge.getPropertyValue(DataCommunicationPatternProperty.class);
 
-    if (comValue.equals(DataCommunicationPatternProperty.Value.OneToOne)) {
+    if (comValue.get().equals(DataCommunicationPatternProperty.Value.OneToOne)) {
       return Collections.singletonList(readOneToOne());
-    } else if (comValue.equals(DataCommunicationPatternProperty.Value.BroadCast)) {
+    } else if (comValue.get().equals(DataCommunicationPatternProperty.Value.BroadCast)) {
       return readBroadcast();
-    } else if (comValue.equals(DataCommunicationPatternProperty.Value.Shuffle)) {
+    } else if (comValue.get().equals(DataCommunicationPatternProperty.Value.Shuffle)) {
       // If the dynamic optimization which detects data skew is enabled, read the data in the assigned range.
       // TODO #492: Modularize the data communication pattern.
       return readDataInRange();
@@ -88,20 +87,18 @@ public final class InputReader extends DataTransfer {
 
   private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
     final String blockId = getBlockId(dstTaskIndex);
-    return blockManagerWorker.queryBlock(blockId, getId(),
-        (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
-        HashRange.all());
+    final Optional<DataStoreProperty.Value> dataStoreProperty = runtimeEdge.getPropertyValue(DataStoreProperty.class);
+    return blockManagerWorker.queryBlock(blockId, getId(), dataStoreProperty.get(), HashRange.all());
   }
 
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
     final int numSrcTasks = this.getSourceParallelism();
+    final Optional<DataStoreProperty.Value> dataStoreProperty = runtimeEdge.getPropertyValue(DataStoreProperty.class);
 
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockId = getBlockId(srcTaskIdx);
-      futures.add(blockManagerWorker.queryBlock(blockId, getId(),
-          (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
-          HashRange.all()));
+      futures.add(blockManagerWorker.queryBlock(blockId, getId(), dataStoreProperty.get(), HashRange.all()));
     }
 
     return futures;
@@ -114,6 +111,7 @@ public final class InputReader extends DataTransfer {
    */
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
     assert (runtimeEdge instanceof StageEdge);
+    final Optional<DataStoreProperty.Value> dataStoreProperty = runtimeEdge.getPropertyValue(DataStoreProperty.class);
     final KeyRange hashRangeToRead =
         ((StageEdge) runtimeEdge).getTaskIdxToKeyRange().get(dstTaskIndex);
     if (hashRangeToRead == null) {
@@ -126,9 +124,7 @@ public final class InputReader extends DataTransfer {
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockId = getBlockId(srcTaskIdx);
       futures.add(
-          blockManagerWorker.queryBlock(blockId, getId(),
-              (DataStoreProperty.Value) runtimeEdge.getProperty(ExecutionProperty.Key.DataStore),
-              hashRangeToRead));
+          blockManagerWorker.queryBlock(blockId, getId(), dataStoreProperty.get(), hashRangeToRead));
     }
 
     return futures;
@@ -145,12 +141,12 @@ public final class InputReader extends DataTransfer {
    * @return the block id
    */
   private String getBlockId(final int taskIdx) {
-    final DuplicateEdgeGroupPropertyValue duplicateDataProperty =
-        (DuplicateEdgeGroupPropertyValue) runtimeEdge.getProperty(ExecutionProperty.Key.DuplicateEdgeGroup);
-    if (duplicateDataProperty == null || duplicateDataProperty.getGroupSize() <= 1) {
+    final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
+        runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
+    if (!duplicateDataProperty.isPresent() || duplicateDataProperty.get().getGroupSize() <= 1) {
       return RuntimeIdGenerator.generateBlockId(getId(), taskIdx);
     }
-    final String duplicateEdgeId = duplicateDataProperty.getRepresentativeEdgeId();
+    final String duplicateEdgeId = duplicateDataProperty.get().getRepresentativeEdgeId();
     return RuntimeIdGenerator.generateBlockId(duplicateEdgeId, taskIdx);
   }
 
@@ -169,10 +165,10 @@ public final class InputReader extends DataTransfer {
    */
   public int getSourceParallelism() {
     if (DataCommunicationPatternProperty.Value.OneToOne
-        .equals(runtimeEdge.getProperty(ExecutionProperty.Key.DataCommunicationPattern))) {
+        .equals(runtimeEdge.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
       return 1;
     } else {
-      final Integer numSrcTasks = srcVertex.getProperty(ExecutionProperty.Key.Parallelism);
+      final Integer numSrcTasks = srcVertex.getPropertyValue(ParallelismProperty.class).get();
       return numSrcTasks;
     }
   }

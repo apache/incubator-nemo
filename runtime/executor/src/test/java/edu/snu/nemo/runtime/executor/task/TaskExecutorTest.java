@@ -17,7 +17,6 @@ package edu.snu.nemo.runtime.executor.task;
 
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.OutputCollector;
-import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.Readable;

@@ -19,6 +19,28 @@ package protobuf;
 option java_package = "edu.snu.nemo.runtime.common.comm";
 option java_outer_classname = "ControlMessage";
 
+enum ClientToDriverMessageType {
+    LaunchDAG = 0;
+}
+
+message ClientToDriverMessage {
+    required ClientToDriverMessageType type = 1;
+    optional LaunchDAGMessage launchDAG = 2;
+}
+
+message LaunchDAGMessage {
+    required string dag = 1;
+}
+
+enum DriverToClientMessageType {
+    DriverStarted = 0;
+    ResourceReady = 1;
+}
+
+message DriverToClientMessage {
+    required DriverToClientMessageType type = 1;
+}
+
 enum MessageType {
     TaskStateChanged = 0;
     ScheduleTask = 1;
@@ -81,7 +103,7 @@ message BlockStateChangedMsg {
 }
 
 message DataSizeMetricMsg {
-    // TODO #511: Refactor metric aggregation for (general) run-rime optimization.
+    // TODO #96: Modularize DataSkewPolicy to use MetricVertex and BarrierVertex.
     repeated PartitionSizeEntry partitionSize = 1;
     required string blockId = 2;
     required string srcIRVertexId = 3;
@@ -141,12 +163,9 @@ enum TaskStateFromExecutor {
 }
 
 enum BlockStateFromExecutor {
-    BLOCK_READY = 0;
-    SCHEDULED = 1;
-    COMMITTED = 2;
-    LOST = 3;
-    LOST_BEFORE_COMMIT = 4;
-    REMOVED = 5;
+    NOT_AVAILABLE = 0;
+    IN_PROGRESS = 1;
+    AVAILABLE = 2;
 }
 
 enum BlockStore {
