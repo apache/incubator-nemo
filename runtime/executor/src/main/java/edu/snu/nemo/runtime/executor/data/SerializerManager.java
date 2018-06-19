@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * Mapping from RuntimeEdgeId to EncoderFactory.
+ * Mapping from RuntimeEdgeId to {@link Serializer}.
  */
 public final class SerializerManager {
   private static final Logger LOG = LoggerFactory.getLogger(SerializerManager.class.getName());
@@ -47,9 +47,9 @@ public final class SerializerManager {
    * Register a encoderFactory for runtime edge.
    * This method regards that compression & decompression property are empty.
    *
-   * @param runtimeEdgeId id of the runtime edge.
-   * @param encoderFactory       the corresponding encoderFactory.
-   * @param decoderFactory       the corresponding decoderFactory.
+   * @param runtimeEdgeId  id of the runtime edge.
+   * @param encoderFactory the corresponding encoder factory.
+   * @param decoderFactory the corresponding decoder factory.
    */
   public void register(final String runtimeEdgeId,
                        final EncoderFactory encoderFactory,
@@ -61,8 +61,8 @@ public final class SerializerManager {
    * Register a encoderFactory for runtime edge.
    *
    * @param runtimeEdgeId         id of the runtime edge.
-   * @param encoderFactory               the corresponding encoderFactory.
-   * @param decoderFactory               the corresponding decoderFactory.
+   * @param encoderFactory        the corresponding encoder factory.
+   * @param decoderFactory        the corresponding decoder factory.
    * @param compressionProperty   compression property, or null not to enable compression
    * @param decompressionProperty decompression property, or null not to enable decompression
    */

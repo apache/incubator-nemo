@@ -22,6 +22,8 @@ import java.io.*;
  */
 public final class IntDecoderFactory implements DecoderFactory<Integer> {
 
+  private static final IntDecoderFactory INT_DECODER_FACTORY = new IntDecoderFactory();
+
   /**
    * A private constructor.
    */
@@ -33,7 +35,7 @@ public final class IntDecoderFactory implements DecoderFactory<Integer> {
    * Static initializer of the coder.
    */
   public static IntDecoderFactory of() {
-    return new IntDecoderFactory();
+    return INT_DECODER_FACTORY;
   }
 
   @Override
@@ -46,7 +48,7 @@ public final class IntDecoderFactory implements DecoderFactory<Integer> {
    */
   private final class IntDecoder implements Decoder<Integer> {
 
-    private final InputStream inputStream;
+    private final DataInputStream inputStream;
 
     /**
      * Constructor.
@@ -54,16 +56,15 @@ public final class IntDecoderFactory implements DecoderFactory<Integer> {
      * @param inputStream  the input stream to decode.
      */
     private IntDecoder(final InputStream inputStream) {
-      this.inputStream = inputStream;
+      // If the inputStream is closed well in upper level, it is okay to not close this stream
+      // because the DataInputStream itself will not contain any extra information.
+      // (when we close this stream, the input will be closed together.)
+      this.inputStream = new DataInputStream(inputStream);
     }
 
     @Override
     public Integer decode() throws IOException {
-      // If the inStream is closed well in upper level, it is okay to not close this stream
-      // because the DataInputStream itself will not contain any extra information.
-      // (when we close this stream, the inStream will be closed together.)
-      final DataInputStream dataInputStream = new DataInputStream(inputStream);
-      return dataInputStream.readInt();
+      return inputStream.readInt();
     }
   }
 }

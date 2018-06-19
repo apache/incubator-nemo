@@ -22,7 +22,7 @@ import java.io.*;
  */
 public final class IntEncoderFactory implements EncoderFactory<Integer> {
 
-  //private static final Encoder INT_ENCODER = new IntEncoder();
+  private static final IntEncoderFactory INT_ENCODER_FACTORY = new IntEncoderFactory();
 
   /**
    * A private constructor.
@@ -35,7 +35,7 @@ public final class IntEncoderFactory implements EncoderFactory<Integer> {
    * Static initializer of the coder.
    */
   public static IntEncoderFactory of() {
-    return new IntEncoderFactory();
+    return INT_ENCODER_FACTORY;
   }
 
   @Override
@@ -48,7 +48,7 @@ public final class IntEncoderFactory implements EncoderFactory<Integer> {
    */
   private final class IntEncoder implements Encoder<Integer> {
 
-    private final OutputStream outputStream;
+    private final DataOutputStream outputStream;
 
     /**
      * Constructor.
@@ -56,13 +56,15 @@ public final class IntEncoderFactory implements EncoderFactory<Integer> {
      * @param outputStream the output stream to store the encoded bytes.
      */
     private IntEncoder(final OutputStream outputStream) {
-      this.outputStream = outputStream;
+      // If the outputStream is closed well in upper level, it is okay to not close this stream
+      // because the DataOutputStream itself will not contain any extra information.
+      // (when we close this stream, the output will be closed together.)
+      this.outputStream = new DataOutputStream(outputStream);
     }
 
     @Override
     public void encode(final Integer value) throws IOException {
-      final DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
-      dataOutputStream.writeInt(value);
+      outputStream.writeInt(value);
     }
   }
 }

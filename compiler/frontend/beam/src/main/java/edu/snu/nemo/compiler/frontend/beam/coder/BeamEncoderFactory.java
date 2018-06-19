@@ -28,6 +28,7 @@ import java.io.OutputStream;
  * @param <T> the type of element to encode.
  */
 public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
+
   private final Coder<T> beamCoder;
 
   /**
@@ -41,17 +42,22 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
 
   @Override
   public Encoder<T> create(final OutputStream outputStream) {
-    return new BeamEncoder<>(outputStream, beamCoder);
+    if (beamCoder instanceof VoidCoder) {
+      return new BeamVoidEncoder<>(outputStream);
+    } else {
+      return new BeamEncoder<>(outputStream, beamCoder);
+    }
   }
 
   /**
-   * BeamEncoder.
-   * @param <T2> the type of element to encode.
+   * Beam Encoder for non void objects.
+   *
+   * @param <T2> the type of element to decode.
    */
   private final class BeamEncoder<T2> implements Encoder<T2> {
 
     private final Coder<T2> beamCoder;
-    private final OutputStream out;
+    private final OutputStream outputStream;
 
     /**
      * Constructor.
@@ -61,21 +67,41 @@ public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
      */
     private BeamEncoder(final OutputStream outputStream,
                         final Coder<T2> beamCoder) {
-      this.out = outputStream;
+      this.outputStream = outputStream;
       this.beamCoder = beamCoder;
     }
 
     @Override
     public void encode(final T2 element) throws IOException {
-      if (beamCoder instanceof VoidCoder) {
-        out.write(0);
-        return;
-      }
       try {
-        beamCoder.encode(element, out);
+        beamCoder.encode(element, outputStream);
       } catch (final CoderException e) {
         throw new IOException(e);
       }
+    }
+  }
+
+  /**
+   * Beam Decoder for {@link VoidCoder}.
+   *
+   * @param <T2> the type of element to decode.
+   */
+  private final class BeamVoidEncoder<T2> implements Encoder<T2> {
+
+    private final OutputStream outputStream;
+
+    /**
+     * Constructor.
+     *
+     * @param outputStream the output stream to store the encoded bytes.
+     */
+    private BeamVoidEncoder(final OutputStream outputStream) {
+      this.outputStream = outputStream;
+    }
+
+    @Override
+    public void encode(final T2 element) throws IOException {
+      outputStream.write(0); // emit 0 instead of null to enable to count emitted elements.
     }
   }
 

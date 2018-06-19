@@ -133,12 +133,13 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
    * @param <O>             output type.
    * @return newly created vertex.
    */
-  private static <I, O> IRVertex convertToVertex(final TransformHierarchy.Node beamNode,
-                                                 final DAGBuilder<IRVertex, IREdge> builder,
-                                                 final Map<PValue, IRVertex> pValueToVertex,
-                                                 final Map<PValue, Pair<BeamEncoderFactory, BeamDecoderFactory>> pValueToCoder,
-                                                 final PipelineOptions options,
-                                                 final Stack<LoopVertex> loopVertexStack) {
+  private static <I, O> IRVertex
+  convertToVertex(final TransformHierarchy.Node beamNode,
+                  final DAGBuilder<IRVertex, IREdge> builder,
+                  final Map<PValue, IRVertex> pValueToVertex,
+                  final Map<PValue, Pair<BeamEncoderFactory, BeamDecoderFactory>> pValueToCoder,
+                  final PipelineOptions options,
+                  final Stack<LoopVertex> loopVertexStack) {
     final PTransform beamTransform = beamNode.getTransform();
     final IRVertex irVertex;
     if (beamTransform instanceof Read.Bounded) {
@@ -155,8 +156,8 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
       pValueToVertex.put(view.getView(), irVertex);
       builder.addVertex(irVertex, loopVertexStack);
       // Coders for outgoing edges in CreateViewTransform.
-      // Since outgoing PValues for CreateViewTransform is PCollectionView, we cannot use PCollection::getEncoderFactory to
-      // obtain coders.
+      // Since outgoing PValues for CreateViewTransform is PCollectionView,
+      // we cannot use PCollection::getEncoderFactory to obtain coders.
       final Coder beamInputCoder = beamNode.getInputs().values().stream()
           .filter(v -> v instanceof PCollection).map(v -> (PCollection) v).findFirst()
           .orElseThrow(() -> new RuntimeException("No inputs provided to " + beamNode.getFullName())).getCoder();
@@ -200,7 +201,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
    * @param builder        the DAG builder to add the vertex to.
    * @param sideInputs     side inputs.
    * @param pValueToVertex PValue to Vertex map.
-   * @param pValueToCoder  PValue to EncoderFactory map.
+   * @param pValueToCoder  PValue to Encoder/Decoder factory map.
    * @param irVertex       wrapper for a user operation in the IR. (Where the side input is headed to)
    */
   private static void connectSideInputs(final DAGBuilder<IRVertex, IREdge> builder,

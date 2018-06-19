@@ -329,7 +329,7 @@ class StageEdge:
         self.dst = dst.internalDAG.vertices[properties['dstVertex']]
         self.runtimeEdgeId = properties['runtimeEdgeId']
         self.executionProperties = properties['executionProperties']
-        self.encoderFactory = self.executionProperties['EnCoder']
+        self.encoderFactory = self.executionProperties['Encoder']
         self.decoderFactory = self.executionProperties['Decoder']
     @property
     def dot(self):
@@ -343,7 +343,7 @@ class RuntimeEdge:
         self.dst = dst
         self.runtimeEdgeId = properties['runtimeEdgeId']
         self.executionProperties = properties['executionProperties']
-        self.encoderFactory = self.executionProperties['EnCoder']
+        self.encoderFactory = self.executionProperties['Encoder']
         self.decoderFactory = self.executionProperties['Decoder']
     @property
     def dot(self):

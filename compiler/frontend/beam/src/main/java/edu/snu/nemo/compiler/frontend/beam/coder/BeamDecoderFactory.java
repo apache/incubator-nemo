@@ -41,17 +41,61 @@ public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
 
   @Override
   public Decoder<T> create(final InputStream inputStream) {
-    return new BeamDecoder<>(inputStream, beamCoder);
+    if (beamCoder instanceof VoidCoder) {
+      return new BeamVoidDecoder<>(inputStream, beamCoder);
+    } else {
+      return new BeamDecoder<>(inputStream, beamCoder);
+    }
   }
 
   /**
-   * BeamDecoder.
+   * Abstract class for Beam Decoder.
    * @param <T2> the type of element to decode.
    */
-  private final class BeamDecoder<T2> implements Decoder<T2> {
+  private abstract class BeamAbstractDecoder<T2> implements Decoder<T2> {
 
     private final Coder<T2> beamCoder;
-    private final InputStream in;
+    private final InputStream inputStream;
+
+    /**
+     * Constructor.
+     *
+     * @param inputStream the input stream to decode.
+     * @param beamCoder   the actual beam coder to use.
+     */
+    protected BeamAbstractDecoder(final InputStream inputStream,
+                                  final Coder<T2> beamCoder) {
+      this.inputStream = inputStream;
+      this.beamCoder = beamCoder;
+    }
+
+    /**
+     * Decode the actual data internally.
+     *
+     * @return the decoded data.
+     * @throws IOException if fail to decode.
+     */
+    protected T2 decodeInternal() throws IOException {
+      try {
+        return beamCoder.decode(inputStream);
+      } catch (final CoderException e) {
+        throw new IOException(e);
+      }
+    }
+
+    /**
+     * @return the input stream.
+     */
+    protected InputStream getInputStream() {
+      return inputStream;
+    }
+  }
+
+  /**
+   * Beam Decoder for non void objects.
+   * @param <T2> the type of element to decode.
+   */
+  private final class BeamDecoder<T2> extends BeamAbstractDecoder<T2> {
 
     /**
      * Constructor.
@@ -61,20 +105,38 @@ public final class BeamDecoderFactory<T> implements DecoderFactory<T> {
      */
     private BeamDecoder(final InputStream inputStream,
                         final Coder<T2> beamCoder) {
-      this.in = inputStream;
-      this.beamCoder = beamCoder;
+      super(inputStream, beamCoder);
     }
 
     @Override
     public T2 decode() throws IOException {
-      if (beamCoder instanceof VoidCoder && in.read() == -1) {
+      return decodeInternal();
+    }
+  }
+
+  /**
+   * Beam Decoder for {@link VoidCoder}.
+   * @param <T2> the type of element to decode.
+   */
+  private final class BeamVoidDecoder<T2> extends BeamAbstractDecoder<T2> {
+
+    /**
+     * Constructor.
+     *
+     * @param inputStream the input stream to decode.
+     * @param beamCoder   the actual beam coder to use.
+     */
+    private BeamVoidDecoder(final InputStream inputStream,
+                            final Coder<T2> beamCoder) {
+      super(inputStream, beamCoder);
+    }
+
+    @Override
+    public T2 decode() throws IOException {
+      if (getInputStream().read() == -1) {
         throw new IOException("End of stream reached");
       }
-      try {
-        return beamCoder.decode(in);
-      } catch (final CoderException e) {
-        throw new IOException(e);
-      }
+      return decodeInternal();
     }
   }
 
