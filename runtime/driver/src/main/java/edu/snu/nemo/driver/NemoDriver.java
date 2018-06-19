@@ -95,6 +95,9 @@ public final class NemoDriver {
     this.glusterDirectory = glusterDirectory;
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
+    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG,
+        message -> startSchedulingUserApplication(message.getLaunchDAG().getDag()));
+    // Send DriverStarted message to the client
     clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
         .setType(ControlMessage.DriverToClientMessageType.DriverStarted).build());
   }

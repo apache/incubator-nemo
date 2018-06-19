@@ -34,19 +34,25 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Driver-side RPC implementation to NemoClient.
  */
 public final class ClientRPC {
-  private final Transport transport;
-  private final Link<ControlMessage.DriverToClientMessage> link;
-  private final InjectionFuture<NemoDriver> nemoDriver;
-  private volatile boolean isClosed = false;
   private static final DriverToClientMessageEncoder ENCODER = new DriverToClientMessageEncoder();
   private static final ClientRPCLinkListener LINK_LISTENER = new ClientRPCLinkListener();
   private static final int RETRY_COUNT = 10;
   private static final int RETRY_TIMEOUT = 100;
+
+  private final Map<ControlMessage.ClientToDriverMessageType, EventHandler<ControlMessage.ClientToDriverMessage>>
+      handlers = new ConcurrentHashMap<>();
+  private final Transport transport;
+  private final Link<ControlMessage.DriverToClientMessage> link;
+  private final InjectionFuture<NemoDriver> nemoDriver;
+  private volatile boolean isClosed = false;
+
   @Inject
   private ClientRPC(final TransportFactory transportFactory,
                     final LocalAddressProvider localAddressProvider,
@@ -58,6 +64,20 @@ public final class ClientRPC {
         0, new SyncStage<>(new RPCEventHandler()), null, RETRY_COUNT, RETRY_TIMEOUT);
     final SocketAddress clientAddress = new InetSocketAddress(clientHost, clientPort);
     link = transport.open(clientAddress, ENCODER, LINK_LISTENER);
+  }
+
+  /**
+   * Registers handler for the given type of message.
+   * @param type the type of message
+   * @param handler handler implementation
+   * @return {@code this}
+   */
+  public ClientRPC registerHandler(final ControlMessage.ClientToDriverMessageType type,
+                                   final EventHandler<ControlMessage.ClientToDriverMessage> handler) {
+    if (handlers.putIfAbsent(type, handler) != null) {
+      throw new RuntimeException(String.format("A handler for %s already registered", type));
+    }
+    return this;
   }
 
   /**
@@ -88,8 +108,12 @@ public final class ClientRPC {
    * @param message message to process
    */
   private void handleMessage(final ControlMessage.ClientToDriverMessage message) {
-    if (message.getType() == ControlMessage.ClientToDriverMessageType.LaunchDAG) {
-      nemoDriver.get().startSchedulingUserApplication(message.getLaunchDAG().getDag());
+    final ControlMessage.ClientToDriverMessageType type = message.getType();
+    final EventHandler<ControlMessage.ClientToDriverMessage> handler = handlers.get(type);
+    if (handler == null) {
+      throw new RuntimeException(String.format("Handler for message type %s not registered", type));
+    } else {
+      handler.onNext(message);
     }
   }
 
