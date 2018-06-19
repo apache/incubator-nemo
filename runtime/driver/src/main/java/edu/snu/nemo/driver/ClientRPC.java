@@ -18,7 +18,6 @@ package edu.snu.nemo.driver;
 import com.google.protobuf.InvalidProtocolBufferException;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
-import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.impl.SyncStage;
