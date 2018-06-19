@@ -19,6 +19,7 @@ import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.vertex.*;
+import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
@@ -54,6 +55,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
     this.idToIRVertex = new HashMap<>();
     this.dagDirectory = dagDirectory;
     this.stagePartitioner = stagePartitioner;
+    stagePartitioner.addIgnoredPropertyKey(DynamicOptimizationProperty.class);
   }
 
   /**
