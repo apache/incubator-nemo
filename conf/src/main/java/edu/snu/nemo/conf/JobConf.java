@@ -73,6 +73,22 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class GlusterVolumeDirectory implements Name<String> {
   }
 
+  //////////////////////////////// Client-Driver RPC
+
+  /**
+   * Host of the client-side RPC server.
+   */
+  @NamedParameter
+  public final class ClientSideRPCServerHost implements Name<String> {
+  }
+
+  /**
+   * Port of the client-side RPC server.
+   */
+  @NamedParameter
+  public final class ClientSideRPCServerPort implements Name<Integer> {
+  }
+
   //////////////////////////////// Compiler Configurations
 
   /**
@@ -225,13 +241,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
    */
   @NamedParameter(doc = "Executor id")
   public final class ExecutorId implements Name<String> {
-  }
-
-  /**
-   * Serialized {edu.snu.nemo.common.dag.DAG} from user main method.
-   */
-  @NamedParameter(doc = "String serialized DAG")
-  public final class SerializedDAG implements Name<String> {
   }
 
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();

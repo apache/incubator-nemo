@@ -42,11 +42,10 @@ import java.util.concurrent.ScheduledExecutorService;
 /**
  * Compiles and runs User application.
  */
-public final class UserApplicationRunner implements Runnable {
+public final class UserApplicationRunner {
   private static final Logger LOG = LoggerFactory.getLogger(UserApplicationRunner.class.getName());
 
   private final String dagDirectory;
-  private final String dagString;
   private final String optimizationPolicyCanonicalName;
   private final int maxScheduleAttempt;
 
@@ -58,14 +57,12 @@ public final class UserApplicationRunner implements Runnable {
 
   @Inject
   private UserApplicationRunner(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
-                                @Parameter(JobConf.SerializedDAG.class) final String dagString,
                                 @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy,
                                 @Parameter(JobConf.MaxScheduleAttempt.class) final int maxScheduleAttempt,
                                 final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                                 final Injector injector,
                                 final RuntimeMaster runtimeMaster) {
     this.dagDirectory = dagDirectory;
-    this.dagString = dagString;
     this.optimizationPolicyCanonicalName = optimizationPolicy;
     this.maxScheduleAttempt = maxScheduleAttempt;
     this.injector = injector;
@@ -74,8 +71,14 @@ public final class UserApplicationRunner implements Runnable {
     this.pubSubWrapper = pubSubEventHandlerWrapper;
   }
 
-  @Override
-  public void run() {
+  /**
+   * Run the user program submitted by Nemo Client.
+   * Specifically, deserialize DAG from Client, optimize it, generate physical plan,
+   * and tell {@link RuntimeMaster} to execute the plan.
+   *
+   * @param dagString Serialized IR DAG from Nemo Client.
+   */
+  public void run(final String dagString) {
     try {
       LOG.info("##### Nemo Compiler #####");
 
