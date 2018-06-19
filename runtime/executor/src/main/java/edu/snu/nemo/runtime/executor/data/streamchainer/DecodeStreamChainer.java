@@ -17,13 +17,13 @@ package edu.snu.nemo.runtime.executor.data.streamchainer;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 
 /**
- * A {@link StreamChainer} object indicates each stream manipulation strategy.
- * Stream can be chained by {@link StreamChainer} multiple times.
+ * A {@link DecodeStreamChainer} object indicates each stream manipulation strategy.
+ * Stream can be chained by {@link DecodeStreamChainer} multiple times.
  */
-public interface StreamChainer {
+public interface DecodeStreamChainer {
+
   /**
    * Chain {@link InputStream} and returns chained {@link InputStream}.
    *
@@ -32,13 +32,4 @@ public interface StreamChainer {
    * @throws IOException if fail to chain the stream.
    */
   InputStream chainInput(InputStream in) throws IOException;
-
-  /**
-   * Chain {@link OutputStream} and returns chained {@link OutputStream}.
-   *
-   * @param out the stream which will be chained.
-   * @return chained {@link OutputStream}.
-   * @throws IOException if fail to chain the stream.
-   */
-  OutputStream chainOutput(OutputStream out) throws IOException;
 }

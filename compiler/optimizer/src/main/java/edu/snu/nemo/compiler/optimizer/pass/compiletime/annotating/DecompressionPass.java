@@ -18,31 +18,22 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DecompressionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.StageIdProperty;
 
 
 /**
- * A pass for applying compression algorithm for data flowing between vertices.
+ * A pass for applying decompression algorithm for data flowing between vertices.
+ * It always
  */
-public final class CompressionPass extends AnnotatingPass {
-  private final CompressionProperty.Value compression;
-
-  /**
-   * Default constructor. Uses LZ4 as default.
-   */
-  public CompressionPass() {
-    super(CompressionProperty.class);
-    this.compression = CompressionProperty.Value.LZ4;
-  }
+public final class DecompressionPass extends AnnotatingPass {
 
   /**
    * Constructor.
-   * @param compression Compression to apply on edges.
    */
-  public CompressionPass(final CompressionProperty.Value compression) {
+  public DecompressionPass() {
     super(CompressionProperty.class);
-    this.compression = compression;
   }
 
   @Override
@@ -50,8 +41,11 @@ public final class CompressionPass extends AnnotatingPass {
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex).stream()
         .filter(e -> !vertex.getPropertyValue(StageIdProperty.class).get()
             .equals(e.getSrc().getPropertyValue(StageIdProperty.class).get()))
-        .filter(edge -> !edge.getPropertyValue(CompressionProperty.class).isPresent())
-        .forEach(edge -> edge.setProperty(CompressionProperty.of(compression))));
+        // Find edges which have a compression property but not decompression property.
+        .filter(edge -> edge.getPropertyValue(CompressionProperty.class).isPresent()
+            && !edge.getPropertyValue(DecompressionProperty.class).isPresent())
+        .forEach(edge -> edge.setProperty(DecompressionProperty.of(
+            edge.getPropertyValue(CompressionProperty.class).get()))));
 
     return dag;
   }

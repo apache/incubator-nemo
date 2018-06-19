@@ -17,16 +17,16 @@ package edu.snu.nemo.runtime.executor.data.streamchainer;
 
 import edu.snu.nemo.common.exception.UnsupportedCompressionException;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
-import net.jpountz.lz4.LZ4BlockOutputStream;
+import net.jpountz.lz4.LZ4BlockInputStream;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.util.zip.GZIPOutputStream;
+import java.io.InputStream;
+import java.util.zip.GZIPInputStream;
 
 /**
- * {@link EncodeStreamChainer} for applying compression.
+ * {@link DecodeStreamChainer} for applying compression.
  */
-public class CompressionStreamChainer implements EncodeStreamChainer {
+public class DecompressionStreamChainer implements DecodeStreamChainer {
   private final CompressionProperty.Value compression;
 
   /**
@@ -34,17 +34,17 @@ public class CompressionStreamChainer implements EncodeStreamChainer {
    *
    * @param compression compression method.
    */
-  public CompressionStreamChainer(final CompressionProperty.Value compression) {
+  public DecompressionStreamChainer(final CompressionProperty.Value compression) {
     this.compression = compression;
   }
 
   @Override
-  public final OutputStream chainOutput(final OutputStream out) throws IOException {
+  public final InputStream chainInput(final InputStream in) throws IOException {
     switch (compression) {
       case Gzip:
-        return new GZIPOutputStream(out);
+        return new GZIPInputStream(in);
       case LZ4:
-        return new LZ4BlockOutputStream(out);
+        return new LZ4BlockInputStream(in);
       default:
         throw new UnsupportedCompressionException("Not supported compression method");
     }

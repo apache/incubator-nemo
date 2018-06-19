@@ -18,15 +18,16 @@ package edu.snu.nemo.common.ir.edge.executionproperty;
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
- * Compression ExecutionProperty.
+ * Decompression ExecutionProperty.
+ * It shares the value with {@link CompressionProperty}.
  */
-public final class CompressionProperty extends EdgeExecutionProperty<CompressionProperty.Value> {
+public final class DecompressionProperty extends EdgeExecutionProperty<CompressionProperty.Value> {
   /**
    * Constructor.
    *
    * @param value value of the execution property.
    */
-  private CompressionProperty(final Value value) {
+  private DecompressionProperty(final CompressionProperty.Value value) {
     super(value);
   }
 
@@ -36,15 +37,7 @@ public final class CompressionProperty extends EdgeExecutionProperty<Compression
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static CompressionProperty of(final Value value) {
-    return new CompressionProperty(value);
-  }
-
-  /**
-   * Possible values of Compression ExecutionProperty.
-   */
-  public enum Value {
-    Gzip,
-    LZ4,
+  public static DecompressionProperty of(final CompressionProperty.Value value) {
+    return new DecompressionProperty(value);
   }
 }
