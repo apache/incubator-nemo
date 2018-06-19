@@ -19,6 +19,7 @@ import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.driver.NemoDriver;
+import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageParameters;
 import org.apache.commons.lang3.SerializationUtils;
@@ -58,6 +59,7 @@ public final class JobLauncher {
   private static Configuration jobAndDriverConf = null;
   private static Configuration deployModeConf = null;
   private static Configuration builtJobConf = null;
+  private static String serializedDAG;
 
   /**
    * private constructor.
@@ -72,6 +74,16 @@ public final class JobLauncher {
    * @throws Exception exception on the way.
    */
   public static void main(final String[] args) throws Exception {
+    final DriverRPCServer driverRPCServer = new DriverRPCServer();
+    // Registers actions for launching the DAG.
+    driverRPCServer
+        .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> { })
+        .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, event ->
+          driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+              .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
+              .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build()).build()))
+        .run();
+
     // Get Job and Driver Confs
     builtJobConf = getJobConf(args);
     final Configuration driverConf = getDriverConf(builtJobConf);
@@ -82,13 +94,15 @@ public final class JobLauncher {
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfg,
-        executorResourceConfig);
+        executorResourceConfig, driverRPCServer.getListeningConfiguration());
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
 
     // Launch client main
     runUserProgramMain(builtJobConf);
+
+    driverRPCServer.shutdown();
   }
 
   /**
@@ -102,13 +116,10 @@ public final class JobLauncher {
       if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
         throw new RuntimeException("Configuration for launching driver is not ready");
       }
-      final String serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
-      final Configuration dagConf = TANG.newConfigurationBuilder()
-          .bindNamedParameter(JobConf.SerializedDAG.class, serializedDAG)
-          .build();
+      serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
       // Launch and wait indefinitely for the job to finish
       final LauncherStatus launcherStatus = DriverLauncher.getLauncher(deployModeConf)
-          .run(Configurations.merge(jobAndDriverConf, dagConf));
+          .run(jobAndDriverConf);
       final Optional<Throwable> possibleError = launcherStatus.getError();
       if (possibleError.isPresent()) {
         throw new RuntimeException(possibleError.get());
