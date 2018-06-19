@@ -166,7 +166,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
         case READY:
         case EXECUTING:
           throw new IllegalStateTransitionException(
-              new Exception("The states NOT_AVAILABLE/EXECUTING cannot occur at this point"));
+              new Exception("The states READY/EXECUTING cannot occur at this point"));
         default:
           throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + newState));
       }
