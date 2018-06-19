@@ -18,6 +18,7 @@ package edu.snu.nemo.driver;
 import edu.snu.nemo.common.ir.IdManager;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageParameters;
 import edu.snu.nemo.runtime.master.RuntimeMaster;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -67,9 +68,9 @@ public final class NemoDriver {
   private final String jobId;
   private final String localDirectory;
   private final String glusterDirectory;
+  private final ClientRPC clientRPC;
 
   // Client for sending log messages
-  private final JobMessageObserver client;
   private final RemoteClientMessageLoggingHandler handler;
 
   @Inject
@@ -78,6 +79,7 @@ public final class NemoDriver {
                      final NameServer nameServer,
                      final LocalAddressProvider localAddressProvider,
                      final JobMessageObserver client,
+                     final ClientRPC clientRPC,
                      @Parameter(JobConf.ExecutorJsonContents.class) final String resourceSpecificationString,
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
@@ -91,8 +93,13 @@ public final class NemoDriver {
     this.jobId = jobId;
     this.localDirectory = localDirectory;
     this.glusterDirectory = glusterDirectory;
-    this.client = client;
     this.handler = new RemoteClientMessageLoggingHandler(client);
+    this.clientRPC = clientRPC;
+    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG,
+        message -> startSchedulingUserApplication(message.getLaunchDAG().getDag()));
+    // Send DriverStarted message to the client
+    clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+        .setType(ControlMessage.DriverToClientMessageType.DriverStarted).build());
   }
 
   /**
@@ -135,15 +142,19 @@ public final class NemoDriver {
       final boolean finalExecutorLaunched = runtimeMaster.onExecutorLaunched(activeContext);
 
       if (finalExecutorLaunched) {
-        startSchedulingUserApplication();
+        clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+            .setType(ControlMessage.DriverToClientMessageType.ResourceReady).build());
       }
     }
   }
 
-  private void startSchedulingUserApplication() {
+  /**
+   * Start user application.
+   */
+  public void startSchedulingUserApplication(final String dagString) {
     // Launch user application (with a new thread)
     final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor();
-    userApplicationRunnerThread.execute(userApplicationRunner);
+    userApplicationRunnerThread.execute(() -> userApplicationRunner.run(dagString));
     userApplicationRunnerThread.shutdown();
   }
 
@@ -175,6 +186,7 @@ public final class NemoDriver {
     @Override
     public void onNext(final StopTime stopTime) {
       handler.close();
+      clientRPC.shutdown();
     }
   }
 
