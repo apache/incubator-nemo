@@ -65,6 +65,8 @@ public interface DecoderFactory<T> extends Serializable {
    */
   final class DummyDecoderFactory implements DecoderFactory {
 
+    private final Decoder dummyDecoder = new DummyDecoder();
+
     /**
      * DummyDecoder.
      */
@@ -78,12 +80,12 @@ public interface DecoderFactory<T> extends Serializable {
 
     @Override
     public Decoder create(final InputStream inputStream) {
-      return new DummyDecoder();
+      return dummyDecoder;
     }
 
     @Override
     public String toString() {
-      return "DUMMY_ENCODER_FACTORY";
+      return "DUMMY_DECODER_FACTORY";
     }
   }
 }

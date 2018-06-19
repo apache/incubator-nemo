@@ -66,6 +66,8 @@ public interface EncoderFactory<T> extends Serializable {
    */
   final class DummyEncoderFactory implements EncoderFactory {
 
+    private final Encoder dummyEncoder = new DummyEncoder();
+
     /**
      * DummyEncoder.
      */
@@ -79,7 +81,7 @@ public interface EncoderFactory<T> extends Serializable {
 
     @Override
     public Encoder create(final OutputStream outputStream) {
-      return new DummyEncoder();
+      return dummyEncoder;
     }
 
     @Override
