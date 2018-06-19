@@ -75,6 +75,7 @@ public final class JobLauncher {
    */
   public static void main(final String[] args) throws Exception {
     final DriverRPCServer driverRPCServer = new DriverRPCServer();
+    // Registers actions for launching the DAG.
     driverRPCServer
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> { })
         .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, event ->

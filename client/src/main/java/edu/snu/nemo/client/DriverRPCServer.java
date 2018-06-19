@@ -39,7 +39,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Implements RPC endpoint between Nemo Client and Nemo Driver.
+ * Client-side RPC implementation for communication from/to Nemo Driver.
  */
 @ClientSide
 @NotThreadSafe

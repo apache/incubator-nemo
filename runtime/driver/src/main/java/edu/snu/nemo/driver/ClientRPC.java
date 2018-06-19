@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Driver-side RPC implementation to NemoClient.
+ * Driver-side RPC implementation for communication from/to Nemo Client.
  */
 public final class ClientRPC {
   private static final DriverToClientMessageEncoder ENCODER = new DriverToClientMessageEncoder();
