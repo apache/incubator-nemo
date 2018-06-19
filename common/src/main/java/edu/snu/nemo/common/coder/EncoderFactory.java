@@ -42,7 +42,7 @@ public interface EncoderFactory<T> extends Serializable {
    *
    * @param <T> element type.
    */
-  interface Encoder<T> {
+  interface Encoder<T> extends Serializable {
 
     /**
      * Encodes the given value onto the specified output stream.

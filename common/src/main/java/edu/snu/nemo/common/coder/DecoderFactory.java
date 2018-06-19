@@ -42,7 +42,7 @@ public interface DecoderFactory<T> extends Serializable {
    *
    * @param <T> element type.
    */
-  interface Decoder<T> {
+  interface Decoder<T> extends Serializable {
 
     /**
      * Decodes the a value from the given input stream.
