@@ -50,16 +50,13 @@ public final class ClientRPC {
       handlers = new ConcurrentHashMap<>();
   private final Transport transport;
   private final Link<ControlMessage.DriverToClientMessage> link;
-  private final InjectionFuture<NemoDriver> nemoDriver;
   private volatile boolean isClosed = false;
 
   @Inject
   private ClientRPC(final TransportFactory transportFactory,
                     final LocalAddressProvider localAddressProvider,
-                    final InjectionFuture<NemoDriver> nemoDriver,
                     @Parameter(JobConf.ClientSideRPCServerHost.class) final String clientHost,
                     @Parameter(JobConf.ClientSideRPCServerPort.class) final int clientPort) throws IOException {
-    this.nemoDriver = nemoDriver;
     transport = transportFactory.newInstance(localAddressProvider.getLocalAddress(),
         0, new SyncStage<>(new RPCEventHandler()), null, RETRY_COUNT, RETRY_TIMEOUT);
     final SocketAddress clientAddress = new InetSocketAddress(clientHost, clientPort);

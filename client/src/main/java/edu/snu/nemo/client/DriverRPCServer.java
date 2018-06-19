@@ -62,6 +62,7 @@ public final class DriverRPCServer {
    */
   public DriverRPCServer registerHandler(final ControlMessage.DriverToClientMessageType type,
                                          final EventHandler<ControlMessage.DriverToClientMessage> handler) {
+    // Registering a handler after running the server is considered not a good practice.
     ensureServerState(false);
     if (handlers.putIfAbsent(type, handler) != null) {
       throw new RuntimeException(String.format("A handler for %s already registered", type));
@@ -71,8 +72,11 @@ public final class DriverRPCServer {
 
   /**
    * Runs the RPC server.
+   * Specifically, creates a {@link NettyMessagingTransport} and binds it to a listening port.
    */
   public void run() {
+    // Calling 'run' multiple times is considered invalid, since it will override state variables like
+    // 'transport', and 'host'.
     ensureServerState(false);
     try {
       final Injector injector = Tang.Factory.getTang().newInjector();
@@ -94,6 +98,7 @@ public final class DriverRPCServer {
    * @return the listening port
    */
   public int getListeningPort() {
+    // We cannot determine listening port if the server is not listening.
     ensureServerState(true);
     return transport.getListeningPort();
   }
@@ -102,6 +107,7 @@ public final class DriverRPCServer {
    * @return the host of the client
    */
   public String getListeningHost() {
+    // Listening host is determined by LocalAddressProvider, in 'run' method.
     ensureServerState(true);
     return host;
   }
@@ -121,6 +127,9 @@ public final class DriverRPCServer {
    * @param message message to send
    */
   public void send(final ControlMessage.ClientToDriverMessage message) {
+    // This needs active 'link' between the driver and client.
+    // For the link to be alive, the driver should connect to DriverRPCServer.
+    // Thus, the server must be running to send a message to the driver.
     ensureServerState(true);
     if (link == null) {
       throw new RuntimeException("The RPC server has not discovered NemoDriver yet");
@@ -132,6 +141,7 @@ public final class DriverRPCServer {
    * Shut down the server.
    */
   public void shutdown() {
+    // Shutting down a 'null' transport is invalid. Also, shutting down a server for multiple times is invalid.
     ensureServerState(true);
     try {
       transport.close();
@@ -171,6 +181,10 @@ public final class DriverRPCServer {
     }
   }
 
+  /**
+   * Throws a {@link RuntimeException} if the server is shut down, or it has different state than the expected state.
+   * @param running the expected state of the server
+   */
   private void ensureServerState(final boolean running) {
     if (isShutdown) {
       throw new RuntimeException("The DriverRPCServer is already shutdown");

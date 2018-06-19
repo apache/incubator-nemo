@@ -71,6 +71,13 @@ public final class UserApplicationRunner {
     this.pubSubWrapper = pubSubEventHandlerWrapper;
   }
 
+  /**
+   * Run the user program submitted by Nemo Client.
+   * Specifically, deserialize DAG from Client, optimize it, generate physical plan,
+   * and tell {@link RuntimeMaster} to execute the plan.
+   *
+   * @param dagString Serialized IR DAG from Nemo Client.
+   */
   public void run(final String dagString) {
     try {
       LOG.info("##### Nemo Compiler #####");
