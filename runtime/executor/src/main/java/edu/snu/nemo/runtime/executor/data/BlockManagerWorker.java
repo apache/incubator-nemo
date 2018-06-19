@@ -287,7 +287,7 @@ public final class BlockManagerWorker {
         ControlMessage.BlockStateChangedMsg.newBuilder()
             .setExecutorId(executorId)
             .setBlockId(blockId)
-            .setState(ControlMessage.BlockStateFromExecutor.COMMITTED);
+            .setState(ControlMessage.BlockStateFromExecutor.AVAILABLE);
 
     if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
       blockStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
@@ -345,7 +345,7 @@ public final class BlockManagerWorker {
           ControlMessage.BlockStateChangedMsg.newBuilder()
               .setExecutorId(executorId)
               .setBlockId(blockId)
-              .setState(ControlMessage.BlockStateFromExecutor.REMOVED);
+              .setState(ControlMessage.BlockStateFromExecutor.NOT_AVAILABLE);
 
       if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
         blockStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);

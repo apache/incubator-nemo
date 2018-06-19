@@ -141,12 +141,9 @@ enum TaskStateFromExecutor {
 }
 
 enum BlockStateFromExecutor {
-    BLOCK_READY = 0;
-    SCHEDULED = 1;
-    COMMITTED = 2;
-    LOST = 3;
-    LOST_BEFORE_COMMIT = 4;
-    REMOVED = 5;
+    NOT_AVAILABLE = 0;
+    IN_PROGRESS = 1;
+    AVAILABLE = 2;
 }
 
 enum BlockStore {
