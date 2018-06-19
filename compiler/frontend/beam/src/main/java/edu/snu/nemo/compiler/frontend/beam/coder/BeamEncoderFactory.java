@@ -15,62 +15,64 @@
  */
 package edu.snu.nemo.compiler.frontend.beam.coder;
 
-import edu.snu.nemo.common.coder.Decoder;
+import edu.snu.nemo.common.coder.EncoderFactory;
+import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.VoidCoder;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.OutputStream;
 
 /**
- * {@link Decoder} from {@link org.apache.beam.sdk.coders.Coder}.
+ * {@link EncoderFactory} from {@link Coder}.
  * @param <T> the type of element to encode.
  */
-public final class BeamDecoder<T> implements Decoder<T> {
-  private final org.apache.beam.sdk.coders.Coder<T> beamCoder;
+public final class BeamEncoderFactory<T> implements EncoderFactory<T> {
+  private final Coder<T> beamCoder;
 
   /**
-   * Constructor of BeamDecoder.
+   * Constructor of BeamEncoderFactory.
    *
    * @param beamCoder actual Beam coder to use.
    */
-  public BeamDecoder(final org.apache.beam.sdk.coders.Coder<T> beamCoder) {
+  public BeamEncoderFactory(final Coder<T> beamCoder) {
     this.beamCoder = beamCoder;
   }
 
   @Override
-  public DecoderInstance<T> getDecoderInstance(final InputStream inputStream) {
-    return new BeamDecoderInstance<>(inputStream, beamCoder);
+  public Encoder<T> create(final OutputStream outputStream) {
+    return new BeamEncoder<>(outputStream, beamCoder);
   }
 
   /**
-   * BeamDecoderInstance.
-   * @param <T2> the type of element to decode.
+   * BeamEncoder.
+   * @param <T2> the type of element to encode.
    */
-  private final class BeamDecoderInstance<T2> implements DecoderInstance<T2> {
+  private final class BeamEncoder<T2> implements Encoder<T2> {
 
-    private final org.apache.beam.sdk.coders.Coder<T2> beamCoder;
-    private final InputStream in;
+    private final Coder<T2> beamCoder;
+    private final OutputStream out;
 
     /**
      * Constructor.
      *
-     * @param inputStream the input stream to decode.
-     * @param beamCoder   the actual beam coder to use.
+     * @param outputStream the output stream to store the encoded bytes.
+     * @param beamCoder    the actual beam coder to use.
      */
-    private BeamDecoderInstance(final InputStream inputStream,
-                                final org.apache.beam.sdk.coders.Coder<T2> beamCoder) {
-      this.in = inputStream;
+    private BeamEncoder(final OutputStream outputStream,
+                        final Coder<T2> beamCoder) {
+      this.out = outputStream;
       this.beamCoder = beamCoder;
     }
 
     @Override
-    public T2 decode() throws IOException {
-      if (beamCoder instanceof VoidCoder && in.read() == -1) {
-        throw new IOException("End of stream reached");
+    public void encode(final T2 element) throws IOException {
+      if (beamCoder instanceof VoidCoder) {
+        out.write(0);
+        return;
       }
       try {
-        return beamCoder.decode(in);
+        beamCoder.encode(element, out);
       } catch (final CoderException e) {
         throw new IOException(e);
       }

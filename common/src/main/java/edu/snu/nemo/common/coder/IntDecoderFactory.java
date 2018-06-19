@@ -18,33 +18,33 @@ package edu.snu.nemo.common.coder;
 import java.io.*;
 
 /**
- * A {@link Decoder} which is used for an integer.
+ * A {@link DecoderFactory} which is used for an integer.
  */
-public final class IntDecoder implements Decoder<Integer> {
+public final class IntDecoderFactory implements DecoderFactory<Integer> {
 
   /**
    * A private constructor.
    */
-  private IntDecoder() {
+  private IntDecoderFactory() {
     // do nothing.
   }
 
   /**
    * Static initializer of the coder.
    */
-  public static IntDecoder of() {
-    return new IntDecoder();
+  public static IntDecoderFactory of() {
+    return new IntDecoderFactory();
   }
 
   @Override
-  public DecoderInstance<Integer> getDecoderInstance(final InputStream inputStream) {
-    return new IntDecoderInstance(inputStream);
+  public Decoder<Integer> create(final InputStream inputStream) {
+    return new IntDecoder(inputStream);
   }
 
   /**
-   * IntDecoderInstance.
+   * IntDecoder.
    */
-  private final class IntDecoderInstance implements DecoderInstance<Integer> {
+  private final class IntDecoder implements Decoder<Integer> {
 
     private final InputStream inputStream;
 
@@ -53,7 +53,7 @@ public final class IntDecoder implements Decoder<Integer> {
      *
      * @param inputStream  the input stream to decode.
      */
-    private IntDecoderInstance(final InputStream inputStream) {
+    private IntDecoder(final InputStream inputStream) {
       this.inputStream = inputStream;
     }
 

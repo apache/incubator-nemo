@@ -17,8 +17,8 @@ package edu.snu.nemo.runtime.executor.data;
 
 import com.google.common.io.CountingInputStream;
 import edu.snu.nemo.common.DirectByteArrayOutputStream;
-import edu.snu.nemo.common.coder.Decoder;
-import edu.snu.nemo.common.coder.Encoder;
+import edu.snu.nemo.common.coder.DecoderFactory;
+import edu.snu.nemo.common.coder.EncoderFactory;
 import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
 import edu.snu.nemo.runtime.executor.data.streamchainer.DecodeStreamChainer;
@@ -49,19 +49,19 @@ public final class DataUtil {
   /**
    * Serializes the elements in a non-serialized partition into an output stream.
    *
-   * @param encoder                the encoder to encode the elements.
+   * @param encoderFactory                the encoderFactory to encode the elements.
    * @param nonSerializedPartition the non-serialized partition to serialize.
    * @param bytesOutputStream      the output stream to write.
    * @return total number of elements in the partition.
    * @throws IOException if fail to serialize.
    */
-  public static long serializePartition(final Encoder encoder,
+  public static long serializePartition(final EncoderFactory encoderFactory,
                                         final NonSerializedPartition nonSerializedPartition,
                                         final OutputStream bytesOutputStream) throws IOException {
     long elementsCount = 0;
-    final Encoder.EncoderInstance encoderInstance = encoder.getEncoderInstance(bytesOutputStream);
+    final EncoderFactory.Encoder encoder = encoderFactory.create(bytesOutputStream);
     for (final Object element : nonSerializedPartition.getData()) {
-      encoderInstance.encode(element);
+      encoder.encode(element);
       elementsCount++;
     }
 
@@ -111,7 +111,8 @@ public final class DataUtil {
           final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
           final OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
       ) {
-        final long elementsTotal = serializePartition(serializer.getEncoder(), partitionToConvert, wrappedStream);
+        final long elementsTotal =
+            serializePartition(serializer.getEncoderFactory(), partitionToConvert, wrappedStream);
         // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
         // inner buffer directly, which can be an unfinished(not flushed) buffer.
         wrappedStream.close();
@@ -194,7 +195,7 @@ public final class DataUtil {
   }
 
   /**
-   * An iterator that emits objects from {@link InputStream} using the corresponding {@link Decoder}.
+   * An iterator that emits objects from {@link InputStream} using the corresponding {@link DecoderFactory}.
    *
    * @param <T> The type of elements.
    */
@@ -209,13 +210,13 @@ public final class DataUtil {
     private volatile boolean hasNext = false;
     private volatile T next;
     private volatile boolean cannotContinueDecoding = false;
-    private volatile Decoder.DecoderInstance<T> decoderInstance = null;
+    private volatile DecoderFactory.Decoder<T> decoder = null;
     private volatile long elementsDecoded = 0;
     private volatile long numSerializedBytes = 0;
     private volatile long numEncodedBytes = 0;
 
     /**
-     * Construct {@link Iterator} from {@link InputStream} and {@link Decoder}.
+     * Construct {@link Iterator} from {@link InputStream} and {@link DecoderFactory}.
      *
      * @param inputStreams The streams to read data from.
      * @param serializer   The serializer.
@@ -229,7 +230,7 @@ public final class DataUtil {
     }
 
     /**
-     * Construct {@link Iterator} from {@link InputStream} and {@link Decoder}.
+     * Construct {@link Iterator} from {@link InputStream} and {@link DecoderFactory}.
      *
      * @param inputStreams The streams to read data from.
      * @param serializer   The serializer.
@@ -261,12 +262,12 @@ public final class DataUtil {
       }
       while (true) {
         try {
-          if (decoderInstance == null) {
+          if (decoder == null) {
             if (inputStreams.hasNext()) {
               serializedCountingStream = new CountingInputStream(inputStreams.next());
               encodedCountingStream = new CountingInputStream(buildInputStream(
                   serializedCountingStream, serializer.getDecodeStreamChainers()));
-              decoderInstance = serializer.getDecoder().getDecoderInstance(encodedCountingStream);
+              decoder = serializer.getDecoderFactory().create(encodedCountingStream);
             } else {
               cannotContinueDecoding = true;
               return false;
@@ -277,7 +278,7 @@ public final class DataUtil {
           throw new RuntimeException(e);
         }
         try {
-          next = decoderInstance.decode();
+          next = decoder.decode();
           hasNext = true;
           elementsDecoded++;
           return true;
@@ -287,7 +288,7 @@ public final class DataUtil {
           numEncodedBytes += encodedCountingStream.getCount();
           serializedCountingStream = null;
           encodedCountingStream = null;
-          decoderInstance = null;
+          decoder = null;
         }
       }
     }

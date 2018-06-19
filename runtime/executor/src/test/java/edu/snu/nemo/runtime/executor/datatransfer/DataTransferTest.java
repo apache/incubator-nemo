@@ -100,8 +100,9 @@ public final class DataTransferTest {
   private static final int PARALLELISM_TEN = 10;
   private static final String EDGE_PREFIX_TEMPLATE = "Dummy(%d)";
   private static final AtomicInteger TEST_INDEX = new AtomicInteger(0);
-  private static final Encoder ENCODER = PairEncoder.of(IntEncoder.of(), IntEncoder.of());
-  private static final Decoder DECODER = PairDecoder.of(IntDecoder.of(), IntDecoder.of());
+  private static final EncoderFactory ENCODER_FACTORY = PairEncoderFactory.of(IntEncoderFactory.of(), IntEncoderFactory.of());
+  private static final DecoderFactory DECODER_FACTORY =
+      PairDecoderFactory.of(IntDecoderFactory.of(), IntDecoderFactory.of());
   private static final Tang TANG = Tang.Factory.getTang();
   private static final int HASH_RANGE_MULTIPLIER = 10;
 
@@ -308,8 +309,8 @@ public final class DataTransferTest {
     dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
     dummyIREdge.setProperty(DataStoreProperty.of(store));
     dummyIREdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
-    dummyIREdge.setProperty(EncoderProperty.of(ENCODER));
-    dummyIREdge.setProperty(DecoderProperty.of(DECODER));
+    dummyIREdge.setProperty(EncoderProperty.of(ENCODER_FACTORY));
+    dummyIREdge.setProperty(DecoderProperty.of(DECODER_FACTORY));
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
     final RuntimeEdge dummyEdge;
 
@@ -394,8 +395,8 @@ public final class DataTransferTest {
 
     // Edge setup
     final IREdge dummyIREdge = new IREdge(commPattern, srcVertex, dstVertex);
-    dummyIREdge.setProperty(EncoderProperty.of(ENCODER));
-    dummyIREdge.setProperty(DecoderProperty.of(DECODER));
+    dummyIREdge.setProperty(EncoderProperty.of(ENCODER_FACTORY));
+    dummyIREdge.setProperty(DecoderProperty.of(DECODER_FACTORY));
     dummyIREdge.setProperty(KeyExtractorProperty.of((element -> element)));
     dummyIREdge.setProperty(DataCommunicationPatternProperty.of(commPattern));
     dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
@@ -519,8 +520,8 @@ public final class DataTransferTest {
   private Pair<IRVertex, IRVertex> setupVertices(final String edgeId,
                                                  final BlockManagerWorker sender,
                                                  final BlockManagerWorker receiver) {
-    serializerManagers.get(sender).register(edgeId, ENCODER, DECODER);
-    serializerManagers.get(receiver).register(edgeId, ENCODER, DECODER);
+    serializerManagers.get(sender).register(edgeId, ENCODER_FACTORY, DECODER_FACTORY);
+    serializerManagers.get(receiver).register(edgeId, ENCODER_FACTORY, DECODER_FACTORY);
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");
@@ -539,10 +540,10 @@ public final class DataTransferTest {
                                                  final String edgeId2,
                                                  final BlockManagerWorker sender,
                                                  final BlockManagerWorker receiver) {
-    serializerManagers.get(sender).register(edgeId, ENCODER, DECODER);
-    serializerManagers.get(receiver).register(edgeId, ENCODER, DECODER);
-    serializerManagers.get(sender).register(edgeId2, ENCODER, DECODER);
-    serializerManagers.get(receiver).register(edgeId2, ENCODER, DECODER);
+    serializerManagers.get(sender).register(edgeId, ENCODER_FACTORY, DECODER_FACTORY);
+    serializerManagers.get(receiver).register(edgeId, ENCODER_FACTORY, DECODER_FACTORY);
+    serializerManagers.get(sender).register(edgeId2, ENCODER_FACTORY, DECODER_FACTORY);
+    serializerManagers.get(receiver).register(edgeId2, ENCODER_FACTORY, DECODER_FACTORY);
 
     // Src setup
     final SourceVertex srcVertex = new EmptyComponents.EmptySourceVertex("Source");

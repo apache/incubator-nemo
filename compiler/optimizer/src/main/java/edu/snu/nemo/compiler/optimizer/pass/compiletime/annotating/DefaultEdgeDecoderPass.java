@@ -15,18 +15,19 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
-import edu.snu.nemo.common.coder.Decoder;
+import edu.snu.nemo.common.coder.DecoderFactory;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 /**
- * Pass for initiating IREdge Encoder ExecutionProperty with default dummy coder.
+ * Pass for initiating IREdge Decoder ExecutionProperty with default dummy coder.
  */
 public final class DefaultEdgeDecoderPass extends AnnotatingPass {
 
-  private static final DecoderProperty DEFAULT_CODER_PROPERTY = DecoderProperty.of(Decoder.DUMMY_DECODER);
+  private static final DecoderProperty DEFAULT_DECODER_PROPERTY =
+      DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY);
 
   /**
    * Default constructor.
@@ -40,7 +41,7 @@ public final class DefaultEdgeDecoderPass extends AnnotatingPass {
     dag.topologicalDo(irVertex ->
         dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
           if (!irEdge.getPropertyValue(DecoderProperty.class).isPresent()) {
-            irEdge.setProperty(DEFAULT_CODER_PROPERTY);
+            irEdge.setProperty(DEFAULT_DECODER_PROPERTY);
           }
         }));
     return dag;

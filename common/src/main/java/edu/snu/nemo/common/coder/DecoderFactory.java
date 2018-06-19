@@ -20,29 +20,29 @@ import java.io.InputStream;
 import java.io.Serializable;
 
 /**
- * A decoder object decodes values of type {@code T} into byte streams.
+ * A decoder factory object which generates decoders that decode values of type {@code T} into byte streams.
  * To avoid to generate instance-based coder such as Spark serializer for every decoding,
  * user need to instantiate a decoder instance and use it.
  *
  * @param <T> element type.
  */
-public interface Decoder<T> extends Serializable {
+public interface DecoderFactory<T> extends Serializable {
 
   /**
-   * Get an instance of this decoder.
+   * Get a decoder instance.
    *
    * @param inputStream the input stream to decode.
    * @return the decoder instance.
    * @throws IOException if fail to get the instance.
    */
-  DecoderInstance<T> getDecoderInstance(InputStream inputStream) throws IOException;
+  Decoder<T> create(InputStream inputStream) throws IOException;
 
   /**
-   * Interface of DecoderInstance.
+   * Interface of Decoder.
    *
    * @param <T> element type.
    */
-  interface DecoderInstance<T> {
+  interface Decoder<T> {
 
     /**
      * Decodes the a value from the given input stream.
@@ -56,34 +56,34 @@ public interface Decoder<T> extends Serializable {
   }
 
   /**
-   * Dummy coder.
+   * Dummy coder factory.
    */
-  Decoder DUMMY_DECODER = new DummyDecoder();
+  DecoderFactory DUMMY_DECODER_FACTORY = new DummyDecoderFactory();
 
   /**
-   * Dummy coder implementation which is not supposed to be used.
+   * Dummy coder factory implementation which is not supposed to be used.
    */
-  final class DummyDecoder implements Decoder {
+  final class DummyDecoderFactory implements DecoderFactory {
 
     /**
-     * DummyDecoderInstance.
+     * DummyDecoder.
      */
-    private final class DummyDecoderInstance implements DecoderInstance {
+    private final class DummyDecoder implements Decoder {
 
       @Override
       public Object decode() {
-        throw new RuntimeException("DummyDecoderInstance is not supposed to be used.");
+        throw new RuntimeException("DummyDecoder is not supposed to be used.");
       }
     }
 
     @Override
-    public DecoderInstance getDecoderInstance(final InputStream inputStream) {
-      return new DummyDecoderInstance();
+    public Decoder create(final InputStream inputStream) {
+      return new DummyDecoder();
     }
 
     @Override
     public String toString() {
-      return "DUMMY_ENCODER";
+      return "DUMMY_ENCODER_FACTORY";
     }
   }
 }

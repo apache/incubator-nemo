@@ -27,8 +27,8 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor;
-import edu.snu.nemo.compiler.frontend.spark.coder.SparkDecoder;
-import edu.snu.nemo.compiler.frontend.spark.coder.SparkEncoder;
+import edu.snu.nemo.compiler.frontend.spark.coder.SparkDecoderFactory;
+import edu.snu.nemo.compiler.frontend.spark.coder.SparkEncoderFactory;
 import edu.snu.nemo.compiler.frontend.spark.transform.CollectTransform;
 import edu.snu.nemo.compiler.frontend.spark.transform.GroupByKeyTransform;
 import edu.snu.nemo.compiler.frontend.spark.transform.ReduceByKeyTransform;
@@ -104,8 +104,8 @@ public final class SparkFrontendUtils {
 
     final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, collectVertex),
         lastVertex, collectVertex);
-    newEdge.setProperty(EncoderProperty.of(new SparkEncoder(serializer)));
-    newEdge.setProperty(DecoderProperty.of(new SparkDecoder(serializer)));
+    newEdge.setProperty(EncoderProperty.of(new SparkEncoderFactory(serializer)));
+    newEdge.setProperty(DecoderProperty.of(new SparkDecoderFactory(serializer)));
     newEdge.setProperty(SPARK_KEY_EXTRACTOR_PROP);
     builder.connectVertices(newEdge);
 

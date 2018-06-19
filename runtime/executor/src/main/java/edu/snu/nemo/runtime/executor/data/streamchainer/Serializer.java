@@ -15,52 +15,52 @@
  */
 package edu.snu.nemo.runtime.executor.data.streamchainer;
 
-import edu.snu.nemo.common.coder.Decoder;
-import edu.snu.nemo.common.coder.Encoder;
+import edu.snu.nemo.common.coder.DecoderFactory;
+import edu.snu.nemo.common.coder.EncoderFactory;
 
 import java.util.List;
 
 /**
- * class that contains {@link Encoder}, {@link Decoder} and {@link List} of {@link EncodeStreamChainer}.
- * @param <E> encoder element type.
- * @param <D> decoder element type.
+ * class that contains {@link EncoderFactory}, {@link DecoderFactory} and {@link List} of {@link EncodeStreamChainer}.
+ * @param <E> encoderFactory element type.
+ * @param <D> decoderFactory element type.
  */
 public final class Serializer<E, D> {
-  private final Encoder<E> encoder;
-  private final Decoder<D> decoder;
+  private final EncoderFactory<E> encoderFactory;
+  private final DecoderFactory<D> decoderFactory;
   private final List<EncodeStreamChainer> encodeStreamChainers;
   private final List<DecodeStreamChainer> decodeStreamChainers;
 
   /**
    * Constructor.
    *
-   * @param encoder              {@link Encoder}.
-   * @param decoder              {@link Decoder}.
+   * @param encoderFactory              {@link EncoderFactory}.
+   * @param decoderFactory              {@link DecoderFactory}.
    * @param encodeStreamChainers the list of {@link EncodeStreamChainer} to use for encoding.
    * @param decodeStreamChainers the list of {@link DecodeStreamChainer} to use for decoding.
    */
-  public Serializer(final Encoder<E> encoder,
-                    final Decoder<D> decoder,
+  public Serializer(final EncoderFactory<E> encoderFactory,
+                    final DecoderFactory<D> decoderFactory,
                     final List<EncodeStreamChainer> encodeStreamChainers,
                     final List<DecodeStreamChainer> decodeStreamChainers) {
-    this.encoder = encoder;
-    this.decoder = decoder;
+    this.encoderFactory = encoderFactory;
+    this.decoderFactory = decoderFactory;
     this.encodeStreamChainers = encodeStreamChainers;
     this.decodeStreamChainers = decodeStreamChainers;
   }
 
   /**
-   * @return the {@link Encoder} to use.
+   * @return the {@link EncoderFactory} to use.
    */
-  public Encoder<E> getEncoder() {
-    return encoder;
+  public EncoderFactory<E> getEncoderFactory() {
+    return encoderFactory;
   }
 
   /**
-   * @return the {@link Decoder} to use.
+   * @return the {@link DecoderFactory} to use.
    */
-  public Decoder<D> getDecoder() {
-    return decoder;
+  public DecoderFactory<D> getDecoderFactory() {
+    return decoderFactory;
   }
 
   /**

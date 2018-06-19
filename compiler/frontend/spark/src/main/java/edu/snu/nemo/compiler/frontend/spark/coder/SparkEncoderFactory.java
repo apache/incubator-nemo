@@ -15,19 +15,19 @@
  */
 package edu.snu.nemo.compiler.frontend.spark.coder;
 
-import edu.snu.nemo.common.coder.Decoder;
-import org.apache.spark.serializer.DeserializationStream;
+import edu.snu.nemo.common.coder.EncoderFactory;
+import org.apache.spark.serializer.SerializationStream;
 import org.apache.spark.serializer.Serializer;
 import org.apache.spark.serializer.SerializerInstance;
 import scala.reflect.ClassTag$;
 
-import java.io.InputStream;
+import java.io.OutputStream;
 
 /**
- * Spark Decoder for serialization.
- * @param <T> type of the object to deserialize.
+ * Spark EncoderFactory for serialization.
+ * @param <T> type of the object to serialize.
  */
-public final class SparkDecoder<T> implements Decoder<T> {
+public final class SparkEncoderFactory<T> implements EncoderFactory<T> {
   private final Serializer serializer;
 
   /**
@@ -35,37 +35,37 @@ public final class SparkDecoder<T> implements Decoder<T> {
    *
    * @param serializer Spark serializer.
    */
-  public SparkDecoder(final Serializer serializer) {
+  public SparkEncoderFactory(final Serializer serializer) {
     this.serializer = serializer;
   }
 
   @Override
-  public DecoderInstance<T> getDecoderInstance(final InputStream inputStream) {
-    return new SparkDecoderInstance<>(inputStream, serializer.newInstance());
+  public Encoder<T> create(final OutputStream outputStream) {
+    return new SparkEncoder<>(outputStream, serializer.newInstance());
   }
 
   /**
-   * SparkDecoderInstance.
-   * @param <T2> type of the object to deserialize.
+   * SparkEncoder.
+   * @param <T2> type of the object to serialize.
    */
-  private final class SparkDecoderInstance<T2> implements DecoderInstance<T2> {
+  private final class SparkEncoder<T2> implements Encoder<T2> {
 
-    private final DeserializationStream in;
+    private final SerializationStream out;
 
     /**
      * Constructor.
      *
-     * @param inputStream             the input stream to decode.
+     * @param outputStream            the output stream to store the encoded bytes.
      * @param sparkSerializerInstance the actual spark serializer instance to use.
      */
-    private SparkDecoderInstance(final InputStream inputStream,
-                                 final SerializerInstance sparkSerializerInstance) {
-      this.in = sparkSerializerInstance.deserializeStream(inputStream);
+    private SparkEncoder(final OutputStream outputStream,
+                         final SerializerInstance sparkSerializerInstance) {
+      this.out = sparkSerializerInstance.serializeStream(outputStream);
     }
 
     @Override
-    public T2 decode() {
-      return (T2) in.readObject(ClassTag$.MODULE$.Any());
+    public void encode(final T2 element) {
+      out.writeObject(element, ClassTag$.MODULE$.Any());
     }
   }
 }

@@ -24,7 +24,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.{DecoderProperty, EncoderPr
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty
 import edu.snu.nemo.common.ir.vertex.{IRVertex, LoopVertex, OperatorVertex}
 import edu.snu.nemo.compiler.frontend.spark.SparkKeyExtractor
-import edu.snu.nemo.compiler.frontend.spark.coder.{SparkDecoder, SparkEncoder}
+import edu.snu.nemo.compiler.frontend.spark.coder.{SparkDecoder, SparkDecoderFactory, SparkEncoder, SparkEncoderFactory}
 import edu.snu.nemo.compiler.frontend.spark.core.SparkFrontendUtils
 import edu.snu.nemo.compiler.frontend.spark.transform._
 import org.apache.hadoop.io.WritableFactory
@@ -52,9 +52,9 @@ final class RDD[T: ClassTag] protected[rdd] (
   protected[rdd] val serializer: Serializer = SparkFrontendUtils.deriveSerializerFrom(_sc)
   private val loopVertexStack = new util.Stack[LoopVertex]
   private val encoderProperty: EdgeExecutionProperty[_ <: Serializable] =
-    EncoderProperty.of(new SparkEncoder[T](serializer)).asInstanceOf[EdgeExecutionProperty[_ <: Serializable]]
+    EncoderProperty.of(new SparkEncoderFactory[T](serializer)).asInstanceOf[EdgeExecutionProperty[_ <: Serializable]]
   private val decoderProperty: EdgeExecutionProperty[_ <: Serializable] =
-    DecoderProperty.of(new SparkDecoder[T](serializer)).asInstanceOf[EdgeExecutionProperty[_ <: Serializable]]
+    DecoderProperty.of(new SparkDecoderFactory[T](serializer)).asInstanceOf[EdgeExecutionProperty[_ <: Serializable]]
   private val keyExtractorProperty: KeyExtractorProperty = KeyExtractorProperty.of(new SparkKeyExtractor)
 
   /**

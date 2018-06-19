@@ -15,8 +15,8 @@
  */
 package edu.snu.nemo.runtime.executor.data;
 
-import edu.snu.nemo.common.coder.Decoder;
-import edu.snu.nemo.common.coder.Encoder;
+import edu.snu.nemo.common.coder.DecoderFactory;
+import edu.snu.nemo.common.coder.EncoderFactory;
 import edu.snu.nemo.runtime.executor.data.streamchainer.*;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import org.slf4j.Logger;
@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * Mapping from RuntimeEdgeId to Encoder.
+ * Mapping from RuntimeEdgeId to EncoderFactory.
  */
 public final class SerializerManager {
   private static final Logger LOG = LoggerFactory.getLogger(SerializerManager.class.getName());
@@ -44,31 +44,31 @@ public final class SerializerManager {
   }
 
   /**
-   * Register a encoder for runtime edge.
+   * Register a encoderFactory for runtime edge.
    * This method regards that compression & decompression property are empty.
    *
    * @param runtimeEdgeId id of the runtime edge.
-   * @param encoder       the corresponding encoder.
-   * @param decoder       the corresponding decoder.
+   * @param encoderFactory       the corresponding encoderFactory.
+   * @param decoderFactory       the corresponding decoderFactory.
    */
   public void register(final String runtimeEdgeId,
-                       final Encoder encoder,
-                       final Decoder decoder) {
-    register(runtimeEdgeId, encoder, decoder, null, null);
+                       final EncoderFactory encoderFactory,
+                       final DecoderFactory decoderFactory) {
+    register(runtimeEdgeId, encoderFactory, decoderFactory, null, null);
   }
 
   /**
-   * Register a encoder for runtime edge.
+   * Register a encoderFactory for runtime edge.
    *
    * @param runtimeEdgeId         id of the runtime edge.
-   * @param encoder               the corresponding encoder.
-   * @param decoder               the corresponding decoder.
+   * @param encoderFactory               the corresponding encoderFactory.
+   * @param decoderFactory               the corresponding decoderFactory.
    * @param compressionProperty   compression property, or null not to enable compression
    * @param decompressionProperty decompression property, or null not to enable decompression
    */
   public void register(final String runtimeEdgeId,
-                       final Encoder encoder,
-                       final Decoder decoder,
+                       final EncoderFactory encoderFactory,
+                       final DecoderFactory decoderFactory,
                        @Nullable final CompressionProperty.Value compressionProperty,
                        @Nullable final CompressionProperty.Value decompressionProperty) {
     LOG.debug("{} edge id registering to SerializerManager", runtimeEdgeId);
@@ -88,7 +88,8 @@ public final class SerializerManager {
       decodeStreamChainers.add(new DecompressionStreamChainer(decompressionProperty));
     }
 
-    final Serializer serializer = new Serializer(encoder, decoder, encodeStreamChainers, decodeStreamChainers);
+    final Serializer serializer =
+        new Serializer(encoderFactory, decoderFactory, encodeStreamChainers, decodeStreamChainers);
     runtimeEdgeIdToSerializer.putIfAbsent(runtimeEdgeId, serializer);
   }
 

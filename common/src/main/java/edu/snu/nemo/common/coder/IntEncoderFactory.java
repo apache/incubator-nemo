@@ -18,33 +18,35 @@ package edu.snu.nemo.common.coder;
 import java.io.*;
 
 /**
- * A {@link Encoder} which is used for an integer.
+ * A {@link EncoderFactory} which is used for an integer.
  */
-public final class IntEncoder implements Encoder<Integer> {
+public final class IntEncoderFactory implements EncoderFactory<Integer> {
+
+  //private static final Encoder INT_ENCODER = new IntEncoder();
 
   /**
    * A private constructor.
    */
-  private IntEncoder() {
+  private IntEncoderFactory() {
     // do nothing.
   }
 
   /**
    * Static initializer of the coder.
    */
-  public static IntEncoder of() {
-    return new IntEncoder();
+  public static IntEncoderFactory of() {
+    return new IntEncoderFactory();
   }
 
   @Override
-  public EncoderInstance<Integer> getEncoderInstance(final OutputStream outputStream) {
-    return new IntEncoderInstance(outputStream);
+  public Encoder<Integer> create(final OutputStream outputStream) {
+    return new IntEncoder(outputStream);
   }
 
   /**
-   * IntEncoderInstance.
+   * IntEncoder.
    */
-  private final class IntEncoderInstance implements EncoderInstance<Integer> {
+  private final class IntEncoder implements Encoder<Integer> {
 
     private final OutputStream outputStream;
 
@@ -53,7 +55,7 @@ public final class IntEncoder implements Encoder<Integer> {
      *
      * @param outputStream the output stream to store the encoded bytes.
      */
-    private IntEncoderInstance(final OutputStream outputStream) {
+    private IntEncoder(final OutputStream outputStream) {
       this.outputStream = outputStream;
     }
 

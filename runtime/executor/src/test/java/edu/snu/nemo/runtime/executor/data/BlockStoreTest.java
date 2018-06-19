@@ -18,7 +18,6 @@ package edu.snu.nemo.runtime.executor.data;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.coder.*;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DecompressionProperty;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.data.HashRange;
@@ -72,8 +71,8 @@ import static org.mockito.Mockito.when;
 public final class BlockStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
   private static final Serializer SERIALIZER = new Serializer(
-      PairEncoder.of(IntEncoder.of(), IntEncoder.of()),
-      PairDecoder.of(IntDecoder.of(), IntDecoder.of()),
+      PairEncoderFactory.of(IntEncoderFactory.of(), IntEncoderFactory.of()),
+      PairDecoderFactory.of(IntDecoderFactory.of(), IntDecoderFactory.of()),
       Collections.singletonList(new CompressionStreamChainer(CompressionProperty.Value.LZ4)),
       Collections.singletonList(new DecompressionStreamChainer(CompressionProperty.Value.LZ4)));
   private static final SerializerManager serializerManager = mock(SerializerManager.class);

@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.executor.data.partition;
 
 import edu.snu.nemo.common.DirectByteArrayOutputStream;
-import edu.snu.nemo.common.coder.Encoder;
+import edu.snu.nemo.common.coder.EncoderFactory;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 
 import javax.annotation.Nullable;
@@ -39,7 +39,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   // Will be null when the partition is committed when it is constructed.
   @Nullable private final DirectByteArrayOutputStream bytesOutputStream;
   @Nullable private final OutputStream wrappedStream;
-  @Nullable private final Encoder.EncoderInstance encoderInstance;
+  @Nullable private final EncoderFactory.Encoder encoder;
 
   /**
    * Creates a serialized {@link Partition} without actual data.
@@ -58,7 +58,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     this.committed = false;
     this.bytesOutputStream = new DirectByteArrayOutputStream();
     this.wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
-    this.encoderInstance = serializer.getEncoder().getEncoderInstance(wrappedStream);
+    this.encoder = serializer.getEncoderFactory().create(wrappedStream);
   }
 
   /**
@@ -81,7 +81,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     this.committed = true;
     this.bytesOutputStream = null;
     this.wrappedStream = null;
-    this.encoderInstance = null;
+    this.encoder = null;
   }
 
   /**
@@ -96,7 +96,7 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       throw new IOException("The partition is already committed!");
     } else {
       try {
-        encoderInstance.encode(element);
+        encoder.encode(element);
         elementsCount++;
       } catch (final IOException e) {
         wrappedStream.close();

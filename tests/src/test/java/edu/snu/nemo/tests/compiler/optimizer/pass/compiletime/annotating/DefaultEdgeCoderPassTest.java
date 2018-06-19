@@ -16,8 +16,8 @@
 package edu.snu.nemo.tests.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.client.JobLauncher;
-import edu.snu.nemo.common.coder.Decoder;
-import edu.snu.nemo.common.coder.Encoder;
+import edu.snu.nemo.common.coder.DecoderFactory;
+import edu.snu.nemo.common.coder.EncoderFactory;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
@@ -60,17 +60,17 @@ public class DefaultEdgeCoderPassTest {
   public void testNotOverride() {
     // Get the first coder from the compiled DAG
     final IREdge irEdge = compiledDAG.getOutgoingEdgesOf(compiledDAG.getTopologicalSort().get(0)).get(0);
-    final Encoder compiledEncoder = irEdge.getPropertyValue(EncoderProperty.class).get();
-    final Decoder compiledDecoder = irEdge.getPropertyValue(DecoderProperty.class).get();
+    final EncoderFactory compiledEncoderFactory = irEdge.getPropertyValue(EncoderProperty.class).get();
+    final DecoderFactory compiledDecoderFactory = irEdge.getPropertyValue(DecoderProperty.class).get();
     DAG<IRVertex, IREdge> processedDAG = new DefaultEdgeEncoderPass().apply(compiledDAG);
     processedDAG = new DefaultEdgeDecoderPass().apply(processedDAG);
 
     // Get the first coder from the processed DAG
     final IREdge processedIREdge = processedDAG.getOutgoingEdgesOf(processedDAG.getTopologicalSort().get(0)).get(0);
-    final Encoder processedEncoder = processedIREdge.getPropertyValue(EncoderProperty.class).get();
-    assertEquals(compiledEncoder, processedEncoder); // It must not be changed.
-    final Decoder processedDecoder = processedIREdge.getPropertyValue(DecoderProperty.class).get();
-    assertEquals(compiledDecoder, processedDecoder); // It must not be changed.
+    final EncoderFactory processedEncoderFactory = processedIREdge.getPropertyValue(EncoderProperty.class).get();
+    assertEquals(compiledEncoderFactory, processedEncoderFactory); // It must not be changed.
+    final DecoderFactory processedDecoderFactory = processedIREdge.getPropertyValue(DecoderProperty.class).get();
+    assertEquals(compiledDecoderFactory, processedDecoderFactory); // It must not be changed.
   }
 
   @Test
@@ -84,9 +84,9 @@ public class DefaultEdgeCoderPassTest {
 
     // Check whether the pass set the empty coder to our default encoder & decoder.
     final IREdge processedIREdge = processedDAG.getOutgoingEdgesOf(processedDAG.getTopologicalSort().get(0)).get(0);
-    final Encoder processedEncoder = processedIREdge.getPropertyValue(EncoderProperty.class).get();
-    final Decoder processedDecoder = processedIREdge.getPropertyValue(DecoderProperty.class).get();
-    assertEquals(Encoder.DUMMY_ENCODER, processedEncoder);
-    assertEquals(Decoder.DUMMY_DECODER, processedDecoder);
+    final EncoderFactory processedEncoderFactory = processedIREdge.getPropertyValue(EncoderProperty.class).get();
+    final DecoderFactory processedDecoderFactory = processedIREdge.getPropertyValue(DecoderProperty.class).get();
+    assertEquals(EncoderFactory.DUMMY_ENCODER_FACTORY, processedEncoderFactory);
+    assertEquals(DecoderFactory.DUMMY_DECODER_FACTORY, processedDecoderFactory);
   }
 }

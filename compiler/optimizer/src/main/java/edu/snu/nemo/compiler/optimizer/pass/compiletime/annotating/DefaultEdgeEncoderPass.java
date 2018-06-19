@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
-import edu.snu.nemo.common.coder.Encoder;
+import edu.snu.nemo.common.coder.EncoderFactory;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
@@ -26,7 +26,8 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
  */
 public final class DefaultEdgeEncoderPass extends AnnotatingPass {
 
-  private static final EncoderProperty DEFAULT_CODER_PROPERTY = EncoderProperty.of(Encoder.DUMMY_ENCODER);
+  private static final EncoderProperty DEFAULT_DECODER_PROPERTY =
+      EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY);
 
   /**
    * Default constructor.
@@ -40,7 +41,7 @@ public final class DefaultEdgeEncoderPass extends AnnotatingPass {
     dag.topologicalDo(irVertex ->
         dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
           if (!irEdge.getPropertyValue(EncoderProperty.class).isPresent()) {
-            irEdge.setProperty(DEFAULT_CODER_PROPERTY);
+            irEdge.setProperty(DEFAULT_DECODER_PROPERTY);
           }
         }));
     return dag;

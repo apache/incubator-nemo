@@ -20,29 +20,29 @@ import java.io.OutputStream;
 import java.io.Serializable;
 
 /**
- * A coder object encodes values of type {@code T} into byte streams.
+ * A encoder factory object which generates encoders that encode values of type {@code T} into byte streams.
  * To avoid to generate instance-based coder such as Spark serializer for every encoding,
  * user need to explicitly instantiate an encoder instance and use it.
  *
  * @param <T> element type.
  */
-public interface Encoder<T> extends Serializable {
+public interface EncoderFactory<T> extends Serializable {
 
   /**
-   * Get an instance of this encoder.
+   * Get an encoder instance.
    *
    * @param outputStream the stream on which encoded bytes are written
    * @return the encoder instance.
    * @throws IOException if fail to get the instance.
    */
-  EncoderInstance<T> getEncoderInstance(OutputStream outputStream) throws IOException;
+  Encoder<T> create(OutputStream outputStream) throws IOException;
 
   /**
-   * Interface of EncoderInstance.
+   * Interface of Encoder.
    *
    * @param <T> element type.
    */
-  interface EncoderInstance<T> {
+  interface Encoder<T> {
 
     /**
      * Encodes the given value onto the specified output stream.
@@ -50,41 +50,41 @@ public interface Encoder<T> extends Serializable {
      * Because the user can want to keep a single output stream and continuously concatenate elements,
      * the output stream should not be closed.
      *
-     * @param element   the element to be encoded
+     * @param element the element to be encoded
      * @throws IOException if fail to encode
      */
     void encode(T element) throws IOException;
   }
 
   /**
-   * Dummy encoder.
+   * Dummy encoder factory.
    */
-  Encoder DUMMY_ENCODER = new DummyEncoder();
+  EncoderFactory DUMMY_ENCODER_FACTORY = new DummyEncoderFactory();
 
   /**
-   * Dummy encoder implementation which is not supposed to be used.
+   * Dummy encoder factory implementation which is not supposed to be used.
    */
-  final class DummyEncoder implements Encoder {
+  final class DummyEncoderFactory implements EncoderFactory {
 
     /**
-     * DummyEncoderInstance.
+     * DummyEncoder.
      */
-    private final class DummyEncoderInstance implements EncoderInstance {
+    private final class DummyEncoder implements Encoder {
 
       @Override
       public void encode(final Object element) {
-        throw new RuntimeException("DummyEncoderInstance is not supposed to be used.");
+        throw new RuntimeException("DummyEncoder is not supposed to be used.");
       }
     }
 
     @Override
-    public EncoderInstance getEncoderInstance(final OutputStream outputStream) {
-      return new DummyEncoderInstance();
+    public Encoder create(final OutputStream outputStream) {
+      return new DummyEncoder();
     }
 
     @Override
     public String toString() {
-      return "DUMMY_ENCODER";
+      return "DUMMY_ENCODER_FACTORY";
     }
   }
 }
