@@ -18,7 +18,7 @@ package edu.snu.nemo.runtime.common.exception;
 import edu.snu.nemo.runtime.common.state.BlockState;
 
 /**
- * An exception which represents the requested block is neither COMMITTED nor SCHEDULED.
+ * An exception which represents the requested block is neither AVAILABLE nor IN_PROGRESS.
  */
 public final class AbsentBlockException extends Exception {
   private final String blockId;
