@@ -136,7 +136,7 @@ public final class FaultToleranceTest {
     final List<Stage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
 
     for (final Stage stage : dagOf4Stages) {
-      if (stage.getScheduleGroupIndex() == 0) {
+      if (stage.getScheduleGroupIndex() == 0 || stage.getScheduleGroupIndex() == 1) {
 
         // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0.
         SchedulerTestUtil.mockSchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
@@ -145,7 +145,7 @@ public final class FaultToleranceTest {
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.COMPLETE, 1));
-      } else if (stage.getScheduleGroupIndex() == 1) {
+      } else if (stage.getScheduleGroupIndex() == 2) {
         scheduler.onExecutorRemoved("a3");
         // There are 2 executors, each of capacity 2, and there are 2 Tasks in ScheduleGroup 1.
         SchedulerTestUtil.mockSchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
@@ -207,7 +207,7 @@ public final class FaultToleranceTest {
     final List<Stage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
 
     for (final Stage stage : dagOf4Stages) {
-      if (stage.getScheduleGroupIndex() == 0) {
+      if (stage.getScheduleGroupIndex() == 0 || stage.getScheduleGroupIndex() == 1) {
 
         // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0.
         SchedulerTestUtil.mockSchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
@@ -216,7 +216,7 @@ public final class FaultToleranceTest {
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.COMPLETE, 1));
-      } else if (stage.getScheduleGroupIndex() == 1) {
+      } else if (stage.getScheduleGroupIndex() == 2) {
         // There are 3 executors, each of capacity 2, and there are 2 Tasks in ScheduleGroup 1.
         SchedulerTestUtil.mockSchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
             executorRegistry, false);
@@ -273,7 +273,7 @@ public final class FaultToleranceTest {
     final List<Stage> dagOf4Stages = plan.getStageDAG().getTopologicalSort();
 
     for (final Stage stage : dagOf4Stages) {
-      if (stage.getScheduleGroupIndex() == 0) {
+      if (stage.getScheduleGroupIndex() == 0 || stage.getScheduleGroupIndex() == 1) {
 
         // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0.
         SchedulerTestUtil.mockSchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
@@ -282,7 +282,7 @@ public final class FaultToleranceTest {
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.COMPLETE, 1));
-      } else if (stage.getScheduleGroupIndex() == 1) {
+      } else if (stage.getScheduleGroupIndex() == 2) {
         // There are 3 executors, each of capacity 2, and there are 2 Tasks in ScheduleGroup 1.
         SchedulerTestUtil.mockSchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
             executorRegistry, false);
