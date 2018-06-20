@@ -230,7 +230,7 @@ public final class FaultToleranceTest {
 
         }
 
-        assertEquals(jobStateManager.getAttemptCountForStage(stage.getId()), 3);
+        assertEquals(3, jobStateManager.getAttemptCountForStage(stage.getId()));
         assertFalse(pendingTaskCollection.isEmpty());
         stage.getTaskIds().forEach(taskId -> {
           assertEquals(jobStateManager.getTaskState(taskId).getStateMachine().getCurrentState(),
