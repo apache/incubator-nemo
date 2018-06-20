@@ -26,11 +26,11 @@ import java.util.List;
 /**
  * Edge data store pass to process inter-stage memory store edges.
  */
-public final class InterTaskDataStorePass extends AnnotatingPass {
+public final class DefaultInterTaskDataStorePass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public InterTaskDataStorePass() {
+  public DefaultInterTaskDataStorePass() {
     super(InterTaskDataStoreProperty.class, Collections.emptySet());
   }
 
@@ -39,11 +39,8 @@ public final class InterTaskDataStorePass extends AnnotatingPass {
     dag.getVertices().forEach(vertex -> {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (!inEdges.isEmpty()) {
-        inEdges.forEach(edge -> {
-          if (InterTaskDataStoreProperty.Value.MemoryStore.equals(edge.getPropertyValue(InterTaskDataStoreProperty.class).get())) {
-            edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
-          }
-        });
+        inEdges.forEach(edge -> edge.setProperty(
+            InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore)));
       }
     });
     return dag;

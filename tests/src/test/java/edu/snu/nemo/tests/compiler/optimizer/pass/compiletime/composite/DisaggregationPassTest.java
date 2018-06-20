@@ -23,7 +23,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DisaggregationEdgeDataStorePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.InterTaskDataStorePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultInterTaskDataStorePass;
 import edu.snu.nemo.tests.compiler.CompilerTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,7 +50,7 @@ public class DisaggregationPassTest {
   public void testDisaggregation() throws Exception {
     final DAG<IRVertex, IREdge> processedDAG =
         new DisaggregationEdgeDataStorePass().apply(
-            new InterTaskDataStorePass().apply(
+            new DefaultInterTaskDataStorePass().apply(
                   new DefaultParallelismPass().apply(compiledDAG)));
 
     processedDAG.getTopologicalSort().forEach(irVertex -> {
