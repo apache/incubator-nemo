@@ -20,9 +20,11 @@ import edu.snu.nemo.common.coder.PairCoder;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
 import edu.snu.nemo.common.test.EmptyComponents;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.Pair;
@@ -38,14 +40,11 @@ import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.plan.StageEdgeBuilder;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.executor.Executor;
 import edu.snu.nemo.runtime.executor.MetricManagerWorker;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.SerializerManager;
-import edu.snu.nemo.runtime.executor.datatransfer.DataTransferFactory;
-import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
-import edu.snu.nemo.runtime.executor.datatransfer.OutputWriter;
 import edu.snu.nemo.runtime.master.MetricMessageHandler;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
@@ -321,14 +320,8 @@ public final class DataTransferTest {
     final IRVertex dstMockVertex = mock(IRVertex.class);
     final Stage srcStage = setupStages("srcStage-" + testIndex);
     final Stage dstStage = setupStages("dstStage-" + testIndex);
-    dummyEdge = new StageEdgeBuilder(edgeId)
-        .setEdgeProperties(edgeProperties)
-        .setSrcVertex(srcMockVertex)
-        .setDstVertex(dstMockVertex)
-        .setSrcStage(srcStage)
-        .setDstStage(dstStage)
-        .setSideInputFlag(false)
-        .build();
+    dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
+        srcStage, dstStage, false);
 
     // Initialize states in Master
     srcStage.getTaskIds().forEach(srcTaskId -> {
@@ -417,24 +410,12 @@ public final class DataTransferTest {
     final IRVertex dstMockVertex = mock(IRVertex.class);
     final Stage srcStage = setupStages("srcStage-" + testIndex);
     final Stage dstStage = setupStages("dstStage-" + testIndex);
-    dummyEdge = new StageEdgeBuilder(edgeId)
-        .setEdgeProperties(edgeProperties)
-        .setSrcVertex(srcMockVertex)
-        .setDstVertex(dstMockVertex)
-        .setSrcStage(srcStage)
-        .setDstStage(dstStage)
-        .setSideInputFlag(false)
-        .build();
+    dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
+        srcStage, dstStage, false);
     final IRVertex dstMockVertex2 = mock(IRVertex.class);
     final Stage dstStage2 = setupStages("dstStage-" + testIndex2);
-    dummyEdge2 = new StageEdgeBuilder(edgeId2)
-        .setEdgeProperties(edgeProperties)
-        .setSrcVertex(srcMockVertex)
-        .setDstVertex(dstMockVertex2)
-        .setSrcStage(srcStage)
-        .setDstStage(dstStage2)
-        .setSideInputFlag(false)
-        .build();
+    dummyEdge2 = new StageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2,
+        srcStage, dstStage, false);
     // Initialize states in Master
     srcStage.getTaskIds().forEach(srcTaskId -> {
       final String blockId = RuntimeIdGenerator.generateBlockId(
@@ -564,6 +545,9 @@ public final class DataTransferTest {
   private Stage setupStages(final String stageId) {
     final DAG<IRVertex, RuntimeEdge<IRVertex>> emptyDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>().build();
 
-    return new Stage(stageId, emptyDag, PARALLELISM_TEN, 0, "Not_used", Collections.emptyList());
+    final ExecutionPropertyMap<VertexExecutionProperty> stageExecutionProperty = new ExecutionPropertyMap<>(stageId);
+    stageExecutionProperty.put(ParallelismProperty.of(PARALLELISM_TEN));
+    stageExecutionProperty.put(ScheduleGroupIndexProperty.of(0));
+    return new Stage(stageId, emptyDag, stageExecutionProperty, Collections.emptyList());
   }
 }

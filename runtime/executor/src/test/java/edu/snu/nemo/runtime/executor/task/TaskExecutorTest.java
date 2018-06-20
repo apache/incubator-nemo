@@ -21,6 +21,7 @@ import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.InMemorySourceVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
@@ -68,7 +69,8 @@ import static org.mockito.Mockito.*;
     TaskStateManager.class, StageEdge.class})
 public final class TaskExecutorTest {
   private static final int DATA_SIZE = 100;
-  private static final String CONTAINER_TYPE = "CONTAINER_TYPE";
+  private static final ExecutionPropertyMap<VertexExecutionProperty> TASK_EXECUTION_PROPERTY_MAP
+      = new ExecutionPropertyMap<>("TASK_EXECUTION_PROPERTY_MAP");
   private static final int SOURCE_PARALLELISM = 5;
   private List<Integer> elements;
   private Map<String, List> vertexIdToOutputData;
@@ -138,7 +140,7 @@ public final class TaskExecutorTest {
             "testSourceVertexDataFetching",
             generateTaskId(),
             0,
-            CONTAINER_TYPE,
+            TASK_EXECUTION_PROPERTY_MAP,
             new byte[0],
             Collections.emptyList(),
             Collections.singletonList(mockStageEdgeFrom(sourceIRVertex)),
@@ -168,7 +170,7 @@ public final class TaskExecutorTest {
         "testSourceVertexDataFetching",
         generateTaskId(),
         0,
-        CONTAINER_TYPE,
+        TASK_EXECUTION_PROPERTY_MAP,
         new byte[0],
         Collections.singletonList(mockStageEdgeTo(vertex)),
         Collections.singletonList(mockStageEdgeFrom(vertex)),
@@ -206,7 +208,7 @@ public final class TaskExecutorTest {
         "testSourceVertexDataFetching",
         generateTaskId(),
         0,
-        CONTAINER_TYPE,
+        TASK_EXECUTION_PROPERTY_MAP,
         new byte[0],
         Collections.singletonList(mockStageEdgeTo(operatorIRVertex1)),
         Collections.singletonList(mockStageEdgeFrom(operatorIRVertex2)),
@@ -238,7 +240,7 @@ public final class TaskExecutorTest {
         "testSourceVertexDataFetching",
         generateTaskId(),
         0,
-        CONTAINER_TYPE,
+        TASK_EXECUTION_PROPERTY_MAP,
         new byte[0],
         Arrays.asList(mockStageEdgeTo(operatorIRVertex1), mockStageEdgeTo(operatorIRVertex2)),
         Collections.singletonList(mockStageEdgeFrom(operatorIRVertex2)),
