@@ -16,7 +16,7 @@
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterStageDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.dag.DAG;
 
@@ -32,7 +32,7 @@ public final class DisaggregationEdgeDataStorePass extends AnnotatingPass {
    * Default constructor.
    */
   public DisaggregationEdgeDataStorePass() {
-    super(InterStageDataStoreProperty.class, Collections.singleton(InterStageDataStoreProperty.class));
+    super(InterTaskDataStoreProperty.class, Collections.singleton(InterTaskDataStoreProperty.class));
   }
 
   @Override
@@ -40,9 +40,9 @@ public final class DisaggregationEdgeDataStorePass extends AnnotatingPass {
     dag.getVertices().forEach(vertex -> { // Initialize the DataStore of the DAG with GlusterFileStore.
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       inEdges.forEach(edge -> {
-        if (InterStageDataStoreProperty.Value.LocalFileStore
-              .equals(edge.getPropertyValue(InterStageDataStoreProperty.class).get())) {
-          edge.setProperty(InterStageDataStoreProperty.of(InterStageDataStoreProperty.Value.GlusterFileStore));
+        if (InterTaskDataStoreProperty.Value.LocalFileStore
+              .equals(edge.getPropertyValue(InterTaskDataStoreProperty.class).get())) {
+          edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.GlusterFileStore));
         }
       });
     });

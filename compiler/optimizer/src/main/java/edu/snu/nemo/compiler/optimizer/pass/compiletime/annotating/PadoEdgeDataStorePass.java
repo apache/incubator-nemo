@@ -17,7 +17,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterStageDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
@@ -33,7 +33,7 @@ public final class PadoEdgeDataStorePass extends AnnotatingPass {
    * Default constructor.
    */
   public PadoEdgeDataStorePass() {
-    super(InterStageDataStoreProperty.class, Collections.singleton(ExecutorPlacementProperty.class));
+    super(InterTaskDataStoreProperty.class, Collections.singleton(ExecutorPlacementProperty.class));
   }
 
   @Override
@@ -43,12 +43,12 @@ public final class PadoEdgeDataStorePass extends AnnotatingPass {
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
           if (fromTransientToReserved(edge) || fromReservedToTransient(edge)) {
-            edge.setProperty(InterStageDataStoreProperty.of(InterStageDataStoreProperty.Value.LocalFileStore));
+            edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
           } else if (DataCommunicationPatternProperty.Value.OneToOne
               .equals(edge.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
-            edge.setProperty(InterStageDataStoreProperty.of(InterStageDataStoreProperty.Value.MemoryStore));
+            edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
           } else {
-            edge.setProperty(InterStageDataStoreProperty.of(InterStageDataStoreProperty.Value.LocalFileStore));
+            edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
           }
         });
       }

@@ -19,11 +19,11 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterStageDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DisaggregationEdgeDataStorePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.InterStageEdgeDataStorePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.InterTaskDataStorePass;
 import edu.snu.nemo.tests.compiler.CompilerTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,17 +50,17 @@ public class DisaggregationPassTest {
   public void testDisaggregation() throws Exception {
     final DAG<IRVertex, IREdge> processedDAG =
         new DisaggregationEdgeDataStorePass().apply(
-            new InterStageEdgeDataStorePass().apply(
+            new InterTaskDataStorePass().apply(
                   new DefaultParallelismPass().apply(compiledDAG)));
 
     processedDAG.getTopologicalSort().forEach(irVertex -> {
       processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger -> {
         if (DataCommunicationPatternProperty.Value.OneToOne
             .equals(edgeToMerger.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
-          assertEquals(InterStageDataStoreProperty.Value.MemoryStore, edgeToMerger.getPropertyValue(InterStageDataStoreProperty.class).get());
+          assertEquals(InterTaskDataStoreProperty.Value.MemoryStore, edgeToMerger.getPropertyValue(InterTaskDataStoreProperty.class).get());
         } else {
-          assertEquals(InterStageDataStoreProperty.Value.GlusterFileStore,
-              edgeToMerger.getPropertyValue(InterStageDataStoreProperty.class).get());
+          assertEquals(InterTaskDataStoreProperty.Value.GlusterFileStore,
+              edgeToMerger.getPropertyValue(InterTaskDataStoreProperty.class).get());
         }
       });
     });

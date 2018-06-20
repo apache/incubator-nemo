@@ -20,7 +20,7 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterStageDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.UsedDataHandlingProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.SailfishPass;
@@ -62,8 +62,8 @@ public class SailfishPassTest {
                 edgeToMerger.getPropertyValue(DataFlowModelProperty.class).get());
             assertEquals(UsedDataHandlingProperty.Value.Discard,
                 edgeToMerger.getPropertyValue(UsedDataHandlingProperty.class).get());
-            assertEquals(InterStageDataStoreProperty.Value.SerializedMemoryStore,
-                edgeToMerger.getPropertyValue(InterStageDataStoreProperty.class).get());
+            assertEquals(InterTaskDataStoreProperty.Value.SerializedMemoryStore,
+                edgeToMerger.getPropertyValue(InterTaskDataStoreProperty.class).get());
           } else {
             assertEquals(DataFlowModelProperty.Value.Pull,
                 edgeToMerger.getPropertyValue(DataFlowModelProperty.class).get());
@@ -74,8 +74,8 @@ public class SailfishPassTest {
               edgeFromMerger.getPropertyValue(DataFlowModelProperty.class).get());
           assertEquals(DataCommunicationPatternProperty.Value.OneToOne,
               edgeFromMerger.getPropertyValue(DataCommunicationPatternProperty.class).get());
-          assertEquals(InterStageDataStoreProperty.Value.LocalFileStore,
-              edgeFromMerger.getPropertyValue(InterStageDataStoreProperty.class).get());
+          assertEquals(InterTaskDataStoreProperty.Value.LocalFileStore,
+              edgeFromMerger.getPropertyValue(InterTaskDataStoreProperty.class).get());
         });
       } else {
         // Non merger vertex.

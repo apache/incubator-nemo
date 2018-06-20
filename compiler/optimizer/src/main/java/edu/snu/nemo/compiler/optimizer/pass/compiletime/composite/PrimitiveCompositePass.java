@@ -33,7 +33,7 @@ public final class PrimitiveCompositePass extends CompositePass {
         new DefaultParallelismPass(),
         new DefaultEdgeEncoderPass(),
         new DefaultEdgeDecoderPass(),
-        new InterStageEdgeDataStorePass(),
+        new InterTaskDataStorePass(),
         new DefaultEdgeUsedDataHandlingPass(),
         new ScheduleGroupPass(),
         new CompressionPass(),

@@ -20,12 +20,12 @@ import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 /**
  * DataStore ExecutionProperty.
  */
-public final class InterStageDataStoreProperty extends EdgeExecutionProperty<InterStageDataStoreProperty.Value> {
+public final class InterTaskDataStoreProperty extends EdgeExecutionProperty<InterTaskDataStoreProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private InterStageDataStoreProperty(final Value value) {
+  private InterTaskDataStoreProperty(final Value value) {
     super(value);
   }
 
@@ -34,8 +34,8 @@ public final class InterStageDataStoreProperty extends EdgeExecutionProperty<Int
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static InterStageDataStoreProperty of(final Value value) {
-    return new InterStageDataStoreProperty(value);
+  public static InterTaskDataStoreProperty of(final Value value) {
+    return new InterTaskDataStoreProperty(value);
   }
 
   /**

@@ -17,7 +17,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterStageDataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.util.Collections;
@@ -26,12 +26,12 @@ import java.util.List;
 /**
  * Edge data store pass to process inter-stage memory store edges.
  */
-public final class InterStageEdgeDataStorePass extends AnnotatingPass {
+public final class InterTaskDataStorePass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public InterStageEdgeDataStorePass() {
-    super(InterStageDataStoreProperty.class, Collections.emptySet());
+  public InterTaskDataStorePass() {
+    super(InterTaskDataStoreProperty.class, Collections.emptySet());
   }
 
   @Override
@@ -40,8 +40,8 @@ public final class InterStageEdgeDataStorePass extends AnnotatingPass {
       final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
       if (!inEdges.isEmpty()) {
         inEdges.forEach(edge -> {
-          if (InterStageDataStoreProperty.Value.MemoryStore.equals(edge.getPropertyValue(InterStageDataStoreProperty.class).get())) {
-            edge.setProperty(InterStageDataStoreProperty.of(InterStageDataStoreProperty.Value.LocalFileStore));
+          if (InterTaskDataStoreProperty.Value.MemoryStore.equals(edge.getPropertyValue(InterTaskDataStoreProperty.class).get())) {
+            edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
           }
         });
       }
