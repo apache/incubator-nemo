@@ -21,7 +21,7 @@ import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.exception.BlockWriteException;
 import edu.snu.nemo.common.exception.UnsupportedBlockStoreException;
 import edu.snu.nemo.common.exception.UnsupportedExecutionPropertyException;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.InterStageDataStoreProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.UsedDataHandlingProperty;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
@@ -122,7 +122,7 @@ public final class BlockManagerWorker {
    * @throws BlockWriteException for any error occurred while trying to create a block.
    */
   public Block createBlock(final String blockId,
-                           final DataStoreProperty.Value blockStore) throws BlockWriteException {
+                           final InterStageDataStoreProperty.Value blockStore) throws BlockWriteException {
     final BlockStore store = getBlockStore(blockStore);
     return store.createBlock(blockId);
   }
@@ -137,7 +137,7 @@ public final class BlockManagerWorker {
    */
   private CompletableFuture<DataUtil.IteratorWithNumBytes> retrieveDataFromBlock(
       final String blockId,
-      final DataStoreProperty.Value blockStore,
+      final InterStageDataStoreProperty.Value blockStore,
       final KeyRange keyRange) {
     LOG.info("RetrieveDataFromBlock: {}", blockId);
     final BlockStore store = getBlockStore(blockStore);
@@ -188,7 +188,7 @@ public final class BlockManagerWorker {
   public CompletableFuture<DataUtil.IteratorWithNumBytes> queryBlock(
       final String blockId,
       final String runtimeEdgeId,
-      final DataStoreProperty.Value blockStore,
+      final InterStageDataStoreProperty.Value blockStore,
       final KeyRange keyRange) {
     // Let's see if a remote worker has it
     final CompletableFuture<ControlMessage.Message> blockLocationFuture =
@@ -261,7 +261,7 @@ public final class BlockManagerWorker {
    * @param usedDataHandling     how to handle the used block.
    */
   public void writeBlock(final Block block,
-                         final DataStoreProperty.Value blockStore,
+                         final InterStageDataStoreProperty.Value blockStore,
                          final boolean reportPartitionSizes,
                          final Map<Integer, Long> partitionSizeMap,
                          final String srcIRVertexId,
@@ -289,7 +289,7 @@ public final class BlockManagerWorker {
             .setBlockId(blockId)
             .setState(ControlMessage.BlockStateFromExecutor.AVAILABLE);
 
-    if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+    if (InterStageDataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
       blockStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
     } else {
       blockStateChangedMsgBuilder.setLocation(executorId);
@@ -335,7 +335,7 @@ public final class BlockManagerWorker {
    * @param blockStore the store which contains the block.
    */
   public void removeBlock(final String blockId,
-                          final DataStoreProperty.Value blockStore) {
+                          final InterStageDataStoreProperty.Value blockStore) {
     LOG.info("RemoveBlock: {}", blockId);
     final BlockStore store = getBlockStore(blockStore);
     final boolean deleted = store.deleteBlock(blockId);
@@ -347,7 +347,7 @@ public final class BlockManagerWorker {
               .setBlockId(blockId)
               .setState(ControlMessage.BlockStateFromExecutor.NOT_AVAILABLE);
 
-      if (DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+      if (InterStageDataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
         blockStateChangedMsgBuilder.setLocation(REMOTE_FILE_STORE);
       } else {
         blockStateChangedMsgBuilder.setLocation(executorId);
@@ -371,7 +371,7 @@ public final class BlockManagerWorker {
    * @param blockStore the store which contains the block.
    * @param blockId    the ID of the block.
    */
-  private void handleUsedData(final DataStoreProperty.Value blockStore,
+  private void handleUsedData(final InterStageDataStoreProperty.Value blockStore,
                               final String blockId) {
     final AtomicInteger remainingExpectedRead = blockToRemainingRead.get(blockId);
     if (remainingExpectedRead != null) {
@@ -389,11 +389,11 @@ public final class BlockManagerWorker {
   }
 
   /**
-   * Gets the {@link BlockStore} from annotated value of {@link DataStoreProperty}.
-   * @param blockStore the annotated value of {@link DataStoreProperty}.
+   * Gets the {@link BlockStore} from annotated value of {@link InterStageDataStoreProperty}.
+   * @param blockStore the annotated value of {@link InterStageDataStoreProperty}.
    * @return the block store.
    */
-  private BlockStore getBlockStore(final DataStoreProperty.Value blockStore) {
+  private BlockStore getBlockStore(final InterStageDataStoreProperty.Value blockStore) {
     switch (blockStore) {
       case MemoryStore:
         return memoryStore;
@@ -420,7 +420,7 @@ public final class BlockManagerWorker {
   public void onOutputContext(final ByteOutputContext outputContext) throws InvalidProtocolBufferException {
     final ByteTransferContextDescriptor descriptor = ByteTransferContextDescriptor.PARSER
         .parseFrom(outputContext.getContextDescriptor());
-    final DataStoreProperty.Value blockStore = convertBlockStore(descriptor.getBlockStore());
+    final InterStageDataStoreProperty.Value blockStore = convertBlockStore(descriptor.getBlockStore());
     final String blockId = descriptor.getBlockId();
     final KeyRange keyRange = SerializationUtils.deserialize(descriptor.getKeyRange().toByteArray());
 
@@ -430,8 +430,8 @@ public final class BlockManagerWorker {
         try {
           final Optional<Block> optionalBlock = getBlockStore(blockStore).readBlock(blockId);
           if (optionalBlock.isPresent()) {
-            if (DataStoreProperty.Value.LocalFileStore.equals(blockStore)
-                || DataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
+            if (InterStageDataStoreProperty.Value.LocalFileStore.equals(blockStore)
+                || InterStageDataStoreProperty.Value.GlusterFileStore.equals(blockStore)) {
               final List<FileArea> fileAreas = ((FileBlock) optionalBlock.get()).asFileAreas(keyRange);
               for (final FileArea fileArea : fileAreas) {
                 try (ByteOutputContext.ByteOutputStream os = outputContext.newOutputStream()) {
@@ -475,10 +475,10 @@ public final class BlockManagerWorker {
   /**
    * Decodes BlockStore property from protocol buffer.
    * @param blockStore property from protocol buffer
-   * @return the corresponding {@link DataStoreProperty} value
+   * @return the corresponding {@link InterStageDataStoreProperty} value
    */
   private static ControlMessage.BlockStore convertBlockStore(
-      final DataStoreProperty.Value blockStore) {
+      final InterStageDataStoreProperty.Value blockStore) {
     switch (blockStore) {
       case MemoryStore:
         return ControlMessage.BlockStore.MEMORY;
@@ -495,21 +495,21 @@ public final class BlockManagerWorker {
 
 
   /**
-   * Encodes {@link DataStoreProperty} value into protocol buffer property.
-   * @param blockStoreType {@link DataStoreProperty} value
+   * Encodes {@link InterStageDataStoreProperty} value into protocol buffer property.
+   * @param blockStoreType {@link InterStageDataStoreProperty} value
    * @return the corresponding {@link ControlMessage.BlockStore} value
    */
-  private static DataStoreProperty.Value convertBlockStore(
+  private static InterStageDataStoreProperty.Value convertBlockStore(
       final ControlMessage.BlockStore blockStoreType) {
     switch (blockStoreType) {
       case MEMORY:
-        return DataStoreProperty.Value.MemoryStore;
+        return InterStageDataStoreProperty.Value.MemoryStore;
       case SER_MEMORY:
-        return DataStoreProperty.Value.SerializedMemoryStore;
+        return InterStageDataStoreProperty.Value.SerializedMemoryStore;
       case LOCAL_FILE:
-        return DataStoreProperty.Value.LocalFileStore;
+        return InterStageDataStoreProperty.Value.LocalFileStore;
       case REMOTE_FILE:
-        return DataStoreProperty.Value.GlusterFileStore;
+        return InterStageDataStoreProperty.Value.GlusterFileStore;
       default:
         throw new UnsupportedBlockStoreException(new Exception("This block store is not yet supported"));
     }

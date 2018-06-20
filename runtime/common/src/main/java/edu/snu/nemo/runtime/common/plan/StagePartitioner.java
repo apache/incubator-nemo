@@ -26,6 +26,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -36,7 +37,7 @@ import java.util.stream.Stream;
 @DriverSide
 @ThreadSafe
 public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, Map<IRVertex, Integer>> {
-  private final Set<Class<? extends VertexExecutionProperty>> ignoredPropertyKeys = new HashSet<>();
+  private final Set<Class<? extends VertexExecutionProperty>> ignoredPropertyKeys = new ConcurrentHashMap().keySet();
 
   @Inject
   private StagePartitioner() {

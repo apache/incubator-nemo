@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.common.ir.vertex.executionproperty;
+package edu.snu.nemo.common.ir.edge.executionproperty;
 
-import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 
 /**
- * StageId ExecutionProperty.
+ * DataStore ExecutionProperty.
  */
-public final class StageIdProperty extends VertexExecutionProperty<Integer> {
+public final class InterStageDataStoreProperty extends EdgeExecutionProperty<InterStageDataStoreProperty.Value> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private StageIdProperty(final Integer value) {
+  private InterStageDataStoreProperty(final Value value) {
     super(value);
   }
 
@@ -34,7 +34,17 @@ public final class StageIdProperty extends VertexExecutionProperty<Integer> {
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static StageIdProperty of(final Integer value) {
-    return new StageIdProperty(value);
+  public static InterStageDataStoreProperty of(final Value value) {
+    return new InterStageDataStoreProperty(value);
+  }
+
+  /**
+   * Possible values of DataStore ExecutionProperty.
+   */
+  public enum Value {
+    MemoryStore,
+    SerializedMemoryStore,
+    LocalFileStore,
+    GlusterFileStore
   }
 }
