@@ -17,10 +17,12 @@ package edu.snu.nemo.runtime.executor.data;
 
 import com.google.common.io.CountingInputStream;
 import edu.snu.nemo.common.DirectByteArrayOutputStream;
-import edu.snu.nemo.common.coder.Coder;
+import edu.snu.nemo.common.coder.DecoderFactory;
+import edu.snu.nemo.common.coder.EncoderFactory;
 import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
 import edu.snu.nemo.runtime.executor.data.partition.SerializedPartition;
-import edu.snu.nemo.runtime.executor.data.streamchainer.StreamChainer;
+import edu.snu.nemo.runtime.executor.data.streamchainer.DecodeStreamChainer;
+import edu.snu.nemo.runtime.executor.data.streamchainer.EncodeStreamChainer;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,18 +49,19 @@ public final class DataUtil {
   /**
    * Serializes the elements in a non-serialized partition into an output stream.
    *
-   * @param coder                  the coder to encode the elements.
+   * @param encoderFactory                the encoderFactory to encode the elements.
    * @param nonSerializedPartition the non-serialized partition to serialize.
    * @param bytesOutputStream      the output stream to write.
    * @return total number of elements in the partition.
    * @throws IOException if fail to serialize.
    */
-  public static long serializePartition(final Coder coder,
+  public static long serializePartition(final EncoderFactory encoderFactory,
                                         final NonSerializedPartition nonSerializedPartition,
                                         final OutputStream bytesOutputStream) throws IOException {
     long elementsCount = 0;
+    final EncoderFactory.Encoder encoder = encoderFactory.create(bytesOutputStream);
     for (final Object element : nonSerializedPartition.getData()) {
-      coder.encode(element, bytesOutputStream);
+      encoder.encode(element);
       elementsCount++;
     }
 
@@ -77,9 +80,10 @@ public final class DataUtil {
    * @throws IOException if fail to deserialize.
    */
   public static <K extends Serializable> NonSerializedPartition deserializePartition(final long elementsInPartition,
-                                                            final Serializer serializer,
-                                                            final K key,
-                                                            final InputStream inputStream) throws IOException {
+                                                                                     final Serializer serializer,
+                                                                                     final K key,
+                                                                                     final InputStream inputStream)
+      throws IOException {
     final List deserializedData = new ArrayList();
     final InputStreamIterator iterator = new InputStreamIterator(Collections.singletonList(inputStream).iterator(),
         serializer, elementsInPartition);
@@ -105,9 +109,10 @@ public final class DataUtil {
     for (final NonSerializedPartition<K> partitionToConvert : partitionsToConvert) {
       try (
           final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
-          final OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getStreamChainers());
+          final OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
       ) {
-        final long elementsTotal = serializePartition(serializer.getCoder(), partitionToConvert, wrappedStream);
+        final long elementsTotal =
+            serializePartition(serializer.getEncoderFactory(), partitionToConvert, wrappedStream);
         // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
         // inner buffer directly, which can be an unfinished(not flushed) buffer.
         wrappedStream.close();
@@ -190,13 +195,14 @@ public final class DataUtil {
   }
 
   /**
-   * An iterator that emits objects from {@link InputStream} using the corresponding {@link Coder}.
+   * An iterator that emits objects from {@link InputStream} using the corresponding {@link DecoderFactory}.
+   *
    * @param <T> The type of elements.
    */
   public static final class InputStreamIterator<T> implements IteratorWithNumBytes<T> {
 
     private final Iterator<InputStream> inputStreams;
-    private final Serializer<T> serializer;
+    private final Serializer<?, T> serializer;
     private final long limit;
 
     private volatile CountingInputStream serializedCountingStream = null;
@@ -204,17 +210,19 @@ public final class DataUtil {
     private volatile boolean hasNext = false;
     private volatile T next;
     private volatile boolean cannotContinueDecoding = false;
+    private volatile DecoderFactory.Decoder<T> decoder = null;
     private volatile long elementsDecoded = 0;
     private volatile long numSerializedBytes = 0;
     private volatile long numEncodedBytes = 0;
 
     /**
-     * Construct {@link Iterator} from {@link InputStream} and {@link Coder}.
+     * Construct {@link Iterator} from {@link InputStream} and {@link DecoderFactory}.
      *
      * @param inputStreams The streams to read data from.
      * @param serializer   The serializer.
      */
-    public InputStreamIterator(final Iterator<InputStream> inputStreams, final Serializer<T> serializer) {
+    public InputStreamIterator(final Iterator<InputStream> inputStreams,
+                               final Serializer<?, T> serializer) {
       this.inputStreams = inputStreams;
       this.serializer = serializer;
       // -1 means no limit.
@@ -222,7 +230,7 @@ public final class DataUtil {
     }
 
     /**
-     * Construct {@link Iterator} from {@link InputStream} and {@link Coder}.
+     * Construct {@link Iterator} from {@link InputStream} and {@link DecoderFactory}.
      *
      * @param inputStreams The streams to read data from.
      * @param serializer   The serializer.
@@ -230,7 +238,7 @@ public final class DataUtil {
      */
     public InputStreamIterator(
         final Iterator<InputStream> inputStreams,
-        final Serializer<T> serializer,
+        final Serializer<?, T> serializer,
         final long limit) {
       if (limit < 0) {
         throw new IllegalArgumentException("Negative limit not allowed.");
@@ -254,11 +262,12 @@ public final class DataUtil {
       }
       while (true) {
         try {
-          if (encodedCountingStream == null) {
+          if (decoder == null) {
             if (inputStreams.hasNext()) {
               serializedCountingStream = new CountingInputStream(inputStreams.next());
               encodedCountingStream = new CountingInputStream(buildInputStream(
-                  serializedCountingStream, serializer.getStreamChainers()));
+                  serializedCountingStream, serializer.getDecodeStreamChainers()));
+              decoder = serializer.getDecoderFactory().create(encodedCountingStream);
             } else {
               cannotContinueDecoding = true;
               return false;
@@ -269,7 +278,7 @@ public final class DataUtil {
           throw new RuntimeException(e);
         }
         try {
-          next = serializer.getCoder().decode(encodedCountingStream);
+          next = decoder.decode();
           hasNext = true;
           elementsDecoded++;
           return true;
@@ -279,6 +288,7 @@ public final class DataUtil {
           numEncodedBytes += encodedCountingStream.getCount();
           serializedCountingStream = null;
           encodedCountingStream = null;
+          decoder = null;
         }
       }
     }
@@ -313,50 +323,54 @@ public final class DataUtil {
   }
 
   /**
-   * Chain {@link InputStream} with {@link StreamChainer}s.
+   * Chain {@link InputStream} with {@link DecodeStreamChainer}s.
    *
-   * @param in             the {@link InputStream}.
-   * @param streamChainers the list of {@link StreamChainer} to be applied on the stream.
-   * @return chained       {@link InputStream}.
-   * @throws IOException   if fail to create new stream.
+   * @param in                   the {@link InputStream}.
+   * @param decodeStreamChainers the list of {@link DecodeStreamChainer} to be applied on the stream.
+   * @return chained {@link InputStream}.
+   * @throws IOException if fail to create new stream.
    */
-  public static InputStream buildInputStream(final InputStream in, final List<StreamChainer> streamChainers)
-  throws IOException {
+  public static InputStream buildInputStream(final InputStream in,
+                                             final List<DecodeStreamChainer> decodeStreamChainers)
+      throws IOException {
     InputStream chained = in;
-    for (final StreamChainer streamChainer : streamChainers) {
-      chained = streamChainer.chainInput(chained);
+    for (final DecodeStreamChainer encodeStreamChainer : decodeStreamChainers) {
+      chained = encodeStreamChainer.chainInput(chained);
     }
     return chained;
   }
 
   /**
-   * Chain {@link OutputStream} with {@link StreamChainer}s.
+   * Chain {@link OutputStream} with {@link EncodeStreamChainer}s.
    *
-   * @param out            the {@link OutputStream}.
-   * @param streamChainers the list of {@link StreamChainer} to be applied on the stream.
-   * @return chained       {@link OutputStream}.
-   * @throws IOException   if fail to create new stream.
+   * @param out                  the {@link OutputStream}.
+   * @param encodeStreamChainers the list of {@link EncodeStreamChainer} to be applied on the stream.
+   * @return chained {@link OutputStream}.
+   * @throws IOException if fail to create new stream.
    */
-  public static OutputStream buildOutputStream(final OutputStream out, final List<StreamChainer> streamChainers)
-  throws IOException {
+  public static OutputStream buildOutputStream(final OutputStream out,
+                                               final List<EncodeStreamChainer> encodeStreamChainers)
+      throws IOException {
     OutputStream chained = out;
-    final List<StreamChainer> temporaryStreamChainerList = new ArrayList<>(streamChainers);
-    Collections.reverse(temporaryStreamChainerList);
-    for (final StreamChainer streamChainer : temporaryStreamChainerList) {
-      chained = streamChainer.chainOutput(chained);
+    final List<EncodeStreamChainer> temporaryEncodeStreamChainerList = new ArrayList<>(encodeStreamChainers);
+    Collections.reverse(temporaryEncodeStreamChainerList);
+    for (final EncodeStreamChainer encodeStreamChainer : temporaryEncodeStreamChainerList) {
+      chained = encodeStreamChainer.chainOutput(chained);
     }
     return chained;
   }
 
   /**
    * {@link Iterator} with interface to access to the number of bytes.
+   *
    * @param <T> the type of decoded object
    */
   public interface IteratorWithNumBytes<T> extends Iterator<T> {
     /**
      * Create an {@link IteratorWithNumBytes}, with no information about the number of bytes.
+     *
      * @param innerIterator {@link Iterator} to wrap
-     * @param <E> the type of decoded object
+     * @param <E>           the type of decoded object
      * @return an {@link IteratorWithNumBytes}, with no information about the number of bytes
      */
     static <E> IteratorWithNumBytes<E> of(final Iterator<E> innerIterator) {
@@ -385,10 +399,11 @@ public final class DataUtil {
 
     /**
      * Create an {@link IteratorWithNumBytes}, with the number of bytes in decoded and serialized form.
-     * @param innerIterator {@link Iterator} to wrap
+     *
+     * @param innerIterator      {@link Iterator} to wrap
      * @param numSerializedBytes the number of bytes in serialized form
-     * @param numEncodedBytes the number of bytes in encoded form
-     * @param <E> the type of decoded object
+     * @param numEncodedBytes    the number of bytes in encoded form
+     * @param <E>                the type of decoded object
      * @return an {@link IteratorWithNumBytes}, with the information about the number of bytes
      */
     static <E> IteratorWithNumBytes<E> of(final Iterator<E> innerIterator,
@@ -432,6 +447,7 @@ public final class DataUtil {
     /**
      * This method should be called after the actual data is taken out of iterator,
      * since the existence of an iterator does not guarantee that data inside it is ready.
+     *
      * @return the number of bytes in serialized form (which is, for example, encoded and compressed)
      * @throws NumBytesNotSupportedException when the operation is not supported
      * @throws IllegalStateException         when the information is not ready
@@ -441,6 +457,7 @@ public final class DataUtil {
     /**
      * This method should be called after the actual data is taken out of iterator,
      * since the existence of an iterator does not guarantee that data inside it is ready.
+     *
      * @return the number of bytes in encoded form (which is ready to be decoded)
      * @throws NumBytesNotSupportedException when the operation is not supported
      * @throws IllegalStateException         when the information is not ready

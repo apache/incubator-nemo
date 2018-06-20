@@ -20,7 +20,7 @@ import org.apache.beam.sdk.coders.AtomicCoder;
 import java.io.*;
 
 /**
- * Coder for float[].
+ * EncoderFactory for float[].
  */
 public final class FloatArrayCoder extends AtomicCoder<float[]> {
   /**

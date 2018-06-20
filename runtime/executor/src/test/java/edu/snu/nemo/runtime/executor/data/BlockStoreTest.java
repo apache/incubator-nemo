@@ -16,11 +16,9 @@
 package edu.snu.nemo.runtime.executor.data;
 
 import edu.snu.nemo.common.Pair;
-import edu.snu.nemo.common.coder.IntCoder;
-import edu.snu.nemo.common.coder.PairCoder;
+import edu.snu.nemo.common.coder.*;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.nemo.conf.JobConf;
-import edu.snu.nemo.common.coder.Coder;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.data.HashRange;
 import edu.snu.nemo.runtime.common.data.KeyRange;
@@ -30,6 +28,7 @@ import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.executor.data.block.Block;
 import edu.snu.nemo.runtime.executor.data.partition.NonSerializedPartition;
+import edu.snu.nemo.runtime.executor.data.streamchainer.DecompressionStreamChainer;
 import edu.snu.nemo.runtime.executor.data.streamchainer.CompressionStreamChainer;
 import edu.snu.nemo.runtime.executor.data.streamchainer.Serializer;
 import edu.snu.nemo.runtime.executor.data.stores.*;
@@ -71,9 +70,11 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({BlockManagerMaster.class, RuntimeMaster.class, SerializerManager.class})
 public final class BlockStoreTest {
   private static final String TMP_FILE_DIRECTORY = "./tmpFiles";
-  private static final Coder CODER = PairCoder.of(IntCoder.of(), IntCoder.of());
-  private static final Serializer SERIALIZER = new Serializer(CODER,
-      Collections.singletonList(new CompressionStreamChainer(CompressionProperty.Value.LZ4)));
+  private static final Serializer SERIALIZER = new Serializer(
+      PairEncoderFactory.of(IntEncoderFactory.of(), IntEncoderFactory.of()),
+      PairDecoderFactory.of(IntDecoderFactory.of(), IntDecoderFactory.of()),
+      Collections.singletonList(new CompressionStreamChainer(CompressionProperty.Value.LZ4)),
+      Collections.singletonList(new DecompressionStreamChainer(CompressionProperty.Value.LZ4)));
   private static final SerializerManager serializerManager = mock(SerializerManager.class);
   private BlockManagerMaster blockManagerMaster;
   private LocalMessageDispatcher messageDispatcher;

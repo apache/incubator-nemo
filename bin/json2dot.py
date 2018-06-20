@@ -305,7 +305,8 @@ class IREdge:
         self.dst = dst
         self.id = properties['id']
         self.executionProperties = properties['executionProperties']
-        self.coder = self.executionProperties['Coder']
+        self.encoderFactory = self.executionProperties['Encoder']
+        self.decoderFactory = self.executionProperties['Decoder']
     @property
     def dot(self):
         src = self.src
@@ -318,7 +319,7 @@ class IREdge:
             dst = dst.internalDstFor(self.id)
         except:
             pass
-        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.id, edgePropertiesString(self.executionProperties), self.coder)
+        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}<BR/>{}</FONT>'.format(self.id, edgePropertiesString(self.executionProperties), self.encoderFactory, self.decoderFactory)
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(src.oneVertex.idx,
                 dst.oneVertex.idx, src.logicalEnd, dst.logicalEnd, label)
 
@@ -328,10 +329,11 @@ class StageEdge:
         self.dst = dst.internalDAG.vertices[properties['dstVertex']]
         self.runtimeEdgeId = properties['runtimeEdgeId']
         self.executionProperties = properties['executionProperties']
-        self.coder = self.executionProperties['Coder']
+        self.encoderFactory = self.executionProperties['Encoder']
+        self.decoderFactory = self.executionProperties['Decoder']
     @property
     def dot(self):
-        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, edgePropertiesString(self.executionProperties), self.coder)
+        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}<BR/>{}</FONT>'.format(self.runtimeEdgeId, edgePropertiesString(self.executionProperties), self.encoderFactory, self.decoderFactory)
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 
@@ -341,10 +343,11 @@ class RuntimeEdge:
         self.dst = dst
         self.runtimeEdgeId = properties['runtimeEdgeId']
         self.executionProperties = properties['executionProperties']
-        self.coder = self.executionProperties['Coder']
+        self.encoderFactory = self.executionProperties['Encoder']
+        self.decoderFactory = self.executionProperties['Decoder']
     @property
     def dot(self):
-        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(self.runtimeEdgeId, edgePropertiesString(self.executionProperties), self.coder)
+        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}<BR/>{}</FONT>'.format(self.runtimeEdgeId, edgePropertiesString(self.executionProperties), self.encoderFactory, self.decoderFactory)
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 
