@@ -37,7 +37,7 @@ import java.util.stream.Stream;
 @DriverSide
 @ThreadSafe
 public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, Map<IRVertex, Integer>> {
-  private final Set<Class<? extends VertexExecutionProperty>> ignoredPropertyKeys = new ConcurrentHashMap().keySet();
+  private final Set<Class<? extends VertexExecutionProperty>> ignoredPropertyKeys = ConcurrentHashMap.newKeySet();
 
   @Inject
   private StagePartitioner() {

@@ -40,7 +40,8 @@ public final class DefaultEdgeUsedDataHandlingPass extends AnnotatingPass {
     dag.topologicalDo(irVertex ->
         dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
           if (!irEdge.getPropertyValue(UsedDataHandlingProperty.class).isPresent()) {
-            final InterTaskDataStoreProperty.Value dataStoreValue = irEdge.getPropertyValue(InterTaskDataStoreProperty.class).get();
+            final InterTaskDataStoreProperty.Value dataStoreValue
+                = irEdge.getPropertyValue(InterTaskDataStoreProperty.class).get();
             if (InterTaskDataStoreProperty.Value.MemoryStore.equals(dataStoreValue)
                 || InterTaskDataStoreProperty.Value.SerializedMemoryStore.equals(dataStoreValue)) {
               irEdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Discard));

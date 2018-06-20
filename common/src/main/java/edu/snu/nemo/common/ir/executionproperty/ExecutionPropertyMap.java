@@ -167,7 +167,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
       }
       isFirstPair = false;
       sb.append("\"");
-      sb.append(entry.getKey());
+      sb.append(entry.getKey().getCanonicalName());
       sb.append("\": \"");
       sb.append(entry.getValue().getValue());
       sb.append("\"");

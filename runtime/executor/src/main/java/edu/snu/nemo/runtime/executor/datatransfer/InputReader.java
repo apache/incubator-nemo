@@ -87,13 +87,15 @@ public final class InputReader extends DataTransfer {
 
   private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
     final String blockId = getBlockId(dstTaskIndex);
-    final Optional<InterTaskDataStoreProperty.Value> dataStoreProperty = runtimeEdge.getPropertyValue(InterTaskDataStoreProperty.class);
+    final Optional<InterTaskDataStoreProperty.Value> dataStoreProperty
+        = runtimeEdge.getPropertyValue(InterTaskDataStoreProperty.class);
     return blockManagerWorker.queryBlock(blockId, getId(), dataStoreProperty.get(), HashRange.all());
   }
 
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
     final int numSrcTasks = this.getSourceParallelism();
-    final Optional<InterTaskDataStoreProperty.Value> dataStoreProperty = runtimeEdge.getPropertyValue(InterTaskDataStoreProperty.class);
+    final Optional<InterTaskDataStoreProperty.Value> dataStoreProperty
+        = runtimeEdge.getPropertyValue(InterTaskDataStoreProperty.class);
 
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
@@ -111,7 +113,8 @@ public final class InputReader extends DataTransfer {
    */
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange() {
     assert (runtimeEdge instanceof StageEdge);
-    final Optional<InterTaskDataStoreProperty.Value> dataStoreProperty = runtimeEdge.getPropertyValue(InterTaskDataStoreProperty.class);
+    final Optional<InterTaskDataStoreProperty.Value> dataStoreProperty
+        = runtimeEdge.getPropertyValue(InterTaskDataStoreProperty.class);
     final KeyRange hashRangeToRead =
         ((StageEdge) runtimeEdge).getTaskIdxToKeyRange().get(dstTaskIndex);
     if (hashRangeToRead == null) {
