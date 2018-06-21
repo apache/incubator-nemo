@@ -53,16 +53,9 @@ public class DisaggregationPassTest {
             new DefaultInterTaskDataStorePass().apply(
                   new DefaultParallelismPass().apply(compiledDAG)));
 
-    processedDAG.getTopologicalSort().forEach(irVertex -> {
-      processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger -> {
-        if (DataCommunicationPatternProperty.Value.OneToOne
-            .equals(edgeToMerger.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
-          assertEquals(InterTaskDataStoreProperty.Value.MemoryStore, edgeToMerger.getPropertyValue(InterTaskDataStoreProperty.class).get());
-        } else {
+    processedDAG.getTopologicalSort().forEach(irVertex ->
+      processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger ->
           assertEquals(InterTaskDataStoreProperty.Value.GlusterFileStore,
-              edgeToMerger.getPropertyValue(InterTaskDataStoreProperty.class).get());
-        }
-      });
-    });
+              edgeToMerger.getPropertyValue(InterTaskDataStoreProperty.class).get())));
   }
 }
