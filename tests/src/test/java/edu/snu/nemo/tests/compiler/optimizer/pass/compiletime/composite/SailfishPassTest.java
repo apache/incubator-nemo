@@ -63,7 +63,7 @@ public class SailfishPassTest {
                 edgeToMerger.getPropertyValue(UsedDataHandlingProperty.class).get());
             assertEquals(DataStoreProperty.Value.SerializedMemoryStore,
                 edgeToMerger.getPropertyValue(DataStoreProperty.class).get());
-            assertEquals(DecoderProperty.of(BytesDecoderFactory.of()),
+            assertEquals(BytesDecoderFactory.of(),
                 edgeToMerger.getPropertyValue(DecoderProperty.class).get());
           } else {
             assertEquals(DataFlowModelProperty.Value.Pull,
@@ -77,7 +77,7 @@ public class SailfishPassTest {
               edgeFromMerger.getPropertyValue(DataCommunicationPatternProperty.class).get());
           assertEquals(DataStoreProperty.Value.LocalFileStore,
               edgeFromMerger.getPropertyValue(DataStoreProperty.class).get());
-          assertEquals(EncoderProperty.of(BytesEncoderFactory.of()),
+          assertEquals(BytesEncoderFactory.of(),
               edgeFromMerger.getPropertyValue(EncoderProperty.class).get());
         });
       } else {
