@@ -16,7 +16,6 @@
 package edu.snu.nemo.tests.compiler.optimizer.policy;
 
 import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultStagePartitioningPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.ScheduleGroupPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.PadoCompositePass;
 import edu.snu.nemo.compiler.optimizer.policy.*;
@@ -52,7 +51,6 @@ public final class PolicyBuilderTest {
     try {
       final Policy failPolicy = new PolicyBuilder()
           .registerCompileTimePass(new PadoCompositePass())
-          .registerCompileTimePass(new DefaultStagePartitioningPass())
           .registerCompileTimePass(new ScheduleGroupPass())
           .build();
     } catch (Exception e) { // throw an exception if default execution properties are not set.
