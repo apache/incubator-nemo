@@ -75,7 +75,7 @@ public final class ScheduleGroupPass extends AnnotatingPass {
           continue;
         }
         // Assign scheduleGroupIndex
-        if (testMergability(edge)) {
+        if (testMergability(edge, dag)) {
           scheduleGroup.vertices.add(connectedIRVertex);
           irVertexToScheduleGroupMap.put(connectedIRVertex, scheduleGroup);
         } else {
@@ -106,10 +106,15 @@ public final class ScheduleGroupPass extends AnnotatingPass {
   }
 
   /**
-   * @param edge {@link IREdge} between two vertices
-   * @return {@code true} if and only if the source and destination of the edge can be merged into one ScheduleGroup.
+   * @param edge an {@link IREdge}
+   * @param irDAG IR DAG that contains {@code edge}
+   * @return {@code true} if and only if the source and the destination vertex of the edge can be merged into one stage.
    */
-  private boolean testMergability(final IREdge edge) {
+  private boolean testMergability(final IREdge edge, final DAG<IRVertex, IREdge> irDAG) {
+    // Return false if the destination vertex has more than one edge.
+    if (irDAG.getIncomingEdgesOf(edge.getDst()).size() > 1) {
+      return false;
+    }
     final DataCommunicationPatternProperty.Value pattern = edge.getPropertyValue(DataCommunicationPatternProperty.class)
         .orElseThrow(() -> new RuntimeException(String
             .format("DataCommunicationPatternProperty for %s must be set", edge)));
