@@ -26,10 +26,6 @@ import re
 
 nextIdx = 0
 
-def edgePropertiesString(properties):
-    prop = {p[0]: p[1] for p in properties.items() if p[0] != 'Coder'}
-    return '/'.join(['SideInput' if x[0] == 'IsSideInput' else x[1].split('.')[-1] for x in sorted(prop.items())])
-
 def propertiesToString(properties):
     return '<BR/>'.join(['{}={}'.format(re.sub('Property$', '', item[0].split('.')[-1]), item[1]) for item in sorted(properties.items())])
 
@@ -221,9 +217,10 @@ class Stage:
     def __init__(self, id, properties, state):
         self.id = id
         self.properties = properties
-        self.irVertex = DAG(properties['irDag'], JobState.empty())
+        self.stageDAG = DAG(properties['irDag'], JobState.empty())
         self.idx = getIdx()
         self.state = state
+        self.executionProperties = self.properties['executionProperties']
     @property
     def dot(self):
         if self.state.state is None:
@@ -233,19 +230,16 @@ class Stage:
         label = '{}{}'.format(self.id, state)
         if self.state.tasks:
             label += '<BR/><BR/>{} Task(s):<BR/>{}'.format(len(self.state.tasks), self.state.taskStateSummary)
-        try:
-            label += '<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(propertiesToString(self.properties['executionProperties']))
-        except:
-            pass
+        label += '<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(propertiesToString(self.executionProperties))
         dot = 'subgraph cluster_{} {{'.format(self.idx)
         dot += 'label = <{}>;'.format(label)
         dot += 'color=red; bgcolor="{}";'.format(stateToColor(self.state.state))
-        dot += self.irVertex.dot
+        dot += self.stageDAG.dot
         dot += '}'
         return dot
     @property
     def oneVertex(self):
-        return next(iter(self.irVertex.vertices.values())).oneVertex
+        return next(iter(self.stageDAG.vertices.values())).oneVertex
     @property
     def logicalEnd(self):
         return 'cluster_{}'.format(self.idx)
@@ -298,10 +292,10 @@ class IREdge:
 
 class StageEdge:
     def __init__(self, src, dst, properties):
-        self.src = src.irVertex.vertices[properties['externalSrcVertexId']]
-        self.dst = dst.irVertex.vertices[properties['externalDstVertexId']]
+        self.src = src.stageDAG.vertices[properties['externalSrcVertexId']]
+        self.dst = dst.stageDAG.vertices[properties['externalDstVertexId']]
         self.runtimeEdgeId = properties['runtimeEdgeId']
-        self.executionProperties = properties['edgeProperties']
+        self.executionProperties = properties['executionProperties']
     @property
     def dot(self):
         label = '{}<BR/><FONT POINT-SIZE=\'8\'>{}</FONT>'.format(self.runtimeEdgeId, propertiesToString(self.executionProperties))

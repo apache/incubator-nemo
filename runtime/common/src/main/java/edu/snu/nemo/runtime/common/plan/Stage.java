@@ -116,6 +116,7 @@ public final class Stage extends Vertex {
     sb.append("{\"scheduleGroupIndex\": ").append(scheduleGroupIndex);
     sb.append(", \"irDag\": ").append(irDag);
     sb.append(", \"parallelism\": ").append(parallelism);
+    sb.append(", \"executionProperties\": ").append(executionProperties);
     sb.append('}');
     return sb.toString();
   }
