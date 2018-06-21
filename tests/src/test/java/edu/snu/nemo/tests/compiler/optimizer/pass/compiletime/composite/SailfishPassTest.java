@@ -54,7 +54,7 @@ public class SailfishPassTest {
       if (processedDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
               DataCommunicationPatternProperty.Value.Shuffle
           .equals(irEdge.getPropertyValue(DataCommunicationPatternProperty.class).get()))) {
-        // Merger vertex
+        // Relay vertex
         processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger -> {
           if (DataCommunicationPatternProperty.Value.Shuffle
           .equals(edgeToMerger.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
