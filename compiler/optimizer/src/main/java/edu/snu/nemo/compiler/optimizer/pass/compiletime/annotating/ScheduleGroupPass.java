@@ -66,16 +66,15 @@ public final class ScheduleGroupPass extends AnnotatingPass {
       // The step case: inductively assign scheduleGroupIndex
       for (final IREdge edge : dag.getOutgoingEdgesOf(irVertex)) {
         final IRVertex connectedIRVertex = edge.getDst();
-        // Skip if it already has been assigned scheduleGroupIndex
-        if (irVertexToScheduleGroupMap.containsKey(connectedIRVertex)) {
-          final ScheduleGroup dstScheduleGroup = irVertexToScheduleGroupMap.get(connectedIRVertex);
-          if (!scheduleGroup.equals(dstScheduleGroup)) {
-            scheduleGroupDAGBuilder.connectVertices(new ScheduleGroupEdge(scheduleGroup, dstScheduleGroup));
+        // Skip if some vertices that connectedIRVertex depends on do not have assigned a scheduleGroup
+        for (final IREdge edgeToConnectedIRVertex : dag.getIncomingEdgesOf(connectedIRVertex)) {
+          if (!irVertexToScheduleGroupMap.containsKey(edgeToConnectedIRVertex.getSrc())) {
+            // connectedIRVertex will be covered when edgeToConnectedIRVertex.getSrc() is visited
+            continue;
           }
-          continue;
         }
         // Assign scheduleGroupIndex
-        if (testMergability(edge, dag)) {
+        if (testMergability(edge, irVertexToScheduleGroupMap, dag)) {
           scheduleGroup.vertices.add(connectedIRVertex);
           irVertexToScheduleGroupMap.put(connectedIRVertex, scheduleGroup);
         } else {
@@ -107,19 +106,26 @@ public final class ScheduleGroupPass extends AnnotatingPass {
 
   /**
    * @param edge an {@link IREdge}
+   * @param irVertexToScheduleGroupMap map between {@link IRVertex} and {@link ScheduleGroup}
    * @param irDAG IR DAG that contains {@code edge}
    * @return {@code true} if and only if the source and the destination vertex of the edge can be merged into one stage.
    */
-  private boolean testMergability(final IREdge edge, final DAG<IRVertex, IREdge> irDAG) {
-    // Return false if the destination vertex has more than one edge.
-    if (irDAG.getIncomingEdgesOf(edge.getDst()).size() > 1) {
-      return false;
+  private boolean testMergability(final IREdge edge,
+                                  final Map<IRVertex, ScheduleGroup> irVertexToScheduleGroupMap,
+                                  final DAG<IRVertex, IREdge> irDAG) {
+    // Return false if the destination vertex depends on multiple ScheduleGroup
+    final ScheduleGroup scheduleGroupOfSourceVertex = irVertexToScheduleGroupMap.get(edge.getSrc());
+    for (final IREdge edgeToDstVertex : irDAG.getIncomingEdgesOf(edge.getDst())) {
+      if (!irVertexToScheduleGroupMap.get(edgeToDstVertex.getSrc()).equals(scheduleGroupOfSourceVertex)) {
+        return false;
+      }
     }
     final DataCommunicationPatternProperty.Value pattern = edge.getPropertyValue(DataCommunicationPatternProperty.class)
         .orElseThrow(() -> new RuntimeException(String
             .format("DataCommunicationPatternProperty for %s must be set", edge)));
     final DataFlowModelProperty.Value model = edge.getPropertyValue(DataFlowModelProperty.class)
         .orElseThrow(() -> new RuntimeException(String.format("DataFlowModelProperty for %s must be set", edge)));
+    // Split ScheduleGroup if the edge is non-OneToOne pull edge.
     return pattern == DataCommunicationPatternProperty.Value.OneToOne || model == DataFlowModelProperty.Value.Push;
   }
 
