@@ -23,7 +23,7 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexPropert
 import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
 import edu.snu.nemo.tests.compiler.optimizer.policy.TestPolicy;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.ScheduleGroupPass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
 import edu.snu.nemo.tests.compiler.CompilerTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,18 +35,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Test {@link ScheduleGroupPass}.
+ * Test {@link DefaultScheduleGroupPass}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class ScheduleGroupPassTest {
+public final class DefaultScheduleGroupPassTest {
   @Before
   public void setUp() throws Exception {
   }
 
   @Test
   public void testAnnotatingPass() {
-    final AnnotatingPass scheduleGroupPass = new ScheduleGroupPass();
+    final AnnotatingPass scheduleGroupPass = new DefaultScheduleGroupPass();
     assertEquals(ScheduleGroupIndexProperty.class, scheduleGroupPass.getExecutionPropertyToModify());
   }
 

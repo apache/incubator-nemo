@@ -16,7 +16,7 @@
 package edu.snu.nemo.compiler.optimizer.policy;
 
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.ScheduleGroupPass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
 import java.util.ArrayList;
@@ -29,7 +29,7 @@ public final class BasicPullPolicy implements Policy {
   @Override
   public List<CompileTimePass> getCompileTimePasses() {
     List<CompileTimePass> policy = new ArrayList<>();
-    policy.add(new ScheduleGroupPass());
+    policy.add(new DefaultScheduleGroupPass());
     return policy;
   }
 

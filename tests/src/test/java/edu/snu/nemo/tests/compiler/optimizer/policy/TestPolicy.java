@@ -44,7 +44,7 @@ public final class TestPolicy implements Policy {
       policy.add(new ShuffleEdgePushPass());
     }
 
-    policy.add(new ScheduleGroupPass());
+    policy.add(new DefaultScheduleGroupPass());
     return policy;
   }
 

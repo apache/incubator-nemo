@@ -49,7 +49,7 @@ import java.util.stream.Stream;
  *   </li>
  * </ul>
  */
-public final class ScheduleGroupPass extends AnnotatingPass {
+public final class DefaultScheduleGroupPass extends AnnotatingPass {
 
   private final boolean allowBroadcastWithinScheduleGroup;
   private final boolean allowShuffleWithinScheduleGroup;
@@ -58,7 +58,7 @@ public final class ScheduleGroupPass extends AnnotatingPass {
   /**
    * Default constructor.
    */
-  public ScheduleGroupPass() {
+  public DefaultScheduleGroupPass() {
     this(false, false, true);
   }
 
@@ -68,9 +68,9 @@ public final class ScheduleGroupPass extends AnnotatingPass {
    * @param allowShuffleWithinScheduleGroup whether to allow Shuffle edges within a ScheduleGroup or not
    * @param allowMultipleInEdgesWithinScheduleGroup whether to allow vertices with multiple dependencies or not
    */
-  public ScheduleGroupPass(final boolean allowBroadcastWithinScheduleGroup,
-                           final boolean allowShuffleWithinScheduleGroup,
-                           final boolean allowMultipleInEdgesWithinScheduleGroup) {
+  public DefaultScheduleGroupPass(final boolean allowBroadcastWithinScheduleGroup,
+                                  final boolean allowShuffleWithinScheduleGroup,
+                                  final boolean allowMultipleInEdgesWithinScheduleGroup) {
     super(ScheduleGroupIndexProperty.class, Stream.of(
         DataCommunicationPatternProperty.class,
         DataFlowModelProperty.class

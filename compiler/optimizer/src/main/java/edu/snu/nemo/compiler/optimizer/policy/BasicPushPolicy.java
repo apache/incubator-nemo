@@ -16,7 +16,7 @@
 package edu.snu.nemo.compiler.optimizer.policy;
 
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.ScheduleGroupPass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.ShuffleEdgePushPass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
@@ -31,7 +31,7 @@ public final class BasicPushPolicy implements Policy {
   public List<CompileTimePass> getCompileTimePasses() {
     List<CompileTimePass> policy = new ArrayList<>();
     policy.add(new ShuffleEdgePushPass());
-    policy.add(new ScheduleGroupPass());
+    policy.add(new DefaultScheduleGroupPass());
     return policy;
   }
 
