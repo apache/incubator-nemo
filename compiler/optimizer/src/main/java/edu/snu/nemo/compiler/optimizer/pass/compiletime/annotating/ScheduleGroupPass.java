@@ -67,11 +67,16 @@ public final class ScheduleGroupPass extends AnnotatingPass {
       for (final IREdge edge : dag.getOutgoingEdgesOf(irVertex)) {
         final IRVertex connectedIRVertex = edge.getDst();
         // Skip if some vertices that connectedIRVertex depends on do not have assigned a scheduleGroup
+        boolean skip = false;
         for (final IREdge edgeToConnectedIRVertex : dag.getIncomingEdgesOf(connectedIRVertex)) {
           if (!irVertexToScheduleGroupMap.containsKey(edgeToConnectedIRVertex.getSrc())) {
             // connectedIRVertex will be covered when edgeToConnectedIRVertex.getSrc() is visited
-            continue;
+            skip = true;
+            break;
           }
+        }
+        if (skip) {
+          continue;
         }
         // Assign scheduleGroupIndex
         if (testMergability(edge, irVertexToScheduleGroupMap, dag)) {
