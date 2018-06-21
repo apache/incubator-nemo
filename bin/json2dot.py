@@ -30,6 +30,9 @@ def edgePropertiesString(properties):
     prop = {p[0]: p[1] for p in properties.items() if p[0] != 'Coder'}
     return '/'.join(['SideInput' if x[0] == 'IsSideInput' else x[1].split('.')[-1] for x in sorted(prop.items())])
 
+def propertiesToString(properties):
+    return '<BR/>'.join(['{}={}'.format(re.sub('Property$', '', item[0].split('.')[-1]), item[1]) for item in sorted(properties.items())])
+
 def getIdx():
     global nextIdx
     nextIdx += 1
@@ -119,10 +122,6 @@ def Vertex(id, properties, state):
     except:
         pass
     try:
-        return Stage(id, properties)
-    except:
-        pass
-    try:
         return LoopVertex(id, properties)
     except:
         pass
@@ -138,33 +137,18 @@ class NormalVertex:
     def dot(self):
         color = 'black'
         try:
-            if (self.properties['executionProperties']['ExecutorPlacement'] == 'Transient'):
+            placement = self.properties['executionProperties']['edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty']
+            if (placement == 'Transient'):
                 color = 'orange'
-            if (self.properties['executionProperties']['ExecutorPlacement'] == 'Reserved'):
+            if (placement == 'Reserved'):
                 color = 'green'
         except:
             pass
         label = self.id
         if self.state is not None:
-            label += '\\n({})'.format(self.state)
+            label += '<BR/>({})'.format(self.state)
         try:
-            label += ' (p{})'.format(self.properties['executionProperties']['Parallelism'])
-        except:
-            pass
-        try:
-            label += ' (s{})'.format(self.properties['executionProperties']['ScheduleGroupIndex'])
-        except:
-            pass
-        try:
-            label += '\\n{}'.format(self.properties['source'])
-        except:
-            pass
-        try:
-            label += '\\n{}'.format(self.properties['runtimeVertexId'])
-        except:
-            pass
-        try:
-            label += '\\n{}'.format(self.properties['index'])
+            label += '<BR/>{}'.format(self.properties['source'])
         except:
             pass
         try:
@@ -174,15 +158,19 @@ class NormalVertex:
                 class_name = transform[1].split('{')[0].split('.')[-1].split('$')[0].split('@')[0]
             except IndexError:
                 class_name = '?'
-            label += '\\n{}:{}'.format(transform_name, class_name)
+            label += '<BR/>{}:{}'.format(transform_name, class_name)
         except:
             pass
         if ('class' in self.properties and self.properties['class'] == 'MetricCollectionBarrierVertex'):
             shape = ', shape=box'
-            label += '\\nMetricCollectionBarrier'
+            label += '<BR/>MetricCollectionBarrier'
         else:
             shape = ''
-        dot = '{} [label="{}", color={}, style=filled, fillcolor="{}"{}];'.format(self.idx, label, color, stateToColor(self.state), shape)
+        try:
+            label += '<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(propertiesToString(self.properties['executionProperties']))
+        except:
+            pass
+        dot = '{} [label=<{}>, color={}, style=filled, fillcolor="{}"{}];'.format(self.idx, label, color, stateToColor(self.state), shape)
         return dot
     @property
     def oneVertex(self):
@@ -190,27 +178,6 @@ class NormalVertex:
     @property
     def logicalEnd(self):
         return self.idx
-
-class Stage:
-    def __init__(self, id, properties):
-        self.id = id
-        self.internalDAG = DAG(properties['stageInternalDAG'], JobState.empty())
-        self.idx = getIdx()
-    @property
-    def dot(self):
-        dot = ''
-        dot += 'subgraph cluster_{} {{'.format(self.idx)
-        dot += 'label = "{}";'.format(self.id)
-        dot += 'color=blue;'
-        dot += self.internalDAG.dot
-        dot += '}'
-        return dot
-    @property
-    def oneVertex(self):
-        return next(iter(self.internalDAG.vertices.values())).oneVertex
-    @property
-    def logicalEnd(self):
-        return 'cluster_{}'.format(self.idx)
 
 class LoopVertex:
     def __init__(self, id, properties):
@@ -226,10 +193,10 @@ class LoopVertex:
     def dot(self):
         label = self.id
         try:
-            label += ' (p{})'.format(self.executionProperties['Parallelism'])
+            label += '<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(propertiesToString(self.executionProperties))
         except:
             pass
-        label += '\\n(Remaining iteration: {})'.format(self.remaining_iteration)
+        label += '<BR/>(Remaining iteration: {})'.format(self.remaining_iteration)
         dot = 'subgraph cluster_{} {{'.format(self.idx)
         dot += 'label = "{}";'.format(label)
         dot += self.dag.dot
@@ -253,6 +220,7 @@ class LoopVertex:
 class Stage:
     def __init__(self, id, properties, state):
         self.id = id
+        self.properties = properties
         self.irVertex = DAG(properties['irDag'], JobState.empty())
         self.idx = getIdx()
         self.state = state
@@ -262,8 +230,15 @@ class Stage:
             state = ''
         else:
             state = ' ({})'.format(self.state.state)
+        label = '{}{}'.format(self.id, state)
+        if self.state.tasks:
+            label += '<BR/><BR/>{} Task(s):<BR/>{}'.format(len(self.state.tasks), self.state.taskStateSummary)
+        try:
+            label += '<BR/><FONT POINT-SIZE=\'10\'>{}</FONT>'.format(propertiesToString(self.properties['executionProperties']))
+        except:
+            pass
         dot = 'subgraph cluster_{} {{'.format(self.idx)
-        dot += 'label = "{}{}\\n\\n{} Task(s):\\n{}";'.format(self.id, state, len(self.state.tasks), self.state.taskStateSummary)
+        dot += 'label = <{}>;'.format(label)
         dot += 'color=red; bgcolor="{}";'.format(stateToColor(self.state.state))
         dot += self.irVertex.dot
         dot += '}'
@@ -305,8 +280,6 @@ class IREdge:
         self.dst = dst
         self.id = properties['id']
         self.executionProperties = properties['executionProperties']
-        self.encoderFactory = self.executionProperties['Encoder']
-        self.decoderFactory = self.executionProperties['Decoder']
     @property
     def dot(self):
         src = self.src
@@ -319,21 +292,19 @@ class IREdge:
             dst = dst.internalDstFor(self.id)
         except:
             pass
-        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}<BR/>{}</FONT>'.format(self.id, edgePropertiesString(self.executionProperties), self.encoderFactory, self.decoderFactory)
+        label = '{}<BR/><FONT POINT-SIZE=\'8\'>{}</FONT>'.format(self.id, propertiesToString(self.executionProperties))
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(src.oneVertex.idx,
                 dst.oneVertex.idx, src.logicalEnd, dst.logicalEnd, label)
 
 class StageEdge:
     def __init__(self, src, dst, properties):
-        self.src = src.internalDAG.vertices[properties['srcVertex']]
-        self.dst = dst.internalDAG.vertices[properties['dstVertex']]
+        self.src = src.irVertex.vertices[properties['externalSrcVertexId']]
+        self.dst = dst.irVertex.vertices[properties['externalDstVertexId']]
         self.runtimeEdgeId = properties['runtimeEdgeId']
-        self.executionProperties = properties['executionProperties']
-        self.encoderFactory = self.executionProperties['Encoder']
-        self.decoderFactory = self.executionProperties['Decoder']
+        self.executionProperties = properties['edgeProperties']
     @property
     def dot(self):
-        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}<BR/>{}</FONT>'.format(self.runtimeEdgeId, edgePropertiesString(self.executionProperties), self.encoderFactory, self.decoderFactory)
+        label = '{}<BR/><FONT POINT-SIZE=\'8\'>{}</FONT>'.format(self.runtimeEdgeId, propertiesToString(self.executionProperties))
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 
@@ -343,11 +314,9 @@ class RuntimeEdge:
         self.dst = dst
         self.runtimeEdgeId = properties['runtimeEdgeId']
         self.executionProperties = properties['executionProperties']
-        self.encoderFactory = self.executionProperties['Encoder']
-        self.decoderFactory = self.executionProperties['Decoder']
     @property
     def dot(self):
-        label = '{}<BR/>{}<BR/><FONT POINT-SIZE=\'10\'>{}<BR/>{}</FONT>'.format(self.runtimeEdgeId, edgePropertiesString(self.executionProperties), self.encoderFactory, self.decoderFactory)
+        label = '{}<BR/><FONT POINT-SIZE=\'8\'>{}</FONT>'.format(self.runtimeEdgeId, propertiesToString(self.executionProperties))
         return '{} -> {} [ltail = {}, lhead = {}, label = <{}>];'.format(self.src.oneVertex.idx,
                 self.dst.oneVertex.idx, self.src.logicalEnd, self.dst.logicalEnd, label)
 
