@@ -87,7 +87,10 @@ public final class ScheduleGroupPass extends AnnotatingPass {
           scheduleGroupDAGBuilder.addVertex(newScheduleGroup);
           newScheduleGroup.vertices.add(connectedIRVertex);
           irVertexToScheduleGroupMap.put(connectedIRVertex, newScheduleGroup);
-          scheduleGroupDAGBuilder.connectVertices(new ScheduleGroupEdge(scheduleGroup, newScheduleGroup));
+          for (final IREdge edgeToConnectedIRVertex : dag.getIncomingEdgesOf(connectedIRVertex)) {
+            scheduleGroupDAGBuilder.connectVertices(new ScheduleGroupEdge(
+                irVertexToScheduleGroupMap.get(edgeToConnectedIRVertex.getSrc()), newScheduleGroup));
+          }
         }
       }
     });
