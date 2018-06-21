@@ -26,9 +26,11 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexPropert
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import org.apache.commons.lang3.SerializationUtils;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Stage.
@@ -101,6 +103,18 @@ public final class Stage extends Vertex {
    */
   public ExecutionPropertyMap<VertexExecutionProperty> getExecutionProperties() {
     return executionProperties;
+  }
+
+  /**
+   * Get the executionProperty of the IREdge.
+   *
+   * @param <T>                  Type of the return value.
+   * @param executionPropertyKey key of the execution property.
+   * @return the execution property.
+   */
+  public <T extends Serializable> Optional<T> getPropertyValue(
+      final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
+    return executionProperties.get(executionPropertyKey);
   }
 
   /**

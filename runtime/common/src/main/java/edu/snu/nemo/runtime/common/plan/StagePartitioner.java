@@ -90,7 +90,7 @@ public final class StagePartitioner implements Function<DAG<IRVertex, IREdge>, M
   }
 
   /**
-   * @param edge an {@link IREdge}
+   * @param edge an {@link IREdge}.
    * @return {@code true} if and only if the source and the destination vertex of the edge can be merged into one stage.
    */
   private boolean testMergability(final IREdge edge) {

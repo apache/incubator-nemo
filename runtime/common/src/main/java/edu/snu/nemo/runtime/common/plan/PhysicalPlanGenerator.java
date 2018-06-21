@@ -22,7 +22,6 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
 import edu.snu.nemo.conf.JobConf;
@@ -69,6 +68,9 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
   public DAG<Stage, StageEdge> apply(final DAG<IRVertex, IREdge> irDAG) {
     // first, stage-partition the IR DAG.
     final DAG<Stage, StageEdge> dagOfStages = stagePartitionIrDAG(irDAG);
+
+    // Sanity check
+    dagOfStages.getVertices().forEach(this::integrityCheck);
 
     // this is needed because of DuplicateEdgeGroupProperty.
     handleDuplicateEdgeGroupProperty(dagOfStages);
@@ -212,30 +214,21 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
   }
 
   /**
-   * Integrity check for a stage's vertices.
-   * @param stageVertices to check for
+   * Integrity check for Stage.
+   * @param stage to check for
    */
-  private void integrityCheck(final Set<IRVertex> stageVertices) {
-    final IRVertex firstVertex = stageVertices.iterator().next();
-    final String placement = firstVertex.getPropertyValue(ExecutorPlacementProperty.class).get();
-    final int scheduleGroup = firstVertex.getPropertyValue(ScheduleGroupIndexProperty.class).get();
-    final int parallelism = firstVertex.getPropertyValue(ParallelismProperty.class).get();
+  private void integrityCheck(final Stage stage) {
+    stage.getPropertyValue(ParallelismProperty.class)
+        .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
+    stage.getPropertyValue(ScheduleGroupIndexProperty.class)
+        .orElseThrow(() -> new RuntimeException("ScheduleGroupIndex property must be set for Stage"));
 
-    stageVertices.forEach(irVertex -> {
+    stage.getIRDAG().getVertices().forEach(irVertex -> {
       // Check vertex type.
       if (!(irVertex instanceof  SourceVertex
           || irVertex instanceof OperatorVertex
           || irVertex instanceof MetricCollectionBarrierVertex)) {
         throw new UnsupportedOperationException(irVertex.toString());
-      }
-
-      // Check execution properties.
-      if ((placement != null
-          && !placement.equals(irVertex.getPropertyValue(ExecutorPlacementProperty.class).get()))
-          || scheduleGroup != irVertex.getPropertyValue(ScheduleGroupIndexProperty.class).get()
-          || parallelism != irVertex.getPropertyValue(ParallelismProperty.class).get()) {
-        throw new RuntimeException("Vertices of the same stage have different execution properties: "
-            + irVertex.getId());
       }
     });
   }
