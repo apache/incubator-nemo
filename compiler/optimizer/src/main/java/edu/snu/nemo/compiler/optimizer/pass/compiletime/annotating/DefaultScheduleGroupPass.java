@@ -86,7 +86,7 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
     final Map<IRVertex, ScheduleGroup> irVertexToScheduleGroupMap = new HashMap<>();
     final Set<ScheduleGroup> scheduleGroups = new HashSet<>();
     dag.topologicalDo(irVertex -> {
-      // The base case
+      // Base case: for root vertices
       if (!irVertexToScheduleGroupMap.containsKey(irVertex)) {
         final ScheduleGroup newScheduleGroup = new ScheduleGroup();
         scheduleGroups.add(newScheduleGroup);
@@ -98,10 +98,10 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
       if (scheduleGroup == null) {
         throw new RuntimeException(String.format("ScheduleGroup must be set for %s", irVertex));
       }
-      // The step case: inductively assign scheduleGroupIndex
+      // Step case: inductively assign ScheduleGroup
       for (final IREdge edge : dag.getOutgoingEdgesOf(irVertex)) {
         final IRVertex connectedIRVertex = edge.getDst();
-        // Skip if some vertices that connectedIRVertex depends on do not have assigned a scheduleGroup
+        // Skip if some vertices that connectedIRVertex depends on do not have assigned a ScheduleGroup
         boolean skip = false;
         for (final IREdge edgeToConnectedIRVertex : dag.getIncomingEdgesOf(connectedIRVertex)) {
           if (!irVertexToScheduleGroupMap.containsKey(edgeToConnectedIRVertex.getSrc())) {
@@ -113,6 +113,7 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
         if (skip) {
           continue;
         }
+        // Now we can assure that all vertices that connectedIRVertex depends on have assigned a ScheduleGroup
 
         // Get ScheduleGroup(s) that push data to the connectedIRVertex
         final Set<ScheduleGroup> pushScheduleGroups = new HashSet<>();
@@ -192,14 +193,14 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
               newSrc.scheduleGroupsTo.add(dst);
             }
           }
-          // Merge connectedIRVertex into the pushScheduleGroup
+          // Add connectedIRVertex into the merged pushScheduleGroup
           pushScheduleGroup.vertices.add(connectedIRVertex);
           irVertexToScheduleGroupMap.put(connectedIRVertex, pushScheduleGroup);
         }
       }
     });
 
-    // Assign ScheduleGroup property based on topology between ScheduleGroups
+    // Assign ScheduleGroupIndex property based on topology of ScheduleGroups
     final MutableInt currentScheduleGroupIndex = new MutableInt(getNextScheudleGroupIndex(dag.getVertices()));
     final DAGBuilder<ScheduleGroup, ScheduleGroupEdge> scheduleGroupDAGBuilder = new DAGBuilder<>();
     scheduleGroups.forEach(scheduleGroupDAGBuilder::addVertex);
