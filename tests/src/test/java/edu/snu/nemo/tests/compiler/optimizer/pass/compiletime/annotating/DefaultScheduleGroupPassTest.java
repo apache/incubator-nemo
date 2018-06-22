@@ -49,6 +49,8 @@ import static org.junit.Assert.assertTrue;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class DefaultScheduleGroupPassTest {
+  private static final Transform EMPTY_TRANSFORM = new EmptyComponents.EmptyTransform("empty");
+
   @Test
   public void testAnnotatingPass() {
     final AnnotatingPass scheduleGroupPass = new DefaultScheduleGroupPass();
@@ -89,12 +91,11 @@ public final class DefaultScheduleGroupPassTest {
       final DataFlowModelProperty.Value dataFlowModel) {
     final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
 
-    final Transform t = new EmptyComponents.EmptyTransform("empty");
-    final IRVertex v0 = new OperatorVertex(t);
-    final IRVertex v1 = new OperatorVertex(t);
-    final IRVertex v2 = new OperatorVertex(t);
-    final IRVertex v3 = new OperatorVertex(t);
-    final IRVertex v4 = new OperatorVertex(t);
+    final IRVertex v0 = new OperatorVertex(EMPTY_TRANSFORM);
+    final IRVertex v1 = new OperatorVertex(EMPTY_TRANSFORM);
+    final IRVertex v2 = new OperatorVertex(EMPTY_TRANSFORM);
+    final IRVertex v3 = new OperatorVertex(EMPTY_TRANSFORM);
+    final IRVertex v4 = new OperatorVertex(EMPTY_TRANSFORM);
 
     final IREdge e0 = new IREdge(communicationPattern, v0, v1);
     final IREdge e1 = new IREdge(communicationPattern, v1, v2);
@@ -129,13 +130,12 @@ public final class DefaultScheduleGroupPassTest {
       final DataFlowModelProperty.Value dataFlowModel) {
     final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
 
-    final Transform t = new EmptyComponents.EmptyTransform("empty");
-    final IRVertex v0 = new OperatorVertex(t);
-    final IRVertex v1 = new OperatorVertex(t);
-    final IRVertex v2 = new OperatorVertex(t);
-    final IRVertex v3 = new OperatorVertex(t);
-    final IRVertex v4 = new OperatorVertex(t);
-    final IRVertex v5 = new OperatorVertex(t);
+    final IRVertex v0 = new OperatorVertex(EMPTY_TRANSFORM);
+    final IRVertex v1 = new OperatorVertex(EMPTY_TRANSFORM);
+    final IRVertex v2 = new OperatorVertex(EMPTY_TRANSFORM);
+    final IRVertex v3 = new OperatorVertex(EMPTY_TRANSFORM);
+    final IRVertex v4 = new OperatorVertex(EMPTY_TRANSFORM);
+    final IRVertex v5 = new OperatorVertex(EMPTY_TRANSFORM);
 
     final IREdge e0 = new IREdge(communicationPattern, v0, v1);
     final IREdge e1 = new IREdge(communicationPattern, v2, v3);
