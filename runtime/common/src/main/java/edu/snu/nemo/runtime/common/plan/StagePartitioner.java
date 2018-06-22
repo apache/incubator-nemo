@@ -33,6 +33,12 @@ import java.util.stream.Stream;
 
 /**
  * A function that is responsible for stage partitioning on IR DAG.
+ * Each stage becomes maximal set of {@link IRVertex} such that
+ * <ul>
+ *   <li>branches and non-OneToOne edges are not allowed within a stage, and</li>
+ *   <li>all vertices in a stage should have same {@link VertexExecutionProperty} map,
+ *   except for the ignored properties.</li>
+ * </ul>
  */
 @DriverSide
 @ThreadSafe
