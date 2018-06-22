@@ -19,6 +19,7 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
  * Attaching this property makes runtime to skip serialization and deserialization for the vertex input and output.
+ * TODO #118: Implement Skipping (De)Serialization by ExecutionProperty
  */
 public final class SkipSerDesProperty extends VertexExecutionProperty<Boolean> {
 
