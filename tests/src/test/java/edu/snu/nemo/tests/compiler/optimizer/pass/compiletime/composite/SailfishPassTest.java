@@ -16,12 +16,11 @@
 package edu.snu.nemo.tests.compiler.optimizer.pass.compiletime.composite;
 
 import edu.snu.nemo.client.JobLauncher;
+import edu.snu.nemo.common.coder.BytesDecoderFactory;
+import edu.snu.nemo.common.coder.BytesEncoderFactory;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.UsedDataHandlingProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.SailfishPass;
 import edu.snu.nemo.tests.compiler.CompilerTestUtil;
@@ -54,7 +53,7 @@ public class SailfishPassTest {
       if (processedDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
               DataCommunicationPatternProperty.Value.Shuffle
           .equals(irEdge.getPropertyValue(DataCommunicationPatternProperty.class).get()))) {
-        // Merger vertex
+        // Relay vertex
         processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger -> {
           if (DataCommunicationPatternProperty.Value.Shuffle
           .equals(edgeToMerger.getPropertyValue(DataCommunicationPatternProperty.class).get())) {
@@ -64,6 +63,8 @@ public class SailfishPassTest {
                 edgeToMerger.getPropertyValue(UsedDataHandlingProperty.class).get());
             assertEquals(DataStoreProperty.Value.SerializedMemoryStore,
                 edgeToMerger.getPropertyValue(DataStoreProperty.class).get());
+            assertEquals(BytesDecoderFactory.of(),
+                edgeToMerger.getPropertyValue(DecoderProperty.class).get());
           } else {
             assertEquals(DataFlowModelProperty.Value.Pull,
                 edgeToMerger.getPropertyValue(DataFlowModelProperty.class).get());
@@ -76,6 +77,8 @@ public class SailfishPassTest {
               edgeFromMerger.getPropertyValue(DataCommunicationPatternProperty.class).get());
           assertEquals(DataStoreProperty.Value.LocalFileStore,
               edgeFromMerger.getPropertyValue(DataStoreProperty.class).get());
+          assertEquals(BytesEncoderFactory.of(),
+              edgeFromMerger.getPropertyValue(EncoderProperty.class).get());
         });
       } else {
         // Non merger vertex.
