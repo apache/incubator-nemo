@@ -100,16 +100,16 @@ final class SchedulerTestUtil {
     sendTaskStateEventToScheduler(scheduler, executorRegistry, taskId, newState, attemptIdx, null);
   }
 
-  static void mockSchedulingBySchedulerRunner(final PendingTaskCollection pendingTaskCollection,
+  static void mockSchedulingBySchedulerRunner(final PendingTaskListPointer pendingTaskListPointer,
                                               final SchedulingPolicy schedulingPolicy,
                                               final JobStateManager jobStateManager,
                                               final ExecutorRegistry executorRegistry,
                                               final boolean scheduleOnlyTheFirstStage) {
     final SchedulerRunner schedulerRunner =
-        new SchedulerRunner(schedulingPolicy, pendingTaskCollection, executorRegistry);
+        new SchedulerRunner(schedulingPolicy, pendingTaskListPointer, executorRegistry);
     schedulerRunner.scheduleJob(jobStateManager);
-    while (!pendingTaskCollection.isEmpty()) {
-      schedulerRunner.doScheduleStage();
+    while (!pendingTaskListPointer.isEmpty()) {
+      schedulerRunner.doScheduleTaskList();
       if (scheduleOnlyTheFirstStage) {
         // Schedule only the first stage
         break;

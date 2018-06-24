@@ -60,7 +60,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * Components related to scheduling the given job.
    */
   private final SchedulerRunner schedulerRunner;
-  private final PendingTaskCollection pendingTaskCollection;
+  private final PendingTaskListPointer pendingTaskListPointer;
   private final ExecutorRegistry executorRegistry;
 
   /**
@@ -78,13 +78,13 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
   @Inject
   public BatchSingleJobScheduler(final SchedulerRunner schedulerRunner,
-                                 final PendingTaskCollection pendingTaskCollection,
+                                 final PendingTaskListPointer pendingTaskListPointer,
                                  final BlockManagerMaster blockManagerMaster,
                                  final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                                  final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
                                  final ExecutorRegistry executorRegistry) {
     this.schedulerRunner = schedulerRunner;
-    this.pendingTaskCollection = pendingTaskCollection;
+    this.pendingTaskListPointer = pendingTaskListPointer;
     this.blockManagerMaster = blockManagerMaster;
     this.pubSubEventHandlerWrapper = pubSubEventHandlerWrapper;
     updatePhysicalPlanEventHandler.setScheduler(this);
@@ -107,7 +107,6 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
     schedulerRunner.scheduleJob(scheduledJobStateManager);
     schedulerRunner.runSchedulerThread();
-    pendingTaskCollection.onJobScheduled(physicalPlan);
 
     LOG.info("Job to schedule: {}", jobToSchedule.getId());
 
@@ -219,7 +218,6 @@ public final class BatchSingleJobScheduler implements Scheduler {
   public void terminate() {
     this.schedulerRunner.terminate();
     this.executorRegistry.terminate();
-    this.pendingTaskCollection.close();
   }
 
   /**
@@ -253,7 +251,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   /**
-   * Selects the list of stages to schedule, in the order they must be added to {@link PendingTaskCollection}.
+   * Selects the list of stages to schedule, in the order they must be added to {@link PendingTaskListPointer}.
    *
    * This is a recursive function that decides which schedule group to schedule upon a stage completion, or a failure.
    * It takes the currentScheduleGroupIndex as a reference point to begin looking for the stages to execute:
@@ -269,7 +267,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * @param currentScheduleGroupIndex
    *      the index of the schedule group that is executing/has executed when this method is called.
    * @return an optional of the (possibly empty) list of next schedulable stages, in the order they should be
-   * enqueued to {@link PendingTaskCollection}.
+   * enqueued to {@link PendingTaskListPointer}.
    */
   private Optional<List<Stage>> selectNextStagesToSchedule(final int currentScheduleGroupIndex) {
     if (currentScheduleGroupIndex > initialScheduleGroup) {
@@ -384,13 +382,13 @@ public final class BatchSingleJobScheduler implements Scheduler {
     // each readable and source task will be bounded in executor.
     final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
 
+    final List<Task> tasks = new ArrayList<>(taskIdsToSchedule.size());
     taskIdsToSchedule.forEach(taskId -> {
       blockManagerMaster.onProducerTaskScheduled(taskId);
       final int taskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
       final int attemptIdx = jobStateManager.getTaskAttempt(taskId);
 
-      LOG.debug("Enqueueing {}", taskId);
-      pendingTaskCollection.add(new Task(
+      tasks.add(new Task(
           physicalPlan.getId(),
           taskId,
           attemptIdx,
@@ -400,7 +398,9 @@ public final class BatchSingleJobScheduler implements Scheduler {
           stageOutgoingEdges,
           vertexIdToReadables.get(taskIdx)));
     });
-    schedulerRunner.onATaskAvailable();
+    pendingTaskListPointer.set(tasks);
+
+    schedulerRunner.onPendingTaskListAvailable();
   }
 
   /**
