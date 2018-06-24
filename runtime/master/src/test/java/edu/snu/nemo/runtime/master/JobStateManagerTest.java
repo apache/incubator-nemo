@@ -15,8 +15,6 @@
  */
 package edu.snu.nemo.runtime.master;
 
-import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
@@ -25,12 +23,9 @@ import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlanGenerator;
 import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.state.JobState;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.runtime.plangenerator.TestPlanGenerator;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -41,10 +36,9 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
-import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.mock;
@@ -56,14 +50,12 @@ import static org.mockito.Mockito.mock;
 @PrepareForTest(MetricMessageHandler.class)
 public final class JobStateManagerTest {
   private static final int MAX_SCHEDULE_ATTEMPT = 2;
-  private DAGBuilder<IRVertex, IREdge> irDAGBuilder;
   private BlockManagerMaster blockManagerMaster;
   private MetricMessageHandler metricMessageHandler;
   private PhysicalPlanGenerator physicalPlanGenerator;
 
   @Before
   public void setUp() throws Exception {
-    irDAGBuilder = new DAGBuilder<>();
     final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
     final LocalMessageEnvironment messageEnvironment =
         new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
@@ -92,23 +84,18 @@ public final class JobStateManagerTest {
 
     for (int stageIdx = 0; stageIdx < stageList.size(); stageIdx++) {
       final Stage stage = stageList.get(stageIdx);
-      jobStateManager.onStageStateChanged(stage.getId(), StageState.State.EXECUTING);
       final List<String> taskIds = stage.getTaskIds();
       taskIds.forEach(taskId -> {
         jobStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING);
         jobStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE);
         if (RuntimeIdGenerator.getIndexFromTaskId(taskId) == taskIds.size() - 1) {
-          assertTrue(jobStateManager.checkStageCompletion(stage.getId()));
+          assertEquals(StageState.State.COMPLETE, jobStateManager.getStageState(stage.getId()));
         }
       });
-      final Map<String, TaskState> taskStateMap = jobStateManager.getIdToTaskStates();
-      taskIds.forEach(taskId -> {
-        assertEquals(taskStateMap.get(taskId).getStateMachine().getCurrentState(),
-            TaskState.State.COMPLETE);
-      });
+      taskIds.forEach(taskId -> assertEquals(jobStateManager.getTaskState(taskId), TaskState.State.COMPLETE));
 
       if (stageIdx == stageList.size() - 1) {
-        assertEquals(jobStateManager.getJobState().getStateMachine().getCurrentState(), JobState.State.COMPLETE);
+        assertEquals(jobStateManager.getJobState(), JobState.State.COMPLETE);
       }
     }
   }
@@ -116,26 +103,28 @@ public final class JobStateManagerTest {
   /**
    * Test whether the methods waiting finish of job works properly.
    */
-  @Test(timeout = 1000)
-  public void testWaitUntilFinish() {
-    // Create a JobStateManager of an empty dag.
-    final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.build();
-    final DAG<Stage, StageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
-    final JobStateManager jobStateManager = new JobStateManager(
-        new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getIdToIRVertex()),
-        blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
+  @Test(timeout = 2000)
+  public void testWaitUntilFinish() throws Exception {
+    final PhysicalPlan physicalPlan =
+        TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false);
+    final JobStateManager jobStateManager =
+        new JobStateManager(physicalPlan, blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 
-    assertFalse(jobStateManager.checkJobTermination());
+    assertFalse(jobStateManager.isJobDone());
 
     // Wait for the job to finish and check the job state.
     // It have to return EXECUTING state after timeout.
-    JobState state = jobStateManager.waitUntilFinish(100, TimeUnit.MILLISECONDS);
-    assertEquals(state.getStateMachine().getCurrentState(), JobState.State.EXECUTING);
+    final JobState.State executingState = jobStateManager.waitUntilFinish(100, TimeUnit.MILLISECONDS);
+    assertEquals(JobState.State.EXECUTING, executingState);
 
     // Complete the job and check the result again.
     // It have to return COMPLETE.
-    jobStateManager.onJobStateChanged(JobState.State.COMPLETE);
-    state = jobStateManager.waitUntilFinish();
-    assertEquals(state.getStateMachine().getCurrentState(), JobState.State.COMPLETE);
+    final List<String> tasks = physicalPlan.getStageDAG().getTopologicalSort().stream()
+        .flatMap(stage -> stage.getTaskIds().stream())
+        .collect(Collectors.toList());
+    tasks.forEach(taskId -> jobStateManager.onTaskStateChanged(taskId, TaskState.State.EXECUTING));
+    tasks.forEach(taskId -> jobStateManager.onTaskStateChanged(taskId, TaskState.State.COMPLETE));
+    final JobState.State completedState = jobStateManager.waitUntilFinish();
+    assertEquals(JobState.State.COMPLETE, completedState);
   }
 }

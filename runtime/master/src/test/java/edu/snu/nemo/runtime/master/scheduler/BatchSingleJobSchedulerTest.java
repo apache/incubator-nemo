@@ -158,8 +158,7 @@ public final class BatchSingleJobSchedulerTest {
 
       LOG.debug("Checking that all stages of ScheduleGroup {} enter the executing state", scheduleGroupIdx);
       stages.forEach(stage -> {
-        while (jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState()
-            != StageState.State.EXECUTING) {
+        while (jobStateManager.getStageState(stage.getId()) != StageState.State.EXECUTING) {
 
         }
       });
@@ -171,9 +170,9 @@ public final class BatchSingleJobSchedulerTest {
     }
 
     LOG.debug("Waiting for job termination after sending stage completion events");
-    while (!jobStateManager.checkJobTermination()) {
+    while (!jobStateManager.isJobDone()) {
     }
-    assertTrue(jobStateManager.checkJobTermination());
+    assertTrue(jobStateManager.isJobDone());
   }
 
   private List<Stage> filterStagesWithAScheduleGroupIndex(

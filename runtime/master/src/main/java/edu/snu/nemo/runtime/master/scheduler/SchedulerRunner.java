@@ -17,7 +17,6 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.runtime.common.plan.Task;
-import edu.snu.nemo.runtime.common.state.JobState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -170,7 +169,7 @@ public final class SchedulerRunner {
         doScheduleStage();
       }
       jobStateManagers.values().forEach(jobStateManager -> {
-        if (jobStateManager.getJobState().getStateMachine().getCurrentState() == JobState.State.COMPLETE) {
+        if (jobStateManager.isJobDone()) {
           LOG.info("{} is complete.", jobStateManager.getJobId());
         } else {
           LOG.info("{} is incomplete.", jobStateManager.getJobId());
