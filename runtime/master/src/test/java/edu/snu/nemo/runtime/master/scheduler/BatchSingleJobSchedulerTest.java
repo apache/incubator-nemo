@@ -131,6 +131,7 @@ public final class BatchSingleJobSchedulerTest {
    */
   @Test(timeout=10000)
   public void testPull() throws Exception {
+    System.out.println("testPull");
     scheduleAndCheckJobTermination(
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, false));
   }
@@ -141,6 +142,7 @@ public final class BatchSingleJobSchedulerTest {
    */
   @Test(timeout=10000)
   public void testPush() throws Exception {
+    System.out.println("testPush");
     scheduleAndCheckJobTermination(
         TestPlanGenerator.generatePhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined, true));
   }

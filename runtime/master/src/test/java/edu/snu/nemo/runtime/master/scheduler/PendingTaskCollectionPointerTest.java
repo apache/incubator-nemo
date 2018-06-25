@@ -16,7 +16,6 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.Task;
-import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -37,7 +36,7 @@ import static org.mockito.Mockito.mock;
  * Tests {@link PendingTaskCollectionPointer}
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ExecutorRepresenter.class, Task.class})
+@PrepareForTest({Task.class})
 public final class PendingTaskCollectionPointerTest {
   private PendingTaskCollectionPointer pendingTaskCollectionPointer;
 

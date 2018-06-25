@@ -25,8 +25,6 @@ import org.apache.reef.annotations.audience.DriverSide;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -50,7 +48,7 @@ public final class SchedulerRunner {
   private final Map<String, JobStateManager> jobStateManagers;
   private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorService schedulerThread;
-  private AtomicBoolean isSchedulerRunning;
+  private boolean isSchedulerRunning;
   private boolean isTerminated;
 
   private final DelayedSignalingCondition schedulingIteration = new DelayedSignalingCondition();
@@ -65,7 +63,7 @@ public final class SchedulerRunner {
     this.jobStateManagers = new HashMap<>();
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.schedulerThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "SchedulerRunner"));
-    this.isSchedulerRunning = new AtomicBoolean(false);
+    this.isSchedulerRunning = false;
     this.isTerminated = false;
     this.executorRegistry = executorRegistry;
     this.schedulingPolicy = schedulingPolicy;
@@ -102,8 +100,6 @@ public final class SchedulerRunner {
     }
 
     final Collection<Task> taskList = taskListOptional.get();
-    final AtomicInteger numScheduledTasks = new AtomicInteger(0); // to be incremented in lambda
-
     final List<Task> couldNotSchedule = new ArrayList<>();
     for (final Task task : taskList) {
       final JobStateManager jobStateManager = jobStateManagers.get(task.getJobId());
@@ -114,7 +110,6 @@ public final class SchedulerRunner {
       }
 
       LOG.debug("Trying to schedule {}...", task.getTaskId());
-
       executorRegistry.viewExecutors(executors -> {
         final Set<ExecutorRepresenter> candidateExecutors =
             schedulingPolicy.filterExecutorRepresenters(executors, task);
@@ -123,7 +118,6 @@ public final class SchedulerRunner {
         if (firstCandidate.isPresent()) {
           // update metadata first
           jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
-          numScheduledTasks.incrementAndGet();
 
           // send the task
           final ExecutorRepresenter selectedExecutor = firstCandidate.get();
@@ -135,7 +129,6 @@ public final class SchedulerRunner {
     }
 
     LOG.debug("All except {} were scheduled among {}", new Object[]{couldNotSchedule, taskList});
-
     if (couldNotSchedule.size() > 0) {
       // Try these again, if no new task list has been set
       pendingTaskCollectionPointer.setIfNull(couldNotSchedule);
@@ -150,9 +143,9 @@ public final class SchedulerRunner {
   }
 
   /**
-   * Signals to the condition on the Task list availability.
+   * Signals to the condition on the Task collection availability.
    */
-  void onPendingTaskListAvailable() {
+  void onNewPendingTaskCollectionAvailable() {
     schedulingIteration.signal();
   }
 
@@ -160,11 +153,10 @@ public final class SchedulerRunner {
    * Run the scheduler thread.
    */
   void runSchedulerThread() {
-    if (!isTerminated) {
-      if (!isSchedulerRunning.getAndSet(true)) {
-        schedulerThread.execute(new SchedulerThread());
-        schedulerThread.shutdown();
-      }
+    if (!isTerminated && !isSchedulerRunning) {
+      schedulerThread.execute(new SchedulerThread());
+      schedulerThread.shutdown();
+      isSchedulerRunning = true;
     }
   }
 
@@ -187,7 +179,7 @@ public final class SchedulerRunner {
    * A {@link Condition} that allows 'delayed' signaling.
    */
   private final class DelayedSignalingCondition {
-    private final AtomicBoolean hasDelayedSignal = new AtomicBoolean(false);
+    private boolean hasDelayedSignal = false;
     private final Lock lock = new ReentrantLock();
     private final Condition condition = lock.newCondition();
 
@@ -198,7 +190,7 @@ public final class SchedulerRunner {
     void signal() {
       lock.lock();
       try {
-        hasDelayedSignal.set(true);
+        hasDelayedSignal = true;
         condition.signal();
       } finally {
         lock.unlock();
@@ -212,10 +204,10 @@ public final class SchedulerRunner {
     void await() {
       lock.lock();
       try {
-        if (!hasDelayedSignal.get()) {
+        if (!hasDelayedSignal) {
           condition.await();
         }
-        hasDelayedSignal.set(false);
+        hasDelayedSignal = false;
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new RuntimeException(e);

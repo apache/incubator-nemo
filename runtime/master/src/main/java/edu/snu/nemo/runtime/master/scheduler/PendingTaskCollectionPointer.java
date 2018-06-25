@@ -29,8 +29,8 @@ import java.util.Optional;
  * Within the collection, the tasks can be scheduled in any order.
  */
 @ThreadSafe
-public class PendingTaskCollectionPointer {
-  private Collection<Task> tasks;
+public final class PendingTaskCollectionPointer {
+  private Collection<Task> curTaskCollection;
 
   @Inject
   public PendingTaskCollectionPointer() {
@@ -38,19 +38,19 @@ public class PendingTaskCollectionPointer {
 
   /**
    * This collection of tasks should take precedence over any previous collection of tasks.
-   * @param tasks to schedule.
+   * @param newCollection to schedule.
    */
-  synchronized void setToOverwrite(final Collection<Task> tasks) {
-    this.tasks = tasks;
+  synchronized void setToOverwrite(final Collection<Task> newCollection) {
+    this.curTaskCollection = newCollection;
   }
 
   /**
    * This collection of tasks can be scheduled only if there's no collection of tasks to schedule at the moment.
-   * @param tasks to schedule
+   * @param newCollection to schedule
    */
-  synchronized void setIfNull(final Collection<Task> tasks) {
-    if (this.tasks == null) {
-      this.tasks = tasks;
+  synchronized void setIfNull(final Collection<Task> newCollection) {
+    if (this.curTaskCollection == null) {
+      this.curTaskCollection = newCollection;
     }
   }
 
@@ -59,8 +59,8 @@ public class PendingTaskCollectionPointer {
    * @return optional tasks to schedule
    */
   synchronized Optional<Collection<Task>> getAndSetNull() {
-    final Collection<Task> cur = tasks;
-    tasks = null;
+    final Collection<Task> cur = curTaskCollection;
+    curTaskCollection = null;
     return Optional.ofNullable(cur);
   }
 }

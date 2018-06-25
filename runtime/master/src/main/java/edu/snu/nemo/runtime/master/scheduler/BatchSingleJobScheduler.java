@@ -114,7 +114,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
         .mapToInt(stage -> stage.getScheduleGroupIndex())
         .min().getAsInt();
 
-    scheduleNextScheduleGroup(initialScheduleGroup);
+    scheduleRootStages();
   }
 
   @Override
@@ -221,8 +221,18 @@ public final class BatchSingleJobScheduler implements Scheduler {
     this.executorRegistry.terminate();
   }
 
+  private void scheduleRootStages() {
+    final List<Stage> rootStages =
+        physicalPlan.getStageDAG().getTopologicalSort().stream().filter(stage ->
+            stage.getScheduleGroupIndex() == initialScheduleGroup)
+            .collect(Collectors.toList());
+    Collections.reverse(rootStages);
+    rootStages.forEach(this::scheduleStage);
+  }
+
+
   /**
-   * Schedules the next schedule group to execute
+   * Schedules the next schedule group to execute.
    * @param referenceIndex of the schedule group.
    */
   private void scheduleNextScheduleGroup(final int referenceIndex) {
@@ -284,7 +294,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     } else {
       // By the time the control flow has reached here,
       // we are ready to move onto the next ScheduleGroup
-      final List<Stage>stagesToSchedule =
+      final List<Stage> stagesToSchedule =
           physicalPlan.getStageDAG().getTopologicalSort().stream().filter(stage -> {
             if (stage.getScheduleGroupIndex() == referenceScheduleGroupIndex + 1) {
               final String stageId = stage.getId();
@@ -375,7 +385,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     });
     pendingTaskCollectionPointer.setToOverwrite(tasks);
 
-    schedulerRunner.onPendingTaskListAvailable();
+    schedulerRunner.onNewPendingTaskCollectionAvailable();
   }
 
   /**
