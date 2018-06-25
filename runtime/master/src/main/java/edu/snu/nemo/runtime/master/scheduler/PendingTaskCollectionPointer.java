@@ -35,16 +35,28 @@ public class PendingTaskCollectionPointer {
   public PendingTaskCollectionPointer() {
   }
 
+  /**
+   * This collection of tasks should take precedence over any previous collection of tasks.
+   * @param tasks to schedule.
+   */
   synchronized void setToOverwrite(final Collection<Task> tasks) {
     this.tasks = tasks;
   }
 
+  /**
+   * This collection of tasks can be scheduled only if there's no collection of tasks to schedule at the moment.
+   * @param tasks to schedule
+   */
   synchronized void setIfNull(final Collection<Task> tasks) {
     if (this.tasks == null) {
       this.tasks = tasks;
     }
   }
 
+  /**
+   * Take the whole collection of tasks to schedule, and set the pointer to null.
+   * @return optional tasks to schedule
+   */
   synchronized Optional<Collection<Task>> getAndSetNull() {
     final Collection<Task> cur = tasks;
     tasks = null;
