@@ -49,13 +49,12 @@ public final class CollectTransform<T> implements Transform<T, T> {
 
   @Override
   public void onData(final T element) {
-    // Write result to a temporary file.
-    // TODO #16: Implement collection of data from executor to client
     list.add(element);
   }
 
   @Override
   public void close() {
+    // TODO #16: Implement collection of data from executor to client
     try (
         final FileOutputStream fos = new FileOutputStream(filename);
         final ObjectOutputStream oos = new ObjectOutputStream(fos)
