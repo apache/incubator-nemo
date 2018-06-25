@@ -20,33 +20,33 @@ import edu.snu.nemo.runtime.common.plan.Task;
 import net.jcip.annotations.ThreadSafe;
 
 import javax.inject.Inject;
-import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 /**
- * Points to a list of pending tasks eligible for scheduling.
+ * Points to a collection of pending tasks eligible for scheduling.
+ * This collection of tasks is a subset of a scheduling group, and can be scheduled in any order.
  */
 @ThreadSafe
-public class PendingTaskListPointer {
-  List<Task> tasks;
+public class PendingTaskCollectionPointer {
+  private Collection<Task> tasks;
 
   @Inject
-  public PendingTaskListPointer() {
+  public PendingTaskCollectionPointer() {
   }
 
-
-  synchronized void set(final List<Task> tasks) {
+  synchronized void setToOverwrite(final Collection<Task> tasks) {
     this.tasks = tasks;
   }
 
-  synchronized void setIfNull(final List<Task> tasks) {
+  synchronized void setIfNull(final Collection<Task> tasks) {
     if (this.tasks == null) {
       this.tasks = tasks;
     }
   }
 
-  synchronized Optional<List<Task>> getAndSetNull() {
-    final List<Task> cur = tasks;
+  synchronized Optional<Collection<Task>> getAndSetNull() {
+    final Collection<Task> cur = tasks;
     tasks = null;
     return Optional.ofNullable(cur);
   }

@@ -38,19 +38,21 @@ import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 
 /**
- * Takes a Task from the pending queue and schedules it to an executor.
+ * Schedules tasks in discrete batches (scheduling iterations).
+ * A scheduling iteration occurs under one of the following conditions
+ * - An executor slot becomes available (for reasons such as task completion/failure, or executor addition)
+ * - A new list of tasks become available (for reasons such as stage completion, task failure, or executor removal)
  */
 @DriverSide
 @NotThreadSafe
 public final class SchedulerRunner {
   private static final Logger LOG = LoggerFactory.getLogger(SchedulerRunner.class.getName());
   private final Map<String, JobStateManager> jobStateManagers;
-  private final PendingTaskListPointer pendingTaskListPointer;
+  private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorService schedulerThread;
   private AtomicBoolean isSchedulerRunning;
   private boolean isTerminated;
 
-  // (available executor AND available task to schedule) OR the scheduler has terminated
   private final DelayedSignalingCondition schedulingIteration = new DelayedSignalingCondition();
   private ExecutorRegistry executorRegistry;
   private SchedulingPolicy schedulingPolicy;
@@ -58,10 +60,10 @@ public final class SchedulerRunner {
   @VisibleForTesting
   @Inject
   public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
-                         final PendingTaskListPointer pendingTaskListPointer,
+                         final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final ExecutorRegistry executorRegistry) {
     this.jobStateManagers = new HashMap<>();
-    this.pendingTaskListPointer = pendingTaskListPointer;
+    this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.schedulerThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "SchedulerRunner"));
     this.isSchedulerRunning = new AtomicBoolean(false);
     this.isTerminated = false;
@@ -70,16 +72,87 @@ public final class SchedulerRunner {
   }
 
   /**
+   * A separate thread is run to schedule tasks to executors.
+   * See comments in the {@link Scheduler} for avoiding race conditions.
+   */
+  private final class SchedulerThread implements Runnable {
+    @Override
+    public void run() {
+      while (!isTerminated) {
+        doScheduleTaskList();
+        schedulingIteration.await();
+      }
+      jobStateManagers.values().forEach(jobStateManager -> {
+        if (jobStateManager.isJobDone()) {
+          LOG.info("{} is complete.", jobStateManager.getJobId());
+        } else {
+          LOG.info("{} is incomplete.", jobStateManager.getJobId());
+        }
+      });
+      LOG.info("SchedulerRunner Terminated!");
+    }
+  }
+
+  void doScheduleTaskList() {
+    final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
+    if (!taskListOptional.isPresent()) {
+      // Task list is empty
+      LOG.debug("PendingTaskCollectionPointer is empty. Awaiting for more Tasks...");
+      return;
+    }
+
+    final Collection<Task> taskList = taskListOptional.get();
+    final AtomicInteger numScheduledTasks = new AtomicInteger(0); // to be incremented in lambda
+
+    final List<Task> couldNotSchedule = new ArrayList<>();
+    for (final Task task : taskList) {
+      final JobStateManager jobStateManager = jobStateManagers.get(task.getJobId());
+      if (!jobStateManager.getTaskState(task.getTaskId()).equals(TaskState.State.READY)) {
+        // Guard against race conditions causing duplicate task launches
+        LOG.debug("Skipping {} as it is not READY", task.getTaskId());
+        continue;
+      }
+
+      LOG.debug("Trying to schedule {}...", task.getTaskId());
+
+      executorRegistry.viewExecutors(executors -> {
+        final Set<ExecutorRepresenter> candidateExecutors =
+            schedulingPolicy.filterExecutorRepresenters(executors, task);
+        final Optional<ExecutorRepresenter> firstCandidate = candidateExecutors.stream().findFirst();
+
+        if (firstCandidate.isPresent()) {
+          // update metadata first
+          jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+          numScheduledTasks.incrementAndGet();
+
+          // send the task
+          final ExecutorRepresenter selectedExecutor = firstCandidate.get();
+          selectedExecutor.onTaskScheduled(task);
+        } else {
+          couldNotSchedule.add(task);
+        }
+      });
+    }
+
+    LOG.debug("All except {} were scheduled among {}", new Object[]{couldNotSchedule, taskList});
+
+    if (couldNotSchedule.size() > 0) {
+      // Try these again, if no new task list has been set
+      pendingTaskCollectionPointer.setIfNull(couldNotSchedule);
+    }
+  }
+
+  /**
    * Signals to the condition on executor availability.
    */
-  public void onAnExecutorAvailable() {
+  void onAnExecutorAvailable() {
     schedulingIteration.signal();
   }
 
   /**
    * Signals to the condition on the Task list availability.
    */
-  public void onPendingTaskListAvailable() {
+  void onPendingTaskListAvailable() {
     schedulingIteration.signal();
   }
 
@@ -110,71 +183,6 @@ public final class SchedulerRunner {
     schedulingIteration.signal();
   }
 
-  void doScheduleTaskList() {
-    final Optional<List<Task>> taskListOptional = pendingTaskListPointer.getAndSetNull();
-    if (!taskListOptional.isPresent()) {
-      // Task list is empty
-      LOG.debug("PendingTaskListPointer is empty. Awaiting for more Tasks...");
-      return;
-    }
-
-    final List<Task> taskList = taskListOptional.get();
-    final AtomicInteger numScheduledTasks = new AtomicInteger(0); // to be incremented in lambda
-
-    final List<Task> couldNotSchedule = new ArrayList<>();
-    for (final Task task : taskList) {
-      final JobStateManager jobStateManager = jobStateManagers.get(task.getJobId());
-      LOG.debug("Trying to schedule {}...", task.getTaskId());
-
-      executorRegistry.viewExecutors(executors -> {
-        final Set<ExecutorRepresenter> candidateExecutors =
-            schedulingPolicy.filterExecutorRepresenters(executors, task);
-        final Optional<ExecutorRepresenter> firstCandidate = candidateExecutors.stream().findFirst();
-
-        if (firstCandidate.isPresent()) {
-          // update metadata first
-          jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
-          numScheduledTasks.incrementAndGet();
-
-          // send the task
-          final ExecutorRepresenter selectedExecutor = firstCandidate.get();
-          selectedExecutor.onTaskScheduled(task);
-        } else {
-          couldNotSchedule.add(task);
-        }
-      });
-    }
-
-    LOG.debug("All except {} were scheduled among {}", new Object[]{couldNotSchedule, taskList});
-
-    if (couldNotSchedule.size() > 0) {
-      // Try these again, if no new task list has been set
-      pendingTaskListPointer.setIfNull(couldNotSchedule);
-    }
-  }
-
-  /**
-   * A separate thread is run to schedule tasks to executors.
-   * See comments in the {@link Scheduler} for avoiding race conditions.
-   */
-  private final class SchedulerThread implements Runnable {
-    @Override
-    public void run() {
-      while (!isTerminated) {
-        doScheduleTaskList();
-        schedulingIteration.await();
-      }
-      jobStateManagers.values().forEach(jobStateManager -> {
-        if (jobStateManager.isJobDone()) {
-          LOG.info("{} is complete.", jobStateManager.getJobId());
-        } else {
-          LOG.info("{} is incomplete.", jobStateManager.getJobId());
-        }
-      });
-      LOG.info("SchedulerRunner Terminated!");
-    }
-  }
-
   /**
    * A {@link Condition} that allows 'delayed' signaling.
    */
@@ -187,7 +195,7 @@ public final class SchedulerRunner {
      * Signals to this condition. If no thread is awaiting for this condition,
      * signaling is delayed until the first next {@link #await} invocation.
      */
-    public void signal() {
+    void signal() {
       lock.lock();
       try {
         hasDelayedSignal.set(true);
@@ -201,7 +209,7 @@ public final class SchedulerRunner {
      * Awaits to this condition. The thread will awake when there is a delayed signal,
      * or the next first {@link #signal} invocation.
      */
-    public void await() {
+    void await() {
       lock.lock();
       try {
         if (!hasDelayedSignal.get()) {

@@ -46,7 +46,7 @@ import static edu.snu.nemo.runtime.common.state.TaskState.State.ON_HOLD;
 import static edu.snu.nemo.runtime.common.state.TaskState.State.READY;
 
 /**
- * (WARNING) Only a single dedicated thread should use the public methods of this class.
+ * (CONCURRENCY) Only a single dedicated thread should use the public methods of this class.
  * (i.e., runtimeMasterThread in RuntimeMaster)
  *
  * BatchSingleJobScheduler receives a single {@link PhysicalPlan} to execute and schedules the Tasks.
@@ -60,7 +60,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * Components related to scheduling the given job.
    */
   private final SchedulerRunner schedulerRunner;
-  private final PendingTaskListPointer pendingTaskListPointer;
+  private final PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private final ExecutorRegistry executorRegistry;
 
   /**
@@ -78,13 +78,13 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
   @Inject
   public BatchSingleJobScheduler(final SchedulerRunner schedulerRunner,
-                                 final PendingTaskListPointer pendingTaskListPointer,
+                                 final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                                  final BlockManagerMaster blockManagerMaster,
                                  final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                                  final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
                                  final ExecutorRegistry executorRegistry) {
     this.schedulerRunner = schedulerRunner;
-    this.pendingTaskListPointer = pendingTaskListPointer;
+    this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.blockManagerMaster = blockManagerMaster;
     this.pubSubEventHandlerWrapper = pubSubEventHandlerWrapper;
     updatePhysicalPlanEventHandler.setScheduler(this);
@@ -98,7 +98,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   /**
    * Receives a job to schedule.
    * @param jobToSchedule the physical plan for the job.
-   * @param scheduledJobStateManager to keep track of the submitted job's states.
+   * @param scheduledJobStateManager to k
    */
   @Override
   public void scheduleJob(final PhysicalPlan jobToSchedule, final JobStateManager scheduledJobStateManager) {
@@ -114,7 +114,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
         .mapToInt(stage -> stage.getScheduleGroupIndex())
         .min().getAsInt();
 
-    scheduleRootStages();
+    scheduleNextStage(initialScheduleGroup);
   }
 
   @Override
@@ -221,37 +221,22 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   /**
-   * Schedule stages in initial schedule group, in reverse-topological order.
+   * Schedules the next stage to execute
+   * @param schedulingGroupIndex that triggered this scheduling.
    */
-  private void scheduleRootStages() {
-    final List<Stage> rootStages =
-        physicalPlan.getStageDAG().getTopologicalSort().stream().filter(stage ->
-            stage.getScheduleGroupIndex() == initialScheduleGroup)
-            .collect(Collectors.toList());
-    Collections.reverse(rootStages);
-    rootStages.forEach(this::scheduleStage);
-  }
-
-  /**
-   * Schedules the next stage to execute after a stage completion.
-   * @param completedStageId the ID of the stage that just completed and triggered this scheduling.
-   */
-  private void scheduleNextStage(final String completedStageId) {
-    final Stage completeOrFailedStage = getStageById(completedStageId);
-    final Optional<List<Stage>> nextStagesToSchedule =
-        selectNextStagesToSchedule(completeOrFailedStage.getScheduleGroupIndex());
+  private void scheduleNextStage(final int schedulingGroupIndex) {
+    final Optional<Stage> nextStagesToSchedule = selectNextStageToSchedule(schedulingGroupIndex);
 
     if (nextStagesToSchedule.isPresent()) {
-      LOG.info("Scheduling: ScheduleGroup {}", nextStagesToSchedule.get().get(0).getScheduleGroupIndex());
-
-      nextStagesToSchedule.get().forEach(this::scheduleStage);
+      LOG.info("Scheduling: ScheduleGroup {}", nextStagesToSchedule.get());
+      scheduleStage(nextStagesToSchedule.get());
     } else {
       LOG.info("Skipping this round as the next schedulable stages have already been scheduled.");
     }
   }
 
   /**
-   * Selects the list of stages to schedule, in the order they must be added to {@link PendingTaskListPointer}.
+   * Selects the list of stages to schedule, in the order they must be added to {@link PendingTaskCollectionPointer}.
    *
    * This is a recursive function that decides which schedule group to schedule upon a stage completion, or a failure.
    * It takes the currentScheduleGroupIndex as a reference point to begin looking for the stages to execute:
@@ -267,12 +252,12 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * @param currentScheduleGroupIndex
    *      the index of the schedule group that is executing/has executed when this method is called.
    * @return an optional of the (possibly empty) list of next schedulable stages, in the order they should be
-   * enqueued to {@link PendingTaskListPointer}.
+   * enqueued to {@link PendingTaskCollectionPointer}.
    */
-  private Optional<List<Stage>> selectNextStagesToSchedule(final int currentScheduleGroupIndex) {
+  private Optional<Stage> selectNextStageToSchedule(final int currentScheduleGroupIndex) {
     if (currentScheduleGroupIndex > initialScheduleGroup) {
-      final Optional<List<Stage>> ancestorStagesFromAScheduleGroup =
-          selectNextStagesToSchedule(currentScheduleGroupIndex - 1);
+      final Optional<Stage> ancestorStagesFromAScheduleGroup =
+          selectNextStageToSchedule(currentScheduleGroupIndex - 1);
       if (ancestorStagesFromAScheduleGroup.isPresent()) {
         return ancestorStagesFromAScheduleGroup;
       }
@@ -398,7 +383,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           stageOutgoingEdges,
           vertexIdToReadables.get(taskIdx)));
     });
-    pendingTaskListPointer.set(tasks);
+    pendingTaskCollectionPointer.setToOverwrite(tasks);
 
     schedulerRunner.onPendingTaskListAvailable();
   }
