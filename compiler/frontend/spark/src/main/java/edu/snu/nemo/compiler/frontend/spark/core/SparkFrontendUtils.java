@@ -96,7 +96,6 @@ public final class SparkFrontendUtils {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
 
     // save result in a temporary file
-    // TODO #16: Implement collection of data from executor to client
     final String resultFile = System.getProperty("user.dir") + "/collectresult";
 
     final IRVertex collectVertex = new OperatorVertex(new CollectTransform<>(resultFile));
@@ -113,12 +112,10 @@ public final class SparkFrontendUtils {
     JobLauncher.launchDAG(builder.build());
 
     // Retrieve result data from file.
-    // TODO #16: Implement collection of data from executor to client
     try {
       final List<T> result = new ArrayList<>();
       Integer i = 0;
 
-      // TODO #16: Implement collection of data from executor to client
       File file = new File(resultFile + i);
       while (file.exists()) {
         try (
