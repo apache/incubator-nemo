@@ -317,7 +317,7 @@ public final class FaultToleranceTest {
   /**
    * Tests the rescheduling of Tasks upon a failure.
    */
-  @Test(timeout=20000)
+  @Test(timeout=30000)
   public void testTaskReexecutionForFailure() throws Exception {
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
