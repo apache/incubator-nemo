@@ -394,7 +394,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           physicalPlan.getId(),
           taskId,
           attemptIdx,
-          stageToSchedule.getContainerType(),
+          stageToSchedule.getExecutionProperties(),
           stageToSchedule.getSerializedIRDAG(),
           stageIncomingEdges,
           stageOutgoingEdges,

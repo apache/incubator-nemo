@@ -19,9 +19,11 @@ import edu.snu.nemo.common.coder.*;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
 import edu.snu.nemo.common.test.EmptyComponents;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.Pair;
@@ -36,7 +38,7 @@ import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.plan.StageEdgeBuilder;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.executor.Executor;
 import edu.snu.nemo.runtime.executor.MetricManagerWorker;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
@@ -91,10 +93,10 @@ import static org.mockito.Mockito.mock;
     SourceVertex.class})
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
-  private static final DataStoreProperty.Value MEMORY_STORE = DataStoreProperty.Value.MemoryStore;
-  private static final DataStoreProperty.Value SER_MEMORY_STORE = DataStoreProperty.Value.SerializedMemoryStore;
-  private static final DataStoreProperty.Value LOCAL_FILE_STORE = DataStoreProperty.Value.LocalFileStore;
-  private static final DataStoreProperty.Value REMOTE_FILE_STORE = DataStoreProperty.Value.GlusterFileStore;
+  private static final InterTaskDataStoreProperty.Value MEMORY_STORE = InterTaskDataStoreProperty.Value.MemoryStore;
+  private static final InterTaskDataStoreProperty.Value SER_MEMORY_STORE = InterTaskDataStoreProperty.Value.SerializedMemoryStore;
+  private static final InterTaskDataStoreProperty.Value LOCAL_FILE_STORE = InterTaskDataStoreProperty.Value.LocalFileStore;
+  private static final InterTaskDataStoreProperty.Value REMOTE_FILE_STORE = InterTaskDataStoreProperty.Value.GlusterFileStore;
   private static final String TMP_LOCAL_FILE_DIRECTORY = "./tmpLocalFiles";
   private static final String TMP_REMOTE_FILE_DIRECTORY = "./tmpRemoteFiles";
   private static final int PARALLELISM_TEN = 10;
@@ -295,7 +297,7 @@ public final class DataTransferTest {
   private void writeAndRead(final BlockManagerWorker sender,
                             final BlockManagerWorker receiver,
                             final DataCommunicationPatternProperty.Value commPattern,
-                            final DataStoreProperty.Value store) throws RuntimeException {
+                            final InterTaskDataStoreProperty.Value store) throws RuntimeException {
     final int testIndex = TEST_INDEX.getAndIncrement();
     final String edgeId = String.format(EDGE_PREFIX_TEMPLATE, testIndex);
     final Pair<IRVertex, IRVertex> verticesPair = setupVertices(edgeId, sender, receiver);
@@ -307,7 +309,7 @@ public final class DataTransferTest {
     dummyIREdge.setProperty(KeyExtractorProperty.of((element -> element)));
     dummyIREdge.setProperty(DataCommunicationPatternProperty.of(commPattern));
     dummyIREdge.setProperty(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-    dummyIREdge.setProperty(DataStoreProperty.of(store));
+    dummyIREdge.setProperty(InterTaskDataStoreProperty.of(store));
     dummyIREdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
     dummyIREdge.setProperty(EncoderProperty.of(ENCODER_FACTORY));
     dummyIREdge.setProperty(DecoderProperty.of(DECODER_FACTORY));
@@ -318,14 +320,8 @@ public final class DataTransferTest {
     final IRVertex dstMockVertex = mock(IRVertex.class);
     final Stage srcStage = setupStages("srcStage-" + testIndex);
     final Stage dstStage = setupStages("dstStage-" + testIndex);
-    dummyEdge = new StageEdgeBuilder(edgeId)
-        .setEdgeProperties(edgeProperties)
-        .setSrcVertex(srcMockVertex)
-        .setDstVertex(dstMockVertex)
-        .setSrcStage(srcStage)
-        .setDstStage(dstStage)
-        .setSideInputFlag(false)
-        .build();
+    dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
+        srcStage, dstStage, false);
 
     // Initialize states in Master
     srcStage.getTaskIds().forEach(srcTaskId -> {
@@ -384,7 +380,7 @@ public final class DataTransferTest {
   private void writeAndReadWithDuplicateData(final BlockManagerWorker sender,
                                              final BlockManagerWorker receiver,
                                              final DataCommunicationPatternProperty.Value commPattern,
-                                             final DataStoreProperty.Value store) throws RuntimeException {
+                                             final InterTaskDataStoreProperty.Value store) throws RuntimeException {
     final int testIndex = TEST_INDEX.getAndIncrement();
     final int testIndex2 = TEST_INDEX.getAndIncrement();
     final String edgeId = String.format(EDGE_PREFIX_TEMPLATE, testIndex);
@@ -405,7 +401,7 @@ public final class DataTransferTest {
         = dummyIREdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     duplicateDataProperty.get().setRepresentativeEdgeId(edgeId);
     duplicateDataProperty.get().setGroupSize(2);
-    dummyIREdge.setProperty(DataStoreProperty.of(store));
+    dummyIREdge.setProperty(InterTaskDataStoreProperty.of(store));
     dummyIREdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
     final RuntimeEdge dummyEdge, dummyEdge2;
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
@@ -414,24 +410,12 @@ public final class DataTransferTest {
     final IRVertex dstMockVertex = mock(IRVertex.class);
     final Stage srcStage = setupStages("srcStage-" + testIndex);
     final Stage dstStage = setupStages("dstStage-" + testIndex);
-    dummyEdge = new StageEdgeBuilder(edgeId)
-        .setEdgeProperties(edgeProperties)
-        .setSrcVertex(srcMockVertex)
-        .setDstVertex(dstMockVertex)
-        .setSrcStage(srcStage)
-        .setDstStage(dstStage)
-        .setSideInputFlag(false)
-        .build();
+    dummyEdge = new StageEdge(edgeId, edgeProperties, srcMockVertex, dstMockVertex,
+        srcStage, dstStage, false);
     final IRVertex dstMockVertex2 = mock(IRVertex.class);
     final Stage dstStage2 = setupStages("dstStage-" + testIndex2);
-    dummyEdge2 = new StageEdgeBuilder(edgeId2)
-        .setEdgeProperties(edgeProperties)
-        .setSrcVertex(srcMockVertex)
-        .setDstVertex(dstMockVertex2)
-        .setSrcStage(srcStage)
-        .setDstStage(dstStage2)
-        .setSideInputFlag(false)
-        .build();
+    dummyEdge2 = new StageEdge(edgeId2, edgeProperties, srcMockVertex, dstMockVertex2,
+        srcStage, dstStage, false);
     // Initialize states in Master
     srcStage.getTaskIds().forEach(srcTaskId -> {
       final String blockId = RuntimeIdGenerator.generateBlockId(
@@ -561,6 +545,9 @@ public final class DataTransferTest {
   private Stage setupStages(final String stageId) {
     final DAG<IRVertex, RuntimeEdge<IRVertex>> emptyDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>().build();
 
-    return new Stage(stageId, emptyDag, PARALLELISM_TEN, 0, "Not_used", Collections.emptyList());
+    final ExecutionPropertyMap<VertexExecutionProperty> stageExecutionProperty = new ExecutionPropertyMap<>(stageId);
+    stageExecutionProperty.put(ParallelismProperty.of(PARALLELISM_TEN));
+    stageExecutionProperty.put(ScheduleGroupIndexProperty.of(0));
+    return new Stage(stageId, emptyDag, stageExecutionProperty, Collections.emptyList());
   }
 }

@@ -18,48 +18,52 @@ package edu.snu.nemo.runtime.common.plan;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.Vertex;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import org.apache.commons.lang3.SerializationUtils;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Stage.
  */
 public final class Stage extends Vertex {
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
+  private final byte[] serializedIRDag;
+  private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
+  private final List<Map<String, Readable>> vertexIdToReadables;
   private final int parallelism;
   private final int scheduleGroupIndex;
-  private final String containerType;
-  private final byte[] serializedIRDag;
-  private final List<Map<String, Readable>> vertexIdToReadables;
 
   /**
    * Constructor.
    *
    * @param stageId             ID of the stage.
    * @param irDag               the DAG of the task in this stage.
-   * @param parallelism         how many tasks will be executed in this stage.
-   * @param scheduleGroupIndex  the schedule group index.
-   * @param containerType       the type of container to execute the task on.
+   * @param executionProperties set of {@link VertexExecutionProperty} for this stage
    * @param vertexIdToReadables the list of maps between vertex ID and {@link Readable}.
    */
   public Stage(final String stageId,
                final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
-               final int parallelism,
-               final int scheduleGroupIndex,
-               final String containerType,
+               final ExecutionPropertyMap<VertexExecutionProperty> executionProperties,
                final List<Map<String, Readable>> vertexIdToReadables) {
     super(stageId);
     this.irDag = irDag;
-    this.parallelism = parallelism;
-    this.scheduleGroupIndex = scheduleGroupIndex;
-    this.containerType = containerType;
     this.serializedIRDag = SerializationUtils.serialize(irDag);
+    this.executionProperties = executionProperties;
     this.vertexIdToReadables = vertexIdToReadables;
+    this.parallelism = executionProperties.get(ParallelismProperty.class)
+        .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
+    this.scheduleGroupIndex = executionProperties.get(ScheduleGroupIndexProperty.class)
+        .orElseThrow(() -> new RuntimeException("ScheduleGroupIndex property must be set for Stage"));
   }
 
   /**
@@ -95,10 +99,22 @@ public final class Stage extends Vertex {
   }
 
   /**
-   * @return the type of container to execute the task on.
+   * @return {@link VertexExecutionProperty} map for this stage
    */
-  public String getContainerType() {
-    return containerType;
+  public ExecutionPropertyMap<VertexExecutionProperty> getExecutionProperties() {
+    return executionProperties;
+  }
+
+  /**
+   * Get the executionProperty of the IREdge.
+   *
+   * @param <T>                  Type of the return value.
+   * @param executionPropertyKey key of the execution property.
+   * @return the execution property.
+   */
+  public <T extends Serializable> Optional<T> getPropertyValue(
+      final Class<? extends VertexExecutionProperty<T>> executionPropertyKey) {
+    return executionProperties.get(executionPropertyKey);
   }
 
   /**
@@ -114,7 +130,7 @@ public final class Stage extends Vertex {
     sb.append("{\"scheduleGroupIndex\": ").append(scheduleGroupIndex);
     sb.append(", \"irDag\": ").append(irDag);
     sb.append(", \"parallelism\": ").append(parallelism);
-    sb.append(", \"containerType\": \"").append(containerType).append("\"");
+    sb.append(", \"executionProperties\": ").append(executionProperties);
     sb.append('}');
     return sb.toString();
   }

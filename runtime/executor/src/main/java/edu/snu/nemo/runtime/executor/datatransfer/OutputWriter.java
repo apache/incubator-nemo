@@ -36,7 +36,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
   private final RuntimeEdge<?> runtimeEdge;
   private final String srcVertexId;
   private final IRVertex dstIrVertex;
-  private final DataStoreProperty.Value blockStoreValue;
+  private final InterTaskDataStoreProperty.Value blockStoreValue;
   private final BlockManagerWorker blockManagerWorker;
   private final boolean nonDummyBlock;
   private final Block blockToWrite;
@@ -65,7 +65,7 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
     this.srcVertexId = srcRuntimeVertexId;
     this.dstIrVertex = dstIrVertex;
     this.blockManagerWorker = blockManagerWorker;
-    this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class).get();
+    this.blockStoreValue = runtimeEdge.getPropertyValue(InterTaskDataStoreProperty.class).get();
 
     // Setup partitioner
     final int dstParallelism = getDstParallelism();
