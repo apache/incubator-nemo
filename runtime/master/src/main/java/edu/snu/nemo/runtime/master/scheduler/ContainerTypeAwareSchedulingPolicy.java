@@ -44,13 +44,15 @@ public final class ContainerTypeAwareSchedulingPolicy implements SchedulingPolic
   public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
                                                              final Task task) {
 
-    if (task.getContainerType().equals(ExecutorPlacementProperty.NONE)) {
+    final String executorPlacementPropertyValue = task.getPropertyValue(ExecutorPlacementProperty.class)
+        .orElse(ExecutorPlacementProperty.NONE);
+    if (executorPlacementPropertyValue.equals(ExecutorPlacementProperty.NONE)) {
       return executorRepresenterSet;
     }
 
     final Set<ExecutorRepresenter> candidateExecutors =
         executorRepresenterSet.stream()
-            .filter(executor -> executor.getContainerType().equals(task.getContainerType()))
+            .filter(executor -> executor.getContainerType().equals(executorPlacementPropertyValue))
             .collect(Collectors.toSet());
 
     return candidateExecutors;

@@ -62,7 +62,7 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
       if (taskIdToTask == null) {
         final Map<String, Task> taskIdToTaskMap = new HashMap<>();
         taskIdToTaskMap.put(task.getTaskId(), task);
-        updateSchedulableStages(stageId, task.getContainerType());
+        updateSchedulableStages(stageId);
         return taskIdToTaskMap;
       } else {
         taskIdToTask.put(task.getTaskId(), task);
@@ -102,7 +102,7 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
       }
       stageIdToPendingTasks.remove(stageId);
       stageIdToPendingTasks.forEach((scheduledStageId, tasks) ->
-          updateSchedulableStages(scheduledStageId, tasks.values().iterator().next().getContainerType()));
+          updateSchedulableStages(scheduledStageId));
     }
 
     return taskToSchedule;
@@ -157,18 +157,14 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
    * NOTE: This method provides the "line up" between stages, by assigning priorities,
    * serving as the key to the "priority" implementation of this class.
    * @param candidateStageId for the stage that can potentially be scheduled.
-   * @param candidateStageContainerType for the stage that can potentially be scheduled.
    */
-  private synchronized void updateSchedulableStages(
-      final String candidateStageId, final String candidateStageContainerType) {
+  private synchronized void updateSchedulableStages(final String candidateStageId) {
     final DAG<Stage, StageEdge> jobDAG = physicalPlan.getStageDAG();
 
-    if (isSchedulable(candidateStageId, candidateStageContainerType)) {
+    if (isSchedulable(candidateStageId)) {
       // Check for ancestor stages that became schedulable due to candidateStage's absence from the queue.
       jobDAG.getAncestors(candidateStageId).forEach(ancestorStage -> {
-        // Remove the ancestor stage if it is of the same container type.
-        if (schedulableStages.contains(ancestorStage.getId())
-            && candidateStageContainerType.equals(ancestorStage.getContainerType())) {
+        if (schedulableStages.contains(ancestorStage.getId())) {
           if (!schedulableStages.remove(ancestorStage.getId())) {
             throw new RuntimeException(String.format("No such stage: %s", ancestorStage.getId()));
           }
@@ -183,16 +179,13 @@ public final class SingleJobTaskCollection implements PendingTaskCollection {
   /**
    * Determines whether the given candidate stage is schedulable immediately or not.
    * @param candidateStageId for the stage that can potentially be scheduled.
-   * @param candidateStageContainerType for the stage that can potentially be scheduled.
    * @return true if schedulable, false otherwise.
    */
-  private synchronized boolean isSchedulable(final String candidateStageId, final String candidateStageContainerType) {
+  private synchronized boolean isSchedulable(final String candidateStageId) {
     final DAG<Stage, StageEdge> jobDAG = physicalPlan.getStageDAG();
     for (final Stage descendantStage : jobDAG.getDescendants(candidateStageId)) {
       if (schedulableStages.contains(descendantStage.getId())) {
-        if (candidateStageContainerType.equals(descendantStage.getContainerType())) {
-          return false;
-        }
+        return false;
       }
     }
     return true;

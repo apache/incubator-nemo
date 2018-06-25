@@ -17,7 +17,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.UsedDataHandlingProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
@@ -32,7 +32,7 @@ public final class DefaultEdgeUsedDataHandlingPass extends AnnotatingPass {
    * Default constructor.
    */
   public DefaultEdgeUsedDataHandlingPass() {
-    super(UsedDataHandlingProperty.class, Collections.singleton(DataStoreProperty.class));
+    super(UsedDataHandlingProperty.class, Collections.singleton(InterTaskDataStoreProperty.class));
   }
 
   @Override
@@ -40,9 +40,10 @@ public final class DefaultEdgeUsedDataHandlingPass extends AnnotatingPass {
     dag.topologicalDo(irVertex ->
         dag.getIncomingEdgesOf(irVertex).forEach(irEdge -> {
           if (!irEdge.getPropertyValue(UsedDataHandlingProperty.class).isPresent()) {
-            final DataStoreProperty.Value dataStoreValue = irEdge.getPropertyValue(DataStoreProperty.class).get();
-            if (DataStoreProperty.Value.MemoryStore.equals(dataStoreValue)
-                || DataStoreProperty.Value.SerializedMemoryStore.equals(dataStoreValue)) {
+            final InterTaskDataStoreProperty.Value dataStoreValue
+                = irEdge.getPropertyValue(InterTaskDataStoreProperty.class).get();
+            if (InterTaskDataStoreProperty.Value.MemoryStore.equals(dataStoreValue)
+                || InterTaskDataStoreProperty.Value.SerializedMemoryStore.equals(dataStoreValue)) {
               irEdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Discard));
             } else {
               irEdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));

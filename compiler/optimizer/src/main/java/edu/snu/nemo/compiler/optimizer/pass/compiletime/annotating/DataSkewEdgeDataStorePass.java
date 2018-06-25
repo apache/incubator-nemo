@@ -17,9 +17,9 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 
 /**
  * Pass to annotate the DAG for a job to perform data skew.
@@ -31,7 +31,7 @@ public final class DataSkewEdgeDataStorePass extends AnnotatingPass {
    * Default constructor.
    */
   public DataSkewEdgeDataStorePass() {
-    super(DataStoreProperty.class);
+    super(InterTaskDataStoreProperty.class);
   }
 
   @Override
@@ -45,9 +45,9 @@ public final class DataSkewEdgeDataStorePass extends AnnotatingPass {
         dag.getIncomingEdgesOf(v).forEach(edge -> {
           // we want it to be in the same stage
           if (edge.equals(edgeToUseMemory)) {
-            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+            edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
           } else {
-            edge.setProperty(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+            edge.setProperty(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
           }
         });
       }

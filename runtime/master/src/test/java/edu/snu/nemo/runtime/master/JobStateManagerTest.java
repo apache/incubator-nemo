@@ -122,7 +122,7 @@ public final class JobStateManagerTest {
     final DAG<IRVertex, IREdge> irDAG = irDAGBuilder.build();
     final DAG<Stage, StageEdge> physicalDAG = irDAG.convert(physicalPlanGenerator);
     final JobStateManager jobStateManager = new JobStateManager(
-        new PhysicalPlan("TestPlan", physicalDAG, physicalPlanGenerator.getIdToIRVertex()),
+        new PhysicalPlan("TestPlan", physicalDAG),
         blockManagerMaster, metricMessageHandler, MAX_SCHEDULE_ATTEMPT);
 
     assertFalse(jobStateManager.checkJobTermination());

@@ -217,7 +217,7 @@ public final class SingleTaskQueueTest {
             "TestPlan",
             taskId,
             0,
-            stage.getContainerType(),
+            stage.getExecutionProperties(),
             stage.getSerializedIRDAG(),
             Collections.emptyList(),
             Collections.emptyList(),

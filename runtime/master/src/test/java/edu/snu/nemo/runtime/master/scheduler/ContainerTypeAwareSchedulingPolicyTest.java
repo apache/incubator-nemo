@@ -49,7 +49,8 @@ public final class ContainerTypeAwareSchedulingPolicyTest {
     final ExecutorRepresenter a2 = mockExecutorRepresenter(ExecutorPlacementProperty.NONE);
 
     final Task task1 = mock(Task.class);
-    when(task1.getContainerType()).thenReturn(ExecutorPlacementProperty.RESERVED);
+    when(task1.getPropertyValue(ExecutorPlacementProperty.class))
+        .thenReturn(Optional.of(ExecutorPlacementProperty.RESERVED));
 
     final Set<ExecutorRepresenter> executorRepresenterList1 = new HashSet<>(Arrays.asList(a0, a1, a2));
 
@@ -60,7 +61,8 @@ public final class ContainerTypeAwareSchedulingPolicyTest {
     assertEquals(expectedExecutors1, candidateExecutors1);
 
     final Task task2 = mock(Task.class);
-    when(task2.getContainerType()).thenReturn(ExecutorPlacementProperty.NONE);
+    when(task2.getPropertyValue(ExecutorPlacementProperty.class))
+        .thenReturn(Optional.of(ExecutorPlacementProperty.NONE));
 
     final Set<ExecutorRepresenter> executorRepresenterList2 = new HashSet<>(Arrays.asList(a0, a1, a2));
 

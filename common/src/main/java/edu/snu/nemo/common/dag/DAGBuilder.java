@@ -23,8 +23,6 @@ import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.LoopVertex;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
 import edu.snu.nemo.common.exception.IllegalVertexOperationException;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.StageIdProperty;
 
 import java.io.Serializable;
 import java.util.*;
@@ -259,22 +257,6 @@ public final class DAGBuilder<V extends Vertex, E extends Edge<V>> implements Se
           throw new RuntimeException("DAG execution property check: "
               + "DataSizeMetricCollection edge is not compatible with push" + e.getId());
         }));
-    // All vertices with same Stage Id should have identical Parallelism execution property.
-    final HashMap<Integer, Integer> stageIdToParallelismMap = new HashMap<>();
-    vertices.stream().filter(v -> v instanceof IRVertex)
-        .map(v -> (IRVertex) v)
-        .forEach(v -> {
-          final Optional<Integer> stageId = v.getPropertyValue(StageIdProperty.class);
-          if (stageId.isPresent()) {
-            if (!stageIdToParallelismMap.containsKey(stageId.get())) {
-              stageIdToParallelismMap.put(stageId.get(), v.getPropertyValue(ParallelismProperty.class).get());
-            } else if (!stageIdToParallelismMap.get(stageId.get())
-                .equals(v.getPropertyValue(ParallelismProperty.class).get())) {
-              throw new RuntimeException("DAG execution property check: vertices are in a same stage, "
-                  + "but has different parallelism execution properties: Stage" + stageId.get() + ": " + v.getId());
-            }
-          }
-        });
   }
 
   /**
