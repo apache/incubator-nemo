@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.common.plan;
 
+import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.runtime.common.data.KeyRange;
@@ -56,7 +57,8 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    * @param dstStage       destination stage.
    * @param isSideInput    whether or not the edge is a sideInput edge.
    */
-  StageEdge(final String runtimeEdgeId,
+  @VisibleForTesting
+  public StageEdge(final String runtimeEdgeId,
             final ExecutionPropertyMap edgeProperties,
             final IRVertex srcVertex,
             final IRVertex dstVertex,
@@ -91,7 +93,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"runtimeEdgeId\": \"").append(getId());
-    sb.append("\", \"edgeProperties\": ").append(getExecutionProperties());
+    sb.append("\", \"executionProperties\": ").append(getExecutionProperties());
     sb.append(", \"externalSrcVertexId\": \"").append(srcVertex.getId());
     sb.append("\", \"externalDstVertexId\": \"").append(dstVertex.getId());
     sb.append("\"}");

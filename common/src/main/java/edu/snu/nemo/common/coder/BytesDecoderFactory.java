@@ -75,7 +75,7 @@ public final class BytesDecoderFactory implements DecoderFactory<byte[]> {
 
       final int lengthToRead = byteOutputStream.getCount();
       if (lengthToRead == 0) {
-        throw new IOException("EoF (empty partition)!"); // TODO #?: use EOF exception instead of IOException.
+        throw new IOException("EoF (empty partition)!"); // TODO #120: use EOF exception instead of IOException.
       }
       final byte[] resultBytes = new byte[lengthToRead]; // Read the size of this byte array.
       System.arraycopy(byteOutputStream.getBufDirectly(), 0, resultBytes, 0, lengthToRead);

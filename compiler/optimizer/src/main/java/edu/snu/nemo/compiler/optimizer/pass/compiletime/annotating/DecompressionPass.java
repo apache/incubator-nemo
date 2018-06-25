@@ -20,7 +20,6 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecompressionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.StageIdProperty;
 
 
 /**
@@ -39,8 +38,6 @@ public final class DecompressionPass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex).stream()
-        .filter(e -> !vertex.getPropertyValue(StageIdProperty.class).get()
-            .equals(e.getSrc().getPropertyValue(StageIdProperty.class).get()))
         // Find edges which have a compression property but not decompression property.
         .filter(edge -> edge.getPropertyValue(CompressionProperty.class).isPresent()
             && !edge.getPropertyValue(DecompressionProperty.class).isPresent())

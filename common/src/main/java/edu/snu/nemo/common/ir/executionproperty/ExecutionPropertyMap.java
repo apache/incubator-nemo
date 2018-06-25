@@ -17,7 +17,7 @@ package edu.snu.nemo.common.ir.executionproperty;
 
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
@@ -25,7 +25,6 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -33,6 +32,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * ExecutionPropertyMap Class, which uses HashMap for keeping track of ExecutionProperties for vertices and edges.
@@ -67,22 +67,23 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     switch (commPattern) {
       case Shuffle:
         map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+        map.put(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
         break;
       case BroadCast:
         map.put(PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
-        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+        map.put(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
         break;
       case OneToOne:
         map.put(PartitionerProperty.of(PartitionerProperty.Value.IntactPartitioner));
-        map.put(DataStoreProperty.of(DataStoreProperty.Value.MemoryStore));
+        map.put(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
         break;
       default:
         map.put(PartitionerProperty.of(PartitionerProperty.Value.HashPartitioner));
-        map.put(DataStoreProperty.of(DataStoreProperty.Value.LocalFileStore));
+        map.put(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore));
     }
     return map;
   }
+
   /**
    * Static initializer for irVertex.
    * @param irVertex irVertex to keep the execution property of.
@@ -148,6 +149,13 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     properties.values().forEach(action);
   }
 
+  /**
+   * @return {@link Stream} of execution properties.
+   */
+  public Stream<T> stream() {
+    return properties.values().stream();
+  }
+
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
@@ -159,7 +167,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
       }
       isFirstPair = false;
       sb.append("\"");
-      sb.append(entry.getKey());
+      sb.append(entry.getKey().getCanonicalName());
       sb.append("\": \"");
       sb.append(entry.getValue().getValue());
       sb.append("\"");
@@ -174,17 +182,12 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     if (this == obj) {
       return true;
     }
-
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-
-    ExecutionPropertyMap that = (ExecutionPropertyMap) obj;
-
-    return new EqualsBuilder()
-        .append(properties.values().stream().collect(Collectors.toSet()),
-            that.properties.values().stream().collect(Collectors.toSet()))
-        .isEquals();
+    final ExecutionPropertyMap that = (ExecutionPropertyMap) obj;
+    return properties.values().stream().collect(Collectors.toSet())
+        .equals(that.properties.values().stream().collect(Collectors.toSet()));
   }
 
   @Override

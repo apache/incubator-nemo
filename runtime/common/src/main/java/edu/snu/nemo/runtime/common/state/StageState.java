@@ -36,19 +36,25 @@ public final class StageState {
     stateMachineBuilder.addState(State.COMPLETE, "All of this stage's tasks have completed.");
     stateMachineBuilder.addState(State.FAILED_RECOVERABLE, "Stage failed, but is recoverable.");
 
-    // From READY
-    stateMachineBuilder.addTransition(State.READY, State.EXECUTING, "The stage can now schedule its tasks");
+    // Add transitions
+    stateMachineBuilder.addTransition(State.READY, State.EXECUTING,
+        "The stage can now schedule its tasks");
+    stateMachineBuilder.addTransition(State.READY, State.FAILED_RECOVERABLE,
+        "Recoverable failure");
 
-    // From EXECUTING
-    stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE, "All tasks complete");
-    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_RECOVERABLE, "Recoverable failure in a task");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE,
+        "All tasks complete");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_RECOVERABLE,
+        "Recoverable failure in a task");
 
     // From COMPLETE
     stateMachineBuilder.addTransition(State.COMPLETE, State.FAILED_RECOVERABLE,
         "Container on which the stage's output is stored failed");
 
-    // From FAILED_RECOVERABLE
-    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.READY, "Recoverable stage failure");
+    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.READY,
+        "Recoverable stage failure");
+    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.EXECUTING,
+        "Recoverable stage failure");
 
     stateMachineBuilder.setInitialState(State.READY);
 

@@ -23,6 +23,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternPro
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
+import edu.snu.nemo.common.ir.vertex.executionproperty.SkipSerDesProperty;
 import edu.snu.nemo.common.ir.vertex.transform.RelayTransform;
 
 import java.util.Collections;
@@ -58,6 +59,7 @@ public final class SailfishRelayReshapingPass extends ReshapingPass {
             // Insert a merger vertex having transform that write received data immediately
             // before the vertex receiving shuffled data.
             final OperatorVertex iFileMergerVertex = new OperatorVertex(new RelayTransform());
+            iFileMergerVertex.getExecutionProperties().put(SkipSerDesProperty.of());
             builder.addVertex(iFileMergerVertex);
             final IREdge newEdgeToMerger = new IREdge(DataCommunicationPatternProperty.Value.Shuffle,
                 edge.getSrc(), iFileMergerVertex, edge.isSideInput());

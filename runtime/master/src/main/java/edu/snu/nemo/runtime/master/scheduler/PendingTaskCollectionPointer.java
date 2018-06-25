@@ -25,7 +25,8 @@ import java.util.Optional;
 
 /**
  * Points to a collection of pending tasks eligible for scheduling.
- * This collection of tasks is a subset of a scheduling group, and can be scheduled in any order.
+ * This pointer effectively points to a subset of a scheduling group.
+ * Within the collection, the tasks can be scheduled in any order.
  */
 @ThreadSafe
 public class PendingTaskCollectionPointer {

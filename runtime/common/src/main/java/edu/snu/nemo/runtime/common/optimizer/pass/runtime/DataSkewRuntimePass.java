@@ -89,7 +89,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
       optimizationEdge.setTaskIdxToKeyRange(taskIdxToHashRange);
     });
 
-    return new PhysicalPlan(originalPlan.getId(), physicalDAGBuilder.build(), originalPlan.getIdToIRVertex());
+    return new PhysicalPlan(originalPlan.getId(), physicalDAGBuilder.build());
   }
 
   /**
