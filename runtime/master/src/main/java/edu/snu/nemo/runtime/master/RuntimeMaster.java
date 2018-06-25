@@ -275,7 +275,7 @@ public final class RuntimeMaster {
         final ControlMessage.TaskStateChangedMsg taskStateChangedMsg
             = message.getTaskStateChangedMsg();
 
-        scheduler.onTaskStateChanged(taskStateChangedMsg.getExecutorId(),
+        scheduler.onTaskStateReportFromExecutor(taskStateChangedMsg.getExecutorId(),
             taskStateChangedMsg.getTaskId(),
             taskStateChangedMsg.getAttemptIdx(),
             convertTaskState(taskStateChangedMsg.getState()),

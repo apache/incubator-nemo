@@ -35,18 +35,15 @@ public final class StageState {
     stateMachineBuilder.addState(State.EXECUTING, "The stage is executing.");
     stateMachineBuilder.addState(State.COMPLETE, "All of this stage's tasks have completed.");
     stateMachineBuilder.addState(State.FAILED_RECOVERABLE, "Stage failed, but is recoverable.");
-    stateMachineBuilder.addState(State.FAILED_UNRECOVERABLE, "Stage failed, and is unrecoverable. The job will fail.");
 
     // Add transitions
     stateMachineBuilder.addTransition(State.READY, State.EXECUTING,
         "The stage can now schedule its tasks");
-    stateMachineBuilder.addTransition(State.READY, State.FAILED_UNRECOVERABLE,
-        "Job Failure");
+    stateMachineBuilder.addTransition(State.READY, State.FAILED_RECOVERABLE,
+        "Recoverable failure");
 
     stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE,
         "All tasks complete");
-    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_UNRECOVERABLE,
-        "Unrecoverable failure in a task");
     stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_RECOVERABLE,
         "Recoverable failure in a task");
 
@@ -55,8 +52,8 @@ public final class StageState {
 
     stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.READY,
         "Recoverable stage failure");
-    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.FAILED_UNRECOVERABLE,
-        "");
+    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.EXECUTING,
+        "Recoverable stage failure");
 
     stateMachineBuilder.setInitialState(State.READY);
 
@@ -75,7 +72,6 @@ public final class StageState {
     EXECUTING,
     COMPLETE,
     FAILED_RECOVERABLE,
-    FAILED_UNRECOVERABLE
   }
 
   @Override

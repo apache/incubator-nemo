@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 
 import static edu.snu.nemo.runtime.common.state.TaskState.State.ON_HOLD;
+import static edu.snu.nemo.runtime.common.state.TaskState.State.READY;
 
 /**
  * (WARNING) Only a single dedicated thread should use the public methods of this class.
@@ -139,25 +140,25 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * @param vertexPutOnHold the ID of vertex that is put on hold. It is null otherwise.
    */
   @Override
-  public void onTaskStateChanged(final String executorId,
-                                 final String taskId,
-                                 final int taskAttemptIndex,
-                                 final TaskState.State newState,
-                                 @Nullable final String vertexPutOnHold,
-                                 final TaskState.RecoverableFailureCause failureCause) {
-    final int currentTaskAttemptIndex = jobStateManager.getCurrentAttemptIndexForTask(taskId);
+  public void onTaskStateReportFromExecutor(final String executorId,
+                                            final String taskId,
+                                            final int taskAttemptIndex,
+                                            final TaskState.State newState,
+                                            @Nullable final String vertexPutOnHold,
+                                            final TaskState.RecoverableFailureCause failureCause) {
+    final int currentTaskAttemptIndex = jobStateManager.getTaskAttempt(taskId);
+
     if (taskAttemptIndex == currentTaskAttemptIndex) {
       // Do change state, as this notification is for the current task attempt.
+      jobStateManager.onTaskStateChanged(taskId, newState);
       switch (newState) {
         case COMPLETE:
-          jobStateManager.onTaskStateChanged(taskId, newState);
           onTaskExecutionComplete(executorId, taskId);
           break;
         case FAILED_RECOVERABLE:
-          onTaskExecutionFailedRecoverable(executorId, taskId, newState, failureCause);
+          onTaskExecutionFailedRecoverable(executorId, taskId, failureCause);
           break;
         case ON_HOLD:
-          jobStateManager.onTaskStateChanged(taskId, newState);
           onTaskExecutionOnHold(executorId, taskId, vertexPutOnHold);
           break;
         case FAILED_UNRECOVERABLE:
@@ -201,8 +202,8 @@ public final class BatchSingleJobScheduler implements Scheduler {
     });
 
     tasksToReExecute.forEach(failedTaskId -> {
-      final int attemptIndex = jobStateManager.getCurrentAttemptIndexForTask(failedTaskId);
-      onTaskStateChanged(executorId, failedTaskId, attemptIndex, TaskState.State.FAILED_RECOVERABLE,
+      final int attemptIndex = jobStateManager.getTaskAttempt(failedTaskId);
+      onTaskStateReportFromExecutor(executorId, failedTaskId, attemptIndex, TaskState.State.FAILED_RECOVERABLE,
           null, TaskState.RecoverableFailureCause.CONTAINER_FAILURE);
     });
 
@@ -289,8 +290,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
     // We need to reschedule failed_recoverable stages.
     for (final Stage stageToCheck : currentScheduleGroup) {
-      final StageState.State stageState =
-          (StageState.State) jobStateManager.getStageState(stageToCheck.getId()).getStateMachine().getCurrentState();
+      final StageState.State stageState = jobStateManager.getStageState(stageToCheck.getId());
       switch (stageState) {
         case FAILED_RECOVERABLE:
           stagesToSchedule.add(stageToCheck);
@@ -315,10 +315,8 @@ public final class BatchSingleJobScheduler implements Scheduler {
         physicalPlan.getStageDAG().getTopologicalSort().stream().filter(stage -> {
           if (stage.getScheduleGroupIndex() == currentScheduleGroupIndex + 1) {
             final String stageId = stage.getId();
-            return jobStateManager.getStageState(stageId).getStateMachine().getCurrentState()
-                != StageState.State.EXECUTING
-                && jobStateManager.getStageState(stageId).getStateMachine().getCurrentState()
-                != StageState.State.COMPLETE;
+            return jobStateManager.getStageState(stageId) != StageState.State.EXECUTING
+                && jobStateManager.getStageState(stageId) != StageState.State.COMPLETE;
           }
           return false;
         }).collect(Collectors.toList());
@@ -346,15 +344,13 @@ public final class BatchSingleJobScheduler implements Scheduler {
     final List<StageEdge> stageOutgoingEdges =
         physicalPlan.getStageDAG().getOutgoingEdgesOf(stageToSchedule.getId());
 
-    final Enum stageState = jobStateManager.getStageState(stageToSchedule.getId()).getStateMachine().getCurrentState();
+    final StageState.State stageState = jobStateManager.getStageState(stageToSchedule.getId());
 
     final List<String> taskIdsToSchedule = new LinkedList<>();
     for (final String taskId : stageToSchedule.getTaskIds()) {
       // this happens when the belonging stage's other tasks have failed recoverable,
       // but this task's results are safe.
-      final TaskState.State taskState =
-          (TaskState.State)
-              jobStateManager.getTaskState(taskId).getStateMachine().getCurrentState();
+      final TaskState.State taskState = jobStateManager.getTaskState(taskId);
 
       switch (taskState) {
         case COMPLETE:
@@ -372,7 +368,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           break;
         case FAILED_RECOVERABLE:
           LOG.info("Re-scheduling {} for failure recovery", taskId);
-          jobStateManager.onTaskStateChanged(taskId, TaskState.State.READY);
+          jobStateManager.onTaskStateChanged(taskId, READY);
           taskIdsToSchedule.add(taskId);
           break;
         case ON_HOLD:
@@ -382,13 +378,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           throw new SchedulingException(new Throwable("Detected a FAILED_UNRECOVERABLE Task"));
       }
     }
-    if (stageState == StageState.State.FAILED_RECOVERABLE) {
-      // The 'failed_recoverable' stage has been selected as the next stage to execute. Change its state back to 'ready'
-      jobStateManager.onStageStateChanged(stageToSchedule.getId(), StageState.State.READY);
-    }
 
-    // attemptIdx is only initialized/updated when we set the stage's state to executing
-    jobStateManager.onStageStateChanged(stageToSchedule.getId(), StageState.State.EXECUTING);
     LOG.info("Scheduling Stage {}", stageToSchedule.getId());
 
     // each readable and source task will be bounded in executor.
@@ -397,7 +387,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     taskIdsToSchedule.forEach(taskId -> {
       blockManagerMaster.onProducerTaskScheduled(taskId);
       final int taskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
-      final int attemptIdx = jobStateManager.getCurrentAttemptIndexForTask(taskId);
+      final int attemptIdx = jobStateManager.getTaskAttempt(taskId);
 
       LOG.debug("Enqueueing {}", taskId);
       pendingTaskCollection.add(new Task(
@@ -464,9 +454,9 @@ public final class BatchSingleJobScheduler implements Scheduler {
     }
 
     final String stageIdForTaskUponCompletion = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
-    if (jobStateManager.checkStageCompletion(stageIdForTaskUponCompletion)) {
+    if (jobStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
       // if the stage this task belongs to is complete,
-      if (!jobStateManager.checkJobTermination()) { // and if the job is not yet complete or failed,
+      if (!jobStateManager.isJobDone()) {
         scheduleNextStage(stageIdForTaskUponCompletion);
       }
     }
@@ -490,7 +480,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     final String stageIdForTaskUponCompletion = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
 
     final boolean stageComplete =
-        jobStateManager.checkStageCompletion(stageIdForTaskUponCompletion);
+        jobStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE);
 
     if (stageComplete) {
       // get optimization vertex from the task.
@@ -517,12 +507,10 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * Action for after task execution has failed but it's recoverable.
    * @param executorId    the ID of the executor
    * @param taskId   the ID of the task
-   * @param newState      the state this situation
    * @param failureCause  the cause of failure
    */
   private void onTaskExecutionFailedRecoverable(final String executorId,
                                                 final String taskId,
-                                                final TaskState.State newState,
                                                 final TaskState.RecoverableFailureCause failureCause) {
     LOG.info("{} failed in {} by {}", taskId, executorId, failureCause);
     executorRegistry.updateExecutor(executorId, (executor, state) -> {
@@ -535,38 +523,12 @@ public final class BatchSingleJobScheduler implements Scheduler {
     switch (failureCause) {
       // Previous task must be re-executed, and incomplete tasks of the belonging stage must be rescheduled.
       case INPUT_READ_FAILURE:
-        jobStateManager.onTaskStateChanged(taskId, newState);
-        LOG.info("All tasks of {} will be made failed_recoverable.", stageId);
-        for (final Stage stage : physicalPlan.getStageDAG().getTopologicalSort()) {
-          if (stage.getId().equals(stageId)) {
-            LOG.info("Removing Tasks for {} before they are scheduled to an executor", stage.getId());
-            pendingTaskCollection.removeTasksAndDescendants(stage.getId());
-            stage.getTaskIds().forEach(dstTaskId -> {
-              if (jobStateManager.getTaskState(dstTaskId).getStateMachine().getCurrentState()
-                  != TaskState.State.COMPLETE) {
-                jobStateManager.onTaskStateChanged(dstTaskId, TaskState.State.FAILED_RECOVERABLE);
-                blockManagerMaster.onProducerTaskFailed(dstTaskId);
-              }
-            });
-            break;
-          }
-        }
-        // the stage this task belongs to has become failed recoverable.
-        // it is a good point to start searching for another stage to schedule.
-        scheduleNextStage(stageId);
-        break;
-      // The task executed successfully but there is something wrong with the output store.
+        // TODO #50: Carefully retry tasks in the scheduler
       case OUTPUT_WRITE_FAILURE:
-        jobStateManager.onTaskStateChanged(taskId, newState);
-        LOG.info("Only the failed task will be retried.");
-
-        // the stage this task belongs to has become failed recoverable.
-        // it is a good point to start searching for another stage to schedule.
         blockManagerMaster.onProducerTaskFailed(taskId);
         scheduleNextStage(stageId);
         break;
       case CONTAINER_FAILURE:
-        jobStateManager.onTaskStateChanged(taskId, newState);
         LOG.info("Only the failed task will be retried.");
         break;
       default:

@@ -54,7 +54,7 @@ public final class DriverEndpoint {
    * @return the current state of the running job.
    */
   JobState.State getState() {
-    return (JobState.State) jobStateManager.getJobState().getStateMachine().getCurrentState();
+    return jobStateManager.getJobState();
   }
 
   /**
@@ -67,7 +67,7 @@ public final class DriverEndpoint {
    */
   JobState.State waitUntilFinish(final long timeout,
                                  final TimeUnit unit) {
-    return (JobState.State) jobStateManager.waitUntilFinish(timeout, unit).getStateMachine().getCurrentState();
+    return jobStateManager.waitUntilFinish(timeout, unit);
   }
 
   /**
@@ -76,6 +76,6 @@ public final class DriverEndpoint {
    * @return the final state of this job.
    */
   JobState.State waitUntilFinish() {
-    return (JobState.State) jobStateManager.waitUntilFinish().getStateMachine().getCurrentState();
+    return jobStateManager.waitUntilFinish();
   }
 }

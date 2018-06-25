@@ -43,22 +43,24 @@ import edu.snu.nemo.runtime.common.state.TaskState;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.stream.Collectors;
+
+import javax.annotation.concurrent.ThreadSafe;
 import java.util.stream.IntStream;
 
 import static edu.snu.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 
 /**
- * Manages the states related to a job.
- * This class can be used to track a job's execution status to task level in the future.
- * The methods of this class are synchronized.
+ * Maintains three levels of state machines (JobState, StageState, and TaskState) of a physical plan.
+ * The main API this class provides is onTaskStateReportFromExecutor(), which directly changes a TaskState.
+ * JobState and StageState are updated internally in the class, and can only be read from the outside.
+ *
+ * (CONCURRENCY) The public methods of this class are synchronized.
  */
 @DriverSide
+@ThreadSafe
 public final class JobStateManager {
   private static final Logger LOG = LoggerFactory.getLogger(JobStateManager.class.getName());
-
   private final String jobId;
-
   private final int maxScheduleAttempt;
 
   /**
@@ -75,30 +77,9 @@ public final class JobStateManager {
   private final Map<String, Integer> taskIdToCurrentAttempt;
 
   /**
-   * Keeps track of the number of schedule attempts for each stage.
-   */
-  private final Map<String, Integer> scheduleAttemptIdxByStage;
-
-  /**
    * Represents the job to manage.
    */
   private final PhysicalPlan physicalPlan;
-
-  /**
-   * Used to track stage completion status.
-   * All task ids are added to the set when the a stage begins executing.
-   * Each task id is removed upon completion,
-   * therefore indicating the stage's completion when this set becomes empty.
-   */
-  private final Map<String, Set<String>> stageIdToRemainingTaskSet;
-
-  /**
-   * Used to track job completion status.
-   * All stage ids are added to the set when the this job begins executing.
-   * Each stage id is removed upon completion,
-   * therefore indicating the job's completion when this set becomes empty.
-   */
-  private final Set<String> currentJobStageIds;
 
   /**
    * A lock and condition to check whether the job is finished or not.
@@ -106,6 +87,9 @@ public final class JobStateManager {
   private final Lock finishLock;
   private final Condition jobFinishedCondition;
 
+  /**
+   * For metrics.
+   */
   private final MetricMessageHandler metricMessageHandler;
   private final Map<String, MetricDataBuilder> metricDataBuilderMap;
 
@@ -121,9 +105,6 @@ public final class JobStateManager {
     this.idToStageStates = new HashMap<>();
     this.idToTaskStates = new HashMap<>();
     this.taskIdToCurrentAttempt = new HashMap<>();
-    this.scheduleAttemptIdxByStage = new HashMap<>();
-    this.stageIdToRemainingTaskSet = new HashMap<>();
-    this.currentJobStageIds = new HashSet<>();
     this.finishLock = new ReentrantLock();
     this.jobFinishedCondition = finishLock.newCondition();
     this.metricDataBuilderMap = new HashMap<>();
@@ -139,7 +120,6 @@ public final class JobStateManager {
 
     // Initialize the states for the job down to task-level.
     physicalPlan.getStageDAG().topologicalDo(stage -> {
-      currentJobStageIds.add(stage.getId());
       idToStageStates.put(stage.getId(), new StageState());
       stage.getTaskIds().forEach(taskId -> {
         idToTaskStates.put(taskId, new TaskState());
@@ -179,98 +159,6 @@ public final class JobStateManager {
   }
 
   /**
-   * Updates the state of the job.
-   * @param newState of the job.
-   */
-  public synchronized void onJobStateChanged(final JobState.State newState) {
-    final Map<String, Object> metric = new HashMap<>();
-
-    if (newState == JobState.State.EXECUTING) {
-      LOG.debug("Executing Job ID {}...", this.jobId);
-      jobState.getStateMachine().setState(newState);
-      metric.put("FromState", newState);
-      beginMeasurement(jobId, metric);
-    } else if (newState == JobState.State.COMPLETE || newState == JobState.State.FAILED) {
-      LOG.debug("Job ID {} {}!", new Object[]{jobId, newState});
-      // Awake all threads waiting the finish of this job.
-      finishLock.lock();
-      try {
-        jobState.getStateMachine().setState(newState);
-        metric.put("ToState", newState);
-        endMeasurement(jobId, metric);
-
-        jobFinishedCondition.signalAll();
-      } finally {
-        finishLock.unlock();
-      }
-    } else {
-      throw new IllegalStateTransitionException(new Exception("Illegal Job State Transition"));
-    }
-  }
-
-  /**
-   * Updates the state of a stage.
-   * Stage state changes only occur in master.
-   * @param stageId of the stage.
-   * @param newState of the stage.
-   */
-  public synchronized void onStageStateChanged(final String stageId, final StageState.State newState) {
-    final StateMachine stageStateMachine = idToStageStates.get(stageId).getStateMachine();
-    LOG.debug("Stage State Transition: id {} from {} to {}",
-        new Object[]{stageId, stageStateMachine.getCurrentState(), newState});
-    stageStateMachine.setState(newState);
-    final Map<String, Object> metric = new HashMap<>();
-
-    if (newState == StageState.State.EXECUTING) {
-      if (scheduleAttemptIdxByStage.containsKey(stageId)) {
-        final int numAttempts = scheduleAttemptIdxByStage.get(stageId);
-
-        if (numAttempts < maxScheduleAttempt) {
-          scheduleAttemptIdxByStage.put(stageId, numAttempts + 1);
-        } else {
-          throw new SchedulingException(
-              new Throwable("Exceeded max number of scheduling attempts for " + stageId));
-        }
-      } else {
-        scheduleAttemptIdxByStage.put(stageId, 1);
-      }
-
-      metric.put("ScheduleAttempt", scheduleAttemptIdxByStage.get(stageId));
-      metric.put("FromState", newState);
-      beginMeasurement(stageId, metric);
-
-      // if there exists a mapping, this state change is from a failed_recoverable stage,
-      // and there may be tasks that do not need to be re-executed.
-      if (!stageIdToRemainingTaskSet.containsKey(stageId)) {
-        for (final Stage stage : physicalPlan.getStageDAG().getVertices()) {
-          if (stage.getId().equals(stageId)) {
-            Set<String> remainingTaskIds = new HashSet<>();
-            remainingTaskIds.addAll(
-                stage.getTaskIds().stream().collect(Collectors.toSet()));
-            stageIdToRemainingTaskSet.put(stageId, remainingTaskIds);
-            break;
-          }
-        }
-      }
-    } else if (newState == StageState.State.COMPLETE) {
-      metric.put("ToState", newState);
-      endMeasurement(stageId, metric);
-
-      currentJobStageIds.remove(stageId);
-      if (currentJobStageIds.isEmpty()) {
-        onJobStateChanged(JobState.State.COMPLETE);
-      }
-    } else if (newState == StageState.State.FAILED_RECOVERABLE) {
-      metric.put("ToState", newState);
-      endMeasurement(stageId, metric);
-      currentJobStageIds.add(stageId);
-    } else if (newState == StageState.State.FAILED_UNRECOVERABLE) {
-      metric.put("ToState", newState);
-      endMeasurement(stageId, metric);
-    }
-  }
-
-  /**
    * Updates the state of a task.
    * Task state changes can occur both in master and executor.
    * State changes that occur in master are
@@ -280,115 +168,167 @@ public final class JobStateManager {
    * when the message/event is received.
    *
    * @param taskId  the ID of the task.
-   * @param newState     the new state of the task.
+   * @param newTaskState     the new state of the task.
    */
-  public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newState) {
+  public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newTaskState) {
+    // Change task state
     final StateMachine taskState = idToTaskStates.get(taskId).getStateMachine();
-    final String stageId = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
-
     LOG.debug("Task State Transition: id {}, from {} to {}",
-        new Object[]{taskId, taskState.getCurrentState(), newState});
+        new Object[]{taskId, taskState.getCurrentState(), newTaskState});
+
+    taskState.setState(newTaskState);
+
+    // Handle metrics
     final Map<String, Object> metric = new HashMap<>();
+    switch (newTaskState) {
+      case ON_HOLD:
+      case COMPLETE:
+      case FAILED_UNRECOVERABLE:
+      case FAILED_RECOVERABLE:
+        metric.put("ToState", newTaskState);
+        endMeasurement(taskId, metric);
+        break;
+      case EXECUTING:
+        metric.put("FromState", newTaskState);
+        beginMeasurement(taskId, metric);
+        break;
+      case READY:
+        final int currentAttempt = taskIdToCurrentAttempt.get(taskId) + 1;
+        metric.put("ScheduleAttempt", currentAttempt);
+        if (currentAttempt <= maxScheduleAttempt) {
+          taskIdToCurrentAttempt.put(taskId, currentAttempt);
+        } else {
+          throw new SchedulingException(new Throwable("Exceeded max number of scheduling attempts for " + taskId));
+        }
+        break;
+      default:
+        throw new UnknownExecutionStateException(new Throwable("This task state is unknown"));
+    }
 
-    switch (newState) {
-    case ON_HOLD:
-    case COMPLETE:
-      taskState.setState(newState);
-      metric.put("ToState", newState);
-      endMeasurement(taskId, metric);
-
-      if (stageIdToRemainingTaskSet.containsKey(stageId)) {
-        final Set<String> remainingTasks = stageIdToRemainingTaskSet.get(stageId);
-        LOG.info("{}: {} Task(s) to go", stageId, remainingTasks.size());
-        remainingTasks.remove(taskId);
-
-        if (remainingTasks.isEmpty()) {
+    // Change stage state, if needed
+    final String stageId = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
+    final List<String> tasksOfThisStage = physicalPlan.getStageDAG().getVertexById(stageId).getTaskIds();
+    final long numOfCompletedOrOnHoldTasksInThisStage = tasksOfThisStage
+        .stream()
+        .map(this::getTaskState)
+        .filter(state -> state.equals(TaskState.State.COMPLETE) || state.equals(TaskState.State.ON_HOLD))
+        .count();
+    switch (newTaskState) {
+      case READY:
+        onStageStateChanged(stageId, StageState.State.READY);
+        break;
+      case EXECUTING:
+        onStageStateChanged(stageId, StageState.State.EXECUTING);
+        break;
+      case FAILED_RECOVERABLE:
+        onStageStateChanged(stageId, StageState.State.FAILED_RECOVERABLE);
+        break;
+      case COMPLETE:
+      case ON_HOLD:
+        if (numOfCompletedOrOnHoldTasksInThisStage == tasksOfThisStage.size()) {
           onStageStateChanged(stageId, StageState.State.COMPLETE);
         }
-      } else {
-        throw new IllegalStateTransitionException(
-            new Throwable("The stage has not yet been submitted for execution"));
-      }
-      break;
-    case EXECUTING:
-      taskState.setState(newState);
+        break;
+      case FAILED_UNRECOVERABLE:
+        break;
+      default:
+        throw new UnknownExecutionStateException(new Throwable("This task state is unknown"));
+    }
+
+    // Log not-yet-completed tasks for us to track progress
+    if (newTaskState.equals(TaskState.State.COMPLETE)) {
+      LOG.info("{}: {} Task(s) to go", stageId, tasksOfThisStage.size() - numOfCompletedOrOnHoldTasksInThisStage);
+    }
+  }
+
+  /**
+   * (PRIVATE METHOD)
+   * Updates the state of a stage.
+   * @param stageId of the stage.
+   * @param newStageState of the stage.
+   */
+  private void onStageStateChanged(final String stageId, final StageState.State newStageState) {
+    if (newStageState.equals(getStageState(stageId))) {
+      // Ignore duplicate state updates
+      return;
+    }
+
+    // Change stage state
+    final StateMachine stageStateMachine = idToStageStates.get(stageId).getStateMachine();
+    LOG.debug("Stage State Transition: id {} from {} to {}",
+        new Object[]{stageId, stageStateMachine.getCurrentState(), newStageState});
+    stageStateMachine.setState(newStageState);
+
+    // Metric handling
+    final Map<String, Object> metric = new HashMap<>();
+    if (newStageState == StageState.State.EXECUTING) {
+      metric.put("FromState", newStageState);
+      beginMeasurement(stageId, metric);
+    } else if (newStageState == StageState.State.COMPLETE) {
+      metric.put("ToState", newStageState);
+      endMeasurement(stageId, metric);
+    }
+
+    // Change job state if needed
+    final boolean allStagesCompleted = idToStageStates.values().stream().allMatch(state ->
+        state.getStateMachine().getCurrentState().equals(StageState.State.COMPLETE));
+
+    // (1) Job becomes EXECUTING if not already
+    if (newStageState.equals(StageState.State.EXECUTING)
+        && !getJobState().equals(JobState.State.EXECUTING)) {
+      onJobStateChanged(JobState.State.EXECUTING);
+    }
+    // (2) Job becomes COMPLETE
+    if (allStagesCompleted) {
+      onJobStateChanged(JobState.State.COMPLETE);
+    }
+  }
+
+  /**
+   * (PRIVATE METHOD)
+   * Updates the state of the job.
+   * @param newState of the job.
+   */
+  private void onJobStateChanged(final JobState.State newState) {
+    if (newState.equals(getJobState())) {
+      // Ignore duplicate state updates
+      return;
+    }
+
+    jobState.getStateMachine().setState(newState);
+
+    final Map<String, Object> metric = new HashMap<>();
+    if (newState == JobState.State.EXECUTING) {
+      LOG.debug("Executing Job ID {}...", this.jobId);
       metric.put("FromState", newState);
-      beginMeasurement(taskId, metric);
-      break;
-    case FAILED_RECOVERABLE:
-      // Multiple calls to set a task's state to failed_recoverable can occur when
-      // a task is made failed_recoverable early by another task's failure detection in the same stage
-      // and the task finds itself failed_recoverable later, propagating the state change event only then.
-      if (taskState.getCurrentState() != TaskState.State.FAILED_RECOVERABLE) {
-        taskState.setState(newState);
-        metric.put("ToState", newState);
-        endMeasurement(taskId, metric);
+      beginMeasurement(jobId, metric);
+    } else if (newState == JobState.State.COMPLETE || newState == JobState.State.FAILED) {
+      LOG.debug("Job ID {} {}!", new Object[]{jobId, newState});
 
-        // Mark this stage as failed_recoverable as long as it contains at least one failed_recoverable task
-        if (idToStageStates.get(stageId).getStateMachine().getCurrentState() != StageState.State.FAILED_RECOVERABLE) {
-          onStageStateChanged(stageId, StageState.State.FAILED_RECOVERABLE);
-        }
-
-        if (stageIdToRemainingTaskSet.containsKey(stageId)) {
-          stageIdToRemainingTaskSet.get(stageId).add(taskId);
-        } else {
-          throw new IllegalStateTransitionException(
-              new Throwable("The stage has not yet been submitted for execution"));
-        }
-
-        // We'll recover and retry this task
-        taskIdToCurrentAttempt.put(taskId, taskIdToCurrentAttempt.get(taskId) + 1);
-      } else {
-        LOG.info("{} state is already FAILED_RECOVERABLE. Skipping this event.",
-            taskId);
-      }
-      break;
-    case READY:
-      taskState.setState(newState);
-      break;
-    case FAILED_UNRECOVERABLE:
-      taskState.setState(newState);
+      // Awake all threads waiting the finish of this job.
+      finishLock.lock();
       metric.put("ToState", newState);
-      endMeasurement(taskId, metric);
-      break;
-    default:
-      throw new UnknownExecutionStateException(new Throwable("This task state is unknown"));
-    }
-  }
+      endMeasurement(jobId, metric);
 
-  public synchronized boolean checkStageCompletion(final String stageId) {
-    return stageIdToRemainingTaskSet.get(stageId).isEmpty();
-  }
-
-  public synchronized boolean checkJobTermination() {
-    final Enum currentState = jobState.getStateMachine().getCurrentState();
-    return (currentState == JobState.State.COMPLETE || currentState == JobState.State.FAILED);
-  }
-
-  public synchronized int getAttemptCountForStage(final String stageId) {
-    if (scheduleAttemptIdxByStage.containsKey(stageId)) {
-      return scheduleAttemptIdxByStage.get(stageId);
+      try {
+        jobFinishedCondition.signalAll();
+      } finally {
+        finishLock.unlock();
+      }
     } else {
-      throw new IllegalStateException("No mapping for this stage's attemptIdx, an inconsistent state occurred.");
+      throw new IllegalStateTransitionException(new Exception("Illegal Job State Transition"));
     }
   }
 
-  public synchronized int getCurrentAttemptIndexForTask(final String taskId) {
-    if (taskIdToCurrentAttempt.containsKey(taskId)) {
-      return taskIdToCurrentAttempt.get(taskId);
-    } else {
-      throw new IllegalStateException("No mapping for this task's attemptIdx, an inconsistent state occurred.");
-    }
-  }
 
   /**
    * Wait for this job to be finished and return the final state.
    * @return the final state of this job.
    */
-  public JobState waitUntilFinish() {
+  public JobState.State waitUntilFinish() {
     finishLock.lock();
     try {
-      if (!checkJobTermination()) {
+      if (!isJobDone()) {
         jobFinishedCondition.await();
       }
     } catch (final InterruptedException e) {
@@ -407,11 +347,10 @@ public final class JobStateManager {
    * @param unit of the timeout.
    * @return the final state of this job.
    */
-  public JobState waitUntilFinish(final long timeout,
-                                  final TimeUnit unit) {
+  public JobState.State waitUntilFinish(final long timeout, final TimeUnit unit) {
     finishLock.lock();
     try {
-      if (!checkJobTermination()) {
+      if (!isJobDone()) {
         if (!jobFinishedCondition.await(timeout, unit)) {
           LOG.warn("Timeout during waiting the finish of Job ID {}", jobId);
         }
@@ -425,28 +364,31 @@ public final class JobStateManager {
     return getJobState();
   }
 
+  public synchronized boolean isJobDone() {
+    return (getJobState() == JobState.State.COMPLETE || getJobState() == JobState.State.FAILED);
+  }
   public synchronized String getJobId() {
     return jobId;
   }
 
-  public synchronized JobState getJobState() {
-    return jobState;
+  public synchronized JobState.State getJobState() {
+    return (JobState.State) jobState.getStateMachine().getCurrentState();
   }
 
-  public synchronized StageState getStageState(final String stageId) {
-    return idToStageStates.get(stageId);
+  public synchronized StageState.State getStageState(final String stageId) {
+    return (StageState.State) idToStageStates.get(stageId).getStateMachine().getCurrentState();
   }
 
-  public synchronized Map<String, StageState> getIdToStageStates() {
-    return idToStageStates;
+  public synchronized TaskState.State getTaskState(final String taskId) {
+    return (TaskState.State) idToTaskStates.get(taskId).getStateMachine().getCurrentState();
   }
 
-  public synchronized TaskState getTaskState(final String taskId) {
-    return idToTaskStates.get(taskId);
-  }
-
-  public synchronized Map<String, TaskState> getIdToTaskStates() {
-    return idToTaskStates;
+  public synchronized int getTaskAttempt(final String taskId) {
+    if (taskIdToCurrentAttempt.containsKey(taskId)) {
+      return taskIdToCurrentAttempt.get(taskId);
+    } else {
+      throw new IllegalStateException("No mapping for this task's attemptIdx, an inconsistent state occurred.");
+    }
   }
 
   /**
