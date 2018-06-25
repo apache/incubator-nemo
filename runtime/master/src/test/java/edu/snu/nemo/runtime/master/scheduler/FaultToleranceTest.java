@@ -214,27 +214,16 @@ public final class FaultToleranceTest {
     for (final Stage stage : dagOf4Stages) {
       if (stage.getScheduleGroupIndex() == 0 || stage.getScheduleGroupIndex() == 1) {
 
-<<<<<<< HEAD
-        // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0.
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
-=======
         // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0 and 1.
-        SchedulerTestUtil.mockSchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
->>>>>>> master
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
             executorRegistry, false);
         assertTrue(pendingTaskCollection.isEmpty());
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.COMPLETE, 1));
-<<<<<<< HEAD
-      } else if (stage.getScheduleGroupIndex() == 1) {
-        // There are 3 executors, each of capacity 2, and there are 2 Tasks in ScheduleGroup 1.
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
-=======
       } else if (stage.getScheduleGroupIndex() == 2) {
         // There are 3 executors, each of capacity 2, and there are 2 Tasks in ScheduleGroup 2.
-        SchedulerTestUtil.mockSchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
->>>>>>> master
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
             executorRegistry, false);
         assertTrue(pendingTaskCollection.isEmpty());
         stage.getTaskIds().forEach(taskId ->
@@ -251,18 +240,9 @@ public final class FaultToleranceTest {
         assertTrue(maxTaskAttempt.isPresent());
         assertEquals(2, (int) maxTaskAttempt.get());
 
-<<<<<<< HEAD
         assertTrue(pendingTaskCollection.isEmpty());
         stage.getTaskIds().forEach(taskId ->
             assertEquals(TaskState.State.EXECUTING, jobStateManager.getTaskState(taskId)));
-=======
-        assertEquals(3, jobStateManager.getAttemptCountForStage(stage.getId()));
-        assertFalse(pendingTaskCollection.isEmpty());
-        stage.getTaskIds().forEach(taskId -> {
-          assertEquals(jobStateManager.getTaskState(taskId).getStateMachine().getCurrentState(),
-              TaskState.State.READY);
-        });
->>>>>>> master
       }
     }
   }
@@ -302,27 +282,16 @@ public final class FaultToleranceTest {
     for (final Stage stage : dagOf4Stages) {
       if (stage.getScheduleGroupIndex() == 0 || stage.getScheduleGroupIndex() == 1) {
 
-<<<<<<< HEAD
-        // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0.
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
-=======
         // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0 and 1.
-        SchedulerTestUtil.mockSchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
->>>>>>> master
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
             executorRegistry, false);
         assertTrue(pendingTaskCollection.isEmpty());
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.COMPLETE, 1));
-<<<<<<< HEAD
-      } else if (stage.getScheduleGroupIndex() == 1) {
-        // There are 3 executors, each of capacity 2, and there are 2 Tasks in ScheduleGroup 1.
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
-=======
       } else if (stage.getScheduleGroupIndex() == 2) {
         // There are 3 executors, each of capacity 2, and there are 2 Tasks in ScheduleGroup 2.
-        SchedulerTestUtil.mockSchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
->>>>>>> master
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollection, schedulingPolicy, jobStateManager,
             executorRegistry, false);
 
         stage.getTaskIds().forEach(taskId ->
@@ -339,16 +308,8 @@ public final class FaultToleranceTest {
         assertTrue(maxTaskAttempt.isPresent());
         assertEquals(2, (int) maxTaskAttempt.get());
 
-<<<<<<< HEAD
         stage.getTaskIds().forEach(taskId ->
             assertEquals(TaskState.State.EXECUTING, jobStateManager.getTaskState(taskId)));
-=======
-        assertEquals(2, jobStateManager.getAttemptCountForStage(stage.getId()));
-        stage.getTaskIds().forEach(taskId -> {
-          assertEquals(jobStateManager.getTaskState(taskId).getStateMachine().getCurrentState(),
-              TaskState.State.READY);
-        });
->>>>>>> master
       }
     }
   }
