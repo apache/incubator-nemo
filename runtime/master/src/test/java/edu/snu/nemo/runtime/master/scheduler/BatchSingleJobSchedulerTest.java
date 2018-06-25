@@ -85,7 +85,7 @@ public final class BatchSingleJobSchedulerTest {
 
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
     metricMessageHandler = mock(MetricMessageHandler.class);
-    pendingTaskCollectionPointer = new SingleJobTaskCollection();
+    pendingTaskCollectionPointer = new PendingTaskCollectionPointer();
     schedulingPolicy = injector.getInstance(CompositeSchedulingPolicy.class);
     schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);

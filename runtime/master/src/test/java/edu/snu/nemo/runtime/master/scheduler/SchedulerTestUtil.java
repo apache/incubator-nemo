@@ -16,11 +16,14 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.Stage;
+import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -108,12 +111,6 @@ final class SchedulerTestUtil {
     final SchedulerRunner schedulerRunner =
         new SchedulerRunner(schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
     schedulerRunner.scheduleJob(jobStateManager);
-    while (!pendingTaskCollectionPointer.isEmpty()) {
-      schedulerRunner.doScheduleTaskList();
-      if (scheduleOnlyTheFirstStage) {
-        // Schedule only the first stage
-        break;
-      }
-    }
+    schedulerRunner.doScheduleTaskList();
   }
 }

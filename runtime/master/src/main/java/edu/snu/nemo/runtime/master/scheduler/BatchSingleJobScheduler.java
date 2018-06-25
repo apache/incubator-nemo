@@ -210,7 +210,8 @@ public final class BatchSingleJobScheduler implements Scheduler {
       // Schedule a stage after marking the necessary tasks to failed_recoverable.
       // The stage for one of the tasks that failed is a starting point to look
       // for the next stage to be scheduled.
-      scheduleNextScheduleGroup(RuntimeIdGenerator.getStageIdFromTaskId(tasksToReExecute.iterator().next()));
+      scheduleNextScheduleGroup(getSchedulingIndexOfStage(
+          RuntimeIdGenerator.getStageIdFromTaskId(tasksToReExecute.iterator().next())));
     }
   }
 
@@ -273,40 +274,36 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
     if (!allStagesOfThisGroupComplete) {
       LOG.info("There are remaining stages in the current schedule group, {}", referenceScheduleGroupIndex);
+      final List<Stage> stagesToSchedule = currentScheduleGroup
+          .stream()
+          .filter(stage -> jobStateManager.getStageState(stage.getId()).equals(StageState.State.FAILED_RECOVERABLE))
+          .collect(Collectors.toList());
+      return (stagesToSchedule.isEmpty())
+          ? Optional.empty()
+          : Optional.of(stagesToSchedule.get(stagesToSchedule.size() - 1));
+    } else {
+      // By the time the control flow has reached here,
+      // we are ready to move onto the next ScheduleGroup
+      final List<Stage>stagesToSchedule =
+          physicalPlan.getStageDAG().getTopologicalSort().stream().filter(stage -> {
+            if (stage.getScheduleGroupIndex() == referenceScheduleGroupIndex + 1) {
+              final String stageId = stage.getId();
+              return jobStateManager.getStageState(stageId) != StageState.State.EXECUTING
+                  && jobStateManager.getStageState(stageId) != StageState.State.COMPLETE;
+            }
+            return false;
+          }).collect(Collectors.toList());
 
-      // We need to reschedule failed_recoverable stages.
-      for (final Stage stageToCheck : currentScheduleGroup) {
-        final StageState.State stageState = jobStateManager.getStageState(stageToCheck.getId());
-        switch (stageState) {
-          case FAILED_RECOVERABLE:
-            stagesToSchedule.add(stageToCheck);
-        }
+      if (stagesToSchedule.isEmpty()) {
+        LOG.debug("ScheduleGroup {}: already executing/complete!, so we skip this", referenceScheduleGroupIndex + 1);
+        return Optional.empty();
       }
-      return (stagesToSchedule.isEmpty()) ? Optional.empty() : Optional.of(stagesToSchedule);
+
+      // Return the schedulable stage list in reverse-topological order
+      // since the stages that belong to the same schedule group are mutually independent,
+      // or connected by a "push" edge, requiring the children stages to be scheduled first.
+      return Optional.of(stagesToSchedule.get(stagesToSchedule.size() - 1));
     }
-
-    // By the time the control flow has reached here,
-    // we are ready to move onto the next ScheduleGroup
-    stagesToSchedule =
-        physicalPlan.getStageDAG().getTopologicalSort().stream().filter(stage -> {
-          if (stage.getScheduleGroupIndex() == referenceScheduleGroupIndex + 1) {
-            final String stageId = stage.getId();
-            return jobStateManager.getStageState(stageId) != StageState.State.EXECUTING
-                && jobStateManager.getStageState(stageId) != StageState.State.COMPLETE;
-          }
-          return false;
-        }).collect(Collectors.toList());
-
-    if (stagesToSchedule.isEmpty()) {
-      LOG.debug("ScheduleGroup {}: already executing/complete!, so we skip this", referenceScheduleGroupIndex + 1);
-      return Optional.empty();
-    }
-
-    // Return the schedulable stage list in reverse-topological order
-    // since the stages that belong to the same schedule group are mutually independent,
-    // or connected by a "push" edge, requiring the children stages to be scheduled first.
-    Collections.reverse(stagesToSchedule);
-    return Optional.of(stagesToSchedule);
   }
 
   /**
@@ -435,7 +432,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     if (jobStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
       // if the stage this task belongs to is complete,
       if (!jobStateManager.isJobDone()) {
-        scheduleNextScheduleGroup(stageIdForTaskUponCompletion);
+        scheduleNextScheduleGroup(getSchedulingIndexOfStage(stageIdForTaskUponCompletion));
       }
     }
     schedulerRunner.onAnExecutorAvailable();
@@ -504,7 +501,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
         // TODO #50: Carefully retry tasks in the scheduler
       case OUTPUT_WRITE_FAILURE:
         blockManagerMaster.onProducerTaskFailed(taskId);
-        scheduleNextScheduleGroup(stageId);
+        scheduleNextScheduleGroup(getSchedulingIndexOfStage(stageId));
         break;
       case CONTAINER_FAILURE:
         LOG.info("Only the failed task will be retried.");
@@ -513,5 +510,9 @@ public final class BatchSingleJobScheduler implements Scheduler {
         throw new UnknownFailureCauseException(new Throwable("Unknown cause: " + failureCause));
     }
     schedulerRunner.onAnExecutorAvailable();
+  }
+
+  private int getSchedulingIndexOfStage(final String stageId) {
+    return physicalPlan.getStageDAG().getVertexById(stageId).getScheduleGroupIndex();
   }
 }

@@ -87,7 +87,7 @@ public final class FaultToleranceTest {
     final Injector injector = Tang.Factory.getTang().newInjector();
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
 
-    pendingTaskCollectionPointer = new SingleJobTaskCollection();
+    pendingTaskCollectionPointer = new PendingTaskCollectionPointer();
     schedulingPolicy = injector.getInstance(CompositeSchedulingPolicy.class);
 
     if (useMockSchedulerRunner) {
@@ -139,7 +139,6 @@ public final class FaultToleranceTest {
         // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0.
         SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
             executorRegistry, false);
-        assertTrue(pendingTaskCollectionPointer.isEmpty());
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.COMPLETE, 1));
@@ -163,7 +162,6 @@ public final class FaultToleranceTest {
 
         SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
             executorRegistry, false);
-        assertTrue(pendingTaskCollectionPointer.isEmpty());
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.COMPLETE, 1));
@@ -214,7 +212,6 @@ public final class FaultToleranceTest {
         // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0.
         SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
             executorRegistry, false);
-        assertTrue(pendingTaskCollectionPointer.isEmpty());
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.COMPLETE, 1));
@@ -222,7 +219,6 @@ public final class FaultToleranceTest {
         // There are 3 executors, each of capacity 2, and there are 2 Tasks in ScheduleGroup 1.
         SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
             executorRegistry, false);
-        assertTrue(pendingTaskCollectionPointer.isEmpty());
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.FAILED_RECOVERABLE, 1,
@@ -237,7 +233,6 @@ public final class FaultToleranceTest {
         assertTrue(maxTaskAttempt.isPresent());
         assertEquals(2, (int) maxTaskAttempt.get());
 
-        assertTrue(pendingTaskCollectionPointer.isEmpty());
         stage.getTaskIds().forEach(taskId ->
             assertEquals(TaskState.State.EXECUTING, jobStateManager.getTaskState(taskId)));
       }
@@ -282,7 +277,6 @@ public final class FaultToleranceTest {
         // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0.
         SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
             executorRegistry, false);
-        assertTrue(pendingTaskCollectionPointer.isEmpty());
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.COMPLETE, 1));

@@ -175,6 +175,8 @@ public final class JobStateManager {
     final StateMachine taskState = idToTaskStates.get(taskId).getStateMachine();
     LOG.debug("Task State Transition: id {}, from {} to {}",
         new Object[]{taskId, taskState.getCurrentState(), newTaskState});
+    System.out.println(
+        "Task State Transition: " + taskId + " " + taskState.getCurrentState() + " " + newTaskState);
 
     taskState.setState(newTaskState);
 
@@ -257,6 +259,8 @@ public final class JobStateManager {
     final StateMachine stageStateMachine = idToStageStates.get(stageId).getStateMachine();
     LOG.debug("Stage State Transition: id {} from {} to {}",
         new Object[]{stageId, stageStateMachine.getCurrentState(), newStageState});
+    System.out.println(
+        "Stage State Transition: " + stageId + " " + stageStateMachine.getCurrentState() + " " + newStageState);
     stageStateMachine.setState(newStageState);
 
     // Metric handling
