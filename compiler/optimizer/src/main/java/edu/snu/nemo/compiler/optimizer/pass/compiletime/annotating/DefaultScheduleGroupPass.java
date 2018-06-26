@@ -113,6 +113,9 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
         if (skip) {
           continue;
         }
+        if (irVertexToScheduleGroupMap.containsKey(connectedIRVertex)) {
+          continue;
+        }
         // Now we can assure that all vertices that connectedIRVertex depends on have assigned a ScheduleGroup
 
         // Get ScheduleGroup(s) that push data to the connectedIRVertex

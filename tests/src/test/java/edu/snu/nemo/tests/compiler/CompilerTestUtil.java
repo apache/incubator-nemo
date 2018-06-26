@@ -59,7 +59,7 @@ public final class CompilerTestUtil {
     return captor.getValue();
   }
 
-  public static DAG<IRVertex, IREdge> compileMRDAG() throws Exception {
+  public static DAG<IRVertex, IREdge> compileWordCountDAG() throws Exception {
     final String input = rootDir + "/../examples/resources/sample_input_wordcount";
     final String output = rootDir + "/../examples/resources/sample_output";
     final String main = "edu.snu.nemo.examples.beam.WordCount";
