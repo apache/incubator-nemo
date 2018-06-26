@@ -95,6 +95,7 @@ public final class SparkFrontendUtils {
                                     final Serializer serializer) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
 
+    // TODO #16: Implement collection of data from executor to client
     // save result in a temporary file
     final String resultFile = System.getProperty("user.dir") + "/collectresult";
 
