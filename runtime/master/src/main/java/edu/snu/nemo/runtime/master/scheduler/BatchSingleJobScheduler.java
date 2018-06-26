@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 
+import static edu.snu.nemo.runtime.common.state.TaskState.State.COMPLETE;
 import static edu.snu.nemo.runtime.common.state.TaskState.State.ON_HOLD;
 import static edu.snu.nemo.runtime.common.state.TaskState.State.READY;
 
@@ -245,6 +246,15 @@ public final class BatchSingleJobScheduler implements Scheduler {
     } else {
       LOG.info("Skipping this round as the next schedulable stages have already been scheduled.");
     }
+  }
+
+  private Optional<List<Stage>> selectEarliestSchedulableGroup() {
+    return sortedScheduleGroups.stream()
+        .filter(scheduleGroup -> scheduleGroup.stream()
+            .map(Stage::getId)
+            .map(jobStateManager::getStageState)
+            .anyMatch(state -> state.equals(StageState.State.SHOULD_RETRY) || state.equals(StageState.State.READY)))
+        .findFirst();
   }
 
   /**
