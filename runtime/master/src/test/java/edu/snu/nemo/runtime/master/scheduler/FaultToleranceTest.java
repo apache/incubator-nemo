@@ -102,7 +102,7 @@ public final class FaultToleranceTest {
   /**
    * Tests fault tolerance after a container removal.
    */
-  @Test(timeout=5000)
+  @Test(timeout=50000)
   public void testContainerRemoval() throws Exception {
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
@@ -180,7 +180,7 @@ public final class FaultToleranceTest {
   /**
    * Tests fault tolerance after an output write failure.
    */
-  @Test(timeout=5000)
+  @Test(timeout=50000)
   public void testOutputFailure() throws Exception {
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
@@ -245,7 +245,7 @@ public final class FaultToleranceTest {
   /**
    * Tests fault tolerance after an input read failure.
    */
-  @Test(timeout=5000)
+  @Test(timeout=50000)
   public void testInputReadFailure() throws Exception {
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
@@ -311,7 +311,7 @@ public final class FaultToleranceTest {
   /**
    * Tests the rescheduling of Tasks upon a failure.
    */
-  @Test(timeout=20000)
+  @Test(timeout=200000)
   public void testTaskReexecutionForFailure() throws Exception {
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();

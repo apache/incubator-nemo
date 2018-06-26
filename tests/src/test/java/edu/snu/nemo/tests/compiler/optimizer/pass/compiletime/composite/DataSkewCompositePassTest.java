@@ -81,7 +81,7 @@ public class DataSkewCompositePassTest {
    */
   @Test
   public void testDataSkewPass() throws Exception {
-    mrDAG = CompilerTestUtil.compileMRDAG();
+    mrDAG = CompilerTestUtil.compileWordCountDAG();
     final Integer originalVerticesNum = mrDAG.getVertices().size();
     final Long numOfShuffleGatherEdges = mrDAG.getVertices().stream().filter(irVertex ->
         mrDAG.getIncomingEdgesOf(irVertex).stream().anyMatch(irEdge ->
