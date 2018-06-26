@@ -17,7 +17,6 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
-import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
@@ -30,36 +29,35 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests {@link FreeSlotSchedulingPolicy}.
+ * Tests {@link MinOccupancyFirstSchedulingPredicate}
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ExecutorRepresenter.class, Task.class})
-public final class FreeSlotSchedulingPolicyTest {
+public final class MinOccupancyFirstSchedulingPredicateTest {
 
-  private static ExecutorRepresenter mockExecutorRepresenter(final int numRunningTasks,
-                                                             final int capacity) {
+  private static ExecutorRepresenter mockExecutorRepresenter(final int numRunningTasks) {
     final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
     final Set<String> runningTasks = new HashSet<>();
     IntStream.range(0, numRunningTasks).forEach(i -> runningTasks.add(String.valueOf(i)));
     when(executorRepresenter.getRunningTasks()).thenReturn(runningTasks);
-    when(executorRepresenter.getExecutorCapacity()).thenReturn(capacity);
     return executorRepresenter;
   }
 
-  @Test
-  public void testFreeSlot() {
-    final SchedulingPolicy schedulingPolicy = new FreeSlotSchedulingPolicy();
-    final ExecutorRepresenter a0 = mockExecutorRepresenter(1, 1);
-    final ExecutorRepresenter a1 = mockExecutorRepresenter(2, 3);
+  public void test() {
+    final SchedulingPredicate schedulingPredicate = new MinOccupancyFirstSchedulingPredicate();
+    final ExecutorRepresenter a0 = mockExecutorRepresenter(1);
+    final ExecutorRepresenter a1 = mockExecutorRepresenter(2);
+    final ExecutorRepresenter a2 = mockExecutorRepresenter(2);
 
     final Task task = mock(Task.class);
 
-    final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1));
+    final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1, a2));
 
     final Set<ExecutorRepresenter> candidateExecutors = executorRepresenterList.stream()
-        .filter(e -> schedulingPolicy.testSchedulability(e, task)).collect(Collectors.toSet());
+        .filter(e -> schedulingPredicate.testSchedulability(e, task)).collect(Collectors.toSet());
 
-    final Set<ExecutorRepresenter> expectedExecutors = Collections.singleton(a1);
+    final Set<ExecutorRepresenter> expectedExecutors = Collections.singleton(a0);
     assertEquals(expectedExecutors, candidateExecutors);
   }
 }
+

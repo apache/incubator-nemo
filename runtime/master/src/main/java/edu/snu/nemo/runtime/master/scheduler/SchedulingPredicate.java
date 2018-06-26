@@ -28,7 +28,7 @@ import javax.annotation.concurrent.ThreadSafe;
 @DriverSide
 @ThreadSafe
 @FunctionalInterface
-@DefaultImplementation(CompositeSchedulingPolicy.class)
-public interface SchedulingPolicy {
+@DefaultImplementation(CompositeSchedulingPredicate.class)
+public interface SchedulingPredicate {
   boolean testSchedulability(final ExecutorRepresenter executor, final Task task);
 }

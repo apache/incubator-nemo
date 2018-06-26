@@ -36,12 +36,12 @@ import java.util.stream.Collectors;
  */
 @ThreadSafe
 @DriverSide
-public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy {
-  private static final Logger LOG = LoggerFactory.getLogger(MinOccupancyFirstSchedulingPolicy.class.getName());
+public final class MinOccupancyFirstSchedulingPredicate implements SchedulingPredicate {
+  private static final Logger LOG = LoggerFactory.getLogger(MinOccupancyFirstSchedulingPredicate.class.getName());
 
   @VisibleForTesting
   @Inject
-  public MinOccupancyFirstSchedulingPolicy() {
+  public MinOccupancyFirstSchedulingPredicate() {
   }
 
   /**

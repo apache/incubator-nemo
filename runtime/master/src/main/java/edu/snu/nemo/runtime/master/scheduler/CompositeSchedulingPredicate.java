@@ -28,25 +28,26 @@ import java.util.List;
  * when Nemo supports job-wide execution property.
  * TODO #69: Support job-wide execution property.
  */
-public final class CompositeSchedulingPolicy implements SchedulingPolicy {
-  private final List<SchedulingPolicy> schedulingPolicies;
+public final class CompositeSchedulingPredicate implements SchedulingPredicate {
+  private final List<SchedulingPredicate> schedulingPolicies;
 
   @Inject
-  private CompositeSchedulingPolicy(final SourceLocationAwareSchedulingPolicy sourceLocationAwareSchedulingPolicy,
-                                    final MinOccupancyFirstSchedulingPolicy minOccupancyFirstSchedulingPolicy,
-                                    final FreeSlotSchedulingPolicy freeSlotSchedulingPolicy,
-                                    final ContainerTypeAwareSchedulingPolicy containerTypeAwareSchedulingPolicy) {
+  private CompositeSchedulingPredicate(
+      final SourceLocationAwareSchedulingPredicate sourceLocationAwareSchedulingPredicate,
+      final MinOccupancyFirstSchedulingPredicate minOccupancyFirstSchedulingPredicate,
+      final FreeSlotSchedulingPredicate freeSlotSchedulingPredicate,
+      final ContainerTypeAwareSchedulingPredicate containerTypeAwareSchedulingPredicate) {
     schedulingPolicies = Arrays.asList(
-        freeSlotSchedulingPolicy,
-        containerTypeAwareSchedulingPolicy,
-        sourceLocationAwareSchedulingPolicy,
-        minOccupancyFirstSchedulingPolicy);
+        freeSlotSchedulingPredicate,
+        containerTypeAwareSchedulingPredicate,
+        sourceLocationAwareSchedulingPredicate,
+        minOccupancyFirstSchedulingPredicate);
   }
 
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
-    for (final SchedulingPolicy schedulingPolicy : schedulingPolicies) {
-      if (!schedulingPolicy.testSchedulability(executor, task)) {
+    for (final SchedulingPredicate schedulingPredicate : schedulingPolicies) {
+      if (!schedulingPredicate.testSchedulability(executor, task)) {
         return false;
       }
     }

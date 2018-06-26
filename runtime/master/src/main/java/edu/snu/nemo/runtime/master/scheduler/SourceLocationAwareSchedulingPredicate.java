@@ -28,18 +28,18 @@ import javax.inject.Inject;
 import java.util.*;
 
 /**
- * This policy is same as {@link MinOccupancyFirstSchedulingPolicy}, however for Tasks
+ * This policy is same as {@link MinOccupancyFirstSchedulingPredicate}, however for Tasks
  * with {@link edu.snu.nemo.common.ir.vertex.SourceVertex}, it tries to pick one of the executors
  * where the corresponding data resides.
  */
 @ThreadSafe
 @DriverSide
-public final class SourceLocationAwareSchedulingPolicy implements SchedulingPolicy {
-  private static final Logger LOG = LoggerFactory.getLogger(SourceLocationAwareSchedulingPolicy.class);
+public final class SourceLocationAwareSchedulingPredicate implements SchedulingPredicate {
+  private static final Logger LOG = LoggerFactory.getLogger(SourceLocationAwareSchedulingPredicate.class);
 
   @VisibleForTesting
   @Inject
-  public SourceLocationAwareSchedulingPolicy() {
+  public SourceLocationAwareSchedulingPredicate() {
   }
 
   /**

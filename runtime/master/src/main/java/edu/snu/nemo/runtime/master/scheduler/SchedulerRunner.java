@@ -54,11 +54,11 @@ public final class SchedulerRunner {
 
   private final DelayedSignalingCondition schedulingIteration = new DelayedSignalingCondition();
   private ExecutorRegistry executorRegistry;
-  private SchedulingPolicy schedulingPolicy;
+  private SchedulingPredicate schedulingPredicate;
 
   @VisibleForTesting
   @Inject
-  public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
+  public SchedulerRunner(final SchedulingPredicate schedulingPredicate,
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final ExecutorRegistry executorRegistry) {
     this.jobStateManagers = new HashMap<>();
@@ -67,7 +67,7 @@ public final class SchedulerRunner {
     this.isSchedulerRunning = false;
     this.isTerminated = false;
     this.executorRegistry = executorRegistry;
-    this.schedulingPolicy = schedulingPolicy;
+    this.schedulingPredicate = schedulingPredicate;
   }
 
   /**
@@ -113,7 +113,7 @@ public final class SchedulerRunner {
       LOG.debug("Trying to schedule {}...", task.getTaskId());
       executorRegistry.viewExecutors(executors -> {
         final Set<ExecutorRepresenter> candidateExecutors =
-            executors.stream().filter(e -> schedulingPolicy.testSchedulability(e, task)).collect(Collectors.toSet());
+            executors.stream().filter(e -> schedulingPredicate.testSchedulability(e, task)).collect(Collectors.toSet());
         final Optional<ExecutorRepresenter> firstCandidate = candidateExecutors.stream().findFirst();
 
         if (firstCandidate.isPresent()) {

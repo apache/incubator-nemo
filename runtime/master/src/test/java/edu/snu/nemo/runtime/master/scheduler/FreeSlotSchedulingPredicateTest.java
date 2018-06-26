@@ -30,35 +30,36 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests {@link MinOccupancyFirstSchedulingPolicy}
+ * Tests {@link FreeSlotSchedulingPredicate}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ExecutorRepresenter.class, Task.class})
-public final class MinOccupancyFirstSchedulingPolicyTest {
+public final class FreeSlotSchedulingPredicateTest {
 
-  private static ExecutorRepresenter mockExecutorRepresenter(final int numRunningTasks) {
+  private static ExecutorRepresenter mockExecutorRepresenter(final int numRunningTasks,
+                                                             final int capacity) {
     final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
     final Set<String> runningTasks = new HashSet<>();
     IntStream.range(0, numRunningTasks).forEach(i -> runningTasks.add(String.valueOf(i)));
     when(executorRepresenter.getRunningTasks()).thenReturn(runningTasks);
+    when(executorRepresenter.getExecutorCapacity()).thenReturn(capacity);
     return executorRepresenter;
   }
 
-  public void test() {
-    final SchedulingPolicy schedulingPolicy = new MinOccupancyFirstSchedulingPolicy();
-    final ExecutorRepresenter a0 = mockExecutorRepresenter(1);
-    final ExecutorRepresenter a1 = mockExecutorRepresenter(2);
-    final ExecutorRepresenter a2 = mockExecutorRepresenter(2);
+  @Test
+  public void testFreeSlot() {
+    final SchedulingPredicate schedulingPredicate = new FreeSlotSchedulingPredicate();
+    final ExecutorRepresenter a0 = mockExecutorRepresenter(1, 1);
+    final ExecutorRepresenter a1 = mockExecutorRepresenter(2, 3);
 
     final Task task = mock(Task.class);
 
-    final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1, a2));
+    final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1));
 
     final Set<ExecutorRepresenter> candidateExecutors = executorRepresenterList.stream()
-        .filter(e -> schedulingPolicy.testSchedulability(e, task)).collect(Collectors.toSet());
+        .filter(e -> schedulingPredicate.testSchedulability(e, task)).collect(Collectors.toSet());
 
-    final Set<ExecutorRepresenter> expectedExecutors = Collections.singleton(a0);
+    final Set<ExecutorRepresenter> expectedExecutors = Collections.singleton(a1);
     assertEquals(expectedExecutors, candidateExecutors);
   }
 }
-

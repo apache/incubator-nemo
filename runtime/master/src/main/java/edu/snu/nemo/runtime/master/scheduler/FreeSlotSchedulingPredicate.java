@@ -16,27 +16,22 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
 import javax.inject.Inject;
 
 /**
- * This policy find executors which has corresponding container type.
+ * This policy finds executor that has free slot for a Task.
  */
-public final class ContainerTypeAwareSchedulingPolicy implements SchedulingPolicy {
-
+public final class FreeSlotSchedulingPredicate implements SchedulingPredicate {
   @VisibleForTesting
   @Inject
-  public ContainerTypeAwareSchedulingPolicy() {
+  public FreeSlotSchedulingPredicate() {
   }
 
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
-    final String executorPlacementPropertyValue = task.getPropertyValue(ExecutorPlacementProperty.class)
-        .orElse(ExecutorPlacementProperty.NONE);
-    return executorPlacementPropertyValue.equals(ExecutorPlacementProperty.NONE) ? true
-        : executor.getContainerType().equals(executorPlacementPropertyValue);
+    return executor.getRunningTasks().size() < executor.getExecutorCapacity();
   }
 }
