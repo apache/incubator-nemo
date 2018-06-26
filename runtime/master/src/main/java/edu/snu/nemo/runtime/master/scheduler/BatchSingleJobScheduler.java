@@ -42,7 +42,6 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 
-import static edu.snu.nemo.runtime.common.state.TaskState.State.COMPLETE;
 import static edu.snu.nemo.runtime.common.state.TaskState.State.ON_HOLD;
 import static edu.snu.nemo.runtime.common.state.TaskState.State.READY;
 
@@ -122,7 +121,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
         .map(Map.Entry::getValue)
         .collect(Collectors.toList());
 
-    scheduleNextScheduleGroup(initialScheduleGroup);
+    doSchedule();
   }
 
   @Override
@@ -218,8 +217,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
       // Schedule a stage after marking the necessary tasks to failed_recoverable.
       // The stage for one of the tasks that failed is a starting point to look
       // for the next stage to be scheduled.
-      scheduleNextScheduleGroup(getSchedulingIndexOfStage(
-          RuntimeIdGenerator.getStageIdFromTaskId(tasksToReExecute.iterator().next())));
+      doSchedule();
     }
   }
 
@@ -229,22 +227,28 @@ public final class BatchSingleJobScheduler implements Scheduler {
     this.executorRegistry.terminate();
   }
 
-  /**
-   * Schedules the next schedule group to execute.
-   * @param referenceIndex of the schedule group.
-   */
-  private void scheduleNextScheduleGroup(final int referenceIndex) {
-    final Optional<List<Stage>> nextScheduleGroupToSchedule = selectNextScheduleGroupToSchedule(referenceIndex);
+  ////////////////////////////////////////////////////////////////////// Key methods for scheduling
 
-    if (nextScheduleGroupToSchedule.isPresent()) {
-      LOG.info("Scheduling: ScheduleGroup {}", nextScheduleGroupToSchedule.get());
-      final List<Task> tasksToSchedule = nextScheduleGroupToSchedule.get().stream()
-          .flatMap(stage -> getSchedulableTasks(stage).stream())
+  /**
+   * The entry point for task scheduling.
+   */
+  private void doSchedule() {
+    final Optional<List<Stage>> earliest = selectEarliestSchedulableGroup();
+
+    if (earliest.isPresent()) {
+      // Get schedulable tasks.
+      final List<Task> tasksToSchedule = earliest.get().stream()
+          .flatMap(stage -> selectSchedulableTasks(stage).stream())
           .collect(Collectors.toList());
+      LOG.info("doSchedule(): Tasks {} in ScheduleGroup {}", tasksToSchedule, earliest.get());
+
+      // Set the pointer to the schedulable tasks.
       pendingTaskCollectionPointer.setToOverwrite(tasksToSchedule);
+
+      // Notify the runner that a new collection is available.
       schedulerRunner.onNewPendingTaskCollectionAvailable();
     } else {
-      LOG.info("Skipping this round as the next schedulable stages have already been scheduled.");
+      LOG.info("Skipping this round as no ScheduleGroup is schedulable.");
     }
   }
 
@@ -253,93 +257,13 @@ public final class BatchSingleJobScheduler implements Scheduler {
         .filter(scheduleGroup -> scheduleGroup.stream()
             .map(Stage::getId)
             .map(jobStateManager::getStageState)
-            .anyMatch(state -> state.equals(StageState.State.SHOULD_RETRY) || state.equals(StageState.State.READY)))
-        .findFirst();
+            .anyMatch(state -> state.equals(StageState.State.READY)
+                || state.equals(StageState.State.EXECUTING)
+                || state.equals(StageState.State.SHOULD_RETRY)))
+        .findFirst(); // selects the one with the smallest scheduling group index.
   }
 
-  /**
-   * Selects the next stage to schedule.
-   * It takes the referenceScheduleGroupIndex as a reference point to begin looking for the stages to execute:
-   *
-   * a) returns the failed_recoverable stage(s) of the earliest schedule group, if it(they) exists.
-   * b) returns an empty optional if there are no schedulable stages at the moment.
-   *    - if the current schedule group is still executing
-   *    - if an ancestor schedule group is still executing
-   * c) returns the next set of schedulable stages (if the current schedule group has completed execution)
-   *
-   * @param referenceScheduleGroupIndex
-   *      the index of the schedule group that is executing/has executed when this method is called.
-   * @return an optional of the (possibly empty) next schedulable stage
-   */
-  private Optional<List<Stage>> selectNextScheduleGroupToSchedule(final int referenceScheduleGroupIndex) {
-    // Recursively check the previous schedule group.
-    if (referenceScheduleGroupIndex > initialScheduleGroup) {
-      final Optional<List<Stage>> ancestorStagesFromAScheduleGroup =
-          selectNextScheduleGroupToSchedule(referenceScheduleGroupIndex - 1);
-      if (ancestorStagesFromAScheduleGroup.isPresent()) {
-        // Nothing to schedule from the previous schedule group.
-        return ancestorStagesFromAScheduleGroup;
-      }
-    }
-
-    // Return the schedulable stage list in reverse-topological order
-    // since the stages that belong to the same schedule group are mutually independent,
-    // or connected by a "push" edge, where scheduling the children stages first is preferred.
-    final List<Stage> reverseTopoStages = physicalPlan.getStageDAG().getTopologicalSort();
-    Collections.reverse(reverseTopoStages);
-
-    // All previous schedule groups are complete, we need to check for the current schedule group.
-    final List<Stage> currentScheduleGroup = reverseTopoStages
-        .stream()
-        .filter(stage -> stage.getScheduleGroupIndex() == referenceScheduleGroupIndex)
-        .collect(Collectors.toList());
-    final boolean allStagesOfThisGroupComplete = currentScheduleGroup
-        .stream()
-        .map(Stage::getId)
-        .map(jobStateManager::getStageState)
-        .allMatch(state -> state.equals(StageState.State.COMPLETE));
-
-    if (!allStagesOfThisGroupComplete) {
-      LOG.info("There are remaining stages in the current schedule group, {}", referenceScheduleGroupIndex);
-      final List<Stage> stagesToSchedule = currentScheduleGroup
-          .stream()
-          .filter(stage -> {
-            final StageState.State stageState = jobStateManager.getStageState(stage.getId());
-            return stageState.equals(StageState.State.SHOULD_RETRY)
-                || stageState.equals(StageState.State.READY);
-          })
-          .collect(Collectors.toList());
-      return (stagesToSchedule.isEmpty())
-          ? Optional.empty()
-          : Optional.of(stagesToSchedule);
-    } else {
-      // By the time the control flow has reached here,
-      // we are ready to move onto the next ScheduleGroup
-      final List<Stage> stagesToSchedule = reverseTopoStages
-          .stream()
-          .filter(stage -> {
-            if (stage.getScheduleGroupIndex() == referenceScheduleGroupIndex + 1) {
-              final String stageId = stage.getId();
-              return jobStateManager.getStageState(stageId) != StageState.State.EXECUTING
-                  && jobStateManager.getStageState(stageId) != StageState.State.COMPLETE;
-            }
-            return false;
-          })
-          .collect(Collectors.toList());
-
-      if (stagesToSchedule.isEmpty()) {
-        LOG.debug("ScheduleGroup {}: already executing/complete!, so we skip this", referenceScheduleGroupIndex + 1);
-        return Optional.empty();
-      }
-
-      return Optional.of(stagesToSchedule);
-    }
-  }
-
-  /**
-   * @param stageToSchedule the stage to schedule.
-   */
-  private List<Task> getSchedulableTasks(final Stage stageToSchedule) {
+  private List<Task> selectSchedulableTasks(final Stage stageToSchedule) {
     final List<StageEdge> stageIncomingEdges =
         physicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
     final List<StageEdge> stageOutgoingEdges =
@@ -347,39 +271,35 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
     final List<String> taskIdsToSchedule = new LinkedList<>();
     for (final String taskId : stageToSchedule.getTaskIds()) {
-      // this happens when the belonging stage's other tasks have failed recoverable,
-      // but this task's results are safe.
       final TaskState.State taskState = jobStateManager.getTaskState(taskId);
 
       switch (taskState) {
+        // Don't schedule these.
         case COMPLETE:
         case EXECUTING:
-          LOG.info("Skipping {} because its outputs are safe!", taskId);
+        case ON_HOLD:
           break;
+
+        // These are schedulable.
         case SHOULD_RETRY:
           jobStateManager.onTaskStateChanged(taskId, READY);
         case READY:
           taskIdsToSchedule.add(taskId);
           break;
-        case ON_HOLD:
-          // Do nothing
-          break;
+
+        // This shouldn't happen.
         default:
           throw new SchedulingException(new Throwable("Detected a FAILED Task"));
       }
     }
 
-    LOG.info("Scheduling Stage {}", stageToSchedule.getId());
-
-    // each readable and source task will be bounded in executor.
+    // Create and return tasks.
     final List<Map<String, Readable>> vertexIdToReadables = stageToSchedule.getVertexIdToReadables();
-
     final List<Task> tasks = new ArrayList<>(taskIdsToSchedule.size());
     taskIdsToSchedule.forEach(taskId -> {
-      blockManagerMaster.onProducerTaskScheduled(taskId);
+      blockManagerMaster.onProducerTaskScheduled(taskId); // Notify the block manager early for push edges.
       final int taskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
       final int attemptIdx = jobStateManager.getTaskAttempt(taskId);
-
       tasks.add(new Task(
           physicalPlan.getId(),
           taskId,
@@ -393,27 +313,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     return tasks;
   }
 
-  /**
-   * @param taskId id of the task
-   * @return the IR dag
-   */
-  private DAG<IRVertex, RuntimeEdge<IRVertex>> getVertexDagById(final String taskId) {
-    for (final Stage stage : physicalPlan.getStageDAG().getVertices()) {
-      if (stage.getId().equals(RuntimeIdGenerator.getStageIdFromTaskId(taskId))) {
-        return stage.getIRDAG();
-      }
-    }
-    throw new RuntimeException(new Throwable("This taskId does not exist in the plan"));
-  }
-
-  private Stage getStageById(final String stageId) {
-    for (final Stage stage : physicalPlan.getStageDAG().getVertices()) {
-      if (stage.getId().equals(stageId)) {
-        return stage;
-      }
-    }
-    throw new RuntimeException(new Throwable("This taskId does not exist in the plan"));
-  }
+  ////////////////////////////////////////////////////////////////////// Task state change handlers
 
   /**
    * Action after task execution has been completed, not after it has been put on hold.
@@ -447,7 +347,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     if (jobStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
       // if the stage this task belongs to is complete,
       if (!jobStateManager.isJobDone()) {
-        scheduleNextScheduleGroup(getSchedulingIndexOfStage(stageIdForTaskUponCompletion));
+        doSchedule();
       }
     }
     schedulerRunner.onAnExecutorAvailable();
@@ -516,7 +416,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
         // TODO #50: Carefully retry tasks in the scheduler
       case OUTPUT_WRITE_FAILURE:
         blockManagerMaster.onProducerTaskFailed(taskId);
-        scheduleNextScheduleGroup(getSchedulingIndexOfStage(stageId));
+        doSchedule();
         break;
       case CONTAINER_FAILURE:
         LOG.info("Only the failed task will be retried.");
@@ -527,7 +427,27 @@ public final class BatchSingleJobScheduler implements Scheduler {
     schedulerRunner.onAnExecutorAvailable();
   }
 
-  private int getSchedulingIndexOfStage(final String stageId) {
-    return physicalPlan.getStageDAG().getVertexById(stageId).getScheduleGroupIndex();
+  ////////////////////////////////////////////////////////////////////// Helper methods
+
+  /**
+   * @param taskId id of the task
+   * @return the IR dag
+   */
+  private DAG<IRVertex, RuntimeEdge<IRVertex>> getVertexDagById(final String taskId) {
+    for (final Stage stage : physicalPlan.getStageDAG().getVertices()) {
+      if (stage.getId().equals(RuntimeIdGenerator.getStageIdFromTaskId(taskId))) {
+        return stage.getIRDAG();
+      }
+    }
+    throw new RuntimeException(new Throwable("This taskId does not exist in the plan"));
+  }
+
+  private Stage getStageById(final String stageId) {
+    for (final Stage stage : physicalPlan.getStageDAG().getVertices()) {
+      if (stage.getId().equals(stageId)) {
+        return stage;
+      }
+    }
+    throw new RuntimeException(new Throwable("This taskId does not exist in the plan"));
   }
 }
