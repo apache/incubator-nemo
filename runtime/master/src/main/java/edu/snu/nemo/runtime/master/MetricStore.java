@@ -51,7 +51,7 @@ public final class MetricStore {
    * Getter for singleton instance.
    * @return MetricStore singleton object.
    */
-  public static MetricStore getInstance() {
+  public static MetricStore getStore() {
     return InstanceHolder.INSTANCE;
   }
 

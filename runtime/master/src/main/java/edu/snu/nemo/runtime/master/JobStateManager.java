@@ -105,7 +105,7 @@ public final class JobStateManager {
     this.taskIdToCurrentAttempt = new HashMap<>();
     this.finishLock = new ReentrantLock();
     this.jobFinishedCondition = finishLock.newCondition();
-    this.metricStore = MetricStore.getInstance();
+    this.metricStore = MetricStore.getStore();
     initializeComputationStates();
   }
 

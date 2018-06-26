@@ -30,7 +30,7 @@ public final class AllMetricServlet extends HttpServlet {
   @Override
   protected void doGet(final HttpServletRequest request, final HttpServletResponse response)
       throws IOException {
-    final MetricStore metricStore = MetricStore.getInstance();
+    final MetricStore metricStore = MetricStore.getStore();
     response.setContentType("application/json");
     response.setStatus(HttpServletResponse.SC_OK);
     response.getWriter().println(metricStore.dumpAllMetricToJson());

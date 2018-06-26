@@ -16,9 +16,13 @@
 package edu.snu.nemo.runtime.common.metric;
 
 import edu.snu.nemo.runtime.common.state.TaskState;
+import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Metric class for {@link edu.snu.nemo.runtime.common.plan.Task}.
@@ -26,27 +30,56 @@ import java.util.List;
 public class TaskMetric implements Metric<TaskState.State> {
   private String id;
   private List<StateTransitionEvent<TaskState.State>> stateTransitionEvents = new ArrayList<>();
-  private int readBytes = 0;
-  private int writtenBytes = 0;
+  private List<DataTransferEvent> dataTransferEvents = new ArrayList<>();
+  private long readBytes = -1;
+  private long writtenBytes = -1;
+  private int scheduleAttempt = -1;
+  private String containerId = "";
+
+  private static final Logger LOG = LoggerFactory.getLogger(TaskMetric.class.getName());
 
   public TaskMetric(final String id) {
     this.id = id;
   }
 
-  public final int getReadBytes() {
+  public final long getReadBytes() {
     return readBytes;
   }
 
-  public final void setReadBytes(final int readBytes) {
+  private void setReadBytes(final long readBytes) {
     this.readBytes = readBytes;
   }
 
-  public final int getWrittenBytes() {
+  public final long getWrittenBytes() {
     return writtenBytes;
   }
 
-  public final void setWrittenBytes(final int writtenBytes) {
+  private void setWrittenBytes(final long writtenBytes) {
     this.writtenBytes = writtenBytes;
+  }
+
+  public final List<DataTransferEvent> getDataTransferEvents() {
+    return dataTransferEvents;
+  }
+
+  private void addDataTransferEvent(final DataTransferEvent event) {
+    dataTransferEvents.add(event);
+  }
+
+  public int getScheduleAttempt() {
+    return scheduleAttempt;
+  }
+
+  private void setScheduleAttempt(final int scheduleAttempt) {
+    this.scheduleAttempt = scheduleAttempt;
+  }
+
+  private String getContainerId() {
+    return containerId;
+  }
+
+  public void setContainerId(final String containerId) {
+    this.containerId = containerId;
   }
 
   @Override
@@ -64,8 +97,37 @@ public class TaskMetric implements Metric<TaskState.State> {
     stateTransitionEvents.add(new StateTransitionEvent<>(System.currentTimeMillis(), prevState, newState));
   }
 
+  private void addEvent(final StateTransitionEvent<TaskState.State> event) {
+    stateTransitionEvents.add(event);
+  }
+
   @Override
-  public void processMetricMessage(final String metricField, final byte[] metricValue) {
-    // do nothing
+  public final void processMetricMessage(final String metricField, final byte[] metricValue) {
+    LOG.info("metric {} is just arrived!", metricField);
+    switch (metricField) {
+      case "readBytes":
+        setReadBytes(SerializationUtils.deserialize(metricValue));
+        break;
+      case "writtenBytes":
+        setWrittenBytes(SerializationUtils.deserialize(metricValue));
+        break;
+      case "event":
+        final StateTransitionEvent<TaskState.State> newStateTransitionEvent =
+            SerializationUtils.deserialize(metricValue);
+        addEvent(newStateTransitionEvent);
+        break;
+      case "dataEvent":
+        final DataTransferEvent newDataTransferEvent = SerializationUtils.deserialize(metricValue);
+        addDataTransferEvent(newDataTransferEvent);
+        break;
+      case "scheduleAttempt":
+        setScheduleAttempt(SerializationUtils.deserialize(metricValue));
+        break;
+      case "containerId":
+        setContainerId(SerializationUtils.deserialize(metricValue));
+        break;
+      default:
+        LOG.warn("metricField {} is not supported.", metricField);
+    }
   }
 }

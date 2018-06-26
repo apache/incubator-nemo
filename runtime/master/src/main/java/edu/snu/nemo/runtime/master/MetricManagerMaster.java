@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 public final class MetricManagerMaster implements MetricMessageHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(MetricManagerMaster.class.getName());
-  private final MetricStore metricStore = MetricStore.getInstance();
+  private final MetricStore metricStore = MetricStore.getStore();
   private boolean isTerminated;
   private final ExecutorRegistry executorRegistry;
 
@@ -62,7 +62,11 @@ public final class MetricManagerMaster implements MetricMessageHandler {
     if (!isTerminated) {
       final Class<Metric> metricClass = metricStore.getMetricClassByName(metricType);
       // process metric message
-      metricStore.getOrCreateMetric(metricClass, metricId).processMetricMessage(metricField, metricValue);
+      try {
+        metricStore.getOrCreateMetric(metricClass, metricId).processMetricMessage(metricField, metricValue);
+      } catch (final Exception e) {
+        LOG.warn("Error when processing metric message for {}, {}, {}.", metricType, metricId, metricField);
+      }
     }
   }
 
