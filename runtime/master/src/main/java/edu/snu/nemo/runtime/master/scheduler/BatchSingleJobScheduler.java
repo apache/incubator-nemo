@@ -233,8 +233,6 @@ public final class BatchSingleJobScheduler implements Scheduler {
       final List<Task> tasksToSchedule = nextScheduleGroupToSchedule.get().stream()
           .flatMap(stage -> getSchedulableTasks(stage).stream())
           .collect(Collectors.toList());
-      System.out.println(
-          "Scheduling: ScheduleGroup " + nextScheduleGroupToSchedule.get() + " " + tasksToSchedule.toString());
       pendingTaskCollectionPointer.setToOverwrite(tasksToSchedule);
       schedulerRunner.onNewPendingTaskCollectionAvailable();
     } else {
@@ -325,8 +323,6 @@ public final class BatchSingleJobScheduler implements Scheduler {
    * @param stageToSchedule the stage to schedule.
    */
   private List<Task> getSchedulableTasks(final Stage stageToSchedule) {
-    System.out.println(
-        "Scheduling stage " + stageToSchedule.getId() + " in " + stageToSchedule.getScheduleGroupIndex());
     final List<StageEdge> stageIncomingEdges =
         physicalPlan.getStageDAG().getIncomingEdgesOf(stageToSchedule.getId());
     final List<StageEdge> stageOutgoingEdges =

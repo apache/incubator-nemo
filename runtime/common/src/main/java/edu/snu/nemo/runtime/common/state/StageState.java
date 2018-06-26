@@ -47,7 +47,6 @@ public final class StageState {
     stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_RECOVERABLE,
         "Recoverable failure in a task");
 
-    // From COMPLETE
     stateMachineBuilder.addTransition(State.COMPLETE, State.FAILED_RECOVERABLE,
         "Container on which the stage's output is stored failed");
 
