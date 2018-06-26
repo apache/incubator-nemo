@@ -28,6 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,7 +113,7 @@ public final class SchedulerRunner {
       LOG.debug("Trying to schedule {}...", task.getTaskId());
       executorRegistry.viewExecutors(executors -> {
         final Set<ExecutorRepresenter> candidateExecutors =
-            schedulingPolicy.filterExecutorRepresenters(executors, task);
+            executors.stream().filter(e -> schedulingPolicy.testSchedulability(e, task)).collect(Collectors.toSet());
         final Optional<ExecutorRepresenter> firstCandidate = candidateExecutors.stream().findFirst();
 
         if (firstCandidate.isPresent()) {
