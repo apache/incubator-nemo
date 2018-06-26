@@ -96,20 +96,23 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   /**
-   * Receives a job to schedule.
-   * @param jobToSchedule the physical plan for the job.
-   * @param scheduledJobStateManager to k
+   * @param physicalPlanOfJob of the job.
+   * @param jobStateManagerOfJob of the job.
    */
   @Override
-  public void scheduleJob(final PhysicalPlan jobToSchedule, final JobStateManager scheduledJobStateManager) {
-    this.physicalPlan = jobToSchedule;
-    this.jobStateManager = scheduledJobStateManager;
+  public void scheduleJob(final PhysicalPlan physicalPlanOfJob, final JobStateManager jobStateManagerOfJob) {
+    if (this.physicalPlan != null || this.jobStateManager != null) {
+      throw new IllegalStateException("scheduleJob() has been called more than once");
+    }
 
-    schedulerRunner.scheduleJob(scheduledJobStateManager);
+    this.physicalPlan = physicalPlanOfJob;
+    this.jobStateManager = jobStateManagerOfJob;
+
+    schedulerRunner.scheduleJob(jobStateManagerOfJob);
     schedulerRunner.runSchedulerThread();
-    LOG.info("Job to schedule: {}", jobToSchedule.getId());
+    LOG.info("Job to schedule: {}", this.physicalPlan.getId());
 
-    this.sortedScheduleGroups = jobToSchedule.getStageDAG().getVertices()
+    this.sortedScheduleGroups = this.physicalPlan.getStageDAG().getVertices()
         .stream()
         .collect(Collectors.groupingBy(Stage::getScheduleGroupIndex))
         .entrySet()
@@ -292,7 +295,11 @@ public final class BatchSingleJobScheduler implements Scheduler {
           .stream()
           .filter(stage -> {
             final StageState.State stageState = jobStateManager.getStageState(stage.getId());
+<<<<<<< HEAD
             return stageState.equals(StageState.State.SHOULD_RETRY)
+=======
+            return stageState.equals(StageState.State.FAILED_RECOVERABLE)
+>>>>>>> master
                 || stageState.equals(StageState.State.READY);
           })
           .collect(Collectors.toList());
@@ -343,7 +350,11 @@ public final class BatchSingleJobScheduler implements Scheduler {
         case EXECUTING:
           LOG.info("Skipping {} because its outputs are safe!", taskId);
           break;
+<<<<<<< HEAD
         case SHOULD_RETRY:
+=======
+        case FAILED_RECOVERABLE:
+>>>>>>> master
           jobStateManager.onTaskStateChanged(taskId, READY);
         case READY:
           taskIdsToSchedule.add(taskId);
