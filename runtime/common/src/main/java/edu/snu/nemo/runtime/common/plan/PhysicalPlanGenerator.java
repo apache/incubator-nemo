@@ -266,6 +266,9 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
         if (skip) {
           continue;
         }
+        if (stageToScheduleGroupIndexMap.containsKey(destination)) {
+          continue;
+        }
 
         // Find any non-pull inEdge
         Integer scheduleGroupIndex = null;
