@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master.httpservlet;
 
 import edu.snu.nemo.runtime.master.MetricStore;
-import edu.snu.nemo.runtime.master.metric.StageMetric;
+import edu.snu.nemo.runtime.common.metric.StageMetric;
 
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;

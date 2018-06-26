@@ -187,6 +187,8 @@ enum BlockStore {
 
 // Common messages
 message Metric {
-    required string metricKey = 1;
-    required string metricValue = 2;
+    required string metricType = 1;
+    required string metricId = 2;
+    required string metricField = 3;
+    required bytes metricValue = 4;
 }

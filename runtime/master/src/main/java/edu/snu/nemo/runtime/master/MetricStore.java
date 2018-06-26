@@ -21,7 +21,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.nemo.common.exception.UnsupportedMetricException;
-import edu.snu.nemo.runtime.master.metric.*;
+import edu.snu.nemo.runtime.common.metric.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -33,11 +33,13 @@ import java.util.*;
 public final class MetricStore {
   private final Map<Class, Map<String, Object>> metricMap = new HashMap<>();
   // You can add more metrics by adding item to this metricList list.
-  private final List<Class> metricList = Arrays.asList(
-          JobMetric.class,
-          StageMetric.class,
-          TaskMetric.class
-  );
+  private final Map<String, Class> metricList = new HashMap<String, Class>() {
+    {
+      put("JobMetric", JobMetric.class);
+      put("StageMetric", StageMetric.class);
+      put("TaskMetric", TaskMetric.class);
+    }
+  };
 
   /**
    * MetricStore is a class that collects all kind of metric which can be used at logging and web visualization.
@@ -60,6 +62,14 @@ public final class MetricStore {
     private static final MetricStore INSTANCE = new MetricStore();
   }
 
+  public <T extends Metric> Class<T> getMetricClassByName(final String className) {
+    if (!metricList.keySet().contains(className)) {
+      throw new NoSuchElementException();
+    }
+
+    return metricList.get(className);
+  }
+
   /**
    * Store a metric object. Metric object should implement {@link Metric} interface.
    * This method will store a metric into a {@link Map}, which have metric's id as its key.
@@ -68,7 +78,7 @@ public final class MetricStore {
    */
   public <T extends Metric> void putMetric(final T metric) {
     final Class metricClass = metric.getClass();
-    if (!metricList.contains(metricClass)) {
+    if (!metricList.values().contains(metricClass)) {
       throw new UnsupportedMetricException(new Throwable("Unsupported metric"));
     }
 

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.metric;
+package edu.snu.nemo.runtime.common.metric;
 
 import java.util.List;
 
@@ -40,4 +40,11 @@ public interface Metric<T> {
    * @param newState new state.
    */
   void addEvent(final T prevState, final T newState);
+
+  /**
+   * Process metric message from evaluators.
+   * @param metricField field name of the metric.
+   * @param metricValue byte array of serialized data value.
+   */
+  void processMetricMessage(final String metricField, final byte[] metricValue);
 }

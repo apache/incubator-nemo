@@ -353,7 +353,9 @@ public final class RuntimeMaster {
       case MetricMessageReceived:
         final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
         metricList.forEach(metric ->
-            metricMessageHandler.onMetricMessageReceived(metric.getMetricKey(), metric.getMetricValue()));
+            metricMessageHandler.onMetricMessageReceived(
+                metric.getMetricType(), metric.getMetricId(),
+                metric.getMetricField(), metric.getMetricValue().toByteArray()));
         break;
       case ExecutorDataCollected:
         final String serializedData = message.getDataCollected().getData();

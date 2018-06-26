@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.metric;
+package edu.snu.nemo.runtime.common.metric;
 
 import edu.snu.nemo.runtime.common.state.TaskState;
 
@@ -26,9 +26,27 @@ import java.util.List;
 public class TaskMetric implements Metric<TaskState.State> {
   private String id;
   private List<Event<TaskState.State>> events = new ArrayList<>();
+  private int readBytes = 0;
+  private int writtenBytes = 0;
 
   public TaskMetric(final String id) {
     this.id = id;
+  }
+
+  public final int getReadBytes() {
+    return readBytes;
+  }
+
+  public final void setReadBytes(final int readBytes) {
+    this.readBytes = readBytes;
+  }
+
+  public final int getWrittenBytes() {
+    return writtenBytes;
+  }
+
+  public final void setWrittenBytes(final int writtenBytes) {
+    this.writtenBytes = writtenBytes;
   }
 
   @Override
@@ -44,5 +62,10 @@ public class TaskMetric implements Metric<TaskState.State> {
   @Override
   public final void addEvent(final TaskState.State prevState, final TaskState.State newState) {
     events.add(new Event<>(System.currentTimeMillis(), prevState, newState));
+  }
+
+  @Override
+  public void processMetricMessage(final String metricField, final byte[] metricValue) {
+    // do nothing
   }
 }

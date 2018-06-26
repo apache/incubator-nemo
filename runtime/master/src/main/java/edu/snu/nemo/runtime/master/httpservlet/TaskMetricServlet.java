@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master.httpservlet;
 
 import edu.snu.nemo.runtime.master.MetricStore;
-import edu.snu.nemo.runtime.master.metric.TaskMetric;
+import edu.snu.nemo.runtime.common.metric.TaskMetric;
 
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;

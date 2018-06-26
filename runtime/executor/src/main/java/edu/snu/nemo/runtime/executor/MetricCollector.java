@@ -15,9 +15,6 @@
  */
 package edu.snu.nemo.runtime.executor;
 
-import edu.snu.nemo.runtime.common.metric.MetricDataBuilder;
-
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -26,7 +23,6 @@ import java.util.Map;
 public final class MetricCollector {
 
   private final MetricMessageSender metricMessageSender;
-  private final Map<String, MetricDataBuilder> metricDataBuilderMap;
 
   /**
    * Constructor.
@@ -35,7 +31,6 @@ public final class MetricCollector {
    */
   public MetricCollector(final MetricMessageSender metricMessageSender) {
     this.metricMessageSender = metricMessageSender;
-    this.metricDataBuilderMap = new HashMap<>();
   }
 
   /**
@@ -46,9 +41,6 @@ public final class MetricCollector {
    * @param initialMetric metric to add
    */
   public void beginMeasurement(final String compUnitId, final Map<String, Object> initialMetric) {
-    final MetricDataBuilder metricDataBuilder = new MetricDataBuilder(compUnitId);
-    metricDataBuilder.beginMeasurement(initialMetric);
-    metricDataBuilderMap.put(compUnitId, metricDataBuilder);
   }
 
   /**
@@ -59,9 +51,6 @@ public final class MetricCollector {
    * @param finalMetric metric to add
    */
   public void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {
-    final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(compUnitId);
-    metricDataBuilder.endMeasurement(finalMetric);
-    metricMessageSender.send(compUnitId, metricDataBuilder.build().toJson());
-    metricDataBuilderMap.remove(compUnitId);
+    // metricMessageSender.send(compUnitId, metricDataBuilder.build().toJson());
   }
 }

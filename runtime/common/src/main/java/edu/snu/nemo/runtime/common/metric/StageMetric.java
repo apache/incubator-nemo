@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.metric;
+package edu.snu.nemo.runtime.common.metric;
 
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.state.StageState;
@@ -49,5 +49,10 @@ public class StageMetric implements Metric<StageState.State> {
   @Override
   public final void addEvent(final StageState.State prevState, final StageState.State newState) {
     events.add(new Event<>(System.currentTimeMillis(), prevState, newState));
+  }
+
+  @Override
+  public void processMetricMessage(final String metricField, final byte[] metricValue) {
+    // do nothing
   }
 }

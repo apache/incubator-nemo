@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.metric;
+package edu.snu.nemo.runtime.common.metric;
 
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.JobState;
@@ -49,5 +49,10 @@ public final class JobMetric implements Metric<JobState.State> {
   @Override
   public void addEvent(final JobState.State prevState, final JobState.State newState) {
     events.add(new Event<>(System.currentTimeMillis(), prevState, newState));
+  }
+
+  @Override
+  public void processMetricMessage(final String metricField, final byte[] metricValue) {
+    // do nothing
   }
 }

@@ -20,7 +20,6 @@ import edu.snu.nemo.common.exception.IllegalStateTransitionException;
 import edu.snu.nemo.common.exception.SchedulingException;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.StateMachine;
-import edu.snu.nemo.runtime.common.metric.MetricDataBuilder;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.Stage;
@@ -37,9 +36,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.master.metric.JobMetric;
-import edu.snu.nemo.runtime.master.metric.StageMetric;
-import edu.snu.nemo.runtime.master.metric.TaskMetric;
+import edu.snu.nemo.runtime.common.metric.JobMetric;
+import edu.snu.nemo.runtime.common.metric.StageMetric;
+import edu.snu.nemo.runtime.common.metric.TaskMetric;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,7 +89,6 @@ public final class JobStateManager {
    * For metrics.
    */
   private final MetricMessageHandler metricMessageHandler;
-  private final Map<String, MetricDataBuilder> metricDataBuilderMap;
 
   private MetricStore metricStore;
 
@@ -107,7 +105,6 @@ public final class JobStateManager {
     this.taskIdToCurrentAttempt = new HashMap<>();
     this.finishLock = new ReentrantLock();
     this.jobFinishedCondition = finishLock.newCondition();
-    this.metricDataBuilderMap = new HashMap<>();
     this.metricStore = MetricStore.getInstance();
     initializeComputationStates();
   }
@@ -367,9 +364,6 @@ public final class JobStateManager {
    * @param initialMetric metric to add
    */
   private void beginMeasurement(final String compUnitId, final Map<String, Object> initialMetric) {
-    final MetricDataBuilder metricDataBuilder = new MetricDataBuilder(compUnitId);
-    metricDataBuilder.beginMeasurement(initialMetric);
-    metricDataBuilderMap.put(compUnitId, metricDataBuilder);
   }
 
   /**
@@ -379,15 +373,6 @@ public final class JobStateManager {
    * @param finalMetric metric to add
    */
   private void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {
-    final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(compUnitId);
-
-    // may be null when a Task fails without entering the executing state (due to an input read failure)
-    if (metricDataBuilder != null) {
-      finalMetric.put("ContainerId", "Master");
-      metricDataBuilder.endMeasurement(finalMetric);
-      metricMessageHandler.onMetricMessageReceived(compUnitId, metricDataBuilder.build().toJson());
-      metricDataBuilderMap.remove(compUnitId);
-    }
   }
 
   /**
