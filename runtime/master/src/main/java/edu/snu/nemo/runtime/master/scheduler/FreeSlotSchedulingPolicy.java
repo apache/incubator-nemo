@@ -20,8 +20,6 @@ import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
 import javax.inject.Inject;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * This policy finds executor that has free slot for a Task.
@@ -32,20 +30,8 @@ public final class FreeSlotSchedulingPolicy implements SchedulingPolicy {
   public FreeSlotSchedulingPolicy() {
   }
 
-  /**
-   * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by the free slot of executors.
-   *                               Executors that do not have any free slots will be filtered by this policy.
-   * @param task {@link Task} to be scheduled.
-   * @return filtered Set of {@link ExecutorRepresenter}.
-   */
   @Override
-  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
-                                                             final Task task) {
-    final Set<ExecutorRepresenter> candidateExecutors =
-        executorRepresenterSet.stream()
-            .filter(executor -> executor.getRunningTasks().size() < executor.getExecutorCapacity())
-            .collect(Collectors.toSet());
-
-    return candidateExecutors;
+  public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
+    return executor.getRunningTasks().size() < executor.getExecutorCapacity();
   }
 }

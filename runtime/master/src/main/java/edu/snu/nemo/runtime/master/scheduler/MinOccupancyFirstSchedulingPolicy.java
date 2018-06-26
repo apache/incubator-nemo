@@ -68,4 +68,9 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
 
     return candidateExecutors;
   }
+
+  @Override
+  public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
+    return true;
+  }
 }

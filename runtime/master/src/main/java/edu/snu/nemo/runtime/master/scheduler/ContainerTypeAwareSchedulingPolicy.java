@@ -21,8 +21,6 @@ import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
 import javax.inject.Inject;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * This policy find executors which has corresponding container type.
@@ -34,27 +32,11 @@ public final class ContainerTypeAwareSchedulingPolicy implements SchedulingPolic
   public ContainerTypeAwareSchedulingPolicy() {
   }
 
-  /**
-   * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by the container type.
-   *                               If the container type of target Task is NONE, it will return the original set.
-   * @param task {@link Task} to be scheduled.
-   * @return filtered Set of {@link ExecutorRepresenter}.
-   */
   @Override
-  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
-                                                             final Task task) {
-
+  public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
     final String executorPlacementPropertyValue = task.getPropertyValue(ExecutorPlacementProperty.class)
         .orElse(ExecutorPlacementProperty.NONE);
-    if (executorPlacementPropertyValue.equals(ExecutorPlacementProperty.NONE)) {
-      return executorRepresenterSet;
-    }
-
-    final Set<ExecutorRepresenter> candidateExecutors =
-        executorRepresenterSet.stream()
-            .filter(executor -> executor.getContainerType().equals(executorPlacementPropertyValue))
-            .collect(Collectors.toSet());
-
-    return candidateExecutors;
+    return executorPlacementPropertyValue.equals(ExecutorPlacementProperty.NONE) ? true
+        : executor.getContainerType().equals(executorPlacementPropertyValue);
   }
 }
