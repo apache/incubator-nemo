@@ -96,20 +96,24 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   /**
-   * @param physicalPlan of the job.
-   * @param jobStateManager of the job.
+   * @param physicalPlanOfJob of the job.
+   * @param jobStateManagerOfJob of the job.
    */
   @Override
-  public void scheduleJob(final PhysicalPlan physicalPlan, final JobStateManager jobStateManager) {
-    this.physicalPlan = physicalPlan;
-    this.jobStateManager = jobStateManager;
+  public void scheduleJob(final PhysicalPlan physicalPlanOfJob, final JobStateManager jobStateManagerOfJob) {
+    if (this.physicalPlan != null || this.jobStateManager != null) {
+      throw new IllegalStateException("scheduleJob() has been called more than once");
+    }
 
-    schedulerRunner.scheduleJob(jobStateManager);
+    this.physicalPlan = physicalPlanOfJob;
+    this.jobStateManager = jobStateManagerOfJob;
+
+    schedulerRunner.scheduleJob(jobStateManagerOfJob);
     schedulerRunner.runSchedulerThread();
 
-    LOG.info("Job to schedule: {}", physicalPlan.getId());
+    LOG.info("Job to schedule: {}", physicalPlanOfJob.getId());
 
-    this.initialScheduleGroup = physicalPlan.getStageDAG().getVertices().stream()
+    this.initialScheduleGroup = physicalPlanOfJob.getStageDAG().getVertices().stream()
         .mapToInt(stage -> stage.getScheduleGroupIndex())
         .min().getAsInt();
 
