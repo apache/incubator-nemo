@@ -295,11 +295,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           .stream()
           .filter(stage -> {
             final StageState.State stageState = jobStateManager.getStageState(stage.getId());
-<<<<<<< HEAD
             return stageState.equals(StageState.State.SHOULD_RETRY)
-=======
-            return stageState.equals(StageState.State.FAILED_RECOVERABLE)
->>>>>>> master
                 || stageState.equals(StageState.State.READY);
           })
           .collect(Collectors.toList());
@@ -350,11 +346,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
         case EXECUTING:
           LOG.info("Skipping {} because its outputs are safe!", taskId);
           break;
-<<<<<<< HEAD
         case SHOULD_RETRY:
-=======
-        case FAILED_RECOVERABLE:
->>>>>>> master
           jobStateManager.onTaskStateChanged(taskId, READY);
         case READY:
           taskIdsToSchedule.add(taskId);
