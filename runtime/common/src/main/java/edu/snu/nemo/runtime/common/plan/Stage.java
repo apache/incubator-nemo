@@ -40,8 +40,6 @@ public final class Stage extends Vertex {
   private final byte[] serializedIRDag;
   private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
   private final List<Map<String, Readable>> vertexIdToReadables;
-  private final int parallelism;
-  private final int scheduleGroupIndex;
 
   /**
    * Constructor.
@@ -60,10 +58,6 @@ public final class Stage extends Vertex {
     this.serializedIRDag = SerializationUtils.serialize(irDag);
     this.executionProperties = executionProperties;
     this.vertexIdToReadables = vertexIdToReadables;
-    this.parallelism = executionProperties.get(ParallelismProperty.class)
-        .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
-    this.scheduleGroupIndex = executionProperties.get(ScheduleGroupIndexProperty.class)
-        .orElseThrow(() -> new RuntimeException("ScheduleGroupIndex property must be set for Stage"));
   }
 
   /**
@@ -85,17 +79,26 @@ public final class Stage extends Vertex {
    */
   public List<String> getTaskIds() {
     final List<String> taskIds = new ArrayList<>();
-    for (int taskIdx = 0; taskIdx < parallelism; taskIdx++) {
+    for (int taskIdx = 0; taskIdx < getParallelism(); taskIdx++) {
       taskIds.add(RuntimeIdGenerator.generateTaskId(taskIdx, getId()));
     }
     return taskIds;
   }
 
   /**
+   * @return the parallelism
+   */
+  public int getParallelism() {
+    return executionProperties.get(ParallelismProperty.class)
+        .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
+  }
+
+  /**
    * @return the schedule group index.
    */
   public int getScheduleGroupIndex() {
-    return scheduleGroupIndex;
+    return executionProperties.get(ScheduleGroupIndexProperty.class)
+        .orElseThrow(() -> new RuntimeException("ScheduleGroupIndex property must be set for Stage"));
   }
 
   /**
@@ -127,9 +130,9 @@ public final class Stage extends Vertex {
   @Override
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("{\"scheduleGroupIndex\": ").append(scheduleGroupIndex);
+    sb.append("{\"scheduleGroupIndex\": ").append(getScheduleGroupIndex());
     sb.append(", \"irDag\": ").append(irDag);
-    sb.append(", \"parallelism\": ").append(parallelism);
+    sb.append(", \"parallelism\": ").append(getParallelism());
     sb.append(", \"executionProperties\": ").append(executionProperties);
     sb.append('}');
     return sb.toString();

@@ -45,7 +45,7 @@ public class DefaultEdgeCoderPassTest {
 
   @Before
   public void setUp() throws Exception {
-    compiledDAG = CompilerTestUtil.compileMRDAG();
+    compiledDAG = CompilerTestUtil.compileWordCountDAG();
   }
 
   @Test

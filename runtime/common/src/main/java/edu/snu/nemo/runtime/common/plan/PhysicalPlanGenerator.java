@@ -267,12 +267,12 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
           continue;
         }
 
-        // Find any push inEdge
+        // Find any non-pull inEdge
         Integer scheduleGroupIndex = null;
         Integer newScheduleGroupIndex = null;
         for (final StageEdge stageEdge : dag.getIncomingEdgesOf(destination)) {
           final Stage source = stageEdge.getSrc();
-          if (stageEdge.getDataFlowModel() == DataFlowModelProperty.Value.Push) {
+          if (stageEdge.getDataFlowModel() != DataFlowModelProperty.Value.Pull) {
             if (scheduleGroupIndex != null && source.getScheduleGroupIndex() != scheduleGroupIndex) {
               throw new RuntimeException(String.format("Multiple Push inEdges from different ScheduleGroup: %d, %d",
                   scheduleGroupIndex, source.getScheduleGroupIndex()));
