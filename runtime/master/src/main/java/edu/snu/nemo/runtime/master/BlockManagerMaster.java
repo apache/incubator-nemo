@@ -176,9 +176,6 @@ public final class BlockManagerMaster {
 
   /**
    * To be called when a potential producer task is scheduled.
-   * To be precise, it is called when the task is enqueued to
-   * {@link edu.snu.nemo.runtime.master.scheduler.PendingTaskCollection}.
-   *
    * @param scheduledTaskId the ID of the scheduled task.
    */
   public void onProducerTaskScheduled(final String scheduledTaskId) {
