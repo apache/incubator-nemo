@@ -158,7 +158,7 @@ public final class FaultToleranceTest {
         final Optional<Integer> maxTaskAttempt = stage.getTaskIds().stream()
             .map(jobStateManager::getTaskAttempt).max(Integer::compareTo);
         assertTrue(maxTaskAttempt.isPresent());
-        assertEquals(2, (int) maxTaskAttempt.get());
+        assertEquals(1, (int) maxTaskAttempt.get());
 
         SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
             executorRegistry, false);

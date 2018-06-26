@@ -21,8 +21,6 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * (WARNING) Implementations of this interface must be thread-safe.
@@ -32,9 +30,5 @@ import java.util.stream.Collectors;
 @FunctionalInterface
 @DefaultImplementation(CompositeSchedulingPolicy.class)
 public interface SchedulingPolicy {
-  default Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
-                                                              final Task task) {
-    return executorRepresenterSet.stream().filter(e -> testSchedulability(e, task)).collect(Collectors.toSet());
-  }
   boolean testSchedulability(final ExecutorRepresenter executor, final Task task);
 }

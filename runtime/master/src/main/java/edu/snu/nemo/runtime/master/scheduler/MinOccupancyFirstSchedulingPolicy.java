@@ -49,7 +49,6 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
    * @param task {@link Task} to be scheduled.
    * @return filtered Set of {@link ExecutorRepresenter}.
    */
-  @Override
   public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
                                                              final Task task) {
     final OptionalInt minOccupancy =

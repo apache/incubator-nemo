@@ -25,8 +25,10 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
 /**
@@ -59,8 +61,8 @@ public final class SourceLocationAwareSchedulingPolicyTest {
     final ExecutorRepresenter e0 = mockExecutorRepresenter(SITE_1);
     final ExecutorRepresenter e1 = mockExecutorRepresenter(SITE_1);
 
-    assertEquals(Collections.emptySet(),
-        schedulingPolicy.filterExecutorRepresenters(new HashSet<>(Arrays.asList(e0, e1)), task));
+    assertEquals(Collections.emptySet(), Arrays.asList(e0, e1).stream()
+        .filter(e -> schedulingPolicy.testSchedulability(e, task)).collect(Collectors.toSet()));
   }
 
   /**
@@ -83,8 +85,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
 
     final ExecutorRepresenter e = mockExecutorRepresenter(SITE_1);
     for (final Task task : new HashSet<>(Arrays.asList(task0, task1, task2, task3))) {
-      assertEquals(new HashSet<>(Collections.singletonList(e)), schedulingPolicy.filterExecutorRepresenters(
-          new HashSet<>(Collections.singletonList(e)), task));
+      assertTrue(schedulingPolicy.testSchedulability(e, task));
     }
   }
 

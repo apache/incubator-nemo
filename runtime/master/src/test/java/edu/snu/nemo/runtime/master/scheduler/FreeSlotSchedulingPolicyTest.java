@@ -23,6 +23,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertEquals;
@@ -55,10 +56,10 @@ public final class FreeSlotSchedulingPolicyTest {
 
     final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1));
 
-    final Set<ExecutorRepresenter> candidateExecutors =
-        schedulingPolicy.filterExecutorRepresenters(executorRepresenterList, task);
+    final Set<ExecutorRepresenter> candidateExecutors = executorRepresenterList.stream()
+        .filter(e -> schedulingPolicy.testSchedulability(e, task)).collect(Collectors.toSet());
 
-    final Set<ExecutorRepresenter> expectedExecutors = new HashSet<>(Arrays.asList(a1));
+    final Set<ExecutorRepresenter> expectedExecutors = Collections.singleton(a1);
     assertEquals(expectedExecutors, candidateExecutors);
   }
 }

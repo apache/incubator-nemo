@@ -23,6 +23,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertEquals;
@@ -43,8 +44,7 @@ public final class MinOccupancyFirstSchedulingPolicyTest {
     return executorRepresenter;
   }
 
-  @Test
-  public void testRoundRobin() {
+  public void test() {
     final SchedulingPolicy schedulingPolicy = new MinOccupancyFirstSchedulingPolicy();
     final ExecutorRepresenter a0 = mockExecutorRepresenter(1);
     final ExecutorRepresenter a1 = mockExecutorRepresenter(2);
@@ -54,10 +54,10 @@ public final class MinOccupancyFirstSchedulingPolicyTest {
 
     final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1, a2));
 
-    final Set<ExecutorRepresenter> candidateExecutors =
-        schedulingPolicy.filterExecutorRepresenters(executorRepresenterList, task);
+    final Set<ExecutorRepresenter> candidateExecutors = executorRepresenterList.stream()
+        .filter(e -> schedulingPolicy.testSchedulability(e, task)).collect(Collectors.toSet());
 
-    final Set<ExecutorRepresenter> expectedExecutors = new HashSet<>(Arrays.asList(a0));
+    final Set<ExecutorRepresenter> expectedExecutors = Collections.singleton(a0);
     assertEquals(expectedExecutors, candidateExecutors);
   }
 }
