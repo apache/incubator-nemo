@@ -21,7 +21,6 @@ import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.util.Collections;
-import java.util.List;
 
 /**
  * Edge data store pass to process inter-stage memory store edges.
@@ -37,11 +36,10 @@ public final class DefaultInterTaskDataStorePass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.getVertices().forEach(vertex -> {
-      final List<IREdge> inEdges = dag.getIncomingEdgesOf(vertex);
-      if (!inEdges.isEmpty()) {
-        inEdges.forEach(edge -> edge.setProperty(
-            InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore)));
-      }
+      dag.getIncomingEdgesOf(vertex).stream()
+          .filter(edge -> !edge.getExecutionProperties().containsKey(InterTaskDataStoreProperty.class))
+          .forEach(edge -> edge.setProperty(
+              InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.LocalFileStore)));
     });
     return dag;
   }
