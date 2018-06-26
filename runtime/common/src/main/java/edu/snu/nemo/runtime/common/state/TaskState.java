@@ -43,14 +43,14 @@ public final class TaskState {
 
     // From EXECUTING
     stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE, "Task completed normally");
-    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED, "Unrecoverable failure");
-    stateMachineBuilder.addTransition(State.EXECUTING, State.SHOULD_RETRY, "Did not complete, should be retried");
     stateMachineBuilder.addTransition(State.EXECUTING, State.ON_HOLD, "Task paused for dynamic optimization");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.SHOULD_RETRY, "Did not complete, should be retried");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED, "Unrecoverable failure");
 
     // From ON HOLD
     stateMachineBuilder.addTransition(State.ON_HOLD, State.COMPLETE, "Task completed after being on hold");
-    stateMachineBuilder.addTransition(State.ON_HOLD, State.FAILED, "Unrecoverable failure");
     stateMachineBuilder.addTransition(State.ON_HOLD, State.SHOULD_RETRY, "Did not complete, should be retried");
+    stateMachineBuilder.addTransition(State.ON_HOLD, State.FAILED, "Unrecoverable failure");
 
     // From COMPLETE
     stateMachineBuilder.addTransition(State.COMPLETE, State.SHOULD_RETRY, "Completed before, but should be retried");
