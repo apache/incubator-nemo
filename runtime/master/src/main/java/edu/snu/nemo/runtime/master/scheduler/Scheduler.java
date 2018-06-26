@@ -27,7 +27,7 @@ import javax.annotation.Nullable;
 
 /**
  * Only two threads call scheduling code: RuntimeMaster thread (RMT), and SchedulerThread(ST).
- * RMT and ST meet only at two points: {@link ExecutorRegistry}, and {@link PendingTaskCollection},
+ * RMT and ST meet only at two points: {@link ExecutorRegistry}, and {@link PendingTaskCollectionPointer},
  * which are synchronized(ThreadSafe).
  * Other scheduler-related classes that are accessed by only one of the two threads are not synchronized(NotThreadSafe).
  */
