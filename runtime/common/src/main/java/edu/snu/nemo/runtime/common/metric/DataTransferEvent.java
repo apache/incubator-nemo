@@ -15,35 +15,40 @@
  */
 package edu.snu.nemo.runtime.common.metric;
 
-import java.io.Serializable;
-
 /**
- * Class for all generic event that contains timestamp at the moment.
+ * Event for data transfer, such as data read or write.
  */
-public class Event implements Serializable {
-  private long timestamp;
+public class DataTransferEvent extends Event {
+  private TransferType transferType;
 
-  /**
-   * Constructor.
-   * @param timestamp timestamp in millisecond.
-   */
-  public Event(final long timestamp) {
-    this.timestamp = timestamp;
+  public DataTransferEvent(final long timestamp, final TransferType transferType) {
+    super(timestamp);
+    this.transferType = transferType;
   }
 
   /**
-   * Get timestamp.
-   * @return timestamp.
+   * Get transfer type.
+   * @return TransferType.
    */
-  public final long getTimestamp() {
-    return timestamp;
-  };
+  public final TransferType getTransferType() {
+    return transferType;
+  }
 
   /**
-   * Set timestamp.
-   * @param timestamp timestamp in millisecond.
+   * Set transfer type.
+   * @param transferType TransferType to set.
    */
-  public final void setTimestamp(final long timestamp) {
-    this.timestamp = timestamp;
+  public final void setTransferType(final TransferType transferType) {
+    this.transferType = transferType;
+  }
+
+  /**
+   * Enum of transfer types.
+   */
+  public enum TransferType {
+    READ_START,
+    READ_END,
+    WRITE_START,
+    WRITE_END
   }
 }

@@ -25,7 +25,7 @@ import java.util.List;
  */
 public class TaskMetric implements Metric<TaskState.State> {
   private String id;
-  private List<Event<TaskState.State>> events = new ArrayList<>();
+  private List<StateTransitionEvent<TaskState.State>> stateTransitionEvents = new ArrayList<>();
   private int readBytes = 0;
   private int writtenBytes = 0;
 
@@ -50,8 +50,8 @@ public class TaskMetric implements Metric<TaskState.State> {
   }
 
   @Override
-  public final List<Event<TaskState.State>> getEvents() {
-    return events;
+  public final List<StateTransitionEvent<TaskState.State>> getStateTransitionEvents() {
+    return stateTransitionEvents;
   }
 
   @Override
@@ -61,7 +61,7 @@ public class TaskMetric implements Metric<TaskState.State> {
 
   @Override
   public final void addEvent(final TaskState.State prevState, final TaskState.State newState) {
-    events.add(new Event<>(System.currentTimeMillis(), prevState, newState));
+    stateTransitionEvents.add(new StateTransitionEvent<>(System.currentTimeMillis(), prevState, newState));
   }
 
   @Override

@@ -26,7 +26,7 @@ import java.util.List;
  */
 public final class JobMetric implements Metric<JobState.State> {
   private String id;
-  private List<Event<JobState.State>> events = new ArrayList<>();
+  private List<StateTransitionEvent<JobState.State>> stateTransitionEvents = new ArrayList<>();
 
   public JobMetric(final PhysicalPlan physicalPlan) {
     this.id = physicalPlan.getId();
@@ -42,13 +42,13 @@ public final class JobMetric implements Metric<JobState.State> {
   }
 
   @Override
-  public List<Event<JobState.State>> getEvents() {
-    return events;
+  public List<StateTransitionEvent<JobState.State>> getStateTransitionEvents() {
+    return stateTransitionEvents;
   }
 
   @Override
   public void addEvent(final JobState.State prevState, final JobState.State newState) {
-    events.add(new Event<>(System.currentTimeMillis(), prevState, newState));
+    stateTransitionEvents.add(new StateTransitionEvent<>(System.currentTimeMillis(), prevState, newState));
   }
 
   @Override

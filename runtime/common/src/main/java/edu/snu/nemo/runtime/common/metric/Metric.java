@@ -29,13 +29,13 @@ public interface Metric<T> {
   String getId();
 
   /**
-   * Get its list of {@link Event}.
+   * Get its list of {@link StateTransitionEvent}.
    * @return list of events.
    */
-  List<Event<T>> getEvents();
+  List<StateTransitionEvent<T>> getStateTransitionEvents();
 
   /**
-   * Add a {@link Event} to the metric.
+   * Add a {@link StateTransitionEvent} to the metric.
    * @param prevState previous state.
    * @param newState new state.
    */

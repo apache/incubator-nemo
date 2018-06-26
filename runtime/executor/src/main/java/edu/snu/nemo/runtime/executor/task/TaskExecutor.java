@@ -27,11 +27,11 @@ import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import edu.snu.nemo.runtime.common.metric.DataTransferEvent;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.executor.MetricCollector;
 import edu.snu.nemo.runtime.executor.MetricMessageSender;
 import edu.snu.nemo.runtime.executor.TaskStateManager;
 import edu.snu.nemo.runtime.executor.datatransfer.*;
@@ -39,6 +39,8 @@ import edu.snu.nemo.runtime.executor.datatransfer.*;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +66,7 @@ public final class TaskExecutor {
 
   // Metrics information
   private final Map<String, Object> metricMap;
-  private final MetricCollector metricCollector;
+  private final MetricMessageSender metricMessageSender;
 
   // Dynamic optimization
   private String idOfVertexPutOnHold;
@@ -92,7 +94,7 @@ public final class TaskExecutor {
 
     // Metrics information
     this.metricMap = new HashMap<>();
-    this.metricCollector = new MetricCollector(metricMessageSender);
+    this.metricMessageSender = metricMessageSender;
 
     // Dynamic optimization
     // Assigning null is very bad, but we are keeping this for now
@@ -254,7 +256,6 @@ public final class TaskExecutor {
     }
     LOG.info("{} started", taskId);
     taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
-    metricCollector.beginMeasurement(taskId, metricMap);
 
     // Phase 1: Consume task-external side-input related data.
     final Map<Boolean, List<DataFetcher>> sideInputRelated = dataFetchers.stream()
@@ -284,8 +285,6 @@ public final class TaskExecutor {
       }
     }
 
-    // Miscellaneous: Metrics, DynOpt, etc
-    metricCollector.endMeasurement(taskId, metricMap);
     if (idOfVertexPutOnHold == null) {
       taskStateManager.onTaskStateChanged(TaskState.State.COMPLETE, Optional.empty(), Optional.empty());
       LOG.info("{} completed", taskId);
@@ -470,11 +469,11 @@ public final class TaskExecutor {
    */
   private void finalizeOutputWriters(final VertexHarness vertexHarness) {
     final List<Long> writtenBytesList = new ArrayList<>();
-    final Map<String, Object> metric = new HashMap<>();
-    final IRVertex irVertex = vertexHarness.getIRVertex();
 
-    metricCollector.beginMeasurement(irVertex.getId(), metric);
     final long writeStartTime = System.currentTimeMillis();
+    metricMessageSender.send("TaskMetric", taskId,
+        "dataEvent", SerializationUtils.serialize(
+            new DataTransferEvent(writeStartTime, DataTransferEvent.TransferType.WRITE_START)));
 
     vertexHarness.getWritersToChildrenTasks().forEach(outputWriter -> {
       outputWriter.close();
@@ -483,14 +482,17 @@ public final class TaskExecutor {
     });
 
     final long writeEndTime = System.currentTimeMillis();
-    metric.put("OutputWriteTime(ms)", writeEndTime - writeStartTime);
+    metricMessageSender.send("TaskMetric", taskId,
+        "dataEvent", SerializationUtils.serialize(
+            new DataTransferEvent(writeEndTime, DataTransferEvent.TransferType.WRITE_END)));
+
     if (!writtenBytesList.isEmpty()) {
       long totalWrittenBytes = 0;
       for (final Long writtenBytes : writtenBytesList) {
         totalWrittenBytes += writtenBytes;
       }
-      metricMap.put("WrittenBytes", totalWrittenBytes);
+      metricMessageSender.send("TaskMetric", taskId,
+          "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
     }
-    metricCollector.endMeasurement(irVertex.getId(), metric);
   }
 }

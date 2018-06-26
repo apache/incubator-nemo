@@ -26,7 +26,7 @@ import java.util.List;
  */
 public class StageMetric implements Metric<StageState.State> {
   private String id;
-  private List<Event<StageState.State>> events = new ArrayList<>();
+  private List<StateTransitionEvent<StageState.State>> stateTransitionEvents = new ArrayList<>();
 
   public StageMetric(final Stage stage) {
     this.id = stage.getId();
@@ -42,13 +42,13 @@ public class StageMetric implements Metric<StageState.State> {
   }
 
   @Override
-  public final List<Event<StageState.State>> getEvents() {
-    return events;
+  public final List<StateTransitionEvent<StageState.State>> getStateTransitionEvents() {
+    return stateTransitionEvents;
   }
 
   @Override
   public final void addEvent(final StageState.State prevState, final StageState.State newState) {
-    events.add(new Event<>(System.currentTimeMillis(), prevState, newState));
+    stateTransitionEvents.add(new StateTransitionEvent<>(System.currentTimeMillis(), prevState, newState));
   }
 
   @Override
