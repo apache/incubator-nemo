@@ -183,8 +183,8 @@ public final class JobStateManager {
     switch (newTaskState) {
       case ON_HOLD:
       case COMPLETE:
-      case FAILED_UNRECOVERABLE:
-      case FAILED_RECOVERABLE:
+      case FAILED:
+      case SHOULD_RETRY:
         metric.put("ToState", newTaskState);
         endMeasurement(taskId, metric);
         break;
@@ -220,8 +220,8 @@ public final class JobStateManager {
       case EXECUTING:
         onStageStateChanged(stageId, StageState.State.EXECUTING);
         break;
-      case FAILED_RECOVERABLE:
-        onStageStateChanged(stageId, StageState.State.FAILED_RECOVERABLE);
+      case SHOULD_RETRY:
+        onStageStateChanged(stageId, StageState.State.SHOULD_RETRY);
         break;
       case COMPLETE:
       case ON_HOLD:
@@ -229,7 +229,7 @@ public final class JobStateManager {
           onStageStateChanged(stageId, StageState.State.COMPLETE);
         }
         break;
-      case FAILED_UNRECOVERABLE:
+      case FAILED:
         break;
       default:
         throw new UnknownExecutionStateException(new Throwable("This task state is unknown"));

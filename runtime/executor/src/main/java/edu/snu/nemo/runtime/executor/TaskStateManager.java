@@ -80,13 +80,13 @@ public final class TaskStateManager {
         metricCollector.endMeasurement(taskId, metric);
         notifyTaskStateToMaster(newState, Optional.empty(), cause);
         break;
-      case FAILED_RECOVERABLE:
+      case SHOULD_RETRY:
         LOG.debug("Task ID {} failed (recoverable).", this.taskId);
         metric.put("ToState", newState);
         metricCollector.endMeasurement(taskId, metric);
         notifyTaskStateToMaster(newState, Optional.empty(), cause);
         break;
-      case FAILED_UNRECOVERABLE:
+      case FAILED:
         LOG.debug("Task ID {} failed (unrecoverable).", this.taskId);
         metric.put("ToState", newState);
         metricCollector.endMeasurement(taskId, metric);
@@ -141,9 +141,9 @@ public final class TaskStateManager {
         return ControlMessage.TaskStateFromExecutor.EXECUTING;
       case COMPLETE:
         return ControlMessage.TaskStateFromExecutor.COMPLETE;
-      case FAILED_RECOVERABLE:
+      case SHOULD_RETRY:
         return ControlMessage.TaskStateFromExecutor.FAILED_RECOVERABLE;
-      case FAILED_UNRECOVERABLE:
+      case FAILED:
         return ControlMessage.TaskStateFromExecutor.FAILED_UNRECOVERABLE;
       case ON_HOLD:
         return ControlMessage.TaskStateFromExecutor.ON_HOLD;

@@ -353,9 +353,9 @@ public final class RuntimeMaster {
       case COMPLETE:
         return COMPLETE;
       case FAILED_RECOVERABLE:
-        return TaskState.State.FAILED_RECOVERABLE;
+        return TaskState.State.SHOULD_RETRY;
       case FAILED_UNRECOVERABLE:
-        return TaskState.State.FAILED_UNRECOVERABLE;
+        return TaskState.State.FAILED;
       case ON_HOLD:
         return ON_HOLD;
       default:

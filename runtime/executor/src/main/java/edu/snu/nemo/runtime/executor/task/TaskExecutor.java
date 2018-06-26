@@ -209,7 +209,7 @@ public final class TaskExecutor {
       doExecute();
     } catch (Throwable throwable) {
       // ANY uncaught throwable is reported to the master
-      taskStateManager.onTaskStateChanged(TaskState.State.FAILED_UNRECOVERABLE, Optional.empty(), Optional.empty());
+      taskStateManager.onTaskStateChanged(TaskState.State.FAILED, Optional.empty(), Optional.empty());
       LOG.error(ExceptionUtils.getStackTrace(throwable));
     }
   }
@@ -311,7 +311,7 @@ public final class TaskExecutor {
         try {
           element = dataFetcher.fetchDataElement();
         } catch (IOException e) {
-          taskStateManager.onTaskStateChanged(TaskState.State.FAILED_RECOVERABLE,
+          taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
               Optional.empty(), Optional.of(TaskState.RecoverableFailureCause.INPUT_READ_FAILURE));
           LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e.toString());
           return false;

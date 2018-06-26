@@ -74,7 +74,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    */
   private PhysicalPlan physicalPlan;
   private JobStateManager jobStateManager;
-  private int initialScheduleGroup;
+  private List<List<Stage>> sortedScheduleGroups;
 
   @Inject
   public BatchSingleJobScheduler(final SchedulerRunner schedulerRunner,
@@ -107,12 +107,16 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
     schedulerRunner.scheduleJob(scheduledJobStateManager);
     schedulerRunner.runSchedulerThread();
-
     LOG.info("Job to schedule: {}", jobToSchedule.getId());
 
-    this.initialScheduleGroup = jobToSchedule.getStageDAG().getVertices().stream()
-        .mapToInt(stage -> stage.getScheduleGroupIndex())
-        .min().getAsInt();
+    this.sortedScheduleGroups = jobToSchedule.getStageDAG().getVertices()
+        .stream()
+        .collect(Collectors.groupingBy(Stage::getScheduleGroupIndex))
+        .entrySet()
+        .stream()
+        .sorted(Map.Entry.comparingByKey())
+        .map(Map.Entry::getValue)
+        .collect(Collectors.toList());
 
     scheduleNextScheduleGroup(initialScheduleGroup);
   }
@@ -154,13 +158,13 @@ public final class BatchSingleJobScheduler implements Scheduler {
         case COMPLETE:
           onTaskExecutionComplete(executorId, taskId);
           break;
-        case FAILED_RECOVERABLE:
+        case SHOULD_RETRY:
           onTaskExecutionFailedRecoverable(executorId, taskId, failureCause);
           break;
         case ON_HOLD:
           onTaskExecutionOnHold(executorId, taskId, vertexPutOnHold);
           break;
-        case FAILED_UNRECOVERABLE:
+        case FAILED:
           throw new UnrecoverableFailureException(new Exception(new StringBuffer().append("The job failed on Task #")
               .append(taskId).append(" in Executor ").append(executorId).toString()));
         case READY:
@@ -174,7 +178,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
       // Do not change state, as this notification is for a previous task attempt.
       // For example, the master can receive a notification that an executor has been removed,
       // and then a notification that the task that was running in the removed executor has been completed.
-      // In this case, if we do not consider the attempt number, the state changes from FAILED_RECOVERABLE to COMPLETED,
+      // In this case, if we do not consider the attempt number, the state changes from SHOULD_RETRY to COMPLETED,
       // which is illegal.
       LOG.info("{} state change to {} arrived late, we will ignore this.", new Object[]{taskId, newState});
     } else {
@@ -202,7 +206,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
     tasksToReExecute.forEach(failedTaskId -> {
       final int attemptIndex = jobStateManager.getTaskAttempt(failedTaskId);
-      onTaskStateReportFromExecutor(executorId, failedTaskId, attemptIndex, TaskState.State.FAILED_RECOVERABLE,
+      onTaskStateReportFromExecutor(executorId, failedTaskId, attemptIndex, TaskState.State.SHOULD_RETRY,
           null, TaskState.RecoverableFailureCause.CONTAINER_FAILURE);
     });
 
@@ -288,7 +292,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           .stream()
           .filter(stage -> {
             final StageState.State stageState = jobStateManager.getStageState(stage.getId());
-            return stageState.equals(StageState.State.FAILED_RECOVERABLE)
+            return stageState.equals(StageState.State.SHOULD_RETRY)
                 || stageState.equals(StageState.State.READY);
           })
           .collect(Collectors.toList());
@@ -339,7 +343,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
         case EXECUTING:
           LOG.info("Skipping {} because its outputs are safe!", taskId);
           break;
-        case FAILED_RECOVERABLE:
+        case SHOULD_RETRY:
           jobStateManager.onTaskStateChanged(taskId, READY);
         case READY:
           taskIdsToSchedule.add(taskId);
@@ -348,7 +352,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           // Do nothing
           break;
         default:
-          throw new SchedulingException(new Throwable("Detected a FAILED_UNRECOVERABLE Task"));
+          throw new SchedulingException(new Throwable("Detected a FAILED Task"));
       }
     }
 
