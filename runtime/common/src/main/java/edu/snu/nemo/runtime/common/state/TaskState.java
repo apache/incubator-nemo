@@ -31,7 +31,7 @@ public final class TaskState {
     final StateMachine.Builder stateMachineBuilder = StateMachine.newBuilder();
 
     // Add states
-    stateMachineBuilder.addState(State.READY, "The task has been created.");
+    stateMachineBuilder.addState(State.READY, "The task is ready to be executed.");
     stateMachineBuilder.addState(State.EXECUTING, "The task is executing.");
     stateMachineBuilder.addState(State.ON_HOLD, "The task is paused (e.g., for dynamic optimization).");
     stateMachineBuilder.addState(State.COMPLETE, "The task has completed.");
