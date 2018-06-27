@@ -66,7 +66,7 @@ public class TaskMetric implements Metric<TaskState.State> {
     dataTransferEvents.add(event);
   }
 
-  public int getScheduleAttempt() {
+  public final int getScheduleAttempt() {
     return scheduleAttempt;
   }
 
@@ -74,11 +74,11 @@ public class TaskMetric implements Metric<TaskState.State> {
     this.scheduleAttempt = scheduleAttempt;
   }
 
-  private String getContainerId() {
+  public final String getContainerId() {
     return containerId;
   }
 
-  public void setContainerId(final String containerId) {
+  private void setContainerId(final String containerId) {
     this.containerId = containerId;
   }
 

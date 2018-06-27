@@ -146,8 +146,6 @@ public final class JobStateManager {
     metricStore.getOrCreateMetric(TaskMetric.class, taskId)
         .addEvent((TaskState.State) taskState.getCurrentState(), newTaskState);
 
-    // Handle metrics
-    final Map<String, Object> metric = new HashMap<>();
     taskState.setState(newTaskState);
 
     switch (newTaskState) {
@@ -155,16 +153,10 @@ public final class JobStateManager {
       case COMPLETE:
       case FAILED:
       case SHOULD_RETRY:
-        metric.put("ToState", newTaskState);
-        endMeasurement(taskId, metric);
-        break;
       case EXECUTING:
-        metric.put("FromState", newTaskState);
-        beginMeasurement(taskId, metric);
         break;
       case READY:
         final int currentAttempt = taskIdToCurrentAttempt.get(taskId) + 1;
-        metric.put("ScheduleAttempt", currentAttempt);
         if (currentAttempt <= maxScheduleAttempt) {
           taskIdToCurrentAttempt.put(taskId, currentAttempt);
         } else {
@@ -229,17 +221,7 @@ public final class JobStateManager {
         new Object[]{stageId, stageStateMachine.getCurrentState(), newStageState});
     stageStateMachine.setState(newStageState);
 
-    // Metric handling
-    final Map<String, Object> metric = new HashMap<>();
-    if (newStageState == StageState.State.INCOMPLETE) {
-      metric.put("FromState", newStageState);
-      beginMeasurement(stageId, metric);
-    } else if (newStageState == StageState.State.COMPLETE) {
-      metric.put("ToState", newStageState);
-      endMeasurement(stageId, metric);
-    }
-
-    // Job becomse COMPLETE
+    // Change job state if needed
     final boolean allStagesCompleted = idToStageStates.values().stream().allMatch(state ->
         state.getStateMachine().getCurrentState().equals(StageState.State.COMPLETE));
     if (allStagesCompleted) {
@@ -258,18 +240,13 @@ public final class JobStateManager {
 
     jobState.getStateMachine().setState(newState);
 
-    final Map<String, Object> metric = new HashMap<>();
     if (newState == JobState.State.EXECUTING) {
-      LOG.info("Executing Job ID {}...", this.jobId);
-      metric.put("FromState", newState);
-      beginMeasurement(jobId, metric);
+      LOG.debug("Executing Job ID {}...", this.jobId);
     } else if (newState == JobState.State.COMPLETE || newState == JobState.State.FAILED) {
       LOG.info("Job ID {} {}!", new Object[]{jobId, newState});
 
       // Awake all threads waiting the finish of this job.
       finishLock.lock();
-      metric.put("ToState", newState);
-      endMeasurement(jobId, metric);
 
       try {
         jobFinishedCondition.signalAll();
@@ -355,24 +332,6 @@ public final class JobStateManager {
   @VisibleForTesting
   public synchronized Map<String, TaskState> getAllTaskStates() {
     return idToTaskStates;
-  }
-
-  /**
-   * Begins recording the start time of this metric measurement, in addition to the metric given.
-   * This method ensures thread-safety by synchronizing its callers.
-   * @param compUnitId to be used as metricKey
-   * @param initialMetric metric to add
-   */
-  private void beginMeasurement(final String compUnitId, final Map<String, Object> initialMetric) {
-  }
-
-  /**
-   * Ends this metric measurement, recording the end time in addition to the metric given.
-   * This method ensures thread-safety by synchronizing its callers.
-   * @param compUnitId to be used as metricKey
-   * @param finalMetric metric to add
-   */
-  private void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {
   }
 
   /**

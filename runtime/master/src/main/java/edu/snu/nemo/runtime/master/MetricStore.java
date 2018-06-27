@@ -101,12 +101,12 @@ public final class MetricStore {
   }
 
   /**
-   * Fetch metric by its metric class instance and its id.
+   * Fetch metric map by its metric class instance.
    * @param metricClass class instance of metric.
    * @param <T> class of metric
    * @return a metric object.
    */
-  public <T extends Metric> Map<String, Object> getMetric(final Class<T> metricClass) {
+  public <T extends Metric> Map<String, Object> getMetricMap(final Class<T> metricClass) {
     final Map<String, Object> metric = metricMap.computeIfAbsent(metricClass, k -> new HashMap<>());
     if (metric == null) {
       throw new NoSuchElementException("No metric found");
@@ -115,7 +115,7 @@ public final class MetricStore {
   }
 
   /**
-   * Same as getMetric(), but if there is no such metric, it will try to create new metric object
+   * Same as getMetricWithId(), but if there is no such metric, it will try to create new metric object
    * using its constructor, which takes an id as a parameter.
    * @param metricClass class of metric.
    * @param id metric id, which can be fetched by getId() method.
@@ -136,7 +136,7 @@ public final class MetricStore {
   }
 
   /**
-   * Dumps JSON-serialized string of all stored metric.
+   * Dumps JSON-serialized string of specific metric.
    * @param metricClass class of metric.
    * @return dumped JSON string of all metric.
    * @throws IOException when failed to write file.
@@ -150,7 +150,7 @@ public final class MetricStore {
     jsonGenerator.useDefaultPrettyPrinter();
 
     jsonGenerator.writeStartArray();
-    for (final Map.Entry<String, Object> idToMetricEntry : getMetric(metricClass).entrySet()) {
+    for (final Map.Entry<String, Object> idToMetricEntry : getMetricMap(metricClass).entrySet()) {
       final JsonNode jsonNode = objectMapper.valueToTree(idToMetricEntry.getValue());
       jsonGenerator.writeTree(jsonNode);
     }
