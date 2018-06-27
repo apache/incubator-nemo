@@ -151,3 +151,7 @@ Nemo Compiler and Engine can store JSON representation of intermediate DAGs.
   	-dag_dir "./dag/als" \
   	-user_args "`pwd`/examples/resources/sample_input_als 10 3"
 ```
+
+## Speeding up builds 
+* To exclude Spark related packages: mvn clean install -T 2C -DskipTests -pl \!compiler/frontend/spark,\!examples/spark
+* To exclude Beam related packages: mvn clean install -T 2C -DskipTests -pl \!compiler/frontend/beam,\!examples/beam

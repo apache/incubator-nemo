@@ -240,7 +240,9 @@ public final class BatchSingleJobScheduler implements Scheduler {
       final List<Task> tasksToSchedule = earliest.get().stream()
           .flatMap(stage -> selectSchedulableTasks(stage).stream())
           .collect(Collectors.toList());
-      LOG.info("doSchedule(): Tasks {} in ScheduleGroup {}", tasksToSchedule, earliest.get());
+
+      LOG.info("doSchedule(): task ids {} in ScheduleGroup",
+          tasksToSchedule.stream().map(Task::getTaskId).collect(Collectors.toList()));
 
       // Set the pointer to the schedulable tasks.
       pendingTaskCollectionPointer.setToOverwrite(tasksToSchedule);
