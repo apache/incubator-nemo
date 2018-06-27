@@ -63,7 +63,7 @@ import static org.mockito.Mockito.mock;
 public final class BatchSingleJobSchedulerTest {
   private static final Logger LOG = LoggerFactory.getLogger(BatchSingleJobSchedulerTest.class.getName());
   private Scheduler scheduler;
-  private SchedulingPredicate schedulingPredicate;
+  private SchedulingConstraint schedulingConstraint;
   private SchedulingPolicy schedulingPolicy;
   private SchedulerRunner schedulerRunner;
   private ExecutorRegistry executorRegistry;
@@ -87,9 +87,9 @@ public final class BatchSingleJobSchedulerTest {
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
     metricMessageHandler = mock(MetricMessageHandler.class);
     pendingTaskCollectionPointer = new PendingTaskCollectionPointer();
-    schedulingPredicate = injector.getInstance(CompositeSchedulingPredicate.class);
+    schedulingConstraint = injector.getInstance(CompositeSchedulingConstraint.class);
     schedulingPolicy = injector.getInstance(SchedulingPolicy.class);
-    schedulerRunner = new SchedulerRunner(schedulingPredicate, schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
+    schedulerRunner = new SchedulerRunner(schedulingConstraint, schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     scheduler =

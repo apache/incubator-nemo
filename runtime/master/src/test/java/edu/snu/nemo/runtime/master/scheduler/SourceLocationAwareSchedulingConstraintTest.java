@@ -32,11 +32,11 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
 /**
- * Test cases for {@link SourceLocationAwareSchedulingPredicate}.
+ * Test cases for {@link SourceLocationAwareSchedulingConstraint}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ExecutorRepresenter.class, Task.class, Readable.class})
-public final class SourceLocationAwareSchedulingPredicateTest {
+public final class SourceLocationAwareSchedulingConstraintTest {
   private static final String SITE_0 = "SEOUL";
   private static final String SITE_1 = "JINJU";
   private static final String SITE_2 = "BUSAN";
@@ -48,12 +48,12 @@ public final class SourceLocationAwareSchedulingPredicateTest {
   }
 
   /**
-   * {@link SourceLocationAwareSchedulingPredicate} should fail to schedule a {@link Task} when
+   * {@link SourceLocationAwareSchedulingConstraint} should fail to schedule a {@link Task} when
    * there are no executors in appropriate location(s).
    */
   @Test
   public void testSourceLocationAwareSchedulingNotAvailable() {
-    final SchedulingPredicate schedulingPredicate = new SourceLocationAwareSchedulingPredicate();
+    final SchedulingConstraint schedulingConstraint = new SourceLocationAwareSchedulingConstraint();
 
     // Prepare test scenario
     final Task task = CreateTask.withReadablesWithSourceLocations(
@@ -62,15 +62,15 @@ public final class SourceLocationAwareSchedulingPredicateTest {
     final ExecutorRepresenter e1 = mockExecutorRepresenter(SITE_1);
 
     assertEquals(Collections.emptySet(), Arrays.asList(e0, e1).stream()
-        .filter(e -> schedulingPredicate.testSchedulability(e, task)).collect(Collectors.toSet()));
+        .filter(e -> schedulingConstraint.testSchedulability(e, task)).collect(Collectors.toSet()));
   }
 
   /**
-   * {@link SourceLocationAwareSchedulingPredicate} should properly schedule TGs with multiple source locations.
+   * {@link SourceLocationAwareSchedulingConstraint} should properly schedule TGs with multiple source locations.
    */
   @Test
   public void testSourceLocationAwareSchedulingWithMultiSource() {
-    final SchedulingPredicate schedulingPredicate = new SourceLocationAwareSchedulingPredicate();
+    final SchedulingConstraint schedulingConstraint = new SourceLocationAwareSchedulingConstraint();
     // Prepare test scenario
     final Task task0 = CreateTask.withReadablesWithSourceLocations(
         Collections.singletonList(Collections.singletonList(SITE_1)));
@@ -85,7 +85,7 @@ public final class SourceLocationAwareSchedulingPredicateTest {
 
     final ExecutorRepresenter e = mockExecutorRepresenter(SITE_1);
     for (final Task task : new HashSet<>(Arrays.asList(task0, task1, task2, task3))) {
-      assertTrue(schedulingPredicate.testSchedulability(e, task));
+      assertTrue(schedulingConstraint.testSchedulability(e, task));
     }
   }
 

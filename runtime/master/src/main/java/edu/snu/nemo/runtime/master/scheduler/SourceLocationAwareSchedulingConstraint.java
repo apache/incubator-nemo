@@ -34,12 +34,12 @@ import java.util.*;
  */
 @ThreadSafe
 @DriverSide
-public final class SourceLocationAwareSchedulingPredicate implements SchedulingPredicate {
-  private static final Logger LOG = LoggerFactory.getLogger(SourceLocationAwareSchedulingPredicate.class);
+public final class SourceLocationAwareSchedulingConstraint implements SchedulingConstraint {
+  private static final Logger LOG = LoggerFactory.getLogger(SourceLocationAwareSchedulingConstraint.class);
 
   @VisibleForTesting
   @Inject
-  public SourceLocationAwareSchedulingPredicate() {
+  public SourceLocationAwareSchedulingConstraint() {
   }
 
   /**

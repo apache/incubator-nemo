@@ -130,10 +130,10 @@ public final class DataTransferTest {
     final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
-    final SchedulingPredicate schedulingPredicate = injector.getInstance(CompositeSchedulingPredicate.class);
+    final SchedulingConstraint schedulingConstraint = injector.getInstance(CompositeSchedulingConstraint.class);
     final SchedulingPolicy schedulingPolicy = injector.getInstance(SchedulingPolicy.class);
     final PendingTaskCollectionPointer taskQueue = new PendingTaskCollectionPointer();
-    final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingPredicate, schedulingPolicy, taskQueue, executorRegistry);
+    final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingConstraint, schedulingPolicy, taskQueue, executorRegistry);
     final Scheduler scheduler = new BatchSingleJobScheduler(
         schedulerRunner, taskQueue, master, pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
     final AtomicInteger executorCount = new AtomicInteger(0);

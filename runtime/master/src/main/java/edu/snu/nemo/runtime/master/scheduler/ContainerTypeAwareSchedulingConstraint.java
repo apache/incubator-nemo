@@ -25,11 +25,11 @@ import javax.inject.Inject;
 /**
  * This policy find executors which has corresponding container type.
  */
-public final class ContainerTypeAwareSchedulingPredicate implements SchedulingPredicate {
+public final class ContainerTypeAwareSchedulingConstraint implements SchedulingConstraint {
 
   @VisibleForTesting
   @Inject
-  public ContainerTypeAwareSchedulingPredicate() {
+  public ContainerTypeAwareSchedulingConstraint() {
   }
 
   @Override

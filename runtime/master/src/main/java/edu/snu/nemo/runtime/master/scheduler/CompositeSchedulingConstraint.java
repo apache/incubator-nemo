@@ -28,24 +28,24 @@ import java.util.List;
  * when Nemo supports job-wide execution property.
  * TODO #69: Support job-wide execution property.
  */
-public final class CompositeSchedulingPredicate implements SchedulingPredicate {
-  private final List<SchedulingPredicate> schedulingPolicies;
+public final class CompositeSchedulingConstraint implements SchedulingConstraint {
+  private final List<SchedulingConstraint> schedulingConstraints;
 
   @Inject
-  private CompositeSchedulingPredicate(
-      final SourceLocationAwareSchedulingPredicate sourceLocationAwareSchedulingPredicate,
-      final FreeSlotSchedulingPredicate freeSlotSchedulingPredicate,
-      final ContainerTypeAwareSchedulingPredicate containerTypeAwareSchedulingPredicate) {
-    schedulingPolicies = Arrays.asList(
-        freeSlotSchedulingPredicate,
-        containerTypeAwareSchedulingPredicate,
-        sourceLocationAwareSchedulingPredicate);
+  private CompositeSchedulingConstraint(
+      final SourceLocationAwareSchedulingConstraint sourceLocationAwareSchedulingConstraint,
+      final FreeSlotSchedulingConstraint freeSlotSchedulingConstraint,
+      final ContainerTypeAwareSchedulingConstraint containerTypeAwareSchedulingConstraint) {
+    schedulingConstraints = Arrays.asList(
+        freeSlotSchedulingConstraint,
+        containerTypeAwareSchedulingConstraint,
+        sourceLocationAwareSchedulingConstraint);
   }
 
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
-    for (final SchedulingPredicate schedulingPredicate : schedulingPolicies) {
-      if (!schedulingPredicate.testSchedulability(executor, task)) {
+    for (final SchedulingConstraint schedulingConstraint : schedulingConstraints) {
+      if (!schedulingConstraint.testSchedulability(executor, task)) {
         return false;
       }
     }

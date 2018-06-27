@@ -15,23 +15,20 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
-import javax.inject.Inject;
+import javax.annotation.concurrent.ThreadSafe;
 
 /**
- * This policy finds executor that has free slot for a Task.
+ * (WARNING) Implementations of this interface must be thread-safe.
  */
-public final class FreeSlotSchedulingPredicate implements SchedulingPredicate {
-  @VisibleForTesting
-  @Inject
-  public FreeSlotSchedulingPredicate() {
-  }
-
-  @Override
-  public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
-    return executor.getRunningTasks().size() < executor.getExecutorCapacity();
-  }
+@DriverSide
+@ThreadSafe
+@FunctionalInterface
+@DefaultImplementation(CompositeSchedulingConstraint.class)
+public interface SchedulingConstraint {
+  boolean testSchedulability(final ExecutorRepresenter executor, final Task task);
 }
