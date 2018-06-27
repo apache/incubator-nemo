@@ -116,11 +116,11 @@ public final class SchedulerRunner {
       LOG.debug("Trying to schedule {}...", task.getTaskId());
       executorRegistry.viewExecutors(executors -> {
         final Set<ExecutorRepresenter> candidateExecutors =
-            executors.stream().filter(e -> schedulingConstraint.testSchedulability(e, task)).collect(Collectors.toSet());
-
+            executors.stream().filter(e -> schedulingConstraint.testSchedulability(e, task))
+                .collect(Collectors.toSet());
         if (!candidateExecutors.isEmpty()) {
           // Select executor
-          final ExecutorRepresenter selectedExecutor = schedulingPolicy.selectExecutor(candidateExecutors, task, null);
+          final ExecutorRepresenter selectedExecutor = schedulingPolicy.selectExecutor(candidateExecutors, task);
           // update metadata first
           jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 

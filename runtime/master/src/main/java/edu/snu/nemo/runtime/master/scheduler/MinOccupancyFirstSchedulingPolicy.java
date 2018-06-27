@@ -41,8 +41,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
   }
 
   @Override
-  public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task,
-                                            final ParallelismProperty property) {
+  public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task) {
     final OptionalInt minOccupancy =
         executors.stream()
         .map(executor -> executor.getRunningTasks().size())

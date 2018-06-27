@@ -54,7 +54,7 @@ public final class MinOccupancyFirstSchedulingPolicyTest {
 
     final List<ExecutorRepresenter> executorRepresenterList = Arrays.asList(a0, a1, a2);
 
-    assertEquals(a0, schedulingPolicy.selectExecutor(executorRepresenterList, task, null));
+    assertEquals(a0, schedulingPolicy.selectExecutor(executorRepresenterList, task));
   }
 }
 
