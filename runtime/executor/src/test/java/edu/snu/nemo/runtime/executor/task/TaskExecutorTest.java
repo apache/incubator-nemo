@@ -28,6 +28,7 @@ import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
@@ -65,7 +66,7 @@ import static org.mockito.Mockito.*;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({InputReader.class, OutputWriter.class, DataTransferFactory.class,
-    TaskStateManager.class, StageEdge.class})
+    TaskStateManager.class, StageEdge.class, PersistentConnectionToMasterMap.class})
 public final class TaskExecutorTest {
   private static final int DATA_SIZE = 100;
   private static final ExecutionPropertyMap<VertexExecutionProperty> TASK_EXECUTION_PROPERTY_MAP
@@ -76,6 +77,7 @@ public final class TaskExecutorTest {
   private DataTransferFactory dataTransferFactory;
   private TaskStateManager taskStateManager;
   private MetricMessageSender metricMessageSender;
+  private PersistentConnectionToMasterMap persistentConnectionToMasterMap;
   private AtomicInteger stageId;
 
   private String generateTaskId() {
@@ -101,6 +103,8 @@ public final class TaskExecutorTest {
     metricMessageSender = mock(MetricMessageSender.class);
     doNothing().when(metricMessageSender).send(anyString(), anyString());
     doNothing().when(metricMessageSender).close();
+
+    persistentConnectionToMasterMap = mock(PersistentConnectionToMasterMap.class);
   }
 
   private boolean checkEqualElements(final List<Integer> left, final List<Integer> right) {
@@ -147,7 +151,7 @@ public final class TaskExecutorTest {
 
     // Execute the task.
     final TaskExecutor taskExecutor = new TaskExecutor(
-        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
+        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender, persistentConnectionToMasterMap);
     taskExecutor.execute();
 
     // Check the output.
@@ -177,7 +181,7 @@ public final class TaskExecutorTest {
 
     // Execute the task.
     final TaskExecutor taskExecutor = new TaskExecutor(
-        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
+        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender, persistentConnectionToMasterMap);
     taskExecutor.execute();
 
     // Check the output.
@@ -215,7 +219,7 @@ public final class TaskExecutorTest {
 
     // Execute the task.
     final TaskExecutor taskExecutor = new TaskExecutor(
-        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
+        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender, persistentConnectionToMasterMap);
     taskExecutor.execute();
 
     // Check the output.
@@ -247,7 +251,7 @@ public final class TaskExecutorTest {
 
     // Execute the task.
     final TaskExecutor taskExecutor = new TaskExecutor(
-        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender);
+        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender, persistentConnectionToMasterMap);
     taskExecutor.execute();
 
     // Check the output.

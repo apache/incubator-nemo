@@ -44,13 +44,7 @@ import scala.Tuple2;
 import scala.collection.JavaConverters;
 import scala.collection.TraversableOnce;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.ObjectInputStream;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 
 /**
  * Utility class for RDDs.
@@ -95,11 +89,7 @@ public final class SparkFrontendUtils {
                                     final Serializer serializer) {
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>(dag);
 
-    // TODO #16: Implement collection of data from executor to client
-    // save result in a temporary file
-    final String resultFile = System.getProperty("user.dir") + "/collectresult";
-
-    final IRVertex collectVertex = new OperatorVertex(new CollectTransform<>(resultFile));
+    final IRVertex collectVertex = new OperatorVertex(new CollectTransform<>());
     builder.addVertex(collectVertex, loopVertexStack);
 
     final IREdge newEdge = new IREdge(getEdgeCommunicationPattern(lastVertex, collectVertex),
@@ -112,32 +102,7 @@ public final class SparkFrontendUtils {
     // launch DAG
     JobLauncher.launchDAG(builder.build());
 
-    // Retrieve result data from file.
-    try {
-      final List<T> result = new ArrayList<>();
-      Integer i = 0;
-
-      File file = new File(resultFile + i);
-      while (file.exists()) {
-        try (
-            final FileInputStream fis = new FileInputStream(file);
-            final ObjectInputStream dis = new ObjectInputStream(fis)
-        ) {
-          final int size = dis.readInt(); // Read the number of collected T recorded in CollectTransform.
-          for (int j = 0; j < size; j++) {
-            result.add((T) dis.readObject());
-          }
-        }
-
-        // Delete temporary file
-        if (file.delete()) {
-          file = new File(resultFile + ++i);
-        }
-      }
-      return result;
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    return (List<T>) JobLauncher.getCollectedData();
   }
 
   /**

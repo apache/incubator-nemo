@@ -78,6 +78,7 @@ public final class RuntimeMaster {
   private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
   private final Map<Integer, Long> aggregatedMetricData;
+  private final ClientRPC clientRPC;
 
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
@@ -94,6 +95,7 @@ public final class RuntimeMaster {
                        final BlockManagerMaster blockManagerMaster,
                        final MetricMessageHandler metricMessageHandler,
                        final MessageEnvironment masterMessageEnvironment,
+                       final ClientRPC clientRPC,
                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
@@ -107,6 +109,7 @@ public final class RuntimeMaster {
     this.masterMessageEnvironment = masterMessageEnvironment;
     this.masterMessageEnvironment
         .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
+    this.clientRPC = clientRPC;
     this.dagDirectory = dagDirectory;
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
@@ -299,6 +302,13 @@ public final class RuntimeMaster {
         final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
         metricList.forEach(metric ->
             metricMessageHandler.onMetricMessageReceived(metric.getMetricKey(), metric.getMetricValue()));
+        break;
+      case ExecutorDataCollected:
+        final String serializedData = message.getDataCollected().getData();
+        clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+            .setType(ControlMessage.DriverToClientMessageType.DataCollected)
+            .setDataCollected(ControlMessage.DataCollectMessage.newBuilder().setData(serializedData).build())
+            .build());
         break;
       default:
         throw new IllegalMessageException(
