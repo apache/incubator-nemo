@@ -22,14 +22,12 @@ import org.junit.Assert;
 import org.junit.Test;
 
 /**
- * Tests {@link SchedulingPolicy.Registry}.
+ * Tests {@link SchedulingConstraint.Registry}.
  */
-public final class SchedulerPluginRegistryTest {
+public final class SchedulingConstraintnRegistryTest {
   @Test
-  public void testSchedulingPolicyRegistry() throws InjectionException {
-    final SchedulingPolicy.Registry registry = Tang.Factory.getTang().newInjector()
-        .getInstance(SchedulingPolicy.Registry.class);
-    Assert.assertEquals(MinOccupancyFirstSchedulingPolicy.class,
-        registry.get(ParallelismProperty.class).get().getClass());
+  public void testSchedulingConstraintRegistry() throws InjectionException {
+    final SchedulingConstraint.Registry registry = Tang.Factory.getTang().newInjector()
+        .getInstance(SchedulingConstraint.Registry.class);
   }
 }
