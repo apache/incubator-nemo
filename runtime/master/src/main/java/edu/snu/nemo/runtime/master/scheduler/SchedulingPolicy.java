@@ -19,6 +19,7 @@ import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
+import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.Collection;
 
@@ -28,6 +29,7 @@ import java.util.Collection;
 @DriverSide
 @ThreadSafe
 @FunctionalInterface
+@DefaultImplementation(MinOccupancyFirstSchedulingPolicy.class)
 public interface SchedulingPolicy {
   /**
    * A function to select an executor from the specified collection of available executors.

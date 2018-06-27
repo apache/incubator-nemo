@@ -64,6 +64,7 @@ public final class BatchSingleJobSchedulerTest {
   private static final Logger LOG = LoggerFactory.getLogger(BatchSingleJobSchedulerTest.class.getName());
   private Scheduler scheduler;
   private SchedulingPredicate schedulingPredicate;
+  private SchedulingPolicy schedulingPolicy;
   private SchedulerRunner schedulerRunner;
   private ExecutorRegistry executorRegistry;
   private MetricMessageHandler metricMessageHandler;
@@ -87,7 +88,8 @@ public final class BatchSingleJobSchedulerTest {
     metricMessageHandler = mock(MetricMessageHandler.class);
     pendingTaskCollectionPointer = new PendingTaskCollectionPointer();
     schedulingPredicate = injector.getInstance(CompositeSchedulingPredicate.class);
-    schedulerRunner = new SchedulerRunner(schedulingPredicate, pendingTaskCollectionPointer, executorRegistry);
+    schedulingPolicy = injector.getInstance(SchedulingPolicy.class);
+    schedulerRunner = new SchedulerRunner(schedulingPredicate, schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     scheduler =

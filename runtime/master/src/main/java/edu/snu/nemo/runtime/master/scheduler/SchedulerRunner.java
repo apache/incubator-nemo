@@ -53,12 +53,14 @@ public final class SchedulerRunner {
   private boolean isTerminated;
 
   private final DelayedSignalingCondition schedulingIteration = new DelayedSignalingCondition();
-  private ExecutorRegistry executorRegistry;
-  private SchedulingPredicate schedulingPredicate;
+  private final ExecutorRegistry executorRegistry;
+  private final SchedulingPredicate schedulingPredicate;
+  private final SchedulingPolicy schedulingPolicy;
 
   @VisibleForTesting
   @Inject
   public SchedulerRunner(final SchedulingPredicate schedulingPredicate,
+                         final SchedulingPolicy schedulingPolicy,
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final ExecutorRegistry executorRegistry) {
     this.jobStateManagers = new HashMap<>();
@@ -68,6 +70,7 @@ public final class SchedulerRunner {
     this.isTerminated = false;
     this.executorRegistry = executorRegistry;
     this.schedulingPredicate = schedulingPredicate;
+    this.schedulingPolicy = schedulingPolicy;
   }
 
   /**
@@ -114,14 +117,14 @@ public final class SchedulerRunner {
       executorRegistry.viewExecutors(executors -> {
         final Set<ExecutorRepresenter> candidateExecutors =
             executors.stream().filter(e -> schedulingPredicate.testSchedulability(e, task)).collect(Collectors.toSet());
-        final Optional<ExecutorRepresenter> firstCandidate = candidateExecutors.stream().findFirst();
 
-        if (firstCandidate.isPresent()) {
+        if (!candidateExecutors.isEmpty()) {
+          // Select executor
+          final ExecutorRepresenter selectedExecutor = schedulingPolicy.selectExecutor(candidateExecutors, task);
           // update metadata first
           jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 
           // send the task
-          final ExecutorRepresenter selectedExecutor = firstCandidate.get();
           selectedExecutor.onTaskScheduled(task);
         } else {
           couldNotSchedule.add(task);
