@@ -24,7 +24,7 @@ import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.test.EmptyComponents;
 import org.apache.reef.tang.Tang;
@@ -56,7 +56,7 @@ public final class StagePartitionerTest {
 
   /**
    * @param parallelism {@link ParallelismProperty} value for the new vertex
-   * @param scheduleGroupIndex {@link ScheduleGroupIndexProperty} value for the new vertex
+   * @param scheduleGroupIndex {@link ScheduleGroupProperty} value for the new vertex
    * @param otherProperties other {@link VertexExecutionProperty} for the new vertex
    * @return new {@link IRVertex}
    */
@@ -64,7 +64,7 @@ public final class StagePartitionerTest {
                                     final List<VertexExecutionProperty> otherProperties) {
     final IRVertex vertex = new OperatorVertex(EMPTY_TRANSFORM);
     vertex.getExecutionProperties().put(ParallelismProperty.of(parallelism));
-    vertex.getExecutionProperties().put(ScheduleGroupIndexProperty.of(scheduleGroupIndex));
+    vertex.getExecutionProperties().put(ScheduleGroupProperty.of(scheduleGroupIndex));
     otherProperties.forEach(property -> vertex.getExecutionProperties().put(property));
     return vertex;
   }

@@ -23,7 +23,7 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.commons.lang3.mutable.MutableInt;
 
 import java.util.*;
@@ -71,7 +71,7 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
   public DefaultScheduleGroupPass(final boolean allowBroadcastWithinScheduleGroup,
                                   final boolean allowShuffleWithinScheduleGroup,
                                   final boolean allowMultipleInEdgesWithinScheduleGroup) {
-    super(ScheduleGroupIndexProperty.class, Stream.of(
+    super(ScheduleGroupProperty.class, Stream.of(
         DataCommunicationPatternProperty.class,
         DataFlowModelProperty.class
     ).collect(Collectors.toSet()));
@@ -212,8 +212,8 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
     scheduleGroupDAGBuilder.build().topologicalDo(scheduleGroup -> {
       boolean usedCurrentIndex = false;
       for (final IRVertex irVertex : scheduleGroup.vertices) {
-        if (!irVertex.getPropertyValue(ScheduleGroupIndexProperty.class).isPresent()) {
-          irVertex.getExecutionProperties().put(ScheduleGroupIndexProperty.of(currentScheduleGroupIndex.getValue()));
+        if (!irVertex.getPropertyValue(ScheduleGroupProperty.class).isPresent()) {
+          irVertex.getExecutionProperties().put(ScheduleGroupProperty.of(currentScheduleGroupIndex.getValue()));
           usedCurrentIndex = true;
         }
       }
@@ -225,15 +225,15 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
   }
 
   /**
-   * Determines the range of {@link ScheduleGroupIndexProperty} value that will prevent collision
-   * with the existing {@link ScheduleGroupIndexProperty}.
+   * Determines the range of {@link ScheduleGroupProperty} value that will prevent collision
+   * with the existing {@link ScheduleGroupProperty}.
    * @param irVertexCollection collection of {@link IRVertex}
-   * @return the minimum value for the {@link ScheduleGroupIndexProperty} that won't collide with the existing values
+   * @return the minimum value for the {@link ScheduleGroupProperty} that won't collide with the existing values
    */
   private int getNextScheudleGroupIndex(final Collection<IRVertex> irVertexCollection) {
     int nextScheduleGroupIndex = 0;
     for (final IRVertex irVertex : irVertexCollection) {
-      final Optional<Integer> scheduleGroupIndex = irVertex.getPropertyValue(ScheduleGroupIndexProperty.class);
+      final Optional<Integer> scheduleGroupIndex = irVertex.getPropertyValue(ScheduleGroupProperty.class);
       if (scheduleGroupIndex.isPresent()) {
         nextScheduleGroupIndex = Math.max(scheduleGroupIndex.get() + 1, nextScheduleGroupIndex);
       }

@@ -20,12 +20,12 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 /**
  * ScheduleGroupIndex ExecutionProperty.
  */
-public final class ScheduleGroupIndexProperty extends VertexExecutionProperty<Integer> {
+public final class ScheduleGroupProperty extends VertexExecutionProperty<Integer> {
   /**
    * Constructor.
    * @param value value of the execution property.
    */
-  private ScheduleGroupIndexProperty(final Integer value) {
+  private ScheduleGroupProperty(final Integer value) {
     super(value);
   }
 
@@ -34,7 +34,7 @@ public final class ScheduleGroupIndexProperty extends VertexExecutionProperty<In
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static ScheduleGroupIndexProperty of(final Integer value) {
-    return new ScheduleGroupIndexProperty(value);
+  public static ScheduleGroupProperty of(final Integer value) {
+    return new ScheduleGroupProperty(value);
   }
 }

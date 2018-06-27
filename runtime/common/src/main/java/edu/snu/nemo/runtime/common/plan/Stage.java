@@ -22,7 +22,7 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import org.apache.commons.lang3.SerializationUtils;
 
@@ -97,7 +97,7 @@ public final class Stage extends Vertex {
    * @return the schedule group index.
    */
   public int getScheduleGroupIndex() {
-    return executionProperties.get(ScheduleGroupIndexProperty.class)
+    return executionProperties.get(ScheduleGroupProperty.class)
         .orElseThrow(() -> new RuntimeException("ScheduleGroupIndex property must be set for Stage"));
   }
 

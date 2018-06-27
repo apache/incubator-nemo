@@ -24,7 +24,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternPro
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.test.EmptyComponents;
 import edu.snu.nemo.compiler.optimizer.CompiletimeOptimizer;
@@ -54,7 +54,7 @@ public final class DefaultScheduleGroupPassTest {
   @Test
   public void testAnnotatingPass() {
     final AnnotatingPass scheduleGroupPass = new DefaultScheduleGroupPass();
-    assertEquals(ScheduleGroupIndexProperty.class, scheduleGroupPass.getExecutionPropertyToModify());
+    assertEquals(ScheduleGroupProperty.class, scheduleGroupPass.getExecutionPropertyToModify());
   }
 
   /**
@@ -67,9 +67,9 @@ public final class DefaultScheduleGroupPassTest {
         new TestPolicy(), "");
 
     for (final IRVertex irVertex : processedDAG.getTopologicalSort()) {
-      final Integer currentScheduleGroupIndex = irVertex.getPropertyValue(ScheduleGroupIndexProperty.class).get();
+      final Integer currentScheduleGroupIndex = irVertex.getPropertyValue(ScheduleGroupProperty.class).get();
       final Integer largestScheduleGroupIndexOfParent = processedDAG.getParents(irVertex.getId()).stream()
-          .mapToInt(v -> v.getPropertyValue(ScheduleGroupIndexProperty.class).get())
+          .mapToInt(v -> v.getPropertyValue(ScheduleGroupProperty.class).get())
           .max().orElse(0);
       assertTrue(currentScheduleGroupIndex >= largestScheduleGroupIndexOfParent);
     }
@@ -155,7 +155,7 @@ public final class DefaultScheduleGroupPassTest {
   }
 
   /**
-   * Asserts that the {@link ScheduleGroupIndexProperty} is equal to {@code expected}.
+   * Asserts that the {@link ScheduleGroupProperty} is equal to {@code expected}.
    * @param expected the expected property value
    * @param vertex the vertex to test
    */
@@ -165,15 +165,15 @@ public final class DefaultScheduleGroupPassTest {
 
   /**
    * @param vertex a vertex
-   * @return {@link ScheduleGroupIndexProperty} of {@code vertex}
+   * @return {@link ScheduleGroupProperty} of {@code vertex}
    */
   private static int getScheduleGroupIndex(final IRVertex vertex) {
-    return vertex.getPropertyValue(ScheduleGroupIndexProperty.class)
+    return vertex.getPropertyValue(ScheduleGroupProperty.class)
         .orElseThrow(() -> new RuntimeException(String.format("ScheduleGroup not set for %s", vertex.getId())));
   }
 
   /**
-   * Ensures that all vertices in {@code vertices} have different {@link ScheduleGroupIndexProperty} value.
+   * Ensures that all vertices in {@code vertices} have different {@link ScheduleGroupProperty} value.
    * @param vertices vertices to test
    */
   private static void assertDifferentScheduleGroupIndex(final Collection<IRVertex> vertices) {

@@ -24,7 +24,7 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
@@ -226,7 +226,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
   private void integrityCheck(final Stage stage) {
     stage.getPropertyValue(ParallelismProperty.class)
         .orElseThrow(() -> new RuntimeException("Parallelism property must be set for Stage"));
-    stage.getPropertyValue(ScheduleGroupIndexProperty.class)
+    stage.getPropertyValue(ScheduleGroupProperty.class)
         .orElseThrow(() -> new RuntimeException("ScheduleGroupIndex property must be set for Stage"));
 
     stage.getIRDAG().getVertices().forEach(irVertex -> {
@@ -241,7 +241,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
 
   /**
    * Split ScheduleGroups by Pull {@link StageEdge}s, and ensure topological ordering of
-   * {@link ScheduleGroupIndexProperty}.
+   * {@link ScheduleGroupProperty}.
    *
    * @param dag {@link DAG} of {@link Stage}s to manipulate
    */
@@ -299,9 +299,9 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
 
     dag.topologicalDo(stage -> {
       final int scheduleGroupIndex = stageToScheduleGroupIndexMap.get(stage);
-      stage.getExecutionProperties().put(ScheduleGroupIndexProperty.of(scheduleGroupIndex));
+      stage.getExecutionProperties().put(ScheduleGroupProperty.of(scheduleGroupIndex));
       stage.getIRDAG().topologicalDo(vertex -> vertex.getExecutionProperties()
-          .put(ScheduleGroupIndexProperty.of(scheduleGroupIndex)));
+          .put(ScheduleGroupProperty.of(scheduleGroupIndex)));
     });
   }
 
