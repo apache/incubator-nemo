@@ -34,14 +34,12 @@ public final class CompositeSchedulingPredicate implements SchedulingPredicate {
   @Inject
   private CompositeSchedulingPredicate(
       final SourceLocationAwareSchedulingPredicate sourceLocationAwareSchedulingPredicate,
-      final MinOccupancyFirstSchedulingPredicate minOccupancyFirstSchedulingPredicate,
       final FreeSlotSchedulingPredicate freeSlotSchedulingPredicate,
       final ContainerTypeAwareSchedulingPredicate containerTypeAwareSchedulingPredicate) {
     schedulingPolicies = Arrays.asList(
         freeSlotSchedulingPredicate,
         containerTypeAwareSchedulingPredicate,
-        sourceLocationAwareSchedulingPredicate,
-        minOccupancyFirstSchedulingPredicate);
+        sourceLocationAwareSchedulingPredicate);
   }
 
   @Override

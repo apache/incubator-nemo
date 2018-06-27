@@ -17,23 +17,23 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests {@link MinOccupancyFirstSchedulingPredicate}
+ * Tests {@link MinOccupancyFirstSchedulingPolicy}
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ExecutorRepresenter.class, Task.class})
-public final class MinOccupancyFirstSchedulingPredicateTest {
+public final class MinOccupancyFirstSchedulingPolicyTest {
 
   private static ExecutorRepresenter mockExecutorRepresenter(final int numRunningTasks) {
     final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
@@ -43,21 +43,18 @@ public final class MinOccupancyFirstSchedulingPredicateTest {
     return executorRepresenter;
   }
 
+  @Test
   public void test() {
-    final SchedulingPredicate schedulingPredicate = new MinOccupancyFirstSchedulingPredicate();
+    final SchedulingPolicy schedulingPolicy = new MinOccupancyFirstSchedulingPolicy();
     final ExecutorRepresenter a0 = mockExecutorRepresenter(1);
     final ExecutorRepresenter a1 = mockExecutorRepresenter(2);
     final ExecutorRepresenter a2 = mockExecutorRepresenter(2);
 
     final Task task = mock(Task.class);
 
-    final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1, a2));
+    final List<ExecutorRepresenter> executorRepresenterList = Arrays.asList(a0, a1, a2);
 
-    final Set<ExecutorRepresenter> candidateExecutors = executorRepresenterList.stream()
-        .filter(e -> schedulingPredicate.testSchedulability(e, task)).collect(Collectors.toSet());
-
-    final Set<ExecutorRepresenter> expectedExecutors = Collections.singleton(a0);
-    assertEquals(expectedExecutors, candidateExecutors);
+    assertEquals(a0, schedulingPolicy.selectExecutor(executorRepresenterList, task));
   }
 }
 

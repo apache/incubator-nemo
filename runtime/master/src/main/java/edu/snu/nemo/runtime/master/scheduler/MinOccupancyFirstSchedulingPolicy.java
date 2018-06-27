@@ -26,50 +26,33 @@ import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.stream.Collectors;
-
 /**
- * {@inheritDoc}
- * A scheduling policy used by {@link BatchSingleJobScheduler}.
- *
  * This policy chooses a set of Executors, on which have minimum running Tasks.
  */
 @ThreadSafe
 @DriverSide
-public final class MinOccupancyFirstSchedulingPredicate implements SchedulingPredicate {
-  private static final Logger LOG = LoggerFactory.getLogger(MinOccupancyFirstSchedulingPredicate.class.getName());
+public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy {
+  private static final Logger LOG = LoggerFactory.getLogger(MinOccupancyFirstSchedulingPolicy.class.getName());
 
   @VisibleForTesting
   @Inject
-  public MinOccupancyFirstSchedulingPredicate() {
+  public MinOccupancyFirstSchedulingPolicy() {
   }
 
-  /**
-   * @param executorRepresenterSet Set of {@link ExecutorRepresenter} to be filtered by the occupancy of the Executors.
-   * @param task {@link Task} to be scheduled.
-   * @return filtered Set of {@link ExecutorRepresenter}.
-   */
-  public Set<ExecutorRepresenter> filterExecutorRepresenters(final Set<ExecutorRepresenter> executorRepresenterSet,
-                                                             final Task task) {
+  @Override
+  public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task) {
     final OptionalInt minOccupancy =
-        executorRepresenterSet.stream()
+        executors.stream()
         .map(executor -> executor.getRunningTasks().size())
         .mapToInt(i -> i).min();
 
     if (!minOccupancy.isPresent()) {
-      return Collections.emptySet();
+      throw new RuntimeException("Cannot find min occupancy");
     }
 
-    final Set<ExecutorRepresenter> candidateExecutors =
-        executorRepresenterSet.stream()
+    return executors.stream()
         .filter(executor -> executor.getRunningTasks().size() == minOccupancy.getAsInt())
-        .collect(Collectors.toSet());
-
-    return candidateExecutors;
-  }
-
-  @Override
-  public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
-    return true;
+        .findFirst()
+        .get();
   }
 }
