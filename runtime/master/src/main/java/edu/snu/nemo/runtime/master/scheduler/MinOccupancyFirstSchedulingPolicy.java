@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -31,7 +32,7 @@ import org.slf4j.LoggerFactory;
  */
 @ThreadSafe
 @DriverSide
-public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy {
+public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy<ParallelismProperty> {
   private static final Logger LOG = LoggerFactory.getLogger(MinOccupancyFirstSchedulingPolicy.class.getName());
 
   @VisibleForTesting
@@ -40,7 +41,8 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
   }
 
   @Override
-  public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task) {
+  public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task,
+                                            final ParallelismProperty property) {
     final OptionalInt minOccupancy =
         executors.stream()
         .map(executor -> executor.getRunningTasks().size())

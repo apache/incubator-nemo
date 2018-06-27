@@ -15,29 +15,95 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
+import javax.inject.Inject;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Collection;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A function to select an executor from collection of available executors.
+ *
+ * @param <T> {@link VertexExecutionProperty} associated with the policy
  */
 @DriverSide
 @ThreadSafe
 @FunctionalInterface
 @DefaultImplementation(MinOccupancyFirstSchedulingPolicy.class)
-public interface SchedulingPolicy {
+public interface SchedulingPolicy<T extends VertexExecutionProperty> {
   /**
    * A function to select an executor from the specified collection of available executors.
    *
    * @param executors The collection of available executors.
    *                  Implementations can assume that the collection is not empty.
    * @param task The task to schedule
+   * @param property {@link VertexExecutionProperty} associated with the policy
    * @return The selected executor. It must be a member of {@code executors}.
    */
-  ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task);
+  ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task,
+                                     final T property);
+
+  /**
+   * Registry for {@link SchedulingPolicy}.
+   */
+  @DriverSide
+  @ThreadSafe
+  final class Registry {
+    private final Map<Type, SchedulingPolicy> typeToSchedulingPolicyMap = new ConcurrentHashMap<>();
+
+    @Inject
+    private Registry(final MinOccupancyFirstSchedulingPolicy minOccupancyFirstSchedulingPolicy) {
+      registerSchedulingPolicy(minOccupancyFirstSchedulingPolicy);
+    }
+
+    /**
+     * Registers a {@link SchedulingPolicy}.
+     * @param policy the policy to register
+     */
+    public void registerSchedulingPolicy(final SchedulingPolicy policy) {
+      boolean added = false;
+      for (final Type interfaceType : policy.getClass().getGenericInterfaces()) {
+        if (!(interfaceType instanceof ParameterizedType)) {
+          continue;
+        }
+        final ParameterizedType type = (ParameterizedType) interfaceType;
+        if (!type.getRawType().equals(SchedulingPolicy.class)) {
+          continue;
+        }
+        final Type[] typeArguments = type.getActualTypeArguments();
+        if (typeArguments.length != 1) {
+          throw new RuntimeException(String.format("SchedulingPolicy %s has wrong number of type parameters.",
+              policy.getClass()));
+        }
+        final Type executionPropertyType = typeArguments[0];
+        if (typeToSchedulingPolicyMap.putIfAbsent(executionPropertyType, policy) != null) {
+          throw new RuntimeException(String.format("Multiple SchedulingPolicy for ExecutionProperty %s: %s, %s",
+              executionPropertyType, typeToSchedulingPolicyMap.get(executionPropertyType), policy));
+        }
+        added = true;
+        break;
+      }
+      if (!added) {
+        throw new RuntimeException(String.format("Cannot register SchedulingPolicy %s", policy));
+      }
+    }
+
+    /**
+     * Returns {@link SchedulingPolicy} for the given {@link VertexExecutionProperty}.
+     * @param propertyClass {@link VertexExecutionProperty} class
+     * @return the corresponding {@link SchedulingPolicy} object, or {@link Optional#EMPTY} if no such policy was found
+     */
+    public Optional<SchedulingPolicy> get(final Class<? extends VertexExecutionProperty> propertyClass) {
+      return Optional.ofNullable(typeToSchedulingPolicyMap.get(propertyClass));
+    }
+  }
 }

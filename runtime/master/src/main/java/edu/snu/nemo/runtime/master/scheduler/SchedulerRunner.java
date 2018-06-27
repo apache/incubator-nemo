@@ -120,7 +120,7 @@ public final class SchedulerRunner {
 
         if (!candidateExecutors.isEmpty()) {
           // Select executor
-          final ExecutorRepresenter selectedExecutor = schedulingPolicy.selectExecutor(candidateExecutors, task);
+          final ExecutorRepresenter selectedExecutor = schedulingPolicy.selectExecutor(candidateExecutors, task, null);
           // update metadata first
           jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 
