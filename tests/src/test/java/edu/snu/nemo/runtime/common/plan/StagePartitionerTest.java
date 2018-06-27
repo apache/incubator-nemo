@@ -56,21 +56,21 @@ public final class StagePartitionerTest {
 
   /**
    * @param parallelism {@link ParallelismProperty} value for the new vertex
-   * @param scheduleGroupIndex {@link ScheduleGroupProperty} value for the new vertex
+   * @param scheduleGroup {@link ScheduleGroupProperty} value for the new vertex
    * @param otherProperties other {@link VertexExecutionProperty} for the new vertex
    * @return new {@link IRVertex}
    */
-  private static IRVertex newVertex(final int parallelism, final int scheduleGroupIndex,
+  private static IRVertex newVertex(final int parallelism, final int scheduleGroup,
                                     final List<VertexExecutionProperty> otherProperties) {
     final IRVertex vertex = new OperatorVertex(EMPTY_TRANSFORM);
     vertex.getExecutionProperties().put(ParallelismProperty.of(parallelism));
-    vertex.getExecutionProperties().put(ScheduleGroupProperty.of(scheduleGroupIndex));
+    vertex.getExecutionProperties().put(ScheduleGroupProperty.of(scheduleGroup));
     otherProperties.forEach(property -> vertex.getExecutionProperties().put(property));
     return vertex;
   }
 
   /**
-   * A simple case where two vertices have common parallelism and ScheduleGroupIndex so that get merged into one stage.
+   * A simple case where two vertices have common parallelism and ScheduleGroup so that get merged into one stage.
    */
   @Test
   public void testLinear() {
@@ -101,10 +101,10 @@ public final class StagePartitionerTest {
   }
 
   /**
-   * A simple case where two vertices have different ScheduleGroupIndex.
+   * A simple case where two vertices have different ScheduleGroup.
    */
   @Test
-  public void testSplitByScheduleGroupIndex() {
+  public void testSplitByScheduleGroup() {
     final DAGBuilder<IRVertex, IREdge> dagBuilder = new DAGBuilder<>();
     final IRVertex v0 = newVertex(1, 0, Collections.emptyList());
     final IRVertex v1 = newVertex(1, 1, Collections.emptyList());

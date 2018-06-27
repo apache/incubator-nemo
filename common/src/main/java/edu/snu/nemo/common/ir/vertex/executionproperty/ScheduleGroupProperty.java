@@ -18,7 +18,7 @@ package edu.snu.nemo.common.ir.vertex.executionproperty;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
- * ScheduleGroupIndex ExecutionProperty.
+ * ScheduleGroup ExecutionProperty.
  */
 public final class ScheduleGroupProperty extends VertexExecutionProperty<Integer> {
   /**

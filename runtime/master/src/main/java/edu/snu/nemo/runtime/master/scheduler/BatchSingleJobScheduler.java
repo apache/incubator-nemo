@@ -114,7 +114,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     LOG.info("Job to schedule: {}", physicalPlanOfJob.getId());
 
     this.initialScheduleGroup = physicalPlanOfJob.getStageDAG().getVertices().stream()
-        .mapToInt(stage -> stage.getScheduleGroupIndex())
+        .mapToInt(stage -> stage.getScheduleGroup())
         .min().getAsInt();
 
     scheduleNextScheduleGroup(initialScheduleGroup);
@@ -245,7 +245,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
   /**
    * Selects the next stage to schedule.
-   * It takes the referenceScheduleGroupIndex as a reference point to begin looking for the stages to execute:
+   * It takes the referenceScheduleGroup as a reference point to begin looking for the stages to execute:
    *
    * a) returns the failed_recoverable stage(s) of the earliest schedule group, if it(they) exists.
    * b) returns an empty optional if there are no schedulable stages at the moment.
@@ -253,15 +253,15 @@ public final class BatchSingleJobScheduler implements Scheduler {
    *    - if an ancestor schedule group is still executing
    * c) returns the next set of schedulable stages (if the current schedule group has completed execution)
    *
-   * @param referenceScheduleGroupIndex
+   * @param referenceScheduleGroup
    *      the index of the schedule group that is executing/has executed when this method is called.
    * @return an optional of the (possibly empty) next schedulable stage
    */
-  private Optional<List<Stage>> selectNextScheduleGroupToSchedule(final int referenceScheduleGroupIndex) {
+  private Optional<List<Stage>> selectNextScheduleGroupToSchedule(final int referenceScheduleGroup) {
     // Recursively check the previous schedule group.
-    if (referenceScheduleGroupIndex > initialScheduleGroup) {
+    if (referenceScheduleGroup > initialScheduleGroup) {
       final Optional<List<Stage>> ancestorStagesFromAScheduleGroup =
-          selectNextScheduleGroupToSchedule(referenceScheduleGroupIndex - 1);
+          selectNextScheduleGroupToSchedule(referenceScheduleGroup - 1);
       if (ancestorStagesFromAScheduleGroup.isPresent()) {
         // Nothing to schedule from the previous schedule group.
         return ancestorStagesFromAScheduleGroup;
@@ -277,7 +277,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     // All previous schedule groups are complete, we need to check for the current schedule group.
     final List<Stage> currentScheduleGroup = reverseTopoStages
         .stream()
-        .filter(stage -> stage.getScheduleGroupIndex() == referenceScheduleGroupIndex)
+        .filter(stage -> stage.getScheduleGroup() == referenceScheduleGroup)
         .collect(Collectors.toList());
     final boolean allStagesOfThisGroupComplete = currentScheduleGroup
         .stream()
@@ -286,7 +286,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
         .allMatch(state -> state.equals(StageState.State.COMPLETE));
 
     if (!allStagesOfThisGroupComplete) {
-      LOG.info("There are remaining stages in the current schedule group, {}", referenceScheduleGroupIndex);
+      LOG.info("There are remaining stages in the current schedule group, {}", referenceScheduleGroup);
       final List<Stage> stagesToSchedule = currentScheduleGroup
           .stream()
           .filter(stage -> {
@@ -304,7 +304,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
       final List<Stage> stagesToSchedule = reverseTopoStages
           .stream()
           .filter(stage -> {
-            if (stage.getScheduleGroupIndex() == referenceScheduleGroupIndex + 1) {
+            if (stage.getScheduleGroup() == referenceScheduleGroup + 1) {
               final String stageId = stage.getId();
               return jobStateManager.getStageState(stageId) != StageState.State.EXECUTING
                   && jobStateManager.getStageState(stageId) != StageState.State.COMPLETE;
@@ -314,7 +314,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           .collect(Collectors.toList());
 
       if (stagesToSchedule.isEmpty()) {
-        LOG.debug("ScheduleGroup {}: already executing/complete!, so we skip this", referenceScheduleGroupIndex + 1);
+        LOG.debug("ScheduleGroup {}: already executing/complete!, so we skip this", referenceScheduleGroup + 1);
         return Optional.empty();
       }
 
@@ -514,6 +514,6 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   private int getSchedulingIndexOfStage(final String stageId) {
-    return physicalPlan.getStageDAG().getVertexById(stageId).getScheduleGroupIndex();
+    return physicalPlan.getStageDAG().getVertexById(stageId).getScheduleGroup();
   }
 }

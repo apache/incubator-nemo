@@ -93,7 +93,7 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
         newScheduleGroup.vertices.add(irVertex);
         irVertexToScheduleGroupMap.put(irVertex, newScheduleGroup);
       }
-      // Get scheduleGroupIndex
+      // Get scheduleGroup
       final ScheduleGroup scheduleGroup = irVertexToScheduleGroupMap.get(irVertex);
       if (scheduleGroup == null) {
         throw new RuntimeException(String.format("ScheduleGroup must be set for %s", irVertex));
@@ -203,8 +203,8 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
       }
     });
 
-    // Assign ScheduleGroupIndex property based on topology of ScheduleGroups
-    final MutableInt currentScheduleGroupIndex = new MutableInt(getNextScheudleGroupIndex(dag.getVertices()));
+    // Assign ScheduleGroup property based on topology of ScheduleGroups
+    final MutableInt currentScheduleGroup = new MutableInt(getNextScheudleGroupIndex(dag.getVertices()));
     final DAGBuilder<ScheduleGroup, ScheduleGroupEdge> scheduleGroupDAGBuilder = new DAGBuilder<>();
     scheduleGroups.forEach(scheduleGroupDAGBuilder::addVertex);
     scheduleGroups.forEach(src -> src.scheduleGroupsTo
@@ -213,12 +213,12 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
       boolean usedCurrentIndex = false;
       for (final IRVertex irVertex : scheduleGroup.vertices) {
         if (!irVertex.getPropertyValue(ScheduleGroupProperty.class).isPresent()) {
-          irVertex.getExecutionProperties().put(ScheduleGroupProperty.of(currentScheduleGroupIndex.getValue()));
+          irVertex.getExecutionProperties().put(ScheduleGroupProperty.of(currentScheduleGroup.getValue()));
           usedCurrentIndex = true;
         }
       }
       if (usedCurrentIndex) {
-        currentScheduleGroupIndex.increment();
+        currentScheduleGroup.increment();
       }
     });
     return dag;
@@ -231,14 +231,14 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
    * @return the minimum value for the {@link ScheduleGroupProperty} that won't collide with the existing values
    */
   private int getNextScheudleGroupIndex(final Collection<IRVertex> irVertexCollection) {
-    int nextScheduleGroupIndex = 0;
+    int nextScheduleGroup = 0;
     for (final IRVertex irVertex : irVertexCollection) {
-      final Optional<Integer> scheduleGroupIndex = irVertex.getPropertyValue(ScheduleGroupProperty.class);
-      if (scheduleGroupIndex.isPresent()) {
-        nextScheduleGroupIndex = Math.max(scheduleGroupIndex.get() + 1, nextScheduleGroupIndex);
+      final Optional<Integer> scheduleGroup = irVertex.getPropertyValue(ScheduleGroupProperty.class);
+      if (scheduleGroup.isPresent()) {
+        nextScheduleGroup = Math.max(scheduleGroup.get() + 1, nextScheduleGroup);
       }
     }
-    return nextScheduleGroupIndex;
+    return nextScheduleGroup;
   }
 
   /**

@@ -96,9 +96,9 @@ public final class Stage extends Vertex {
   /**
    * @return the schedule group index.
    */
-  public int getScheduleGroupIndex() {
+  public int getScheduleGroup() {
     return executionProperties.get(ScheduleGroupProperty.class)
-        .orElseThrow(() -> new RuntimeException("ScheduleGroupIndex property must be set for Stage"));
+        .orElseThrow(() -> new RuntimeException("ScheduleGroup property must be set for Stage"));
   }
 
   /**
@@ -130,7 +130,7 @@ public final class Stage extends Vertex {
   @Override
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("{\"scheduleGroupIndex\": ").append(getScheduleGroupIndex());
+    sb.append("{\"scheduleGroup\": ").append(getScheduleGroup());
     sb.append(", \"irDag\": ").append(irDag);
     sb.append(", \"parallelism\": ").append(getParallelism());
     sb.append(", \"executionProperties\": ").append(executionProperties);

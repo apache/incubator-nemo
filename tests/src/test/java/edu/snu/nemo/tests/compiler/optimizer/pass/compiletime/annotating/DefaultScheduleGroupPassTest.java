@@ -67,11 +67,11 @@ public final class DefaultScheduleGroupPassTest {
         new TestPolicy(), "");
 
     for (final IRVertex irVertex : processedDAG.getTopologicalSort()) {
-      final Integer currentScheduleGroupIndex = irVertex.getPropertyValue(ScheduleGroupProperty.class).get();
-      final Integer largestScheduleGroupIndexOfParent = processedDAG.getParents(irVertex.getId()).stream()
+      final Integer currentScheduleGroup = irVertex.getPropertyValue(ScheduleGroupProperty.class).get();
+      final Integer largestScheduleGroupOfParent = processedDAG.getParents(irVertex.getId()).stream()
           .mapToInt(v -> v.getPropertyValue(ScheduleGroupProperty.class).get())
           .max().orElse(0);
-      assertTrue(currentScheduleGroupIndex >= largestScheduleGroupIndexOfParent);
+      assertTrue(currentScheduleGroup >= largestScheduleGroupOfParent);
     }
   }
 
@@ -159,15 +159,15 @@ public final class DefaultScheduleGroupPassTest {
    * @param expected the expected property value
    * @param vertex the vertex to test
    */
-  private static void assertScheduleGroupIndex(final int expected, final IRVertex vertex) {
-    assertEquals(expected, getScheduleGroupIndex(vertex));
+  private static void assertScheduleGroup(final int expected, final IRVertex vertex) {
+    assertEquals(expected, getScheduleGroup(vertex));
   }
 
   /**
    * @param vertex a vertex
    * @return {@link ScheduleGroupProperty} of {@code vertex}
    */
-  private static int getScheduleGroupIndex(final IRVertex vertex) {
+  private static int getScheduleGroup(final IRVertex vertex) {
     return vertex.getPropertyValue(ScheduleGroupProperty.class)
         .orElseThrow(() -> new RuntimeException(String.format("ScheduleGroup not set for %s", vertex.getId())));
   }
@@ -176,10 +176,10 @@ public final class DefaultScheduleGroupPassTest {
    * Ensures that all vertices in {@code vertices} have different {@link ScheduleGroupProperty} value.
    * @param vertices vertices to test
    */
-  private static void assertDifferentScheduleGroupIndex(final Collection<IRVertex> vertices) {
+  private static void assertDifferentScheduleGroup(final Collection<IRVertex> vertices) {
     final Set<Integer> indices = new HashSet<>();
     vertices.forEach(v -> {
-      final int idx = getScheduleGroupIndex(v);
+      final int idx = getScheduleGroup(v);
       assertFalse(indices.contains(idx));
       indices.add(idx);
     });
@@ -194,7 +194,7 @@ public final class DefaultScheduleGroupPassTest {
     final Pair<DAG<IRVertex, IREdge>, List<IRVertex>> dag
         = generateBranchDAG(DataCommunicationPatternProperty.Value.OneToOne, DataFlowModelProperty.Value.Pull);
     pass.apply(dag.left());
-    dag.right().forEach(v -> assertScheduleGroupIndex(0, v));
+    dag.right().forEach(v -> assertScheduleGroup(0, v));
   }
 
   /**
@@ -206,12 +206,12 @@ public final class DefaultScheduleGroupPassTest {
     final Pair<DAG<IRVertex, IREdge>, List<IRVertex>> dag
         = generateBranchDAG(DataCommunicationPatternProperty.Value.OneToOne, DataFlowModelProperty.Value.Pull);
     pass.apply(dag.left());
-    dag.right().subList(0, 4).forEach(v -> assertScheduleGroupIndex(0, v));
-    dag.right().subList(4, 5).forEach(v -> assertScheduleGroupIndex(1, v));
+    dag.right().subList(0, 4).forEach(v -> assertScheduleGroup(0, v));
+    dag.right().subList(4, 5).forEach(v -> assertScheduleGroup(1, v));
   }
 
   /**
-   * Test scenario to determine whether push edges properly enforces same scheduleGroupIndex or not.
+   * Test scenario to determine whether push edges properly enforces same scheduleGroup or not.
    */
   @Test
   public void testBranchWithPush() {
@@ -219,7 +219,7 @@ public final class DefaultScheduleGroupPassTest {
     final Pair<DAG<IRVertex, IREdge>, List<IRVertex>> dag
         = generateBranchDAG(DataCommunicationPatternProperty.Value.Shuffle, DataFlowModelProperty.Value.Push);
     pass.apply(dag.left());
-    dag.right().forEach(v -> assertScheduleGroupIndex(0, v));
+    dag.right().forEach(v -> assertScheduleGroup(0, v));
   }
 
   /**
@@ -230,7 +230,7 @@ public final class DefaultScheduleGroupPassTest {
     final DefaultScheduleGroupPass pass = new DefaultScheduleGroupPass(false, true, true);
     final Pair<DAG<IRVertex, IREdge>, List<IRVertex>> dag
         = generateBranchDAG(DataCommunicationPatternProperty.Value.BroadCast, DataFlowModelProperty.Value.Pull);
-    assertDifferentScheduleGroupIndex(pass.apply(dag.left()).getVertices());
+    assertDifferentScheduleGroup(pass.apply(dag.left()).getVertices());
   }
 
   /**
@@ -241,7 +241,7 @@ public final class DefaultScheduleGroupPassTest {
     final DefaultScheduleGroupPass pass = new DefaultScheduleGroupPass(true, false, true);
     final Pair<DAG<IRVertex, IREdge>, List<IRVertex>> dag
         = generateBranchDAG(DataCommunicationPatternProperty.Value.Shuffle, DataFlowModelProperty.Value.Pull);
-    assertDifferentScheduleGroupIndex(pass.apply(dag.left()).getVertices());
+    assertDifferentScheduleGroup(pass.apply(dag.left()).getVertices());
   }
 
   /**
@@ -253,11 +253,11 @@ public final class DefaultScheduleGroupPassTest {
     final Pair<DAG<IRVertex, IREdge>, List<IRVertex>> dag
         = generateJoinDAG(DataCommunicationPatternProperty.Value.OneToOne, DataFlowModelProperty.Value.Pull);
     pass.apply(dag.left());
-    final int idxForFirstScheduleGroup = getScheduleGroupIndex(dag.right().get(0));
-    final int idxForSecondScheduleGroup = getScheduleGroupIndex(dag.right().get(2));
-    dag.right().subList(0, 2).forEach(v -> assertScheduleGroupIndex(idxForFirstScheduleGroup, v));
-    dag.right().subList(2, 4).forEach(v -> assertScheduleGroupIndex(idxForSecondScheduleGroup, v));
-    dag.right().subList(4, 6).forEach(v -> assertScheduleGroupIndex(2, v));
+    final int idxForFirstScheduleGroup = getScheduleGroup(dag.right().get(0));
+    final int idxForSecondScheduleGroup = getScheduleGroup(dag.right().get(2));
+    dag.right().subList(0, 2).forEach(v -> assertScheduleGroup(idxForFirstScheduleGroup, v));
+    dag.right().subList(2, 4).forEach(v -> assertScheduleGroup(idxForSecondScheduleGroup, v));
+    dag.right().subList(4, 6).forEach(v -> assertScheduleGroup(2, v));
   }
 
   /**
@@ -269,7 +269,7 @@ public final class DefaultScheduleGroupPassTest {
     final Pair<DAG<IRVertex, IREdge>, List<IRVertex>> dag
         = generateJoinDAG(DataCommunicationPatternProperty.Value.OneToOne, DataFlowModelProperty.Value.Push);
     pass.apply(dag.left());
-    dag.right().forEach(v -> assertScheduleGroupIndex(0, v));
+    dag.right().forEach(v -> assertScheduleGroup(0, v));
   }
 
   /**
@@ -283,9 +283,9 @@ public final class DefaultScheduleGroupPassTest {
     dag.left().getOutgoingEdgesOf(dag.right().get(1)).iterator().next()
         .getExecutionProperties().put(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
     pass.apply(dag.left());
-    final int idxForFirstScheduleGroup = getScheduleGroupIndex(dag.right().get(0));
-    final int idxForSecondScheduleGroup = getScheduleGroupIndex(dag.right().get(2));
-    dag.right().subList(0, 2).forEach(v -> assertScheduleGroupIndex(idxForFirstScheduleGroup, v));
-    dag.right().subList(2, 6).forEach(v -> assertScheduleGroupIndex(idxForSecondScheduleGroup, v));
+    final int idxForFirstScheduleGroup = getScheduleGroup(dag.right().get(0));
+    final int idxForSecondScheduleGroup = getScheduleGroup(dag.right().get(2));
+    dag.right().subList(0, 2).forEach(v -> assertScheduleGroup(idxForFirstScheduleGroup, v));
+    dag.right().subList(2, 6).forEach(v -> assertScheduleGroup(idxForSecondScheduleGroup, v));
   }
 }

@@ -63,12 +63,12 @@ public final class PhysicalPlanGeneratorTest {
     final Stage s0 = stages.next();
     final Stage s1 = stages.next();
 
-    assertNotEquals(s0.getScheduleGroupIndex(), s1.getScheduleGroupIndex());
+    assertNotEquals(s0.getScheduleGroup(), s1.getScheduleGroup());
   }
 
-  private static final IRVertex newIRVertex(final int scheduleGroupIndex, final int parallelism) {
+  private static final IRVertex newIRVertex(final int scheduleGroup, final int parallelism) {
     final IRVertex irVertex = new OperatorVertex(EMPTY_TRANSFORM);
-    irVertex.getExecutionProperties().put(ScheduleGroupProperty.of(scheduleGroupIndex));
+    irVertex.getExecutionProperties().put(ScheduleGroupProperty.of(scheduleGroup));
     irVertex.getExecutionProperties().put(ParallelismProperty.of(parallelism));
     return irVertex;
   }
