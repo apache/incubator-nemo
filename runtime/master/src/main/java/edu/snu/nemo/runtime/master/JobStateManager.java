@@ -106,6 +106,8 @@ public final class JobStateManager {
     this.finishLock = new ReentrantLock();
     this.jobFinishedCondition = finishLock.newCondition();
     this.metricStore = MetricStore.getStore();
+
+    metricStore.getOrCreateMetric(JobMetric.class, jobId).setStageDAG(physicalPlan.getStageDAG());
     initializeComputationStates();
   }
 

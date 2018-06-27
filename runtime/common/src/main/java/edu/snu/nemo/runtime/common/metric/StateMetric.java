@@ -15,20 +15,23 @@
  */
 package edu.snu.nemo.runtime.common.metric;
 
+import java.util.List;
+
 /**
- * Interface for all metrics.
+ * Interface for metric which contians its state.
+ * @param <T> class of state of the metric.
  */
-public interface Metric {
+public interface StateMetric<T> extends Metric {
   /**
-   * Get its unique id.
-   * @return an unique id
+   * Get its list of {@link StateTransitionEvent}.
+   * @return list of events.
    */
-  String getId();
+  List<StateTransitionEvent<T>> getStateTransitionEvents();
 
   /**
-   * Process metric message from evaluators.
-   * @param metricField field name of the metric.
-   * @param metricValue byte array of serialized data value.
+   * Add a {@link StateTransitionEvent} to the metric.
+   * @param prevState previous state.
+   * @param newState new state.
    */
-  void processMetricMessage(final String metricField, final byte[] metricValue);
+  void addEvent(final T prevState, final T newState);
 }

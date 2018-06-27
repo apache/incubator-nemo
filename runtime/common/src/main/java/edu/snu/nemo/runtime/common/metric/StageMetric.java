@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * Metric class for {@link Stage}.
  */
-public class StageMetric implements Metric<StageState.State> {
+public class StageMetric implements StateMetric<StageState.State> {
   private String id;
   private List<StateTransitionEvent<StageState.State>> stateTransitionEvents = new ArrayList<>();
 

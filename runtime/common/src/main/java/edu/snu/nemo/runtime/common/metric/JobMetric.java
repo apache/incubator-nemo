@@ -15,18 +15,24 @@
  */
 package edu.snu.nemo.runtime.common.metric;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.JobState;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Metric class for Job (or {@link PhysicalPlan}).
  */
-public final class JobMetric implements Metric<JobState.State> {
+public final class JobMetric implements StateMetric<JobState.State> {
   private String id;
   private List<StateTransitionEvent<JobState.State>> stateTransitionEvents = new ArrayList<>();
+  private JsonNode stageDagJson;
 
   public JobMetric(final PhysicalPlan physicalPlan) {
     this.id = physicalPlan.getId();
@@ -34,6 +40,21 @@ public final class JobMetric implements Metric<JobState.State> {
 
   public JobMetric(final String id) {
     this.id = id;
+  }
+
+  @JsonProperty("dag")
+  public JsonNode getStageDAG() {
+    return stageDagJson;
+  }
+
+  public void setStageDAG(final DAG dag) {
+    final String dagJson = dag.toString();
+    final ObjectMapper objectMapper = new ObjectMapper();
+    try {
+      this.stageDagJson = objectMapper.readTree(dagJson);
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

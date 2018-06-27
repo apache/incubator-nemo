@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Metric class for {@link edu.snu.nemo.runtime.common.plan.Task}.
  */
-public class TaskMetric implements Metric<TaskState.State> {
+public class TaskMetric implements StateMetric<TaskState.State> {
   private String id;
   private List<StateTransitionEvent<TaskState.State>> stateTransitionEvents = new ArrayList<>();
   private List<DataTransferEvent> dataTransferEvents = new ArrayList<>();
