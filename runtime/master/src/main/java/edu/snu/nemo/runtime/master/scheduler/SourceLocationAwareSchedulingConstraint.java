@@ -17,7 +17,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.Readable;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.SourceLocationAwareSchedulingProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -31,11 +31,11 @@ import java.util.*;
 /**
  * This policy is same as {@link MinOccupancyFirstSchedulingPolicy}, however for Tasks
  * with {@link edu.snu.nemo.common.ir.vertex.SourceVertex}, it tries to pick one of the executors
- * where the corresponding data resides.
+ * where the corresponding data reside.
  */
 @ThreadSafe
 @DriverSide
-@SchedulingConstraint.AssociatedProperty(ExecutorPlacementProperty.class)
+@SchedulingConstraint.AssociatedProperty(SourceLocationAwareSchedulingProperty.class)
 public final class SourceLocationAwareSchedulingConstraint implements SchedulingConstraint {
   private static final Logger LOG = LoggerFactory.getLogger(SourceLocationAwareSchedulingConstraint.class);
 

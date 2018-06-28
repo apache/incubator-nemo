@@ -15,10 +15,8 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
-import org.junit.Assert;
 import org.junit.Test;
 
 /**
