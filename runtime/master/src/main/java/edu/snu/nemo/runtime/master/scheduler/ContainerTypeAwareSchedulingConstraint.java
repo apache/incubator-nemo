@@ -17,6 +17,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
@@ -25,6 +26,7 @@ import javax.inject.Inject;
 /**
  * This policy find executors which has corresponding container type.
  */
+@SchedulingConstraint.AssociatedProperty(ParallelismProperty.class)
 public final class ContainerTypeAwareSchedulingConstraint implements SchedulingConstraint {
 
   @VisibleForTesting

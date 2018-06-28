@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
@@ -24,6 +25,7 @@ import javax.inject.Inject;
 /**
  * This policy finds executor that has free slot for a Task.
  */
+@SchedulingConstraint.AssociatedProperty(ScheduleGroupProperty.class)
 public final class FreeSlotSchedulingConstraint implements SchedulingConstraint {
   @VisibleForTesting
   @Inject

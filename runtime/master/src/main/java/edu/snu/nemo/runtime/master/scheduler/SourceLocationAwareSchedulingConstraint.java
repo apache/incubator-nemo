@@ -17,6 +17,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -34,6 +35,7 @@ import java.util.*;
  */
 @ThreadSafe
 @DriverSide
+@SchedulingConstraint.AssociatedProperty(ExecutorPlacementProperty.class)
 public final class SourceLocationAwareSchedulingConstraint implements SchedulingConstraint {
   private static final Logger LOG = LoggerFactory.getLogger(SourceLocationAwareSchedulingConstraint.class);
 
