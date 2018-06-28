@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import com.google.common.collect.Sets;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
@@ -39,6 +40,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 
@@ -197,28 +199,27 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
   @Override
   public void onExecutorRemoved(final String executorId) {
-    final Set<String> tasksToReExecute = new HashSet<>();
-    // Tasks for lost blocks
-    tasksToReExecute.addAll(blockManagerMaster.removeWorker(executorId));
+    // (1) Consider block loss
+    final Set<String> producersOfLostBlocks = blockManagerMaster.removeWorker(executorId);
 
-    // Tasks executing on the removed executor
+    // (2) Consider task interruption
+    final Set<String> interruptedTasks = new HashSet<>();
     executorRegistry.updateExecutor(executorId, (executor, state) -> {
-      tasksToReExecute.addAll(executor.onExecutorFailed());
+      interruptedTasks.addAll(executor.onExecutorFailed());
       return Pair.of(executor, ExecutorRegistry.ExecutorState.FAILED);
     });
 
-    tasksToReExecute.forEach(failedTaskId -> {
-      final int attemptIndex = jobStateManager.getTaskAttempt(failedTaskId);
-      onTaskStateReportFromExecutor(executorId, failedTaskId, attemptIndex, TaskState.State.SHOULD_RETRY,
+    // Based on (1) and (2), select SHOULD_RETRY tasks
+    final Set<String> tasksToReExecute =
+        Sets.union(interruptedTasks, recursivelyGetMatchingParentTasks(interruptedTasks, producersOfLostBlocks));
+    tasksToReExecute.forEach(taskToReExecute -> {
+      final int attemptIndex = jobStateManager.getTaskAttempt(taskToReExecute);
+      onTaskStateReportFromExecutor(executorId, taskToReExecute, attemptIndex, TaskState.State.SHOULD_RETRY,
           null, TaskState.RecoverableFailureCause.CONTAINER_FAILURE);
     });
 
-    if (!tasksToReExecute.isEmpty()) {
-      // Schedule a stage after marking the necessary tasks to failed_recoverable.
-      // The stage for one of the tasks that failed is a starting point to look
-      // for the next stage to be scheduled.
-      doSchedule();
-    }
+    // Trigger the scheduling of SHOULD_RETRY tasks in the earliest scheduleGroup
+    doSchedule();
   }
 
   @Override
@@ -230,7 +231,9 @@ public final class BatchSingleJobScheduler implements Scheduler {
   ////////////////////////////////////////////////////////////////////// Key methods for scheduling
 
   /**
-   * The entry point for task scheduling.
+   * The main entry point for task scheduling.
+   * This operation can be invoked at any point during job execution, as it is designed to be free of side-effects,
+   * and integrate well with {@link PendingTaskCollectionPointer} and {@link SchedulerRunner}.
    */
   private void doSchedule() {
     final Optional<List<Stage>> earliest = selectEarliestSchedulableGroup();
@@ -408,8 +411,6 @@ public final class BatchSingleJobScheduler implements Scheduler {
       return Pair.of(executor, state);
     });
 
-    final String stageId = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
-
     switch (failureCause) {
       // Previous task must be re-executed, and incomplete tasks of the belonging stage must be rescheduled.
       case INPUT_READ_FAILURE:
@@ -428,6 +429,41 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   ////////////////////////////////////////////////////////////////////// Helper methods
+
+  private Set<String> recursivelyGetMatchingParentTasks(final Set<String> children,
+                                                        final Set<String> candidates) {
+    final Set<String> directParents = candidates.stream()
+        .filter(candidate -> children.stream().anyMatch(child -> isParent(child, candidate)))
+        .collect(Collectors.toSet());
+    if (directParents.isEmpty()) {
+      // No match. Return an empty set.
+      return directParents;
+    } else {
+      // Match. Check also the parents of these direct parents.
+      return Sets.union(directParents, recursivelyGetMatchingParentTasks(directParents, candidates));
+    }
+  }
+
+  private boolean isParent(final String childTaskId, final String candidate) {
+    final String stageIdOfChildTask = RuntimeIdGenerator.getStageIdFromTaskId(childTaskId);
+    return physicalPlan.getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
+        .stream()
+        .flatMap(inStageEdge -> {
+          final List<String> tasksOfParentStage = inStageEdge.getSrc().getTaskIds();
+          switch (inStageEdge.getDataCommunicationPattern()) {
+            case Shuffle:
+            case BroadCast:
+              // All of the parent stage's tasks are parents
+              return tasksOfParentStage.stream();
+            case OneToOne:
+              // Only one of the parent stage's tasks is a parent
+              return Stream.of(tasksOfParentStage.get(RuntimeIdGenerator.getIndexFromTaskId(childTaskId)));
+            default:
+              throw new IllegalStateException(inStageEdge.toString());
+          }
+        })
+        .anyMatch(parentTask -> parentTask.equals(candidate));
+  }
 
   /**
    * @param taskId id of the task

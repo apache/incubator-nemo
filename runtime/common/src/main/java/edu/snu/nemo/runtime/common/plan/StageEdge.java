@@ -95,16 +95,16 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   }
 
   /**
-   * @return the source vertex of the edge.
+   * @return the source IR vertex of the edge.
    */
-  public IRVertex getSrcVertex() {
+  public IRVertex getSrcIRVertex() {
     return srcVertex;
   }
 
   /**
-   * @return the destination vertex of the edge.
+   * @return the destination IR vertex of the edge.
    */
-  public IRVertex getDstVertex() {
+  public IRVertex getDstIRVertex() {
     return dstVertex;
   }
 
