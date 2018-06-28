@@ -419,7 +419,7 @@ public final class TaskExecutor {
         persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID)
+                .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
                 .setType(ControlMessage.MessageType.ExecutorDataCollected)
                 .setDataCollected(ControlMessage.DataCollectMessage.newBuilder().setData(data).build())
                 .build()));
