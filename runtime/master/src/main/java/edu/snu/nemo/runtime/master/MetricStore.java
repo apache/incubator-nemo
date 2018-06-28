@@ -23,8 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.nemo.common.exception.UnsupportedMetricException;
 import edu.snu.nemo.runtime.common.metric.*;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -187,5 +186,17 @@ public final class MetricStore {
 
     jsonGenerator.close();
     return stream.toString();
+  }
+
+  public void dumpAllMetricToFile(final String filePath) {
+    try {
+      final String jsonDump = dumpAllMetricToJson();
+      final BufferedWriter writer = new BufferedWriter(new FileWriter(filePath));
+
+      writer.write(jsonDump);
+      writer.close();
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

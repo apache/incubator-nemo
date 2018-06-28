@@ -82,6 +82,7 @@ public final class RuntimeMaster {
   private final BlockManagerMaster blockManagerMaster;
   private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
+  private final MetricStore metricStore;
   private final Map<Integer, Long> aggregatedMetricData;
   private final ClientRPC clientRPC;
   private final MetricManagerMaster metricManagerMaster;
@@ -127,6 +128,7 @@ public final class RuntimeMaster {
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
     this.aggregatedMetricData = new HashMap<>();
+    this.metricStore = MetricStore.getStore();
     this.metricServer = startRestMetricServer();
   }
 
@@ -199,6 +201,9 @@ public final class RuntimeMaster {
       }
       metricMessageHandler.terminate();
       containerManager.terminate();
+
+      // TODO: parameterize file path using Tang
+      metricStore.dumpAllMetricToFile("/tmp/dump");
 
       try {
         metricServer.stop();

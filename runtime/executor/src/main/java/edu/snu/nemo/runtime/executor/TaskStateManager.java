@@ -55,6 +55,12 @@ public final class TaskStateManager {
     this.executorId = executorId;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.metricMessageSender = metricMessageSender;
+
+    LOG.info("TASKMETRIC {} - executor: {}, attempt: {}", task.getTaskId(), executorId, attemptIdx);
+    metricMessageSender.send("TaskMetric", taskId,
+        "containerId", SerializationUtils.serialize(executorId));
+    metricMessageSender.send("TaskMetric", taskId,
+        "scheduleAttempt", SerializationUtils.serialize(attemptIdx));
   }
 
   /**
@@ -79,10 +85,6 @@ public final class TaskStateManager {
         metric.put("ContainerId", executorId);
         metric.put("ScheduleAttempt", attemptIdx);
         metric.put("FromState", newState);
-        metricMessageSender.send("TaskMetric", taskId,
-            "containerId", SerializationUtils.serialize(executorId));
-        metricMessageSender.send("TaskMetric", taskId,
-            "scheduleAttempt", SerializationUtils.serialize(attemptIdx));
         break;
       case COMPLETE:
         LOG.debug("Task ID {} complete!", this.taskId);
