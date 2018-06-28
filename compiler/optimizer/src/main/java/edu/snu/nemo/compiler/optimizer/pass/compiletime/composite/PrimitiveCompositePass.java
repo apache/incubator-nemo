@@ -37,7 +37,9 @@ public final class PrimitiveCompositePass extends CompositePass {
         new DefaultEdgeUsedDataHandlingPass(),
         new DefaultScheduleGroupPass(),
         new CompressionPass(),
-        new DecompressionPass()
+        new DecompressionPass(),
+        new SourceLocationAwareSchedulingPass(),
+        new ExecutorSlotCompliancePass()
     ));
   }
 }
