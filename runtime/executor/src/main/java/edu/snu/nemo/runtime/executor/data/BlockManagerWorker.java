@@ -135,11 +135,10 @@ public final class BlockManagerWorker {
    * @param keyRange   the key range descriptor.
    * @return the result data in the block.
    */
-  private CompletableFuture<DataUtil.IteratorWithNumBytes> retrieveDataFromBlock(
+  private CompletableFuture<DataUtil.IteratorWithNumBytes> getDataFromLocalBlock(
       final String blockId,
       final InterTaskDataStoreProperty.Value blockStore,
       final KeyRange keyRange) {
-    LOG.info("RetrieveDataFromBlock: {}", blockId);
     final BlockStore store = getBlockStore(blockStore);
 
     // First, try to fetch the block from local BlockStore.
@@ -229,7 +228,7 @@ public final class BlockManagerWorker {
       final String targetExecutorId = blockLocationInfoMsg.getOwnerExecutorId();
       if (targetExecutorId.equals(executorId) || targetExecutorId.equals(REMOTE_FILE_STORE)) {
         // Block resides in the evaluator
-        return retrieveDataFromBlock(blockId, blockStore, keyRange);
+        return getDataFromLocalBlock(blockId, blockStore, keyRange);
       } else {
         final ByteTransferContextDescriptor descriptor = ByteTransferContextDescriptor.newBuilder()
             .setBlockId(blockId)
