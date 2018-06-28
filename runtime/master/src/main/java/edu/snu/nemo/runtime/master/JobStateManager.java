@@ -173,7 +173,7 @@ public final class JobStateManager {
   public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newTaskState) {
     // Change task state
     final StateMachine taskState = idToTaskStates.get(taskId).getStateMachine();
-    LOG.debug("Task State Transition: id {}, from {} to {}",
+    LOG.info("Task State Transition: id {}, from {} to {}",
         new Object[]{taskId, taskState.getCurrentState(), newTaskState});
 
     taskState.setState(newTaskState);
@@ -214,30 +214,32 @@ public final class JobStateManager {
         .filter(state -> state.equals(TaskState.State.COMPLETE) || state.equals(TaskState.State.ON_HOLD))
         .count();
     switch (newTaskState) {
-      case READY:
-        onStageStateChanged(stageId, StageState.State.READY);
-        break;
-      case EXECUTING:
-        onStageStateChanged(stageId, StageState.State.EXECUTING);
-        break;
+      // SCHEDULABLE stage
       case SHOULD_RETRY:
-        onStageStateChanged(stageId, StageState.State.SHOULD_RETRY);
+        onStageStateChanged(stageId, StageState.State.SCHEDULABLE);
         break;
+
+      // COMPLETE stage
       case COMPLETE:
       case ON_HOLD:
         if (numOfCompletedOrOnHoldTasksInThisStage == tasksOfThisStage.size()) {
           onStageStateChanged(stageId, StageState.State.COMPLETE);
         }
         break;
+
+      // Doesn't affect StageState
+      case READY:
+      case EXECUTING:
       case FAILED:
         break;
       default:
         throw new UnknownExecutionStateException(new Throwable("This task state is unknown"));
     }
 
-    // Log not-yet-completed tasks for us to track progress
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
-      LOG.info("{}: {} Task(s) to go", stageId, tasksOfThisStage.size() - numOfCompletedOrOnHoldTasksInThisStage);
+      // Log not-yet-completed tasks for us to track progress
+      LOG.info("{} completed: {} Task(s) remaining in this stage",
+          taskId, tasksOfThisStage.size() - numOfCompletedOrOnHoldTasksInThisStage);
     }
   }
 
@@ -248,20 +250,15 @@ public final class JobStateManager {
    * @param newStageState of the stage.
    */
   private void onStageStateChanged(final String stageId, final StageState.State newStageState) {
-    if (newStageState.equals(getStageState(stageId))) {
-      // Ignore duplicate state updates
-      return;
-    }
-
     // Change stage state
     final StateMachine stageStateMachine = idToStageStates.get(stageId).getStateMachine();
-    LOG.debug("Stage State Transition: id {} from {} to {}",
+    LOG.info("Stage State Transition: id {} from {} to {}",
         new Object[]{stageId, stageStateMachine.getCurrentState(), newStageState});
     stageStateMachine.setState(newStageState);
 
     // Metric handling
     final Map<String, Object> metric = new HashMap<>();
-    if (newStageState == StageState.State.EXECUTING) {
+    if (newStageState == StageState.State.SCHEDULABLE) {
       metric.put("FromState", newStageState);
       beginMeasurement(stageId, metric);
     } else if (newStageState == StageState.State.COMPLETE) {
@@ -269,16 +266,9 @@ public final class JobStateManager {
       endMeasurement(stageId, metric);
     }
 
-    // Change job state if needed
+    // Job becomse COMPLETE
     final boolean allStagesCompleted = idToStageStates.values().stream().allMatch(state ->
         state.getStateMachine().getCurrentState().equals(StageState.State.COMPLETE));
-
-    // (1) Job becomes EXECUTING if not already
-    if (newStageState.equals(StageState.State.EXECUTING)
-        && !getJobState().equals(JobState.State.EXECUTING)) {
-      onJobStateChanged(JobState.State.EXECUTING);
-    }
-    // (2) Job becomes COMPLETE
     if (allStagesCompleted) {
       onJobStateChanged(JobState.State.COMPLETE);
     }
@@ -290,20 +280,15 @@ public final class JobStateManager {
    * @param newState of the job.
    */
   private void onJobStateChanged(final JobState.State newState) {
-    if (newState.equals(getJobState())) {
-      // Ignore duplicate state updates
-      return;
-    }
-
     jobState.getStateMachine().setState(newState);
 
     final Map<String, Object> metric = new HashMap<>();
     if (newState == JobState.State.EXECUTING) {
-      LOG.debug("Executing Job ID {}...", this.jobId);
+      LOG.info("Executing Job ID {}...", this.jobId);
       metric.put("FromState", newState);
       beginMeasurement(jobId, metric);
     } else if (newState == JobState.State.COMPLETE || newState == JobState.State.FAILED) {
-      LOG.debug("Job ID {} {}!", new Object[]{jobId, newState});
+      LOG.info("Job ID {} {}!", new Object[]{jobId, newState});
 
       // Awake all threads waiting the finish of this job.
       finishLock.lock();
@@ -435,7 +420,7 @@ public final class JobStateManager {
     file.getParentFile().mkdirs();
     try (final PrintWriter printWriter = new PrintWriter(file)) {
       printWriter.println(toStringWithPhysicalPlan());
-      LOG.debug(String.format("JSON representation of job state for %s(%s) was saved to %s",
+      LOG.info(String.format("JSON representation of job state for %s(%s) was saved to %s",
           jobId, suffix, file.getPath()));
     } catch (final IOException e) {
       LOG.warn(String.format("Cannot store JSON representation of job state for %s(%s) to %s: %s",

@@ -48,7 +48,7 @@ final class SchedulerTestUtil {
       if (StageState.State.COMPLETE == stageState) {
         // Stage has completed, so we break out of the loop.
         break;
-      } else if (StageState.State.EXECUTING == stageState) {
+      } else if (StageState.State.SCHEDULABLE == stageState) {
         stage.getTaskIds().forEach(taskId -> {
           final TaskState.State taskState = jobStateManager.getTaskState(taskId);
           if (TaskState.State.EXECUTING == taskState) {
@@ -60,8 +60,6 @@ final class SchedulerTestUtil {
             throw new IllegalStateException(taskState.toString());
           }
         });
-      } else if (StageState.State.READY == stageState) {
-        // Skip and retry in the next loop.
       } else {
         throw new IllegalStateException(stageState.toString());
       }
@@ -106,8 +104,7 @@ final class SchedulerTestUtil {
   static void mockSchedulingBySchedulerRunner(final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                                               final SchedulingPolicy schedulingPolicy,
                                               final JobStateManager jobStateManager,
-                                              final ExecutorRegistry executorRegistry,
-                                              final boolean scheduleOnlyTheFirstStage) {
+                                              final ExecutorRegistry executorRegistry) {
     final SchedulerRunner schedulerRunner =
         new SchedulerRunner(schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
     schedulerRunner.scheduleJob(jobStateManager);

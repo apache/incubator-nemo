@@ -178,7 +178,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + newState));
       }
     } else if (taskAttemptIndex < currentTaskAttemptIndex) {
-      // Do not change state, as this notification is for a previous task attempt.
+      // Do not change state, as this report is from a previous task attempt.
       // For example, the master can receive a notification that an executor has been removed,
       // and then a notification that the task that was running in the removed executor has been completed.
       // In this case, if we do not consider the attempt number, the state changes from SHOULD_RETRY to COMPLETED,
@@ -241,7 +241,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           .flatMap(stage -> selectSchedulableTasks(stage).stream())
           .collect(Collectors.toList());
 
-      LOG.info("doSchedule(): task ids {} in ScheduleGroup",
+      LOG.info("Attempting to schedule {} in the same ScheduleGroup",
           tasksToSchedule.stream().map(Task::getTaskId).collect(Collectors.toList()));
 
       // Set the pointer to the schedulable tasks.
@@ -259,9 +259,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
         .filter(scheduleGroup -> scheduleGroup.stream()
             .map(Stage::getId)
             .map(jobStateManager::getStageState)
-            .anyMatch(state -> state.equals(StageState.State.READY)
-                || state.equals(StageState.State.EXECUTING)
-                || state.equals(StageState.State.SHOULD_RETRY)))
+            .anyMatch(state -> state.equals(StageState.State.SCHEDULABLE))) // any schedulable stage in the group
         .findFirst(); // selects the one with the smallest scheduling group index.
   }
 

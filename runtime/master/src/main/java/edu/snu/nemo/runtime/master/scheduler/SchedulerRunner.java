@@ -122,6 +122,7 @@ public final class SchedulerRunner {
           // send the task
           final ExecutorRepresenter selectedExecutor = firstCandidate.get();
           selectedExecutor.onTaskScheduled(task);
+          LOG.info("{} scheduled to {}", new Object[]{task.getTaskId(), selectedExecutor.getExecutorId()});
         } else {
           couldNotSchedule.add(task);
         }

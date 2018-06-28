@@ -34,7 +34,9 @@ import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -59,6 +61,10 @@ import static org.mockito.Mockito.mock;
 @PrepareForTest({BlockManagerMaster.class, SchedulerRunner.class,
     PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
 public final class FaultToleranceTest {
+  @Rule public TestName testName = new TestName();
+
+
+
   private static final Logger LOG = LoggerFactory.getLogger(FaultToleranceTest.class.getName());
 
   private SchedulingPolicy schedulingPolicy;
@@ -77,6 +83,7 @@ public final class FaultToleranceTest {
 
   @Before
   public void setUp() throws Exception {
+    LOG.info("===== Testing {} =====", testName.getMethodName());
     metricMessageHandler = mock(MetricMessageHandler.class);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
@@ -102,7 +109,7 @@ public final class FaultToleranceTest {
   /**
    * Tests fault tolerance after a container removal.
    */
-  @Test(timeout=50000)
+  @Test(timeout=7000)
   public void testContainerRemoval() throws Exception {
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
@@ -137,39 +144,39 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0 || stage.getScheduleGroupIndex() == 1) {
 
         // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0 and 1.
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
-            executorRegistry, false);
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(
+            pendingTaskCollectionPointer, schedulingPolicy, jobStateManager, executorRegistry);
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 2) {
         scheduler.onExecutorRemoved("a3");
         // There are 2 executors, each of capacity 2, and there are 2 Tasks in ScheduleGroup 2.
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
-            executorRegistry, false);
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(
+            pendingTaskCollectionPointer, schedulingPolicy, jobStateManager, executorRegistry);
 
         // Due to round robin scheduling, "a2" is assured to have a running Task.
         scheduler.onExecutorRemoved("a2");
 
         // Re-schedule
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
-            executorRegistry, false);
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(
+            pendingTaskCollectionPointer, schedulingPolicy, jobStateManager, executorRegistry);
 
         final Optional<Integer> maxTaskAttempt = stage.getTaskIds().stream()
             .map(jobStateManager::getTaskAttempt).max(Integer::compareTo);
         assertTrue(maxTaskAttempt.isPresent());
         assertEquals(2, (int) maxTaskAttempt.get());
 
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
-            executorRegistry, false);
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(
+            pendingTaskCollectionPointer, schedulingPolicy, jobStateManager, executorRegistry);
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 3) {
         // There are 1 executors, each of capacity 2, and there are 2 Tasks in ScheduleGroup 3.
         // Schedule only the first Task
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
-            executorRegistry, true);
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(
+            pendingTaskCollectionPointer, schedulingPolicy, jobStateManager, executorRegistry);
       } else {
         throw new RuntimeException(String.format("Unexpected ScheduleGroupIndex: %d",
             stage.getScheduleGroupIndex()));
@@ -180,7 +187,7 @@ public final class FaultToleranceTest {
   /**
    * Tests fault tolerance after an output write failure.
    */
-  @Test(timeout=50000)
+  @Test(timeout=7000)
   public void testOutputFailure() throws Exception {
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
@@ -213,23 +220,23 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0 || stage.getScheduleGroupIndex() == 1) {
 
         // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0 and 1.
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
-            executorRegistry, false);
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(
+            pendingTaskCollectionPointer, schedulingPolicy, jobStateManager, executorRegistry);
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 2) {
         // There are 3 executors, each of capacity 2, and there are 2 Tasks in ScheduleGroup 2.
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
-            executorRegistry, false);
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(
+            pendingTaskCollectionPointer, schedulingPolicy, jobStateManager, executorRegistry);
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.SHOULD_RETRY, 1,
                 TaskState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
 
         // Re-schedule
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
-            executorRegistry, false);
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(
+            pendingTaskCollectionPointer, schedulingPolicy, jobStateManager, executorRegistry);
 
         final Optional<Integer> maxTaskAttempt = stage.getTaskIds().stream()
             .map(jobStateManager::getTaskAttempt).max(Integer::compareTo);
@@ -245,7 +252,7 @@ public final class FaultToleranceTest {
   /**
    * Tests fault tolerance after an input read failure.
    */
-  @Test(timeout=50000)
+  @Test(timeout=7000)
   public void testInputReadFailure() throws Exception {
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
@@ -278,15 +285,15 @@ public final class FaultToleranceTest {
       if (stage.getScheduleGroupIndex() == 0 || stage.getScheduleGroupIndex() == 1) {
 
         // There are 3 executors, each of capacity 2, and there are 6 Tasks in ScheduleGroup 0 and 1.
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
-            executorRegistry, false);
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(
+            pendingTaskCollectionPointer, schedulingPolicy, jobStateManager, executorRegistry);
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.COMPLETE, 1));
       } else if (stage.getScheduleGroupIndex() == 2) {
         // There are 3 executors, each of capacity 2, and there are 2 Tasks in ScheduleGroup 2.
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
-            executorRegistry, false);
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(
+            pendingTaskCollectionPointer, schedulingPolicy, jobStateManager, executorRegistry);
 
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
@@ -294,8 +301,8 @@ public final class FaultToleranceTest {
                 TaskState.RecoverableFailureCause.INPUT_READ_FAILURE));
 
         // Re-schedule
-        SchedulerTestUtil.mockSchedulingBySchedulerRunner(pendingTaskCollectionPointer, schedulingPolicy, jobStateManager,
-            executorRegistry, false);
+        SchedulerTestUtil.mockSchedulingBySchedulerRunner(
+            pendingTaskCollectionPointer, schedulingPolicy, jobStateManager, executorRegistry);
 
         final Optional<Integer> maxTaskAttempt = stage.getTaskIds().stream()
             .map(jobStateManager::getTaskAttempt).max(Integer::compareTo);
@@ -311,7 +318,7 @@ public final class FaultToleranceTest {
   /**
    * Tests the rescheduling of Tasks upon a failure.
    */
-  @Test(timeout=200000)
+  @Test(timeout=7000)
   public void testTaskReexecutionForFailure() throws Exception {
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();

@@ -31,27 +31,17 @@ public final class StageState {
     final StateMachine.Builder stateMachineBuilder = StateMachine.newBuilder();
 
     // Add states
-    stateMachineBuilder.addState(State.READY, "The stage has been created.");
-    stateMachineBuilder.addState(State.EXECUTING, "The stage is executing.");
+    stateMachineBuilder.addState(State.SCHEDULABLE, "This stage should be scheduled.");
     stateMachineBuilder.addState(State.COMPLETE, "All of this stage's tasks have completed.");
-    stateMachineBuilder.addState(State.SHOULD_RETRY, "Stage will be retried.");
 
     // Add transitions
-    stateMachineBuilder.addTransition(State.READY, State.EXECUTING,
-        "The stage can now schedule its tasks");
+    stateMachineBuilder.addTransition(
+        State.SCHEDULABLE, State.SCHEDULABLE, "A task in the stage needs to be retried");
+    stateMachineBuilder.addTransition(State.SCHEDULABLE, State.COMPLETE, "All tasks complete");
+    stateMachineBuilder.addTransition(State.COMPLETE, State.SCHEDULABLE,
+        "Completed before, but a task in this stage should be retried");
 
-    stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE,
-        "All tasks complete");
-    stateMachineBuilder.addTransition(State.EXECUTING, State.SHOULD_RETRY,
-        "Recoverable failure in a task");
-
-    stateMachineBuilder.addTransition(State.COMPLETE, State.SHOULD_RETRY,
-        "Container on which the stage's output is stored failed");
-
-    stateMachineBuilder.addTransition(State.SHOULD_RETRY, State.READY,
-        "Recoverable stage failure");
-
-    stateMachineBuilder.setInitialState(State.READY);
+    stateMachineBuilder.setInitialState(State.SCHEDULABLE);
 
     return stateMachineBuilder.build();
   }
@@ -64,10 +54,8 @@ public final class StageState {
    * StageState.
    */
   public enum State {
-    READY,
-    EXECUTING,
-    COMPLETE,
-    SHOULD_RETRY,
+    SCHEDULABLE,
+    COMPLETE
   }
 
   @Override
