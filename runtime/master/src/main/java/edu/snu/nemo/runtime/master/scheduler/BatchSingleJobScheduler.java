@@ -24,6 +24,7 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.eventhandler.DynamicOptimizationEvent;
 import edu.snu.nemo.runtime.common.plan.*;
+import edu.snu.nemo.runtime.common.state.BlockState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
 import edu.snu.nemo.common.exception.*;
@@ -43,9 +44,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
-
-import static edu.snu.nemo.runtime.common.state.TaskState.State.ON_HOLD;
-import static edu.snu.nemo.runtime.common.state.TaskState.State.READY;
 
 /**
  * (CONCURRENCY) Only a single dedicated thread should use the public methods of this class.
@@ -133,6 +131,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     this.physicalPlan = newPhysicalPlan;
     if (taskInfo != null) {
       onTaskExecutionComplete(taskInfo.left(), taskInfo.right(), true);
+      doSchedule();
     }
   }
 
@@ -153,7 +152,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
                                             final int taskAttemptIndex,
                                             final TaskState.State newState,
                                             @Nullable final String vertexPutOnHold,
-                                            final TaskState.RecoverableFailureCause failureCause) {
+                                            final TaskState.RecoverableTaskFailureCause failureCause) {
     final int currentTaskAttemptIndex = jobStateManager.getTaskAttempt(taskId);
 
     if (taskAttemptIndex == currentTaskAttemptIndex) {
@@ -161,9 +160,10 @@ public final class BatchSingleJobScheduler implements Scheduler {
       jobStateManager.onTaskStateChanged(taskId, newState);
       switch (newState) {
         case COMPLETE:
-          onTaskExecutionComplete(executorId, taskId);
+          onTaskExecutionComplete(executorId, taskId, false);
           break;
         case SHOULD_RETRY:
+          // SHOULD_RETRY from an executor means that the task ran into a recoverable failure
           onTaskExecutionFailedRecoverable(executorId, taskId, failureCause);
           break;
         case ON_HOLD:
@@ -178,6 +178,38 @@ public final class BatchSingleJobScheduler implements Scheduler {
               new Exception("The states READY/EXECUTING cannot occur at this point"));
         default:
           throw new UnknownExecutionStateException(new Exception("This TaskState is unknown: " + newState));
+      }
+
+      // Invoke doSchedule()
+      switch (newState) {
+        case COMPLETE:
+        case ON_HOLD:
+          // If the stage has completed
+          final String stageIdForTaskUponCompletion = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
+          if (jobStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
+            if (!jobStateManager.isJobDone()) {
+              doSchedule();
+            }
+          }
+          break;
+        case SHOULD_RETRY:
+          // Retry the failed task
+          doSchedule();
+          break;
+        default:
+          break;
+      }
+
+      // Invoke schedulerRunner.onExecutorSlotAvailable()
+      switch (newState) {
+        // These three states mean that a slot is made available.
+        case COMPLETE:
+        case ON_HOLD:
+        case SHOULD_RETRY:
+          schedulerRunner.onExecutorSlotAvailable();
+          break;
+        default:
+          break;
       }
     } else if (taskAttemptIndex < currentTaskAttemptIndex) {
       // Do not change state, as this report is from a previous task attempt.
@@ -194,29 +226,27 @@ public final class BatchSingleJobScheduler implements Scheduler {
   @Override
   public void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
     executorRegistry.registerExecutor(executorRepresenter);
-    schedulerRunner.onAnExecutorAvailable();
+    schedulerRunner.onExecutorSlotAvailable();
   }
 
   @Override
   public void onExecutorRemoved(final String executorId) {
-    // (1) Consider block loss
-    final Set<String> producersOfLostBlocks = blockManagerMaster.removeWorker(executorId);
+    blockManagerMaster.removeWorker(executorId);
 
-    // (2) Consider task interruption
+    // These are tasks that were running at the time of executor removal.
     final Set<String> interruptedTasks = new HashSet<>();
     executorRegistry.updateExecutor(executorId, (executor, state) -> {
       interruptedTasks.addAll(executor.onExecutorFailed());
       return Pair.of(executor, ExecutorRegistry.ExecutorState.FAILED);
     });
 
-    // Based on (1) and (2), select SHOULD_RETRY tasks
+    // We need to retry the interrupted tasks, and also recover the tasks' missing input blocks if needed.
     final Set<String> tasksToReExecute =
-        Sets.union(interruptedTasks, recursivelyGetMatchingParentTasks(interruptedTasks, producersOfLostBlocks));
-    tasksToReExecute.forEach(taskToReExecute -> {
-      final int attemptIndex = jobStateManager.getTaskAttempt(taskToReExecute);
-      onTaskStateReportFromExecutor(executorId, taskToReExecute, attemptIndex, TaskState.State.SHOULD_RETRY,
-          null, TaskState.RecoverableFailureCause.CONTAINER_FAILURE);
-    });
+        Sets.union(interruptedTasks, recursivelyGetParentTasksForLostBlocks(interruptedTasks));
+
+    // Report SHOULD_RETRY tasks so they can be re-scheduled
+    tasksToReExecute.forEach(
+        taskToReExecute -> jobStateManager.onTaskStateChanged(taskToReExecute, TaskState.State.SHOULD_RETRY));
 
     // Trigger the scheduling of SHOULD_RETRY tasks in the earliest scheduleGroup
     doSchedule();
@@ -285,7 +315,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
         // These are schedulable.
         case SHOULD_RETRY:
-          jobStateManager.onTaskStateChanged(taskId, READY);
+          jobStateManager.onTaskStateChanged(taskId, TaskState.State.READY);
         case READY:
           taskIdsToSchedule.add(taskId);
           break;
@@ -319,17 +349,6 @@ public final class BatchSingleJobScheduler implements Scheduler {
   ////////////////////////////////////////////////////////////////////// Task state change handlers
 
   /**
-   * Action after task execution has been completed, not after it has been put on hold.
-   *
-   * @param executorId  the ID of the executor.
-   * @param taskId the ID pf the task completed.
-   */
-  private void onTaskExecutionComplete(final String executorId,
-                                       final String taskId) {
-    onTaskExecutionComplete(executorId, taskId, false);
-  }
-
-  /**
    * Action after task execution has been completed.
    * @param executorId id of the executor.
    * @param taskId the ID of the task completed.
@@ -337,7 +356,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    */
   private void onTaskExecutionComplete(final String executorId,
                                        final String taskId,
-                                       final Boolean isOnHoldToComplete) {
+                                       final boolean isOnHoldToComplete) {
     LOG.debug("{} completed in {}", new Object[]{taskId, executorId});
     if (!isOnHoldToComplete) {
       executorRegistry.updateExecutor(executorId, (executor, state) -> {
@@ -345,15 +364,6 @@ public final class BatchSingleJobScheduler implements Scheduler {
         return Pair.of(executor, state);
       });
     }
-
-    final String stageIdForTaskUponCompletion = RuntimeIdGenerator.getStageIdFromTaskId(taskId);
-    if (jobStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
-      // if the stage this task belongs to is complete,
-      if (!jobStateManager.isJobDone()) {
-        doSchedule();
-      }
-    }
-    schedulerRunner.onAnExecutorAvailable();
   }
 
   /**
@@ -383,7 +393,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
               .filter(irVertex -> irVertex instanceof MetricCollectionBarrierVertex)
               .distinct()
               .map(irVertex -> (MetricCollectionBarrierVertex) irVertex) // convert types
-              .findFirst().orElseThrow(() -> new RuntimeException(ON_HOLD.name() // get it
+              .findFirst().orElseThrow(() -> new RuntimeException(TaskState.State.ON_HOLD.name() // get it
               + " called with failed task ids by some other task than "
               + MetricCollectionBarrierVertex.class.getSimpleName()));
       // and we will use this vertex to perform metric collection and dynamic optimization.
@@ -393,7 +403,6 @@ public final class BatchSingleJobScheduler implements Scheduler {
     } else {
       onTaskExecutionComplete(executorId, taskId, true);
     }
-    schedulerRunner.onAnExecutorAvailable();
   }
 
   /**
@@ -404,7 +413,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    */
   private void onTaskExecutionFailedRecoverable(final String executorId,
                                                 final String taskId,
-                                                final TaskState.RecoverableFailureCause failureCause) {
+                                                final TaskState.RecoverableTaskFailureCause failureCause) {
     LOG.info("{} failed in {} by {}", taskId, executorId, failureCause);
     executorRegistry.updateExecutor(executorId, (executor, state) -> {
       executor.onTaskExecutionFailed(taskId);
@@ -414,37 +423,35 @@ public final class BatchSingleJobScheduler implements Scheduler {
     switch (failureCause) {
       // Previous task must be re-executed, and incomplete tasks of the belonging stage must be rescheduled.
       case INPUT_READ_FAILURE:
-        // TODO #50: Carefully retry tasks in the scheduler
+        // TODO #54: Handle remote data fetch failures
       case OUTPUT_WRITE_FAILURE:
         blockManagerMaster.onProducerTaskFailed(taskId);
-        doSchedule();
-        break;
-      case CONTAINER_FAILURE:
-        LOG.info("Only the failed task will be retried.");
         break;
       default:
         throw new UnknownFailureCauseException(new Throwable("Unknown cause: " + failureCause));
     }
-    schedulerRunner.onAnExecutorAvailable();
   }
 
   ////////////////////////////////////////////////////////////////////// Helper methods
 
-  private Set<String> recursivelyGetMatchingParentTasks(final Set<String> children,
-                                                        final Set<String> candidates) {
-    final Set<String> directParents = candidates.stream()
-        .filter(candidate -> children.stream().anyMatch(child -> isParent(child, candidate)))
-        .collect(Collectors.toSet());
-    if (directParents.isEmpty()) {
-      // No match. Return an empty set.
-      return directParents;
-    } else {
-      // Match. Check also the parents of these direct parents.
-      return Sets.union(directParents, recursivelyGetMatchingParentTasks(directParents, candidates));
+  private Set<String> recursivelyGetParentTasksForLostBlocks(final Set<String> children) {
+    if (children.isEmpty()) {
+      return Collections.emptySet();
     }
+
+    final Set<String> selectedParentTasks = children.stream()
+        .flatMap(child -> getParentTasks(child).stream())
+        .filter(parent -> blockManagerMaster.getIdsOfBlocksProducedBy(parent).stream()
+            .map(blockManagerMaster::getBlockState)
+            .anyMatch(blockState -> blockState.equals(BlockState.State.NOT_AVAILABLE)) // If a block is missing
+        )
+        .collect(Collectors.toSet());
+
+    // Recursive call
+    return Sets.union(selectedParentTasks, recursivelyGetParentTasksForLostBlocks(selectedParentTasks));
   }
 
-  private boolean isParent(final String childTaskId, final String candidate) {
+  private Set<String> getParentTasks(final String childTaskId) {
     final String stageIdOfChildTask = RuntimeIdGenerator.getStageIdFromTaskId(childTaskId);
     return physicalPlan.getStageDAG().getIncomingEdgesOf(stageIdOfChildTask)
         .stream()
@@ -462,7 +469,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
               throw new IllegalStateException(inStageEdge.toString());
           }
         })
-        .anyMatch(parentTask -> parentTask.equals(candidate));
+        .collect(Collectors.toSet());
   }
 
   /**
@@ -475,15 +482,6 @@ public final class BatchSingleJobScheduler implements Scheduler {
         return stage.getIRDAG();
       }
     }
-    throw new RuntimeException(new Throwable("This taskId does not exist in the plan"));
-  }
-
-  private Stage getStageById(final String stageId) {
-    for (final Stage stage : physicalPlan.getStageDAG().getVertices()) {
-      if (stage.getId().equals(stageId)) {
-        return stage;
-      }
-    }
-    throw new RuntimeException(new Throwable("This taskId does not exist in the plan"));
+    throw new RuntimeException("This taskId does not exist in the plan");
   }
 }

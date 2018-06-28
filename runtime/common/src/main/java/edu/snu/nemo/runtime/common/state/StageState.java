@@ -19,6 +19,10 @@ import edu.snu.nemo.common.StateMachine;
 
 /**
  * Represents the states and their transitions of a stage.
+ *
+ * Maintained as simple two (SCHEDULABLE, COMPLETE) states to avoid ambiguity when the tasks are in different states.
+ * For example it is not clear whether a stage should be EXECUTING or SHOULD_RESTART, if one of the tasks in the stage
+ * is EXECUTING, and another is SHOULD_RESTART.
  */
 public final class StageState {
   private final StateMachine stateMachine;

@@ -232,7 +232,7 @@ public final class FaultToleranceTest {
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.SHOULD_RETRY, 1,
-                TaskState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE));
+                TaskState.RecoverableTaskFailureCause.OUTPUT_WRITE_FAILURE));
 
         // Re-schedule
         SchedulerTestUtil.mockSchedulingBySchedulerRunner(
@@ -298,7 +298,7 @@ public final class FaultToleranceTest {
         stage.getTaskIds().forEach(taskId ->
             SchedulerTestUtil.sendTaskStateEventToScheduler(scheduler, executorRegistry,
                 taskId, TaskState.State.SHOULD_RETRY, 1,
-                TaskState.RecoverableFailureCause.INPUT_READ_FAILURE));
+                TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
 
         // Re-schedule
         SchedulerTestUtil.mockSchedulingBySchedulerRunner(

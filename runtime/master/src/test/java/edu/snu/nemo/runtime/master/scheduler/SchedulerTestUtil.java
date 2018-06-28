@@ -16,14 +16,11 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -80,7 +77,7 @@ final class SchedulerTestUtil {
                                             final String taskId,
                                             final TaskState.State newState,
                                             final int attemptIdx,
-                                            final TaskState.RecoverableFailureCause cause) {
+                                            final TaskState.RecoverableTaskFailureCause cause) {
     final ExecutorRepresenter scheduledExecutor;
     while (true) {
       final Optional<ExecutorRepresenter> optional = executorRegistry.findExecutorForTask(taskId);

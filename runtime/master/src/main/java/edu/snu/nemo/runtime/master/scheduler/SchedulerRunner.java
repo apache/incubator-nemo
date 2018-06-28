@@ -137,9 +137,9 @@ public final class SchedulerRunner {
   }
 
   /**
-   * Signals to the condition on executor availability.
+   * Signals to the condition on executor slot availability.
    */
-  void onAnExecutorAvailable() {
+  void onExecutorSlotAvailable() {
     schedulingIteration.signal();
   }
 

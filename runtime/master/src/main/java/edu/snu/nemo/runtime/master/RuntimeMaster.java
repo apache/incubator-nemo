@@ -363,13 +363,13 @@ public final class RuntimeMaster {
     }
   }
 
-  private TaskState.RecoverableFailureCause convertFailureCause(
+  private TaskState.RecoverableTaskFailureCause convertFailureCause(
       final ControlMessage.RecoverableFailureCause cause) {
     switch (cause) {
       case InputReadFailure:
-        return TaskState.RecoverableFailureCause.INPUT_READ_FAILURE;
+        return TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE;
       case OutputWriteFailure:
-        return TaskState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE;
+        return TaskState.RecoverableTaskFailureCause.OUTPUT_WRITE_FAILURE;
       default:
         throw new UnknownFailureCauseException(
             new Throwable("The failure cause for the recoverable failure is unknown"));

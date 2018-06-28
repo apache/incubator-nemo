@@ -132,8 +132,7 @@ public final class BlockManagerMaster {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      final BlockState.State state =
-          (BlockState.State) getBlockState(blockId).getStateMachine().getCurrentState();
+      final BlockState.State state = getBlockState(blockId);
       switch (state) {
         case IN_PROGRESS:
         case AVAILABLE:
@@ -169,6 +168,16 @@ public final class BlockManagerMaster {
       }
 
       return producerTaskIds;
+    } finally {
+      readLock.unlock();
+    }
+  }
+
+  public Set<String> getIdsOfBlocksProducedBy(final String taskId) {
+    final Lock readLock = lock.readLock();
+    readLock.lock();
+    try {
+      return producerTaskIdToBlockIds.get(taskId);
     } finally {
       readLock.unlock();
     }
@@ -256,11 +265,11 @@ public final class BlockManagerMaster {
    * @return the {@link BlockState} of a block.
    */
   @VisibleForTesting
-  BlockState getBlockState(final String blockId) {
+  public BlockState.State getBlockState(final String blockId) {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      return blockIdToMetadata.get(blockId).getBlockState();
+      return (BlockState.State) blockIdToMetadata.get(blockId).getBlockState().getStateMachine().getCurrentState();
     } finally {
       readLock.unlock();
     }

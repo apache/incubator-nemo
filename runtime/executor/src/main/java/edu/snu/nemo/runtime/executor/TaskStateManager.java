@@ -63,7 +63,7 @@ public final class TaskStateManager {
    */
   public synchronized void onTaskStateChanged(final TaskState.State newState,
                                               final Optional<String> vertexPutOnHold,
-                                              final Optional<TaskState.RecoverableFailureCause> cause) {
+                                              final Optional<TaskState.RecoverableTaskFailureCause> cause) {
     final Map<String, Object> metric = new HashMap<>();
 
     switch (newState) {
@@ -109,7 +109,7 @@ public final class TaskStateManager {
    */
   private void notifyTaskStateToMaster(final TaskState.State newState,
                                        final Optional<String> vertexPutOnHold,
-                                       final Optional<TaskState.RecoverableFailureCause> cause) {
+                                       final Optional<TaskState.RecoverableTaskFailureCause> cause) {
     final ControlMessage.TaskStateChangedMsg.Builder msgBuilder =
         ControlMessage.TaskStateChangedMsg.newBuilder()
             .setExecutorId(executorId)
@@ -153,7 +153,7 @@ public final class TaskStateManager {
   }
 
   private ControlMessage.RecoverableFailureCause convertFailureCause(
-      final TaskState.RecoverableFailureCause cause) {
+      final TaskState.RecoverableTaskFailureCause cause) {
     switch (cause) {
       case INPUT_READ_FAILURE:
         return ControlMessage.RecoverableFailureCause.InputReadFailure;
