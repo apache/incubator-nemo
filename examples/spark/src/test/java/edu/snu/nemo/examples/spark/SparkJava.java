@@ -19,6 +19,8 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
+import edu.snu.nemo.examples.spark.sql.JavaUserDefinedTypedAggregation;
+import edu.snu.nemo.examples.spark.sql.JavaUserDefinedUntypedAggregation;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -32,8 +34,8 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 @PowerMockIgnore("javax.management.*")
-public final class SparkScalaITCase {
-  private static final int TIMEOUT = 120000;
+public final class SparkJava {
+  private static final int TIMEOUT = 180000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
   private static final String executorResourceFileName = fileBasePath + "spark_sample_executor_resources.json";
@@ -45,36 +47,56 @@ public final class SparkScalaITCase {
   }
 
   @Test(timeout = TIMEOUT)
-  public void testPi() throws Exception {
+  public void testSparkPi() throws Exception {
     final String numParallelism = "3";
 
     JobLauncher.main(builder
-        .addJobId(SparkPi.class.getSimpleName() + "_test")
-        .addUserMain(SparkPi.class.getCanonicalName())
+        .addJobId(JavaSparkPi.class.getSimpleName() + "_test")
+        .addUserMain(JavaSparkPi.class.getCanonicalName())
         .addUserArgs(numParallelism)
         .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
   }
 
   @Test(timeout = TIMEOUT)
-  public void testWordCount() throws Exception {
-    final String inputFileName = "sample_input_wordcount_spark";
-    final String outputFileName = "sample_output_wordcount_spark";
-    final String testResourceFilename = "test_output_wordcount_spark";
+  public void testSparkSQLUserDefinedTypedAggregation() throws Exception {
+    final String inputFileName = "sample_input_employees.json";
     final String inputFilePath = fileBasePath + inputFileName;
-    final String outputFilePath = fileBasePath + outputFileName;
 
     JobLauncher.main(builder
-        .addJobId(SparkWordCount.class.getSimpleName() + "_test")
-        .addUserMain(SparkWordCount.class.getCanonicalName())
-        .addUserArgs(inputFilePath, outputFilePath)
+        .addJobId(JavaUserDefinedTypedAggregation.class.getSimpleName() + "_test")
+        .addUserMain(JavaUserDefinedTypedAggregation.class.getCanonicalName())
+        .addUserArgs(inputFilePath)
         .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
+  }
 
-    try {
-      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFilename);
-    } finally {
-      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
-    }
+  @Test(timeout = TIMEOUT)
+  public void testSparkSQLUserDefinedUntypedAggregation() throws Exception {
+    final String inputFileName = "sample_input_employees.json";
+    final String inputFilePath = fileBasePath + inputFileName;
+
+    JobLauncher.main(builder
+        .addJobId(JavaUserDefinedUntypedAggregation.class.getSimpleName() + "_test")
+        .addUserMain(JavaUserDefinedUntypedAggregation.class.getCanonicalName())
+        .addUserArgs(inputFilePath)
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .build());
+  }
+
+  @Test(timeout = TIMEOUT)
+  public void testSparkSQLExample() throws Exception {
+    final String peopleJson = "sample_input_people.json";
+    final String peopleTxt = "sample_input_people.txt";
+    final String inputFileJson = fileBasePath + peopleJson;
+    final String inputFileTxt = fileBasePath + peopleTxt;
+
+    //    TODO#12: Frontend support for Scala Spark.
+    //    JobLauncher.main(builder
+    //        .addJobId(JavaSparkSQLExample.class.getSimpleName() + "_test")
+    //        .addUserMain(JavaSparkSQLExample.class.getCanonicalName())
+    //        .addUserArgs(inputFileJson, inputFileTxt)
+    //        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+    //        .build());
   }
 }

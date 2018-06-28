@@ -47,7 +47,9 @@ import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 
 /**
  * Job launcher.
@@ -60,6 +62,7 @@ public final class JobLauncher {
   private static Configuration deployModeConf = null;
   private static Configuration builtJobConf = null;
   private static String serializedDAG;
+  private static List<?> collectedData = new ArrayList<>();
 
   /**
    * private constructor.
@@ -81,7 +84,10 @@ public final class JobLauncher {
         .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, event ->
           driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
               .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
-              .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build()).build()))
+              .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build())
+              .build()))
+        .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> collectedData.addAll(
+            SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
         .run();
 
     // Get Job and Driver Confs
@@ -298,5 +304,14 @@ public final class JobLauncher {
    */
   public static Configuration getBuiltJobConf() {
     return builtJobConf;
+  }
+
+  /**
+   * Get the collected data.
+   *
+   * @return the collected data.
+   */
+  public static <T> List<T> getCollectedData() {
+    return (List<T>) collectedData;
   }
 }
