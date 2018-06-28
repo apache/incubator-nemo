@@ -19,7 +19,6 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -35,7 +34,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @DriverSide
 @ThreadSafe
 @FunctionalInterface
-@DefaultImplementation(CompositeSchedulingConstraint.class)
 public interface SchedulingConstraint {
   boolean testSchedulability(final ExecutorRepresenter executor, final Task task);
 
