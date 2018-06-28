@@ -137,7 +137,7 @@ public final class JobStateManager {
   public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newTaskState) {
     // Change task state
     final StateMachine taskState = idToTaskStates.get(taskId).getStateMachine();
-    LOG.info("Task State Transition: id {}, from {} to {}",
+    LOG.debug("Task State Transition: id {}, from {} to {}",
         new Object[]{taskId, taskState.getCurrentState(), newTaskState});
 
     taskState.setState(newTaskState);
@@ -215,7 +215,7 @@ public final class JobStateManager {
   private void onStageStateChanged(final String stageId, final StageState.State newStageState) {
     // Change stage state
     final StateMachine stageStateMachine = idToStageStates.get(stageId).getStateMachine();
-    LOG.info("Stage State Transition: id {} from {} to {}",
+    LOG.debug("Stage State Transition: id {} from {} to {}",
         new Object[]{stageId, stageStateMachine.getCurrentState(), newStageState});
     stageStateMachine.setState(newStageState);
 
