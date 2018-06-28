@@ -18,6 +18,7 @@ package edu.snu.nemo.common.ir.vertex.transform;
 import edu.snu.nemo.common.ir.OutputCollector;
 import java.io.Serializable;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Interface for specifying 'What' to do with data.
@@ -60,5 +61,17 @@ public interface Transform<I, O> extends Serializable {
      * @return sideInputs.
      */
     Map getSideInputs();
+
+    /**
+     * Put serialized data to send to the executor.
+     * @param serializedData the serialized data.
+     */
+    void setSerializedData(String serializedData);
+
+    /**
+     * Retrieve the serialized data on the executor.
+     * @return the serialized data.
+     */
+    Optional<String> getSerializedData();
   }
 }

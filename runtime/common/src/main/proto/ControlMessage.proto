@@ -32,13 +32,19 @@ message LaunchDAGMessage {
     required string dag = 1;
 }
 
+message DataCollectMessage {
+    required string data = 1;
+}
+
 enum DriverToClientMessageType {
     DriverStarted = 0;
     ResourceReady = 1;
+    DataCollected = 2;
 }
 
 message DriverToClientMessage {
     required DriverToClientMessageType type = 1;
+    optional DataCollectMessage dataCollected = 2;
 }
 
 enum MessageType {
@@ -50,12 +56,13 @@ enum MessageType {
     BlockLocationInfo = 5;
     ExecutorFailed = 6;
     MetricMessageReceived = 7;
+    ExecutorDataCollected = 8;
 }
 
 message Message {
     required MessageType type = 1;
     required int64 id = 2;
-    required string listenerId = 3; // The id of the message listner (handler).
+    required string listenerId = 3; // The id of the message listener (handler).
     optional TaskStateChangedMsg taskStateChangedMsg = 4;
     optional ScheduleTaskMsg scheduleTaskMsg = 5;
     optional BlockStateChangedMsg blockStateChangedMsg = 6;
@@ -65,6 +72,7 @@ message Message {
     optional ExecutorFailedMsg executorFailedMsg = 10;
     optional ContainerFailedMsg containerFailedMsg = 11;
     optional MetricMsg metricMsg = 12;
+    optional DataCollectMessage dataCollected = 13;
 }
 
 // Messages from Master to Executors
@@ -92,7 +100,7 @@ message TaskStateChangedMsg {
 enum RecoverableFailureCause {
     InputReadFailure = 0;
     OutputWriteFailure = 1;
-    // There is a 3rd cause: container_failure, but this is ommitted here as it is never propagated with a control msg.
+    // There is a 3rd cause: container_failure, but this is omitted here as it is never propagated with a control msg.
 }
 
 message BlockStateChangedMsg {

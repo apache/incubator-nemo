@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.client;
 
-import edu.snu.nemo.driver.ClientRPC;
+import edu.snu.nemo.runtime.master.ClientRPC;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
