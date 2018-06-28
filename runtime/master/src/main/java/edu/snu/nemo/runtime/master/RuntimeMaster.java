@@ -26,6 +26,7 @@ import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.TaskState;
+import edu.snu.nemo.runtime.master.httpservlet.*;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
@@ -38,6 +39,8 @@ import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.FailedEvaluator;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.annotations.Parameter;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.servlet.ServletHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +73,7 @@ public final class RuntimeMaster {
   private static final Logger LOG = LoggerFactory.getLogger(RuntimeMaster.class.getName());
   private static final int DAG_LOGGING_PERIOD = 3000;
   private static final int METRIC_ARRIVE_TIMEOUT = 10000;
+  private static final int REST_SERVER_PORT = 10101;
 
   private final ExecutorService runtimeMasterThread;
 
@@ -91,6 +95,9 @@ public final class RuntimeMaster {
   private final AtomicInteger resourceRequestCount;
 
   private CountDownLatch metricCountDownLatch;
+  // REST API server for web metric visualization ui.
+  private final Server metricServer;
+
 
   @Inject
   public RuntimeMaster(final Scheduler scheduler,
@@ -120,6 +127,27 @@ public final class RuntimeMaster {
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
     this.aggregatedMetricData = new HashMap<>();
+    this.metricServer = startRestMetricServer();
+  }
+
+  private Server startRestMetricServer() {
+    final Server server = new Server(REST_SERVER_PORT);
+
+    final ServletHandler servletHandler = new ServletHandler();
+    server.setHandler(servletHandler);
+
+    servletHandler.addServletWithMapping(JobMetricServlet.class, "/api/job");
+    servletHandler.addServletWithMapping(TaskMetricServlet.class, "/api/task");
+    servletHandler.addServletWithMapping(StageMetricServlet.class, "/api/stage");
+    servletHandler.addServletWithMapping(AllMetricServlet.class, "/api");
+
+    try {
+      server.start();
+    } catch (final Exception e) {
+      throw new RuntimeException("Failed to start rest api server.");
+    }
+
+    return server;
   }
 
   /**
@@ -171,6 +199,12 @@ public final class RuntimeMaster {
       }
       metricMessageHandler.terminate();
       containerManager.terminate();
+
+      try {
+        metricServer.stop();
+      } catch (final Exception e) {
+        throw new RuntimeException("Failed to stop rest api server.");
+      }
 
     });
 

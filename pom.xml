@@ -47,6 +47,8 @@ limitations under the License.
         <mockito.version>2.13.0</mockito.version>
         <powermock.version>2.0.0-beta.5</powermock.version>
         <junit.version>4.12</junit.version>
+        <jetty-server.version>9.4.10.v20180503</jetty-server.version>
+        <jetty-servlet.version>9.4.10.v20180503</jetty-servlet.version>
     </properties>
 
     <modules>
@@ -102,6 +104,16 @@ limitations under the License.
             <artifactId>powermock-api-mockito2</artifactId>
             <version>${powermock.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+            <version>${jetty-server.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlet</artifactId>
+            <version>${jetty-servlet.version}</version>
         </dependency>
     </dependencies>
 

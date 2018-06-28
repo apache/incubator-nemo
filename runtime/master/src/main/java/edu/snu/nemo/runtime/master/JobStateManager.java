@@ -37,6 +37,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import edu.snu.nemo.runtime.common.state.TaskState;
+import edu.snu.nemo.runtime.master.metric.JobMetric;
+import edu.snu.nemo.runtime.master.metric.StageMetric;
+import edu.snu.nemo.runtime.master.metric.TaskMetric;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,6 +92,8 @@ public final class JobStateManager {
   private final MetricMessageHandler metricMessageHandler;
   private final Map<String, MetricDataBuilder> metricDataBuilderMap;
 
+  private MetricStore metricStore;
+
   public JobStateManager(final PhysicalPlan physicalPlan,
                          final MetricMessageHandler metricMessageHandler,
                          final int maxScheduleAttempt) {
@@ -103,6 +108,7 @@ public final class JobStateManager {
     this.finishLock = new ReentrantLock();
     this.jobFinishedCondition = finishLock.newCondition();
     this.metricDataBuilderMap = new HashMap<>();
+    this.metricStore = MetricStore.getInstance();
     initializeComputationStates();
   }
 
@@ -140,10 +146,13 @@ public final class JobStateManager {
     LOG.debug("Task State Transition: id {}, from {} to {}",
         new Object[]{taskId, taskState.getCurrentState(), newTaskState});
 
-    taskState.setState(newTaskState);
+    metricStore.getOrCreateMetric(TaskMetric.class, taskId)
+        .addEvent((TaskState.State) taskState.getCurrentState(), newTaskState);
 
     // Handle metrics
     final Map<String, Object> metric = new HashMap<>();
+    taskState.setState(newTaskState);
+
     switch (newTaskState) {
       case ON_HOLD:
       case COMPLETE:
@@ -215,6 +224,10 @@ public final class JobStateManager {
   private void onStageStateChanged(final String stageId, final StageState.State newStageState) {
     // Change stage state
     final StateMachine stageStateMachine = idToStageStates.get(stageId).getStateMachine();
+
+    metricStore.getOrCreateMetric(StageMetric.class, stageId)
+        .addEvent(getStageState(stageId), newStageState);
+
     LOG.debug("Stage State Transition: id {} from {} to {}",
         new Object[]{stageId, stageStateMachine.getCurrentState(), newStageState});
     stageStateMachine.setState(newStageState);
@@ -243,6 +256,9 @@ public final class JobStateManager {
    * @param newState of the job.
    */
   private void onJobStateChanged(final JobState.State newState) {
+    metricStore.getOrCreateMetric(JobMetric.class, jobId)
+        .addEvent((JobState.State) jobState.getStateMachine().getCurrentState(), newState);
+
     jobState.getStateMachine().setState(newState);
 
     final Map<String, Object> metric = new HashMap<>();
