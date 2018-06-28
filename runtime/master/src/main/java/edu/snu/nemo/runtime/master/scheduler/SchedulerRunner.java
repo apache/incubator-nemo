@@ -55,12 +55,12 @@ public final class SchedulerRunner {
 
   private final DelayedSignalingCondition schedulingIteration = new DelayedSignalingCondition();
   private final ExecutorRegistry executorRegistry;
-  private final SchedulingConstraint.Registry schedulingConstraintRegistry;
+  private final SchedulingConstraintRegistry schedulingConstraintRegistry;
   private final SchedulingPolicy schedulingPolicy;
 
   @VisibleForTesting
   @Inject
-  public SchedulerRunner(final SchedulingConstraint.Registry schedulingConstraintRegistry,
+  public SchedulerRunner(final SchedulingConstraintRegistry schedulingConstraintRegistry,
                          final SchedulingPolicy schedulingPolicy,
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final ExecutorRegistry executorRegistry) {

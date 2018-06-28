@@ -13,20 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.scheduler;
+package edu.snu.nemo.common.ir.executionproperty;
 
-import edu.snu.nemo.runtime.common.plan.Task;
-import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
-import org.apache.reef.annotations.audience.DriverSide;
-
-import javax.annotation.concurrent.ThreadSafe;
+import java.lang.annotation.*;
 
 /**
- * Functions to test schedulability with a pair of an executor and a task.
+ * Declares associated {@link ExecutionProperty} for implementations.
  */
-@DriverSide
-@ThreadSafe
-@FunctionalInterface
-public interface SchedulingConstraint {
-  boolean testSchedulability(final ExecutorRepresenter executor, final Task task);
+@Target({ElementType.TYPE})
+@Documented
+@Retention(RetentionPolicy.RUNTIME)
+public @interface AssociatedProperty {
+  Class<? extends ExecutionProperty> value();
 }

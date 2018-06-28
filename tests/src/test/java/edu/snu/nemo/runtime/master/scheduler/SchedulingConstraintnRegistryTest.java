@@ -26,13 +26,13 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Tests {@link SchedulingConstraint.Registry}.
+ * Tests {@link SchedulingConstraintRegistry}.
  */
 public final class SchedulingConstraintnRegistryTest {
   @Test
   public void testSchedulingConstraintRegistry() throws InjectionException {
-    final SchedulingConstraint.Registry registry = Tang.Factory.getTang().newInjector()
-        .getInstance(SchedulingConstraint.Registry.class);
+    final SchedulingConstraintRegistry registry = Tang.Factory.getTang().newInjector()
+        .getInstance(SchedulingConstraintRegistry.class);
     assertEquals(FreeSlotSchedulingConstraint.class, getConstraintOf(ExecutorSlotComplianceProperty.class, registry));
     assertEquals(ContainerTypeAwareSchedulingConstraint.class,
         getConstraintOf(ExecutorPlacementProperty.class, registry));
@@ -41,7 +41,7 @@ public final class SchedulingConstraintnRegistryTest {
   }
 
   private static Class<? extends SchedulingConstraint> getConstraintOf(
-      final Class<? extends VertexExecutionProperty> property, final SchedulingConstraint.Registry registry) {
+      final Class<? extends VertexExecutionProperty> property, final SchedulingConstraintRegistry registry) {
     return registry.get(property)
         .orElseThrow(() -> new RuntimeException(String.format(
             "No SchedulingConstraint found for property %s", property)))
