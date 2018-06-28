@@ -25,7 +25,7 @@ import java.util.Optional;
  */
 public final class ContextImpl implements Transform.Context {
   private final Map sideInputs;
-  private Optional<String> data;
+  private String data;
 
   /**
    * Constructor of Context Implementation.
@@ -33,7 +33,7 @@ public final class ContextImpl implements Transform.Context {
    */
   public ContextImpl(final Map sideInputs) {
     this.sideInputs = sideInputs;
-    this.data = Optional.empty();
+    this.data = null;
   }
 
   @Override
@@ -43,11 +43,11 @@ public final class ContextImpl implements Transform.Context {
 
   @Override
   public void setSerializedData(final String serializedData) {
-    this.data = Optional.of(serializedData);
+    this.data = serializedData;
   }
 
   @Override
   public Optional<String> getSerializedData() {
-    return this.data;
+    return Optional.ofNullable(this.data);
   }
 }
