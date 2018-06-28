@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.common.plan;
 
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
@@ -31,6 +32,7 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.exception.IllegalVertexOperationException;
 import edu.snu.nemo.common.exception.PhysicalPlanGenerationException;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
@@ -74,6 +76,10 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
 
     // this is needed because of DuplicateEdgeGroupProperty.
     handleDuplicateEdgeGroupProperty(dagOfStages);
+
+
+    // Split StageGroup by Pull StageEdges
+    splitScheduleGroupByPullStageEdges(dagOfStages);
 
     // for debugging purposes.
     dagOfStages.storeJSON(dagDirectory, "plan-logical", "logical execution plan");
@@ -231,5 +237,77 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
         throw new UnsupportedOperationException(irVertex.toString());
       }
     });
+  }
+
+  /**
+   * Split ScheduleGroups by Pull {@link StageEdge}s, and ensure topological ordering of
+   * {@link ScheduleGroupIndexProperty}.
+   *
+   * @param dag {@link DAG} of {@link Stage}s to manipulate
+   */
+  private void splitScheduleGroupByPullStageEdges(final DAG<Stage, StageEdge> dag) {
+    final MutableInt nextScheduleGroupIndex = new MutableInt(0);
+    final Map<Stage, Integer> stageToScheduleGroupIndexMap = new HashMap<>();
+
+    dag.topologicalDo(currentStage -> {
+      // Base case: assign New ScheduleGroupIndex of the Stage
+      stageToScheduleGroupIndexMap.computeIfAbsent(currentStage, s -> getAndIncrement(nextScheduleGroupIndex));
+
+      for (final StageEdge stageEdgeFromCurrentStage : dag.getOutgoingEdgesOf(currentStage)) {
+        final Stage destination = stageEdgeFromCurrentStage.getDst();
+        // Skip if some Stages that destination depends on do not have assigned new ScheduleGroupIndex
+        boolean skip = false;
+        for (final StageEdge stageEdgeToDestination : dag.getIncomingEdgesOf(destination)) {
+          if (!stageToScheduleGroupIndexMap.containsKey(stageEdgeToDestination.getSrc())) {
+            skip = true;
+            break;
+          }
+        }
+        if (skip) {
+          continue;
+        }
+        if (stageToScheduleGroupIndexMap.containsKey(destination)) {
+          continue;
+        }
+
+        // Find any non-pull inEdge
+        Integer scheduleGroupIndex = null;
+        Integer newScheduleGroupIndex = null;
+        for (final StageEdge stageEdge : dag.getIncomingEdgesOf(destination)) {
+          final Stage source = stageEdge.getSrc();
+          if (stageEdge.getDataFlowModel() != DataFlowModelProperty.Value.Pull) {
+            if (scheduleGroupIndex != null && source.getScheduleGroupIndex() != scheduleGroupIndex) {
+              throw new RuntimeException(String.format("Multiple Push inEdges from different ScheduleGroup: %d, %d",
+                  scheduleGroupIndex, source.getScheduleGroupIndex()));
+            }
+            if (source.getScheduleGroupIndex() != destination.getScheduleGroupIndex()) {
+              throw new RuntimeException(String.format("Split ScheduleGroup by push StageEdge: %d, %d",
+                  source.getScheduleGroupIndex(), destination.getScheduleGroupIndex()));
+            }
+            scheduleGroupIndex = source.getScheduleGroupIndex();
+            newScheduleGroupIndex = stageToScheduleGroupIndexMap.get(source);
+          }
+        }
+
+        if (newScheduleGroupIndex == null) {
+          stageToScheduleGroupIndexMap.put(destination, getAndIncrement(nextScheduleGroupIndex));
+        } else {
+          stageToScheduleGroupIndexMap.put(destination, newScheduleGroupIndex);
+        }
+      }
+    });
+
+    dag.topologicalDo(stage -> {
+      final int scheduleGroupIndex = stageToScheduleGroupIndexMap.get(stage);
+      stage.getExecutionProperties().put(ScheduleGroupIndexProperty.of(scheduleGroupIndex));
+      stage.getIRDAG().topologicalDo(vertex -> vertex.getExecutionProperties()
+          .put(ScheduleGroupIndexProperty.of(scheduleGroupIndex)));
+    });
+  }
+
+  private static int getAndIncrement(final MutableInt mutableInt) {
+    final int toReturn = mutableInt.getValue();
+    mutableInt.increment();
+    return toReturn;
   }
 }

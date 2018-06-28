@@ -32,8 +32,9 @@ public final class SailfishPass extends CompositePass {
         new SailfishRelayReshapingPass(),
         new SailfishEdgeDataFlowModelPass(),
         new SailfishEdgeDataStorePass(),
-        new SailfishEdgeDecoderPass(),
-        new SailfishEdgeEncoderPass(),
+        // TODO #125: Fix data loss bug caused by SailfishSchedulingPolicy
+        // new SailfishEdgeDecoderPass(),
+        // new SailfishEdgeEncoderPass(),
         new SailfishEdgeUsedDataHandlingPass()
     ));
   }
