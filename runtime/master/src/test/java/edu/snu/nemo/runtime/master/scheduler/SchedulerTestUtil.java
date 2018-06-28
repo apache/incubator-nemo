@@ -91,24 +91,4 @@ final class SchedulerTestUtil {
     scheduler.onTaskStateReportFromExecutor(scheduledExecutor.getExecutorId(), taskId, attemptIdx,
         newState, null, cause);
   }
-
-  static void sendTaskStateEventToScheduler(final Scheduler scheduler,
-                                            final ExecutorRegistry executorRegistry,
-                                            final String taskId,
-                                            final TaskState.State newState,
-                                            final int attemptIdx) {
-    sendTaskStateEventToScheduler(scheduler, executorRegistry, taskId, newState, attemptIdx, null);
-  }
-
-  static void mockSchedulingBySchedulerRunner(final PendingTaskCollectionPointer pendingTaskCollectionPointer,
-                                              final SchedulingConstraint schedulingConstraint,
-                                              final SchedulingPolicy schedulingPolicy,
-                                              final JobStateManager jobStateManager,
-                                              final ExecutorRegistry executorRegistry,
-                                              final boolean scheduleOnlyTheFirstStage) {
-    final SchedulerRunner schedulerRunner =
-        new SchedulerRunner(schedulingConstraint, schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
-    schedulerRunner.scheduleJob(jobStateManager);
-    schedulerRunner.doScheduleTaskList();
-  }
 }

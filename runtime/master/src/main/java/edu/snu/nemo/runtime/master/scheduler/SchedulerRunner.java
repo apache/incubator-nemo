@@ -20,6 +20,7 @@ import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.*;
@@ -54,12 +55,12 @@ public final class SchedulerRunner {
 
   private final DelayedSignalingCondition schedulingIteration = new DelayedSignalingCondition();
   private final ExecutorRegistry executorRegistry;
-  private final SchedulingConstraint schedulingConstraint;
+  private final SchedulingConstraint.Registry schedulingConstraintRegistry;
   private final SchedulingPolicy schedulingPolicy;
 
   @VisibleForTesting
   @Inject
-  public SchedulerRunner(final SchedulingConstraint schedulingConstraint,
+  public SchedulerRunner(final SchedulingConstraint.Registry schedulingConstraintRegistry,
                          final SchedulingPolicy schedulingPolicy,
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final ExecutorRegistry executorRegistry) {
@@ -69,8 +70,8 @@ public final class SchedulerRunner {
     this.isSchedulerRunning = false;
     this.isTerminated = false;
     this.executorRegistry = executorRegistry;
-    this.schedulingConstraint = schedulingConstraint;
     this.schedulingPolicy = schedulingPolicy;
+    this.schedulingConstraintRegistry = schedulingConstraintRegistry;
   }
 
   /**
@@ -115,12 +116,18 @@ public final class SchedulerRunner {
 
       LOG.debug("Trying to schedule {}...", task.getTaskId());
       executorRegistry.viewExecutors(executors -> {
-        final Set<ExecutorRepresenter> candidateExecutors =
-            executors.stream().filter(e -> schedulingConstraint.testSchedulability(e, task))
-                .collect(Collectors.toSet());
-        if (!candidateExecutors.isEmpty()) {
+        final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
+        task.getExecutionProperties().forEachProperties(property -> {
+          final Optional<SchedulingConstraint> constraint = schedulingConstraintRegistry.get(property.getClass());
+          if (constraint.isPresent() && !candidateExecutors.getValue().isEmpty()) {
+            candidateExecutors.setValue(candidateExecutors.getValue().stream()
+                .filter(e -> constraint.get().testSchedulability(e, task)).collect(Collectors.toSet()));
+          }
+        });
+        if (!candidateExecutors.getValue().isEmpty()) {
           // Select executor
-          final ExecutorRepresenter selectedExecutor = schedulingPolicy.selectExecutor(candidateExecutors, task);
+          final ExecutorRepresenter selectedExecutor
+              = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
           // update metadata first
           jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 
