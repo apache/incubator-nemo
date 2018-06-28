@@ -18,12 +18,14 @@ package edu.snu.nemo.common;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Transform Context Implementation.
  */
 public final class ContextImpl implements Transform.Context {
   private final Map sideInputs;
+  private String data;
 
   /**
    * Constructor of Context Implementation.
@@ -31,10 +33,21 @@ public final class ContextImpl implements Transform.Context {
    */
   public ContextImpl(final Map sideInputs) {
     this.sideInputs = sideInputs;
+    this.data = null;
   }
 
   @Override
   public Map getSideInputs() {
     return this.sideInputs;
+  }
+
+  @Override
+  public void setSerializedData(final String serializedData) {
+    this.data = serializedData;
+  }
+
+  @Override
+  public Optional<String> getSerializedData() {
+    return Optional.ofNullable(this.data);
   }
 }

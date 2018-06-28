@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.driver;
+package edu.snu.nemo.runtime.master;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import edu.snu.nemo.conf.JobConf;

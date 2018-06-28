@@ -64,18 +64,6 @@ Please refer to the [Contribution guideline](.github/CONTRIBUTING.md) to contrib
 * Run only unit tests and install: `mvn clean install -DskipITs -T 2C`
 
 ## Running Beam applications
-### Running an external Beam application
-* Use run_external_app.sh instead of run.sh
-* Set the first argument the path to the external Beam application jar
-
-```bash
-./bin/run_external_app.sh \
-    `pwd`/nemo_app/target/bd17f-1.0-SNAPSHOT.jar \
-    -job_id mapreduce \
-    -executor_json `pwd`/examples/resources/sample_executor_resources.json \
-    -user_main MapReduce \
-    -user_args "`pwd`/mr_input_data `pwd`/nemo_output/output_data"
-```
 
 ### Configurable options
 * `-job_id`: ID of the Beam job
