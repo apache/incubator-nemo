@@ -31,6 +31,7 @@ public final class ExecutorSlotCompliancePass extends AnnotatingPass {
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
+    // On every vertex, if ExecutorSlotComplianceProperty is not set, put it as true.
     dag.getVertices().stream()
         .filter(v -> !v.getExecutionProperties().containsKey(ExecutorSlotComplianceProperty.class))
         .forEach(v -> v.getExecutionProperties().put(ExecutorSlotComplianceProperty.of(true)));

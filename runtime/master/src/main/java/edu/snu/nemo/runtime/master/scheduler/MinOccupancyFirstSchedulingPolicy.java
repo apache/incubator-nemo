@@ -53,6 +53,6 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
     return executors.stream()
         .filter(executor -> executor.getRunningTasks().size() == minOccupancy.getAsInt())
         .findFirst()
-        .get();
+        .orElseThrow(() -> new RuntimeException("No such executor"));
   }
 }

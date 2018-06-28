@@ -18,7 +18,7 @@ package edu.snu.nemo.common.ir.vertex.executionproperty;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
- * Whether or not to comply to slot restrictions when scheduling this vertex.
+ * This property decides whether or not to comply to slot restrictions when scheduling this vertex.
  */
 public final class ExecutorSlotComplianceProperty extends VertexExecutionProperty<Boolean> {
   private static final ExecutorSlotComplianceProperty COMPLIANCE_TRUE = new ExecutorSlotComplianceProperty(true);

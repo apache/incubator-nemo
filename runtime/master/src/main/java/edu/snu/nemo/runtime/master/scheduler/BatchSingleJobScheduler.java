@@ -213,7 +213,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
       // Schedule a stage after marking the necessary tasks to failed_recoverable.
       // The stage for one of the tasks that failed is a starting point to look
       // for the next stage to be scheduled.
-      scheduleNextScheduleGroup(getSchedulingIndexOfStage(
+      scheduleNextScheduleGroup(getScheduleGroupOfStage(
           RuntimeIdGenerator.getStageIdFromTaskId(tasksToReExecute.iterator().next())));
     }
   }
@@ -433,7 +433,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     if (jobStateManager.getStageState(stageIdForTaskUponCompletion).equals(StageState.State.COMPLETE)) {
       // if the stage this task belongs to is complete,
       if (!jobStateManager.isJobDone()) {
-        scheduleNextScheduleGroup(getSchedulingIndexOfStage(stageIdForTaskUponCompletion));
+        scheduleNextScheduleGroup(getScheduleGroupOfStage(stageIdForTaskUponCompletion));
       }
     }
     schedulerRunner.onAnExecutorAvailable();
@@ -502,7 +502,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
         // TODO #50: Carefully retry tasks in the scheduler
       case OUTPUT_WRITE_FAILURE:
         blockManagerMaster.onProducerTaskFailed(taskId);
-        scheduleNextScheduleGroup(getSchedulingIndexOfStage(stageId));
+        scheduleNextScheduleGroup(getScheduleGroupOfStage(stageId));
         break;
       case CONTAINER_FAILURE:
         LOG.info("Only the failed task will be retried.");
@@ -513,7 +513,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     schedulerRunner.onAnExecutorAvailable();
   }
 
-  private int getSchedulingIndexOfStage(final String stageId) {
+  private int getScheduleGroupOfStage(final String stageId) {
     return physicalPlan.getStageDAG().getVertexById(stageId).getScheduleGroup();
   }
 }

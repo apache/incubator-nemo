@@ -94,7 +94,7 @@ public final class Stage extends Vertex {
   }
 
   /**
-   * @return the schedule group index.
+   * @return the schedule group.
    */
   public int getScheduleGroup() {
     return executionProperties.get(ScheduleGroupProperty.class)

@@ -204,20 +204,20 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
     });
 
     // Assign ScheduleGroup property based on topology of ScheduleGroups
-    final MutableInt currentScheduleGroup = new MutableInt(getNextScheudleGroupIndex(dag.getVertices()));
+    final MutableInt currentScheduleGroup = new MutableInt(getNextScheudleGroup(dag.getVertices()));
     final DAGBuilder<ScheduleGroup, ScheduleGroupEdge> scheduleGroupDAGBuilder = new DAGBuilder<>();
     scheduleGroups.forEach(scheduleGroupDAGBuilder::addVertex);
     scheduleGroups.forEach(src -> src.scheduleGroupsTo
         .forEach(dst -> scheduleGroupDAGBuilder.connectVertices(new ScheduleGroupEdge(src, dst))));
     scheduleGroupDAGBuilder.build().topologicalDo(scheduleGroup -> {
-      boolean usedCurrentIndex = false;
+      boolean usedCurrentScheduleGroup = false;
       for (final IRVertex irVertex : scheduleGroup.vertices) {
         if (!irVertex.getPropertyValue(ScheduleGroupProperty.class).isPresent()) {
           irVertex.getExecutionProperties().put(ScheduleGroupProperty.of(currentScheduleGroup.getValue()));
-          usedCurrentIndex = true;
+          usedCurrentScheduleGroup = true;
         }
       }
-      if (usedCurrentIndex) {
+      if (usedCurrentScheduleGroup) {
         currentScheduleGroup.increment();
       }
     });
@@ -230,7 +230,7 @@ public final class DefaultScheduleGroupPass extends AnnotatingPass {
    * @param irVertexCollection collection of {@link IRVertex}
    * @return the minimum value for the {@link ScheduleGroupProperty} that won't collide with the existing values
    */
-  private int getNextScheudleGroupIndex(final Collection<IRVertex> irVertexCollection) {
+  private int getNextScheudleGroup(final Collection<IRVertex> irVertexCollection) {
     int nextScheduleGroup = 0;
     for (final IRVertex irVertex : irVertexCollection) {
       final Optional<Integer> scheduleGroup = irVertex.getPropertyValue(ScheduleGroupProperty.class);

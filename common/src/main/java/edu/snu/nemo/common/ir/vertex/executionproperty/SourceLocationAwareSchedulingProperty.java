@@ -18,7 +18,7 @@ package edu.snu.nemo.common.ir.vertex.executionproperty;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
- * Whether or not to schedule this vertex only on executors where source data reside.
+ * This property decides whether or not to schedule this vertex only on executors where source data reside.
  */
 public final class SourceLocationAwareSchedulingProperty extends VertexExecutionProperty<Boolean> {
   private static final SourceLocationAwareSchedulingProperty SOURCE_TRUE
