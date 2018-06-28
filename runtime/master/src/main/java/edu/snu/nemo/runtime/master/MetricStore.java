@@ -28,6 +28,7 @@ import java.util.*;
 
 /**
  * MetricStore stores metric data which will be used by web visualize interface, logging, and so on.
+ * All metric classes should be JSON-serializable by {@link ObjectMapper}.
  */
 public final class MetricStore {
   private final Map<Class, Map<String, Object>> metricMap = new HashMap<>();
@@ -41,21 +42,20 @@ public final class MetricStore {
   };
 
   /**
-   * MetricStore is a class that collects all kind of metric which can be used at logging and web visualization.
-   * All metric classes should be JSON-serializable by {@link ObjectMapper}.
+   * Private constructor.
    */
   private MetricStore() { }
 
   /**
    * Getter for singleton instance.
-   * @return MetricStore singleton object.
+   * @return MetricStore object.
    */
   public static MetricStore getStore() {
     return InstanceHolder.INSTANCE;
   }
 
   /**
-   * Lazy class holder for MetricStore class.
+   * Lazy class object holder for MetricStore class.
    */
   private static class InstanceHolder {
     private static final MetricStore INSTANCE = new MetricStore();

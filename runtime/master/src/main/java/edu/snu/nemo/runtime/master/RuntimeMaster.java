@@ -26,7 +26,7 @@ import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.master.httpservlet.*;
+import edu.snu.nemo.runtime.master.servlet.*;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
@@ -142,11 +142,12 @@ public final class RuntimeMaster {
     servletHandler.addServletWithMapping(TaskMetricServlet.class, "/api/task");
     servletHandler.addServletWithMapping(StageMetricServlet.class, "/api/stage");
     servletHandler.addServletWithMapping(AllMetricServlet.class, "/api");
+    servletHandler.addServletWithMapping(WebSocketMetricServlet.class, "/api/websocket");
 
     try {
       server.start();
     } catch (final Exception e) {
-      throw new RuntimeException("Failed to start rest api server.");
+      throw new RuntimeException("Failed to start REST API server.");
     }
 
     return server;
@@ -202,7 +203,7 @@ public final class RuntimeMaster {
       metricMessageHandler.terminate();
       containerManager.terminate();
 
-      // TODO: parameterize file path using Tang
+      // TODO #?: parameterize file path using Tang
       metricStore.dumpAllMetricToFile("/tmp/dump");
 
       try {

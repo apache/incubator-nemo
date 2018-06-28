@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.httpservlet;
+package edu.snu.nemo.runtime.master.servlet;
 
 import edu.snu.nemo.runtime.master.MetricStore;
-import edu.snu.nemo.runtime.common.metric.TaskMetric;
+import edu.snu.nemo.runtime.common.metric.StageMetric;
 
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -24,9 +24,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**
- * Servlet which handles {@link TaskMetric} metric request.
+ * Servlet which handles {@link StageMetric} metric request.
  */
-public final class TaskMetricServlet extends HttpServlet {
+public final class StageMetricServlet extends HttpServlet {
 
   @Override
   protected void doGet(final HttpServletRequest request, final HttpServletResponse response)
@@ -34,6 +34,6 @@ public final class TaskMetricServlet extends HttpServlet {
     final MetricStore metricStore = MetricStore.getStore();
     response.setContentType("application/json");
     response.setStatus(HttpServletResponse.SC_OK);
-    response.getWriter().println(metricStore.dumpMetricToJson(TaskMetric.class));
+    response.getWriter().println(metricStore.dumpMetricToJson(StageMetric.class));
   }
 }

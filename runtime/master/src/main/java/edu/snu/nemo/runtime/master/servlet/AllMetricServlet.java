@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.snu.nemo.runtime.master.httpservlet;
+package edu.snu.nemo.runtime.master.servlet;
 
 import edu.snu.nemo.runtime.master.MetricStore;
 
