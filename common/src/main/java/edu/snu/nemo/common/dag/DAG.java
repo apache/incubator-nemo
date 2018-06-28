@@ -204,7 +204,7 @@ public final class DAG<V extends Vertex, E extends Edge<V>> implements Serializa
   /**
    * Indicates the traversal order of this DAG.
    */
-  public enum TraversalOrder {
+  private enum TraversalOrder {
     PreOrder,
     PostOrder
   }

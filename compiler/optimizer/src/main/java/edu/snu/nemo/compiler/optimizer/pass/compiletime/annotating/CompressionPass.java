@@ -19,7 +19,6 @@ import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.StageIdProperty;
 
 
 /**
@@ -48,8 +47,6 @@ public final class CompressionPass extends AnnotatingPass {
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
     dag.topologicalDo(vertex -> dag.getIncomingEdgesOf(vertex).stream()
-        .filter(e -> !vertex.getPropertyValue(StageIdProperty.class).get()
-            .equals(e.getSrc().getPropertyValue(StageIdProperty.class).get()))
         .filter(edge -> !edge.getPropertyValue(CompressionProperty.class).isPresent())
         .forEach(edge -> edge.setProperty(CompressionProperty.of(compression))));
 

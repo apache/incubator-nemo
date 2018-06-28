@@ -26,6 +26,7 @@ import java.io.Serializable;
  *
  * @param <T> element type.
  */
+// TODO #120: Separate EOFException from Decoder Failures
 public interface DecoderFactory<T> extends Serializable {
 
   /**

@@ -39,13 +39,12 @@ public final class TestPolicy implements Policy {
   @Override
   public List<CompileTimePass> getCompileTimePasses() {
     List<CompileTimePass> policy = new ArrayList<>();
-    policy.add(new DefaultStagePartitioningPass());
 
     if (testPushPolicy) {
       policy.add(new ShuffleEdgePushPass());
     }
 
-    policy.add(new ScheduleGroupPass());
+    policy.add(new DefaultScheduleGroupPass());
     return policy;
   }
 

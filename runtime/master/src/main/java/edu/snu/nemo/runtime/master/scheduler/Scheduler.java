@@ -27,7 +27,7 @@ import javax.annotation.Nullable;
 
 /**
  * Only two threads call scheduling code: RuntimeMaster thread (RMT), and SchedulerThread(ST).
- * RMT and ST meet only at two points: {@link ExecutorRegistry}, and {@link PendingTaskCollection},
+ * RMT and ST meet only at two points: {@link ExecutorRegistry}, and {@link PendingTaskCollectionPointer},
  * which are synchronized(ThreadSafe).
  * Other scheduler-related classes that are accessed by only one of the two threads are not synchronized(NotThreadSafe).
  */
@@ -80,12 +80,12 @@ public interface Scheduler {
    * @param taskPutOnHold the ID of task that are put on hold. It is null otherwise.
    * @param failureCause for which the Task failed in the case of a recoverable failure.
    */
-  void onTaskStateChanged(String executorId,
-                          String taskId,
-                          int attemptIdx,
-                          TaskState.State newState,
-                          @Nullable String taskPutOnHold,
-                          TaskState.RecoverableFailureCause failureCause);
+  void onTaskStateReportFromExecutor(String executorId,
+                                     String taskId,
+                                     int attemptIdx,
+                                     TaskState.State newState,
+                                     @Nullable String taskPutOnHold,
+                                     TaskState.RecoverableFailureCause failureCause);
 
   /**
    * To be called when a job should be terminated.

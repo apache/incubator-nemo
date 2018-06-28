@@ -35,37 +35,35 @@ public final class TaskState {
     stateMachineBuilder.addState(State.EXECUTING, "The task is executing.");
     stateMachineBuilder.addState(State.COMPLETE, "The task has completed.");
     stateMachineBuilder.addState(State.FAILED_RECOVERABLE, "Task failed, but is recoverable.");
-    stateMachineBuilder.addState(State.FAILED_UNRECOVERABLE,
-        "Task failed, and is unrecoverable. The job will fail.");
+    stateMachineBuilder.addState(State.FAILED_UNRECOVERABLE, "Task failed, and is unrecoverable. The job will fail.");
     stateMachineBuilder.addState(State.ON_HOLD, "The task is paused for dynamic optimization.");
 
-    // Add transitions
-    stateMachineBuilder.addTransition(State.READY, State.EXECUTING,
-        "Scheduling to executor");
+    // From NOT_AVAILABLE
+    stateMachineBuilder.addTransition(State.READY, State.EXECUTING, "Scheduling to executor");
     stateMachineBuilder.addTransition(State.READY, State.FAILED_RECOVERABLE,
         "Stage Failure by a recoverable failure in another task");
-    stateMachineBuilder.addTransition(State.READY, State.FAILED_UNRECOVERABLE,
-        "Stage Failure");
 
-    stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE,
-        "All tasks complete");
-    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_UNRECOVERABLE,
-        "Unrecoverable failure in a task/Executor failure");
-    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_RECOVERABLE,
-        "Recoverable failure in a task/Container failure");
+    // From EXECUTING
+    stateMachineBuilder.addTransition(State.EXECUTING, State.COMPLETE, "Task completed normally");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_UNRECOVERABLE, "Unrecoverable failure");
+    stateMachineBuilder.addTransition(State.EXECUTING, State.FAILED_RECOVERABLE, "Recoverable failure");
     stateMachineBuilder.addTransition(State.EXECUTING, State.ON_HOLD, "Task paused for dynamic optimization");
-    stateMachineBuilder.addTransition(State.ON_HOLD, State.COMPLETE, "Task completed after dynamic optimization");
 
+    // From ON HOLD
+    stateMachineBuilder.addTransition(State.ON_HOLD, State.COMPLETE, "Task completed after being on hold");
+    stateMachineBuilder.addTransition(State.ON_HOLD, State.FAILED_UNRECOVERABLE, "Unrecoverable failure");
+    stateMachineBuilder.addTransition(State.ON_HOLD, State.FAILED_RECOVERABLE, "Recoverable failure");
+
+    // From COMPLETE
+    stateMachineBuilder.addTransition(State.COMPLETE, State.EXECUTING, "Completed before, but re-execute");
     stateMachineBuilder.addTransition(State.COMPLETE, State.FAILED_RECOVERABLE,
         "Recoverable failure in a task/Container failure");
 
-    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.READY,
-        "Recovered from failure and is ready");
-    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.FAILED_UNRECOVERABLE,
-        "");
+
+    // From FAILED_RECOVERABLE
+    stateMachineBuilder.addTransition(State.FAILED_RECOVERABLE, State.READY, "Recovered from failure and is ready");
 
     stateMachineBuilder.setInitialState(State.READY);
-
     return stateMachineBuilder.build();
   }
 

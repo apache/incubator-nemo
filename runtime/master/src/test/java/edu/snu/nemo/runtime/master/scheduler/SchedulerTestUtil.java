@@ -16,11 +16,14 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.Stage;
+import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -41,20 +44,20 @@ final class SchedulerTestUtil {
                             final int attemptIdx) {
     // Loop until the stage completes.
     while (true) {
-      final Enum stageState = jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState();
+      final StageState.State stageState = jobStateManager.getStageState(stage.getId());
       if (StageState.State.COMPLETE == stageState) {
         // Stage has completed, so we break out of the loop.
         break;
       } else if (StageState.State.EXECUTING == stageState) {
         stage.getTaskIds().forEach(taskId -> {
-          final Enum tgState = jobStateManager.getTaskState(taskId).getStateMachine().getCurrentState();
-          if (TaskState.State.EXECUTING == tgState) {
+          final TaskState.State taskState = jobStateManager.getTaskState(taskId);
+          if (TaskState.State.EXECUTING == taskState) {
             sendTaskStateEventToScheduler(scheduler, executorRegistry, taskId,
                 TaskState.State.COMPLETE, attemptIdx, null);
-          } else if (TaskState.State.READY == tgState || TaskState.State.COMPLETE == tgState) {
+          } else if (TaskState.State.READY == taskState || TaskState.State.COMPLETE == taskState) {
             // Skip READY (try in the next loop and see if it becomes EXECUTING) and COMPLETE.
           } else {
-            throw new IllegalStateException(tgState.toString());
+            throw new IllegalStateException(taskState.toString());
           }
         });
       } else if (StageState.State.READY == stageState) {
@@ -88,7 +91,7 @@ final class SchedulerTestUtil {
         break;
       }
     }
-    scheduler.onTaskStateChanged(scheduledExecutor.getExecutorId(), taskId, attemptIdx,
+    scheduler.onTaskStateReportFromExecutor(scheduledExecutor.getExecutorId(), taskId, attemptIdx,
         newState, null, cause);
   }
 
@@ -100,20 +103,14 @@ final class SchedulerTestUtil {
     sendTaskStateEventToScheduler(scheduler, executorRegistry, taskId, newState, attemptIdx, null);
   }
 
-  static void mockSchedulerRunner(final PendingTaskCollection pendingTaskCollection,
-                                  final SchedulingPolicy schedulingPolicy,
-                                  final JobStateManager jobStateManager,
-                                  final ExecutorRegistry executorRegistry,
-                                  final boolean isPartialSchedule) {
+  static void mockSchedulingBySchedulerRunner(final PendingTaskCollectionPointer pendingTaskCollectionPointer,
+                                              final SchedulingPolicy schedulingPolicy,
+                                              final JobStateManager jobStateManager,
+                                              final ExecutorRegistry executorRegistry,
+                                              final boolean scheduleOnlyTheFirstStage) {
     final SchedulerRunner schedulerRunner =
-        new SchedulerRunner(schedulingPolicy, pendingTaskCollection, executorRegistry);
+        new SchedulerRunner(schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
     schedulerRunner.scheduleJob(jobStateManager);
-    while (!pendingTaskCollection.isEmpty()) {
-      schedulerRunner.doScheduleStage();
-      if (isPartialSchedule) {
-        // Schedule only the first stage
-        break;
-      }
-    }
+    schedulerRunner.doScheduleTaskList();
   }
 }

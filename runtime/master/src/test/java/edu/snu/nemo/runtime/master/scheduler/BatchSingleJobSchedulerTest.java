@@ -67,7 +67,7 @@ public final class BatchSingleJobSchedulerTest {
   private SchedulerRunner schedulerRunner;
   private ExecutorRegistry executorRegistry;
   private MetricMessageHandler metricMessageHandler;
-  private PendingTaskCollection pendingTaskCollection;
+  private PendingTaskCollectionPointer pendingTaskCollectionPointer;
   private PubSubEventHandlerWrapper pubSubEventHandler;
   private UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler;
   private BlockManagerMaster blockManagerMaster = mock(BlockManagerMaster.class);
@@ -85,13 +85,13 @@ public final class BatchSingleJobSchedulerTest {
 
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
     metricMessageHandler = mock(MetricMessageHandler.class);
-    pendingTaskCollection = new SingleJobTaskCollection();
+    pendingTaskCollectionPointer = new PendingTaskCollectionPointer();
     schedulingPolicy = injector.getInstance(CompositeSchedulingPolicy.class);
-    schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskCollection, executorRegistry);
+    schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     scheduler =
-        new BatchSingleJobScheduler(schedulerRunner, pendingTaskCollection,
+        new BatchSingleJobScheduler(schedulerRunner, pendingTaskCollectionPointer,
             blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
 
     final ActiveContext activeContext = mock(ActiveContext.class);
@@ -158,8 +158,7 @@ public final class BatchSingleJobSchedulerTest {
 
       LOG.debug("Checking that all stages of ScheduleGroup {} enter the executing state", scheduleGroupIdx);
       stages.forEach(stage -> {
-        while (jobStateManager.getStageState(stage.getId()).getStateMachine().getCurrentState()
-            != StageState.State.EXECUTING) {
+        while (jobStateManager.getStageState(stage.getId()) != StageState.State.EXECUTING) {
 
         }
       });
@@ -171,9 +170,9 @@ public final class BatchSingleJobSchedulerTest {
     }
 
     LOG.debug("Waiting for job termination after sending stage completion events");
-    while (!jobStateManager.checkJobTermination()) {
+    while (!jobStateManager.isJobDone()) {
     }
-    assertTrue(jobStateManager.checkJobTermination());
+    assertTrue(jobStateManager.isJobDone());
   }
 
   private List<Stage> filterStagesWithAScheduleGroupIndex(

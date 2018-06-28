@@ -15,6 +15,10 @@
  */
 package edu.snu.nemo.runtime.common.plan;
 
+import com.google.common.annotations.VisibleForTesting;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.runtime.common.data.KeyRange;
@@ -46,6 +50,16 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   private List<KeyRange> taskIdxToKeyRange;
 
   /**
+   * Value for {@link DataCommunicationPatternProperty}.
+   */
+  private final DataCommunicationPatternProperty.Value dataCommunicationPatternValue;
+
+  /**
+   * Value for {@link DataFlowModelProperty}.
+   */
+  private final DataFlowModelProperty.Value dataFlowModelValue;
+
+  /**
    * Constructor.
    *
    * @param runtimeEdgeId  id of the runtime edge.
@@ -56,8 +70,9 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    * @param dstStage       destination stage.
    * @param isSideInput    whether or not the edge is a sideInput edge.
    */
-  StageEdge(final String runtimeEdgeId,
-            final ExecutionPropertyMap edgeProperties,
+  @VisibleForTesting
+  public StageEdge(final String runtimeEdgeId,
+            final ExecutionPropertyMap<EdgeExecutionProperty> edgeProperties,
             final IRVertex srcVertex,
             final IRVertex dstVertex,
             final Stage srcStage,
@@ -71,6 +86,12 @@ public final class StageEdge extends RuntimeEdge<Stage> {
     for (int taskIdx = 0; taskIdx < dstStage.getTaskIds().size(); taskIdx++) {
       taskIdxToKeyRange.add(HashRange.of(taskIdx, taskIdx + 1));
     }
+    this.dataCommunicationPatternValue = edgeProperties.get(DataCommunicationPatternProperty.class)
+        .orElseThrow(() -> new RuntimeException(String.format(
+            "DataCommunicationPatternProperty not set for %s", runtimeEdgeId)));
+    this.dataFlowModelValue = edgeProperties.get(DataFlowModelProperty.class)
+        .orElseThrow(() -> new RuntimeException(String.format(
+            "DataFlowModelProperty not set for %s", runtimeEdgeId)));
   }
 
   /**
@@ -91,7 +112,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
     sb.append("{\"runtimeEdgeId\": \"").append(getId());
-    sb.append("\", \"edgeProperties\": ").append(getExecutionProperties());
+    sb.append("\", \"executionProperties\": ").append(getExecutionProperties());
     sb.append(", \"externalSrcVertexId\": \"").append(srcVertex.getId());
     sb.append("\", \"externalDstVertexId\": \"").append(dstVertex.getId());
     sb.append("\"}");
@@ -112,5 +133,19 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    */
   public void setTaskIdxToKeyRange(final List<KeyRange> taskIdxToKeyRange) {
     this.taskIdxToKeyRange = taskIdxToKeyRange;
+  }
+
+  /**
+   * @return {@link DataCommunicationPatternProperty} value.
+   */
+  public DataCommunicationPatternProperty.Value getDataCommunicationPattern() {
+    return dataCommunicationPatternValue;
+  }
+
+  /**
+   * @return {@link DataFlowModelProperty} value.
+   */
+  public DataFlowModelProperty.Value getDataFlowModel() {
+    return dataFlowModelValue;
   }
 }

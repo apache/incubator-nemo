@@ -72,4 +72,18 @@ public final class PartitionMetadata<K extends Serializable> {
   public long getElementsTotal() {
     return elementsTotal;
   }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("key: ");
+    sb.append(key);
+    sb.append("/ partitionSize: ");
+    sb.append(partitionSize);
+    sb.append("/ offset: ");
+    sb.append(offset);
+    sb.append("/ elementsTotal: ");
+    sb.append(elementsTotal);
+    return sb.toString();
+  }
 }

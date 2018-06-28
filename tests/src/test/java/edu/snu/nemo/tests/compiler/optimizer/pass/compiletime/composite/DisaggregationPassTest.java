@@ -19,13 +19,11 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataStoreProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.StageIdProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultParallelismPass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultStagePartitioningPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DisaggregationEdgeDataStorePass;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.ReviseInterStageEdgeDataStorePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultInterTaskDataStorePass;
 import edu.snu.nemo.tests.compiler.CompilerTestUtil;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,22 +50,12 @@ public class DisaggregationPassTest {
   public void testDisaggregation() throws Exception {
     final DAG<IRVertex, IREdge> processedDAG =
         new DisaggregationEdgeDataStorePass().apply(
-            new ReviseInterStageEdgeDataStorePass().apply(
-                new DefaultStagePartitioningPass().apply(
-                    new DefaultParallelismPass().apply(compiledDAG))));
+            new DefaultInterTaskDataStorePass().apply(
+                  new DefaultParallelismPass().apply(compiledDAG)));
 
-    processedDAG.getTopologicalSort().forEach(irVertex -> {
-      processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger -> {
-        if (DataCommunicationPatternProperty.Value.OneToOne
-            .equals(edgeToMerger.getPropertyValue(DataCommunicationPatternProperty.class).get())
-            && edgeToMerger.getSrc().getPropertyValue(StageIdProperty.class).get()
-            .equals(edgeToMerger.getDst().getPropertyValue(StageIdProperty.class).get())) {
-          assertEquals(DataStoreProperty.Value.MemoryStore, edgeToMerger.getPropertyValue(DataStoreProperty.class).get());
-        } else {
-          assertEquals(DataStoreProperty.Value.GlusterFileStore,
-              edgeToMerger.getPropertyValue(DataStoreProperty.class).get());
-        }
-      });
-    });
+    processedDAG.getTopologicalSort().forEach(irVertex ->
+      processedDAG.getIncomingEdgesOf(irVertex).forEach(edgeToMerger ->
+          assertEquals(InterTaskDataStoreProperty.Value.GlusterFileStore,
+              edgeToMerger.getPropertyValue(InterTaskDataStoreProperty.class).get())));
   }
 }
