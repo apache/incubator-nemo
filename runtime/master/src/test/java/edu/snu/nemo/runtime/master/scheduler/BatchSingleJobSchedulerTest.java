@@ -146,7 +146,7 @@ public final class BatchSingleJobSchedulerTest {
   }
 
   private void scheduleAndCheckJobTermination(final PhysicalPlan plan) throws InjectionException {
-    final JobStateManager jobStateManager = new JobStateManager(plan, blockManagerMaster, metricMessageHandler, 1);
+    final JobStateManager jobStateManager = new JobStateManager(plan, metricMessageHandler, 1);
     scheduler.scheduleJob(plan, jobStateManager);
 
     // For each ScheduleGroup, test if the tasks of the next ScheduleGroup are scheduled

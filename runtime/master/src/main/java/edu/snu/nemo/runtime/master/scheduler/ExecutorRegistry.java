@@ -24,7 +24,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -59,8 +59,9 @@ public final class ExecutorRegistry {
     }
   }
 
-  synchronized void viewExecutors(final Consumer<Set<ExecutorRepresenter>> consumer) {
-    consumer.accept(getRunningExecutors());
+  synchronized Optional<ExecutorRepresenter> selectExecutor(
+      final Function<Set<ExecutorRepresenter>, Optional<ExecutorRepresenter>> function) {
+    return function.apply(getRunningExecutors());
   }
 
   synchronized void updateExecutor(

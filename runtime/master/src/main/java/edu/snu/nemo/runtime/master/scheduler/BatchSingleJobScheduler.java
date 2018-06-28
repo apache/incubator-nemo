@@ -108,8 +108,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
     this.physicalPlan = physicalPlanOfJob;
     this.jobStateManager = jobStateManagerOfJob;
 
-    schedulerRunner.scheduleJob(jobStateManagerOfJob);
-    schedulerRunner.runSchedulerThread();
+    schedulerRunner.run(jobStateManager);
     LOG.info("Job to schedule: {}", this.physicalPlan.getId());
 
     this.sortedScheduleGroups = this.physicalPlan.getStageDAG().getVertices()
@@ -245,6 +244,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
         Sets.union(interruptedTasks, recursivelyGetParentTasksForLostBlocks(interruptedTasks));
 
     // Report SHOULD_RETRY tasks so they can be re-scheduled
+    LOG.info("{} removed: {} will be retried", executorId, tasksToReExecute);
     tasksToReExecute.forEach(
         taskToReExecute -> jobStateManager.onTaskStateChanged(taskToReExecute, TaskState.State.SHOULD_RETRY));
 

@@ -97,14 +97,4 @@ final class SchedulerTestUtil {
                                             final int attemptIdx) {
     sendTaskStateEventToScheduler(scheduler, executorRegistry, taskId, newState, attemptIdx, null);
   }
-
-  static void mockSchedulingBySchedulerRunner(final PendingTaskCollectionPointer pendingTaskCollectionPointer,
-                                              final SchedulingPolicy schedulingPolicy,
-                                              final JobStateManager jobStateManager,
-                                              final ExecutorRegistry executorRegistry) {
-    final SchedulerRunner schedulerRunner =
-        new SchedulerRunner(schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
-    schedulerRunner.scheduleJob(jobStateManager);
-    schedulerRunner.doScheduleTaskList();
-  }
 }

@@ -15,18 +15,15 @@
  */
 package edu.snu.nemo.runtime.master;
 
+import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.exception.IllegalStateTransitionException;
 import edu.snu.nemo.common.exception.SchedulingException;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.StateMachine;
-import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.metric.MetricDataBuilder;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.plan.StageEdge;
-import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.state.JobState;
 import edu.snu.nemo.runtime.common.state.StageState;
 
@@ -45,7 +42,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.stream.IntStream;
 
 import static edu.snu.nemo.common.dag.DAG.EMPTY_DAG_DIRECTORY;
 
@@ -94,7 +90,6 @@ public final class JobStateManager {
   private final Map<String, MetricDataBuilder> metricDataBuilderMap;
 
   public JobStateManager(final PhysicalPlan physicalPlan,
-                         final BlockManagerMaster blockManagerMaster,
                          final MetricMessageHandler metricMessageHandler,
                          final int maxScheduleAttempt) {
     this.jobId = physicalPlan.getId();
@@ -109,7 +104,6 @@ public final class JobStateManager {
     this.jobFinishedCondition = finishLock.newCondition();
     this.metricDataBuilderMap = new HashMap<>();
     initializeComputationStates();
-    initializePartitionStates(blockManagerMaster);
   }
 
   /**
@@ -124,36 +118,6 @@ public final class JobStateManager {
       stage.getTaskIds().forEach(taskId -> {
         idToTaskStates.put(taskId, new TaskState());
         taskIdToCurrentAttempt.put(taskId, 1);
-      });
-    });
-  }
-
-  private void initializePartitionStates(final BlockManagerMaster blockManagerMaster) {
-    final DAG<Stage, StageEdge> stageDAG = physicalPlan.getStageDAG();
-    stageDAG.topologicalDo(stage -> {
-      final List<String> taskIdsForStage = stage.getTaskIds();
-      final List<StageEdge> stageOutgoingEdges = stageDAG.getOutgoingEdgesOf(stage);
-
-      // Initialize states for blocks of inter-stage edges
-      stageOutgoingEdges.forEach(stageEdge -> {
-        final int srcParallelism = taskIdsForStage.size();
-        IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
-          final String blockId = RuntimeIdGenerator.generateBlockId(stageEdge.getId(), srcTaskIdx);
-          blockManagerMaster.initializeState(blockId, taskIdsForStage.get(srcTaskIdx));
-        });
-      });
-
-      // Initialize states for blocks of stage internal edges
-      taskIdsForStage.forEach(taskId -> {
-        final DAG<IRVertex, RuntimeEdge<IRVertex>> taskInternalDag = stage.getIRDAG();
-        taskInternalDag.getVertices().forEach(task -> {
-          final List<RuntimeEdge<IRVertex>> internalOutgoingEdges = taskInternalDag.getOutgoingEdgesOf(task);
-          internalOutgoingEdges.forEach(taskRuntimeEdge -> {
-            final int srcTaskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
-            final String blockId = RuntimeIdGenerator.generateBlockId(taskRuntimeEdge.getId(), srcTaskIdx);
-            blockManagerMaster.initializeState(blockId, taskId);
-          });
-        });
       });
     });
   }
@@ -213,6 +177,11 @@ public final class JobStateManager {
         .map(this::getTaskState)
         .filter(state -> state.equals(TaskState.State.COMPLETE) || state.equals(TaskState.State.ON_HOLD))
         .count();
+    if (newTaskState.equals(TaskState.State.COMPLETE)) {
+      // Log not-yet-completed tasks for us to track progress
+      LOG.info("{} completed: {} Task(s) remaining in this stage",
+          taskId, tasksOfThisStage.size() - numOfCompletedOrOnHoldTasksInThisStage);
+    }
     switch (newTaskState) {
       // SCHEDULABLE stage
       case SHOULD_RETRY:
@@ -234,12 +203,6 @@ public final class JobStateManager {
         break;
       default:
         throw new UnknownExecutionStateException(new Throwable("This task state is unknown"));
-    }
-
-    if (newTaskState.equals(TaskState.State.COMPLETE)) {
-      // Log not-yet-completed tasks for us to track progress
-      LOG.info("{} completed: {} Task(s) remaining in this stage",
-          taskId, tasksOfThisStage.size() - numOfCompletedOrOnHoldTasksInThisStage);
     }
   }
 
@@ -374,6 +337,11 @@ public final class JobStateManager {
     } else {
       throw new IllegalStateException("No mapping for this task's attemptIdx, an inconsistent state occurred.");
     }
+  }
+
+  @VisibleForTesting
+  public synchronized Map<String, TaskState> getAllTaskStates() {
+    return idToTaskStates;
   }
 
   /**

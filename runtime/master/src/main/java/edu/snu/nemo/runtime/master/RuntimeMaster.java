@@ -124,8 +124,8 @@ public final class RuntimeMaster {
     final Callable<Pair<JobStateManager, ScheduledExecutorService>> jobExecutionCallable = () -> {
       this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {
-        final JobStateManager jobStateManager =
-            new JobStateManager(plan, blockManagerMaster, metricMessageHandler, maxScheduleAttempt);
+        blockManagerMaster.initialize(plan);
+        final JobStateManager jobStateManager = new JobStateManager(plan, metricMessageHandler, maxScheduleAttempt);
         scheduler.scheduleJob(plan, jobStateManager);
         final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(jobStateManager);
         return Pair.of(jobStateManager, dagLoggingExecutor);

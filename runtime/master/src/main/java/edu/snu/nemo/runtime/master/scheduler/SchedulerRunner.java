@@ -110,23 +110,25 @@ public final class SchedulerRunner {
       }
 
       LOG.debug("Trying to schedule {}...", task.getTaskId());
-      executorRegistry.viewExecutors(executors -> {
+      final Optional<ExecutorRepresenter> picked = executorRegistry.selectExecutor(executors -> {
         final Set<ExecutorRepresenter> candidateExecutors =
             schedulingPolicy.filterExecutorRepresenters(executors, task);
-        final Optional<ExecutorRepresenter> firstCandidate = candidateExecutors.stream().findFirst();
-
-        if (firstCandidate.isPresent()) {
-          // update metadata first
-          jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
-
-          // send the task
-          final ExecutorRepresenter selectedExecutor = firstCandidate.get();
-          selectedExecutor.onTaskScheduled(task);
-          LOG.info("{} scheduled to {}", new Object[]{task.getTaskId(), selectedExecutor.getExecutorId()});
-        } else {
-          couldNotSchedule.add(task);
-        }
+        return candidateExecutors.stream().findFirst(); // return the first match
       });
+
+
+      if (picked.isPresent()) {
+        // update metadata first
+        jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+
+        // send the task
+        picked.get().onTaskScheduled(task);
+        LOG.info("{} scheduled to {}", new Object[]{task.getTaskId(), picked.get().getExecutorId()});
+      } else {
+        couldNotSchedule.add(task);
+      }
+
+
     }
 
     LOG.debug("All except {} were scheduled among {}", new Object[]{couldNotSchedule, taskList});
@@ -153,22 +155,13 @@ public final class SchedulerRunner {
   /**
    * Run the scheduler thread.
    */
-  void runSchedulerThread() {
+  void run(final JobStateManager jobStateManager) {
     if (!isTerminated && !isSchedulerRunning) {
+      jobStateManagers.put(jobStateManager.getJobId(), jobStateManager);
       schedulerThread.execute(new SchedulerThread());
       schedulerThread.shutdown();
       isSchedulerRunning = true;
     }
-  }
-
-  /**
-   * Begin scheduling a job.
-   * @param jobStateManager the corresponding {@link JobStateManager}
-   */
-  void scheduleJob(final JobStateManager jobStateManager) {
-    if (!isTerminated) {
-      jobStateManagers.put(jobStateManager.getJobId(), jobStateManager);
-    } // else ignore new incoming jobs when terminated.
   }
 
   void terminate() {
