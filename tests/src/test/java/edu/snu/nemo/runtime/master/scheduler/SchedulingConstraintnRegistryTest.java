@@ -15,9 +15,15 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorSlotComplianceProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.SourceLocationAwareSchedulingProperty;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * Tests {@link SchedulingConstraint.Registry}.
@@ -27,5 +33,18 @@ public final class SchedulingConstraintnRegistryTest {
   public void testSchedulingConstraintRegistry() throws InjectionException {
     final SchedulingConstraint.Registry registry = Tang.Factory.getTang().newInjector()
         .getInstance(SchedulingConstraint.Registry.class);
+    assertEquals(FreeSlotSchedulingConstraint.class, getConstraintOf(ExecutorSlotComplianceProperty.class, registry));
+    assertEquals(ContainerTypeAwareSchedulingConstraint.class,
+        getConstraintOf(ExecutorPlacementProperty.class, registry));
+    assertEquals(SourceLocationAwareSchedulingConstraint.class,
+        getConstraintOf(SourceLocationAwareSchedulingProperty.class, registry));
+  }
+
+  private static Class<? extends SchedulingConstraint> getConstraintOf(
+      final Class<? extends VertexExecutionProperty> property, final SchedulingConstraint.Registry registry) {
+    return registry.get(property)
+        .orElseThrow(() -> new RuntimeException(String.format(
+            "No SchedulingConstraint found for property %s", property)))
+        .getClass();
   }
 }
