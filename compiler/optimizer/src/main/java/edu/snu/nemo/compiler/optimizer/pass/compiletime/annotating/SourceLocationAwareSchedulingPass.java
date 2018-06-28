@@ -31,7 +31,9 @@ public final class SourceLocationAwareSchedulingPass extends AnnotatingPass {
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.getVertices().forEach(v -> v.getExecutionProperties().put(SourceLocationAwareSchedulingProperty.of(true)));
+    dag.getVertices().stream()
+        .filter(v -> !v.getExecutionProperties().containsKey(SourceLocationAwareSchedulingProperty.class))
+        .forEach(v -> v.getExecutionProperties().put(SourceLocationAwareSchedulingProperty.of(true)));
     return dag;
   }
 }

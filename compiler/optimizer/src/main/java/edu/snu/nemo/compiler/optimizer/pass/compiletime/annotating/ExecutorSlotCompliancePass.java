@@ -31,7 +31,9 @@ public final class ExecutorSlotCompliancePass extends AnnotatingPass {
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.getVertices().forEach(v -> v.getExecutionProperties().put(ExecutorSlotComplianceProperty.of(true)));
+    dag.getVertices().stream()
+        .filter(v -> !v.getExecutionProperties().containsKey(ExecutorSlotComplianceProperty.class))
+        .forEach(v -> v.getExecutionProperties().put(ExecutorSlotComplianceProperty.of(true)));
     return dag;
   }
 }
