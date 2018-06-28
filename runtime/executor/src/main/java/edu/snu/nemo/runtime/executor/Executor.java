@@ -127,8 +127,8 @@ public final class Executor {
             e.getPropertyValue(DecompressionProperty.class).orElse(null)));
       });
 
-      new TaskExecutor(
-          task, irDag, taskStateManager, dataTransferFactory, metricMessageSender).execute();
+      new TaskExecutor(task, irDag, taskStateManager, dataTransferFactory,
+          metricMessageSender, persistentConnectionToMasterMap).execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
           ControlMessage.Message.newBuilder()

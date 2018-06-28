@@ -17,56 +17,38 @@ package edu.snu.nemo.compiler.frontend.spark.transform;
 
 import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.compiler.frontend.spark.core.rdd.JavaRDD;
+import org.apache.commons.lang3.SerializationUtils;
 
-import java.io.FileOutputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Base64;
 
 /**
  * Collect transform.
  * @param <T> type of data to collect.
  */
 public final class CollectTransform<T> implements Transform<T, T> {
-  private String filename;
-  private final List<T> list;
+  private final ArrayList<T> list;
+  private Context ctxt;
 
   /**
    * Constructor.
-   *
-   * @param filename file to keep the result in.
    */
-  public CollectTransform(final String filename) {
-    this.filename = filename;
+  public CollectTransform() {
     this.list = new ArrayList<>();
   }
 
   @Override
   public void prepare(final Context context, final OutputCollector<T> oc) {
-    this.filename = filename + JavaRDD.getResultId();
+    this.ctxt = context;
   }
 
   @Override
   public void onData(final T element) {
-    // Write result to a temporary file.
-    // TODO #16: Implement collection of data from executor to client
     list.add(element);
   }
 
   @Override
   public void close() {
-    try (
-        final FileOutputStream fos = new FileOutputStream(filename);
-        final ObjectOutputStream oos = new ObjectOutputStream(fos)
-    ) {
-      // Write the length of list at first. This is needed internally and must not shown in the collected result.
-      oos.writeInt(list.size());
-      for (final T t : list) {
-        oos.writeObject(t);
-      }
-    } catch (Exception e) {
-      throw new RuntimeException("Exception while file closing in CollectTransform " + e);
-    }
+    ctxt.setSerializedData(Base64.getEncoder().encodeToString(SerializationUtils.serialize(list)));
   }
 }

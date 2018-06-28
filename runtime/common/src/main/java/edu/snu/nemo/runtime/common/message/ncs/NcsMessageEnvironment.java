@@ -196,6 +196,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case BlockStateChanged:
       case ExecutorFailed:
       case DataSizeMetric:
+      case ExecutorDataCollected:
       case MetricMessageReceived:
         return MessageType.Send;
       case RequestBlockLocation:
