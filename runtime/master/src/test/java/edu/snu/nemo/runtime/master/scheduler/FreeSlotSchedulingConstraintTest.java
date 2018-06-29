@@ -59,7 +59,8 @@ public final class FreeSlotSchedulingConstraintTest {
     final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1));
 
     final Set<ExecutorRepresenter> candidateExecutors = executorRepresenterList.stream()
-        .filter(e -> schedulingConstraint.testSchedulability(e, task)).collect(Collectors.toSet());
+        .filter(e -> schedulingConstraint.testSchedulability(e, task))
+        .collect(Collectors.toSet());
 
     final Set<ExecutorRepresenter> expectedExecutors = Collections.singleton(a1);
     assertEquals(expectedExecutors, candidateExecutors);

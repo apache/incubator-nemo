@@ -56,7 +56,8 @@ public final class ContainerTypeAwareSchedulingConstraintTest {
     final Set<ExecutorRepresenter> executorRepresenterList1 = new HashSet<>(Arrays.asList(a0, a1, a2));
 
     final Set<ExecutorRepresenter> candidateExecutors1 = executorRepresenterList1.stream()
-        .filter(e -> schedulingConstraint.testSchedulability(e, task1)).collect(Collectors.toSet());;
+        .filter(e -> schedulingConstraint.testSchedulability(e, task1))
+        .collect(Collectors.toSet());;
 
     final Set<ExecutorRepresenter> expectedExecutors1 = Collections.singleton(a1);
     assertEquals(expectedExecutors1, candidateExecutors1);
@@ -68,7 +69,8 @@ public final class ContainerTypeAwareSchedulingConstraintTest {
     final Set<ExecutorRepresenter> executorRepresenterList2 = new HashSet<>(Arrays.asList(a0, a1, a2));
 
     final Set<ExecutorRepresenter> candidateExecutors2 = executorRepresenterList2.stream()
-        .filter(e -> schedulingConstraint.testSchedulability(e, task2)).collect(Collectors.toSet());
+        .filter(e -> schedulingConstraint.testSchedulability(e, task2))
+        .collect(Collectors.toSet());
 
     final Set<ExecutorRepresenter> expectedExecutors2 = new HashSet<>(Arrays.asList(a0, a1, a2));
     assertEquals(expectedExecutors2, candidateExecutors2);

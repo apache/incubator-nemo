@@ -63,7 +63,8 @@ public final class SourceLocationAwareSchedulingConstraintTest {
     final ExecutorRepresenter e1 = mockExecutorRepresenter(SITE_1);
 
     assertEquals(Collections.emptySet(), Arrays.asList(e0, e1).stream()
-        .filter(e -> schedulingConstraint.testSchedulability(e, task)).collect(Collectors.toSet()));
+        .filter(e -> schedulingConstraint.testSchedulability(e, task))
+        .collect(Collectors.toSet()));
   }
 
   /**

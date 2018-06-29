@@ -121,7 +121,8 @@ public final class SchedulerRunner {
           final Optional<SchedulingConstraint> constraint = schedulingConstraintRegistry.get(property.getClass());
           if (constraint.isPresent() && !candidateExecutors.getValue().isEmpty()) {
             candidateExecutors.setValue(candidateExecutors.getValue().stream()
-                .filter(e -> constraint.get().testSchedulability(e, task)).collect(Collectors.toSet()));
+                .filter(e -> constraint.get().testSchedulability(e, task))
+                .collect(Collectors.toSet()));
           }
         });
         if (!candidateExecutors.getValue().isEmpty()) {
