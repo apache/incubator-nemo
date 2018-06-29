@@ -53,6 +53,10 @@ public final class MetricManagerWorker implements MetricMessageSender {
                                                       flushingPeriod, TimeUnit.MILLISECONDS);
   }
 
+  public void flush() {
+    flushMetricMessageQueueToMaster();
+  }
+
   private synchronized void flushMetricMessageQueueToMaster() {
     if (!metricMessageQueue.isEmpty()) {
       // Build batched metric messages

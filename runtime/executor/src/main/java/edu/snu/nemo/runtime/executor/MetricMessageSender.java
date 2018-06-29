@@ -25,5 +25,7 @@ public interface MetricMessageSender extends AutoCloseable {
 
   void send(final String metricKey, final String metricValue);
 
+  void flush();
+
   void close();
 }

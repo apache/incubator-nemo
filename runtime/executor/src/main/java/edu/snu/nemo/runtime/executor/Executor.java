@@ -161,12 +161,21 @@ public final class Executor {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       switch (message.getType()) {
-      case ScheduleTask:
-        final ControlMessage.ScheduleTaskMsg scheduleTaskMsg = message.getScheduleTaskMsg();
-        final Task task =
-            SerializationUtils.deserialize(scheduleTaskMsg.getTask().toByteArray());
-        onTaskReceived(task);
-        break;
+        case ScheduleTask:
+          final ControlMessage.ScheduleTaskMsg scheduleTaskMsg = message.getScheduleTaskMsg();
+          final Task task =
+              SerializationUtils.deserialize(scheduleTaskMsg.getTask().toByteArray());
+          onTaskReceived(task);
+          break;
+        case RequestMetricFlush:
+          metricMessageSender.flush();
+          persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+              ControlMessage.Message.newBuilder()
+                  .setId(RuntimeIdGenerator.generateMessageId())
+                  .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+                  .setType(ControlMessage.MessageType.MetricFlushed)
+                  .build());
+          break;
       default:
         throw new IllegalMessageException(
             new Exception("This message should not be received by an executor :" + message.getType()));

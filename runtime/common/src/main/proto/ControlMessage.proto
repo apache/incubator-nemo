@@ -57,6 +57,8 @@ enum MessageType {
     ExecutorFailed = 6;
     MetricMessageReceived = 7;
     ExecutorDataCollected = 8;
+    RequestMetricFlush = 9;
+    MetricFlushed = 10;
 }
 
 message Message {

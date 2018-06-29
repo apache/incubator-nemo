@@ -19,8 +19,6 @@ import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.message.MessageSender;
-import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
-import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import org.junit.Assert;
 import org.junit.Test;
 

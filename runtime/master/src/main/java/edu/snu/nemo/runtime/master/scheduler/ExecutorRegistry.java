@@ -59,7 +59,7 @@ public final class ExecutorRegistry {
     }
   }
 
-  synchronized void viewExecutors(final Consumer<Set<ExecutorRepresenter>> consumer) {
+  public synchronized void viewExecutors(final Consumer<Set<ExecutorRepresenter>> consumer) {
     consumer.accept(getRunningExecutors());
   }
 
