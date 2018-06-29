@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import edu.snu.nemo.common.ir.vertex.executionproperty.SourceLocationAwareSchedulingProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -25,16 +26,18 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
 /**
- * Test cases for {@link SourceLocationAwareSchedulingPolicy}.
+ * Test cases for {@link SourceLocationAwareSchedulingConstraint}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ExecutorRepresenter.class, Task.class, Readable.class})
-public final class SourceLocationAwareSchedulingPolicyTest {
+public final class SourceLocationAwareSchedulingConstraintTest {
   private static final String SITE_0 = "SEOUL";
   private static final String SITE_1 = "JINJU";
   private static final String SITE_2 = "BUSAN";
@@ -46,12 +49,12 @@ public final class SourceLocationAwareSchedulingPolicyTest {
   }
 
   /**
-   * {@link SourceLocationAwareSchedulingPolicy} should fail to schedule a {@link Task} when
+   * {@link SourceLocationAwareSchedulingConstraint} should fail to schedule a {@link Task} when
    * there are no executors in appropriate location(s).
    */
   @Test
   public void testSourceLocationAwareSchedulingNotAvailable() {
-    final SchedulingPolicy schedulingPolicy = new SourceLocationAwareSchedulingPolicy();
+    final SchedulingConstraint schedulingConstraint = new SourceLocationAwareSchedulingConstraint();
 
     // Prepare test scenario
     final Task task = CreateTask.withReadablesWithSourceLocations(
@@ -59,16 +62,17 @@ public final class SourceLocationAwareSchedulingPolicyTest {
     final ExecutorRepresenter e0 = mockExecutorRepresenter(SITE_1);
     final ExecutorRepresenter e1 = mockExecutorRepresenter(SITE_1);
 
-    assertEquals(Collections.emptySet(),
-        schedulingPolicy.filterExecutorRepresenters(new HashSet<>(Arrays.asList(e0, e1)), task));
+    assertEquals(Collections.emptySet(), Arrays.asList(e0, e1).stream()
+        .filter(e -> schedulingConstraint.testSchedulability(e, task))
+        .collect(Collectors.toSet()));
   }
 
   /**
-   * {@link SourceLocationAwareSchedulingPolicy} should properly schedule TGs with multiple source locations.
+   * {@link SourceLocationAwareSchedulingConstraint} should properly schedule TGs with multiple source locations.
    */
   @Test
   public void testSourceLocationAwareSchedulingWithMultiSource() {
-    final SchedulingPolicy schedulingPolicy = new SourceLocationAwareSchedulingPolicy();
+    final SchedulingConstraint schedulingConstraint = new SourceLocationAwareSchedulingConstraint();
     // Prepare test scenario
     final Task task0 = CreateTask.withReadablesWithSourceLocations(
         Collections.singletonList(Collections.singletonList(SITE_1)));
@@ -83,8 +87,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
 
     final ExecutorRepresenter e = mockExecutorRepresenter(SITE_1);
     for (final Task task : new HashSet<>(Arrays.asList(task0, task1, task2, task3))) {
-      assertEquals(new HashSet<>(Collections.singletonList(e)), schedulingPolicy.filterExecutorRepresenters(
-          new HashSet<>(Collections.singletonList(e)), task));
+      assertTrue(schedulingConstraint.testSchedulability(e, task));
     }
   }
 
@@ -103,6 +106,7 @@ public final class SourceLocationAwareSchedulingPolicyTest {
           readable));
       when(mockInstance.getTaskId()).thenReturn(String.format("T-%d", taskIndex.getAndIncrement()));
       when(mockInstance.getIrVertexIdToReadable()).thenReturn(readableMap);
+      when(mockInstance.getPropertyValue(SourceLocationAwareSchedulingProperty.class)).thenReturn(Optional.of(true));
       return mockInstance;
     }
 

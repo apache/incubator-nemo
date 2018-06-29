@@ -44,7 +44,7 @@ public final class MinOccupancyFirstSchedulingPolicyTest {
   }
 
   @Test
-  public void testRoundRobin() {
+  public void test() {
     final SchedulingPolicy schedulingPolicy = new MinOccupancyFirstSchedulingPolicy();
     final ExecutorRepresenter a0 = mockExecutorRepresenter(1);
     final ExecutorRepresenter a1 = mockExecutorRepresenter(2);
@@ -52,13 +52,9 @@ public final class MinOccupancyFirstSchedulingPolicyTest {
 
     final Task task = mock(Task.class);
 
-    final Set<ExecutorRepresenter> executorRepresenterList = new HashSet<>(Arrays.asList(a0, a1, a2));
+    final List<ExecutorRepresenter> executorRepresenterList = Arrays.asList(a0, a1, a2);
 
-    final Set<ExecutorRepresenter> candidateExecutors =
-        schedulingPolicy.filterExecutorRepresenters(executorRepresenterList, task);
-
-    final Set<ExecutorRepresenter> expectedExecutors = new HashSet<>(Arrays.asList(a0));
-    assertEquals(expectedExecutors, candidateExecutors);
+    assertEquals(a0, schedulingPolicy.selectExecutor(executorRepresenterList, task));
   }
 }
 
