@@ -69,6 +69,7 @@ import static edu.snu.nemo.runtime.common.state.TaskState.State.ON_HOLD;
 public final class RuntimeMaster {
   private static final Logger LOG = LoggerFactory.getLogger(RuntimeMaster.class.getName());
   private static final int DAG_LOGGING_PERIOD = 3000;
+  private static final int METRIC_ARRIVE_TIMEOUT = 10000;
 
   private final ExecutorService runtimeMasterThread;
 
@@ -79,6 +80,7 @@ public final class RuntimeMaster {
   private final MessageEnvironment masterMessageEnvironment;
   private final Map<Integer, Long> aggregatedMetricData;
   private final ClientRPC clientRPC;
+  private final MetricManagerMaster metricManagerMaster;
 
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
@@ -88,6 +90,7 @@ public final class RuntimeMaster {
 
   private final AtomicInteger resourceRequestCount;
 
+  private CountDownLatch metricCountDownLatch;
 
   @Inject
   public RuntimeMaster(final Scheduler scheduler,
@@ -96,6 +99,7 @@ public final class RuntimeMaster {
                        final MetricMessageHandler metricMessageHandler,
                        final MessageEnvironment masterMessageEnvironment,
                        final ClientRPC clientRPC,
+                       final MetricManagerMaster metricManagerMaster,
                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
@@ -110,6 +114,7 @@ public final class RuntimeMaster {
     this.masterMessageEnvironment
         .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.clientRPC = clientRPC;
+    this.metricManagerMaster = metricManagerMaster;
     this.dagDirectory = dagDirectory;
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
@@ -145,6 +150,17 @@ public final class RuntimeMaster {
   }
 
   public void terminate() {
+    // send metric flush request to all executors
+    metricManagerMaster.sendMetricFlushRequest();
+    try {
+      // wait for metric flush
+      if (!metricCountDownLatch.await(METRIC_ARRIVE_TIMEOUT, TimeUnit.MILLISECONDS)) {
+        LOG.warn("Terminating master before all executor terminated messages arrived.");
+      }
+    } catch (final InterruptedException e) {
+      LOG.warn("Waiting executor terminating process interrupted.");
+    }
+
     runtimeMasterThread.execute(() -> {
 
       scheduler.terminate();
@@ -176,6 +192,7 @@ public final class RuntimeMaster {
           resourceRequestCount.getAndAdd(executorNum);
           containerManager.requestContainer(executorNum, builder.build());
         }
+        metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());
       } catch (final Exception e) {
         throw new ContainerException(e);
       }
@@ -237,6 +254,7 @@ public final class RuntimeMaster {
   public void onExecutorFailed(final FailedEvaluator failedEvaluator) {
     runtimeMasterThread.execute(() -> {
       LOG.info("onExecutorFailed: {}", failedEvaluator.getId());
+      metricCountDownLatch.countDown();
 
       // Note that getFailedContextList() can be empty if the failure occurred
       // prior to launching an Executor on the Evaluator.
@@ -309,6 +327,9 @@ public final class RuntimeMaster {
             .setType(ControlMessage.DriverToClientMessageType.DataCollected)
             .setDataCollected(ControlMessage.DataCollectMessage.newBuilder().setData(serializedData).build())
             .build());
+        break;
+      case MetricFlushed:
+        metricCountDownLatch.countDown();
         break;
       default:
         throw new IllegalMessageException(

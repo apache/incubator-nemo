@@ -55,8 +55,10 @@ enum MessageType {
     RequestBlockLocation = 4;
     BlockLocationInfo = 5;
     ExecutorFailed = 6;
-    MetricMessageReceived = 7;
-    ExecutorDataCollected = 8;
+    ExecutorDataCollected = 7;
+    MetricMessageReceived = 8;
+    RequestMetricFlush = 9;
+    MetricFlushed = 10;
 }
 
 message Message {
