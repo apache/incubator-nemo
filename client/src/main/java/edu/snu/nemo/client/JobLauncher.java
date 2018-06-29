@@ -96,8 +96,8 @@ public final class JobLauncher {
     final Configuration driverConf = getDriverConf(builtJobConf);
     final Configuration driverNcsConf = getDriverNcsConf();
     final Configuration driverMessageConfg = getDriverMessageConf();
-    final Configuration executorResourceConfig = getJSONConf(builtJobConf, JobConf.ExecutorJsonPath.class,
-        JobConf.ExecutorJsonContents.class);
+    final Configuration executorResourceConfig = getJSONConf(builtJobConf, JobConf.ExecutorJSONPath.class,
+        JobConf.ExecutorJSONContents.class);
     final Configuration clientConf = getClientConf();
 
     // Merge Job and Driver Confs
@@ -239,7 +239,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.OptimizationPolicy.class);
     cl.registerShortNameOfClass(JobConf.DeployMode.class);
     cl.registerShortNameOfClass(JobConf.DriverMemMb.class);
-    cl.registerShortNameOfClass(JobConf.ExecutorJsonPath.class);
+    cl.registerShortNameOfClass(JobConf.ExecutorJSONPath.class);
     cl.registerShortNameOfClass(JobConf.JVMHeapSlack.class);
     cl.registerShortNameOfClass(JobConf.IORequestHandleThreadsTotal.class);
     cl.registerShortNameOfClass(JobConf.MaxScheduleAttempt.class);

@@ -120,7 +120,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    */
   @NamedParameter(doc = "Path to the JSON file that specifies resources for executors", short_name = "executor_json",
       default_value = "examples/resources/sample_executor_resources.json")
-  public final class ExecutorJsonPath implements Name<String> {
+  public final class ExecutorJSONPath implements Name<String> {
   }
 
   /**
@@ -135,7 +135,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * Contents of the JSON file that specifies resource layout.
    */
   @NamedParameter(doc = "Contents of JSON file that specifies resources for executors")
-  public final class ExecutorJsonContents implements Name<String> {
+  public final class ExecutorJSONContents implements Name<String> {
   }
 
   /**

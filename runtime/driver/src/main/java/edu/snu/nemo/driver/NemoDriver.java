@@ -81,7 +81,7 @@ public final class NemoDriver {
                      final LocalAddressProvider localAddressProvider,
                      final JobMessageObserver client,
                      final ClientRPC clientRPC,
-                     @Parameter(JobConf.ExecutorJsonContents.class) final String resourceSpecificationString,
+                     @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
                      @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory) {
