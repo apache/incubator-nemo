@@ -23,9 +23,20 @@ import org.apache.reef.tang.annotations.DefaultImplementation;
 @DefaultImplementation(MetricManagerWorker.class)
 public interface MetricMessageSender extends AutoCloseable {
 
+  /**
+   * Send metric to master.
+   * @param metricKey key of the metric
+   * @param metricValue value of the metric
+   */
   void send(final String metricKey, final String metricValue);
 
+  /**
+   * Flush all metric inside of the queue.
+   */
   void flush();
 
+  /**
+   * Flush the metric queue and close the metric dispatch.
+   */
   void close();
 }

@@ -53,6 +53,7 @@ public final class MetricManagerWorker implements MetricMessageSender {
                                                       flushingPeriod, TimeUnit.MILLISECONDS);
   }
 
+  @Override
   public void flush() {
     flushMetricMessageQueueToMaster();
   }
