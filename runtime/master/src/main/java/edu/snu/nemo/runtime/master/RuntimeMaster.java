@@ -20,14 +20,12 @@ import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
-import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.master.scheduler.ExecutorRegistry;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
@@ -82,7 +80,7 @@ public final class RuntimeMaster {
   private final MessageEnvironment masterMessageEnvironment;
   private final Map<Integer, Long> aggregatedMetricData;
   private final ClientRPC clientRPC;
-  private final ExecutorRegistry executorRegistry;
+  private final MetricManagerMaster metricManagerMaster;
 
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
@@ -101,7 +99,7 @@ public final class RuntimeMaster {
                        final MetricMessageHandler metricMessageHandler,
                        final MessageEnvironment masterMessageEnvironment,
                        final ClientRPC clientRPC,
-                       final ExecutorRegistry executorRegistry,
+                       final MetricManagerMaster metricManagerMaster,
                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
@@ -116,7 +114,7 @@ public final class RuntimeMaster {
     this.masterMessageEnvironment
         .setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID, new MasterControlMessageReceiver());
     this.clientRPC = clientRPC;
-    this.executorRegistry = executorRegistry;
+    this.metricManagerMaster = metricManagerMaster;
     this.dagDirectory = dagDirectory;
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
@@ -153,15 +151,7 @@ public final class RuntimeMaster {
 
   public void terminate() {
     // send metric flush request to all executors
-    executorRegistry.viewExecutors(executors -> executors.forEach(executor -> {
-      final ControlMessage.Message message = ControlMessage.Message.newBuilder()
-          .setId(RuntimeIdGenerator.generateMessageId())
-          .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-          .setType(ControlMessage.MessageType.RequestMetricFlush)
-          .build();
-      executor.sendControlMessage(message);
-    }));
-
+    metricManagerMaster.sendMetricFlushRequest();
     try {
       // wait for metric flush
       if (!metricCountDownLatch.await(METRIC_ARRIVE_TIMEOUT, TimeUnit.MILLISECONDS)) {
