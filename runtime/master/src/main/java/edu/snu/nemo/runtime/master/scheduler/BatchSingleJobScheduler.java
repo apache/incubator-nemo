@@ -293,7 +293,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
         .filter(scheduleGroup -> scheduleGroup.stream()
             .map(Stage::getId)
             .map(jobStateManager::getStageState)
-            .anyMatch(state -> state.equals(StageState.State.SCHEDULABLE))) // any schedulable stage in the group
+            .anyMatch(state -> state.equals(StageState.State.INCOMPLETE))) // any incomplete stage in the group
         .findFirst(); // selects the one with the smallest scheduling group index.
   }
 

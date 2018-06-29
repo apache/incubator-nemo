@@ -183,9 +183,9 @@ public final class JobStateManager {
           taskId, tasksOfThisStage.size() - numOfCompletedOrOnHoldTasksInThisStage);
     }
     switch (newTaskState) {
-      // SCHEDULABLE stage
+      // INCOMPLETE stage
       case SHOULD_RETRY:
-        onStageStateChanged(stageId, StageState.State.SCHEDULABLE);
+        onStageStateChanged(stageId, StageState.State.INCOMPLETE);
         break;
 
       // COMPLETE stage
@@ -221,7 +221,7 @@ public final class JobStateManager {
 
     // Metric handling
     final Map<String, Object> metric = new HashMap<>();
-    if (newStageState == StageState.State.SCHEDULABLE) {
+    if (newStageState == StageState.State.INCOMPLETE) {
       metric.put("FromState", newStageState);
       beginMeasurement(stageId, metric);
     } else if (newStageState == StageState.State.COMPLETE) {

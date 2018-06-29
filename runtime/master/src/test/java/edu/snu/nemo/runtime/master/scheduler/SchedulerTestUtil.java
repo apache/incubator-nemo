@@ -45,7 +45,7 @@ final class SchedulerTestUtil {
       if (StageState.State.COMPLETE == stageState) {
         // Stage has completed, so we break out of the loop.
         break;
-      } else if (StageState.State.SCHEDULABLE == stageState) {
+      } else if (StageState.State.INCOMPLETE == stageState) {
         stage.getTaskIds().forEach(taskId -> {
           final TaskState.State taskState = jobStateManager.getTaskState(taskId);
           if (TaskState.State.EXECUTING == taskState) {
