@@ -169,16 +169,10 @@ public final class Executor {
           break;
         case RequestMetricFlush:
           metricMessageSender.flush();
-          persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
-              ControlMessage.Message.newBuilder()
-                  .setId(RuntimeIdGenerator.generateMessageId())
-                  .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
-                  .setType(ControlMessage.MessageType.MetricFlushed)
-                  .build());
           break;
-      default:
-        throw new IllegalMessageException(
-            new Exception("This message should not be received by an executor :" + message.getType()));
+        default:
+          throw new IllegalMessageException(
+              new Exception("This message should not be received by an executor :" + message.getType()));
       }
     }
 

@@ -35,7 +35,7 @@ import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -51,14 +51,16 @@ import static org.mockito.Mockito.mock;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ExecutorRepresenter.class, ExecutorRegistry.class})
-public final class MetricCollectionTest {
+public final class MetricFlushTest {
   private static final Tang TANG = Tang.Factory.getTang();
   private static final String MASTER = "MASTER";
   private static final String WORKER = "WORKER";
+  private static final int EXECUTOR_NUM = 5;
+  private static MessageSender masterToWorkerSender;
 
-  @Test(timeout = 3000)
+  @Test(timeout = 10000)
   public void test() throws InjectionException, ExecutionException, InterruptedException {
-    final CountDownLatch latch = new CountDownLatch(1);
+    final CountDownLatch latch = new CountDownLatch(EXECUTOR_NUM);
 
     final LocalMessageDispatcher localMessagedispatcher = new LocalMessageDispatcher();
 
@@ -77,21 +79,19 @@ public final class MetricCollectionTest {
         localMessagedispatcher);
     workerInjector.bindVolatileInstance(MessageEnvironment.class, workerMessageEnvironment);
 
-
-    final MessageSender masterToWorkerSender = masterMessageEnvironment
+    masterToWorkerSender = masterMessageEnvironment
         .asyncConnect(WORKER, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
-    
-    final ExecutorRepresenter workerRepresenter = mock(ExecutorRepresenter.class);
-    doAnswer((Answer<Void>) invocationOnMock -> {
-      final ControlMessage.Message msg = (ControlMessage.Message) invocationOnMock.getArguments()[0];
-      masterToWorkerSender.send(msg);
-      return null;
-    }).when(workerRepresenter).sendControlMessage(any());
+
+    final Set<ExecutorRepresenter> executorRepresenterSet = new HashSet<>();
+
+    for (int i = 0; i < EXECUTOR_NUM; i++) {
+      executorRepresenterSet.add(newWorker());
+    }
 
     final ExecutorRegistry executorRegistry = mock(ExecutorRegistry.class);
     doAnswer((Answer<Void>) invocationOnMock -> {
       final Consumer<Set<ExecutorRepresenter>> consumer = (Consumer) invocationOnMock.getArguments()[0];
-      consumer.accept(Collections.singleton(workerRepresenter));
+      consumer.accept(executorRepresenterSet);
       return null;
     }).when(executorRegistry).viewExecutors(any());
 
@@ -104,7 +104,6 @@ public final class MetricCollectionTest {
         new MessageListener<Object>() {
         @Override
         public void onMessage(Object message) {
-          System.out.println(message);
           latch.countDown();
         }
 
@@ -125,9 +124,18 @@ public final class MetricCollectionTest {
           }
         });
 
-    metricManagerWorker.send("HEHE", "HOHO");
     metricManagerMaster.sendMetricFlushRequest();
 
     latch.await();
+  }
+
+  private ExecutorRepresenter newWorker() {
+    final ExecutorRepresenter workerRepresenter = mock(ExecutorRepresenter.class);
+    doAnswer((Answer<Void>) invocationOnMock -> {
+      final ControlMessage.Message msg = (ControlMessage.Message) invocationOnMock.getArguments()[0];
+      masterToWorkerSender.send(msg);
+      return null;
+    }).when(workerRepresenter).sendControlMessage(any());
+    return workerRepresenter;
   }
 }
