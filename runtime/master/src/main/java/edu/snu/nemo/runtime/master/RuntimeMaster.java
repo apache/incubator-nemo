@@ -71,6 +71,7 @@ import static edu.snu.nemo.runtime.common.state.TaskState.State.ON_HOLD;
 public final class RuntimeMaster {
   private static final Logger LOG = LoggerFactory.getLogger(RuntimeMaster.class.getName());
   private static final int DAG_LOGGING_PERIOD = 3000;
+  private static final int METRIC_ARRIVE_TIMEOUT = 10000;
 
   private final ExecutorService runtimeMasterThread;
 
@@ -163,7 +164,7 @@ public final class RuntimeMaster {
 
     try {
       // wait for metric flush
-      if (!metricCountDownLatch.await(10000, TimeUnit.MILLISECONDS)) {
+      if (!metricCountDownLatch.await(METRIC_ARRIVE_TIMEOUT, TimeUnit.MILLISECONDS)) {
         LOG.warn("Terminating master before all executor terminated messages arrived.");
       }
     } catch (final InterruptedException e) {
