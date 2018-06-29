@@ -63,6 +63,7 @@ import static org.mockito.Mockito.mock;
 public final class BatchSingleJobSchedulerTest {
   private static final Logger LOG = LoggerFactory.getLogger(BatchSingleJobSchedulerTest.class.getName());
   private Scheduler scheduler;
+  private SchedulingConstraintRegistry schedulingConstraint;
   private SchedulingPolicy schedulingPolicy;
   private SchedulerRunner schedulerRunner;
   private ExecutorRegistry executorRegistry;
@@ -86,8 +87,9 @@ public final class BatchSingleJobSchedulerTest {
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
     metricMessageHandler = mock(MetricMessageHandler.class);
     pendingTaskCollectionPointer = new PendingTaskCollectionPointer();
-    schedulingPolicy = injector.getInstance(CompositeSchedulingPolicy.class);
-    schedulerRunner = new SchedulerRunner(schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
+    schedulingConstraint = injector.getInstance(SchedulingConstraintRegistry.class);
+    schedulingPolicy = injector.getInstance(SchedulingPolicy.class);
+    schedulerRunner = new SchedulerRunner(schedulingConstraint, schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     scheduler =
@@ -153,7 +155,7 @@ public final class BatchSingleJobSchedulerTest {
     // after the stages of each ScheduleGroup are made "complete".
     for (int i = 0; i < getNumScheduleGroups(plan.getStageDAG()); i++) {
       final int scheduleGroupIdx = i;
-      final List<Stage> stages = filterStagesWithAScheduleGroupIndex(plan.getStageDAG(), scheduleGroupIdx);
+      final List<Stage> stages = filterStagesWithAScheduleGroup(plan.getStageDAG(), scheduleGroupIdx);
 
       LOG.debug("Checking that all stages of ScheduleGroup {} enter the executing state", scheduleGroupIdx);
       stages.forEach(stage -> {
@@ -168,10 +170,10 @@ public final class BatchSingleJobSchedulerTest {
     assertTrue(jobStateManager.isJobDone());
   }
 
-  private List<Stage> filterStagesWithAScheduleGroupIndex(
-      final DAG<Stage, StageEdge> physicalDAG, final int scheduleGroupIndex) {
+  private List<Stage> filterStagesWithAScheduleGroup(
+      final DAG<Stage, StageEdge> physicalDAG, final int scheduleGroup) {
     final Set<Stage> stageSet = new HashSet<>(physicalDAG.filterVertices(
-        stage -> stage.getScheduleGroupIndex() == scheduleGroupIndex));
+        stage -> stage.getScheduleGroup() == scheduleGroup));
 
     // Return the filtered vertices as a sorted list
     final List<Stage> sortedStages = new ArrayList<>(stageSet.size());
@@ -185,7 +187,7 @@ public final class BatchSingleJobSchedulerTest {
 
   private int getNumScheduleGroups(final DAG<Stage, StageEdge> physicalDAG) {
     final Set<Integer> scheduleGroupSet = new HashSet<>();
-    physicalDAG.getVertices().forEach(stage -> scheduleGroupSet.add(stage.getScheduleGroupIndex()));
+    physicalDAG.getVertices().forEach(stage -> scheduleGroupSet.add(stage.getScheduleGroup()));
     return scheduleGroupSet.size();
   }
 }

@@ -20,6 +20,7 @@ import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.*;
@@ -28,6 +29,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,12 +54,14 @@ public final class SchedulerRunner {
   private boolean isTerminated;
 
   private final DelayedSignalingCondition schedulingIteration = new DelayedSignalingCondition();
-  private ExecutorRegistry executorRegistry;
-  private SchedulingPolicy schedulingPolicy;
+  private final ExecutorRegistry executorRegistry;
+  private final SchedulingConstraintRegistry schedulingConstraintRegistry;
+  private final SchedulingPolicy schedulingPolicy;
 
   @VisibleForTesting
   @Inject
-  public SchedulerRunner(final SchedulingPolicy schedulingPolicy,
+  public SchedulerRunner(final SchedulingConstraintRegistry schedulingConstraintRegistry,
+                         final SchedulingPolicy schedulingPolicy,
                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
                          final ExecutorRegistry executorRegistry) {
     this.jobStateManagers = new HashMap<>();
@@ -67,6 +71,7 @@ public final class SchedulerRunner {
     this.isTerminated = false;
     this.executorRegistry = executorRegistry;
     this.schedulingPolicy = schedulingPolicy;
+    this.schedulingConstraintRegistry = schedulingConstraintRegistry;
   }
 
   /**
@@ -110,25 +115,29 @@ public final class SchedulerRunner {
       }
 
       LOG.debug("Trying to schedule {}...", task.getTaskId());
-      final Optional<ExecutorRepresenter> picked = executorRegistry.selectExecutor(executors -> {
-        final Set<ExecutorRepresenter> candidateExecutors =
-            schedulingPolicy.filterExecutorRepresenters(executors, task);
-        return candidateExecutors.stream().findFirst(); // return the first match
+      executorRegistry.viewExecutors(executors -> {
+        final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
+        task.getExecutionProperties().forEachProperties(property -> {
+          final Optional<SchedulingConstraint> constraint = schedulingConstraintRegistry.get(property.getClass());
+          if (constraint.isPresent() && !candidateExecutors.getValue().isEmpty()) {
+            candidateExecutors.setValue(candidateExecutors.getValue().stream()
+                .filter(e -> constraint.get().testSchedulability(e, task))
+                .collect(Collectors.toSet()));
+          }
+        });
+        if (!candidateExecutors.getValue().isEmpty()) {
+          // Select executor
+          final ExecutorRepresenter selectedExecutor
+              = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
+          // update metadata first
+          jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+
+          // send the task
+          selectedExecutor.onTaskScheduled(task);
+        } else {
+          couldNotSchedule.add(task);
+        }
       });
-
-
-      if (picked.isPresent()) {
-        // update metadata first
-        jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
-
-        // send the task
-        picked.get().onTaskScheduled(task);
-        LOG.info("{} scheduled to {}", new Object[]{task.getTaskId(), picked.get().getExecutorId()});
-      } else {
-        couldNotSchedule.add(task);
-      }
-
-
     }
 
     LOG.debug("All except {} were scheduled among {}", new Object[]{couldNotSchedule, taskList});

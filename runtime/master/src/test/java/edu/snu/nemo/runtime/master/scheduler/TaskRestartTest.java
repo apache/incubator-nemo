@@ -57,7 +57,7 @@ import static org.mockito.Mockito.mock;
  * Tests fault tolerance.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({BlockManagerMaster.class, SchedulerRunner.class,
+@PrepareForTest({BlockManagerMaster.class, SchedulerRunner.class, SchedulingConstraintRegistry.class,
     PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
 public final class TaskRestartTest {
   @Rule public TestName testName = new TestName();
@@ -87,10 +87,11 @@ public final class TaskRestartTest {
     // Get scheduler
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
-    final SchedulingPolicy schedulingPolicy = injector.getInstance(CompositeSchedulingPolicy.class);
+    final SchedulingConstraintRegistry constraintRegistry = mock(SchedulingConstraintRegistry.class);
+    final SchedulingPolicy schedulingPolicy = injector.getInstance(MinOccupancyFirstSchedulingPolicy.class);
     final PendingTaskCollectionPointer pendingTaskCollectionPointer = new PendingTaskCollectionPointer();
-    final SchedulerRunner schedulerRunner =
-        new SchedulerRunner(schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
+    final SchedulerRunner schedulerRunner = new SchedulerRunner(
+        constraintRegistry, schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
     final BlockManagerMaster blockManagerMaster = mock(BlockManagerMaster.class);
     scheduler =  new BatchSingleJobScheduler(schedulerRunner, pendingTaskCollectionPointer, blockManagerMaster,
         pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
@@ -162,19 +163,17 @@ public final class TaskRestartTest {
       return;
     }
 
-    final Optional<ExecutorRepresenter> executorToRemove = executorRegistry.selectExecutor(executors -> {
+    executorRegistry.viewExecutors(executors -> {
       if (executors.isEmpty()) {
-        return Optional.empty();
+        return;
       }
 
-      final int randomIndex = random.nextInt(executors.size());
-      final List<ExecutorRepresenter> executorList = executors.stream()
-          .collect(Collectors.toList());
-      return Optional.of(executorList.get(randomIndex));
-    });
+      final List<ExecutorRepresenter> executorList = new ArrayList<>(executors);
+      final int randomIndex = random.nextInt(executorList.size());
 
-    executorToRemove.ifPresent(executor -> {
-      scheduler.onExecutorRemoved(executor.getExecutorId());
+      // Because synchronized blocks are reentrant and there's no additional operation after this point,
+      // we can scheduler.onExecutorRemoved() while being inside executorRegistry.viewExecutors()
+      scheduler.onExecutorRemoved(executorList.get(randomIndex).getExecutorId());
     });
   }
 

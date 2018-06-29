@@ -113,7 +113,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
     this.sortedScheduleGroups = this.physicalPlan.getStageDAG().getVertices()
         .stream()
-        .collect(Collectors.groupingBy(Stage::getScheduleGroupIndex))
+        .collect(Collectors.groupingBy(Stage::getScheduleGroup))
         .entrySet()
         .stream()
         .sorted(Map.Entry.comparingByKey())

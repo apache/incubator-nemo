@@ -23,7 +23,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.test.EmptyComponents;
 import org.apache.reef.tang.Injector;
@@ -63,12 +63,12 @@ public final class PhysicalPlanGeneratorTest {
     final Stage s0 = stages.next();
     final Stage s1 = stages.next();
 
-    assertNotEquals(s0.getScheduleGroupIndex(), s1.getScheduleGroupIndex());
+    assertNotEquals(s0.getScheduleGroup(), s1.getScheduleGroup());
   }
 
-  private static final IRVertex newIRVertex(final int scheduleGroupIndex, final int parallelism) {
+  private static final IRVertex newIRVertex(final int scheduleGroup, final int parallelism) {
     final IRVertex irVertex = new OperatorVertex(EMPTY_TRANSFORM);
-    irVertex.getExecutionProperties().put(ScheduleGroupIndexProperty.of(scheduleGroupIndex));
+    irVertex.getExecutionProperties().put(ScheduleGroupProperty.of(scheduleGroup));
     irVertex.getExecutionProperties().put(ParallelismProperty.of(parallelism));
     return irVertex;
   }

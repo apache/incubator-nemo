@@ -23,7 +23,7 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.SourceVertex;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import edu.snu.nemo.common.test.EmptyComponents;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.Pair;
@@ -43,6 +43,7 @@ import edu.snu.nemo.runtime.executor.Executor;
 import edu.snu.nemo.runtime.executor.MetricManagerWorker;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.SerializerManager;
+import edu.snu.nemo.runtime.master.ClientRPC;
 import edu.snu.nemo.runtime.master.MetricMessageHandler;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
 import edu.snu.nemo.runtime.master.eventhandler.UpdatePhysicalPlanEventHandler;
@@ -90,7 +91,7 @@ import static org.mockito.Mockito.mock;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class,
-    SourceVertex.class})
+    SourceVertex.class, ClientRPC.class})
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
   private static final InterTaskDataStoreProperty.Value MEMORY_STORE = InterTaskDataStoreProperty.Value.MemoryStore;
@@ -130,17 +131,19 @@ public final class DataTransferTest {
     final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
-    final SchedulingPolicy schedulingPolicy = injector.getInstance(CompositeSchedulingPolicy.class);
+    final SchedulingConstraintRegistry schedulingConstraint = injector.getInstance(SchedulingConstraintRegistry.class);
+    final SchedulingPolicy schedulingPolicy = injector.getInstance(SchedulingPolicy.class);
     final PendingTaskCollectionPointer taskQueue = new PendingTaskCollectionPointer();
-    final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingPolicy, taskQueue, executorRegistry);
+    final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingConstraint, schedulingPolicy, taskQueue, executorRegistry);
     final Scheduler scheduler = new BatchSingleJobScheduler(
         schedulerRunner, taskQueue, master, pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
     final AtomicInteger executorCount = new AtomicInteger(0);
+    final ClientRPC clientRPC = mock(ClientRPC.class);
 
     // Necessary for wiring up the message environments
     final RuntimeMaster runtimeMaster =
         new RuntimeMaster(scheduler, containerManager, master,
-            metricMessageHandler, messageEnvironment, EMPTY_DAG_DIRECTORY);
+            metricMessageHandler, messageEnvironment, clientRPC, EMPTY_DAG_DIRECTORY);
 
     final Injector injector1 = Tang.Factory.getTang().newInjector();
     injector1.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
@@ -547,7 +550,7 @@ public final class DataTransferTest {
 
     final ExecutionPropertyMap<VertexExecutionProperty> stageExecutionProperty = new ExecutionPropertyMap<>(stageId);
     stageExecutionProperty.put(ParallelismProperty.of(PARALLELISM_TEN));
-    stageExecutionProperty.put(ScheduleGroupIndexProperty.of(0));
+    stageExecutionProperty.put(ScheduleGroupProperty.of(0));
     return new Stage(stageId, emptyDag, stageExecutionProperty, Collections.emptyList());
   }
 }

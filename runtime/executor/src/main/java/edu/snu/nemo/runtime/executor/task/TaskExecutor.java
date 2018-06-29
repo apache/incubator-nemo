@@ -23,6 +23,9 @@ import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.comm.ControlMessage;
+import edu.snu.nemo.runtime.common.message.MessageEnvironment;
+import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
@@ -65,6 +68,8 @@ public final class TaskExecutor {
   // Dynamic optimization
   private String idOfVertexPutOnHold;
 
+  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
+
   /**
    * Constructor.
    * @param task Task with information needed during execution.
@@ -77,7 +82,8 @@ public final class TaskExecutor {
                       final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag,
                       final TaskStateManager taskStateManager,
                       final DataTransferFactory dataTransferFactory,
-                      final MetricMessageSender metricMessageSender) {
+                      final MetricMessageSender metricMessageSender,
+                      final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
     // Essential information
     this.isExecuted = false;
     this.taskId = task.getTaskId();
@@ -90,6 +96,8 @@ public final class TaskExecutor {
     // Dynamic optimization
     // Assigning null is very bad, but we are keeping this for now
     this.idOfVertexPutOnHold = null;
+
+    this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
 
     // Prepare data structures
     this.sideInputMap = new HashMap();
@@ -407,6 +415,14 @@ public final class TaskExecutor {
       Transform transform = ((OperatorVertex) irVertex).getTransform();
       transform.close();
     }
+    vertexHarness.getContext().getSerializedData().ifPresent(data ->
+        persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+            ControlMessage.Message.newBuilder()
+                .setId(RuntimeIdGenerator.generateMessageId())
+                .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+                .setType(ControlMessage.MessageType.ExecutorDataCollected)
+                .setDataCollected(ControlMessage.DataCollectMessage.newBuilder().setData(data).build())
+                .build()));
   }
 
   ////////////////////////////////////////////// Misc
