@@ -22,7 +22,7 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupIndexProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import org.apache.commons.lang3.SerializationUtils;
 
@@ -94,11 +94,11 @@ public final class Stage extends Vertex {
   }
 
   /**
-   * @return the schedule group index.
+   * @return the schedule group.
    */
-  public int getScheduleGroupIndex() {
-    return executionProperties.get(ScheduleGroupIndexProperty.class)
-        .orElseThrow(() -> new RuntimeException("ScheduleGroupIndex property must be set for Stage"));
+  public int getScheduleGroup() {
+    return executionProperties.get(ScheduleGroupProperty.class)
+        .orElseThrow(() -> new RuntimeException("ScheduleGroup property must be set for Stage"));
   }
 
   /**
@@ -130,7 +130,7 @@ public final class Stage extends Vertex {
   @Override
   public String propertiesToJSON() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("{\"scheduleGroupIndex\": ").append(getScheduleGroupIndex());
+    sb.append("{\"scheduleGroup\": ").append(getScheduleGroup());
     sb.append(", \"irDag\": ").append(irDag);
     sb.append(", \"parallelism\": ").append(getParallelism());
     sb.append(", \"executionProperties\": ").append(executionProperties);

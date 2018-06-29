@@ -24,16 +24,17 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
 
 /**
- * Tests {@link ContainerTypeAwareSchedulingPolicy}.
+ * Tests {@link ContainerTypeAwareSchedulingConstraint}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ExecutorRepresenter.class, Task.class})
-public final class ContainerTypeAwareSchedulingPolicyTest {
+public final class ContainerTypeAwareSchedulingConstraintTest {
 
   private static ExecutorRepresenter mockExecutorRepresenter(final String containerType) {
     final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
@@ -43,7 +44,7 @@ public final class ContainerTypeAwareSchedulingPolicyTest {
 
   @Test
   public void testContainerTypeAware() {
-    final SchedulingPolicy schedulingPolicy = new ContainerTypeAwareSchedulingPolicy();
+    final SchedulingConstraint schedulingConstraint = new ContainerTypeAwareSchedulingConstraint();
     final ExecutorRepresenter a0 = mockExecutorRepresenter(ExecutorPlacementProperty.TRANSIENT);
     final ExecutorRepresenter a1 = mockExecutorRepresenter(ExecutorPlacementProperty.RESERVED);
     final ExecutorRepresenter a2 = mockExecutorRepresenter(ExecutorPlacementProperty.NONE);
@@ -54,10 +55,11 @@ public final class ContainerTypeAwareSchedulingPolicyTest {
 
     final Set<ExecutorRepresenter> executorRepresenterList1 = new HashSet<>(Arrays.asList(a0, a1, a2));
 
-    final Set<ExecutorRepresenter> candidateExecutors1 =
-        schedulingPolicy.filterExecutorRepresenters(executorRepresenterList1, task1);
+    final Set<ExecutorRepresenter> candidateExecutors1 = executorRepresenterList1.stream()
+        .filter(e -> schedulingConstraint.testSchedulability(e, task1))
+        .collect(Collectors.toSet());;
 
-    final Set<ExecutorRepresenter> expectedExecutors1 = new HashSet<>(Arrays.asList(a1));
+    final Set<ExecutorRepresenter> expectedExecutors1 = Collections.singleton(a1);
     assertEquals(expectedExecutors1, candidateExecutors1);
 
     final Task task2 = mock(Task.class);
@@ -66,8 +68,9 @@ public final class ContainerTypeAwareSchedulingPolicyTest {
 
     final Set<ExecutorRepresenter> executorRepresenterList2 = new HashSet<>(Arrays.asList(a0, a1, a2));
 
-    final Set<ExecutorRepresenter> candidateExecutors2 =
-        schedulingPolicy.filterExecutorRepresenters(executorRepresenterList2, task2);
+    final Set<ExecutorRepresenter> candidateExecutors2 = executorRepresenterList2.stream()
+        .filter(e -> schedulingConstraint.testSchedulability(e, task2))
+        .collect(Collectors.toSet());
 
     final Set<ExecutorRepresenter> expectedExecutors2 = new HashSet<>(Arrays.asList(a0, a1, a2));
     assertEquals(expectedExecutors2, candidateExecutors2);

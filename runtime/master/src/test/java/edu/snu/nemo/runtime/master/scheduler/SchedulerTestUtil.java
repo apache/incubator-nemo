@@ -16,14 +16,11 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.Stage;
-import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -93,24 +90,5 @@ final class SchedulerTestUtil {
     }
     scheduler.onTaskStateReportFromExecutor(scheduledExecutor.getExecutorId(), taskId, attemptIdx,
         newState, null, cause);
-  }
-
-  static void sendTaskStateEventToScheduler(final Scheduler scheduler,
-                                            final ExecutorRegistry executorRegistry,
-                                            final String taskId,
-                                            final TaskState.State newState,
-                                            final int attemptIdx) {
-    sendTaskStateEventToScheduler(scheduler, executorRegistry, taskId, newState, attemptIdx, null);
-  }
-
-  static void mockSchedulingBySchedulerRunner(final PendingTaskCollectionPointer pendingTaskCollectionPointer,
-                                              final SchedulingPolicy schedulingPolicy,
-                                              final JobStateManager jobStateManager,
-                                              final ExecutorRegistry executorRegistry,
-                                              final boolean scheduleOnlyTheFirstStage) {
-    final SchedulerRunner schedulerRunner =
-        new SchedulerRunner(schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
-    schedulerRunner.scheduleJob(jobStateManager);
-    schedulerRunner.doScheduleTaskList();
   }
 }
