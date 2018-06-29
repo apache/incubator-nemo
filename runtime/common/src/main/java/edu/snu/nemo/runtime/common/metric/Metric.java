@@ -29,6 +29,7 @@ public interface Metric {
    * Process metric message from evaluators.
    * @param metricField field name of the metric.
    * @param metricValue byte array of serialized data value.
+   * @return true if the metric was changed or false if not.
    */
-  void processMetricMessage(final String metricField, final byte[] metricValue);
+  boolean processMetricMessage(final String metricField, final byte[] metricValue);
 }

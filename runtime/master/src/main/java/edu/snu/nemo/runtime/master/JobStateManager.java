@@ -108,6 +108,7 @@ public final class JobStateManager {
     this.metricStore = MetricStore.getStore();
 
     metricStore.getOrCreateMetric(JobMetric.class, jobId).setStageDAG(physicalPlan.getStageDAG());
+    metricStore.triggerBroadcast(JobMetric.class, jobId);
     initializeComputationStates();
   }
 
@@ -147,6 +148,7 @@ public final class JobStateManager {
 
     metricStore.getOrCreateMetric(TaskMetric.class, taskId)
         .addEvent((TaskState.State) taskState.getCurrentState(), newTaskState);
+    metricStore.triggerBroadcast(TaskMetric.class, taskId);
 
     taskState.setState(newTaskState);
 
@@ -218,6 +220,7 @@ public final class JobStateManager {
 
     metricStore.getOrCreateMetric(StageMetric.class, stageId)
         .addEvent(getStageState(stageId), newStageState);
+    metricStore.triggerBroadcast(StageMetric.class, stageId);
 
     LOG.debug("Stage State Transition: id {} from {} to {}",
         new Object[]{stageId, stageStateMachine.getCurrentState(), newStageState});
@@ -239,6 +242,7 @@ public final class JobStateManager {
   private void onJobStateChanged(final JobState.State newState) {
     metricStore.getOrCreateMetric(JobMetric.class, jobId)
         .addEvent((JobState.State) jobState.getStateMachine().getCurrentState(), newState);
+    metricStore.triggerBroadcast(JobMetric.class, jobId);
 
     jobState.getStateMachine().setState(newState);
 

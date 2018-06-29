@@ -47,6 +47,11 @@ public class WebSocketMetricAdapter extends WebSocketAdapter {
   }
 
   @Override
+  public final void onWebSocketError(final Throwable throwable) {
+    MetricBroadcaster.getInstance().removeSession(session);
+  }
+
+  @Override
   public final void onWebSocketText(final String text) {
     try {
       session.getRemote().sendString(text);

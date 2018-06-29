@@ -102,7 +102,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   }
 
   @Override
-  public final void processMetricMessage(final String metricField, final byte[] metricValue) {
+  public final boolean processMetricMessage(final String metricField, final byte[] metricValue) {
     LOG.info("metric {} is just arrived!", metricField);
     switch (metricField) {
       case "readBytes":
@@ -128,6 +128,8 @@ public class TaskMetric implements StateMetric<TaskState.State> {
         break;
       default:
         LOG.warn("metricField {} is not supported.", metricField);
+        return false;
     }
+    return true;
   }
 }

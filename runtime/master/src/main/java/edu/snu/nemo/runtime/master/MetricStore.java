@@ -18,6 +18,7 @@ package edu.snu.nemo.runtime.master;
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.nemo.common.exception.UnsupportedMetricException;
@@ -138,7 +139,7 @@ public final class MetricStore {
    * Dumps JSON-serialized string of specific metric.
    * @param metricClass class of metric.
    * @return dumped JSON string of all metric.
-   * @throws IOException when failed to write file.
+   * @throws IOException when failed to write json.
    */
   public <T extends Metric> String dumpMetricToJson(final Class<T> metricClass) throws IOException {
     final ObjectMapper objectMapper = new ObjectMapper();
@@ -188,6 +189,10 @@ public final class MetricStore {
     return stream.toString();
   }
 
+  /**
+   * Same as dumpAllMetricToJson(), but this will save it to the file.
+   * @param filePath path to dump JSON.
+   */
   public void dumpAllMetricToFile(final String filePath) {
     try {
       final String jsonDump = dumpAllMetricToJson();
@@ -195,6 +200,42 @@ public final class MetricStore {
 
       writer.write(jsonDump);
       writer.close();
+    } catch (final IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Send changed metric data to {@link MetricBroadcaster}, which will broadcast it to
+   * all active WebSocket sessions. This method should be called manually if you want to
+   * send changed metric data to the frontend client. Also this method is synchronized.
+   * @param metricClass class of the metric.
+   * @param id id of the metric.
+   */
+  public synchronized <T extends Metric> void triggerBroadcast(final Class<T> metricClass, final String id) {
+    final MetricBroadcaster metricBroadcaster = MetricBroadcaster.getInstance();
+    final ObjectMapper objectMapper = new ObjectMapper();
+    final T metric = getMetricWithId(metricClass, id);
+    final JsonFactory jsonFactory = new JsonFactory();
+    final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    final JsonGenerator jsonGenerator;
+    try {
+      jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8);
+
+      jsonGenerator.setCodec(objectMapper);
+      // jsonGenerator.useDefaultPrettyPrinter();
+
+      jsonGenerator.writeStartObject();
+      jsonGenerator.writeFieldName("metricType");
+      jsonGenerator.writeString(metricClass.getSimpleName());
+
+      jsonGenerator.writeFieldName("data");
+      jsonGenerator.writeObject(metric);
+      jsonGenerator.writeEndObject();
+
+      jsonGenerator.close();
+
+      metricBroadcaster.broadcast(stream.toString());
     } catch (final IOException e) {
       throw new RuntimeException(e);
     }

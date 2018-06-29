@@ -63,7 +63,9 @@ public final class MetricManagerMaster implements MetricMessageHandler {
       final Class<Metric> metricClass = metricStore.getMetricClassByName(metricType);
       // process metric message
       try {
-        metricStore.getOrCreateMetric(metricClass, metricId).processMetricMessage(metricField, metricValue);
+        if (metricStore.getOrCreateMetric(metricClass, metricId).processMetricMessage(metricField, metricValue)) {
+          metricStore.triggerBroadcast(metricClass, metricId);
+        }
       } catch (final Exception e) {
         LOG.warn("Error when processing metric message for {}, {}, {}.", metricType, metricId, metricField);
       }

@@ -73,7 +73,8 @@ public final class JobMetric implements StateMetric<JobState.State> {
   }
 
   @Override
-  public void processMetricMessage(final String metricField, final byte[] metricValue) {
+  public boolean processMetricMessage(final String metricField, final byte[] metricValue) {
     // do nothing
+    return false;
   }
 }

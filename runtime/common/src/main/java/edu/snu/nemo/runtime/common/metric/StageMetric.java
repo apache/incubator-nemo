@@ -52,7 +52,8 @@ public class StageMetric implements StateMetric<StageState.State> {
   }
 
   @Override
-  public void processMetricMessage(final String metricField, final byte[] metricValue) {
+  public final boolean processMetricMessage(final String metricField, final byte[] metricValue) {
     // do nothing
+    return false;
   }
 }
