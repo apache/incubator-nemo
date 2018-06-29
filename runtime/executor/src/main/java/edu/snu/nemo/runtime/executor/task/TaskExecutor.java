@@ -217,7 +217,7 @@ public final class TaskExecutor {
       doExecute();
     } catch (Throwable throwable) {
       // ANY uncaught throwable is reported to the master
-      taskStateManager.onTaskStateChanged(TaskState.State.FAILED_UNRECOVERABLE, Optional.empty(), Optional.empty());
+      taskStateManager.onTaskStateChanged(TaskState.State.FAILED, Optional.empty(), Optional.empty());
       LOG.error(ExceptionUtils.getStackTrace(throwable));
     }
   }
@@ -319,8 +319,8 @@ public final class TaskExecutor {
         try {
           element = dataFetcher.fetchDataElement();
         } catch (IOException e) {
-          taskStateManager.onTaskStateChanged(TaskState.State.FAILED_RECOVERABLE,
-              Optional.empty(), Optional.of(TaskState.RecoverableFailureCause.INPUT_READ_FAILURE));
+          taskStateManager.onTaskStateChanged(TaskState.State.SHOULD_RETRY,
+              Optional.empty(), Optional.of(TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE));
           LOG.error("{} Execution Failed (Recoverable: input read failure)! Exception: {}", taskId, e.toString());
           return false;
         }
@@ -366,9 +366,9 @@ public final class TaskExecutor {
                                                  final DataTransferFactory dataTransferFactory) {
     return inEdgesFromParentTasks
         .stream()
-        .filter(inEdge -> inEdge.getDstVertex().getId().equals(irVertex.getId()))
+        .filter(inEdge -> inEdge.getDstIRVertex().getId().equals(irVertex.getId()))
         .map(inEdgeForThisVertex -> dataTransferFactory
-            .createReader(taskIndex, inEdgeForThisVertex.getSrcVertex(), inEdgeForThisVertex))
+            .createReader(taskIndex, inEdgeForThisVertex.getSrcIRVertex(), inEdgeForThisVertex))
         .collect(Collectors.toList());
   }
 
@@ -378,9 +378,9 @@ public final class TaskExecutor {
                                                     final DataTransferFactory dataTransferFactory) {
     return outEdgesToChildrenTasks
         .stream()
-        .filter(outEdge -> outEdge.getSrcVertex().getId().equals(irVertex.getId()))
+        .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
         .map(outEdgeForThisVertex -> dataTransferFactory
-            .createWriter(irVertex, taskIndex, outEdgeForThisVertex.getDstVertex(), outEdgeForThisVertex))
+            .createWriter(irVertex, taskIndex, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
         .collect(Collectors.toList());
   }
 

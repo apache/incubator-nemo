@@ -45,7 +45,7 @@ final class SchedulerTestUtil {
       if (StageState.State.COMPLETE == stageState) {
         // Stage has completed, so we break out of the loop.
         break;
-      } else if (StageState.State.EXECUTING == stageState) {
+      } else if (StageState.State.INCOMPLETE == stageState) {
         stage.getTaskIds().forEach(taskId -> {
           final TaskState.State taskState = jobStateManager.getTaskState(taskId);
           if (TaskState.State.EXECUTING == taskState) {
@@ -57,8 +57,6 @@ final class SchedulerTestUtil {
             throw new IllegalStateException(taskState.toString());
           }
         });
-      } else if (StageState.State.READY == stageState) {
-        // Skip and retry in the next loop.
       } else {
         throw new IllegalStateException(stageState.toString());
       }
@@ -79,7 +77,7 @@ final class SchedulerTestUtil {
                                             final String taskId,
                                             final TaskState.State newState,
                                             final int attemptIdx,
-                                            final TaskState.RecoverableFailureCause cause) {
+                                            final TaskState.RecoverableTaskFailureCause cause) {
     final ExecutorRepresenter scheduledExecutor;
     while (true) {
       final Optional<ExecutorRepresenter> optional = executorRegistry.findExecutorForTask(taskId);
@@ -90,5 +88,13 @@ final class SchedulerTestUtil {
     }
     scheduler.onTaskStateReportFromExecutor(scheduledExecutor.getExecutorId(), taskId, attemptIdx,
         newState, null, cause);
+  }
+
+  static void sendTaskStateEventToScheduler(final Scheduler scheduler,
+                                            final ExecutorRegistry executorRegistry,
+                                            final String taskId,
+                                            final TaskState.State newState,
+                                            final int attemptIdx) {
+    sendTaskStateEventToScheduler(scheduler, executorRegistry, taskId, newState, attemptIdx, null);
   }
 }

@@ -127,8 +127,8 @@ public final class RuntimeMaster {
     final Callable<Pair<JobStateManager, ScheduledExecutorService>> jobExecutionCallable = () -> {
       this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {
-        final JobStateManager jobStateManager =
-            new JobStateManager(plan, blockManagerMaster, metricMessageHandler, maxScheduleAttempt);
+        blockManagerMaster.initialize(plan);
+        final JobStateManager jobStateManager = new JobStateManager(plan, metricMessageHandler, maxScheduleAttempt);
         scheduler.scheduleJob(plan, jobStateManager);
         final ScheduledExecutorService dagLoggingExecutor = scheduleDagLogging(jobStateManager);
         return Pair.of(jobStateManager, dagLoggingExecutor);
@@ -363,9 +363,9 @@ public final class RuntimeMaster {
       case COMPLETE:
         return COMPLETE;
       case FAILED_RECOVERABLE:
-        return TaskState.State.FAILED_RECOVERABLE;
+        return TaskState.State.SHOULD_RETRY;
       case FAILED_UNRECOVERABLE:
-        return TaskState.State.FAILED_UNRECOVERABLE;
+        return TaskState.State.FAILED;
       case ON_HOLD:
         return ON_HOLD;
       default:
@@ -373,13 +373,13 @@ public final class RuntimeMaster {
     }
   }
 
-  private TaskState.RecoverableFailureCause convertFailureCause(
+  private TaskState.RecoverableTaskFailureCause convertFailureCause(
       final ControlMessage.RecoverableFailureCause cause) {
     switch (cause) {
       case InputReadFailure:
-        return TaskState.RecoverableFailureCause.INPUT_READ_FAILURE;
+        return TaskState.RecoverableTaskFailureCause.INPUT_READ_FAILURE;
       case OutputWriteFailure:
-        return TaskState.RecoverableFailureCause.OUTPUT_WRITE_FAILURE;
+        return TaskState.RecoverableTaskFailureCause.OUTPUT_WRITE_FAILURE;
       default:
         throw new UnknownFailureCauseException(
             new Throwable("The failure cause for the recoverable failure is unknown"));

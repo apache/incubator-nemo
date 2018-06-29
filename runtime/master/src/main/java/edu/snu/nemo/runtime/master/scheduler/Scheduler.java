@@ -79,7 +79,7 @@ public interface Scheduler {
                                      int attemptIdx,
                                      TaskState.State newState,
                                      @Nullable String taskPutOnHold,
-                                     TaskState.RecoverableFailureCause failureCause);
+                                     TaskState.RecoverableTaskFailureCause failureCause);
 
   /**
    * To be called when a job should be terminated.
