@@ -63,7 +63,7 @@ public final class TaskStateManager {
    */
   public synchronized void onTaskStateChanged(final TaskState.State newState,
                                               final Optional<String> vertexPutOnHold,
-                                              final Optional<TaskState.RecoverableFailureCause> cause) {
+                                              final Optional<TaskState.RecoverableTaskFailureCause> cause) {
     final Map<String, Object> metric = new HashMap<>();
 
     switch (newState) {
@@ -80,13 +80,13 @@ public final class TaskStateManager {
         metricCollector.endMeasurement(taskId, metric);
         notifyTaskStateToMaster(newState, Optional.empty(), cause);
         break;
-      case FAILED_RECOVERABLE:
+      case SHOULD_RETRY:
         LOG.debug("Task ID {} failed (recoverable).", this.taskId);
         metric.put("ToState", newState);
         metricCollector.endMeasurement(taskId, metric);
         notifyTaskStateToMaster(newState, Optional.empty(), cause);
         break;
-      case FAILED_UNRECOVERABLE:
+      case FAILED:
         LOG.debug("Task ID {} failed (unrecoverable).", this.taskId);
         metric.put("ToState", newState);
         metricCollector.endMeasurement(taskId, metric);
@@ -109,7 +109,7 @@ public final class TaskStateManager {
    */
   private void notifyTaskStateToMaster(final TaskState.State newState,
                                        final Optional<String> vertexPutOnHold,
-                                       final Optional<TaskState.RecoverableFailureCause> cause) {
+                                       final Optional<TaskState.RecoverableTaskFailureCause> cause) {
     final ControlMessage.TaskStateChangedMsg.Builder msgBuilder =
         ControlMessage.TaskStateChangedMsg.newBuilder()
             .setExecutorId(executorId)
@@ -141,9 +141,9 @@ public final class TaskStateManager {
         return ControlMessage.TaskStateFromExecutor.EXECUTING;
       case COMPLETE:
         return ControlMessage.TaskStateFromExecutor.COMPLETE;
-      case FAILED_RECOVERABLE:
+      case SHOULD_RETRY:
         return ControlMessage.TaskStateFromExecutor.FAILED_RECOVERABLE;
-      case FAILED_UNRECOVERABLE:
+      case FAILED:
         return ControlMessage.TaskStateFromExecutor.FAILED_UNRECOVERABLE;
       case ON_HOLD:
         return ControlMessage.TaskStateFromExecutor.ON_HOLD;
@@ -153,7 +153,7 @@ public final class TaskStateManager {
   }
 
   private ControlMessage.RecoverableFailureCause convertFailureCause(
-      final TaskState.RecoverableFailureCause cause) {
+      final TaskState.RecoverableTaskFailureCause cause) {
     switch (cause) {
       case INPUT_READ_FAILURE:
         return ControlMessage.RecoverableFailureCause.InputReadFailure;

@@ -148,9 +148,9 @@ public final class SchedulerRunner {
   }
 
   /**
-   * Signals to the condition on executor availability.
+   * Signals to the condition on executor slot availability.
    */
-  void onAnExecutorAvailable() {
+  void onExecutorSlotAvailable() {
     schedulingIteration.signal();
   }
 
@@ -164,22 +164,13 @@ public final class SchedulerRunner {
   /**
    * Run the scheduler thread.
    */
-  void runSchedulerThread() {
+  void run(final JobStateManager jobStateManager) {
     if (!isTerminated && !isSchedulerRunning) {
+      jobStateManagers.put(jobStateManager.getJobId(), jobStateManager);
       schedulerThread.execute(new SchedulerThread());
       schedulerThread.shutdown();
       isSchedulerRunning = true;
     }
-  }
-
-  /**
-   * Begin scheduling a job.
-   * @param jobStateManager the corresponding {@link JobStateManager}
-   */
-  void scheduleJob(final JobStateManager jobStateManager) {
-    if (!isTerminated) {
-      jobStateManagers.put(jobStateManager.getJobId(), jobStateManager);
-    } // else ignore new incoming jobs when terminated.
   }
 
   void terminate() {

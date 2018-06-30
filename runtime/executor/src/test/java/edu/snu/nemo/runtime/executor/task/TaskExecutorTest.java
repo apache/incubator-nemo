@@ -273,15 +273,15 @@ public final class TaskExecutorTest {
 
   private StageEdge mockStageEdgeFrom(final IRVertex irVertex) {
     final StageEdge edge = mock(StageEdge.class);
-    when(edge.getSrcVertex()).thenReturn(irVertex);
-    when(edge.getDstVertex()).thenReturn(new OperatorVertex(new RelayTransform()));
+    when(edge.getSrcIRVertex()).thenReturn(irVertex);
+    when(edge.getDstIRVertex()).thenReturn(new OperatorVertex(new RelayTransform()));
     return edge;
   }
 
   private StageEdge mockStageEdgeTo(final IRVertex irVertex) {
     final StageEdge edge = mock(StageEdge.class);
-    when(edge.getSrcVertex()).thenReturn(new OperatorVertex(new RelayTransform()));
-    when(edge.getDstVertex()).thenReturn(irVertex);
+    when(edge.getSrcIRVertex()).thenReturn(new OperatorVertex(new RelayTransform()));
+    when(edge.getDstIRVertex()).thenReturn(irVertex);
     return edge;
   }
 

@@ -148,23 +148,16 @@ public final class BatchSingleJobSchedulerTest {
   }
 
   private void scheduleAndCheckJobTermination(final PhysicalPlan plan) throws InjectionException {
-    final JobStateManager jobStateManager = new JobStateManager(plan, blockManagerMaster, metricMessageHandler, 1);
+    final JobStateManager jobStateManager = new JobStateManager(plan, metricMessageHandler, 1);
     scheduler.scheduleJob(plan, jobStateManager);
 
-    // For each ScheduleGroup, test:
-    // a) all stages in the ScheduleGroup enters the executing state
-    // b) the stages of the next ScheduleGroup are scheduled after the stages of each ScheduleGroup are made "complete".
+    // For each ScheduleGroup, test if the tasks of the next ScheduleGroup are scheduled
+    // after the stages of each ScheduleGroup are made "complete".
     for (int i = 0; i < getNumScheduleGroups(plan.getStageDAG()); i++) {
       final int scheduleGroupIdx = i;
       final List<Stage> stages = filterStagesWithAScheduleGroup(plan.getStageDAG(), scheduleGroupIdx);
 
       LOG.debug("Checking that all stages of ScheduleGroup {} enter the executing state", scheduleGroupIdx);
-      stages.forEach(stage -> {
-        while (jobStateManager.getStageState(stage.getId()) != StageState.State.EXECUTING) {
-
-        }
-      });
-
       stages.forEach(stage -> {
         SchedulerTestUtil.completeStage(
             jobStateManager, scheduler, executorRegistry, stage, SCHEDULE_ATTEMPT_INDEX);

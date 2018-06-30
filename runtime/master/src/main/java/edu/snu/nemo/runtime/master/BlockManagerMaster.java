@@ -15,14 +15,20 @@
  */
 package edu.snu.nemo.runtime.master;
 
+import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.exception.IllegalMessageException;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.exception.AbsentBlockException;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
+import edu.snu.nemo.runtime.common.plan.Stage;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.state.BlockState;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -37,6 +43,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.IntStream;
 
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
@@ -72,6 +79,36 @@ public final class BlockManagerMaster {
     this.blockIdToMetadata = new HashMap<>();
     this.producerTaskIdToBlockIds = new HashMap<>();
     this.lock = new ReentrantReadWriteLock();
+  }
+
+  public void initialize(final PhysicalPlan physicalPlan) {
+    final DAG<Stage, StageEdge> stageDAG = physicalPlan.getStageDAG();
+    stageDAG.topologicalDo(stage -> {
+      final List<String> taskIdsForStage = stage.getTaskIds();
+      final List<StageEdge> stageOutgoingEdges = stageDAG.getOutgoingEdgesOf(stage);
+
+      // Initialize states for blocks of inter-stage edges
+      stageOutgoingEdges.forEach(stageEdge -> {
+        final int srcParallelism = taskIdsForStage.size();
+        IntStream.range(0, srcParallelism).forEach(srcTaskIdx -> {
+          final String blockId = RuntimeIdGenerator.generateBlockId(stageEdge.getId(), srcTaskIdx);
+          initializeState(blockId, taskIdsForStage.get(srcTaskIdx));
+        });
+      });
+
+      // Initialize states for blocks of stage internal edges
+      taskIdsForStage.forEach(taskId -> {
+        final DAG<IRVertex, RuntimeEdge<IRVertex>> taskInternalDag = stage.getIRDAG();
+        taskInternalDag.getVertices().forEach(task -> {
+          final List<RuntimeEdge<IRVertex>> internalOutgoingEdges = taskInternalDag.getOutgoingEdgesOf(task);
+          internalOutgoingEdges.forEach(taskRuntimeEdge -> {
+            final int srcTaskIdx = RuntimeIdGenerator.getIndexFromTaskId(taskId);
+            final String blockId = RuntimeIdGenerator.generateBlockId(taskRuntimeEdge.getId(), srcTaskIdx);
+            initializeState(blockId, taskId);
+          });
+        });
+      });
+    });
   }
 
   /**
@@ -132,8 +169,7 @@ public final class BlockManagerMaster {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      final BlockState.State state =
-          (BlockState.State) getBlockState(blockId).getStateMachine().getCurrentState();
+      final BlockState.State state = getBlockState(blockId);
       switch (state) {
         case IN_PROGRESS:
         case AVAILABLE:
@@ -169,6 +205,16 @@ public final class BlockManagerMaster {
       }
 
       return producerTaskIds;
+    } finally {
+      readLock.unlock();
+    }
+  }
+
+  public Set<String> getIdsOfBlocksProducedBy(final String taskId) {
+    final Lock readLock = lock.readLock();
+    readLock.lock();
+    try {
+      return producerTaskIdToBlockIds.get(taskId);
     } finally {
       readLock.unlock();
     }
@@ -256,11 +302,11 @@ public final class BlockManagerMaster {
    * @return the {@link BlockState} of a block.
    */
   @VisibleForTesting
-  BlockState getBlockState(final String blockId) {
+  public BlockState.State getBlockState(final String blockId) {
     final Lock readLock = lock.readLock();
     readLock.lock();
     try {
-      return blockIdToMetadata.get(blockId).getBlockState();
+      return (BlockState.State) blockIdToMetadata.get(blockId).getBlockState().getStateMachine().getCurrentState();
     } finally {
       readLock.unlock();
     }
