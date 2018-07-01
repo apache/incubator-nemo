@@ -25,20 +25,27 @@ import java.util.Optional;
  */
 public final class ContextImpl implements Transform.Context {
   private final Map sideInputs;
+  private final Map taggedOutputs;
   private String data;
 
   /**
    * Constructor of Context Implementation.
    * @param sideInputs side inputs.
    */
-  public ContextImpl(final Map sideInputs) {
+  public ContextImpl(final Map sideInputs, final Map taggedOutputs) {
     this.sideInputs = sideInputs;
+    this.taggedOutputs = taggedOutputs;
     this.data = null;
   }
 
   @Override
   public Map getSideInputs() {
     return this.sideInputs;
+  }
+
+  @Override
+  public Map getTaggedOutputs() {
+    return this.taggedOutputs;
   }
 
   @Override

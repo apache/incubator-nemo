@@ -18,6 +18,7 @@ package edu.snu.nemo.compiler.frontend.beam;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.TaggedOutputProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
@@ -43,6 +44,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.PCollectionViews;
 import org.apache.beam.sdk.values.PValue;
+import org.apache.beam.sdk.values.TupleTag;
 
 import java.util.HashMap;
 import java.util.List;
@@ -59,6 +61,8 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
   // loopVertexStack keeps track of where the beam program is: whether it is inside a composite transform or it is not.
   private final Stack<LoopVertex> loopVertexStack;
   private final Map<PValue, Pair<BeamEncoderFactory, BeamDecoderFactory>> pValueToCoder;
+  private final Map<PValue, TupleTag> pValueToTag;
+  private final Map<TupleTag, String> tagToVertex;
 
   /**
    * Constructor of the BEAM Visitor.
@@ -72,6 +76,8 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     this.options = options;
     this.loopVertexStack = new Stack<>();
     this.pValueToCoder = new HashMap<>();
+    this.pValueToTag = new HashMap<>();
+    this.tagToVertex = new HashMap<>();
   }
 
   @Override
@@ -96,12 +102,8 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
   public void visitPrimitiveTransform(final TransformHierarchy.Node beamNode) {
 //    Print if needed for development
 //    LOG.info("visitp " + beamNode.getTransform());
-    if (beamNode.getOutputs().size() > 1) {
-      throw new UnsupportedOperationException(beamNode.toString());
-    }
-
     final IRVertex irVertex =
-        convertToVertex(beamNode, builder, pValueToVertex, pValueToCoder, options, loopVertexStack);
+        convertToVertex(beamNode, builder, pValueToVertex, pValueToCoder, pValueToTag, options, loopVertexStack);
     beamNode.getOutputs().values().stream().filter(v -> v instanceof PCollection).map(v -> (PCollection) v)
         .forEach(output -> pValueToCoder.put(output,
             Pair.of(new BeamEncoderFactory(output.getCoder()), new BeamDecoderFactory(output.getCoder()))));
@@ -118,6 +120,21 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
           edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
           this.builder.connectVertices(edge);
         });
+
+    beamNode.getInputs().values().stream().filter(pValueToTag::containsKey)
+        .forEach(pValue -> {
+          final IRVertex src = pValueToVertex.get(pValue);
+          final TupleTag tag = pValueToTag.get(pValue);
+          final HashMap<String, String> tagToVertexMap = new HashMap<>();
+          tagToVertexMap.put(tag.getId(), irVertex.getId());
+          if (!src.getPropertyValue(TaggedOutputProperty.class).isPresent()) {
+            src.setProperty(TaggedOutputProperty.of(tagToVertexMap));
+          } else {
+            final HashMap<String, String> prev = src.getPropertyValue(TaggedOutputProperty.class).get();
+            prev.putAll(tagToVertexMap);
+            src.setProperty(TaggedOutputProperty.of(prev));
+          }
+        });
   }
 
   /**
@@ -127,6 +144,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
    * @param builder         the DAG builder to add the vertex to.
    * @param pValueToVertex  PValue to Vertex map.
    * @param pValueToCoder   PValue to EncoderFactory and DecoderFactory map.
+   * @param pValueToTag     PValue to Tag map.
    * @param options         pipeline options.
    * @param loopVertexStack Stack to get the current loop vertex that the operator vertex will be assigned to.
    * @param <I>             input type.
@@ -138,6 +156,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
                   final DAGBuilder<IRVertex, IREdge> builder,
                   final Map<PValue, IRVertex> pValueToVertex,
                   final Map<PValue, Pair<BeamEncoderFactory, BeamDecoderFactory>> pValueToCoder,
+                  final Map<PValue, TupleTag> pValueToTag,
                   final PipelineOptions options,
                   final Stack<LoopVertex> loopVertexStack) {
     final PTransform beamTransform = beamNode.getTransform();
@@ -184,6 +203,11 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
       final ParDo.MultiOutput<I, O> parDo = (ParDo.MultiOutput<I, O>) beamTransform;
       final DoTransform transform = new DoTransform(parDo.getFn(), options);
       irVertex = new OperatorVertex(transform);
+      if (parDo.getAdditionalOutputTags().size() > 0) {
+        beamNode.getOutputs().entrySet().stream()
+            .filter(kv -> !kv.getKey().equals(parDo.getMainOutputTag()))
+            .forEach(kv -> pValueToTag.put(kv.getValue(), kv.getKey()));
+      }
       builder.addVertex(irVertex, loopVertexStack);
       connectSideInputs(builder, parDo.getSideInputs(), pValueToVertex, pValueToCoder, irVertex);
     } else if (beamTransform instanceof Flatten.PCollections) {

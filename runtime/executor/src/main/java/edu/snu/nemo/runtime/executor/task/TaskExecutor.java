@@ -21,6 +21,7 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.*;
+import edu.snu.nemo.common.ir.vertex.executionproperty.TaggedOutputProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
@@ -151,11 +152,19 @@ public final class TaskExecutor {
           .map(RuntimeEdge::isSideInput)
           .collect(Collectors.toList());
 
+      final Map taggedOutputMap = irVertex.getPropertyValue(TaggedOutputProperty.class).orElse(new HashMap<>());
+      final List<Boolean> isToTaggedOutputs = children.stream()
+          .map(harness -> harness.getIRVertex().getId())
+          .map(taggedOutputMap::containsValue)
+          .collect(Collectors.toList());
+
       // Handle writes
       final List<OutputWriter> childrenTaskWriters = getChildrenTaskWriters(
           taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory); // Children-task write
-      final VertexHarness vertexHarness = new VertexHarness(irVertex, new OutputCollectorImpl(), children,
-          isToSideInputs, childrenTaskWriters, new ContextImpl(sideInputMap)); // Intra-vertex write
+      final List<String> tags = new ArrayList<>(taggedOutputMap.values());
+      final OutputCollectorImpl oci = new OutputCollectorImpl(tags);
+      final VertexHarness vertexHarness = new VertexHarness(irVertex, oci, children, isToSideInputs, isToTaggedOutputs,
+          childrenTaskWriters, new ContextImpl(sideInputMap, taggedOutputMap)); // Intra-vertex write
       prepareTransform(vertexHarness);
       vertexIdToHarness.put(irVertex.getId(), vertexHarness);
 
@@ -207,6 +216,13 @@ public final class TaskExecutor {
       final Object element = outputCollector.remove();
       handleOutputElement(vertexHarness, element); // Recursion
     }
+
+    vertexHarness.getTaggedOutputChildren().keySet().forEach(tag -> {
+      while (!outputCollector.isEmpty(tag)) {
+        final Object element = outputCollector.remove(tag);
+        handleTaggedOutputElement(vertexHarness, element, tag);
+      }
+    });
   }
 
   /**
@@ -303,6 +319,16 @@ public final class TaskExecutor {
       sideInputMap.put(((OperatorVertex) vertexHarness.getIRVertex()).getTransform().getTag(), element);
     }
     vertexHarness.getNonSideInputChildren().forEach(child -> processElementRecursively(child, element));
+  }
+
+  private void handleTaggedOutputElement(final VertexHarness vertexHarness, final Object element, final String tag) {
+    // Inter-task writes and side inputs with tagged outputs ignored.
+    if (vertexHarness.getSideInputChildren().size() > 0) {
+      sideInputMap.put(((OperatorVertex) vertexHarness.getIRVertex()).getTransform().getTag(), element);
+    }
+    vertexHarness.getTaggedOutputChildren().entrySet().stream()
+        .filter(kv -> kv.getKey().equals(tag))
+        .forEach(kv -> processElementRecursively(kv.getValue(), element));
   }
 
   /**

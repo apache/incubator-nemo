@@ -61,6 +61,7 @@ public interface Transform<I, O> extends Serializable {
      * @return sideInputs.
      */
     Map getSideInputs();
+    Map getTaggedOutputs();
 
     /**
      * Put serialized data to send to the executor.

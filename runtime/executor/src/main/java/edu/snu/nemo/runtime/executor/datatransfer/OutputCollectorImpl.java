@@ -18,6 +18,9 @@ package edu.snu.nemo.runtime.executor.datatransfer;
 import edu.snu.nemo.common.ir.OutputCollector;
 
 import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.List;
 import java.util.Queue;
 
 /**
@@ -27,12 +30,24 @@ import java.util.Queue;
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   private final Queue<O> outputQueue;
+  private final Map<String, Queue<Object>> taggedOutputQueues;
 
   /**
    * Constructor of a new OutputCollectorImpl.
    */
   public OutputCollectorImpl() {
     this.outputQueue = new ArrayDeque<>(1);
+    this.taggedOutputQueues = new HashMap<>();
+  }
+
+  /**
+   * Constructor of a new OutputCollectorImpl with tagged outputs.
+   * @param taggedChildren tagged children
+   */
+  public OutputCollectorImpl(final List<String> taggedChildren) {
+    this.outputQueue = new ArrayDeque<>(1);
+    this.taggedOutputQueues = new HashMap<>();
+    taggedChildren.forEach(child -> this.taggedOutputQueues.put(child, new ArrayDeque<>(1)));
   }
 
   @Override
@@ -41,8 +56,12 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   }
 
   @Override
-  public void emit(final String dstVertexId, final Object output) {
-    throw new UnsupportedOperationException("emit(dstVertexId, output) in OutputCollectorImpl.");
+  public <T> void emit(final String dstVertexId, final T output) {
+    if (this.taggedOutputQueues.get(dstVertexId) == null) {
+      emit((O) output);
+    } else {
+      this.taggedOutputQueues.get(dstVertexId).add(output);
+    }
   }
 
   /**
@@ -56,11 +75,41 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
   }
 
   /**
+   * Inter-task data is transferred from sender-side Task's OutputCollectorImpl
+   * to receiver-side Task.
+   *
+   * @param tag output tag
+   * @return the first element of corresponding list
+   */
+  public Object remove(final String tag) {
+    if (this.taggedOutputQueues.get(tag) == null) {
+      return remove();
+    } else {
+      return this.taggedOutputQueues.get(tag).remove();
+    }
+
+  }
+
+  /**
    * Check if this OutputCollector is empty.
    *
    * @return true if this OutputCollector is empty.
    */
   public boolean isEmpty() {
     return outputQueue.isEmpty();
+  }
+
+  /**
+   * Check if this OutputCollector is empty.
+   *
+   * @param tag output tag
+   * @return true if this OutputCollector is empty.
+   */
+  public boolean isEmpty(final String tag) {
+    if (this.taggedOutputQueues.get(tag) == null) {
+      return isEmpty();
+    } else {
+      return this.taggedOutputQueues.get(tag).isEmpty();
+    }
   }
 }
