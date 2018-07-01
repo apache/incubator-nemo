@@ -322,7 +322,7 @@ public final class TaskExecutor {
   }
 
   private void handleTaggedOutputElement(final VertexHarness vertexHarness, final Object element, final String tag) {
-    // Inter-task writes and side inputs with tagged outputs ignored.
+    // Inter-task writes are currently not supported.
     if (vertexHarness.getSideInputChildren().size() > 0) {
       sideInputMap.put(((OperatorVertex) vertexHarness.getIRVertex()).getTransform().getTag(), element);
     }
