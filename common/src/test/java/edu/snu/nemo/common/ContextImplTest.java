@@ -33,16 +33,18 @@ import static org.junit.Assert.assertTrue;
 public class ContextImplTest {
   private Transform.Context context;
   private final Map sideInputs = new HashMap();
+  private final Map taggedOutputs = new HashMap();
 
   @Before
   public void setUp() {
     sideInputs.put("a", "b");
-    this.context = new ContextImpl(sideInputs);
+    this.context = new ContextImpl(sideInputs, taggedOutputs);
   }
 
   @Test
   public void testContextImpl() {
     assertEquals(this.sideInputs, this.context.getSideInputs());
+    assertEquals(this.taggedOutputs, this.context.getAdditionalTagOutputs());
 
     final String sampleText = "sample_text";
 

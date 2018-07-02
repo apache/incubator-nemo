@@ -53,7 +53,7 @@ public class Edge<V extends Vertex> implements Serializable {
   }
 
   /**
-   * @return the numeric ID of the edge.
+   * @return the numeric ID of the edge. (for edge id "edge-2", this method returns 2)
    */
   public final Integer getNumericId() {
     return Integer.parseInt(id.replaceAll("[^\\d.]", ""));

@@ -18,6 +18,9 @@ package edu.snu.nemo.runtime.executor.datatransfer;
 import edu.snu.nemo.common.ir.OutputCollector;
 
 import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.List;
 import java.util.Queue;
 
 /**
@@ -26,23 +29,41 @@ import java.util.Queue;
  * @param <O> output type.
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
-  private final Queue<O> outputQueue;
+  private final Queue<O> mainTagOutputQueue;
+  private final Map<String, Queue<Object>> additionalTagOutputQueues;
 
   /**
    * Constructor of a new OutputCollectorImpl.
    */
   public OutputCollectorImpl() {
-    this.outputQueue = new ArrayDeque<>(1);
+    this.mainTagOutputQueue = new ArrayDeque<>(1);
+    this.additionalTagOutputQueues = new HashMap<>();
+  }
+
+  /**
+   * Constructor of a new OutputCollectorImpl with tagged outputs.
+   * @param taggedChildren tagged children
+   */
+  public OutputCollectorImpl(final List<String> taggedChildren) {
+    this.mainTagOutputQueue = new ArrayDeque<>(1);
+    this.additionalTagOutputQueues = new HashMap<>();
+    taggedChildren.forEach(child -> this.additionalTagOutputQueues.put(child, new ArrayDeque<>(1)));
   }
 
   @Override
   public void emit(final O output) {
-    outputQueue.add(output);
+    mainTagOutputQueue.add(output);
   }
 
   @Override
-  public void emit(final String dstVertexId, final Object output) {
-    throw new UnsupportedOperationException("emit(dstVertexId, output) in OutputCollectorImpl.");
+  public <T> void emit(final String dstVertexId, final T output) {
+    if (this.additionalTagOutputQueues.get(dstVertexId) == null) {
+      // This dstVertexId is for the main tag
+      emit((O) output);
+    } else {
+      // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
+      this.additionalTagOutputQueues.get(dstVertexId).add(output);
+    }
   }
 
   /**
@@ -52,7 +73,25 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    * @return the first element of this list
    */
   public O remove() {
-    return outputQueue.remove();
+    return mainTagOutputQueue.remove();
+  }
+
+  /**
+   * Inter-task data is transferred from sender-side Task's OutputCollectorImpl
+   * to receiver-side Task.
+   *
+   * @param tag output tag
+   * @return the first element of corresponding list
+   */
+  public Object remove(final String tag) {
+    if (this.additionalTagOutputQueues.get(tag) == null) {
+      // This dstVertexId is for the main tag
+      return remove();
+    } else {
+      // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
+      return this.additionalTagOutputQueues.get(tag).remove();
+    }
+
   }
 
   /**
@@ -61,6 +100,21 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    * @return true if this OutputCollector is empty.
    */
   public boolean isEmpty() {
-    return outputQueue.isEmpty();
+    return mainTagOutputQueue.isEmpty();
+  }
+
+  /**
+   * Check if this OutputCollector is empty.
+   *
+   * @param tag output tag
+   * @return true if this OutputCollector is empty.
+   */
+  public boolean isEmpty(final String tag) {
+    if (this.additionalTagOutputQueues.get(tag) == null) {
+      return isEmpty();
+    } else {
+      // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
+      return this.additionalTagOutputQueues.get(tag).isEmpty();
+    }
   }
 }
