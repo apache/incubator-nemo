@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.executor.task;
 
-import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
@@ -37,7 +36,7 @@ class ParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class);
 
   private final InputReader readersForParentTask;
-  private final LinkedBlockingQueue<DataUtil.IteratorWithNumBytes> dataQueue;
+  private final LinkedBlockingQueue iteratorQueue;
 
   // Non-finals (lazy fetching)
   private boolean hasFetchStarted;
@@ -54,7 +53,8 @@ class ParentTaskDataFetcher extends DataFetcher {
     super(dataSource, child, metricMap, readerForParentTask.isSideInputReader(), isToSideInput);
     this.readersForParentTask = readerForParentTask;
     this.hasFetchStarted = false;
-    this.dataQueue = new LinkedBlockingQueue<>();
+    this.currentIteratorIndex = 0;
+    this.iteratorQueue = new LinkedBlockingQueue<>();
   }
 
   private void handleMetric(final DataUtil.IteratorWithNumBytes iterator) {
@@ -88,15 +88,15 @@ class ParentTaskDataFetcher extends DataFetcher {
     this.expectedNumOfIterators = futures.size();
 
     futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
-      if (exception != null) {
-        throw new BlockFetchException(exception);
-      }
-
       try {
-        dataQueue.put(iterator); // can block here
+        if (exception != null) {
+          iteratorQueue.put(exception); // can block here
+        } else {
+          iteratorQueue.put(iterator); // can block here
+        }
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
-        throw new BlockFetchException(e);
+        throw new RuntimeException(e); // This shouldn't happen
       }
     }));
   }
@@ -106,18 +106,16 @@ class ParentTaskDataFetcher extends DataFetcher {
     try {
       if (!hasFetchStarted) {
         fetchInBackground();
-        hasFetchStarted = true;
-        this.currentIterator = dataQueue.take();
-        this.currentIteratorIndex = 1;
+        advanceIterator();
       }
 
       if (this.currentIterator.hasNext()) {
+        // This iterator has an element available
         noElementAtAll = false;
         return this.currentIterator.next();
       } else {
-        // This iterator is done, proceed to the next iterator
         if (currentIteratorIndex == expectedNumOfIterators) {
-          // No more iterator left
+          // Entire fetcher is done
           if (noElementAtAll) {
             // This shouldn't normally happen, except for cases such as when Beam's VoidCoder is used.
             noElementAtAll = false;
@@ -127,16 +125,37 @@ class ParentTaskDataFetcher extends DataFetcher {
             return null;
           }
         } else {
+          // Advance to the next one
           handleMetric(currentIterator);
-          // Try the next iterator
-          this.currentIteratorIndex += 1;
-          this.currentIterator = dataQueue.take();
+          advanceIterator();
           return fetchDataElement();
         }
       }
-    } catch (InterruptedException exception) {
-      Thread.currentThread().interrupt();
-      throw new IOException(exception);
+    } catch (Throwable e) {
+      // Any failure is caught and thrown as an IOException, so that the task is retried.
+      // In particular, we catch unchecked exceptions like RuntimeException thrown by DataUtil.IteratorWithNumBytes
+      // when remote data fetching fails for whatever reason.
+      throw new IOException(e);
+    }
+  }
+
+  private void advanceIterator() throws Throwable {
+    // Take from iteratorQueue
+    final Object iteratorOrThrowable;
+    try {
+      iteratorOrThrowable = iteratorQueue.take();
+    } catch (InterruptedException e) {
+      throw e;
+    }
+
+    // Handle iteratorOrThrowable
+    if (iteratorOrThrowable instanceof Throwable) {
+      throw (Throwable) iteratorOrThrowable;
+    } else {
+      // This iterator is valid. Do advance.
+      hasFetchStarted = true;
+      this.currentIterator = (DataUtil.IteratorWithNumBytes) iteratorOrThrowable;
+      this.currentIteratorIndex++;
     }
   }
 }

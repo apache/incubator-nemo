@@ -30,6 +30,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
 
   private final Queue<T> queue;
   private volatile boolean closed = false;
+  private volatile Throwable throwable = null;
 
   /**
    * Creates a closable blocking queue.
@@ -75,6 +76,14 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
   }
 
   /**
+   * Mark the input end of this queue as closed.
+   */
+  public synchronized void closeExceptionally(final Throwable throwable) {
+    this.throwable = throwable;
+    close();
+  }
+
+  /**
    * Retrieves and removes the head of this queue, waiting if necessary.
    *
    * @return the head of this queue, or {@code null} if no elements are there and this queue has been closed
@@ -82,6 +91,10 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    */
   @Nullable
   public synchronized T take() throws InterruptedException {
+    if (throwable != null) {
+      throw new RuntimeException(throwable);
+    }
+
     while (queue.isEmpty() && !closed) {
       wait();
     }
@@ -97,6 +110,10 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    */
   @Nullable
   public synchronized T peek() throws InterruptedException {
+    if (throwable != null) {
+      throw new RuntimeException(throwable);
+    }
+
     while (queue.isEmpty() && !closed) {
       wait();
     }
