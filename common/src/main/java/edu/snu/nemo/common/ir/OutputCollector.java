@@ -37,5 +37,5 @@ public interface OutputCollector<O> extends Serializable {
    * @param dstVertexId destination vertex id.
    * @param output value.
    */
-  void emit(String dstVertexId, Object output);
+  <T> void emit(String dstVertexId, T output);
 }
