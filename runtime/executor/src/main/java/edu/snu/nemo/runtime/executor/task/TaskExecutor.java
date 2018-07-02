@@ -301,6 +301,8 @@ public final class TaskExecutor {
         .flatMap(child -> getAllReachables(child).stream()).collect(Collectors.toList()));
     result.addAll(src.getSideInputChildren().stream()
         .flatMap(child -> getAllReachables(child).stream()).collect(Collectors.toList()));
+    result.addAll(src.getTaggedOutputChildren().values().stream()
+        .flatMap(child -> getAllReachables(child).stream()).collect(Collectors.toList()));
     return result;
   }
 
@@ -488,5 +490,4 @@ public final class TaskExecutor {
     }
     metricCollector.endMeasurement(irVertex.getId(), metric);
   }
-
 }
