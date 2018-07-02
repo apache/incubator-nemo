@@ -32,13 +32,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * An app that analyzes data flow from Cadia network trace.
+ * An app that analyzes data flow from network trace.
  */
-public final class CaidaFlowAnalysis {
+public final class NetworkTraceAnalysis {
   /**
    * Private constructor.
    */
-  private CaidaFlowAnalysis() {
+  private NetworkTraceAnalysis() {
   }
 
   /**
@@ -51,7 +51,7 @@ public final class CaidaFlowAnalysis {
     final String outputFilePath = args[2];
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
     options.setRunner(NemoPipelineRunner.class);
-    options.setJobName("CaidaFlowAnalysis");
+    options.setJobName("NetworkTraceAnalysis");
 
     final Pattern pattern = Pattern.compile(" *\\d+ +[0-9.]+ +([0-9.]+) -> ([0-9.]+) +.*Len=(\\d+)");
 
