@@ -30,6 +30,7 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
 
   private final Queue<T> queue;
   private volatile boolean closed = false;
+  private volatile Throwable throwable = null;
 
   /**
    * Creates a closable blocking queue.
@@ -72,6 +73,14 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
   public synchronized void close() {
     closed = true;
     notifyAll();
+  }
+
+  /**
+   * Mark the input end of this queue as closed.
+   */
+  public synchronized void closeExceptionally(final Throwable throwable) {
+    this.throwable = throwable;
+    close();
   }
 
   /**
