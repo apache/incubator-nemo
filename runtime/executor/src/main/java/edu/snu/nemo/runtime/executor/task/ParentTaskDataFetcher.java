@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.executor.task;
 
-import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
@@ -36,8 +35,10 @@ import java.util.concurrent.LinkedBlockingQueue;
 class ParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class);
 
+  private static final Object FAILED_ITERATOR = new Object();
+
   private final InputReader readersForParentTask;
-  private final LinkedBlockingQueue<DataUtil.IteratorWithNumBytes> dataQueue;
+  private final LinkedBlockingQueue iteratorQueue;
 
   // Non-finals (lazy fetching)
   private boolean hasFetchStarted;
@@ -54,7 +55,8 @@ class ParentTaskDataFetcher extends DataFetcher {
     super(dataSource, child, metricMap, readerForParentTask.isSideInputReader(), isToSideInput);
     this.readersForParentTask = readerForParentTask;
     this.hasFetchStarted = false;
-    this.dataQueue = new LinkedBlockingQueue<>();
+    this.currentIteratorIndex = 0;
+    this.iteratorQueue = new LinkedBlockingQueue<>();
   }
 
   private void handleMetric(final DataUtil.IteratorWithNumBytes iterator) {
@@ -88,55 +90,67 @@ class ParentTaskDataFetcher extends DataFetcher {
     this.expectedNumOfIterators = futures.size();
 
     futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
-      if (exception != null) {
-        throw new BlockFetchException(exception);
-      }
-
       try {
-        dataQueue.put(iterator); // can block here
+        if (exception != null) {
+          iteratorQueue.put(FAILED_ITERATOR); // can block here
+        } else {
+          iteratorQueue.put(iterator); // can block here
+        }
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
-        throw new BlockFetchException(e);
+        throw new RuntimeException(e); // This shouldn't happen
       }
     }));
   }
 
   @Override
   Object fetchDataElement() throws IOException {
-    try {
-      if (!hasFetchStarted) {
-        fetchInBackground();
-        hasFetchStarted = true;
-        this.currentIterator = dataQueue.take();
-        this.currentIteratorIndex = 1;
-      }
+    if (!hasFetchStarted) {
+      fetchInBackground();
+      advanceIterator();
+    }
 
-      if (this.currentIterator.hasNext()) {
-        noElementAtAll = false;
-        return this.currentIterator.next();
-      } else {
-        // This iterator is done, proceed to the next iterator
-        if (currentIteratorIndex == expectedNumOfIterators) {
-          // No more iterator left
-          if (noElementAtAll) {
-            // This shouldn't normally happen, except for cases such as when Beam's VoidCoder is used.
-            noElementAtAll = false;
-            return Void.TYPE;
-          } else {
-            // This whole fetcher's done
-            return null;
-          }
+    if (this.currentIterator.hasNext()) {
+      // This iterator has an element available
+      noElementAtAll = false;
+      return this.currentIterator.next();
+    } else {
+      if (currentIteratorIndex == expectedNumOfIterators) {
+        // Entire fetcher is done
+        if (noElementAtAll) {
+          // This shouldn't normally happen, except for cases such as when Beam's VoidCoder is used.
+          noElementAtAll = false;
+          return Void.TYPE;
         } else {
-          handleMetric(currentIterator);
-          // Try the next iterator
-          this.currentIteratorIndex += 1;
-          this.currentIterator = dataQueue.take();
-          return fetchDataElement();
+          // This whole fetcher's done
+          return null;
         }
+      } else {
+        // Advance to the next one
+        handleMetric(currentIterator);
+        advanceIterator();
+        return fetchDataElement();
       }
-    } catch (InterruptedException exception) {
-      Thread.currentThread().interrupt();
-      throw new IOException(exception);
+    }
+  }
+
+  private void advanceIterator() throws IOException {
+    // Take from iteratorQueue
+    final Object iteratorOrFailure;
+    try {
+      iteratorOrFailure = iteratorQueue.take();
+    } catch (InterruptedException e) {
+      throw new IOException(e);
+    }
+
+    // Handle iteratorOrFailure
+    if (iteratorOrFailure.equals(FAILED_ITERATOR)) {
+      throw new IOException("RPC failure");
+    } else {
+      // This iterator is valid. Do advance.
+      hasFetchStarted = true;
+      this.currentIterator = (DataUtil.IteratorWithNumBytes) iteratorOrFailure;
+      this.currentIteratorIndex++;
     }
   }
 }
