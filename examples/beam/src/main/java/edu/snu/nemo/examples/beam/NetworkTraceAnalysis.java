@@ -27,7 +27,10 @@ import org.apache.beam.sdk.transforms.join.KeyedPCollectionTuple;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -121,20 +124,11 @@ public final class NetworkTraceAnalysis {
   }
 
   private static double stdev(final Iterable<KV<String, Long>> data) {
-    long num = 0;
-    long sum = 0;
-    long squareSum = 0;
+    final StandardDeviation stdev = new StandardDeviation();
+    final List<Long> elements = new ArrayList<>();
     for (final KV<String, Long> e : data) {
-      final long element = e.getValue();
-      num++;
-      sum += element;
-      squareSum += (element * element);
+      elements.add(e.getValue());
     }
-    if (num == 0) {
-      return Double.NaN;
-    }
-    final double average = ((double) sum) / num;
-    final double squareAverage = ((double) squareSum) / num;
-    return Math.sqrt(squareAverage - average * average);
+    return stdev.evaluate(elements.stream().mapToDouble(e -> e).toArray());
   }
 }
