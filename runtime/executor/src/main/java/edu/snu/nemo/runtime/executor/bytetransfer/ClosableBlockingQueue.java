@@ -78,8 +78,8 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
   /**
    * Mark the input end of this queue as closed.
    */
-  public synchronized void closeExceptionally(final Throwable throwable) {
-    this.throwable = throwable;
+  public synchronized void closeExceptionally(final Throwable throwableToSet) {
+    this.throwable = throwableToSet;
     close();
   }
 
