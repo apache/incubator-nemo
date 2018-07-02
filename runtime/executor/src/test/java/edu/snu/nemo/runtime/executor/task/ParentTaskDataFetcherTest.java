@@ -44,7 +44,7 @@ public final class ParentTaskDataFetcherTest {
   public void testEmpty() throws Exception {
     // InputReader
     final List<String> dataElements = new ArrayList<>(0); // empty data
-    final InputReader inputReader = generateInputReader(generateCompletableFuture(dataElements));
+    final InputReader inputReader = generateInputReader(generateCompletableFuture(dataElements.iterator()));
 
     // Fetcher
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
@@ -59,7 +59,7 @@ public final class ParentTaskDataFetcherTest {
     final String singleData = "Single";
     final List<String> dataElements = new ArrayList<>(1);
     dataElements.add(singleData); // Single element
-    final InputReader inputReader = generateInputReader(generateCompletableFuture(dataElements));
+    final InputReader inputReader = generateInputReader(generateCompletableFuture(dataElements.iterator()));
 
     // Fetcher
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
@@ -86,14 +86,21 @@ public final class ParentTaskDataFetcherTest {
     // Fetcher
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
 
-    // Should return only a single element
+    // Should throw an IOException
     fetcher.fetchDataElement(); // checked by 'expected = IOException.class'
     assertTrue(failingFuture.isCompletedExceptionally());
   }
 
-  @Test(timeout=5000)
+  @Test(timeout=5000, expected = IOException.class)
   public void testErrorWhenReadingData() throws Exception {
-    // Check ByteTransferContext#setChannelError()
+    // Failed iterator
+    final InputReader inputReader = generateInputReader(generateCompletableFuture(new FailedIterator()));
+
+    // Fetcher
+    final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
+
+    // Should throw an IOException
+    fetcher.fetchDataElement(); // checked by 'expected = IOException.class'
   }
 
   private ParentTaskDataFetcher createFetcher(final InputReader readerForParentTask) {
@@ -111,7 +118,19 @@ public final class ParentTaskDataFetcherTest {
     return inputReader;
   }
 
-  private CompletableFuture generateCompletableFuture(final List<String> dataElements) {
-   return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(dataElements.iterator()));
+  private CompletableFuture generateCompletableFuture(final Iterator iterator) {
+   return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(iterator));
+  }
+
+  private class FailedIterator implements Iterator {
+    @Override
+    public boolean hasNext() {
+      throw new RuntimeException("Fail");
+    }
+
+    @Override
+    public Object next() {
+      throw new RuntimeException("Fail");
+    }
   }
 }

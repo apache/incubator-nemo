@@ -139,8 +139,13 @@ public final class ByteInputContext extends ByteTransferContext {
   @Override
   public void onChannelError(@Nullable final Throwable cause) {
     setChannelError(cause);
+
+    if (currentByteBufInputStream != null) {
+      currentByteBufInputStream.byteBufQueue.closeExceptionally(cause);
+    }
+    byteBufInputStreams.closeExceptionally(cause);
     completedFuture.completeExceptionally(cause);
-    onContextClose();
+    deregister();
   }
 
   /**

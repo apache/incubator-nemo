@@ -91,6 +91,10 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    */
   @Nullable
   public synchronized T take() throws InterruptedException {
+    if (throwable != null) {
+      throw new RuntimeException(throwable);
+    }
+
     while (queue.isEmpty() && !closed) {
       wait();
     }
@@ -106,6 +110,10 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    */
   @Nullable
   public synchronized T peek() throws InterruptedException {
+    if (throwable != null) {
+      throw new RuntimeException(throwable);
+    }
+
     while (queue.isEmpty() && !closed) {
       wait();
     }
