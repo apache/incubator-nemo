@@ -29,15 +29,15 @@ import java.util.Queue;
  * @param <O> output type.
  */
 public final class OutputCollectorImpl<O> implements OutputCollector<O> {
-  private final Queue<O> outputQueue;
-  private final Map<String, Queue<Object>> taggedOutputQueues;
+  private final Queue<O> mainTagOutputQueue;
+  private final Map<String, Queue<Object>> additionalTagOutputQueues;
 
   /**
    * Constructor of a new OutputCollectorImpl.
    */
   public OutputCollectorImpl() {
-    this.outputQueue = new ArrayDeque<>(1);
-    this.taggedOutputQueues = new HashMap<>();
+    this.mainTagOutputQueue = new ArrayDeque<>(1);
+    this.additionalTagOutputQueues = new HashMap<>();
   }
 
   /**
@@ -45,22 +45,24 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    * @param taggedChildren tagged children
    */
   public OutputCollectorImpl(final List<String> taggedChildren) {
-    this.outputQueue = new ArrayDeque<>(1);
-    this.taggedOutputQueues = new HashMap<>();
-    taggedChildren.forEach(child -> this.taggedOutputQueues.put(child, new ArrayDeque<>(1)));
+    this.mainTagOutputQueue = new ArrayDeque<>(1);
+    this.additionalTagOutputQueues = new HashMap<>();
+    taggedChildren.forEach(child -> this.additionalTagOutputQueues.put(child, new ArrayDeque<>(1)));
   }
 
   @Override
   public void emit(final O output) {
-    outputQueue.add(output);
+    mainTagOutputQueue.add(output);
   }
 
   @Override
   public <T> void emit(final String dstVertexId, final T output) {
-    if (this.taggedOutputQueues.get(dstVertexId) == null) {
+    if (this.additionalTagOutputQueues.get(dstVertexId) == null) {
+      // This dstVertexId is for the main tag
       emit((O) output);
     } else {
-      this.taggedOutputQueues.get(dstVertexId).add(output);
+      // Note that string hash can be cached, thus accessing additional output queues can be fast.
+      this.additionalTagOutputQueues.get(dstVertexId).add(output);
     }
   }
 
@@ -71,7 +73,7 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    * @return the first element of this list
    */
   public O remove() {
-    return outputQueue.remove();
+    return mainTagOutputQueue.remove();
   }
 
   /**
@@ -82,10 +84,12 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    * @return the first element of corresponding list
    */
   public Object remove(final String tag) {
-    if (this.taggedOutputQueues.get(tag) == null) {
+    if (this.additionalTagOutputQueues.get(tag) == null) {
+      // This dstVertexId is for the main tag
       return remove();
     } else {
-      return this.taggedOutputQueues.get(tag).remove();
+      // Note that string hash can be cached, thus accessing additional output queues can be fast.
+      return this.additionalTagOutputQueues.get(tag).remove();
     }
 
   }
@@ -96,7 +100,7 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    * @return true if this OutputCollector is empty.
    */
   public boolean isEmpty() {
-    return outputQueue.isEmpty();
+    return mainTagOutputQueue.isEmpty();
   }
 
   /**
@@ -106,10 +110,11 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
    * @return true if this OutputCollector is empty.
    */
   public boolean isEmpty(final String tag) {
-    if (this.taggedOutputQueues.get(tag) == null) {
+    if (this.additionalTagOutputQueues.get(tag) == null) {
       return isEmpty();
     } else {
-      return this.taggedOutputQueues.get(tag).isEmpty();
+      // Note that string hash can be cached, thus accessing additional output queues can be fast.
+      return this.additionalTagOutputQueues.get(tag).isEmpty();
     }
   }
 }

@@ -25,7 +25,7 @@ import edu.snu.nemo.common.ir.vertex.*;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.TaggedOutputProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalOutputProperty;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.dag.DAGBuilder;
@@ -59,7 +59,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
     this.dagDirectory = dagDirectory;
     this.stagePartitioner = stagePartitioner;
     stagePartitioner.addIgnoredPropertyKey(DynamicOptimizationProperty.class);
-    stagePartitioner.addIgnoredPropertyKey(TaggedOutputProperty.class);
+    stagePartitioner.addIgnoredPropertyKey(AdditionalOutputProperty.class);
   }
 
   /**

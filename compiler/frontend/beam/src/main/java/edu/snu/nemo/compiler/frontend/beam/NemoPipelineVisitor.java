@@ -18,7 +18,7 @@ package edu.snu.nemo.compiler.frontend.beam;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.TaggedOutputProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalOutputProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
@@ -62,7 +62,6 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
   private final Stack<LoopVertex> loopVertexStack;
   private final Map<PValue, Pair<BeamEncoderFactory, BeamDecoderFactory>> pValueToCoder;
   private final Map<PValue, TupleTag> pValueToTag;
-  private final Map<TupleTag, String> tagToVertex;
 
   /**
    * Constructor of the BEAM Visitor.
@@ -77,7 +76,6 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     this.loopVertexStack = new Stack<>();
     this.pValueToCoder = new HashMap<>();
     this.pValueToTag = new HashMap<>();
-    this.tagToVertex = new HashMap<>();
   }
 
   @Override
@@ -125,14 +123,14 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
         .forEach(pValue -> {
           final IRVertex src = pValueToVertex.get(pValue);
           final TupleTag tag = pValueToTag.get(pValue);
-          final HashMap<String, String> tagToVertexMap = new HashMap<>();
-          tagToVertexMap.put(tag.getId(), irVertex.getId());
-          if (!src.getPropertyValue(TaggedOutputProperty.class).isPresent()) {
-            src.setProperty(TaggedOutputProperty.of(tagToVertexMap));
+          final HashMap<String, String> tagToVertex = new HashMap<>();
+          tagToVertex.put(tag.getId(), irVertex.getId());
+          if (!src.getPropertyValue(AdditionalOutputProperty.class).isPresent()) {
+            src.setProperty(AdditionalOutputProperty.of(tagToVertex));
           } else {
-            final HashMap<String, String> prev = src.getPropertyValue(TaggedOutputProperty.class).get();
-            prev.putAll(tagToVertexMap);
-            src.setProperty(TaggedOutputProperty.of(prev));
+            final HashMap<String, String> prev = src.getPropertyValue(AdditionalOutputProperty.class).get();
+            prev.putAll(tagToVertex);
+            src.setProperty(AdditionalOutputProperty.of(prev));
           }
         });
   }
