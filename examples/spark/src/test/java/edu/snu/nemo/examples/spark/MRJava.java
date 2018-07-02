@@ -75,7 +75,6 @@ public final class MRJava {
     final String inputFilePath = fileBasePath + inputFileName;
     final String outputFilePath = fileBasePath + outputFileName;
 
-
     JobLauncher.main(builder
         .addJobId(JavaWordAndLineCount.class.getSimpleName() + "_test")
         .addUserMain(JavaWordAndLineCount.class.getCanonicalName())
