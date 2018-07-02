@@ -35,8 +35,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 class ParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class);
 
-  private static final Object FAILED_ITERATOR = new Object();
-
   private final InputReader readersForParentTask;
   private final LinkedBlockingQueue iteratorQueue;
 
@@ -92,7 +90,7 @@ class ParentTaskDataFetcher extends DataFetcher {
     futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
       try {
         if (exception != null) {
-          iteratorQueue.put(FAILED_ITERATOR); // can block here
+          iteratorQueue.put(exception); // can block here
         } else {
           iteratorQueue.put(iterator); // can block here
         }
@@ -105,51 +103,58 @@ class ParentTaskDataFetcher extends DataFetcher {
 
   @Override
   Object fetchDataElement() throws IOException {
-    if (!hasFetchStarted) {
-      fetchInBackground();
-      advanceIterator();
-    }
-
-    if (this.currentIterator.hasNext()) {
-      // This iterator has an element available
-      noElementAtAll = false;
-      return this.currentIterator.next();
-    } else {
-      if (currentIteratorIndex == expectedNumOfIterators) {
-        // Entire fetcher is done
-        if (noElementAtAll) {
-          // This shouldn't normally happen, except for cases such as when Beam's VoidCoder is used.
-          noElementAtAll = false;
-          return Void.TYPE;
-        } else {
-          // This whole fetcher's done
-          return null;
-        }
-      } else {
-        // Advance to the next one
-        handleMetric(currentIterator);
+    try {
+      if (!hasFetchStarted) {
+        fetchInBackground();
         advanceIterator();
-        return fetchDataElement();
       }
+
+      if (this.currentIterator.hasNext()) {
+        // This iterator has an element available
+        noElementAtAll = false;
+        return this.currentIterator.next();
+      } else {
+        if (currentIteratorIndex == expectedNumOfIterators) {
+          // Entire fetcher is done
+          if (noElementAtAll) {
+            // This shouldn't normally happen, except for cases such as when Beam's VoidCoder is used.
+            noElementAtAll = false;
+            return Void.TYPE;
+          } else {
+            // This whole fetcher's done
+            return null;
+          }
+        } else {
+          // Advance to the next one
+          handleMetric(currentIterator);
+          advanceIterator();
+          return fetchDataElement();
+        }
+      }
+    } catch (Throwable e) {
+      // Any failure is caught and thrown as an IOException, so that the task is retried.
+      // In particular, we catch unchecked exceptions like RuntimeException thrown by DataUtil.IteratorWithNumBytes
+      // when remote data fetching fails for whatever reason.
+      throw new IOException(e);
     }
   }
 
-  private void advanceIterator() throws IOException {
+  private void advanceIterator() throws Throwable {
     // Take from iteratorQueue
-    final Object iteratorOrFailure;
+    final Object iteratorOrThrowable;
     try {
-      iteratorOrFailure = iteratorQueue.take();
+      iteratorOrThrowable = iteratorQueue.take();
     } catch (InterruptedException e) {
-      throw new IOException(e);
+      throw e;
     }
 
-    // Handle iteratorOrFailure
-    if (iteratorOrFailure.equals(FAILED_ITERATOR)) {
-      throw new IOException("RPC failure");
+    // Handle iteratorOrThrowable
+    if (iteratorOrThrowable instanceof Throwable) {
+      throw (Throwable) iteratorOrThrowable;
     } else {
       // This iterator is valid. Do advance.
       hasFetchStarted = true;
-      this.currentIterator = (DataUtil.IteratorWithNumBytes) iteratorOrFailure;
+      this.currentIterator = (DataUtil.IteratorWithNumBytes) iteratorOrThrowable;
       this.currentIteratorIndex++;
     }
   }

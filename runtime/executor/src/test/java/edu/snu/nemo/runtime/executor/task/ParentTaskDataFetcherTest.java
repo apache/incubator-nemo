@@ -18,7 +18,6 @@ package edu.snu.nemo.runtime.executor.task;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
-import io.netty.util.concurrent.CompleteFuture;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -27,12 +26,10 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -60,7 +57,7 @@ public final class ParentTaskDataFetcherTest {
   public void testNonEmpty() throws Exception {
     // InputReader
     final String singleData = "Single";
-    final List<String> dataElements = new ArrayList<>(0);
+    final List<String> dataElements = new ArrayList<>(1);
     dataElements.add(singleData); // Single element
     final InputReader inputReader = generateInputReader(generateCompletableFuture(dataElements));
 
@@ -117,17 +114,4 @@ public final class ParentTaskDataFetcherTest {
   private CompletableFuture generateCompletableFuture(final List<String> dataElements) {
    return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(dataElements.iterator()));
   }
-
-  private class FailingIterator implements Iterator {
-    @Override
-    public boolean hasNext() {
-      return false;
-    }
-
-    @Override
-    public Object next() {
-      return null;
-    }
-  }
-
 }
