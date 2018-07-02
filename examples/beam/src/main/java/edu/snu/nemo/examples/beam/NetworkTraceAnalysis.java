@@ -61,15 +61,6 @@ public final class NetworkTraceAnalysis {
         return pattern.matcher(line).find();
       }
     };
-    final SimpleFunction<String, KV<String, KV<String, Long>>> mapToMatchedGroup
-        = new SimpleFunction<String, KV<String, KV<String, Long>>>() {
-      @Override
-      public KV<String, KV<String, Long>> apply(final String line) {
-        final Matcher matcher = pattern.matcher(line);
-        matcher.find();
-        return KV.of(matcher.group(2), KV.of(matcher.group(1), Long.valueOf(matcher.group(3))));
-      }
-    };
     final SimpleFunction<KV<String, Iterable<KV<String, Long>>>, KV<String, Double>> mapToStdev
         = new SimpleFunction<KV<String, Iterable<KV<String, Long>>>, KV<String, Double>>() {
       @Override
@@ -81,12 +72,26 @@ public final class NetworkTraceAnalysis {
     final Pipeline p = Pipeline.create(options);
     final PCollection<KV<String, Double>> in0 = GenericSourceSink.read(p, input0FilePath)
         .apply(Filter.by(filter))
-        .apply(MapElements.via(mapToMatchedGroup))
+        .apply(MapElements.via(new SimpleFunction<String, KV<String, KV<String, Long>>>() {
+          @Override
+          public KV<String, KV<String, Long>> apply(final String line) {
+            final Matcher matcher = pattern.matcher(line);
+            matcher.find();
+            return KV.of(matcher.group(2), KV.of(matcher.group(1), Long.valueOf(matcher.group(3))));
+          }
+        }))
         .apply(GroupByKey.create())
         .apply(MapElements.via(mapToStdev));
     final PCollection<KV<String, Double>> in1 = GenericSourceSink.read(p, input1FilePath)
         .apply(Filter.by(filter))
-        .apply(MapElements.via(mapToMatchedGroup))
+        .apply(MapElements.via(new SimpleFunction<String, KV<String, KV<String, Long>>>() {
+          @Override
+          public KV<String, KV<String, Long>> apply(final String line) {
+            final Matcher matcher = pattern.matcher(line);
+            matcher.find();
+            return KV.of(matcher.group(1), KV.of(matcher.group(2), Long.valueOf(matcher.group(3))));
+          }
+        }))
         .apply(GroupByKey.create())
         .apply(MapElements.via(mapToStdev));
     final TupleTag<Double> tag0 = new TupleTag<>();
