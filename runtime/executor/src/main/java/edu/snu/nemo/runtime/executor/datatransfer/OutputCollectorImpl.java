@@ -113,7 +113,7 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
     if (this.additionalTagOutputQueues.get(tag) == null) {
       return isEmpty();
     } else {
-      // Note that string hash can be cached, thus accessing additional output queues can be fast.
+      // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
       return this.additionalTagOutputQueues.get(tag).isEmpty();
     }
   }

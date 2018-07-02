@@ -27,11 +27,11 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 /**
- * Test AdditionalTagOutputs program with JobLauncher.
+ * Test PartitionWordByLength program with JobLauncher.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class AdditionalTagOutputsITCase {
+public final class PartitionWordsByLengthITCase {
   private static final int TIMEOUT = 120000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
@@ -47,7 +47,7 @@ public final class AdditionalTagOutputsITCase {
   public void setUp() throws Exception {
     builder = new ArgBuilder()
       .addResourceJson(executorResourceFileName)
-      .addUserMain(AdditionalTagOutputs.class.getCanonicalName())
+      .addUserMain(PartitionWordsByLength.class.getCanonicalName())
       .addUserArgs(inputFilePath, outputFilePath);
   }
 
@@ -65,7 +65,7 @@ public final class AdditionalTagOutputsITCase {
   @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
-      .addJobId(AdditionalTagOutputs.class.getSimpleName())
+      .addJobId(PartitionWordsByLength.class.getSimpleName())
       .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
       .build());
   }

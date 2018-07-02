@@ -29,13 +29,13 @@ import org.apache.beam.sdk.values.*;
 import java.util.Arrays;
 
 /**
- * Word partition by length example.
+ * Partition words by length example.
  */
-public final class AdditionalTagOutputs {
+public final class PartitionWordsByLength {
   /**
    * Private Constructor.
    */
-  private AdditionalTagOutputs() {
+  private PartitionWordsByLength() {
   }
 
   /**
@@ -48,7 +48,7 @@ public final class AdditionalTagOutputs {
     final String outputFilePath = args[1];
     final PipelineOptions options = PipelineOptionsFactory.create().as(NemoPipelineOptions.class);
     options.setRunner(NemoPipelineRunner.class);
-    options.setJobName("AdditionalTagOutputs");
+    options.setJobName("PartitionWordsByLength");
 
     // {} here is required for preserving type information.
     // Please see https://stackoverflow.com/a/48431397 for details.
