@@ -21,7 +21,7 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.vertex.*;
-import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalOutputProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalTagOutputProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
@@ -153,8 +153,8 @@ public final class TaskExecutor {
           .collect(Collectors.toList());
 
       final Map<String, String> additionalOutputMap = irVertex
-          .getPropertyValue(AdditionalOutputProperty.class).orElse(new HashMap<>());
-      final List<Boolean> isToAdditionalOutputs = children.stream()
+          .getPropertyValue(AdditionalTagOutputProperty.class).orElse(new HashMap<>());
+      final List<Boolean> isToAdditionalTagOutputs = children.stream()
           .map(harness -> harness.getIRVertex().getId())
           .map(additionalOutputMap::containsValue)
           .collect(Collectors.toList());
@@ -165,7 +165,7 @@ public final class TaskExecutor {
       final List<String> additionalOutputVertices = new ArrayList<>(additionalOutputMap.values());
       final OutputCollectorImpl oci = new OutputCollectorImpl(additionalOutputVertices);
       final VertexHarness vertexHarness = new VertexHarness(irVertex, oci, children,
-          isToSideInputs, isToAdditionalOutputs,
+          isToSideInputs, isToAdditionalTagOutputs,
           childrenTaskWriters, new ContextImpl(sideInputMap, additionalOutputMap)); // Intra-vertex write
       prepareTransform(vertexHarness);
       vertexIdToHarness.put(irVertex.getId(), vertexHarness);
@@ -220,7 +220,7 @@ public final class TaskExecutor {
     }
 
     // Recursively process all of the additional output elements.
-    vertexHarness.getAdditionalOutputChildren().keySet().forEach(tag -> {
+    vertexHarness.getAdditionalTagOutputChildren().keySet().forEach(tag -> {
       while (!outputCollector.isEmpty(tag)) {
         final Object element = outputCollector.remove(tag);
         handleAdditionalOutputElement(vertexHarness, element, tag); // Recursion
@@ -304,7 +304,7 @@ public final class TaskExecutor {
         .flatMap(child -> getAllReachables(child).stream()).collect(Collectors.toList()));
     result.addAll(src.getSideInputChildren().stream()
         .flatMap(child -> getAllReachables(child).stream()).collect(Collectors.toList()));
-    result.addAll(src.getAdditionalOutputChildren().values().stream()
+    result.addAll(src.getAdditionalTagOutputChildren().values().stream()
         .flatMap(child -> getAllReachables(child).stream()).collect(Collectors.toList()));
     return result;
   }
@@ -331,7 +331,7 @@ public final class TaskExecutor {
     if (harness.getSideInputChildren().size() > 0) {
       sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
     }
-    harness.getAdditionalOutputChildren().entrySet().stream()
+    harness.getAdditionalTagOutputChildren().entrySet().stream()
         .filter(kv -> kv.getKey().equals(tag))
         .forEach(kv -> processElementRecursively(kv.getValue(), element));
   }

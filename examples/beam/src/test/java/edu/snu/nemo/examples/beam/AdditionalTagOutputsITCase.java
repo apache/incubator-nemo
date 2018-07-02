@@ -27,11 +27,11 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 /**
- * Test AdditionalOutputs program with JobLauncher.
+ * Test AdditionalTagOutputs program with JobLauncher.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
-public final class AdditionalOutputsITCase {
+public final class AdditionalTagOutputsITCase {
   private static final int TIMEOUT = 120000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
@@ -47,7 +47,7 @@ public final class AdditionalOutputsITCase {
   public void setUp() throws Exception {
     builder = new ArgBuilder()
       .addResourceJson(executorResourceFileName)
-      .addUserMain(AdditionalOutputs.class.getCanonicalName())
+      .addUserMain(AdditionalTagOutputs.class.getCanonicalName())
       .addUserArgs(inputFilePath, outputFilePath);
   }
 
@@ -65,7 +65,7 @@ public final class AdditionalOutputsITCase {
   @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
-      .addJobId(AdditionalOutputs.class.getSimpleName())
+      .addJobId(AdditionalTagOutputs.class.getSimpleName())
       .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
       .build());
   }

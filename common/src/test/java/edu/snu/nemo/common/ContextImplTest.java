@@ -44,7 +44,7 @@ public class ContextImplTest {
   @Test
   public void testContextImpl() {
     assertEquals(this.sideInputs, this.context.getSideInputs());
-    assertEquals(this.taggedOutputs, this.context.getAdditionalOutputs());
+    assertEquals(this.taggedOutputs, this.context.getAdditionalTagOutputs());
 
     final String sampleText = "sample_text";
 

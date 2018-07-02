@@ -61,7 +61,7 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
       // This dstVertexId is for the main tag
       emit((O) output);
     } else {
-      // Note that string hash can be cached, thus accessing additional output queues can be fast.
+      // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
       this.additionalTagOutputQueues.get(dstVertexId).add(output);
     }
   }
@@ -88,7 +88,7 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
       // This dstVertexId is for the main tag
       return remove();
     } else {
-      // Note that string hash can be cached, thus accessing additional output queues can be fast.
+      // Note that String#hashCode() can be cached, thus accessing additional output queues can be fast.
       return this.additionalTagOutputQueues.get(tag).remove();
     }
 

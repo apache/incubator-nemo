@@ -37,22 +37,22 @@ final class VertexHarness {
   // These lists can be empty
   private final List<VertexHarness> sideInputChildren;
   private final List<VertexHarness> nonSideInputChildren;
-  private final Map<String, VertexHarness> additionalOutputChildren;
+  private final Map<String, VertexHarness> additionalTagOutputChildren;
   private final List<OutputWriter> writersToChildrenTasks;
 
   VertexHarness(final IRVertex irVertex,
                 final OutputCollectorImpl outputCollector,
                 final List<VertexHarness> children,
                 final List<Boolean> isSideInputs,
-                final List<Boolean> isAdditionalOutputs,
+                final List<Boolean> isAdditionalTagOutputs,
                 final List<OutputWriter> writersToChildrenTasks,
                 final Transform.Context context) {
     this.irVertex = irVertex;
     this.outputCollector = outputCollector;
-    if (children.size() != isSideInputs.size() || children.size() != isAdditionalOutputs.size()) {
+    if (children.size() != isSideInputs.size() || children.size() != isAdditionalTagOutputs.size()) {
       throw new IllegalStateException(irVertex.toString());
     }
-    final Map<String, String> taggedOutputMap = context.getAdditionalOutputs();
+    final Map<String, String> taggedOutputMap = context.getAdditionalTagOutputs();
     final List<VertexHarness> sides = new ArrayList<>();
     final List<VertexHarness> nonSides = new ArrayList<>();
     final Map<String, VertexHarness> tagged = new HashMap<>();
@@ -60,7 +60,7 @@ final class VertexHarness {
       final VertexHarness child = children.get(i);
       if (isSideInputs.get(i)) {
         sides.add(child);
-      } else if (isAdditionalOutputs.get(i)) {
+      } else if (isAdditionalTagOutputs.get(i)) {
         taggedOutputMap.entrySet().stream()
             .filter(kv -> child.getIRVertex().getId().equals(kv.getValue()))
             .forEach(kv -> tagged.put(kv.getValue(), child));
@@ -70,7 +70,7 @@ final class VertexHarness {
     }
     this.sideInputChildren = sides;
     this.nonSideInputChildren = nonSides;
-    this.additionalOutputChildren = tagged;
+    this.additionalTagOutputChildren = tagged;
     this.writersToChildrenTasks = writersToChildrenTasks;
     this.context = context;
   }
@@ -106,8 +106,8 @@ final class VertexHarness {
   /**
    * @return map of tagged output children. (empty if none exists)
    */
-  public Map<String, VertexHarness> getAdditionalOutputChildren() {
-    return additionalOutputChildren;
+  public Map<String, VertexHarness> getAdditionalTagOutputChildren() {
+    return additionalTagOutputChildren;
   }
 
   /**

@@ -73,7 +73,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     this.startBundleContext = new StartBundleContext(doFn, serializedOptions);
     this.finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
     this.processContext = new ProcessContext(doFn, outputCollector,
-        context.getSideInputs(), context.getAdditionalOutputs(), serializedOptions);
+        context.getSideInputs(), context.getAdditionalTagOutputs(), serializedOptions);
     this.invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);

@@ -18,7 +18,7 @@ package edu.snu.nemo.compiler.frontend.beam;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.ir.edge.executionproperty.DecoderProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.EncoderProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalOutputProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalTagOutputProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamDecoderFactory;
 import edu.snu.nemo.compiler.frontend.beam.coder.BeamEncoderFactory;
@@ -119,18 +119,19 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
           this.builder.connectVertices(edge);
         });
 
+    // This exclusively updates execution property of vertices with additional tagged outputs.
     beamNode.getInputs().values().stream().filter(pValueToTag::containsKey)
         .forEach(pValue -> {
           final IRVertex src = pValueToVertex.get(pValue);
           final TupleTag tag = pValueToTag.get(pValue);
           final HashMap<String, String> tagToVertex = new HashMap<>();
           tagToVertex.put(tag.getId(), irVertex.getId());
-          if (!src.getPropertyValue(AdditionalOutputProperty.class).isPresent()) {
-            src.setProperty(AdditionalOutputProperty.of(tagToVertex));
+          if (!src.getPropertyValue(AdditionalTagOutputProperty.class).isPresent()) {
+            src.setProperty(AdditionalTagOutputProperty.of(tagToVertex));
           } else {
-            final HashMap<String, String> prev = src.getPropertyValue(AdditionalOutputProperty.class).get();
+            final HashMap<String, String> prev = src.getPropertyValue(AdditionalTagOutputProperty.class).get();
             prev.putAll(tagToVertex);
-            src.setProperty(AdditionalOutputProperty.of(prev));
+            src.setProperty(AdditionalTagOutputProperty.of(prev));
           }
         });
   }

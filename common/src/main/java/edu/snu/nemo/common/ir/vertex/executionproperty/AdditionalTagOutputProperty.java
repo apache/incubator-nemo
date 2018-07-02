@@ -20,14 +20,14 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import java.util.HashMap;
 
 /**
- * TaggedOutput Execution Property for vertex that outputs additional BEAM tagged outputs.
+ * AdditionalOutput Execution Property for vertex that outputs additional outputs.
  */
-public final class AdditionalOutputProperty extends VertexExecutionProperty<HashMap<String, String>> {
+public final class AdditionalTagOutputProperty extends VertexExecutionProperty<HashMap<String, String>> {
   /**
    * Constructor.
    * @param value map of tag to IRVertex id.
    */
-  private AdditionalOutputProperty(final HashMap<String, String> value) {
+  private AdditionalTagOutputProperty(final HashMap<String, String> value) {
     super(value);
   }
 
@@ -36,7 +36,7 @@ public final class AdditionalOutputProperty extends VertexExecutionProperty<Hash
    * @param value map of tag to IRVertex id.
    * @return the newly created execution property.
    */
-  public static AdditionalOutputProperty of(final HashMap<String, String> value) {
-    return new AdditionalOutputProperty(value);
+  public static AdditionalTagOutputProperty of(final HashMap<String, String> value) {
+    return new AdditionalTagOutputProperty(value);
   }
 }

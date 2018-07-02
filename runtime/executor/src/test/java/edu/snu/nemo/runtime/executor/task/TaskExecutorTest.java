@@ -24,7 +24,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.InMemorySourceVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalOutputProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalTagOutputProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -283,7 +283,7 @@ public final class TaskExecutorTest {
     tagToVertex.put("bonus1", bonusVertex1.getId());
     tagToVertex.put("bonus2", bonusVertex2.getId());
 
-    routerVertex.setProperty(AdditionalOutputProperty.of(tagToVertex));
+    routerVertex.setProperty(AdditionalTagOutputProperty.of(tagToVertex));
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
         .addVertex(routerVertex)
@@ -498,7 +498,7 @@ public final class TaskExecutorTest {
     @Override
     public void prepare(final Context context, OutputCollector<Integer> outputCollector) {
       this.outputCollector = outputCollector;
-      this.tagToVertex = context.getAdditionalOutputs();
+      this.tagToVertex = context.getAdditionalTagOutputs();
     }
 
     @Override
