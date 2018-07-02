@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -44,22 +43,21 @@ class ParentTaskDataFetcher extends DataFetcher {
   private DataUtil.IteratorWithNumBytes currentIterator;
   private int currentIteratorIndex;
   private boolean noElementAtAll = true;
+  private long serBytes = 0;
+  private long encodedBytes = 0;
 
   ParentTaskDataFetcher(final IRVertex dataSource,
                         final InputReader readerForParentTask,
                         final VertexHarness child,
-                        final Map<String, Object> metricMap,
                         final boolean isToSideInput) {
-    super(dataSource, child, metricMap, readerForParentTask.isSideInputReader(), isToSideInput);
+    super(dataSource, child, readerForParentTask.isSideInputReader(), isToSideInput);
     this.readersForParentTask = readerForParentTask;
     this.hasFetchStarted = false;
     this.currentIteratorIndex = 0;
     this.iteratorQueue = new LinkedBlockingQueue<>();
   }
 
-  private void handleMetric(final DataUtil.IteratorWithNumBytes iterator) {
-    long serBytes = 0;
-    long encodedBytes = 0;
+  private void countBytes(final DataUtil.IteratorWithNumBytes iterator) {
     try {
       serBytes += iterator.getNumSerializedBytes();
     } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
@@ -74,10 +72,6 @@ class ParentTaskDataFetcher extends DataFetcher {
     } catch (final IllegalStateException e) {
       LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
     }
-    if (serBytes != encodedBytes) {
-      getMetricMap().put("ReadBytes(raw)", serBytes);
-    }
-    getMetricMap().put("ReadBytes", encodedBytes);
   }
 
   /**
@@ -126,7 +120,7 @@ class ParentTaskDataFetcher extends DataFetcher {
           }
         } else {
           // Advance to the next one
-          handleMetric(currentIterator);
+          countBytes(currentIterator);
           advanceIterator();
           return fetchDataElement();
         }
@@ -159,5 +153,13 @@ class ParentTaskDataFetcher extends DataFetcher {
       this.currentIterator = (DataUtil.IteratorWithNumBytes) iteratorOrThrowable;
       this.currentIteratorIndex++;
     }
+  }
+
+  public final long getSerializedBytes() {
+    return serBytes;
+  }
+
+  public final long getEncodedBytes() {
+    return encodedBytes;
   }
 }

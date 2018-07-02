@@ -27,7 +27,6 @@ import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import edu.snu.nemo.runtime.common.metric.DataTransferEvent;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
@@ -65,7 +64,9 @@ public final class TaskExecutor {
   private final Map sideInputMap;
 
   // Metrics information
-  private final Map<String, Object> metricMap;
+  private long boundedSourceReadTime = 0;
+  private long serializedReadBytes = 0;
+  private long encodedReadBytes = 0;
   private final MetricMessageSender metricMessageSender;
 
   // Dynamic optimization
@@ -92,8 +93,7 @@ public final class TaskExecutor {
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
 
-    // Metrics information
-    this.metricMap = new HashMap<>();
+    // Metric sender
     this.metricMessageSender = metricMessageSender;
 
     // Dynamic optimization
@@ -176,13 +176,13 @@ public final class TaskExecutor {
       final boolean isToSideInput = isToSideInputs.stream().anyMatch(bool -> bool);
       if (irVertex instanceof SourceVertex) {
         dataFetcherList.add(new SourceVertexDataFetcher(
-            irVertex, sourceReader.get(), vertexHarness, metricMap, isToSideInput)); // Source vertex read
+            irVertex, sourceReader.get(), vertexHarness, isToSideInput)); // Source vertex read
       }
       final List<InputReader> parentTaskReaders =
           getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges(), dataTransferFactory);
       parentTaskReaders.forEach(parentTaskReader -> {
         dataFetcherList.add(new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
-            vertexHarness, metricMap, isToSideInput)); // Parent-task read
+            vertexHarness, isToSideInput)); // Parent-task read
       });
     });
 
@@ -278,6 +278,13 @@ public final class TaskExecutor {
       return;
     }
 
+    metricMessageSender.send("TaskMetric", taskId,
+        "boundedSourceReadTime", SerializationUtils.serialize(boundedSourceReadTime));
+    metricMessageSender.send("TaskMetric", taskId,
+        "serializedReadBytes", SerializationUtils.serialize(serializedReadBytes));
+    metricMessageSender.send("TaskMetric", taskId,
+        "encodedReadBytes", SerializationUtils.serialize(encodedReadBytes));
+
     // Phase 3: Finalize task-internal states and elements
     for (final VertexHarness vertexHarness : sortedHarnesses) {
       if (finalizeLater.contains(vertexHarness)) {
@@ -356,6 +363,12 @@ public final class TaskExecutor {
         }
 
         if (element == null) {
+          if (dataFetcher instanceof SourceVertexDataFetcher) {
+            boundedSourceReadTime += ((SourceVertexDataFetcher) dataFetcher).getBoundedSourceReadTime();
+          } else if (dataFetcher instanceof ParentTaskDataFetcher) {
+            serializedReadBytes += ((ParentTaskDataFetcher) dataFetcher).getSerializedBytes();
+            encodedReadBytes += ((ParentTaskDataFetcher) dataFetcher).getEncodedBytes();
+          }
           finishedFetcherIndex = i;
           break;
         } else {
@@ -470,29 +483,17 @@ public final class TaskExecutor {
   private void finalizeOutputWriters(final VertexHarness vertexHarness) {
     final List<Long> writtenBytesList = new ArrayList<>();
 
-    final long writeStartTime = System.currentTimeMillis();
-    metricMessageSender.send("TaskMetric", taskId,
-        "dataEvent", SerializationUtils.serialize(
-            new DataTransferEvent(writeStartTime, DataTransferEvent.TransferType.WRITE_START)));
-
     vertexHarness.getWritersToChildrenTasks().forEach(outputWriter -> {
       outputWriter.close();
       final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
       writtenBytes.ifPresent(writtenBytesList::add);
     });
 
-    final long writeEndTime = System.currentTimeMillis();
-    metricMessageSender.send("TaskMetric", taskId,
-        "dataEvent", SerializationUtils.serialize(
-            new DataTransferEvent(writeEndTime, DataTransferEvent.TransferType.WRITE_END)));
-
-    if (!writtenBytesList.isEmpty()) {
-      long totalWrittenBytes = 0;
-      for (final Long writtenBytes : writtenBytesList) {
-        totalWrittenBytes += writtenBytes;
-      }
-      metricMessageSender.send("TaskMetric", taskId,
-          "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
+    long totalWrittenBytes = 0;
+    for (final Long writtenBytes : writtenBytesList) {
+      totalWrittenBytes += writtenBytes;
     }
+    metricMessageSender.send("TaskMetric", taskId,
+        "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
   }
 }

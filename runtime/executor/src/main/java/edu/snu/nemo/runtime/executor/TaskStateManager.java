@@ -56,7 +56,6 @@ public final class TaskStateManager {
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     this.metricMessageSender = metricMessageSender;
 
-    LOG.info("TASKMETRIC {} - executor: {}, attempt: {}", task.getTaskId(), executorId, attemptIdx);
     metricMessageSender.send("TaskMetric", taskId,
         "containerId", SerializationUtils.serialize(executorId));
     metricMessageSender.send("TaskMetric", taskId,
@@ -72,8 +71,6 @@ public final class TaskStateManager {
   public synchronized void onTaskStateChanged(final TaskState.State newState,
                                               final Optional<String> vertexPutOnHold,
                                               final Optional<TaskState.RecoverableTaskFailureCause> cause) {
-    final Map<String, Object> metric = new HashMap<>();
-
     metricMessageSender.send("TaskMetric", taskId,
         "event", SerializationUtils.serialize(new StateTransitionEvent<>(
             System.currentTimeMillis(), null, newState
@@ -82,9 +79,6 @@ public final class TaskStateManager {
     switch (newState) {
       case EXECUTING:
         LOG.debug("Executing Task ID {}...", this.taskId);
-        metric.put("ContainerId", executorId);
-        metric.put("ScheduleAttempt", attemptIdx);
-        metric.put("FromState", newState);
         break;
       case COMPLETE:
         LOG.debug("Task ID {} complete!", this.taskId);
@@ -92,12 +86,10 @@ public final class TaskStateManager {
         break;
       case SHOULD_RETRY:
         LOG.debug("Task ID {} failed (recoverable).", this.taskId);
-        metric.put("ToState", newState);
         notifyTaskStateToMaster(newState, Optional.empty(), cause);
         break;
       case FAILED:
         LOG.debug("Task ID {} failed (unrecoverable).", this.taskId);
-        metric.put("ToState", newState);
         notifyTaskStateToMaster(newState, Optional.empty(), cause);
         break;
       case ON_HOLD:
