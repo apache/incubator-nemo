@@ -61,7 +61,7 @@ public final class CaidaFlowAnalysis {
         return pattern.matcher(line).find();
       }
     };
-    final SimpleFunction<String, KV<String, KV<String, Long>>> mapper
+    final SimpleFunction<String, KV<String, KV<String, Long>>> mapToMatchedGroup
         = new SimpleFunction<String, KV<String, KV<String, Long>>>() {
       @Override
       public KV<String, KV<String, Long>> apply(final String line) {
@@ -70,28 +70,25 @@ public final class CaidaFlowAnalysis {
         return KV.of(matcher.group(2), KV.of(matcher.group(1), Long.valueOf(matcher.group(3))));
       }
     };
+    final SimpleFunction<KV<String, Iterable<KV<String, Long>>>, KV<String, Double>> mapToStdev
+        = new SimpleFunction<KV<String, Iterable<KV<String, Long>>>, KV<String, Double>>() {
+      @Override
+      public KV<String, Double> apply(final KV<String, Iterable<KV<String, Long>>> kv) {
+        return KV.of(kv.getKey(), stdev(kv.getValue()));
+      }
+    };
 
     final Pipeline p = Pipeline.create(options);
     final PCollection<KV<String, Double>> in0 = GenericSourceSink.read(p, input0FilePath)
         .apply(Filter.by(filter))
-        .apply(MapElements.via(mapper))
+        .apply(MapElements.via(mapToMatchedGroup))
         .apply(GroupByKey.create())
-        .apply(MapElements.via(new SimpleFunction<KV<String, Iterable<KV<String, Long>>>, KV<String, Double>>() {
-          @Override
-          public KV<String, Double> apply(final KV<String, Iterable<KV<String, Long>>> kv) {
-            return KV.of(kv.getKey(), stdev(kv.getValue()));
-          }
-        }));
+        .apply(MapElements.via(mapToStdev));
     final PCollection<KV<String, Double>> in1 = GenericSourceSink.read(p, input1FilePath)
         .apply(Filter.by(filter))
-        .apply(MapElements.via(mapper))
+        .apply(MapElements.via(mapToMatchedGroup))
         .apply(GroupByKey.create())
-        .apply(MapElements.via(new SimpleFunction<KV<String, Iterable<KV<String, Long>>>, KV<String, Double>>() {
-          @Override
-          public KV<String, Double> apply(final KV<String, Iterable<KV<String, Long>>> kv) {
-            return KV.of(kv.getKey(), stdev(kv.getValue()));
-          }
-        }));
+        .apply(MapElements.via(mapToStdev));
     final TupleTag<Double> tag0 = new TupleTag<>();
     final TupleTag<Double> tag1 = new TupleTag<>();
     final PCollection<KV<String, CoGbkResult>> joined =
