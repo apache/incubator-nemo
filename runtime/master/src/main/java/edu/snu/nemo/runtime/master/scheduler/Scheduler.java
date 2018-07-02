@@ -32,7 +32,7 @@ import javax.annotation.Nullable;
  * Other scheduler-related classes that are accessed by only one of the two threads are not synchronized(NotThreadSafe).
  */
 @DriverSide
-@DefaultImplementation(BatchSingleJobScheduler.class)
+@DefaultImplementation(BatchScheduler.class)
 public interface Scheduler {
 
   /**

@@ -23,7 +23,6 @@ import edu.snu.nemo.runtime.common.message.MessageSender;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
-import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.master.JobStateManager;
 import edu.snu.nemo.runtime.master.MetricMessageHandler;
 import edu.snu.nemo.runtime.master.BlockManagerMaster;
@@ -55,13 +54,13 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 /**
- * Tests {@link BatchSingleJobScheduler}.
+ * Tests {@link BatchScheduler}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ContainerManager.class, BlockManagerMaster.class,
     PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
-public final class BatchSingleJobSchedulerTest {
-  private static final Logger LOG = LoggerFactory.getLogger(BatchSingleJobSchedulerTest.class.getName());
+public final class BatchSchedulerTest {
+  private static final Logger LOG = LoggerFactory.getLogger(BatchSchedulerTest.class.getName());
   private Scheduler scheduler;
   private SchedulingConstraintRegistry schedulingConstraint;
   private SchedulingPolicy schedulingPolicy;
@@ -93,7 +92,7 @@ public final class BatchSingleJobSchedulerTest {
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     scheduler =
-        new BatchSingleJobScheduler(schedulerRunner, pendingTaskCollectionPointer,
+        new BatchScheduler(schedulerRunner, pendingTaskCollectionPointer,
             blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
 
     final ActiveContext activeContext = mock(ActiveContext.class);
@@ -128,7 +127,7 @@ public final class BatchSingleJobSchedulerTest {
   }
 
   /**
-   * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchSingleJobScheduler}.
+   * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchScheduler}.
    * Task state changes are explicitly submitted to scheduler instead of executor messages.
    */
   @Test(timeout=10000)
@@ -138,7 +137,7 @@ public final class BatchSingleJobSchedulerTest {
   }
 
   /**
-   * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchSingleJobScheduler}.
+   * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchScheduler}.
    * Task state changes are explicitly submitted to scheduler instead of executor messages.
    */
   @Test(timeout=10000)

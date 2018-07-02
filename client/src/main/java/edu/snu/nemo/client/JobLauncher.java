@@ -124,8 +124,7 @@ public final class JobLauncher {
       }
       serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
       // Launch and wait indefinitely for the job to finish
-      final LauncherStatus launcherStatus = DriverLauncher.getLauncher(deployModeConf)
-          .run(jobAndDriverConf);
+      final LauncherStatus launcherStatus = DriverLauncher.getLauncher(deployModeConf).run(jobAndDriverConf);
       final Optional<Throwable> possibleError = launcherStatus.getError();
       if (possibleError.isPresent()) {
         throw new RuntimeException(possibleError.get());

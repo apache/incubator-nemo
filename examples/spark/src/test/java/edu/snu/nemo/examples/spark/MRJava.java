@@ -69,7 +69,7 @@ public final class MRJava {
 
   @Test(timeout = TIMEOUT)
   public void testSparkWordAndLineCount() throws Exception {
-    final String inputFileName = "sample_input_wordcount";
+    final String inputFileName = "sample_input_wordcount_spark";
     final String outputFileName = "sample_output_word_and_line_count";
     final String testResourceFilename = "test_output_word_and_line_count";
     final String inputFilePath = fileBasePath + inputFileName;

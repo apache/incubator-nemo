@@ -93,7 +93,7 @@ public final class TaskRestartTest {
     final SchedulerRunner schedulerRunner = new SchedulerRunner(
         constraintRegistry, schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
     final BlockManagerMaster blockManagerMaster = mock(BlockManagerMaster.class);
-    scheduler =  new BatchSingleJobScheduler(schedulerRunner, pendingTaskCollectionPointer, blockManagerMaster,
+    scheduler =  new BatchScheduler(schedulerRunner, pendingTaskCollectionPointer, blockManagerMaster,
         pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
 
     // Get JobStateManager

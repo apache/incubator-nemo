@@ -49,12 +49,12 @@ import org.slf4j.Logger;
  * (CONCURRENCY) Only a single dedicated thread should use the public methods of this class.
  * (i.e., runtimeMasterThread in RuntimeMaster)
  *
- * BatchSingleJobScheduler receives a single {@link PhysicalPlan} to execute and schedules the Tasks.
+ * BatchScheduler receives a single {@link PhysicalPlan} to execute and schedules the Tasks.
  */
 @DriverSide
 @NotThreadSafe
-public final class BatchSingleJobScheduler implements Scheduler {
-  private static final Logger LOG = LoggerFactory.getLogger(BatchSingleJobScheduler.class.getName());
+public final class BatchScheduler implements Scheduler {
+  private static final Logger LOG = LoggerFactory.getLogger(BatchScheduler.class.getName());
 
   /**
    * Components related to scheduling the given job.
@@ -77,12 +77,12 @@ public final class BatchSingleJobScheduler implements Scheduler {
   private List<List<Stage>> sortedScheduleGroups;
 
   @Inject
-  public BatchSingleJobScheduler(final SchedulerRunner schedulerRunner,
-                                 final PendingTaskCollectionPointer pendingTaskCollectionPointer,
-                                 final BlockManagerMaster blockManagerMaster,
-                                 final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
-                                 final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
-                                 final ExecutorRegistry executorRegistry) {
+  public BatchScheduler(final SchedulerRunner schedulerRunner,
+                        final PendingTaskCollectionPointer pendingTaskCollectionPointer,
+                        final BlockManagerMaster blockManagerMaster,
+                        final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
+                        final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
+                        final ExecutorRegistry executorRegistry) {
     this.schedulerRunner = schedulerRunner;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.blockManagerMaster = blockManagerMaster;

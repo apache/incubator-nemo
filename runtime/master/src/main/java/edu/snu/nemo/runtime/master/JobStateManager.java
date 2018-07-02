@@ -37,6 +37,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import edu.snu.nemo.runtime.common.state.TaskState;
+import edu.snu.nemo.runtime.master.scheduler.BatchScheduler;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,9 +127,9 @@ public final class JobStateManager {
    * Updates the state of a task.
    * Task state changes can occur both in master and executor.
    * State changes that occur in master are
-   * initiated in {@link edu.snu.nemo.runtime.master.scheduler.BatchSingleJobScheduler}.
+   * initiated in {@link BatchScheduler}.
    * State changes that occur in executors are sent to master as a control message,
-   * and the call to this method is initiated in {@link edu.snu.nemo.runtime.master.scheduler.BatchSingleJobScheduler}
+   * and the call to this method is initiated in {@link BatchScheduler}
    * when the message/event is received.
    *
    * @param taskId  the ID of the task.

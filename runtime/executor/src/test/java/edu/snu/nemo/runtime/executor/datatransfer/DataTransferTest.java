@@ -132,7 +132,7 @@ public final class DataTransferTest {
     final SchedulingPolicy schedulingPolicy = injector.getInstance(SchedulingPolicy.class);
     final PendingTaskCollectionPointer taskQueue = new PendingTaskCollectionPointer();
     final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingConstraint, schedulingPolicy, taskQueue, executorRegistry);
-    final Scheduler scheduler = new BatchSingleJobScheduler(
+    final Scheduler scheduler = new BatchScheduler(
         schedulerRunner, taskQueue, master, pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
     final AtomicInteger executorCount = new AtomicInteger(0);
     final ClientRPC clientRPC = mock(ClientRPC.class);
