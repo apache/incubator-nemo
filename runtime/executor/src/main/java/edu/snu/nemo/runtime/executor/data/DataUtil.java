@@ -52,20 +52,15 @@ public final class DataUtil {
    * @param encoderFactory         the encoderFactory to encode the elements.
    * @param nonSerializedPartition the non-serialized partition to serialize.
    * @param bytesOutputStream      the output stream to write.
-   * @return total number of elements in the partition.
    * @throws IOException if fail to serialize.
    */
-  public static long serializePartition(final EncoderFactory encoderFactory,
-                                        final NonSerializedPartition nonSerializedPartition,
-                                        final OutputStream bytesOutputStream) throws IOException {
-    long elementsCount = 0;
+  private static void serializePartition(final EncoderFactory encoderFactory,
+                                         final NonSerializedPartition nonSerializedPartition,
+                                         final OutputStream bytesOutputStream) throws IOException {
     final EncoderFactory.Encoder encoder = encoderFactory.create(bytesOutputStream);
     for (final Object element : nonSerializedPartition.getData()) {
       encoder.encode(element);
-      elementsCount++;
     }
-
-    return elementsCount;
   }
 
   /**
@@ -111,15 +106,14 @@ public final class DataUtil {
           final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
           final OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
       ) {
-        final long elementsTotal =
-            serializePartition(serializer.getEncoderFactory(), partitionToConvert, wrappedStream);
+        serializePartition(serializer.getEncoderFactory(), partitionToConvert, wrappedStream);
         // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
         // inner buffer directly, which can be an unfinished(not flushed) buffer.
         wrappedStream.close();
         final byte[] serializedBytes = bytesOutputStream.getBufDirectly();
         final int actualLength = bytesOutputStream.getCount();
         serializedPartitions.add(
-            new SerializedPartition<>(partitionToConvert.getKey(), elementsTotal, serializedBytes, actualLength));
+            new SerializedPartition<>(partitionToConvert.getKey(), serializedBytes, actualLength));
       }
     }
     return serializedPartitions;

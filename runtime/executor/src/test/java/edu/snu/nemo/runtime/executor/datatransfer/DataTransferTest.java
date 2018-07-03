@@ -113,6 +113,7 @@ public final class DataTransferTest {
 
   private BlockManagerMaster master;
   private BlockManagerWorker worker1;
+  private DataTransferFactory transferFactory;
   private BlockManagerWorker worker2;
   private HashMap<BlockManagerWorker, SerializerManager> serializerManagers = new HashMap<>();
 
@@ -157,10 +158,12 @@ public final class DataTransferTest {
     injector2.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
 
     this.master = master;
-    this.worker1 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher,
-        injector2);
+    final Pair<BlockManagerWorker, DataTransferFactory> pair1 =
+        createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher, injector2);
+    this.worker1 = pair1.left();
+    this.transferFactory = pair1.right();
     this.worker2 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher,
-        injector2);
+        injector2).left();
   }
 
   @After
@@ -169,8 +172,10 @@ public final class DataTransferTest {
     FileUtils.deleteDirectory(new File(TMP_REMOTE_FILE_DIRECTORY));
   }
 
-  private BlockManagerWorker createWorker(final String executorId, final LocalMessageDispatcher messageDispatcher,
-                                          final Injector nameClientInjector) {
+  private Pair<BlockManagerWorker, DataTransferFactory> createWorker(
+      final String executorId,
+      final LocalMessageDispatcher messageDispatcher,
+      final Injector nameClientInjector) {
     final LocalMessageEnvironment messageEnvironment = new LocalMessageEnvironment(executorId, messageDispatcher);
     final PersistentConnectionToMasterMap conToMaster = new PersistentConnectionToMasterMap(messageEnvironment);
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
@@ -185,11 +190,13 @@ public final class DataTransferTest {
     final BlockManagerWorker blockManagerWorker;
     final MetricManagerWorker metricManagerWorker;
     final SerializerManager serializerManager;
+    final DataTransferFactory dataTransferFactory;
     try {
       blockManagerWorker = injector.getInstance(BlockManagerWorker.class);
       metricManagerWorker = injector.getInstance(MetricManagerWorker.class);
       serializerManager = injector.getInstance(SerializerManager.class);
       serializerManagers.put(blockManagerWorker, serializerManager);
+      dataTransferFactory = injector.getInstance(DataTransferFactory.class);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
@@ -200,11 +207,11 @@ public final class DataTransferTest {
         conToMaster,
         messageEnvironment,
         serializerManager,
-        new DataTransferFactory(HASH_RANGE_MULTIPLIER, blockManagerWorker),
+        dataTransferFactory,
         metricManagerWorker);
     injector.bindVolatileInstance(Executor.class, executor);
 
-    return blockManagerWorker;
+    return Pair.of(blockManagerWorker, dataTransferFactory);
   }
 
   private Injector createNameClientInjector() {
@@ -341,8 +348,7 @@ public final class DataTransferTest {
     final List<List> dataWrittenList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, srcVertex.getId(), dstVertex,
-          dummyEdge, sender);
+      final OutputWriter writer = transferFactory.createWriter(srcVertex, srcTaskIndex, dstVertex, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
@@ -437,14 +443,12 @@ public final class DataTransferTest {
     final List<List> dataWrittenList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, srcVertex.getId(), dstVertex,
-          dummyEdge, sender);
+      final OutputWriter writer = transferFactory.createWriter(srcVertex, srcTaskIndex, dstVertex, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
 
-      final OutputWriter writer2 = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, srcVertex.getId(), dstVertex,
-          dummyEdge2, sender);
+      final OutputWriter writer2 = transferFactory.createWriter(srcVertex, srcTaskIndex, dstVertex, dummyEdge2);
       dataWritten.iterator().forEachRemaining(writer2::write);
       writer2.close();
     });

@@ -40,13 +40,13 @@ public final class WordCountITCase {
   private static final String outputFileName = "sample_output_wordcount";
   private static final String testResourceFileName = "test_output_wordcount";
   private static final String executorResourceFileName = fileBasePath + "beam_sample_executor_resources.json";
+  private static final String oneExecutorResourceFileName = fileBasePath + "beam_sample_one_executor_resources.json";
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
 
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-        .addResourceJson(executorResourceFileName)
         .addUserMain(WordCount.class.getCanonicalName())
         .addUserArgs(inputFilePath, outputFilePath);
   }
@@ -63,6 +63,7 @@ public final class WordCountITCase {
   @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
+        .addResourceJson(executorResourceFileName)
         .addJobId(WordCountITCase.class.getSimpleName())
         .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
@@ -71,7 +72,17 @@ public final class WordCountITCase {
   @Test (timeout = TIMEOUT)
   public void testSailfish() throws Exception {
     JobLauncher.main(builder
+        .addResourceJson(executorResourceFileName)
         .addJobId(WordCountITCase.class.getSimpleName() + "_sailfish")
+        .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
+        .build());
+  }
+
+  @Test (timeout = TIMEOUT)
+  public void testSailfishInOneExecutor() throws Exception {
+    JobLauncher.main(builder
+        .addResourceJson(oneExecutorResourceFileName)
+        .addJobId(WordCountITCase.class.getSimpleName() + "_sailfishInOneExecutor")
         .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
@@ -79,6 +90,7 @@ public final class WordCountITCase {
   @Test (timeout = TIMEOUT)
   public void testPado() throws Exception {
     JobLauncher.main(builder
+        .addResourceJson(executorResourceFileName)
         .addJobId(WordCountITCase.class.getSimpleName() + "_pado")
         .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
         .build());

@@ -78,8 +78,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
     try (final FileOutputStream fileOutputStream = new FileOutputStream(filePath, true)) {
       for (final SerializedPartition<K> serializedPartition : serializedPartitions) {
         // Reserve a partition write and get the metadata.
-        metadata.writePartitionMetadata(
-            serializedPartition.getKey(), serializedPartition.getLength(), serializedPartition.getElementsCount());
+        metadata.writePartitionMetadata(serializedPartition.getKey(), serializedPartition.getLength());
         fileOutputStream.write(serializedPartition.getData(), 0, serializedPartition.getLength());
       }
     }
@@ -237,7 +236,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
                 throw new IOException("The read data size does not match with the partition size.");
               }
               partitionsInRange.add(new SerializedPartition<>(
-                  key, partitionmetadata.getElementsTotal(), serializedData, serializedData.length));
+                  key, serializedData, serializedData.length));
             } else {
               // Have to skip this partition.
               skipBytes(fileStream, partitionmetadata.getPartitionSize());

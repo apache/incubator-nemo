@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.executor.datatransfer;
 
-import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
@@ -32,10 +31,9 @@ public final class DataTransferFactory {
   private final BlockManagerWorker blockManagerWorker;
   private final int hashRangeMultiplier;
 
-  @VisibleForTesting
   @Inject
-  public DataTransferFactory(@Parameter(JobConf.HashRangeMultiplier.class) final int hashRangeMultiplier,
-                             final BlockManagerWorker blockManagerWorker) {
+  private DataTransferFactory(@Parameter(JobConf.HashRangeMultiplier.class) final int hashRangeMultiplier,
+                              final BlockManagerWorker blockManagerWorker) {
     this.hashRangeMultiplier = hashRangeMultiplier;
     this.blockManagerWorker = blockManagerWorker;
   }
@@ -43,7 +41,7 @@ public final class DataTransferFactory {
   /**
    * Creates an {@link OutputWriter} between two stages.
    *
-   * @param srcIRVertex     the {@link IRVertex} that outputs the data to be written.
+   * @param srcIRVertex the {@link IRVertex} that outputs the data to be written.
    * @param srcTaskIdx  the index of the source task.
    * @param dstIRVertex the {@link IRVertex} that will take the output data as its input.
    * @param runtimeEdge that connects the srcTask to the tasks belonging to dstIRVertex.
