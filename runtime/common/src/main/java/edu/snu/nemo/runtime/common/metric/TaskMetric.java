@@ -126,7 +126,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
       case "writtenBytes":
         setWrittenBytes(SerializationUtils.deserialize(metricValue));
         break;
-      case "event":
+      case "stateTransitionEvent":
         final StateTransitionEvent<TaskState.State> newStateTransitionEvent =
             SerializationUtils.deserialize(metricValue);
         addEvent(newStateTransitionEvent);

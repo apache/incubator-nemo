@@ -72,7 +72,7 @@ public final class TaskStateManager {
                                               final Optional<String> vertexPutOnHold,
                                               final Optional<TaskState.RecoverableTaskFailureCause> cause) {
     metricMessageSender.send("TaskMetric", taskId,
-        "event", SerializationUtils.serialize(new StateTransitionEvent<>(
+        "stateTransitionEvent", SerializationUtils.serialize(new StateTransitionEvent<>(
             System.currentTimeMillis(), null, newState
         )));
 
