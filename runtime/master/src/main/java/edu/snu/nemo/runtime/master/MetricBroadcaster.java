@@ -21,16 +21,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * MetricBroadcaster broadcast metric changes to the currently active WebSocket sessions.
  */
 public final class MetricBroadcaster {
   private static final Logger LOG = LoggerFactory.getLogger(MetricBroadcaster.class.getName());
-  private final List<Session> sessions = Collections.synchronizedList(new ArrayList<>());
+  private final Set<Session> sessions = ConcurrentHashMap.newKeySet();
   /**
    * Private constructor.
    */

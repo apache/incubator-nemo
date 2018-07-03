@@ -134,6 +134,19 @@ public final class MetricStore {
     return metric;
   }
 
+  private void generatePreprocessedJsonFromMetricEntry(final Map.Entry<String, Object> idToMetricEntry,
+                                                       final JsonGenerator jsonGenerator,
+                                                       final ObjectMapper objectMapper) throws IOException {
+    final JsonNode jsonNode = objectMapper.valueToTree(idToMetricEntry.getValue());
+    jsonGenerator.writeFieldName(idToMetricEntry.getKey());
+    jsonGenerator.writeStartObject();
+    jsonGenerator.writeFieldName("id");
+    jsonGenerator.writeString(idToMetricEntry.getKey());
+    jsonGenerator.writeFieldName("data");
+    jsonGenerator.writeTree(jsonNode);
+    jsonGenerator.writeEndObject();
+  }
+
   /**
    * Dumps JSON-serialized string of specific metric.
    * @param metricClass class of metric.
@@ -146,14 +159,15 @@ public final class MetricStore {
     final ByteArrayOutputStream stream = new ByteArrayOutputStream();
     final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8);
     jsonGenerator.setCodec(objectMapper);
-    jsonGenerator.useDefaultPrettyPrinter();
 
-    jsonGenerator.writeStartArray();
+    jsonGenerator.writeStartObject();
+    jsonGenerator.writeFieldName(metricClass.getSimpleName());
+    jsonGenerator.writeStartObject();
     for (final Map.Entry<String, Object> idToMetricEntry : getMetricMap(metricClass).entrySet()) {
-      final JsonNode jsonNode = objectMapper.valueToTree(idToMetricEntry.getValue());
-      jsonGenerator.writeTree(jsonNode);
+      generatePreprocessedJsonFromMetricEntry(idToMetricEntry, jsonGenerator, objectMapper);
     }
-    jsonGenerator.writeEndArray();
+    jsonGenerator.writeEndObject();
+    jsonGenerator.writeEndObject();
 
     jsonGenerator.close();
     return stream.toString();
@@ -164,25 +178,23 @@ public final class MetricStore {
    * @return dumped JSON string of all metric.
    * @throws IOException when failed to write file.
    */
-  public String dumpAllMetricToJson() throws IOException {
+  public synchronized String dumpAllMetricToJson() throws IOException {
     final ObjectMapper objectMapper = new ObjectMapper();
     final JsonFactory jsonFactory = new JsonFactory();
     final ByteArrayOutputStream stream = new ByteArrayOutputStream();
     final JsonGenerator jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8);
     jsonGenerator.setCodec(objectMapper);
-    jsonGenerator.useDefaultPrettyPrinter();
 
+    jsonGenerator.writeStartObject();
     for (final Map.Entry<Class, Map<String, Object>> metricMapEntry : metricMap.entrySet()) {
-      jsonGenerator.writeStartObject();
       jsonGenerator.writeFieldName(metricMapEntry.getKey().getSimpleName());
-      jsonGenerator.writeStartArray();
+      jsonGenerator.writeStartObject();
       for (final Map.Entry<String, Object> idToMetricEntry : metricMapEntry.getValue().entrySet()) {
-        final JsonNode jsonNode = objectMapper.valueToTree(idToMetricEntry.getValue());
-        jsonGenerator.writeTree(jsonNode);
+        generatePreprocessedJsonFromMetricEntry(idToMetricEntry, jsonGenerator, objectMapper);
       }
-      jsonGenerator.writeEndArray();
       jsonGenerator.writeEndObject();
     }
+    jsonGenerator.writeEndObject();
 
     jsonGenerator.close();
     return stream.toString();
@@ -204,6 +216,7 @@ public final class MetricStore {
     }
   }
 
+
   /**
    * Send changed metric data to {@link MetricBroadcaster}, which will broadcast it to
    * all active WebSocket sessions. This method should be called manually if you want to
@@ -222,7 +235,6 @@ public final class MetricStore {
       jsonGenerator = jsonFactory.createGenerator(stream, JsonEncoding.UTF8);
 
       jsonGenerator.setCodec(objectMapper);
-      // jsonGenerator.useDefaultPrettyPrinter();
 
       jsonGenerator.writeStartObject();
       jsonGenerator.writeFieldName("metricType");
