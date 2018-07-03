@@ -33,7 +33,12 @@ import java.lang.reflect.Method;
  * Utility methods for tests.
  */
 public final class CompilerTestUtil {
-  private static final String rootDir = System.getProperty("user.dir");
+  private static final String ROOT_DIR = System.getProperty("user.dir");
+
+  // Utility classes should not have a public or default constructor
+  private CompilerTestUtil() {
+
+  }
 
   private static DAG<IRVertex, IREdge> compileDAG(final String[] args) throws Exception {
     final String userMainClassName;
@@ -60,8 +65,8 @@ public final class CompilerTestUtil {
   }
 
   public static DAG<IRVertex, IREdge> compileWordCountDAG() throws Exception {
-    final String input = rootDir + "/../../examples/resources/sample_input_wordcount";
-    final String output = rootDir + "/../../examples/resources/sample_output";
+    final String input = ROOT_DIR + "/../../examples/resources/sample_input_wordcount";
+    final String output = ROOT_DIR + "/../../examples/resources/sample_output";
     final String main = "edu.snu.nemo.examples.beam.WordCount";
 
     final ArgBuilder mrArgBuilder = new ArgBuilder()
@@ -72,7 +77,7 @@ public final class CompilerTestUtil {
   }
 
   public static DAG<IRVertex, IREdge> compileALSDAG() throws Exception {
-    final String input = rootDir + "/../../examples/resources/sample_input_als";
+    final String input = ROOT_DIR + "/../../examples/resources/sample_input_als";
     final String numFeatures = "10";
     final String numIteration = "3";
     final String main = "edu.snu.nemo.examples.beam.AlternatingLeastSquare";
@@ -85,7 +90,7 @@ public final class CompilerTestUtil {
   }
 
   public static DAG<IRVertex, IREdge> compileALSInefficientDAG() throws Exception {
-    final String input = rootDir + "/../../examples/resources/sample_input_als";
+    final String input = ROOT_DIR + "/../../examples/resources/sample_input_als";
     final String numFeatures = "10";
     final String numIteration = "3";
     final String main = "edu.snu.nemo.examples.beam.AlternatingLeastSquareInefficient";
@@ -98,7 +103,7 @@ public final class CompilerTestUtil {
   }
 
   public static DAG<IRVertex, IREdge> compileMLRDAG() throws Exception {
-    final String input = rootDir + "/../../examples/resources/sample_input_mlr";
+    final String input = ROOT_DIR + "/../../examples/resources/sample_input_mlr";
     final String numFeatures = "100";
     final String numClasses = "5";
     final String numIteration = "3";
