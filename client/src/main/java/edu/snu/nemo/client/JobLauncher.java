@@ -62,7 +62,7 @@ public final class JobLauncher {
   private static Configuration deployModeConf = null;
   private static Configuration builtJobConf = null;
 
-  private static final DriverRPCServer DRIVER_RPC_SERVER = new DriverRPCServer();
+  private static DriverRPCServer driverRPCServer;
 
   private static boolean driverActive = false;
   private static String serializedDAG;
@@ -81,12 +81,14 @@ public final class JobLauncher {
    * @throws Exception exception on the way.
    */
   public static void main(final String[] args) throws Exception {
+    driverRPCServer = new DriverRPCServer();
+
     // Registers actions for launching the DAG.
-    DRIVER_RPC_SERVER
+    driverRPCServer
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> driverActive = true)
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStopped, event -> driverActive = false)
         .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, event ->
-          DRIVER_RPC_SERVER.send(ControlMessage.ClientToDriverMessage.newBuilder()
+          driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
               .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
               .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build())
               .build()))
@@ -104,7 +106,7 @@ public final class JobLauncher {
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfg,
-        executorResourceConfig, DRIVER_RPC_SERVER.getListeningConfiguration());
+        executorResourceConfig, driverRPCServer.getListeningConfiguration());
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
@@ -112,7 +114,7 @@ public final class JobLauncher {
     // Launch client main
     runUserProgramMain(builtJobConf);
 
-    DRIVER_RPC_SERVER.shutdown();
+    driverRPCServer.shutdown();
   }
 
   /**
@@ -132,6 +134,8 @@ public final class JobLauncher {
       try {
         // Launch and wait indefinitely for the job to finish
         final LauncherStatus launcherStatus = DriverLauncher.getLauncher(deployModeConf).run(jobAndDriverConf);
+        // When the driver is up and the resource is ready, the ResourceReady message is delivered,
+        // triggering the DRIVER_RPC_SERVER to send the LaunchDAG message to the driver.
         final Optional<Throwable> possibleError = launcherStatus.getError();
         if (possibleError.isPresent()) {
           throw new RuntimeException(possibleError.get());
@@ -142,7 +146,7 @@ public final class JobLauncher {
         throw new RuntimeException(e);
       }
     } else {
-      DRIVER_RPC_SERVER.send(ControlMessage.ClientToDriverMessage.newBuilder()
+      driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
           .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
           .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build())
           .build());
