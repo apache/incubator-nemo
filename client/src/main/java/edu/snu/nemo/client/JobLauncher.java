@@ -61,8 +61,12 @@ public final class JobLauncher {
   private static Configuration jobAndDriverConf = null;
   private static Configuration deployModeConf = null;
   private static Configuration builtJobConf = null;
+
+  private static final DriverRPCServer DRIVER_RPC_SERVER = new DriverRPCServer();
+
+  private static boolean driverActive = false;
   private static String serializedDAG;
-  private static List<?> collectedData = new ArrayList<>();
+  private static final List<?> COLLECTED_DATA = new ArrayList<>();
 
   /**
    * private constructor.
@@ -77,16 +81,16 @@ public final class JobLauncher {
    * @throws Exception exception on the way.
    */
   public static void main(final String[] args) throws Exception {
-    final DriverRPCServer driverRPCServer = new DriverRPCServer();
     // Registers actions for launching the DAG.
-    driverRPCServer
-        .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> { })
+    DRIVER_RPC_SERVER
+        .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> driverActive = true)
+        .registerHandler(ControlMessage.DriverToClientMessageType.DriverStopped, event -> driverActive = false)
         .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, event ->
-          driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+          DRIVER_RPC_SERVER.send(ControlMessage.ClientToDriverMessage.newBuilder()
               .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
               .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build())
               .build()))
-        .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> collectedData.addAll(
+        .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(
             SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
         .run();
 
@@ -100,7 +104,7 @@ public final class JobLauncher {
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfg,
-        executorResourceConfig, driverRPCServer.getListeningConfiguration());
+        executorResourceConfig, DRIVER_RPC_SERVER.getListeningConfiguration());
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
@@ -108,7 +112,7 @@ public final class JobLauncher {
     // Launch client main
     runUserProgramMain(builtJobConf);
 
-    driverRPCServer.shutdown();
+    DRIVER_RPC_SERVER.shutdown();
   }
 
   /**
@@ -118,21 +122,30 @@ public final class JobLauncher {
    */
   // When modifying the signature of this method, see CompilerTestUtil#compileDAG and make corresponding changes
   public static void launchDAG(final DAG dag) {
-    try {
+    serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
+
+    if (!driverActive) {
       if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
         throw new RuntimeException("Configuration for launching driver is not ready");
       }
-      serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
-      // Launch and wait indefinitely for the job to finish
-      final LauncherStatus launcherStatus = DriverLauncher.getLauncher(deployModeConf).run(jobAndDriverConf);
-      final Optional<Throwable> possibleError = launcherStatus.getError();
-      if (possibleError.isPresent()) {
-        throw new RuntimeException(possibleError.get());
-      } else {
-        LOG.info("Job successfully completed");
+
+      try {
+        // Launch and wait indefinitely for the job to finish
+        final LauncherStatus launcherStatus = DriverLauncher.getLauncher(deployModeConf).run(jobAndDriverConf);
+        final Optional<Throwable> possibleError = launcherStatus.getError();
+        if (possibleError.isPresent()) {
+          throw new RuntimeException(possibleError.get());
+        } else {
+          LOG.info("Job successfully completed");
+        }
+      } catch (final InjectionException e) {
+        throw new RuntimeException(e);
       }
-    } catch (final InjectionException e) {
-      throw new RuntimeException(e);
+    } else {
+      DRIVER_RPC_SERVER.send(ControlMessage.ClientToDriverMessage.newBuilder()
+          .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
+          .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build())
+          .build());
     }
   }
 
@@ -308,9 +321,13 @@ public final class JobLauncher {
   /**
    * Get the collected data.
    *
+   * @param <T> the type of the data.
    * @return the collected data.
    */
   public static <T> List<T> getCollectedData() {
-    return (List<T>) collectedData;
+    final List<T> result = new ArrayList<>();
+    result.addAll((List<T>) COLLECTED_DATA);
+    COLLECTED_DATA.clear(); // flush after fetching.
+    return result;
   }
 }
