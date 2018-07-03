@@ -187,7 +187,7 @@ public final class FileBlock<K extends Serializable> implements Block<K> {
                   new LimitedInputStream(fileStream, partitionMetadata.getPartitionSize());
               final NonSerializedPartition<K> deserializePartition =
                   DataUtil.deserializePartition(
-                      partitionMetadata.getElementsTotal(), serializer, key, limitedInputStream);
+                      partitionMetadata.getPartitionSize(), serializer, key, limitedInputStream);
               deserializedPartitions.add(deserializePartition);
               // rearrange file pointer
               final long toSkip = partitionMetadata.getPartitionSize() - availableBefore + fileStream.available();

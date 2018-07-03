@@ -15,6 +15,7 @@
  */
 package edu.snu.nemo.runtime.executor.datatransfer;
 
+import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
@@ -31,6 +32,7 @@ public final class DataTransferFactory {
   private final BlockManagerWorker blockManagerWorker;
   private final int hashRangeMultiplier;
 
+  @VisibleForTesting
   @Inject
   public DataTransferFactory(@Parameter(JobConf.HashRangeMultiplier.class) final int hashRangeMultiplier,
                              final BlockManagerWorker blockManagerWorker) {
