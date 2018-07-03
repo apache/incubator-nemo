@@ -18,7 +18,6 @@ package edu.snu.nemo.compiler.optimizer.policy;
 import edu.snu.nemo.common.exception.CompileTimeOptimizationException;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.PadoCompositePass;
-import edu.snu.nemo.compiler.optimizer.policy.*;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

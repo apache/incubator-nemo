@@ -23,7 +23,6 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.dag.DAGBuilder;
 import edu.snu.nemo.common.test.EmptyComponents;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping.CommonSubexpressionEliminationPass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
