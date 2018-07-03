@@ -16,14 +16,10 @@
 package edu.snu.nemo.compiler.optimizer.pass.compiletime.composite;
 
 import edu.snu.nemo.client.JobLauncher;
-import edu.snu.nemo.common.coder.BytesDecoderFactory;
-import edu.snu.nemo.common.coder.BytesEncoderFactory;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.compiler.CompilerTestUtil;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.SailfishPass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
