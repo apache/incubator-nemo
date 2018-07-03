@@ -205,7 +205,6 @@ public final class DataUtil {
     private volatile T next;
     private volatile boolean cannotContinueDecoding = false;
     private volatile DecoderFactory.Decoder<T> decoder = null;
-    private volatile long elementsDecoded = 0;
     private volatile long numSerializedBytes = 0;
     private volatile long numEncodedBytes = 0;
 
@@ -215,8 +214,8 @@ public final class DataUtil {
      * @param inputStreams The streams to read data from.
      * @param serializer   The serializer.
      */
-    public InputStreamIterator(final Iterator<InputStream> inputStreams,
-                               final Serializer<?, T> serializer) {
+    InputStreamIterator(final Iterator<InputStream> inputStreams,
+                        final Serializer<?, T> serializer) {
       this.inputStreams = inputStreams;
       this.serializer = serializer;
       // -1 means no limit.
@@ -230,7 +229,7 @@ public final class DataUtil {
      * @param serializer   The serializer.
      * @param limit        The bytes to read from the {@link InputStream}.
      */
-    public InputStreamIterator(
+    private InputStreamIterator(
         final Iterator<InputStream> inputStreams,
         final Serializer<?, T> serializer,
         final int limit) {
@@ -240,8 +239,6 @@ public final class DataUtil {
       this.inputStreams = inputStreams;
       this.serializer = serializer;
       this.limit = limit;
-      //this.limit = -1;
-      //@param limit        The number of elements from the {@link InputStream}.
     }
 
     @Override
@@ -277,7 +274,6 @@ public final class DataUtil {
         try {
           next = decoder.decode();
           hasNext = true;
-          elementsDecoded++;
           return true;
         } catch (final IOException e) {
           // IOException from decoder indicates EOF event.
