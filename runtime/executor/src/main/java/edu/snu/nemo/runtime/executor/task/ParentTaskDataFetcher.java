@@ -131,10 +131,12 @@ class ParentTaskDataFetcher extends DataFetcher {
           return fetchDataElement();
         }
       }
-    } catch (Throwable e) {
+    } catch (final Throwable e) {
       // Any failure is caught and thrown as an IOException, so that the task is retried.
       // In particular, we catch unchecked exceptions like RuntimeException thrown by DataUtil.IteratorWithNumBytes
       // when remote data fetching fails for whatever reason.
+      // Note that we rely on unchecked exceptions because the Iterator interface does not provide the standard
+      // "throw Exception" that the TaskExecutor thread can catch and handle.
       throw new IOException(e);
     }
   }
