@@ -108,7 +108,6 @@ public final class ParentTaskDataFetcherTest {
         mock(IRVertex.class),
         readerForParentTask, // This is the only argument that affects the behavior of ParentTaskDataFetcher
         mock(VertexHarness.class),
-        new HashMap<>(0),
         false);
   }
 
