@@ -17,8 +17,6 @@ package edu.snu.nemo.runtime.master;
 
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
-import java.util.List;
-
 /**
  * Metric message handler.
  */
@@ -27,17 +25,13 @@ public interface MetricMessageHandler {
 
   /**
    * Handle the received metric message.
-   * @param metricKey a given key for the metric (ex. Task ID)
-   * @param metricValue the metric formatted as a string (ex. JSON).
+   * @param metricType a given type for the metric (ex. TaskMetric).
+   * @param metricId  id of the metric.
+   * @param metricField field name of the metric.
+   * @param metricValue serialized metric data value.
    */
-  void onMetricMessageReceived(final String metricKey, final String metricValue);
-
-  /**
-   * Retrieves the string form of metric given the metric key.
-   * @param metricKey to retrieve the metric for
-   * @return the list of accumulated metric in string (ex. JSON)
-   */
-  List<String> getMetricByKey(final String metricKey);
+  void onMetricMessageReceived(final String metricType, final String metricId,
+                               final String metricField, final byte[] metricValue);
 
   /**
    * Cleans up and terminates this handler.

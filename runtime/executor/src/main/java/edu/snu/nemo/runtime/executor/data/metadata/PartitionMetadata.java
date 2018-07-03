@@ -25,7 +25,6 @@ public final class PartitionMetadata<K extends Serializable> {
   private final K key;
   private final int partitionSize;
   private final long offset;
-  private final long elementsTotal;
 
   /**
    * Constructor.
@@ -33,16 +32,13 @@ public final class PartitionMetadata<K extends Serializable> {
    * @param key           the key of this partition.
    * @param partitionSize the size of this partition.
    * @param offset        the offset of this partition.
-   * @param elementsTotal the total number of elements in this partition.
    */
   public PartitionMetadata(final K key,
                            final int partitionSize,
-                           final long offset,
-                           final long elementsTotal) {
+                           final long offset) {
     this.key = key;
     this.partitionSize = partitionSize;
     this.offset = offset;
-    this.elementsTotal = elementsTotal;
   }
 
   /**
@@ -66,13 +62,6 @@ public final class PartitionMetadata<K extends Serializable> {
     return offset;
   }
 
-  /**
-   * @return the total number of elements in this partition.
-   */
-  public long getElementsTotal() {
-    return elementsTotal;
-  }
-
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
@@ -82,8 +71,6 @@ public final class PartitionMetadata<K extends Serializable> {
     sb.append(partitionSize);
     sb.append("/ offset: ");
     sb.append(offset);
-    sb.append("/ elementsTotal: ");
-    sb.append(elementsTotal);
     return sb.toString();
   }
 }

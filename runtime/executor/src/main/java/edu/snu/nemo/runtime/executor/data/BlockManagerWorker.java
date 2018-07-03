@@ -469,6 +469,7 @@ public final class BlockManagerWorker {
    * @param inputContext {@link ByteInputContext}
    */
   public void onInputContext(final ByteInputContext inputContext) {
+    throw new IllegalStateException("No logic here");
   }
 
   /**

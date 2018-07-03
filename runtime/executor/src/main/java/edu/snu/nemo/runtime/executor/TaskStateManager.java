@@ -21,11 +21,13 @@ import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import edu.snu.nemo.runtime.common.metric.StateTransitionEvent;
 import edu.snu.nemo.runtime.common.plan.Task;
 
 import java.util.*;
 
 import edu.snu.nemo.runtime.common.state.TaskState;
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.annotations.audience.EvaluatorSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +43,7 @@ public final class TaskStateManager {
   private final String taskId;
   private final int attemptIdx;
   private final String executorId;
-  private final MetricCollector metricCollector;
+  private final MetricMessageSender metricMessageSender;
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
   public TaskStateManager(final Task task,
@@ -52,7 +54,12 @@ public final class TaskStateManager {
     this.attemptIdx = task.getAttemptIdx();
     this.executorId = executorId;
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
-    this.metricCollector = new MetricCollector(metricMessageSender);
+    this.metricMessageSender = metricMessageSender;
+
+    metricMessageSender.send("TaskMetric", taskId,
+        "containerId", SerializationUtils.serialize(executorId));
+    metricMessageSender.send("TaskMetric", taskId,
+        "scheduleAttempt", SerializationUtils.serialize(attemptIdx));
   }
 
   /**
@@ -64,32 +71,25 @@ public final class TaskStateManager {
   public synchronized void onTaskStateChanged(final TaskState.State newState,
                                               final Optional<String> vertexPutOnHold,
                                               final Optional<TaskState.RecoverableTaskFailureCause> cause) {
-    final Map<String, Object> metric = new HashMap<>();
+    metricMessageSender.send("TaskMetric", taskId,
+        "stateTransitionEvent", SerializationUtils.serialize(new StateTransitionEvent<>(
+            System.currentTimeMillis(), null, newState
+        )));
 
     switch (newState) {
       case EXECUTING:
         LOG.debug("Executing Task ID {}...", this.taskId);
-        metric.put("ContainerId", executorId);
-        metric.put("ScheduleAttempt", attemptIdx);
-        metric.put("FromState", newState);
-        metricCollector.beginMeasurement(taskId, metric);
         break;
       case COMPLETE:
         LOG.debug("Task ID {} complete!", this.taskId);
-        metric.put("ToState", newState);
-        metricCollector.endMeasurement(taskId, metric);
         notifyTaskStateToMaster(newState, Optional.empty(), cause);
         break;
       case SHOULD_RETRY:
         LOG.debug("Task ID {} failed (recoverable).", this.taskId);
-        metric.put("ToState", newState);
-        metricCollector.endMeasurement(taskId, metric);
         notifyTaskStateToMaster(newState, Optional.empty(), cause);
         break;
       case FAILED:
         LOG.debug("Task ID {} failed (unrecoverable).", this.taskId);
-        metric.put("ToState", newState);
-        metricCollector.endMeasurement(taskId, metric);
         notifyTaskStateToMaster(newState, Optional.empty(), cause);
         break;
       case ON_HOLD:

@@ -20,7 +20,6 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.Map;
 
 /**
  * Fetches data from a data source.
@@ -30,13 +29,13 @@ class SourceVertexDataFetcher extends DataFetcher {
 
   // Non-finals (lazy fetching)
   private Iterator iterator;
+  private long boundedSourceReadTime = 0;
 
   SourceVertexDataFetcher(final IRVertex dataSource,
                           final Readable readable,
                           final VertexHarness child,
-                          final Map<String, Object> metricMap,
                           final boolean isToSideInput) {
-    super(dataSource, child, metricMap, false, isToSideInput);
+    super(dataSource, child, false, isToSideInput);
     this.readable = readable;
   }
 
@@ -45,7 +44,7 @@ class SourceVertexDataFetcher extends DataFetcher {
     if (iterator == null) {
       final long start = System.currentTimeMillis();
       iterator = this.readable.read().iterator();
-      getMetricMap().put("BoundedSourceReadTime(ms)", System.currentTimeMillis() - start);
+      boundedSourceReadTime += System.currentTimeMillis() - start;
     }
 
     if (iterator.hasNext()) {
@@ -53,5 +52,9 @@ class SourceVertexDataFetcher extends DataFetcher {
     } else {
       return null;
     }
+  }
+
+  public final long getBoundedSourceReadTime() {
+    return boundedSourceReadTime;
   }
 }

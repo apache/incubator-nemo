@@ -32,7 +32,6 @@ import static edu.snu.nemo.runtime.executor.data.DataUtil.buildOutputStream;
  */
 public final class SerializedPartition<K> implements Partition<byte[], K> {
   private final K key;
-  private volatile long elementsCount;
   private volatile byte[] serializedData;
   private volatile int length;
   private volatile boolean committed;
@@ -52,7 +51,6 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
   public SerializedPartition(final K key,
                              final Serializer serializer) throws IOException {
     this.key = key;
-    this.elementsCount = 0;
     this.serializedData = new byte[0];
     this.length = 0;
     this.committed = false;
@@ -66,16 +64,13 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
    * Data cannot be written to this partition after the construction.
    *
    * @param key            the key.
-   * @param elementsTotal  the total number of elements.
    * @param serializedData the serialized data.
    * @param length         the length of the actual serialized data. (It can be different with serializedData.length)
    */
   public SerializedPartition(final K key,
-                             final long elementsTotal,
                              final byte[] serializedData,
                              final int length) {
     this.key = key;
-    this.elementsCount = elementsTotal;
     this.serializedData = serializedData;
     this.length = length;
     this.committed = true;
@@ -97,7 +92,6 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
     } else {
       try {
         encoder.encode(element);
-        elementsCount++;
       } catch (final IOException e) {
         wrappedStream.close();
       }
@@ -158,18 +152,6 @@ public final class SerializedPartition<K> implements Partition<byte[], K> {
       throw new IOException("The partition is not committed yet!");
     } else {
       return length;
-    }
-  }
-
-  /**
-   * @return the number of elements.
-   * @throws IOException if the partition is not committed yet.
-   */
-  public long getElementsCount() throws IOException {
-    if (!committed) {
-      throw new IOException("The partition is not committed yet!");
-    } else {
-      return elementsCount;
     }
   }
 }
