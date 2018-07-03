@@ -15,14 +15,13 @@
  */
 package edu.snu.nemo.runtime.executor;
 
+import com.google.protobuf.ByteString;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.common.exception.UnknownFailureCauseException;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import edu.snu.nemo.runtime.common.metric.parameter.MetricFlushPeriod;
 import org.apache.reef.annotations.audience.EvaluatorSide;
-import org.apache.reef.tang.annotations.Parameter;
 
 import javax.inject.Inject;
 import java.util.concurrent.*;
@@ -40,17 +39,17 @@ public final class MetricManagerWorker implements MetricMessageSender {
   private final BlockingQueue<ControlMessage.Metric> metricMessageQueue;
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
+  private static final int FLUSHING_PERIOD = 3000;
   private static final Logger LOG = LoggerFactory.getLogger(MetricManagerWorker.class.getName());
 
   @Inject
-  private MetricManagerWorker(@Parameter(MetricFlushPeriod.class) final long flushingPeriod,
-                              final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
+  private MetricManagerWorker(final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
     this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     this.metricMessageQueue = new LinkedBlockingQueue<>();
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
     final Runnable batchMetricMessages = () -> flushMetricMessageQueueToMaster();
     this.scheduledExecutorService.scheduleAtFixedRate(batchMetricMessages, 0,
-                                                      flushingPeriod, TimeUnit.MILLISECONDS);
+                                                      FLUSHING_PERIOD, TimeUnit.MILLISECONDS);
   }
 
   @Override
@@ -89,15 +88,19 @@ public final class MetricManagerWorker implements MetricMessageSender {
   }
 
   @Override
-  public void send(final String metricKey, final String metricValue) {
-    LOG.debug("Executor logged! {}", metricKey);
+  public void send(final String metricType, final String metricId,
+                   final String metricField, final byte[] metricValue) {
     metricMessageQueue.add(
-        ControlMessage.Metric.newBuilder().setMetricKey(metricKey).setMetricValue(metricValue).build());
+        ControlMessage.Metric.newBuilder()
+            .setMetricType(metricType)
+            .setMetricId(metricId)
+            .setMetricField(metricField)
+            .setMetricValue(ByteString.copyFrom(metricValue))
+            .build());
   }
 
   @Override
   public void close() throws UnknownFailureCauseException {
-    LOG.info("Shutting down MetricManager ");
     scheduledExecutorService.shutdownNow();
     flushMetricMessageQueueToMaster();
   }

@@ -31,7 +31,6 @@ import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.executor.MetricCollector;
 import edu.snu.nemo.runtime.executor.MetricMessageSender;
 import edu.snu.nemo.runtime.executor.TaskStateManager;
 import edu.snu.nemo.runtime.executor.datatransfer.*;
@@ -39,6 +38,8 @@ import edu.snu.nemo.runtime.executor.datatransfer.*;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,8 +64,10 @@ public final class TaskExecutor {
   private final Map sideInputMap;
 
   // Metrics information
-  private final Map<String, Object> metricMap;
-  private final MetricCollector metricCollector;
+  private long boundedSourceReadTime = 0;
+  private long serializedReadBytes = 0;
+  private long encodedReadBytes = 0;
+  private final MetricMessageSender metricMessageSender;
 
   // Dynamic optimization
   private String idOfVertexPutOnHold;
@@ -90,9 +93,8 @@ public final class TaskExecutor {
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
 
-    // Metrics information
-    this.metricMap = new HashMap<>();
-    this.metricCollector = new MetricCollector(metricMessageSender);
+    // Metric sender
+    this.metricMessageSender = metricMessageSender;
 
     // Dynamic optimization
     // Assigning null is very bad, but we are keeping this for now
@@ -174,13 +176,13 @@ public final class TaskExecutor {
       final boolean isToSideInput = isToSideInputs.stream().anyMatch(bool -> bool);
       if (irVertex instanceof SourceVertex) {
         dataFetcherList.add(new SourceVertexDataFetcher(
-            irVertex, sourceReader.get(), vertexHarness, metricMap, isToSideInput)); // Source vertex read
+            irVertex, sourceReader.get(), vertexHarness, isToSideInput)); // Source vertex read
       }
       final List<InputReader> parentTaskReaders =
           getParentTaskReaders(taskIndex, irVertex, task.getTaskIncomingEdges(), dataTransferFactory);
       parentTaskReaders.forEach(parentTaskReader -> {
         dataFetcherList.add(new ParentTaskDataFetcher(parentTaskReader.getSrcIrVertex(), parentTaskReader,
-            vertexHarness, metricMap, isToSideInput)); // Parent-task read
+            vertexHarness, isToSideInput)); // Parent-task read
       });
     });
 
@@ -254,7 +256,6 @@ public final class TaskExecutor {
     }
     LOG.info("{} started", taskId);
     taskStateManager.onTaskStateChanged(TaskState.State.EXECUTING, Optional.empty(), Optional.empty());
-    metricCollector.beginMeasurement(taskId, metricMap);
 
     // Phase 1: Consume task-external side-input related data.
     final Map<Boolean, List<DataFetcher>> sideInputRelated = dataFetchers.stream()
@@ -277,6 +278,13 @@ public final class TaskExecutor {
       return;
     }
 
+    metricMessageSender.send("TaskMetric", taskId,
+        "boundedSourceReadTime", SerializationUtils.serialize(boundedSourceReadTime));
+    metricMessageSender.send("TaskMetric", taskId,
+        "serializedReadBytes", SerializationUtils.serialize(serializedReadBytes));
+    metricMessageSender.send("TaskMetric", taskId,
+        "encodedReadBytes", SerializationUtils.serialize(encodedReadBytes));
+
     // Phase 3: Finalize task-internal states and elements
     for (final VertexHarness vertexHarness : sortedHarnesses) {
       if (finalizeLater.contains(vertexHarness)) {
@@ -284,8 +292,6 @@ public final class TaskExecutor {
       }
     }
 
-    // Miscellaneous: Metrics, DynOpt, etc
-    metricCollector.endMeasurement(taskId, metricMap);
     if (idOfVertexPutOnHold == null) {
       taskStateManager.onTaskStateChanged(TaskState.State.COMPLETE, Optional.empty(), Optional.empty());
       LOG.info("{} completed", taskId);
@@ -357,6 +363,12 @@ public final class TaskExecutor {
         }
 
         if (element == null) {
+          if (dataFetcher instanceof SourceVertexDataFetcher) {
+            boundedSourceReadTime += ((SourceVertexDataFetcher) dataFetcher).getBoundedSourceReadTime();
+          } else if (dataFetcher instanceof ParentTaskDataFetcher) {
+            serializedReadBytes += ((ParentTaskDataFetcher) dataFetcher).getSerializedBytes();
+            encodedReadBytes += ((ParentTaskDataFetcher) dataFetcher).getEncodedBytes();
+          }
           finishedFetcherIndex = i;
           break;
         } else {
@@ -470,11 +482,6 @@ public final class TaskExecutor {
    */
   private void finalizeOutputWriters(final VertexHarness vertexHarness) {
     final List<Long> writtenBytesList = new ArrayList<>();
-    final Map<String, Object> metric = new HashMap<>();
-    final IRVertex irVertex = vertexHarness.getIRVertex();
-
-    metricCollector.beginMeasurement(irVertex.getId(), metric);
-    final long writeStartTime = System.currentTimeMillis();
 
     vertexHarness.getWritersToChildrenTasks().forEach(outputWriter -> {
       outputWriter.close();
@@ -482,15 +489,11 @@ public final class TaskExecutor {
       writtenBytes.ifPresent(writtenBytesList::add);
     });
 
-    final long writeEndTime = System.currentTimeMillis();
-    metric.put("OutputWriteTime(ms)", writeEndTime - writeStartTime);
-    if (!writtenBytesList.isEmpty()) {
-      long totalWrittenBytes = 0;
-      for (final Long writtenBytes : writtenBytesList) {
-        totalWrittenBytes += writtenBytes;
-      }
-      metricMap.put("WrittenBytes", totalWrittenBytes);
+    long totalWrittenBytes = 0;
+    for (final Long writtenBytes : writtenBytesList) {
+      totalWrittenBytes += writtenBytes;
     }
-    metricCollector.endMeasurement(irVertex.getId(), metric);
+    metricMessageSender.send("TaskMetric", taskId,
+        "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
   }
 }

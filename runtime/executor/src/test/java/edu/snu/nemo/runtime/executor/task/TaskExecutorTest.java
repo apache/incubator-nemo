@@ -102,7 +102,7 @@ public final class TaskExecutorTest {
 
     // Mock a MetricMessageSender.
     metricMessageSender = mock(MetricMessageSender.class);
-    doNothing().when(metricMessageSender).send(anyString(), anyString());
+    doNothing().when(metricMessageSender).send(anyString(), anyString(), anyString(), any());
     doNothing().when(metricMessageSender).close();
 
     persistentConnectionToMasterMap = mock(PersistentConnectionToMasterMap.class);
