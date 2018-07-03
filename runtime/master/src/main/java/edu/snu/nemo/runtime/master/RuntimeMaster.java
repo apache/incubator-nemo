@@ -70,28 +70,22 @@ public final class RuntimeMaster {
   private static final Logger LOG = LoggerFactory.getLogger(RuntimeMaster.class.getName());
   private static final int DAG_LOGGING_PERIOD = 3000;
   private static final int METRIC_ARRIVE_TIMEOUT = 10000;
-
   private final ExecutorService runtimeMasterThread;
-
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
   private final BlockManagerMaster blockManagerMaster;
   private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
   private final Map<Integer, Long> aggregatedMetricData;
+  private final ExecutorService metricAggregationService;
   private final ClientRPC clientRPC;
   private final MetricManagerMaster metricManagerMaster;
-
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
-
   private final String dagDirectory;
   private final Set<IRVertex> irVertices;
-
   private final AtomicInteger resourceRequestCount;
-
   private CountDownLatch metricCountDownLatch;
-
   @Inject
   public RuntimeMaster(final Scheduler scheduler,
                        final ContainerManager containerManager,
@@ -119,12 +113,14 @@ public final class RuntimeMaster {
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
-    this.aggregatedMetricData = new HashMap<>();
+    this.aggregatedMetricData = new ConcurrentHashMap<>();
+    this.metricAggregationService = Executors.newFixedThreadPool(10);
   }
 
   /**
    * Submits the {@link PhysicalPlan} to Runtime.
-   * @param plan to execute.
+   *
+   * @param plan to execute
    * @param maxScheduleAttempt the max number of times this plan/sub-part of the plan should be attempted.
    */
   public Pair<JobStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
@@ -141,7 +137,6 @@ public final class RuntimeMaster {
         throw new RuntimeException(e);
       }
     };
-
     try {
       return runtimeMasterThread.submit(jobExecutionCallable).get();
     } catch (Exception e) {
@@ -160,9 +155,7 @@ public final class RuntimeMaster {
     } catch (final InterruptedException e) {
       LOG.warn("Waiting executor terminating process interrupted.");
     }
-
     runtimeMasterThread.execute(() -> {
-
       scheduler.terminate();
       try {
         masterMessageEnvironment.close();
@@ -171,17 +164,17 @@ public final class RuntimeMaster {
       }
       metricMessageHandler.terminate();
       containerManager.terminate();
-
+      
     });
-
+    
     // Do not shutdown runtimeMasterThread. We need it to clean things up.
   }
-
+  
   public void requestContainer(final String resourceSpecificationString) {
     final Future<?> containerRequestEventResult = runtimeMasterThread.submit(() -> {
       try {
         final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
-
+  
         for (int i = 0; i < jsonRootNode.size(); i++) {
           final TreeNode resourceNode = jsonRootNode.get(i);
           final ResourceSpecification.Builder builder = ResourceSpecification.newBuilder();
@@ -204,26 +197,28 @@ public final class RuntimeMaster {
       throw new ContainerException(e);
     }
   }
-
+  
   /**
    * Called when a container is allocated for this runtime.
    * A wrapper function for {@link ContainerManager}.
-   * @param executorId to use for the executor to be launched on this container.
-   * @param allocatedEvaluator to be used as the container.
+   *
+   * @param executorId            to use for the executor to be launched on this container.
+   * @param allocatedEvaluator    to be used as the container.
    * @param executorConfiguration to use for the executor to be launched on this container.
    */
   public void onContainerAllocated(final String executorId,
                                    final AllocatedEvaluator allocatedEvaluator,
                                    final Configuration executorConfiguration) {
     runtimeMasterThread.execute(() -> {
-
+  
       containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration);
-
+  
     });
   }
-
+  
   /**
    * Called when an executor is launched on a container for this runtime.
+   *
    * @param activeContext of the launched executor.
    * @return true if all requested executors have been launched, false otherwise.
    */
@@ -237,7 +232,7 @@ public final class RuntimeMaster {
         return false;
       }
     };
-
+  
     final boolean eventResult;
     try {
       eventResult = runtimeMasterThread.submit(processExecutorLaunchedEvent).get();
@@ -246,27 +241,28 @@ public final class RuntimeMaster {
     }
     return eventResult;
   }
-
+  
   /**
    * Called when an executor fails due to container failure on this runtime.
+   *
    * @param failedEvaluator that failed.
    */
   public void onExecutorFailed(final FailedEvaluator failedEvaluator) {
     runtimeMasterThread.execute(() -> {
       LOG.info("onExecutorFailed: {}", failedEvaluator.getId());
       metricCountDownLatch.countDown();
-
+  
       // Note that getFailedContextList() can be empty if the failure occurred
       // prior to launching an Executor on the Evaluator.
       failedEvaluator.getFailedContextList().forEach(failedContext -> {
         final String failedExecutorId = failedContext.getId();
         scheduler.onExecutorRemoved(failedExecutorId);
       });
-
+  
       containerManager.onContainerFailed(failedEvaluator.getId());
     });
   }
-
+  
   /**
    * Handler for control messages received by Master.
    */
@@ -274,12 +270,12 @@ public final class RuntimeMaster {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       runtimeMasterThread.execute(() -> {
-
+  
         handleControlMessage(message);
-
+  
       });
     }
-
+    
     @Override
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
@@ -289,13 +285,13 @@ public final class RuntimeMaster {
       }
     }
   }
-
+  
   private void handleControlMessage(final ControlMessage.Message message) {
     switch (message.getType()) {
       case TaskStateChanged:
         final ControlMessage.TaskStateChangedMsg taskStateChangedMsg
             = message.getTaskStateChangedMsg();
-
+  
         scheduler.onTaskStateReportFromExecutor(taskStateChangedMsg.getExecutorId(),
             taskStateChangedMsg.getTaskId(),
             taskStateChangedMsg.getAttemptIdx(),
@@ -336,8 +332,8 @@ public final class RuntimeMaster {
             new Exception("This message should not be received by Master :" + message.getType()));
     }
   }
-
-
+  
+  
   /**
    * Accumulates the metric data for a barrier vertex.
    * TODO #96: Modularize DataSkewPolicy to use MetricVertex and BarrierVertex.
@@ -353,23 +349,25 @@ public final class RuntimeMaster {
     final IRVertex vertexToSendMetricDataTo = irVertices.stream()
         .filter(irVertex -> irVertex.getId().equals(srcVertexId)).findFirst()
         .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
-
-    // For each hash range index, aggregate the metric data as they arrive.
-    partitionSizeInfo.forEach(partitionSizeEntry -> {
-      final int key = partitionSizeEntry.getKey();
-      final long size = partitionSizeEntry.getSize();
-      if (aggregatedMetricData.containsKey(key)) {
-        aggregatedMetricData.compute(key, (existKey, existValue) -> existValue + size);
-      } else {
-        aggregatedMetricData.put(key, size);
-      }
-    });
-
+  
     if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
       final MetricCollectionBarrierVertex<Integer, Long> metricCollectionBarrierVertex =
           (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
+
       metricCollectionBarrierVertex.addBlockId(blockId);
-      metricCollectionBarrierVertex.setMetricData(aggregatedMetricData);
+      metricAggregationService.submit(() -> {
+        // For each hash range index, we aggregate the metric data.
+        partitionSizeInfo.forEach(partitionSizeEntry -> {
+          final int key = partitionSizeEntry.getKey();
+          final long size = partitionSizeEntry.getSize();
+          if (aggregatedMetricData.containsKey(key)) {
+            aggregatedMetricData.compute(key, (existKey, existValue) -> existValue + size);
+          } else {
+            aggregatedMetricData.put(key, size);
+          }
+        });
+        metricCollectionBarrierVertex.setMetricData(aggregatedMetricData);
+      });
     } else {
       throw new RuntimeException("Something wrong happened at DataSkewCompositePass.");
     }
