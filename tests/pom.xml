@@ -51,5 +51,10 @@ limitations under the License.
             <artifactId>nemo-examples-beam</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-compiler-test</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 </project>
