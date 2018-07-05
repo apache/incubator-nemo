@@ -25,32 +25,52 @@ limitations under the License.
         <relativePath>../../</relativePath>
     </parent>
 
-    <artifactId>nemo-compiler-backend</artifactId>
-    <name>Nemo Compiler Backend</name>
+    <artifactId>nemo-compiler-test</artifactId>
+    <name>Nemo Compiler Test</name>
 
     <repositories>
         <repository>
             <id>Bundled Maven Repository</id>
-            <url>file://${basedir}/../../common/src/main/resources/repository</url>
+            <url>file://${basedir}/../common/src/main/resources/repository</url>
         </repository>
     </repositories>
 
     <dependencies>
         <dependency>
             <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-	    <dependency>
-            <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-runtime-common</artifactId>
+            <artifactId>nemo-conf</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-compiler-optimizer</artifactId>
+            <artifactId>nemo-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-examples-beam</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-module-junit4</artifactId>
+            <version>${powermock.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.powermock</groupId>
+            <artifactId>powermock-api-mockito2</artifactId>
+            <version>${powermock.version}</version>
         </dependency>
     </dependencies>
 </project>

@@ -59,6 +59,7 @@ limitations under the License.
         <module>compiler/frontend/beam</module>
         <module>compiler/frontend/spark</module>
         <module>compiler/optimizer</module>
+        <module>compiler/test</module>
         <module>examples/beam</module>
         <module>examples/spark</module>
         <module>runtime/common</module>
@@ -66,7 +67,7 @@ limitations under the License.
         <module>runtime/master</module>
         <module>runtime/driver</module>
         <module>runtime/plangenerator</module>
-        <module>tests</module>
+        <module>runtime/test</module>
     </modules>
 
     <dependencies>

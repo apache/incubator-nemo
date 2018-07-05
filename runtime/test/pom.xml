@@ -25,30 +25,38 @@ limitations under the License.
         <relativePath>../../</relativePath>
     </parent>
 
-    <artifactId>nemo-compiler-backend</artifactId>
-    <name>Nemo Compiler Backend</name>
+    <artifactId>nemo-runtime-test</artifactId>
+    <name>Nemo Runtime Test</name>
 
     <repositories>
         <repository>
             <id>Bundled Maven Repository</id>
-            <url>file://${basedir}/../../common/src/main/resources/repository</url>
+            <url>file://${basedir}/../common/src/main/resources/repository</url>
         </repository>
     </repositories>
 
     <dependencies>
         <dependency>
             <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-common</artifactId>
+            <artifactId>nemo-conf</artifactId>
             <version>${project.version}</version>
-        </dependency>
-	    <dependency>
-            <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-runtime-common</artifactId>
-            <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-compiler-optimizer</artifactId>
+            <artifactId>nemo-runtime-common</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-runtime-master</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-runtime-executor</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
