@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,6 +53,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
   private final ReplyFutureMap<ControlMessage.Message> replyFutureMap;
   private final ConcurrentMap<String, MessageListener> listenerConcurrentMap;
+  private final Map<String, Connection> receiverToConnectionMap;
   private final ConnectionFactory<ControlMessage.Message> connectionFactory;
 
   @Inject
@@ -66,6 +66,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     this.senderId = senderId;
     this.replyFutureMap = new ReplyFutureMap<>();
     this.listenerConcurrentMap = new ConcurrentHashMap<>();
+    this.receiverToConnectionMap = new ConcurrentHashMap<>();
     this.connectionFactory = networkConnectionService.registerConnectionFactory(
         idFactory.getNewInstance(NCS_CONN_FACTORY_ID),
         new ControlMessageCodec(),
@@ -89,11 +90,16 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
   @Override
   public <T> Future<MessageSender<T>> asyncConnect(final String receiverId, final String listenerId) {
     try {
-      // ConnectionFactory will reuse an existing connection, if one exists.
-      final Connection connection = connectionFactory.newConnection(idFactory.getNewInstance(receiverId));
-      connection.open();
+      // If the connection toward the receiver exists already, reuses it.
+      final Connection connection;
+      if (receiverToConnectionMap.containsKey(receiverId)) {
+        connection = receiverToConnectionMap.get(receiverId);
+      } else {
+        connection = connectionFactory.newConnection(idFactory.getNewInstance(receiverId));
+        connection.open();
+      }
       return CompletableFuture.completedFuture((MessageSender) new NcsMessageSender(connection, replyFutureMap));
-    } catch (final Exception e) {
+    } catch (final NetworkException e) {
       final CompletableFuture<MessageSender<T>> failedFuture = new CompletableFuture<>();
       failedFuture.completeExceptionally(e);
       return failedFuture;
