@@ -114,19 +114,6 @@ public final class JobLauncher {
     // Launch client main
     runUserProgramMain(builtJobConf);
 
-    // Wait for the job to finish
-    synchronized (driverLauncher) {
-      while (!driverLauncher.getStatus().isDone()) {
-        try {
-          LOG.debug("Wait indefinitely");
-          driverLauncher.wait();
-        } catch (final InterruptedException e) {
-          LOG.warn("Interrupted: " + e);
-          // clean up state...
-          Thread.currentThread().interrupt();
-        }
-      }
-    }
     driverRPCServer.shutdown();
     driverLauncher.close();
     driverActive = false;
@@ -138,6 +125,7 @@ public final class JobLauncher {
       LOG.info("Job successfully completed");
     }
   }
+
   /**
    * Launch application using the application DAG.
    *
@@ -167,6 +155,20 @@ public final class JobLauncher {
           .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
           .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build())
           .build());
+    }
+
+    // Wait for the job to finish
+    synchronized (driverLauncher) {
+      while (!driverLauncher.getStatus().isDone()) {
+        try {
+          LOG.debug("Wait indefinitely");
+          driverLauncher.wait();
+        } catch (final InterruptedException e) {
+          LOG.warn("Interrupted: " + e);
+          // clean up state...
+          Thread.currentThread().interrupt();
+        }
+      }
     }
   }
 
