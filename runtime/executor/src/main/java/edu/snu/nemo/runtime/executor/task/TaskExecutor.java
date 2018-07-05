@@ -495,5 +495,5 @@ public final class TaskExecutor {
     }
     metricMessageSender.send("TaskMetric", taskId,
         "writtenBytes", SerializationUtils.serialize(totalWrittenBytes));
-
+  }
 }

@@ -197,7 +197,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case ExecutorDataCollected:
       case MetricMessageReceived:
       case RequestMetricFlush:
-
+      case MetricFlushed:
         return MessageType.Send;
       case RequestBlockLocation:
         return MessageType.Request;
