@@ -38,9 +38,8 @@ message DataCollectMessage {
 
 enum DriverToClientMessageType {
     DriverStarted = 0;
-    DriverStopped = 1;
-    ResourceReady = 2;
-    DataCollected = 3;
+    ResourceReady = 1;
+    DataCollected = 2;
 }
 
 message DriverToClientMessage {

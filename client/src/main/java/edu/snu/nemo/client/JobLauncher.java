@@ -136,7 +136,7 @@ public final class JobLauncher {
       LOG.info("Job successfully completed");
     }
   }
-  /**ㅠ
+  /**
    * Launch application using the application DAG.
    *
    * @param dag the application DAG.
@@ -144,6 +144,8 @@ public final class JobLauncher {
   // When modifying the signature of this method, see CompilerTestUtil#compileDAG and make corresponding changes
   public static void launchDAG(final DAG dag) {
     serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
+
+    LOG.error("driver active?:" + driverActive);
 
     if (!driverActive) {
       try {
