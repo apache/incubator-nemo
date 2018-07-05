@@ -122,6 +122,8 @@ public final class JobLauncher {
           driverLauncher.wait();
         } catch (final InterruptedException e) {
           LOG.warn("Interrupted: " + e);
+          // clean up state...
+          Thread.currentThread().interrupt();
         }
       }
     }

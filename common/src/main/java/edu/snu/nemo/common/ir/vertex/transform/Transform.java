@@ -56,7 +56,7 @@ public interface Transform<I, O> extends Serializable {
   /**
    * Context of the transform.
    */
-  interface Context {
+  interface Context extends Serializable {
     /**
      * @return sideInputs.
      */
