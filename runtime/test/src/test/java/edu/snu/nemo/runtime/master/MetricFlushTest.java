@@ -46,7 +46,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
 /**
- * Ensures metrics collected by {@link edu.snu.nemo.runtime.executor.MetricManagerWorker} are properly sent to master
+ * Ensures metrics collected by {@link MetricManagerWorker} are properly sent to master
  * before the job finishes.
  */
 @RunWith(PowerMockRunner.class)

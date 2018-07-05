@@ -22,11 +22,11 @@ limitations under the License.
         <groupId>edu.snu.nemo</groupId>
         <artifactId>nemo-project</artifactId>
         <version>0.1-SNAPSHOT</version>
-        <relativePath>../</relativePath>
+        <relativePath>../../</relativePath>
     </parent>
 
-    <artifactId>nemo-tests</artifactId>
-    <name>Nemo Unit Tests</name>
+    <artifactId>nemo-runtime-test</artifactId>
+    <name>Nemo Runtime Test</name>
 
     <repositories>
         <repository>
@@ -40,21 +40,25 @@ limitations under the License.
             <groupId>edu.snu.nemo</groupId>
             <artifactId>nemo-conf</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-client</artifactId>
+            <artifactId>nemo-runtime-common</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-examples-beam</artifactId>
+            <artifactId>nemo-runtime-master</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-compiler-test</artifactId>
+            <artifactId>nemo-runtime-executor</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

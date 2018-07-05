@@ -50,6 +50,7 @@ limitations under the License.
             <groupId>edu.snu.nemo</groupId>
             <artifactId>nemo-examples-beam</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
