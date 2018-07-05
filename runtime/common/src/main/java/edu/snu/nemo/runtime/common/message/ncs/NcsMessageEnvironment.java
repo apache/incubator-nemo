@@ -18,6 +18,7 @@ package edu.snu.nemo.runtime.common.message.ncs;
 import edu.snu.nemo.runtime.common.ReplyFutureMap;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.*;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.network.ConnectionFactory;
@@ -27,6 +28,8 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.transport.LinkListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
@@ -41,6 +44,8 @@ import java.util.concurrent.Future;
  * Message environment for NCS.
  */
 public final class NcsMessageEnvironment implements MessageEnvironment {
+  private static final Logger LOG = LoggerFactory.getLogger(NcsMessageEnvironment.class.getName());
+
   private static final String NCS_CONN_FACTORY_ID = "NCS_CONN_FACTORY_ID";
 
   private final NetworkConnectionService networkConnectionService;
@@ -49,7 +54,6 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
 
   private final ReplyFutureMap<ControlMessage.Message> replyFutureMap;
   private final ConcurrentMap<String, MessageListener> listenerConcurrentMap;
-  private final Map<String, Connection> receiverToConnectionMap;
   private final ConnectionFactory<ControlMessage.Message> connectionFactory;
 
   @Inject
@@ -62,7 +66,6 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     this.senderId = senderId;
     this.replyFutureMap = new ReplyFutureMap<>();
     this.listenerConcurrentMap = new ConcurrentHashMap<>();
-    this.receiverToConnectionMap = new HashMap<>();
     this.connectionFactory = networkConnectionService.registerConnectionFactory(
         idFactory.getNewInstance(NCS_CONN_FACTORY_ID),
         new ControlMessageCodec(),
@@ -86,16 +89,9 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
   @Override
   public <T> Future<MessageSender<T>> asyncConnect(final String receiverId, final String listenerId) {
     try {
-      // If the connection toward the receiver exists already, reuses it.
-      final Connection connection = receiverToConnectionMap.computeIfAbsent(receiverId, absentReceiverId -> {
-        try {
-          final Connection newConnection = connectionFactory.newConnection(idFactory.getNewInstance(absentReceiverId));
-          newConnection.open();
-          return newConnection;
-        } catch (final NetworkException e) {
-          throw new RuntimeException(e);
-        }
-      });
+      // ConnectionFactory will reuse an existing connection, if one exists.
+      final Connection connection = connectionFactory.newConnection(idFactory.getNewInstance(receiverId));
+      connection.open();
       return CompletableFuture.completedFuture((MessageSender) new NcsMessageSender(connection, replyFutureMap));
     } catch (final Exception e) {
       final CompletableFuture<MessageSender<T>> failedFuture = new CompletableFuture<>();
@@ -166,8 +162,10 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     public void onException(final Throwable throwable,
                             final SocketAddress socketAddress,
                             final Message<ControlMessage.Message> messages) {
+      // TODO #140: Properly classify and handle each RPC failure
       final ControlMessage.Message controlMessage = extractSingleMessage(messages);
-      throw new RuntimeException(controlMessage.toString(), throwable);
+      LOG.error(
+          "NcsLinkListener onException {}: {}", controlMessage.toString(), ExceptionUtils.getStackTrace(throwable));
     }
   }
 
@@ -199,7 +197,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
       case ExecutorDataCollected:
       case MetricMessageReceived:
       case RequestMetricFlush:
-      case MetricFlushed:
+
         return MessageType.Send;
       case RequestBlockLocation:
         return MessageType.Request;

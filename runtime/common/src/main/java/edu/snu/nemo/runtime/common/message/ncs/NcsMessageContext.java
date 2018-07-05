@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.common.message.ncs;
 
 import edu.snu.nemo.runtime.common.message.MessageContext;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.network.ConnectionFactory;
@@ -56,7 +57,8 @@ final class NcsMessageContext implements MessageContext {
       // We do not call connection.close since NCS caches connection.
       // Disabling Sonar warning (squid:S2095)
     } catch (final NetworkException e) {
-      throw new RuntimeException("Cannot connect to " + senderId, e);
+      // TODO #140: Properly classify and handle each RPC failure
+      LOG.error("NcsMessageContext reply() exception: {}", ExceptionUtils.getStackTrace(e));
     }
   }
 }
