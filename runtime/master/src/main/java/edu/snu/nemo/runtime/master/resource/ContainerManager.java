@@ -17,8 +17,10 @@ package edu.snu.nemo.runtime.master.resource;
 
 import edu.snu.nemo.common.exception.ContainerException;
 import edu.snu.nemo.conf.JobConf;
+import edu.snu.nemo.runtime.common.message.FailedMessageSender;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageSender;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -166,17 +168,16 @@ public final class ContainerManager {
 
     // We set contextId = executorId in NemoDriver when we generate executor configuration.
     final String executorId = activeContext.getId();
-
     final ResourceSpecification resourceSpec = pendingContextIdToResourceSpec.remove(executorId);
 
     // Connect to the executor and initiate Master side's executor representation.
-    final MessageSender messageSender;
+    MessageSender messageSender;
     try {
       messageSender =
           messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
     } catch (final InterruptedException | ExecutionException e) {
       // TODO #140: Properly classify and handle each RPC failure
-      LOG.error("NCS Exception: {}", e);
+      messageSender = new FailedMessageSender();
     }
 
     // Create the executor representation.

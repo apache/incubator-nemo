@@ -168,7 +168,7 @@ public final class ExecutorRepresenter {
 
   /**
    * @return set of ids of Tasks that have been failed in this exeuctor
-
+   */
   public Set<String> getFailedTasks() {
     return failedTasks;
   }
