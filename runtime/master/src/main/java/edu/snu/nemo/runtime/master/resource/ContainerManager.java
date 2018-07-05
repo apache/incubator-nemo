@@ -20,13 +20,14 @@ import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.message.FailedMessageSender;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageSender;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,7 +150,12 @@ public final class ContainerManager {
         + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
 
-    allocatedContainer.submitContext(executorConfiguration);
+    // Poison handling
+    final Configuration poisonConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(JobConf.ExecutorPosionSec.class, String.valueOf(resourceSpecification.getPoisonSec()))
+        .build();
+
+    allocatedContainer.submitContext(Configurations.merge(executorConfiguration, poisonConfiguration));
   }
 
   /**
@@ -186,8 +192,8 @@ public final class ContainerManager {
             activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
 
     LOG.info("{} is up and running at {}", executorId, executorRepresenter.getNodeName());
-
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
+
     return Optional.of(executorRepresenter);
   }
 

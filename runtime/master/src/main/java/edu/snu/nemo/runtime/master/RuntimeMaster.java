@@ -224,13 +224,13 @@ public final class RuntimeMaster {
 
         for (int i = 0; i < jsonRootNode.size(); i++) {
           final TreeNode resourceNode = jsonRootNode.get(i);
-          final ResourceSpecification.Builder builder = ResourceSpecification.newBuilder();
-          builder.setContainerType(resourceNode.get("type").traverse().nextTextValue());
-          builder.setMemory(resourceNode.get("memory_mb").traverse().getIntValue());
-          builder.setCapacity(resourceNode.get("capacity").traverse().getIntValue());
+          final String type = resourceNode.get("type").traverse().nextTextValue();
+          final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
+          final int capacity = resourceNode.get("capacity").traverse().getIntValue();
           final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
+          final int poisonSec = resourceNode.path("poison_sec").traverse().nextIntValue(-1);
           resourceRequestCount.getAndAdd(executorNum);
-          containerManager.requestContainer(executorNum, builder.build());
+          containerManager.requestContainer(executorNum, new ResourceSpecification(type, capacity, memory, poisonSec));
         }
         metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());
       } catch (final Exception e) {

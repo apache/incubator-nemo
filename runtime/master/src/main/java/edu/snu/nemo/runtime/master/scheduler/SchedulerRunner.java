@@ -114,7 +114,6 @@ public final class SchedulerRunner {
         continue;
       }
 
-      LOG.debug("Trying to schedule {}...", task.getTaskId());
       executorRegistry.viewExecutors(executors -> {
         final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
         task.getExecutionProperties().forEachProperties(property -> {
@@ -131,6 +130,8 @@ public final class SchedulerRunner {
               = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
           // update metadata first
           jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+
+          LOG.info("{} scheulded to {}", task.getTaskId(), selectedExecutor.getExecutorId());
 
           // send the task
           selectedExecutor.onTaskScheduled(task);

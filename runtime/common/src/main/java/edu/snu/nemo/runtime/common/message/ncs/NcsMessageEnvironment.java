@@ -18,7 +18,6 @@ package edu.snu.nemo.runtime.common.message.ncs;
 import edu.snu.nemo.runtime.common.ReplyFutureMap;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.*;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.reef.exception.evaluator.NetworkException;
 import org.apache.reef.io.network.Connection;
 import org.apache.reef.io.network.ConnectionFactory;
@@ -169,8 +168,8 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
                             final SocketAddress socketAddress,
                             final Message<ControlMessage.Message> messages) {
       // TODO #140: Properly classify and handle each RPC failure
-      final ControlMessage.Message controlMessage = extractSingleMessage(messages);
-      LOG.error("NCS Exception {}: {}", controlMessage.toString(), ExceptionUtils.getStackTrace(throwable));
+      // Not logging the stacktrace here, as it's not very useful.
+      LOG.error("NCS Exception");
     }
   }
 

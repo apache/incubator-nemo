@@ -99,28 +99,13 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class OptimizationPolicy implements Name<String> {
   }
 
-  //////////////////////////////// Runtime Configurations
+  //////////////////////////////// Runtime Master-Executor Common Configurations
 
   /**
    * Deploy mode.
    */
   @NamedParameter(doc = "Deploy mode", short_name = "deploy_mode", default_value = "local")
   public final class DeployMode implements Name<String> {
-  }
-
-  /**
-   * Nemo driver memory.
-   */
-  @NamedParameter(doc = "Nemo driver memory", short_name = "driver_mem_mb", default_value = "1024")
-  public final class DriverMemMb implements Name<Integer> {
-  }
-
-  /**
-   * Path to the JSON file that specifies resource layout.
-   */
-  @NamedParameter(doc = "Path to the JSON file that specifies resources for executors", short_name = "executor_json",
-      default_value = "examples/resources/sample_executor_resources.json")
-  public final class ExecutorJsonPath implements Name<String> {
   }
 
   /**
@@ -131,6 +116,41 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class JVMHeapSlack implements Name<Double> {
   }
 
+  //////////////////////////////// Runtime Master Configurations
+
+  /**
+   * Nemo driver memory.
+   */
+  @NamedParameter(doc = "Nemo driver memory", short_name = "driver_mem_mb", default_value = "1024")
+  public final class DriverMemMb implements Name<Integer> {
+  }
+
+  /**
+   * Max number of attempts for task scheduling.
+   */
+  @NamedParameter(doc = "Max number of task attempts", short_name = "max_task_attempt", default_value = "3")
+  public final class MaxTaskAttempt implements Name<Integer> {
+  }
+
+  //////////////////////////////// Runtime Executor Configurations
+
+  /**
+   * Used for fault-injected tests.
+   */
+  @NamedParameter(doc = "Executor crashes after expected time, does not crash when -1",
+      short_name = "executor_poison_sec", default_value = "-1")
+  public final class ExecutorPosionSec implements Name<Integer> {
+  }
+
+  /**
+   * Path to the JSON file that specifies resource layout.
+   */
+  @NamedParameter(doc = "Path to the JSON file that specifies resources for executors", short_name = "executor_json",
+      default_value = "examples/resources/sample_executor_resources.json")
+  public final class ExecutorJsonPath implements Name<String> {
+  }
+
+
   /**
    * Contents of the JSON file that specifies resource layout.
    */
@@ -138,16 +158,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class ExecutorJsonContents implements Name<String> {
   }
 
-  /**
-   * Executor capacity.
-   * Determines the number of Task 'slots' for each executor.
-   * 1) Master's Task scheduler can use this number in scheduling.
-   *    (e.g., schedule Task to the executor currently with the maximum number of available slots)
-   * 2) Executor's number of Task execution threads is set to this number.
-   */
-  @NamedParameter(doc = "Executor capacity", short_name = "executor_capacity", default_value = "1")
-  public final class ExecutorCapacity implements Name<Integer> {
-  }
+  //////////////////////////////// Runtime Data Plane Configurations
 
   /**
    * Number of I/O threads for block fetch requests from other executor.
@@ -163,13 +174,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   @NamedParameter(doc = "Maximum number of parallel downloads for a runtime edge.", short_name = "max_downloads",
       default_value = "30")
   public final class MaxNumDownloadsForARuntimeEdge implements Name<Integer> {
-  }
-
-  /**
-   * Max number of attempts for task scheduling.
-   */
-  @NamedParameter(doc = "Max number of schedules", short_name = "max_schedule_attempt", default_value = "3")
-  public final class MaxScheduleAttempt implements Name<Integer> {
   }
 
   /**
@@ -218,7 +222,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-   * The number of block transfer server threads
+
    * which work on accepted connections.
    */
   @NamedParameter(doc = "The number of working threads of PartitionTransport server",

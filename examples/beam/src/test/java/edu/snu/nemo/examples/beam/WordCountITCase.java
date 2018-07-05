@@ -92,7 +92,7 @@ public final class WordCountITCase {
     JobLauncher.main(builder
         .addResourceJson(executorResourceFileName)
         .addJobId(WordCountITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
+        .addOptimizationPolicy(PadoPolicyParallelismTen.class.getCanonicalName())
         .build());
   }
 }

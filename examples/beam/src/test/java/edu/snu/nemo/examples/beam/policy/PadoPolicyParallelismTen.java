@@ -23,13 +23,13 @@ import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 import java.util.List;
 
 /**
- * A pado policy with fixed parallelism 5 for tests.
+ * A pado policy with fixed parallelism 10 for tests.
  */
-public final class PadoPolicyParallelismFive implements Policy {
+public final class PadoPolicyParallelismTen implements Policy {
   private final Policy policy;
 
-  public PadoPolicyParallelismFive() {
-    this.policy = PolicyTestUtil.overwriteParallelism(5, PadoPolicy.class.getCanonicalName());
+  public PadoPolicyParallelismTen() {
+    this.policy = PolicyTestUtil.overwriteParallelism(10, PadoPolicy.class.getCanonicalName());
   }
 
   @Override

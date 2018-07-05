@@ -240,7 +240,7 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.ExecutorJsonPath.class);
     cl.registerShortNameOfClass(JobConf.JVMHeapSlack.class);
     cl.registerShortNameOfClass(JobConf.IORequestHandleThreadsTotal.class);
-    cl.registerShortNameOfClass(JobConf.MaxScheduleAttempt.class);
+    cl.registerShortNameOfClass(JobConf.MaxTaskAttempt.class);
     cl.registerShortNameOfClass(JobConf.FileDirectory.class);
     cl.registerShortNameOfClass(JobConf.GlusterVolumeDirectory.class);
     cl.registerShortNameOfClass(JobConf.PartitionTransportServerPort.class);

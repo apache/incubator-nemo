@@ -289,6 +289,10 @@ public final class BatchSingleJobScheduler implements Scheduler {
   }
 
   private Optional<List<Stage>> selectEarliestSchedulableGroup() {
+    if (sortedScheduleGroups == null) {
+      return Optional.empty();
+    }
+
     return sortedScheduleGroups.stream()
         .filter(scheduleGroup -> scheduleGroup.stream()
             .map(Stage::getId)

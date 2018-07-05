@@ -58,7 +58,7 @@ public final class UserApplicationRunner {
   @Inject
   private UserApplicationRunner(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
                                 @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy,
-                                @Parameter(JobConf.MaxScheduleAttempt.class) final int maxScheduleAttempt,
+                                @Parameter(JobConf.MaxTaskAttempt.class) final int maxScheduleAttempt,
                                 final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                                 final Injector injector,
                                 final RuntimeMaster runtimeMaster) {

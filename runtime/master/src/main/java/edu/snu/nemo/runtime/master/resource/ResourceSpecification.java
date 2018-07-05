@@ -26,14 +26,23 @@ public final class ResourceSpecification {
   private final String containerType;
   private final int capacity;
   private final int memory;
+  private final int poisonSec; // -1 if this resources is not poisoned
 
   public ResourceSpecification(final String containerType,
                                final int capacity,
                                final int memory) {
+    this(containerType, capacity, memory, -1);
+  }
+
+  public ResourceSpecification(final String containerType,
+                               final int capacity,
+                               final int memory,
+                               final int poisonSec) {
     this.resourceSpecId = RuntimeIdGenerator.generateResourceSpecId();
     this.containerType = containerType;
     this.capacity = capacity;
     this.memory = memory;
+    this.poisonSec = poisonSec;
   }
 
   /**
@@ -62,58 +71,10 @@ public final class ResourceSpecification {
   }
 
   /**
-   * @return {@link Builder} for {@link ResourceSpecification}.
+   * @return -1   if this resource is not poisoned. (for all other normal cases)
+   *         >= 0 the expected time to failure by poison. (for fault-handling tests)
    */
-  public static Builder newBuilder() {
-    return new Builder();
-  }
-
-  /**
-   * A Builder class for {@link ResourceSpecification}.
-   */
-  public static final class Builder {
-    private String containerType;
-    private Integer capacity;
-    private Integer memory;
-
-    private Builder() {
-    }
-
-    /**
-     * @param inputContainerType the container type
-     * @return {@link Builder} object.
-     */
-    public Builder setContainerType(final String inputContainerType) {
-      this.containerType = inputContainerType;
-      return this;
-    }
-
-    /**
-     * @param inputCapacity the number of Tasks that can be run in this container
-     * @return {@link Builder} object.
-     */
-    public Builder setCapacity(final int inputCapacity) {
-      this.capacity = inputCapacity;
-      return this;
-    }
-
-    /**
-     * @param inputMemory the size of the memory allocated, in megabytes
-     * @return {@link Builder} object.
-     */
-    public Builder setMemory(final int inputMemory) {
-      this.memory = inputMemory;
-      return this;
-    }
-
-    /**
-     * @return the {@link ResourceSpecification} object that has been built
-     */
-    public ResourceSpecification build() {
-      assert (containerType != null);
-      assert (capacity != null);
-      assert (memory != null);
-      return new ResourceSpecification(containerType, capacity, memory);
-    }
+  public int getPoisonSec() {
+    return poisonSec;
   }
 }
