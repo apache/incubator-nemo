@@ -170,8 +170,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
                             final Message<ControlMessage.Message> messages) {
       // TODO #140: Properly classify and handle each RPC failure
       final ControlMessage.Message controlMessage = extractSingleMessage(messages);
-      LOG.error(
-          "NcsLinkListener onException {}: {}", controlMessage.toString(), ExceptionUtils.getStackTrace(throwable));
+      LOG.error("NCS Exception {}: {}", controlMessage.toString(), ExceptionUtils.getStackTrace(throwable));
     }
   }
 

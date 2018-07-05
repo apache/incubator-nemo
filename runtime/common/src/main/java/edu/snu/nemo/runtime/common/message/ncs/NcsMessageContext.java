@@ -58,7 +58,7 @@ final class NcsMessageContext implements MessageContext {
       // Disabling Sonar warning (squid:S2095)
     } catch (final NetworkException e) {
       // TODO #140: Properly classify and handle each RPC failure
-      LOG.error("NcsMessageContext reply() exception: {}", ExceptionUtils.getStackTrace(e));
+      LOG.error("NCS Exception: {}", ExceptionUtils.getStackTrace(e));
     }
   }
 }

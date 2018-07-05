@@ -176,7 +176,7 @@ public final class ContainerManager {
           messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
     } catch (final InterruptedException | ExecutionException e) {
       // TODO #140: Properly classify and handle each RPC failure
-      LOG.error("messageEnvironment.asyncConnect exception: {}", e);
+      LOG.error("NCS Exception: {}", e);
     }
 
     // Create the executor representation.
