@@ -224,7 +224,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
   @Override
   public void onExecutorAdded(final ExecutorRepresenter executorRepresenter) {
-    LOG.info("{} added", executorRepresenter.getExecutorId());
+    LOG.info("{} added (node: {})", executorRepresenter.getExecutorId(), executorRepresenter.getNodeName());
     executorRegistry.registerExecutor(executorRepresenter);
     schedulerRunner.onExecutorSlotAvailable();
   }
