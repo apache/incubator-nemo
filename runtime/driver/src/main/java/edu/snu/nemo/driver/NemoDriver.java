@@ -187,6 +187,8 @@ public final class NemoDriver {
     @Override
     public void onNext(final StopTime stopTime) {
       handler.close();
+      clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+          .setType(ControlMessage.DriverToClientMessageType.DriverStopped).build());
       clientRPC.shutdown();
     }
   }

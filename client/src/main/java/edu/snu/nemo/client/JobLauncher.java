@@ -87,6 +87,7 @@ public final class JobLauncher {
     // Registers actions for launching the DAG.
     driverRPCServer
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> driverActive = true)
+        .registerHandler(ControlMessage.DriverToClientMessageType.DriverStopped, event -> driverActive = false)
         .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, event ->
           driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
               .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
@@ -116,7 +117,6 @@ public final class JobLauncher {
 
     driverRPCServer.shutdown();
     driverLauncher.close();
-    driverActive = false;
     final LauncherStatus launcherStatus = driverLauncher.getStatus();
     final Optional<Throwable> possibleError = launcherStatus.getError();
     if (possibleError.isPresent()) {
@@ -135,9 +135,8 @@ public final class JobLauncher {
   public static void launchDAG(final DAG dag) {
     serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
 
-    LOG.error("driver active?:" + driverActive);
-
     if (!driverActive) {
+      LOG.info("Launching driver");
       try {
         if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
           throw new RuntimeException("Configuration for launching driver is not ready");
@@ -151,6 +150,7 @@ public final class JobLauncher {
         throw new RuntimeException(e);
       }
     } else {
+      LOG.info("Using the existing driver");
       driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
           .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
           .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build())
