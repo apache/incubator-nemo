@@ -64,7 +64,6 @@ final class BlockMetadata {
         stateMachine.setState(newState);
         break;
       case NOT_AVAILABLE:
-        LOG.info("Block {} lost in {}", new Object[]{blockId, location});
         // Reset the block location and committer information.
         locationHandler.completeExceptionally(new AbsentBlockException(blockId, newState));
         locationHandler = new BlockManagerMaster.BlockLocationRequestHandler(blockId);

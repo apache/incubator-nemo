@@ -221,7 +221,7 @@ public final class BlockManagerWorker {
           responseFromMaster.getBlockLocationInfoMsg();
       if (!blockLocationInfoMsg.hasOwnerExecutorId()) {
         throw new BlockFetchException(new Throwable(
-            "Block " + blockId + " not found both in any storage: "
+            "Block " + blockId + " location unknown: "
                 + "The block state is " + blockLocationInfoMsg.getState()));
       }
       // This is the executor id that we wanted to know

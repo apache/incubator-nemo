@@ -192,7 +192,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           }
           break;
         case SHOULD_RETRY:
-          // Retry the failed task
+          // Do retry
           doSchedule();
           break;
         default:
@@ -231,6 +231,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
   @Override
   public void onExecutorRemoved(final String executorId) {
+    LOG.info("{} removed", executorId);
     blockManagerMaster.removeWorker(executorId);
 
     // These are tasks that were running at the time of executor removal.
@@ -240,14 +241,8 @@ public final class BatchSingleJobScheduler implements Scheduler {
       return Pair.of(executor, ExecutorRegistry.ExecutorState.FAILED);
     });
 
-    // We need to retry the interrupted tasks, and also recover the tasks' missing input blocks if needed.
-    final Set<String> tasksToReExecute =
-        Sets.union(interruptedTasks, recursivelyGetParentTasksForLostBlocks(interruptedTasks));
-
-    // Report SHOULD_RETRY tasks so they can be re-scheduled
-    LOG.info("{} removed: {} will be retried", executorId, tasksToReExecute);
-    tasksToReExecute.forEach(
-        taskToReExecute -> jobStateManager.onTaskStateChanged(taskToReExecute, TaskState.State.SHOULD_RETRY));
+    // Retry the interrupted tasks (and required parents)
+    retryTasksAndRequiredParents(interruptedTasks);
 
     // Trigger the scheduling of SHOULD_RETRY tasks in the earliest scheduleGroup
     doSchedule();
@@ -274,9 +269,12 @@ public final class BatchSingleJobScheduler implements Scheduler {
       final List<Task> tasksToSchedule = earliest.get().stream()
           .flatMap(stage -> selectSchedulableTasks(stage).stream())
           .collect(Collectors.toList());
+      // Collections.reverse(tasksToSchedule);
 
-      LOG.info("Attempting to schedule {}, which are in the same ScheduleGroup",
-          tasksToSchedule.stream().map(Task::getTaskId).collect(Collectors.toList()));
+      LOG.info("Scheduling some tasks in {}, which are in the same ScheduleGroup", tasksToSchedule.stream()
+          .map(Task::getTaskId)
+          .map(RuntimeIdGenerator::getStageIdFromTaskId)
+          .collect(Collectors.toSet()));
 
       // Set the pointer to the schedulable tasks.
       pendingTaskCollectionPointer.setToOverwrite(tasksToSchedule);
@@ -435,9 +433,19 @@ public final class BatchSingleJobScheduler implements Scheduler {
       default:
         throw new UnknownFailureCauseException(new Throwable("Unknown cause: " + failureCause));
     }
+
+    retryTasksAndRequiredParents(Collections.singleton(taskId));
   }
 
   ////////////////////////////////////////////////////////////////////// Helper methods
+
+  private void retryTasksAndRequiredParents(final Set<String> tasks) {
+    final Set<String> requiredParents = recursivelyGetParentTasksForLostBlocks(tasks);
+    final Set<String> tasksToRetry = Sets.union(tasks, requiredParents);
+    LOG.info("{} will be retried", tasksToRetry);
+    tasksToRetry.forEach(
+        taskToReExecute -> jobStateManager.onTaskStateChanged(taskToReExecute, TaskState.State.SHOULD_RETRY));
+  }
 
   private Set<String> recursivelyGetParentTasksForLostBlocks(final Set<String> children) {
     if (children.isEmpty()) {

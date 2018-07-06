@@ -18,6 +18,7 @@ package edu.snu.nemo.examples.beam;
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
+import edu.snu.nemo.compiler.optimizer.policy.DefaultPolicy;
 import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelismTen;
 import org.junit.After;
 import org.junit.Before;
@@ -32,7 +33,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class AlternatingLeastSquareITCase {
-  private static final int TIMEOUT = 240000;
+  private static final int TIMEOUT = 240 * 1000;
   private static ArgBuilder builder;
   private static final String fileBasePath = System.getProperty("user.dir") + "/../resources/";
 
@@ -40,7 +41,7 @@ public final class AlternatingLeastSquareITCase {
   private static final String outputFileName = "sample_output_als";
   private static final String output = fileBasePath + outputFileName;
   private static final String testResourceFileName = "test_output_als";
-  private static final String noPoisonResource = fileBasePath + "beam_sample_executor_resources.json";
+  private static final String noPoisonResources = fileBasePath + "beam_sample_executor_resources.json";
   private static final String poisonedResource = fileBasePath + "beam_sample_poisoned_executor_resources.json";
   private static final String numFeatures = "10";
   private static final String numIteration = "3";
@@ -62,33 +63,12 @@ public final class AlternatingLeastSquareITCase {
     }
   }
 
-  /*
   @Test (timeout = TIMEOUT)
   public void testDefault() throws Exception {
     JobLauncher.main(builder
-        .addResourceJson(noPoisonResource)
-        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName())
-        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-        .build());
-  }
-
-  @Test (timeout = TIMEOUT)
-  public void testPado() throws Exception {
-    JobLauncher.main(builder
-        .addResourceJson(noPoisonResource)
-        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicyParallelismTen.class.getCanonicalName())
-        .build());
-  }
-  */
-
-  @Test (timeout = TIMEOUT)
-  public void testDefaultWithPoison() throws Exception {
-    JobLauncher.main(builder
-        .addResourceJson(poisonedResource)
-        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_poisoned")
-        .addMaxTaskAttempt(Integer.MAX_VALUE)
-        .addOptimizationPolicy(PadoPolicyParallelismTen.class.getCanonicalName())
+        .addResourceJson(noPoisonResources)
+        .addJobId(AlternatingLeastSquareITCase.class.getSimpleName() + "_default")
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
         .build());
   }
 

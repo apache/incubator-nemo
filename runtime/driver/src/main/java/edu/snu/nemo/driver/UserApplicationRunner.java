@@ -80,7 +80,7 @@ public final class UserApplicationRunner {
    */
   public void run(final String dagString) {
     try {
-      LOG.info("##### Nemo Compiler #####");
+      LOG.info("##### Nemo Compiler Start #####");
 
       final DAG<IRVertex, IREdge> dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));
       dag.storeJSON(dagDirectory, "ir", "IR before optimization");
@@ -102,6 +102,8 @@ public final class UserApplicationRunner {
           }));
 
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
+
+      LOG.info("##### Nemo Compiler Finish #####");
 
       physicalPlan.getStageDAG().storeJSON(dagDirectory, "plan", "physical execution plan by compiler");
 

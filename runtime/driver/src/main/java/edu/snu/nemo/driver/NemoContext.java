@@ -66,11 +66,8 @@ public final class NemoContext {
         final int crashTimeMs = addNoise(crashTimeSec * 1000);
         LOG.info("Configured {} sec crash time, and actually crashing in {} ms (noise)", crashTimeSec, crashTimeMs);
         clock.scheduleAlarm(crashTimeMs, (alarm) -> {
-          // Crash this executor.
           LOG.info("POISON: CRASH!!!!!");
-          Runtime.getRuntime().halt(1);
-          // System.exit(1);
-          // throw new RuntimeException("Crashed at: " + alarm.toString());
+          Runtime.getRuntime().halt(1); // Forces this JVM to shut down immediately.
         });
       }
     }

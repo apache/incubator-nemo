@@ -128,7 +128,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   /**
    * Max number of attempts for task scheduling.
    */
-  @NamedParameter(doc = "Max number of task attempts", short_name = "max_task_attempt", default_value = "3")
+  @NamedParameter(doc = "Max number of task attempts", short_name = "max_task_attempt", default_value = "1")
   public final class MaxTaskAttempt implements Name<Integer> {
   }
 

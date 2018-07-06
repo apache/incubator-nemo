@@ -325,7 +325,10 @@ public final class TaskExecutor {
   }
 
   private void handleMainOutputElement(final VertexHarness harness, final Object element) {
-    harness.getWritersToChildrenTasks().forEach(outputWriter -> outputWriter.write(element));
+    harness.getWritersToChildrenTasks().forEach(outputWriter -> {
+      // LOG.info("{} OutputWriter: {}", harness.getIRVertex().getId(), element);
+      outputWriter.write(element);
+    });
     if (harness.getSideInputChildren().size() > 0) {
       sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
     }
