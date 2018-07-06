@@ -139,7 +139,6 @@ public final class BlockManagerMaster {
    */
   public Set<String> removeWorker(final String executorId) {
     final Set<String> tasksToRecompute = new HashSet<>();
-    LOG.warn("Worker {} is removed.", new Object[]{executorId});
 
     final Lock writeLock = lock.writeLock();
     writeLock.lock();

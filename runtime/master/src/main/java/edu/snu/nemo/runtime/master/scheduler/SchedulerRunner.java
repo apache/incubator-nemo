@@ -66,7 +66,8 @@ public final class SchedulerRunner {
                          final ExecutorRegistry executorRegistry) {
     this.jobStateManagers = new HashMap<>();
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
-    this.schedulerThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "SchedulerRunner"));
+    this.schedulerThread = Executors.newSingleThreadExecutor(runnable ->
+        new Thread(runnable, "SchedulerRunner thread"));
     this.isSchedulerRunning = false;
     this.isTerminated = false;
     this.executorRegistry = executorRegistry;
@@ -131,7 +132,7 @@ public final class SchedulerRunner {
           // update metadata first
           jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
 
-          LOG.info("{} scheulded to {}", task.getTaskId(), selectedExecutor.getExecutorId());
+          LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
 
           // send the task
           selectedExecutor.onTaskScheduled(task);

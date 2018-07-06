@@ -40,17 +40,17 @@ public final class NemoContext {
   private final Executor executor;
 
   private final Clock clock;
-  private final int expectedCrashTime;
+  private final int crashTimeSec;
 
   @Inject
   private NemoContext(final Executor executor,
-                      @Parameter(JobConf.ExecutorPosionSec.class) final int expectedCrashTime,
+                      @Parameter(JobConf.ExecutorPosionSec.class) final int crashTimeSec,
                       final Clock clock) {
     this.executor = executor; // To make Tang instantiate Executor
 
     // For poison handling
     this.clock = clock;
-    this.expectedCrashTime = expectedCrashTime;
+    this.crashTimeSec = crashTimeSec;
   }
 
   /**
@@ -62,12 +62,15 @@ public final class NemoContext {
       LOG.info("Context Started: Executor is now ready and listening for messages");
 
       // For poison handling
-      if (expectedCrashTime >= 0) {
-        final int crashTimeMs = generateRandomNumberWithAnExponentialDistribution(expectedCrashTime * 1000);
-        LOG.info("Expected {} sec, Crashing in {} ms", crashTimeMs);
+      if (crashTimeSec >= 0) {
+        final int crashTimeMs = addNoise(crashTimeSec * 1000);
+        LOG.info("Configured {} sec crash time, and actually crashing in {} ms (noise)", crashTimeSec, crashTimeMs);
         clock.scheduleAlarm(crashTimeMs, (alarm) -> {
           // Crash this executor.
-          throw new RuntimeException("Crashed at: " + alarm.toString());
+          LOG.info("POISON: CRASH!!!!!");
+          Runtime.getRuntime().halt(1);
+          // System.exit(1);
+          // throw new RuntimeException("Crashed at: " + alarm.toString());
         });
       }
     }
@@ -83,9 +86,9 @@ public final class NemoContext {
     }
   }
 
-  private int generateRandomNumberWithAnExponentialDistribution(final int mean) {
+  private int addNoise(final int number) {
     final Random random = new Random();
-    final double rate = 1 / mean;
-    return (int) (Math.log(1 - random.nextDouble()) / (-1 * rate));
+    final int fiftyPercent = random.nextInt((int) (number * (50.0 / 100.0)));
+    return random.nextBoolean() ? number + fiftyPercent : number - fiftyPercent; // -50% ~ +50%
   }
 }

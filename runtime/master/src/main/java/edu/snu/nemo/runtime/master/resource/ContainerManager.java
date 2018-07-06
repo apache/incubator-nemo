@@ -191,7 +191,6 @@ public final class ContainerManager {
         new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext, serializationExecutorService,
             activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
 
-    LOG.info("{} is up and running at {}", executorId, executorRepresenter.getNodeName());
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
 
     return Optional.of(executorRepresenter);

@@ -275,7 +275,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           .flatMap(stage -> selectSchedulableTasks(stage).stream())
           .collect(Collectors.toList());
 
-      LOG.info("Attempting to schedule {} in the same ScheduleGroup",
+      LOG.info("Attempting to schedule {}, which are in the same ScheduleGroup",
           tasksToSchedule.stream().map(Task::getTaskId).collect(Collectors.toList()));
 
       // Set the pointer to the schedulable tasks.
