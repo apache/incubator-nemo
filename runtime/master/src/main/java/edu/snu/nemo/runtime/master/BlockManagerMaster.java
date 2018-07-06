@@ -169,6 +169,7 @@ public final class BlockManagerMaster {
     readLock.lock();
     try {
       final BlockState.State state = getBlockState(blockId);
+      LOG.info("Block {} location is in state {}", blockId, state);
       switch (state) {
         case IN_PROGRESS:
         case AVAILABLE:

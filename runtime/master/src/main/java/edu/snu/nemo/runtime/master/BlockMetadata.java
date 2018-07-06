@@ -57,26 +57,27 @@ final class BlockMetadata {
                                    @Nullable final String location) {
     final StateMachine stateMachine = blockState.getStateMachine();
     final Enum oldState = stateMachine.getCurrentState();
-    LOG.debug("Block State Transition: id {} from {} to {}", new Object[]{blockId, oldState, newState});
+    LOG.info("Block State Transition: id {} from {} to {}", new Object[]{blockId, oldState, newState});
 
     switch (newState) {
       case IN_PROGRESS:
-        stateMachine.setState(newState);
         break;
       case NOT_AVAILABLE:
         // Reset the block location and committer information.
         locationHandler.completeExceptionally(new AbsentBlockException(blockId, newState));
         locationHandler = new BlockManagerMaster.BlockLocationRequestHandler(blockId);
-        stateMachine.setState(newState);
         break;
       case AVAILABLE:
-        assert (location != null);
+        if (location == null) {
+          throw new RuntimeException("Null location");
+        }
         locationHandler.complete(location);
-        stateMachine.setState(newState);
         break;
       default:
         throw new UnsupportedOperationException(newState.toString());
     }
+
+    stateMachine.setState(newState);
   }
 
   /**

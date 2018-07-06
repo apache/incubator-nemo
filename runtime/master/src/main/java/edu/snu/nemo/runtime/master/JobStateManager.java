@@ -143,7 +143,7 @@ public final class JobStateManager {
   public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newTaskState) {
     // Change task state
     final StateMachine taskState = idToTaskStates.get(taskId).getStateMachine();
-    LOG.debug("Task State Transition: id {}, from {} to {}",
+    LOG.info("Task State Transition: id {}, from {} to {}",
         new Object[]{taskId, taskState.getCurrentState(), newTaskState});
 
     metricStore.getOrCreateMetric(TaskMetric.class, taskId)
@@ -222,7 +222,7 @@ public final class JobStateManager {
         .addEvent(getStageState(stageId), newStageState);
     metricStore.triggerBroadcast(StageMetric.class, stageId);
 
-    LOG.debug("Stage State Transition: id {} from {} to {}",
+    LOG.info("Stage State Transition: id {} from {} to {}",
         new Object[]{stageId, stageStateMachine.getCurrentState(), newStageState});
     stageStateMachine.setState(newStageState);
 
