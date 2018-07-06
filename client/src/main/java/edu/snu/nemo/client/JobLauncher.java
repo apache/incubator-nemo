@@ -115,6 +115,8 @@ public final class JobLauncher {
     // Launch client main
     runUserProgramMain(builtJobConf);
 
+    driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+        .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
     driverRPCServer.shutdown();
     driverLauncher.close();
     final LauncherStatus launcherStatus = driverLauncher.getStatus();
@@ -157,7 +159,7 @@ public final class JobLauncher {
           .build());
     }
 
-    // Wait for the job to finish
+    // Wait for the JobDone message from the driver
     synchronized (driverLauncher) {
       while (!driverLauncher.getStatus().isDone()) {
         try {

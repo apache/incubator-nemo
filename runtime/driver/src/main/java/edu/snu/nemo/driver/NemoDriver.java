@@ -71,6 +71,8 @@ public final class NemoDriver {
   private final String glusterDirectory;
   private final ClientRPC clientRPC;
 
+  private static ExecutorService userApplicationRunnerThread;
+
   // Client for sending log messages
   private final RemoteClientMessageLoggingHandler handler;
 
@@ -96,8 +98,12 @@ public final class NemoDriver {
     this.glusterDirectory = glusterDirectory;
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
-    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG,
-        message -> startSchedulingUserApplication(message.getLaunchDAG().getDag()));
+    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message ->
+        startSchedulingUserApplication(message.getLaunchDAG().getDag()));
+    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.DriverShutdown, message -> {
+      userApplicationRunnerThread.execute(runtimeMaster::terminate);
+      userApplicationRunnerThread.shutdown();
+    });
     // Send DriverStarted message to the client
     clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
         .setType(ControlMessage.DriverToClientMessageType.DriverStarted).build());
@@ -154,9 +160,14 @@ public final class NemoDriver {
    */
   public void startSchedulingUserApplication(final String dagString) {
     // Launch user application (with a new thread)
-    final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor();
+    if (userApplicationRunnerThread == null) {
+      userApplicationRunnerThread = Executors.newSingleThreadExecutor();
+    }
+    // This should be able to run multiple times.
     userApplicationRunnerThread.execute(() -> userApplicationRunner.run(dagString));
-    userApplicationRunnerThread.shutdown();
+    // send driver notification that user application is done.
+    clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+        .setType(ControlMessage.DriverToClientMessageType.JobDone).build());
   }
 
   /**
