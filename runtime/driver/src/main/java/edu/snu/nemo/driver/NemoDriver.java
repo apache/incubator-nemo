@@ -166,8 +166,8 @@ public final class NemoDriver {
     // This should be able to run multiple times.
     userApplicationRunnerThread.execute(() -> userApplicationRunner.run(dagString));
     // send driver notification that user application is done.
-    clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-        .setType(ControlMessage.DriverToClientMessageType.JobDone).build());
+    userApplicationRunnerThread.execute(() -> clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+        .setType(ControlMessage.DriverToClientMessageType.JobDone).build()));
   }
 
   /**
