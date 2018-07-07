@@ -61,18 +61,23 @@ public final class BlockManagerWorker {
   private static final String REMOTE_FILE_STORE = "REMOTE_FILE_STORE";
 
   private final String executorId;
+  private final SerializerManager serializerManager;
+
+  // Stores
   private final MemoryStore memoryStore;
   private final SerializedMemoryStore serializedMemoryStore;
   private final LocalFileStore localFileStore;
   private final RemoteFileStore remoteFileStore;
+
+  // To-Master connections
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
+  private final Map<String, CompletableFuture<ControlMessage.Message>> pendingBlockLocationRequest;
+
+  // To-Executor connections
   private final ByteTransfer byteTransfer;
-  // Executor service to schedule I/O Runnable which can be done in background.
   private final ExecutorService backgroundExecutorService;
   private final Map<String, AtomicInteger> blockToRemainingRead;
-  private final SerializerManager serializerManager;
-  private final Map<String, CompletableFuture<ControlMessage.Message>> pendingBlockLocationRequest;
-  private final BlockTransferConnectionQueue blockTransferConnectionQueue;
+  private final BlockTransferThrottler blockTransferThrottler;
 
   /**
    * Constructor.
@@ -86,7 +91,7 @@ public final class BlockManagerWorker {
    * @param persistentConnectionToMasterMap the connection map.
    * @param byteTransfer                    the byte transfer.
    * @param serializerManager               the serializer manager.
-   * @param blockTransferConnectionQueue    restricts parallel connections
+   * @param blockTransferThrottler    restricts parallel connections
    */
   @Inject
   private BlockManagerWorker(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -98,7 +103,7 @@ public final class BlockManagerWorker {
                              final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                              final ByteTransfer byteTransfer,
                              final SerializerManager serializerManager,
-                             final BlockTransferConnectionQueue blockTransferConnectionQueue) {
+                             final BlockTransferThrottler blockTransferThrottler) {
     this.executorId = executorId;
     this.memoryStore = memoryStore;
     this.serializedMemoryStore = serializedMemoryStore;
@@ -110,8 +115,10 @@ public final class BlockManagerWorker {
     this.blockToRemainingRead = new ConcurrentHashMap<>();
     this.serializerManager = serializerManager;
     this.pendingBlockLocationRequest = new ConcurrentHashMap<>();
-    this.blockTransferConnectionQueue = blockTransferConnectionQueue;
+    this.blockTransferThrottler = blockTransferThrottler;
   }
+
+  //////////////////////////////////////////////////////////// Main public methods
 
   /**
    * Creates a new block.
@@ -128,52 +135,6 @@ public final class BlockManagerWorker {
   }
 
   /**
-   * Retrieves data from the stored block. A specific hash value range can be designated.
-   *
-   * @param blockId    of the block.
-   * @param blockStore for the data storage.
-   * @param keyRange   the key range descriptor.
-   * @return the result data in the block.
-   */
-  private CompletableFuture<DataUtil.IteratorWithNumBytes> getDataFromLocalBlock(
-      final String blockId,
-      final InterTaskDataStoreProperty.Value blockStore,
-      final KeyRange keyRange) {
-    final BlockStore store = getBlockStore(blockStore);
-
-    // First, try to fetch the block from local BlockStore.
-    final Optional<Block> optionalBlock = store.readBlock(blockId);
-
-    if (optionalBlock.isPresent()) {
-      final Iterable<NonSerializedPartition> partitions = optionalBlock.get().readPartitions(keyRange);
-      handleUsedData(blockStore, blockId);
-
-      // Block resides in this evaluator!
-      try {
-        final Iterator innerIterator = DataUtil.concatNonSerPartitions(partitions).iterator();
-        long numSerializedBytes = 0;
-        long numEncodedBytes = 0;
-        try {
-          for (final NonSerializedPartition partition : partitions) {
-            numSerializedBytes += partition.getNumSerializedBytes();
-            numEncodedBytes += partition.getNumEncodedBytes();
-          }
-
-          return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator, numSerializedBytes,
-              numEncodedBytes));
-        } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-          return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator));
-        }
-      } catch (final IOException e) {
-        throw new BlockFetchException(e);
-      }
-    } else {
-      // We don't have the block here...
-      throw new RuntimeException(String.format("Block %s not found in local BlockManagerWorker", blockId));
-    }
-  }
-
-  /**
    * Inquiries the location of the specific block and routes the request to the local block manager worker
    * or to the lower data plane.
    * This can be invoked multiple times per blockId (maybe due to failures).
@@ -184,7 +145,7 @@ public final class BlockManagerWorker {
    * @param keyRange      the key range descriptor
    * @return the {@link CompletableFuture} of the block.
    */
-  public CompletableFuture<DataUtil.IteratorWithNumBytes> queryBlock(
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> readBlock(
       final String blockId,
       final String runtimeEdgeId,
       final InterTaskDataStoreProperty.Value blockStore,
@@ -192,7 +153,10 @@ public final class BlockManagerWorker {
     // Let's see if a remote worker has it
     final CompletableFuture<ControlMessage.Message> blockLocationFuture =
         pendingBlockLocationRequest.computeIfAbsent(blockId, blockIdToRequest -> {
-          // Ask Master for the location
+          // Ask Master for the location.
+          // (IMPORTANT): This 'request' effectively blocks the TaskExecutor thread if the block is IN_PROGRESS.
+          // We use this property to make the receiver task of a 'push' edge to wait in an Executor for its input data
+          // to become available.
           final CompletableFuture<ControlMessage.Message> responseFromMasterFuture = persistentConnectionToMasterMap
               .getMessageSender(MessageEnvironment.BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID).request(
                   ControlMessage.Message.newBuilder()
@@ -236,11 +200,24 @@ public final class BlockManagerWorker {
             .setRuntimeEdgeId(runtimeEdgeId)
             .setKeyRange(ByteString.copyFrom(SerializationUtils.serialize(keyRange)))
             .build();
-        final CompletableFuture<ByteInputContext> contextFuture = blockTransferConnectionQueue
-            .requestConnectPermission(runtimeEdgeId)
+        final CompletableFuture<ByteInputContext> contextFuture = blockTransferThrottler
+            .requestTransferPermission(runtimeEdgeId)
             .thenCompose(obj -> byteTransfer.newInputContext(targetExecutorId, descriptor.toByteArray()));
-        contextFuture.thenApply(context -> context.getCompletedFuture()
-            .thenAccept(f -> blockTransferConnectionQueue.onConnectionFinished(runtimeEdgeId)));
+
+        // whenComplete() ensures that blockTransferThrottler.onTransferFinished() is always called,
+        // even on failures. Actual failure handling and Task retry will be done by DataFetcher.
+        contextFuture.whenComplete((connectionContext, connectionThrowable) -> {
+          if (connectionThrowable != null) {
+            // Something wrong with the connection. Notify blockTransferThrottler immediately.
+            blockTransferThrottler.onTransferFinished(runtimeEdgeId);
+          } else {
+            // Connection is okay. Notify blockTransferThrottler when the actual transfer is done, or fails.
+            connectionContext.getCompletedFuture().whenComplete((transferContext, transferThrowable) -> {
+              blockTransferThrottler.onTransferFinished(runtimeEdgeId);
+            });
+          }
+        });
+
         return contextFuture
             .thenApply(context -> new DataUtil.InputStreamIterator(context.getInputStreams(),
                 serializerManager.getSerializer(runtimeEdgeId)));
@@ -364,48 +341,7 @@ public final class BlockManagerWorker {
     }
   }
 
-  /**
-   * Handles used {@link edu.snu.nemo.runtime.executor.data.block.Block}.
-   *
-   * @param blockStore the store which contains the block.
-   * @param blockId    the ID of the block.
-   */
-  private void handleUsedData(final InterTaskDataStoreProperty.Value blockStore,
-                              final String blockId) {
-    final AtomicInteger remainingExpectedRead = blockToRemainingRead.get(blockId);
-    if (remainingExpectedRead != null) {
-      if (remainingExpectedRead.decrementAndGet() == 0) {
-        // This block should be discarded.
-        blockToRemainingRead.remove(blockId);
-        backgroundExecutorService.submit(new Runnable() {
-          @Override
-          public void run() {
-            removeBlock(blockId, blockStore);
-          }
-        });
-      }
-    } // If null, just keep the data in the store.
-  }
-
-  /**
-   * Gets the {@link BlockStore} from annotated value of {@link InterTaskDataStoreProperty}.
-   * @param blockStore the annotated value of {@link InterTaskDataStoreProperty}.
-   * @return the block store.
-   */
-  private BlockStore getBlockStore(final InterTaskDataStoreProperty.Value blockStore) {
-    switch (blockStore) {
-      case MemoryStore:
-        return memoryStore;
-      case SerializedMemoryStore:
-        return serializedMemoryStore;
-      case LocalFileStore:
-        return localFileStore;
-      case GlusterFileStore:
-        return remoteFileStore;
-      default:
-        throw new UnsupportedBlockStoreException(new Exception(blockStore + " is not supported."));
-    }
-  }
+  //////////////////////////////////////////////////////////// Public methods for remote block I/O
 
   /**
    * Respond to a block request by another executor.
@@ -471,6 +407,101 @@ public final class BlockManagerWorker {
   public void onInputContext(final ByteInputContext inputContext) {
     throw new IllegalStateException("No logic here");
   }
+
+  //////////////////////////////////////////////////////////// Private helper methods
+
+  /**
+   * Retrieves data from the stored block. A specific hash value range can be designated.
+   *
+   * @param blockId    of the block.
+   * @param blockStore for the data storage.
+   * @param keyRange   the key range descriptor.
+   * @return the result data in the block.
+   */
+  private CompletableFuture<DataUtil.IteratorWithNumBytes> getDataFromLocalBlock(
+      final String blockId,
+      final InterTaskDataStoreProperty.Value blockStore,
+      final KeyRange keyRange) {
+    final BlockStore store = getBlockStore(blockStore);
+
+    // First, try to fetch the block from local BlockStore.
+    final Optional<Block> optionalBlock = store.readBlock(blockId);
+
+    if (optionalBlock.isPresent()) {
+      final Iterable<NonSerializedPartition> partitions = optionalBlock.get().readPartitions(keyRange);
+      handleUsedData(blockStore, blockId);
+
+      // Block resides in this evaluator!
+      try {
+        final Iterator innerIterator = DataUtil.concatNonSerPartitions(partitions).iterator();
+        long numSerializedBytes = 0;
+        long numEncodedBytes = 0;
+        try {
+          for (final NonSerializedPartition partition : partitions) {
+            numSerializedBytes += partition.getNumSerializedBytes();
+            numEncodedBytes += partition.getNumEncodedBytes();
+          }
+
+          return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator, numSerializedBytes,
+              numEncodedBytes));
+        } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+          return CompletableFuture.completedFuture(DataUtil.IteratorWithNumBytes.of(innerIterator));
+        }
+      } catch (final IOException e) {
+        throw new BlockFetchException(e);
+      }
+    } else {
+      // We don't have the block here...
+      throw new RuntimeException(String.format("Block %s not found in local BlockManagerWorker", blockId));
+    }
+  }
+
+
+  /**
+   * Handles used {@link edu.snu.nemo.runtime.executor.data.block.Block}.
+   *
+   * @param blockStore the store which contains the block.
+   * @param blockId    the ID of the block.
+   */
+  private void handleUsedData(final InterTaskDataStoreProperty.Value blockStore,
+                              final String blockId) {
+    final AtomicInteger remainingExpectedRead = blockToRemainingRead.get(blockId);
+    if (remainingExpectedRead != null) {
+      if (remainingExpectedRead.decrementAndGet() == 0) {
+        // This block should be discarded.
+        blockToRemainingRead.remove(blockId);
+        backgroundExecutorService.submit(new Runnable() {
+          @Override
+          public void run() {
+            removeBlock(blockId, blockStore);
+          }
+        });
+      }
+    } // If null, just keep the data in the store.
+  }
+
+  //////////////////////////////////////////////////////////// Converters
+
+  /**
+   * Gets the {@link BlockStore} from annotated value of {@link InterTaskDataStoreProperty}.
+   * @param blockStore the annotated value of {@link InterTaskDataStoreProperty}.
+   * @return the block store.
+   */
+  private BlockStore getBlockStore(final InterTaskDataStoreProperty.Value blockStore) {
+    switch (blockStore) {
+      case MemoryStore:
+        return memoryStore;
+      case SerializedMemoryStore:
+        return serializedMemoryStore;
+      case LocalFileStore:
+        return localFileStore;
+      case GlusterFileStore:
+        return remoteFileStore;
+      default:
+        throw new UnsupportedBlockStoreException(new Exception(blockStore + " is not supported."));
+    }
+  }
+
 
   /**
    * Decodes BlockStore property from protocol buffer.

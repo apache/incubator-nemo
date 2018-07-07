@@ -57,7 +57,7 @@ final class BlockMetadata {
                                    @Nullable final String location) {
     final StateMachine stateMachine = blockState.getStateMachine();
     final Enum oldState = stateMachine.getCurrentState();
-    LOG.info("Block State Transition: id {} from {} to {}", new Object[]{blockId, oldState, newState});
+    LOG.debug("Block State Transition: id {} from {} to {}", new Object[]{blockId, oldState, newState});
 
     switch (newState) {
       case IN_PROGRESS:

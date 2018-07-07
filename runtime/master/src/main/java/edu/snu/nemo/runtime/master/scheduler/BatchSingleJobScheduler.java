@@ -258,8 +258,11 @@ public final class BatchSingleJobScheduler implements Scheduler {
 
   /**
    * The main entry point for task scheduling.
-   * This operation can be invoked at any point during job execution, as it is designed to be free of side-effects,
-   * and integrate well with {@link PendingTaskCollectionPointer} and {@link SchedulerRunner}.
+   * This operation can be invoked at any point during job execution, as it is designed to be free of side-effects.
+   *
+   * These are the reasons why.
+   * - We 'reset' {@link PendingTaskCollectionPointer}, and not 'add' new tasks to it
+   * - We make {@link SchedulerRunner} runs only tasks that are READY.
    */
   private void doSchedule() {
     final Optional<List<Stage>> earliest = selectEarliestSchedulableGroup();
@@ -442,7 +445,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   private void retryTasksAndRequiredParents(final Set<String> tasks) {
     final Set<String> requiredParents = recursivelyGetParentTasksForLostBlocks(tasks);
     final Set<String> tasksToRetry = Sets.union(tasks, requiredParents);
-    LOG.info("{} will be retried", tasksToRetry);
+    LOG.info("Will be retried: {}", tasksToRetry);
     tasksToRetry.forEach(
         taskToReExecute -> jobStateManager.onTaskStateChanged(taskToReExecute, TaskState.State.SHOULD_RETRY));
   }
