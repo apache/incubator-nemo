@@ -64,8 +64,6 @@ public final class InputReader extends DataTransfer {
     this.srcVertex = srcVertex;
     this.runtimeEdge = runtimeEdge;
     this.blockManagerWorker = blockManagerWorker;
-    LOG.info("dstIndex {} / srcVertex {}, Runtimedge {}", dstTaskIndex, srcVertex.toString(),
-        runtimeEdge.propertiesToJSON());
   }
 
   /**
