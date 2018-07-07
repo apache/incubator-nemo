@@ -262,7 +262,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
    *
    * These are the reasons why.
    * - We 'reset' {@link PendingTaskCollectionPointer}, and not 'add' new tasks to it
-   * - We make {@link SchedulerRunner} runs only tasks that are READY.
+   * - We make {@link SchedulerRunner} run only tasks that are READY.
    */
   private void doSchedule() {
     final Optional<List<Stage>> earliest = selectEarliestSchedulableGroup();
@@ -272,7 +272,10 @@ public final class BatchSingleJobScheduler implements Scheduler {
       final List<Task> tasksToSchedule = earliest.get().stream()
           .flatMap(stage -> selectSchedulableTasks(stage).stream())
           .collect(Collectors.toList());
-      // Collections.reverse(tasksToSchedule);
+
+      // We prefer (but not guarantee) to schedule the 'receiving' tasks first,
+      // assuming that tasks within a ScheduleGroup are connected with 'push' edges.
+      Collections.reverse(tasksToSchedule);
 
       LOG.info("Scheduling some tasks in {}, which are in the same ScheduleGroup", tasksToSchedule.stream()
           .map(Task::getTaskId)

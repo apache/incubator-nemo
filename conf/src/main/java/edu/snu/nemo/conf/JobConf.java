@@ -222,7 +222,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
-
+   * The number of block transfer server threads
    * which work on accepted connections.
    */
   @NamedParameter(doc = "The number of working threads of PartitionTransport server",

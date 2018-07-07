@@ -63,7 +63,7 @@ public final class BlockManagerWorker {
   private final String executorId;
   private final SerializerManager serializerManager;
 
-  // Stores
+  // Block stores
   private final MemoryStore memoryStore;
   private final SerializedMemoryStore serializedMemoryStore;
   private final LocalFileStore localFileStore;
