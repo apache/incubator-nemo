@@ -164,17 +164,17 @@ public final class RuntimeMaster {
       }
       metricMessageHandler.terminate();
       containerManager.terminate();
-      
+
     });
-    
+
     // Do not shutdown runtimeMasterThread. We need it to clean things up.
   }
-  
+
   public void requestContainer(final String resourceSpecificationString) {
     final Future<?> containerRequestEventResult = runtimeMasterThread.submit(() -> {
       try {
         final TreeNode jsonRootNode = objectMapper.readTree(resourceSpecificationString);
-  
+
         for (int i = 0; i < jsonRootNode.size(); i++) {
           final TreeNode resourceNode = jsonRootNode.get(i);
           final ResourceSpecification.Builder builder = ResourceSpecification.newBuilder();
@@ -197,7 +197,7 @@ public final class RuntimeMaster {
       throw new ContainerException(e);
     }
   }
-  
+
   /**
    * Called when a container is allocated for this runtime.
    * A wrapper function for {@link ContainerManager}.
@@ -210,12 +210,10 @@ public final class RuntimeMaster {
                                    final AllocatedEvaluator allocatedEvaluator,
                                    final Configuration executorConfiguration) {
     runtimeMasterThread.execute(() -> {
-  
       containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration);
-  
     });
   }
-  
+
   /**
    * Called when an executor is launched on a container for this runtime.
    *
@@ -232,7 +230,7 @@ public final class RuntimeMaster {
         return false;
       }
     };
-  
+
     final boolean eventResult;
     try {
       eventResult = runtimeMasterThread.submit(processExecutorLaunchedEvent).get();
@@ -241,7 +239,7 @@ public final class RuntimeMaster {
     }
     return eventResult;
   }
-  
+
   /**
    * Called when an executor fails due to container failure on this runtime.
    *
@@ -251,18 +249,18 @@ public final class RuntimeMaster {
     runtimeMasterThread.execute(() -> {
       LOG.info("onExecutorFailed: {}", failedEvaluator.getId());
       metricCountDownLatch.countDown();
-  
+
       // Note that getFailedContextList() can be empty if the failure occurred
       // prior to launching an Executor on the Evaluator.
       failedEvaluator.getFailedContextList().forEach(failedContext -> {
         final String failedExecutorId = failedContext.getId();
         scheduler.onExecutorRemoved(failedExecutorId);
       });
-  
+
       containerManager.onContainerFailed(failedEvaluator.getId());
     });
   }
-  
+
   /**
    * Handler for control messages received by Master.
    */
@@ -270,12 +268,10 @@ public final class RuntimeMaster {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       runtimeMasterThread.execute(() -> {
-  
         handleControlMessage(message);
-  
       });
     }
-    
+
     @Override
     public void onMessageWithContext(final ControlMessage.Message message, final MessageContext messageContext) {
       switch (message.getType()) {
@@ -285,13 +281,13 @@ public final class RuntimeMaster {
       }
     }
   }
-  
+
   private void handleControlMessage(final ControlMessage.Message message) {
     switch (message.getType()) {
       case TaskStateChanged:
         final ControlMessage.TaskStateChangedMsg taskStateChangedMsg
             = message.getTaskStateChangedMsg();
-  
+
         scheduler.onTaskStateReportFromExecutor(taskStateChangedMsg.getExecutorId(),
             taskStateChangedMsg.getTaskId(),
             taskStateChangedMsg.getAttemptIdx(),
@@ -332,8 +328,7 @@ public final class RuntimeMaster {
             new Exception("This message should not be received by Master :" + message.getType()));
     }
   }
-  
-  
+
   /**
    * Accumulates the metric data for a barrier vertex.
    * TODO #96: Modularize DataSkewPolicy to use MetricVertex and BarrierVertex.
@@ -349,7 +344,7 @@ public final class RuntimeMaster {
     final IRVertex vertexToSendMetricDataTo = irVertices.stream()
         .filter(irVertex -> irVertex.getId().equals(srcVertexId)).findFirst()
         .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
-  
+
     if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
       final MetricCollectionBarrierVertex<Integer, Long> metricCollectionBarrierVertex =
           (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;

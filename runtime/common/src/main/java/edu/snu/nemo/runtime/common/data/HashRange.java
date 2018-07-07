@@ -19,22 +19,23 @@ package edu.snu.nemo.runtime.common.data;
  * Descriptor for hash range.
  */
 public final class HashRange implements KeyRange<Integer> {
-  private static final HashRange ALL = new HashRange(0, Integer.MAX_VALUE);
-
+  private static final HashRange ALL = new HashRange(0, Integer.MAX_VALUE, false);
   private final int rangeBeginInclusive;
   private final int rangeEndExclusive;
+  private boolean isSkewed;
 
   /**
    * Private constructor.
    * @param rangeBeginInclusive point at which the hash range starts (inclusive).
    * @param rangeEndExclusive point at which the hash range ends (exclusive).
    */
-  private HashRange(final int rangeBeginInclusive, final int rangeEndExclusive) {
+  private HashRange(final int rangeBeginInclusive, final int rangeEndExclusive, final boolean isSkewed) {
     if (rangeBeginInclusive < 0 || rangeEndExclusive < 0) {
       throw new RuntimeException("Each boundary value of the range have to be non-negative.");
     }
     this.rangeBeginInclusive = rangeBeginInclusive;
     this.rangeEndExclusive = rangeEndExclusive;
+    this.isSkewed = isSkewed;
   }
 
   /**
@@ -49,8 +50,8 @@ public final class HashRange implements KeyRange<Integer> {
    * @param rangeEndExclusive   the end of the range (exclusive)
    * @return A hash range descriptor representing [{@code rangeBeginInclusive}, {@code rangeEndExclusive})
    */
-  public static HashRange of(final int rangeStartInclusive, final int rangeEndExclusive) {
-    return new HashRange(rangeStartInclusive, rangeEndExclusive);
+  public static HashRange of(final int rangeStartInclusive, final int rangeEndExclusive, final boolean isSkewed) {
+    return new HashRange(rangeStartInclusive, rangeEndExclusive, isSkewed);
   }
 
   /**
@@ -119,5 +120,12 @@ public final class HashRange implements KeyRange<Integer> {
     int result = rangeBeginInclusive;
     result = 31 * result + rangeEndExclusive;
     return result;
+  }
+
+  public void setAsSkewed() {
+    isSkewed = true;
+  }
+  public boolean isSkewed() {
+    return isSkewed;
   }
 }

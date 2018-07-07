@@ -39,10 +39,12 @@ public final class SchedulingConstraintRegistry {
   private SchedulingConstraintRegistry(
       final ContainerTypeAwareSchedulingConstraint containerTypeAwareSchedulingConstraint,
       final FreeSlotSchedulingConstraint freeSlotSchedulingConstraint,
-      final SourceLocationAwareSchedulingConstraint sourceLocationAwareSchedulingConstraint) {
+      final SourceLocationAwareSchedulingConstraint sourceLocationAwareSchedulingConstraint,
+      final SkewnessAwareSchedulingConstraint skewnessAwareSchedulingConstraint) {
     registerSchedulingConstraint(containerTypeAwareSchedulingConstraint);
     registerSchedulingConstraint(freeSlotSchedulingConstraint);
     registerSchedulingConstraint(sourceLocationAwareSchedulingConstraint);
+    registerSchedulingConstraint(skewnessAwareSchedulingConstraint);
   }
 
   /**
