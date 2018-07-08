@@ -18,7 +18,7 @@ package edu.snu.nemo.common.ir.vertex.executionproperty;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 /**
- * This property decides whether or not to schedule this vertex only on executors where source data reside.
+ * This property decides whether or not to handle skew when scheduling this vertex.
  */
 public final class SkewnessAwareSchedulingProperty extends VertexExecutionProperty<Boolean> {
   private static final SkewnessAwareSchedulingProperty HANDLE_SKEW
