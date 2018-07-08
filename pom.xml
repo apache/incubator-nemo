@@ -42,6 +42,8 @@ limitations under the License.
         <jackson.version>2.8.8</jackson.version>
         <netlib.version>1.1.2</netlib.version>
         <netty.version>4.1.16.Final</netty.version>
+        <jetty-server.version>9.4.10.v20180503</jetty-server.version>
+        <jetty-servlet.version>9.4.10.v20180503</jetty-servlet.version>
         <slf4j.version>1.7.20</slf4j.version>
         <!-- Tests -->
         <mockito.version>2.13.0</mockito.version>

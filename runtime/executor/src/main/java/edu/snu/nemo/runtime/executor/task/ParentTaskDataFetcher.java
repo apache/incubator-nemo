@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.executor.task;
 
-import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
 import edu.snu.nemo.runtime.executor.datatransfer.InputReader;
@@ -25,7 +24,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -37,7 +35,7 @@ class ParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class);
 
   private final InputReader readersForParentTask;
-  private final LinkedBlockingQueue<DataUtil.IteratorWithNumBytes> dataQueue;
+  private final LinkedBlockingQueue iteratorQueue;
 
   // Non-finals (lazy fetching)
   private boolean hasFetchStarted;
@@ -45,21 +43,21 @@ class ParentTaskDataFetcher extends DataFetcher {
   private DataUtil.IteratorWithNumBytes currentIterator;
   private int currentIteratorIndex;
   private boolean noElementAtAll = true;
+  private long serBytes = 0;
+  private long encodedBytes = 0;
 
   ParentTaskDataFetcher(final IRVertex dataSource,
                         final InputReader readerForParentTask,
                         final VertexHarness child,
-                        final Map<String, Object> metricMap,
                         final boolean isToSideInput) {
-    super(dataSource, child, metricMap, readerForParentTask.isSideInputReader(), isToSideInput);
+    super(dataSource, child, readerForParentTask.isSideInputReader(), isToSideInput);
     this.readersForParentTask = readerForParentTask;
     this.hasFetchStarted = false;
-    this.dataQueue = new LinkedBlockingQueue<>();
+    this.currentIteratorIndex = 0;
+    this.iteratorQueue = new LinkedBlockingQueue<>();
   }
 
-  private void handleMetric(final DataUtil.IteratorWithNumBytes iterator) {
-    long serBytes = 0;
-    long encodedBytes = 0;
+  private void countBytes(final DataUtil.IteratorWithNumBytes iterator) {
     try {
       serBytes += iterator.getNumSerializedBytes();
     } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
@@ -74,10 +72,6 @@ class ParentTaskDataFetcher extends DataFetcher {
     } catch (final IllegalStateException e) {
       LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
     }
-    if (serBytes != encodedBytes) {
-      getMetricMap().put("ReadBytes(raw)", serBytes);
-    }
-    getMetricMap().put("ReadBytes", encodedBytes);
   }
 
   /**
@@ -88,15 +82,15 @@ class ParentTaskDataFetcher extends DataFetcher {
     this.expectedNumOfIterators = futures.size();
 
     futures.forEach(compFuture -> compFuture.whenComplete((iterator, exception) -> {
-      if (exception != null) {
-        throw new BlockFetchException(exception);
-      }
-
       try {
-        dataQueue.put(iterator); // can block here
+        if (exception != null) {
+          iteratorQueue.put(exception); // can block here
+        } else {
+          iteratorQueue.put(iterator); // can block here
+        }
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
-        throw new BlockFetchException(e);
+        throw new RuntimeException(e); // This shouldn't happen
       }
     }));
   }
@@ -106,18 +100,16 @@ class ParentTaskDataFetcher extends DataFetcher {
     try {
       if (!hasFetchStarted) {
         fetchInBackground();
-        hasFetchStarted = true;
-        this.currentIterator = dataQueue.take();
-        this.currentIteratorIndex = 1;
+        advanceIterator();
       }
 
       if (this.currentIterator.hasNext()) {
+        // This iterator has an element available
         noElementAtAll = false;
         return this.currentIterator.next();
       } else {
-        // This iterator is done, proceed to the next iterator
         if (currentIteratorIndex == expectedNumOfIterators) {
-          // No more iterator left
+          // Entire fetcher is done
           if (noElementAtAll) {
             // This shouldn't normally happen, except for cases such as when Beam's VoidCoder is used.
             noElementAtAll = false;
@@ -127,16 +119,47 @@ class ParentTaskDataFetcher extends DataFetcher {
             return null;
           }
         } else {
-          handleMetric(currentIterator);
-          // Try the next iterator
-          this.currentIteratorIndex += 1;
-          this.currentIterator = dataQueue.take();
+          // Advance to the next one
+          countBytes(currentIterator);
+          advanceIterator();
           return fetchDataElement();
         }
       }
-    } catch (InterruptedException exception) {
-      Thread.currentThread().interrupt();
-      throw new IOException(exception);
+    } catch (final Throwable e) {
+      // Any failure is caught and thrown as an IOException, so that the task is retried.
+      // In particular, we catch unchecked exceptions like RuntimeException thrown by DataUtil.IteratorWithNumBytes
+      // when remote data fetching fails for whatever reason.
+      // Note that we rely on unchecked exceptions because the Iterator interface does not provide the standard
+      // "throw Exception" that the TaskExecutor thread can catch and handle.
+      throw new IOException(e);
     }
+  }
+
+  private void advanceIterator() throws Throwable {
+    // Take from iteratorQueue
+    final Object iteratorOrThrowable;
+    try {
+      iteratorOrThrowable = iteratorQueue.take();
+    } catch (InterruptedException e) {
+      throw e;
+    }
+
+    // Handle iteratorOrThrowable
+    if (iteratorOrThrowable instanceof Throwable) {
+      throw (Throwable) iteratorOrThrowable;
+    } else {
+      // This iterator is valid. Do advance.
+      hasFetchStarted = true;
+      this.currentIterator = (DataUtil.IteratorWithNumBytes) iteratorOrThrowable;
+      this.currentIteratorIndex++;
+    }
+  }
+
+  public final long getSerializedBytes() {
+    return serBytes;
+  }
+
+  public final long getEncodedBytes() {
+    return encodedBytes;
   }
 }
