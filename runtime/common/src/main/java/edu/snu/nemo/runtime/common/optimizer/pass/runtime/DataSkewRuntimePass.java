@@ -42,8 +42,8 @@ import java.util.stream.Collectors;
 public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>, Map<Integer, Long>>> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
   private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
-  private static final int DEFAULT_SKEWNESS = 3;
-  private int skewness = DEFAULT_SKEWNESS;
+  private static final int DEFAULT_NUM_SKEWED_HASHES = 3;
+  private int numSkewedHashes = DEFAULT_NUM_SKEWED_HASHES;
 
   /**
    * Constructor.
@@ -53,8 +53,8 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
         DynamicOptimizationEventHandler.class);
   }
 
-  public DataSkewRuntimePass setSkewAs(final int skew) {
-    skewness = skew;
+  public DataSkewRuntimePass setNumSkewedHashes(final int numOfSkewedHashes) {
+    numSkewedHashes = numOfSkewedHashes;
     return this;
   }
 
@@ -100,6 +100,16 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
     return new PhysicalPlan(originalPlan.getId(), physicalDAGBuilder.build());
   }
 
+  private boolean containsSkewedHash(final List<Integer> skewedHashes,
+                                     final int startingHash, final int finishingHash) {
+    for (int h = startingHash; h < finishingHash; h++) {
+      if (skewedHashes.contains(h)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /**
    * Method for calculating key ranges to evenly distribute the skewed metric data.
    *
@@ -116,15 +126,15 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
         .max(Integer::compareTo)
         .orElseThrow(() -> new DynamicOptimizationException("Cannot find max hash value among blocks."));
 
-    // Identify hot hashes.
+    // Identify skewed hashes.
     List<Map.Entry<Integer, Long>> sortedMetricData = aggregatedMetricData.entrySet().stream()
         .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
         .collect(Collectors.toList());
 
-    List<Integer> hotHashes = new ArrayList<>();
-    for (int i = 0; i < skewness; i++) {
-      hotHashes.add(sortedMetricData.get(i).getKey());
-      LOG.info("HotHash: Hash {} Size {}", sortedMetricData.get(i).getKey(), sortedMetricData.get(i).getValue());
+    List<Integer> skewedHashes = new ArrayList<>();
+    for (int i = 0; i < numSkewedHashes; i++) {
+      skewedHashes.add(sortedMetricData.get(i).getKey());
+      LOG.info("Skewed hash: Hash {} Size {}", sortedMetricData.get(i).getKey(), sortedMetricData.get(i).getValue());
     }
 
     // Do the optimization using the information derived above.
@@ -133,7 +143,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
     LOG.info("idealSizePerTask {} = {}(totalSize) / {}(taskNum)",
         idealSizePerTask, totalSize, taskNum);
 
-    final List<KeyRange> keyRangesToSkewness = new ArrayList<>(taskNum);
+    final List<KeyRange> keyRanges = new ArrayList<>(taskNum);
     int startingHashValue = 0;
     int finishingHashValue = 1; // initial values
     Long currentAccumulatedSize = aggregatedMetricData.getOrDefault(startingHashValue, 0L);
@@ -157,40 +167,26 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
           currentAccumulatedSize -= aggregatedMetricData.getOrDefault(finishingHashValue, 0L);
         }
 
-        boolean isHotHash = false;
-        for (int h = startingHashValue; h < finishingHashValue; h++) {
-          if (hotHashes.contains(h)) {
-            isHotHash = true;
-            break;
-          }
-        }
-
-        // assign appropriately
-        keyRangesToSkewness.add(i - 1, HashRange.of(startingHashValue, finishingHashValue, isHotHash));
+        boolean isSkewedHash = containsSkewedHash(skewedHashes, startingHashValue, finishingHashValue);
+        keyRanges.add(i - 1, HashRange.of(startingHashValue, finishingHashValue, isSkewedHash));
         LOG.debug("KeyRange {}~{}, Size {}", startingHashValue, finishingHashValue - 1,
             currentAccumulatedSize - prevAccumulatedSize);
+
         prevAccumulatedSize = currentAccumulatedSize;
         startingHashValue = finishingHashValue;
       } else { // last one: we put the range of the rest.
-        boolean isHotHash = false;
-        for (int h = startingHashValue; h < finishingHashValue; h++) {
-          if (hotHashes.contains(h)) {
-            isHotHash = true;
-            break;
-          }
-        }
+        boolean isSkewedHash = containsSkewedHash(skewedHashes, startingHashValue, finishingHashValue);
+        keyRanges.add(i - 1,
+            HashRange.of(startingHashValue, maxHashValue + 1, isSkewedHash));
 
         while (finishingHashValue <= maxHashValue) {
           currentAccumulatedSize += aggregatedMetricData.getOrDefault(finishingHashValue, 0L);
           finishingHashValue++;
         }
-
-        keyRangesToSkewness.add(i - 1,
-              HashRange.of(startingHashValue, maxHashValue + 1, isHotHash));
         LOG.debug("KeyRange {}~{}, Size {}", startingHashValue, maxHashValue + 1,
             currentAccumulatedSize - prevAccumulatedSize);
       }
     }
-    return keyRangesToSkewness;
+    return keyRanges;
   }
 }

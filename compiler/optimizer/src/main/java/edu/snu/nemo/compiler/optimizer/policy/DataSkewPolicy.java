@@ -43,7 +43,7 @@ public final class DataSkewPolicy implements Policy {
 
   public DataSkewPolicy(final int skewness) {
     this.policy = new PolicyBuilder(true)
-        .registerRuntimePass(new DataSkewRuntimePass().setSkewAs(skewness), new DataSkewCompositePass())
+        .registerRuntimePass(new DataSkewRuntimePass().setNumSkewedHashes(skewness), new DataSkewCompositePass())
         .registerCompileTimePass(new LoopOptimizationCompositePass())
         .registerCompileTimePass(new PrimitiveCompositePass())
         .build();

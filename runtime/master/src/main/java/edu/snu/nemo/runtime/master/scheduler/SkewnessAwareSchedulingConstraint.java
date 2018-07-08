@@ -30,7 +30,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 
 /**
- * This policy aims to distribute partitions with hot keys to different executors.
+ * This policy aims to distribute partitions with skewed keys to different executors.
  */
 @ThreadSafe
 @DriverSide
