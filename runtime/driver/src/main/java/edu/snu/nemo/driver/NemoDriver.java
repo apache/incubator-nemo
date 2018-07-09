@@ -101,6 +101,7 @@ public final class NemoDriver {
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message ->
         startSchedulingUserApplication(message.getLaunchDAG().getDag()));
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.DriverShutdown, message -> {
+      LOG.info("Driver shutdown initiated");
       userApplicationRunnerThread.execute(runtimeMaster::terminate);
       userApplicationRunnerThread.shutdown();
     });

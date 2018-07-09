@@ -25,7 +25,6 @@ import edu.snu.nemo.runtime.common.message.MessageParameters;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.client.DriverConfiguration;
 import org.apache.reef.client.DriverLauncher;
-import org.apache.reef.client.LauncherStatus;
 import org.apache.reef.client.parameters.JobMessageHandler;
 import org.apache.reef.io.network.naming.LocalNameResolverConfiguration;
 import org.apache.reef.io.network.naming.NameServerConfiguration;
@@ -50,6 +49,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * Job launcher.
@@ -66,6 +66,7 @@ public final class JobLauncher {
   private static DriverRPCServer driverRPCServer;
 
   private static boolean driverActive = false;
+  private static CountDownLatch jobDoneLatch;
   private static String serializedDAG;
   private static final List<?> COLLECTED_DATA = new ArrayList<>();
 
@@ -88,6 +89,7 @@ public final class JobLauncher {
     driverRPCServer
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> driverActive = true)
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStopped, event -> driverActive = false)
+        .registerHandler(ControlMessage.DriverToClientMessageType.JobDone, event -> jobDoneLatch.countDown())
         .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, event ->
           driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
               .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
@@ -114,18 +116,6 @@ public final class JobLauncher {
 
     // Launch client main
     runUserProgramMain(builtJobConf);
-
-    driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
-        .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
-    driverRPCServer.shutdown();
-    driverLauncher.close();
-    final LauncherStatus launcherStatus = driverLauncher.getStatus();
-    final Optional<Throwable> possibleError = launcherStatus.getError();
-    if (possibleError.isPresent()) {
-      throw new RuntimeException(possibleError.get());
-    } else {
-      LOG.info("Job successfully completed");
-    }
   }
 
   /**
@@ -136,9 +126,10 @@ public final class JobLauncher {
   // When modifying the signature of this method, see CompilerTestUtil#compileDAG and make corresponding changes
   public static void launchDAG(final DAG dag) {
     serializedDAG = Base64.getEncoder().encodeToString(SerializationUtils.serialize(dag));
+    jobDoneLatch = new CountDownLatch(1);
 
     if (!driverActive) {
-      LOG.info("Launching driver");
+      LOG.info("LaunchDAG: Launching driver");
       try {
         if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
           throw new RuntimeException("Configuration for launching driver is not ready");
@@ -152,7 +143,7 @@ public final class JobLauncher {
         throw new RuntimeException(e);
       }
     } else {
-      LOG.info("Using the existing driver");
+      LOG.info("LaunchDAG: Using the existing driver");
       driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
           .setType(ControlMessage.ClientToDriverMessageType.LaunchDAG)
           .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build())
@@ -160,17 +151,13 @@ public final class JobLauncher {
     }
 
     // Wait for the JobDone message from the driver
-    synchronized (driverLauncher) {
-      while (!driverLauncher.getStatus().isDone()) {
-        try {
-          LOG.debug("Wait indefinitely");
-          driverLauncher.wait();
-        } catch (final InterruptedException e) {
-          LOG.warn("Interrupted: " + e);
-          // clean up state...
-          Thread.currentThread().interrupt();
-        }
-      }
+    try {
+      LOG.info("Waiting for the job to finish");
+      jobDoneLatch.await();
+    } catch (final InterruptedException e) {
+      LOG.warn("Interrupted: " + e);
+      // clean up state...
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -194,6 +181,20 @@ public final class JobLauncher {
     }
 
     method.invoke(null, (Object) args);
+
+    // Shutdown driver afterwards
+    if (driverActive) {
+      driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+          .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
+    }
+    driverRPCServer.shutdown();
+    driverLauncher.close();
+    final Optional<Throwable> possibleError = driverLauncher.getStatus().getError();
+    if (possibleError.isPresent()) {
+      throw new RuntimeException(possibleError.get());
+    } else {
+      LOG.info("Job successfully completed");
+    }
   }
 
   /**
