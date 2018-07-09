@@ -134,14 +134,6 @@ public final class BatchScheduler implements Scheduler {
     }
   }
 
-  @Override
-  public void appendJob(final PhysicalPlan physicalPlanToAppend) {
-    // append the additional physical plan to the one that's already running.
-    // NOTE: what's already been executed is not modified in the new physical plan.
-    final PhysicalPlan oldPhysicalPlan = this.physicalPlan;
-
-  }
-
   /**
    * Handles task state transition notifications sent from executors.
    * Note that we can receive notifications for previous task attempts, due to the nature of asynchronous events.

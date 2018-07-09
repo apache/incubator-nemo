@@ -66,7 +66,7 @@ public final class MRJava {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
-
+  /* TODO #152: enable execution of multiple jobs (call scheduleJob multiple times with caching).
   @Test(timeout = TIMEOUT)
   public void testSparkWordAndLineCount() throws Exception {
     final String inputFileName = "sample_input_wordcount_spark";
@@ -89,7 +89,7 @@ public final class MRJava {
     }
   }
 
-  /* Temporary disabled because of Travis issue
+  /* Temporary disabled due to Travis issue
   @Test(timeout = TIMEOUT)
   public void testSparkMapReduce() throws Exception {
     final String inputFileName = "sample_input_wordcount_spark";
