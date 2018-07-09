@@ -116,6 +116,34 @@ public final class JobLauncher {
 
     // Launch client main
     runUserProgramMain(builtJobConf);
+
+    // Trigger driver shutdown afterwards
+    if (driverActive) {
+      driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+          .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
+    }
+    // Wait for driver to naturally finish
+    synchronized (driverLauncher) {
+      while (!driverLauncher.getStatus().isDone()) {
+        try {
+          LOG.info("Wait for the driver to finish");
+          driverLauncher.wait();
+        } catch (final InterruptedException e) {
+          LOG.warn("Interrupted: " + e);
+          // clean up state...
+          Thread.currentThread().interrupt();
+        }
+      }
+    }
+    // Close everything that's left
+    driverRPCServer.shutdown();
+    driverLauncher.close();
+    final Optional<Throwable> possibleError = driverLauncher.getStatus().getError();
+    if (possibleError.isPresent()) {
+      throw new RuntimeException(possibleError.get());
+    } else {
+      LOG.info("Job successfully completed");
+    }
   }
 
   /**
@@ -181,20 +209,6 @@ public final class JobLauncher {
     }
 
     method.invoke(null, (Object) args);
-
-    // Shutdown driver afterwards
-    if (driverActive) {
-      driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
-          .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
-    }
-    driverRPCServer.shutdown();
-    driverLauncher.close();
-    final Optional<Throwable> possibleError = driverLauncher.getStatus().getError();
-    if (possibleError.isPresent()) {
-      throw new RuntimeException(possibleError.get());
-    } else {
-      LOG.info("Job successfully completed");
-    }
   }
 
   /**
