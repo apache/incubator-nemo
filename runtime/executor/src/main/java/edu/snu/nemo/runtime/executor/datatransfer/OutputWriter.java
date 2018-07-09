@@ -53,12 +53,12 @@ public final class OutputWriter extends DataTransfer implements AutoCloseable {
    * @param runtimeEdge         the {@link RuntimeEdge}.
    * @param blockManagerWorker  the {@link BlockManagerWorker}.
    */
-  public OutputWriter(final int hashRangeMultiplier,
-                      final int srcTaskIdx,
-                      final String srcRuntimeVertexId,
-                      final IRVertex dstIrVertex,
-                      final RuntimeEdge<?> runtimeEdge,
-                      final BlockManagerWorker blockManagerWorker) {
+  OutputWriter(final int hashRangeMultiplier,
+               final int srcTaskIdx,
+               final String srcRuntimeVertexId,
+               final IRVertex dstIrVertex,
+               final RuntimeEdge<?> runtimeEdge,
+               final BlockManagerWorker blockManagerWorker) {
     super(runtimeEdge.getId());
     this.blockId = RuntimeIdGenerator.generateBlockId(getId(), srcTaskIdx);
     this.runtimeEdge = runtimeEdge;

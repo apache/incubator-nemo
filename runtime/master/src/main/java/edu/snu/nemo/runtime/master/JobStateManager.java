@@ -20,7 +20,6 @@ import edu.snu.nemo.common.exception.IllegalStateTransitionException;
 import edu.snu.nemo.common.exception.SchedulingException;
 import edu.snu.nemo.common.exception.UnknownExecutionStateException;
 import edu.snu.nemo.common.StateMachine;
-import edu.snu.nemo.runtime.common.metric.MetricDataBuilder;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.plan.Stage;
@@ -37,6 +36,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import edu.snu.nemo.runtime.common.state.TaskState;
+import edu.snu.nemo.runtime.common.metric.JobMetric;
+import edu.snu.nemo.runtime.common.metric.StageMetric;
+import edu.snu.nemo.runtime.common.metric.TaskMetric;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,7 +89,8 @@ public final class JobStateManager {
    * For metrics.
    */
   private final MetricMessageHandler metricMessageHandler;
-  private final Map<String, MetricDataBuilder> metricDataBuilderMap;
+
+  private MetricStore metricStore;
 
   public JobStateManager(final PhysicalPlan physicalPlan,
                          final MetricMessageHandler metricMessageHandler,
@@ -102,7 +105,10 @@ public final class JobStateManager {
     this.taskIdToCurrentAttempt = new HashMap<>();
     this.finishLock = new ReentrantLock();
     this.jobFinishedCondition = finishLock.newCondition();
-    this.metricDataBuilderMap = new HashMap<>();
+    this.metricStore = MetricStore.getStore();
+
+    metricStore.getOrCreateMetric(JobMetric.class, jobId).setStageDAG(physicalPlan.getStageDAG());
+    metricStore.triggerBroadcast(JobMetric.class, jobId);
     initializeComputationStates();
   }
 
@@ -140,25 +146,21 @@ public final class JobStateManager {
     LOG.debug("Task State Transition: id {}, from {} to {}",
         new Object[]{taskId, taskState.getCurrentState(), newTaskState});
 
+    metricStore.getOrCreateMetric(TaskMetric.class, taskId)
+        .addEvent((TaskState.State) taskState.getCurrentState(), newTaskState);
+    metricStore.triggerBroadcast(TaskMetric.class, taskId);
+
     taskState.setState(newTaskState);
 
-    // Handle metrics
-    final Map<String, Object> metric = new HashMap<>();
     switch (newTaskState) {
       case ON_HOLD:
       case COMPLETE:
       case FAILED:
       case SHOULD_RETRY:
-        metric.put("ToState", newTaskState);
-        endMeasurement(taskId, metric);
-        break;
       case EXECUTING:
-        metric.put("FromState", newTaskState);
-        beginMeasurement(taskId, metric);
         break;
       case READY:
         final int currentAttempt = taskIdToCurrentAttempt.get(taskId) + 1;
-        metric.put("ScheduleAttempt", currentAttempt);
         if (currentAttempt <= maxScheduleAttempt) {
           taskIdToCurrentAttempt.put(taskId, currentAttempt);
         } else {
@@ -215,21 +217,16 @@ public final class JobStateManager {
   private void onStageStateChanged(final String stageId, final StageState.State newStageState) {
     // Change stage state
     final StateMachine stageStateMachine = idToStageStates.get(stageId).getStateMachine();
+
+    metricStore.getOrCreateMetric(StageMetric.class, stageId)
+        .addEvent(getStageState(stageId), newStageState);
+    metricStore.triggerBroadcast(StageMetric.class, stageId);
+
     LOG.debug("Stage State Transition: id {} from {} to {}",
         new Object[]{stageId, stageStateMachine.getCurrentState(), newStageState});
     stageStateMachine.setState(newStageState);
 
-    // Metric handling
-    final Map<String, Object> metric = new HashMap<>();
-    if (newStageState == StageState.State.INCOMPLETE) {
-      metric.put("FromState", newStageState);
-      beginMeasurement(stageId, metric);
-    } else if (newStageState == StageState.State.COMPLETE) {
-      metric.put("ToState", newStageState);
-      endMeasurement(stageId, metric);
-    }
-
-    // Job becomse COMPLETE
+    // Change job state if needed
     final boolean allStagesCompleted = idToStageStates.values().stream().allMatch(state ->
         state.getStateMachine().getCurrentState().equals(StageState.State.COMPLETE));
     if (allStagesCompleted) {
@@ -243,20 +240,19 @@ public final class JobStateManager {
    * @param newState of the job.
    */
   private void onJobStateChanged(final JobState.State newState) {
+    metricStore.getOrCreateMetric(JobMetric.class, jobId)
+        .addEvent((JobState.State) jobState.getStateMachine().getCurrentState(), newState);
+    metricStore.triggerBroadcast(JobMetric.class, jobId);
+
     jobState.getStateMachine().setState(newState);
 
-    final Map<String, Object> metric = new HashMap<>();
     if (newState == JobState.State.EXECUTING) {
-      LOG.info("Executing Job ID {}...", this.jobId);
-      metric.put("FromState", newState);
-      beginMeasurement(jobId, metric);
+      LOG.debug("Executing Job ID {}...", this.jobId);
     } else if (newState == JobState.State.COMPLETE || newState == JobState.State.FAILED) {
       LOG.info("Job ID {} {}!", new Object[]{jobId, newState});
 
       // Awake all threads waiting the finish of this job.
       finishLock.lock();
-      metric.put("ToState", newState);
-      endMeasurement(jobId, metric);
 
       try {
         jobFinishedCondition.signalAll();
@@ -342,36 +338,6 @@ public final class JobStateManager {
   @VisibleForTesting
   public synchronized Map<String, TaskState> getAllTaskStates() {
     return idToTaskStates;
-  }
-
-  /**
-   * Begins recording the start time of this metric measurement, in addition to the metric given.
-   * This method ensures thread-safety by synchronizing its callers.
-   * @param compUnitId to be used as metricKey
-   * @param initialMetric metric to add
-   */
-  private void beginMeasurement(final String compUnitId, final Map<String, Object> initialMetric) {
-    final MetricDataBuilder metricDataBuilder = new MetricDataBuilder(compUnitId);
-    metricDataBuilder.beginMeasurement(initialMetric);
-    metricDataBuilderMap.put(compUnitId, metricDataBuilder);
-  }
-
-  /**
-   * Ends this metric measurement, recording the end time in addition to the metric given.
-   * This method ensures thread-safety by synchronizing its callers.
-   * @param compUnitId to be used as metricKey
-   * @param finalMetric metric to add
-   */
-  private void endMeasurement(final String compUnitId, final Map<String, Object> finalMetric) {
-    final MetricDataBuilder metricDataBuilder = metricDataBuilderMap.get(compUnitId);
-
-    // may be null when a Task fails without entering the executing state (due to an input read failure)
-    if (metricDataBuilder != null) {
-      finalMetric.put("ContainerId", "Master");
-      metricDataBuilder.endMeasurement(finalMetric);
-      metricMessageHandler.onMetricMessageReceived(compUnitId, metricDataBuilder.build().toJson());
-      metricDataBuilderMap.remove(compUnitId);
-    }
   }
 
   /**

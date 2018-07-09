@@ -83,7 +83,6 @@ public final class RemoteFileMetadata<K extends Serializable> extends FileMetada
         dataOutputStream.write(key);
         dataOutputStream.writeInt(partitionMetadata.getPartitionSize());
         dataOutputStream.writeLong(partitionMetadata.getOffset());
-        dataOutputStream.writeLong(partitionMetadata.getElementsTotal());
       }
     }
     setCommitted(true);
@@ -127,7 +126,6 @@ public final class RemoteFileMetadata<K extends Serializable> extends FileMetada
         final PartitionMetadata<T> partitionMetadata = new PartitionMetadata<>(
             SerializationUtils.deserialize(desKey),
             dataInputStream.readInt(),
-            dataInputStream.readLong(),
             dataInputStream.readLong()
         );
         partitionMetadataList.add(partitionMetadata);

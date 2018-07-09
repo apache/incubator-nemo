@@ -91,16 +91,21 @@ import static org.mockito.Mockito.mock;
     SourceVertex.class, ClientRPC.class, MetricManagerMaster.class})
 public final class DataTransferTest {
   private static final String EXECUTOR_ID_PREFIX = "Executor";
-  private static final InterTaskDataStoreProperty.Value MEMORY_STORE = InterTaskDataStoreProperty.Value.MemoryStore;
-  private static final InterTaskDataStoreProperty.Value SER_MEMORY_STORE = InterTaskDataStoreProperty.Value.SerializedMemoryStore;
-  private static final InterTaskDataStoreProperty.Value LOCAL_FILE_STORE = InterTaskDataStoreProperty.Value.LocalFileStore;
-  private static final InterTaskDataStoreProperty.Value REMOTE_FILE_STORE = InterTaskDataStoreProperty.Value.GlusterFileStore;
+  private static final InterTaskDataStoreProperty.Value MEMORY_STORE =
+      InterTaskDataStoreProperty.Value.MemoryStore;
+  private static final InterTaskDataStoreProperty.Value SER_MEMORY_STORE =
+      InterTaskDataStoreProperty.Value.SerializedMemoryStore;
+  private static final InterTaskDataStoreProperty.Value LOCAL_FILE_STORE =
+      InterTaskDataStoreProperty.Value.LocalFileStore;
+  private static final InterTaskDataStoreProperty.Value REMOTE_FILE_STORE =
+      InterTaskDataStoreProperty.Value.GlusterFileStore;
   private static final String TMP_LOCAL_FILE_DIRECTORY = "./tmpLocalFiles";
   private static final String TMP_REMOTE_FILE_DIRECTORY = "./tmpRemoteFiles";
   private static final int PARALLELISM_TEN = 10;
   private static final String EDGE_PREFIX_TEMPLATE = "Dummy(%d)";
   private static final AtomicInteger TEST_INDEX = new AtomicInteger(0);
-  private static final EncoderFactory ENCODER_FACTORY = PairEncoderFactory.of(IntEncoderFactory.of(), IntEncoderFactory.of());
+  private static final EncoderFactory ENCODER_FACTORY =
+      PairEncoderFactory.of(IntEncoderFactory.of(), IntEncoderFactory.of());
   private static final DecoderFactory DECODER_FACTORY =
       PairDecoderFactory.of(IntDecoderFactory.of(), IntDecoderFactory.of());
   private static final Tang TANG = Tang.Factory.getTang();
@@ -108,6 +113,7 @@ public final class DataTransferTest {
 
   private BlockManagerMaster master;
   private BlockManagerWorker worker1;
+  private DataTransferFactory transferFactory;
   private BlockManagerWorker worker2;
   private HashMap<BlockManagerWorker, SerializerManager> serializerManagers = new HashMap<>();
 
@@ -152,10 +158,12 @@ public final class DataTransferTest {
     injector2.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
 
     this.master = master;
-    this.worker1 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher,
-        injector2);
+    final Pair<BlockManagerWorker, DataTransferFactory> pair1 =
+        createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher, injector2);
+    this.worker1 = pair1.left();
+    this.transferFactory = pair1.right();
     this.worker2 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher,
-        injector2);
+        injector2).left();
   }
 
   @After
@@ -164,8 +172,10 @@ public final class DataTransferTest {
     FileUtils.deleteDirectory(new File(TMP_REMOTE_FILE_DIRECTORY));
   }
 
-  private BlockManagerWorker createWorker(final String executorId, final LocalMessageDispatcher messageDispatcher,
-                                          final Injector nameClientInjector) {
+  private Pair<BlockManagerWorker, DataTransferFactory> createWorker(
+      final String executorId,
+      final LocalMessageDispatcher messageDispatcher,
+      final Injector nameClientInjector) {
     final LocalMessageEnvironment messageEnvironment = new LocalMessageEnvironment(executorId, messageDispatcher);
     final PersistentConnectionToMasterMap conToMaster = new PersistentConnectionToMasterMap(messageEnvironment);
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
@@ -180,11 +190,13 @@ public final class DataTransferTest {
     final BlockManagerWorker blockManagerWorker;
     final MetricManagerWorker metricManagerWorker;
     final SerializerManager serializerManager;
+    final DataTransferFactory dataTransferFactory;
     try {
       blockManagerWorker = injector.getInstance(BlockManagerWorker.class);
-      metricManagerWorker =  injector.getInstance(MetricManagerWorker.class);
+      metricManagerWorker = injector.getInstance(MetricManagerWorker.class);
       serializerManager = injector.getInstance(SerializerManager.class);
       serializerManagers.put(blockManagerWorker, serializerManager);
+      dataTransferFactory = injector.getInstance(DataTransferFactory.class);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
@@ -195,11 +207,11 @@ public final class DataTransferTest {
         conToMaster,
         messageEnvironment,
         serializerManager,
-        new DataTransferFactory(HASH_RANGE_MULTIPLIER, blockManagerWorker),
+        dataTransferFactory,
         metricManagerWorker);
     injector.bindVolatileInstance(Executor.class, executor);
 
-    return blockManagerWorker;
+    return Pair.of(blockManagerWorker, dataTransferFactory);
   }
 
   private Injector createNameClientInjector() {
@@ -336,8 +348,7 @@ public final class DataTransferTest {
     final List<List> dataWrittenList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, srcVertex.getId(), dstVertex,
-          dummyEdge, sender);
+      final OutputWriter writer = transferFactory.createWriter(srcVertex, srcTaskIndex, dstVertex, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
@@ -432,14 +443,12 @@ public final class DataTransferTest {
     final List<List> dataWrittenList = new ArrayList<>();
     IntStream.range(0, PARALLELISM_TEN).forEach(srcTaskIndex -> {
       final List dataWritten = getRangedNumList(0, PARALLELISM_TEN);
-      final OutputWriter writer = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, srcVertex.getId(), dstVertex,
-          dummyEdge, sender);
+      final OutputWriter writer = transferFactory.createWriter(srcVertex, srcTaskIndex, dstVertex, dummyEdge);
       dataWritten.iterator().forEachRemaining(writer::write);
       writer.close();
       dataWrittenList.add(dataWritten);
 
-      final OutputWriter writer2 = new OutputWriter(HASH_RANGE_MULTIPLIER, srcTaskIndex, srcVertex.getId(), dstVertex,
-          dummyEdge2, sender);
+      final OutputWriter writer2 = transferFactory.createWriter(srcVertex, srcTaskIndex, dstVertex, dummyEdge2);
       dataWritten.iterator().forEachRemaining(writer2::write);
       writer2.close();
     });

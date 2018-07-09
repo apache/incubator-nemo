@@ -72,7 +72,8 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     this.outputCollector = oc;
     this.startBundleContext = new StartBundleContext(doFn, serializedOptions);
     this.finishBundleContext = new FinishBundleContext(doFn, outputCollector, serializedOptions);
-    this.processContext = new ProcessContext(doFn, outputCollector, context.getSideInputs(), serializedOptions);
+    this.processContext = new ProcessContext(doFn, outputCollector,
+        context.getSideInputs(), context.getAdditionalTagOutputs(), serializedOptions);
     this.invoker = DoFnInvokers.invokerFor(doFn);
     invoker.invokeSetup();
     invoker.invokeStartBundle(startBundleContext);
@@ -192,6 +193,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     private I input;
     private final OutputCollector<O> outputCollector;
     private final Map sideInputs;
+    private final Map additionalOutputs;
     private final ObjectMapper mapper;
     private final PipelineOptions options;
 
@@ -201,15 +203,18 @@ public final class DoTransform<I, O> implements Transform<I, O> {
      * @param fn                Dofn.
      * @param outputCollector   OutputCollector.
      * @param sideInputs        Map for SideInputs.
+     * @param additionalOutputs     Map for TaggedOutputs.
      * @param serializedOptions Options, serialized.
      */
     ProcessContext(final DoFn<I, O> fn,
                    final OutputCollector<O> outputCollector,
                    final Map sideInputs,
+                   final Map additionalOutputs,
                    final String serializedOptions) {
       fn.super();
       this.outputCollector = outputCollector;
       this.sideInputs = sideInputs;
+      this.additionalOutputs = additionalOutputs;
       this.mapper = new ObjectMapper();
       try {
         this.options = mapper.readValue(serializedOptions, PipelineOptions.class);
@@ -269,7 +274,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public <T> void output(final TupleTag<T> tupleTag, final T t) {
-      throw new UnsupportedOperationException("output(TupleTag, T) in ProcessContext under DoTransform");
+      outputCollector.emit((String) additionalOutputs.get(tupleTag.getId()), t);
     }
 
     @Override
