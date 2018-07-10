@@ -63,9 +63,8 @@ public class SailfishPassTest {
                 edgeToMerger.getPropertyValue(UsedDataHandlingProperty.class).get());
             assertEquals(InterTaskDataStoreProperty.Value.SerializedMemoryStore,
                 edgeToMerger.getPropertyValue(InterTaskDataStoreProperty.class).get());
-            // TODO #125: Fix data loss bug caused by SailfishSchedulingPolicy
-            //assertEquals(BytesDecoderFactory.of(),
-            //    edgeToMerger.getPropertyValue(DecoderProperty.class).get());
+            assertEquals(BytesDecoderFactory.of(),
+                edgeToMerger.getPropertyValue(DecoderProperty.class).get());
           } else {
             assertEquals(DataFlowModelProperty.Value.Pull,
                 edgeToMerger.getPropertyValue(DataFlowModelProperty.class).get());
@@ -78,9 +77,8 @@ public class SailfishPassTest {
               edgeFromMerger.getPropertyValue(DataCommunicationPatternProperty.class).get());
           assertEquals(InterTaskDataStoreProperty.Value.LocalFileStore,
               edgeFromMerger.getPropertyValue(InterTaskDataStoreProperty.class).get());
-          // TODO #125: Fix data loss bug caused by SailfishSchedulingPolicy
-          //assertEquals(BytesEncoderFactory.of(),
-          //    edgeFromMerger.getPropertyValue(EncoderProperty.class).get());
+          assertEquals(BytesEncoderFactory.of(),
+              edgeFromMerger.getPropertyValue(EncoderProperty.class).get());
         });
       } else {
         // Non merger vertex.

@@ -49,44 +49,39 @@ public final class DataUtil {
   /**
    * Serializes the elements in a non-serialized partition into an output stream.
    *
-   * @param encoderFactory                the encoderFactory to encode the elements.
+   * @param encoderFactory         the encoderFactory to encode the elements.
    * @param nonSerializedPartition the non-serialized partition to serialize.
    * @param bytesOutputStream      the output stream to write.
-   * @return total number of elements in the partition.
    * @throws IOException if fail to serialize.
    */
-  public static long serializePartition(final EncoderFactory encoderFactory,
-                                        final NonSerializedPartition nonSerializedPartition,
-                                        final OutputStream bytesOutputStream) throws IOException {
-    long elementsCount = 0;
+  private static void serializePartition(final EncoderFactory encoderFactory,
+                                         final NonSerializedPartition nonSerializedPartition,
+                                         final OutputStream bytesOutputStream) throws IOException {
     final EncoderFactory.Encoder encoder = encoderFactory.create(bytesOutputStream);
     for (final Object element : nonSerializedPartition.getData()) {
       encoder.encode(element);
-      elementsCount++;
     }
-
-    return elementsCount;
   }
 
   /**
    * Reads the data of a partition from an input stream and deserializes it.
    *
-   * @param elementsInPartition the number of elements in this partition.
-   * @param serializer          the serializer to decode the bytes.
-   * @param key                 the key value of the result partition.
-   * @param inputStream         the input stream which will return the data in the partition as bytes.
-   * @param <K>                 the key type of the partitions.
+   * @param partitionSize the size of the partition to deserialize.
+   * @param serializer    the serializer to decode the bytes.
+   * @param key           the key value of the result partition.
+   * @param inputStream   the input stream which will return the data in the partition as bytes.
+   * @param <K>           the key type of the partitions.
    * @return the list of deserialized elements.
    * @throws IOException if fail to deserialize.
    */
-  public static <K extends Serializable> NonSerializedPartition deserializePartition(final long elementsInPartition,
+  public static <K extends Serializable> NonSerializedPartition deserializePartition(final int partitionSize,
                                                                                      final Serializer serializer,
                                                                                      final K key,
                                                                                      final InputStream inputStream)
       throws IOException {
     final List deserializedData = new ArrayList();
     final InputStreamIterator iterator = new InputStreamIterator(Collections.singletonList(inputStream).iterator(),
-        serializer, elementsInPartition);
+        serializer, partitionSize);
     iterator.forEachRemaining(deserializedData::add);
     return new NonSerializedPartition(key, deserializedData, iterator.getNumSerializedBytes(),
         iterator.getNumEncodedBytes());
@@ -111,15 +106,14 @@ public final class DataUtil {
           final DirectByteArrayOutputStream bytesOutputStream = new DirectByteArrayOutputStream();
           final OutputStream wrappedStream = buildOutputStream(bytesOutputStream, serializer.getEncodeStreamChainers());
       ) {
-        final long elementsTotal =
-            serializePartition(serializer.getEncoderFactory(), partitionToConvert, wrappedStream);
+        serializePartition(serializer.getEncoderFactory(), partitionToConvert, wrappedStream);
         // We need to close wrappedStream on here, because DirectByteArrayOutputStream:getBufDirectly() returns
         // inner buffer directly, which can be an unfinished(not flushed) buffer.
         wrappedStream.close();
         final byte[] serializedBytes = bytesOutputStream.getBufDirectly();
         final int actualLength = bytesOutputStream.getCount();
         serializedPartitions.add(
-            new SerializedPartition<>(partitionToConvert.getKey(), elementsTotal, serializedBytes, actualLength));
+            new SerializedPartition<>(partitionToConvert.getKey(), serializedBytes, actualLength));
       }
     }
     return serializedPartitions;
@@ -144,7 +138,7 @@ public final class DataUtil {
       try (final ByteArrayInputStream byteArrayInputStream =
                new ByteArrayInputStream(partitionToConvert.getData())) {
         final NonSerializedPartition<K> deserializePartition = deserializePartition(
-            partitionToConvert.getElementsCount(), serializer, key, byteArrayInputStream);
+            partitionToConvert.getLength(), serializer, key, byteArrayInputStream);
         nonSerializedPartitions.add(deserializePartition);
       }
     }
@@ -211,7 +205,6 @@ public final class DataUtil {
     private volatile T next;
     private volatile boolean cannotContinueDecoding = false;
     private volatile DecoderFactory.Decoder<T> decoder = null;
-    private volatile long elementsDecoded = 0;
     private volatile long numSerializedBytes = 0;
     private volatile long numEncodedBytes = 0;
 
@@ -221,8 +214,8 @@ public final class DataUtil {
      * @param inputStreams The streams to read data from.
      * @param serializer   The serializer.
      */
-    public InputStreamIterator(final Iterator<InputStream> inputStreams,
-                               final Serializer<?, T> serializer) {
+    InputStreamIterator(final Iterator<InputStream> inputStreams,
+                        final Serializer<?, T> serializer) {
       this.inputStreams = inputStreams;
       this.serializer = serializer;
       // -1 means no limit.
@@ -234,12 +227,12 @@ public final class DataUtil {
      *
      * @param inputStreams The streams to read data from.
      * @param serializer   The serializer.
-     * @param limit        The number of elements from the {@link InputStream}.
+     * @param limit        The bytes to read from the {@link InputStream}.
      */
-    public InputStreamIterator(
+    private InputStreamIterator(
         final Iterator<InputStream> inputStreams,
         final Serializer<?, T> serializer,
-        final long limit) {
+        final int limit) {
       if (limit < 0) {
         throw new IllegalArgumentException("Negative limit not allowed.");
       }
@@ -256,7 +249,8 @@ public final class DataUtil {
       if (cannotContinueDecoding) {
         return false;
       }
-      if (limit != -1 && limit == elementsDecoded) {
+      if (limit != -1 && limit == (serializedCountingStream == null
+          ? numSerializedBytes : numSerializedBytes + serializedCountingStream.getCount())) {
         cannotContinueDecoding = true;
         return false;
       }
@@ -280,7 +274,6 @@ public final class DataUtil {
         try {
           next = decoder.decode();
           hasNext = true;
-          elementsDecoded++;
           return true;
         } catch (final IOException e) {
           // IOException from decoder indicates EOF event.

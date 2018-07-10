@@ -58,18 +58,16 @@ public abstract class FileMetadata<K extends Serializable> {
    *
    * @param key     the key of the partition.
    * @param partitionSize the size of the partition.
-   * @param elementsTotal the number of elements in the partition.
    * @throws IOException if fail to append the partition metadata.
    */
   public final synchronized void writePartitionMetadata(final K key,
-                                                        final int partitionSize,
-                                                        final long elementsTotal) throws IOException {
+                                                        final int partitionSize) throws IOException {
     if (committed.get()) {
       throw new IOException("Cannot write a new block to a closed partition.");
     }
 
     final PartitionMetadata partitionMetadata =
-        new PartitionMetadata(key, partitionSize, writtenBytesCursor, elementsTotal);
+        new PartitionMetadata(key, partitionSize, writtenBytesCursor);
     partitionMetadataList.add(partitionMetadata);
     writtenBytesCursor += partitionSize;
   }

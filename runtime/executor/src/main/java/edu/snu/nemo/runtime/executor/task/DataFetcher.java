@@ -18,7 +18,6 @@ package edu.snu.nemo.runtime.executor.task;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.io.IOException;
-import java.util.Map;
 
 /**
  * An abstraction for fetching data from task-external sources.
@@ -26,18 +25,15 @@ import java.util.Map;
 abstract class DataFetcher {
   private final IRVertex dataSource;
   private final VertexHarness child;
-  private final Map<String, Object> metricMap;
   private final boolean isToSideInput;
   private final boolean isFromSideInput;
 
   DataFetcher(final IRVertex dataSource,
               final VertexHarness child,
-              final Map<String, Object> metricMap,
               final boolean isFromSideInput,
               final boolean isToSideInput) {
     this.dataSource = dataSource;
     this.child = child;
-    this.metricMap = metricMap;
     this.isToSideInput = isToSideInput;
     this.isFromSideInput = isFromSideInput;
   }
@@ -49,10 +45,6 @@ abstract class DataFetcher {
    * @throws IOException while fetching data
    */
   abstract Object fetchDataElement() throws IOException;
-
-  protected Map<String, Object> getMetricMap() {
-    return metricMap;
-  }
 
   VertexHarness getChild() {
     return child;

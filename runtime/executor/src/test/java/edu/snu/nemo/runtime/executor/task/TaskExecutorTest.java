@@ -24,6 +24,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.InMemorySourceVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
+import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalTagOutputProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
@@ -101,7 +102,7 @@ public final class TaskExecutorTest {
 
     // Mock a MetricMessageSender.
     metricMessageSender = mock(MetricMessageSender.class);
-    doNothing().when(metricMessageSender).send(anyString(), anyString());
+    doNothing().when(metricMessageSender).send(anyString(), anyString(), anyString(), any());
     doNothing().when(metricMessageSender).close();
 
     persistentConnectionToMasterMap = mock(PersistentConnectionToMasterMap.class);
@@ -261,10 +262,81 @@ public final class TaskExecutorTest {
     assertTrue(pairs.stream().map(Pair::left).allMatch(sideInput -> checkEqualElements(sideInput, values)));
   }
 
+  /**
+   * The DAG of the task to test looks like:
+   * parent vertex 1 --+-- vertex 2 (main tag)
+   *                   +-- vertex 3 (additional tag 1)
+   *                   +-- vertex 4 (additional tag 2)
+   *
+   * emit(element) and emit(dstVertexId, element) used together. emit(element) routes results to main output children,
+   * and emit(dstVertexId, element) routes results to corresponding additional output children.
+   */
+  @Test(timeout = 5000)
+  public void testAdditionalOutputs() throws Exception {
+    final IRVertex routerVertex = new OperatorVertex(new RoutingTransform());
+    final IRVertex mainVertex= new OperatorVertex(new RelayTransform());
+    final IRVertex bonusVertex1 = new OperatorVertex(new RelayTransform());
+    final IRVertex bonusVertex2 = new OperatorVertex(new RelayTransform());
+
+    // Tag to vertex map. Mock tags are used.
+    HashMap<String, String> tagToVertex = new HashMap<>();
+    tagToVertex.put("bonus1", bonusVertex1.getId());
+    tagToVertex.put("bonus2", bonusVertex2.getId());
+
+    routerVertex.setProperty(AdditionalTagOutputProperty.of(tagToVertex));
+
+    final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag = new DAGBuilder<IRVertex, RuntimeEdge<IRVertex>>()
+        .addVertex(routerVertex)
+        .addVertex(mainVertex)
+        .addVertex(bonusVertex1)
+        .addVertex(bonusVertex2)
+        .connectVertices(createEdge(routerVertex, mainVertex, false, "edge-1"))
+        .connectVertices(createEdge(routerVertex, bonusVertex1, false, "edge-2"))
+        .connectVertices(createEdge(routerVertex, bonusVertex2, false, "edge-3"))
+        .buildWithoutSourceSinkCheck();
+
+    final Task task = new Task(
+        "testAdditionalOutputs",
+        generateTaskId(),
+        0,
+        TASK_EXECUTION_PROPERTY_MAP,
+        new byte[0],
+        Collections.singletonList(mockStageEdgeTo(routerVertex)),
+        Arrays.asList(mockStageEdgeFrom(mainVertex),
+            mockStageEdgeFrom(bonusVertex1),
+            mockStageEdgeFrom(bonusVertex2)),
+        Collections.emptyMap());
+
+    // Execute the task.
+    final TaskExecutor taskExecutor = new TaskExecutor(
+        task, taskDag, taskStateManager, dataTransferFactory, metricMessageSender, persistentConnectionToMasterMap);
+    taskExecutor.execute();
+
+    // Check the output.
+    final List<Integer> mainOutputs = vertexIdToOutputData.get(mainVertex.getId());
+    final List<Integer> bonusOutputs1 = vertexIdToOutputData.get(bonusVertex1.getId());
+    final List<Integer> bonusOutputs2 = vertexIdToOutputData.get(bonusVertex1.getId());
+    List<Integer> even = elements.stream().filter(i -> i % 2 == 0).collect(Collectors.toList());
+    List<Integer> odd = elements.stream().filter(i -> i % 2 != 0).collect(Collectors.toList());
+    assertTrue(checkEqualElements(even, mainOutputs));
+    assertTrue(checkEqualElements(odd, bonusOutputs1));
+    assertTrue(checkEqualElements(odd, bonusOutputs2));
+  }
+
   private RuntimeEdge<IRVertex> createEdge(final IRVertex src,
                                            final IRVertex dst,
                                            final boolean isSideInput) {
     final String runtimeIREdgeId = "Runtime edge between operator tasks";
+    ExecutionPropertyMap edgeProperties = new ExecutionPropertyMap(runtimeIREdgeId);
+    edgeProperties.put(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
+    return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, src, dst, isSideInput);
+
+  }
+
+  private RuntimeEdge<IRVertex> createEdge(final IRVertex src,
+                                           final IRVertex dst,
+                                           final boolean isSideInput,
+                                           final String runtimeIREdgeId) {
     ExecutionPropertyMap edgeProperties = new ExecutionPropertyMap(runtimeIREdgeId);
     edgeProperties.put(InterTaskDataStoreProperty.of(InterTaskDataStoreProperty.Value.MemoryStore));
     return new RuntimeEdge<>(runtimeIREdgeId, edgeProperties, src, dst, isSideInput);
@@ -408,6 +480,37 @@ public final class TaskExecutorTest {
     public void onData(final Object element) {
       final Object sideInput = context.getSideInputs().get(sideInputTag);
       outputCollector.emit((T) Pair.of(sideInput, element));
+    }
+
+    @Override
+    public void close() {
+      // Do nothing.
+    }
+  }
+
+  /**
+   * Simple conditional identity function for testing additional outputs.
+   */
+  private class RoutingTransform implements Transform<Integer, Integer> {
+    private OutputCollector<Integer> outputCollector;
+    private Map<String, String> tagToVertex;
+
+    @Override
+    public void prepare(final Context context, OutputCollector<Integer> outputCollector) {
+      this.outputCollector = outputCollector;
+      this.tagToVertex = context.getAdditionalTagOutputs();
+    }
+
+    @Override
+    public void onData(final Integer element) {
+      final int i = element;
+      if (i % 2 == 0) {
+        // route to all main outputs. Invoked if user calls c.output(element)
+        outputCollector.emit(i);
+      } else {
+        // route to all additional outputs. Invoked if user calls c.output(tupleTag, element)
+        tagToVertex.values().forEach(vertex -> outputCollector.emit(vertex, i));
+      }
     }
 
     @Override
