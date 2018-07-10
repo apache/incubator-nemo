@@ -170,24 +170,6 @@ public final class ExecutorRepresenter {
     return runningTasks;
   }
 
-  public Map<Task, Integer> getRunningTaskToAttempt() {
-    return runningTaskToAttempt;
-  }
-
-  /**
-   * @return set of ids of Tasks that have been failed in this exeuctor
-   */
-  public Set<String> getFailedTasks() {
-    return failedTasks;
-  }
-
-  /**
-   * @return set of ids of Tasks that have been completed in this executor
-   */
-  public Set<Task> getCompleteTasks() {
-    return completeTasks;
-  }
-
   /**
    * @return the executor id
    */
