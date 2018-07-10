@@ -37,6 +37,11 @@ limitations under the License.
 
     <dependencies>
         <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-math3</artifactId>
+            <version>${commons-math.version}</version>
+        </dependency>
+        <dependency>
             <groupId>edu.snu.nemo</groupId>
             <artifactId>nemo-common</artifactId>
             <version>${project.version}</version>
@@ -45,6 +50,16 @@ limitations under the License.
             <groupId>edu.snu.nemo</groupId>
             <artifactId>nemo-runtime-common</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
     </dependencies>
 </project>
