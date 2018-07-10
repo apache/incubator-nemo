@@ -48,6 +48,12 @@ limitations under the License.
         </dependency>
         <dependency>
             <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-compiler-frontend-beam</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>edu.snu.nemo</groupId>
             <artifactId>nemo-examples-beam</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
