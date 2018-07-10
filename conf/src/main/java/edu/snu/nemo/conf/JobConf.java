@@ -143,7 +143,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class ExecutorPosionSec implements Name<Integer> {
   }
 
-  /*
+  /**
    * Path to the JSON file that specifies bandwidth between locations.
    */
   @NamedParameter(doc = "Path to the JSON file that specifies bandwidth between locations",
