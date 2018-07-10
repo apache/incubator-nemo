@@ -15,11 +15,13 @@
  */
 package edu.snu.nemo.runtime.common.metric;
 
+import java.io.Serializable;
+
 /**
  * Event of state transition. It contains timestamp and the state transition.
  * @param <T> class of state for the metric.
  */
-public final class StateTransitionEvent<T> extends Event {
+public final class StateTransitionEvent<T extends Serializable> extends Event {
   private T prevState;
   private T newState;
 
