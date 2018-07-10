@@ -19,22 +19,30 @@ import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultScheduleGroupPass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Basic pull policy.
  */
 public final class BasicPullPolicy implements Policy {
+  private final Policy policy;
+
+  /**
+   * Default constructor.
+   */
+  public BasicPullPolicy() {
+    this.policy = new PolicyBuilder(true)
+        .registerCompileTimePass(new DefaultScheduleGroupPass())
+        .build();
+  }
+
   @Override
   public List<CompileTimePass> getCompileTimePasses() {
-    List<CompileTimePass> policy = new ArrayList<>();
-    policy.add(new DefaultScheduleGroupPass());
-    return policy;
+    return this.policy.getCompileTimePasses();
   }
 
   @Override
   public List<RuntimePass<?>> getRuntimePasses() {
-    return new ArrayList<>();
+    return this.policy.getRuntimePasses();
   }
 }

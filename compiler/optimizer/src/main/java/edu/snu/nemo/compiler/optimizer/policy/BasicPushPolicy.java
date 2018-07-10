@@ -20,23 +20,31 @@ import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.DefaultSchedu
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.ShuffleEdgePushPass;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.RuntimePass;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Basic push policy.
  */
 public final class BasicPushPolicy implements Policy {
+  private final Policy policy;
+
+  /**
+   * Default constructor.
+   */
+  public BasicPushPolicy() {
+    this.policy = new PolicyBuilder(true)
+        .registerCompileTimePass(new ShuffleEdgePushPass())
+        .registerCompileTimePass(new DefaultScheduleGroupPass())
+        .build();
+  }
+
   @Override
   public List<CompileTimePass> getCompileTimePasses() {
-    List<CompileTimePass> policy = new ArrayList<>();
-    policy.add(new ShuffleEdgePushPass());
-    policy.add(new DefaultScheduleGroupPass());
-    return policy;
+    return this.policy.getCompileTimePasses();
   }
 
   @Override
   public List<RuntimePass<?>> getRuntimePasses() {
-    return new ArrayList<>();
+    return this.policy.getRuntimePasses();
   }
 }
