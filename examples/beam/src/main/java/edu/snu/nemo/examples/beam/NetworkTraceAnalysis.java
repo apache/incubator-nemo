@@ -64,16 +64,16 @@ public final class NetworkTraceAnalysis {
         return pattern.matcher(line).find();
       }
     };
-    final SimpleFunction<KV<String, Iterable<KV<String, Long>>>, KV<String, Double>> mapToStdev
-        = new SimpleFunction<KV<String, Iterable<KV<String, Long>>>, KV<String, Double>>() {
+    final SimpleFunction<KV<String, Iterable<KV<String, Long>>>, KV<String, Long>> mapToStdev
+        = new SimpleFunction<KV<String, Iterable<KV<String, Long>>>, KV<String, Long>>() {
       @Override
-      public KV<String, Double> apply(final KV<String, Iterable<KV<String, Long>>> kv) {
+      public KV<String, Long> apply(final KV<String, Iterable<KV<String, Long>>> kv) {
         return KV.of(kv.getKey(), stdev(kv.getValue()));
       }
     };
 
     final Pipeline p = Pipeline.create(options);
-    final PCollection<KV<String, Double>> in0 = GenericSourceSink.read(p, input0FilePath)
+    final PCollection<KV<String, Long>> in0 = GenericSourceSink.read(p, input0FilePath)
         .apply(Filter.by(filter))
         .apply(MapElements.via(new SimpleFunction<String, KV<String, KV<String, Long>>>() {
           @Override
@@ -85,7 +85,7 @@ public final class NetworkTraceAnalysis {
         }))
         .apply(GroupByKey.create())
         .apply(MapElements.via(mapToStdev));
-    final PCollection<KV<String, Double>> in1 = GenericSourceSink.read(p, input1FilePath)
+    final PCollection<KV<String, Long>> in1 = GenericSourceSink.read(p, input1FilePath)
         .apply(Filter.by(filter))
         .apply(MapElements.via(new SimpleFunction<String, KV<String, KV<String, Long>>>() {
           @Override
@@ -97,16 +97,16 @@ public final class NetworkTraceAnalysis {
         }))
         .apply(GroupByKey.create())
         .apply(MapElements.via(mapToStdev));
-    final TupleTag<Double> tag0 = new TupleTag<>();
-    final TupleTag<Double> tag1 = new TupleTag<>();
+    final TupleTag<Long> tag0 = new TupleTag<>();
+    final TupleTag<Long> tag1 = new TupleTag<>();
     final PCollection<KV<String, CoGbkResult>> joined =
         KeyedPCollectionTuple.of(tag0, in0).and(tag1, in1).apply(CoGroupByKey.create());
     final PCollection<String> result = joined
         .apply(MapElements.via(new SimpleFunction<KV<String, CoGbkResult>, String>() {
           @Override
           public String apply(final KV<String, CoGbkResult> kv) {
-            final double source = getDouble(kv.getValue().getAll(tag0));
-            final double destination = getDouble(kv.getValue().getAll(tag1));
+            final long source = getLong(kv.getValue().getAll(tag0));
+            final long destination = getLong(kv.getValue().getAll(tag1));
             final String intermediate = kv.getKey();
             return new StringBuilder(intermediate).append(",").append(source).append(",")
                 .append(destination).toString();
@@ -116,19 +116,19 @@ public final class NetworkTraceAnalysis {
     p.run();
   }
 
-  private static double getDouble(final Iterable<Double> data) {
-    for (final double datum : data) {
+  private static long getLong(final Iterable<Long> data) {
+    for (final long datum : data) {
       return datum;
     }
-    return Double.NaN;
+    return 0;
   }
 
-  private static double stdev(final Iterable<KV<String, Long>> data) {
+  private static long stdev(final Iterable<KV<String, Long>> data) {
     final StandardDeviation stdev = new StandardDeviation();
     final List<Long> elements = new ArrayList<>();
     for (final KV<String, Long> e : data) {
       elements.add(e.getValue());
     }
-    return stdev.evaluate(elements.stream().mapToDouble(e -> e).toArray());
+    return Math.round(stdev.evaluate(elements.stream().mapToDouble(e -> e).toArray()));
   }
 }
