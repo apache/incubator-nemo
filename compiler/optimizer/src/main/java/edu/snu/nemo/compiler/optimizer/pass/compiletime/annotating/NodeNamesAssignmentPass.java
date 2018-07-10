@@ -144,7 +144,7 @@ public final class NodeNamesAssignmentPass extends AnnotatingPass {
   }
 
   /**
-   * Computes share of parallelism that each node is responsible for
+   * Computes share of parallelism that each node is responsible for.
    * @param bandwidthSpecification provides bandwidth information between nodes
    * @param parentNodeShares shares of parallelism for the parent vertex
    * @return array of fractions of parallelism that each node is responsible for
