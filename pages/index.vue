@@ -1,12 +1,12 @@
 <template>
-  <example-component></example-component>
+  <main-container></main-container>
 </template>
 
 <script>
-import ExampleComponent from '~/components/example.vue';
+import MainContainer from '~/components/MainContainer.vue';
 export default {
   components: {
-    ExampleComponent
+    MainContainer,
   }
 }
 </script>

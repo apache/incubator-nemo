@@ -12,13 +12,14 @@ module.exports = {
   },
 
   plugins: [
-    { src: '~/plugins/websocket', ssr: false },
-    '@/plugins/element-ui',
+    '~/plugins/element-ui',
+    { src: '~/plugins/vue2vis', ssr: true },
   ],
 
   css: [
     'element-ui/lib/theme-chalk/index.css',
-    'element-ui/lib/theme-chalk/reset.css'
+    'element-ui/lib/theme-chalk/reset.css',
+    'vue2vis/dist/vue2vis.css'
   ],
 
   loading: { color: '#3B8070' },

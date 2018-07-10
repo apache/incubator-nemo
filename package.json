@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "element-ui": "^2.4.3",
-    "nuxt": "^1.0.0"
+    "nuxt": "^1.0.0",
+    "vue2vis": "0.0.13"
   },
   "devDependencies": {
     "babel-eslint": "^8.2.1",
