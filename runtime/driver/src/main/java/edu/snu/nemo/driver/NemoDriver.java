@@ -16,7 +16,7 @@
 package edu.snu.nemo.driver;
 
 import edu.snu.nemo.common.ir.IdManager;
-import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.LocationShareAssignmentPass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.NodeNamesAssignmentPass;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
@@ -98,7 +98,7 @@ public final class NemoDriver {
     this.glusterDirectory = glusterDirectory;
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
-    LocationShareAssignmentPass.setBandwidthSpecificationString(bandwidthString);
+    NodeNamesAssignmentPass.setBandwidthSpecificationString(bandwidthString);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG,
         message -> startSchedulingUserApplication(message.getLaunchDAG().getDag()));
     // Send DriverStarted message to the client

@@ -36,6 +36,9 @@ import java.util.regex.Pattern;
 
 /**
  * An app that analyzes data flow from network trace.
+ * Each line in the output file represents a host, containing the standard deviation of the lengths of packets
+ * that flows into the host (reads input0 file), and the standard deviation of the lengths of packets
+ * that flows out from the host (reads input1 file).
  */
 public final class NetworkTraceAnalysis {
   /**
@@ -56,6 +59,7 @@ public final class NetworkTraceAnalysis {
     options.setRunner(NemoPipelineRunner.class);
     options.setJobName("NetworkTraceAnalysis");
 
+    // Given "4 0.0 192.168.3.1 -> 192.168.0.2 Len=29", this finds "192.168.3.1", "192.168.0.2" and "29"
     final Pattern pattern = Pattern.compile(" *\\d+ +[0-9.]+ +([0-9.]+) -> ([0-9.]+) +.*Len=(\\d+)");
 
     final SimpleFunction<String, Boolean> filter = new SimpleFunction<String, Boolean>() {

@@ -20,23 +20,23 @@ import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import java.util.HashMap;
 
 /**
- * LocationShares ExecutionProperty.
+ * Map between node name and the number of parallelism which will run on the node.
  */
-public final class LocationSharesProperty extends VertexExecutionProperty<HashMap<String, Integer>> {
+public final class NodeNamesProperty extends VertexExecutionProperty<HashMap<String, Integer>> {
     /**
      * Default constructor.
-     * @param value the map from location to the number of TaskGroups that must be executed in that location
+     * @param value the map from location to the number of Task that must be executed on the node
      */
-    public LocationSharesProperty(final HashMap<String, Integer> value) {
+    public NodeNamesProperty(final HashMap<String, Integer> value) {
         super(value);
     }
 
     /**
-     * Static method for constructing {@link LocationSharesProperty}.
-     * @param value the map from location to the number of TaskGroups that must be executed in that location
+     * Static method for constructing {@link NodeNamesProperty}.
+     * @param value the map from location to the number of Task that must be executed on the node
      * @return the execution property
      */
-    public static LocationSharesProperty of(final HashMap<String, Integer> value) {
-        return new LocationSharesProperty(value);
+    public static NodeNamesProperty of(final HashMap<String, Integer> value) {
+        return new NodeNamesProperty(value);
     }
 }

@@ -16,7 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
-import edu.snu.nemo.common.ir.vertex.executionproperty.LocationSharesProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.NodeNamesProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -25,13 +25,13 @@ import javax.inject.Inject;
 import java.util.*;
 
 /**
- * This constraint is to follow {@link LocationSharesProperty}.
+ * This constraint is to follow {@link NodeNamesProperty}.
  */
-@AssociatedProperty(LocationSharesProperty.class)
-public final class LocationShareSchedulingConstraint implements SchedulingConstraint {
+@AssociatedProperty(NodeNamesProperty.class)
+public final class NodeShareSchedulingConstraint implements SchedulingConstraint {
 
   @Inject
-  private LocationShareSchedulingConstraint() {
+  private NodeShareSchedulingConstraint() {
   }
 
   private String getNodeName(final Map<String, Integer> propertyValue, final int taskIndex) {
@@ -45,13 +45,13 @@ public final class LocationShareSchedulingConstraint implements SchedulingConstr
         return nodeName;
       }
     }
-    throw new IllegalStateException("Detected excessive parallelism which LocationSharesProperty does not cover");
+    throw new IllegalStateException("Detected excessive parallelism which NodeNamesProperty does not cover");
   }
 
   @Override
   public boolean testSchedulability(final ExecutorRepresenter executor, final Task task) {
-    final Map<String, Integer> propertyValue = task.getPropertyValue(LocationSharesProperty.class)
-            .orElseThrow(() -> new RuntimeException("LocationSharesProperty expected"));
+    final Map<String, Integer> propertyValue = task.getPropertyValue(NodeNamesProperty.class)
+            .orElseThrow(() -> new RuntimeException("NodeNamesProperty expected"));
     if (propertyValue.isEmpty()) {
       return true;
     }
