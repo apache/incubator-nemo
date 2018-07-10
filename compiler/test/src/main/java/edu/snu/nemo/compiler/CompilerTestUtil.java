@@ -27,17 +27,42 @@ import org.apache.reef.tang.Tang;
 import org.mockito.ArgumentCaptor;
 import org.powermock.api.mockito.PowerMockito;
 
+import java.io.File;
 import java.lang.reflect.Method;
 
 /**
  * Utility methods for tests.
  */
 public final class CompilerTestUtil {
-  private static final String ROOT_DIR = System.getProperty("user.dir");
+  private static final String ROOT_DIR = findRoot(System.getProperty("user.dir"));
 
   // Utility classes should not have a public or default constructor
   private CompilerTestUtil() {
 
+  }
+
+  /**
+   * Find the root directory of Nemo project, ascending directory hierarchy one by one starting from {@code curDir}.
+   * This method distinguishes the root with "LICENSE" file.
+   * @param curDir the current directory
+   * @return the absolute path of the root directory
+   */
+  private static String findRoot(final String curDir) {
+    boolean foundRoot = false;
+    File folder = new File(curDir);
+
+    while (!foundRoot) {
+      folder = folder.getParentFile();
+      final File[] listOfFiles = folder.listFiles();
+      for (final File file : listOfFiles) {
+        if (file.isFile() && file.getName().equals("LICENSE")) {
+          foundRoot = true;
+          break;
+        }
+      }
+    }
+
+    return folder.getAbsolutePath();
   }
 
   private static DAG<IRVertex, IREdge> compileDAG(final String[] args) throws Exception {
@@ -65,8 +90,8 @@ public final class CompilerTestUtil {
   }
 
   public static DAG<IRVertex, IREdge> compileWordCountDAG() throws Exception {
-    final String input = ROOT_DIR + "/../../examples/resources/sample_input_wordcount";
-    final String output = ROOT_DIR + "/../../examples/resources/sample_output";
+    final String input = ROOT_DIR + "/examples/resources/sample_input_wordcount";
+    final String output = ROOT_DIR + "/examples/resources/sample_output";
     final String main = "edu.snu.nemo.examples.beam.WordCount";
 
     final ArgBuilder mrArgBuilder = new ArgBuilder()
@@ -77,7 +102,7 @@ public final class CompilerTestUtil {
   }
 
   public static DAG<IRVertex, IREdge> compileALSDAG() throws Exception {
-    final String input = ROOT_DIR + "/../../examples/resources/sample_input_als";
+    final String input = ROOT_DIR + "/examples/resources/sample_input_als";
     final String numFeatures = "10";
     final String numIteration = "3";
     final String main = "edu.snu.nemo.examples.beam.AlternatingLeastSquare";
@@ -90,7 +115,7 @@ public final class CompilerTestUtil {
   }
 
   public static DAG<IRVertex, IREdge> compileALSInefficientDAG() throws Exception {
-    final String input = ROOT_DIR + "/../../examples/resources/sample_input_als";
+    final String input = ROOT_DIR + "/examples/resources/sample_input_als";
     final String numFeatures = "10";
     final String numIteration = "3";
     final String main = "edu.snu.nemo.examples.beam.AlternatingLeastSquareInefficient";
@@ -103,7 +128,7 @@ public final class CompilerTestUtil {
   }
 
   public static DAG<IRVertex, IREdge> compileMLRDAG() throws Exception {
-    final String input = ROOT_DIR + "/../../examples/resources/sample_input_mlr";
+    final String input = ROOT_DIR + "/examples/resources/sample_input_mlr";
     final String numFeatures = "100";
     final String numClasses = "5";
     final String numIteration = "3";
