@@ -37,13 +37,16 @@ import java.util.stream.Collectors;
 
 /**
  * Dynamic optimization pass for handling data skew.
- * It receives pairs of the key index and the size of a partition for each output block.
+ * Using a map of key to partition size as a metric used for dynamic optimization,
+ * this RuntimePass identifies a number of keys with big partition sizes(skewed key)
+ * and evenly redistributes data via overwriting incoming edges of destination tasks.
  */
 public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>, Map<Integer, Long>>> {
   private static final Logger LOG = LoggerFactory.getLogger(DataSkewRuntimePass.class.getName());
   private final Set<Class<? extends RuntimeEventHandler>> eventHandlers;
-  private static final int DEFAULT_NUM_SKEWED_HASHES = 3;
-  private int numSkewedHashes = DEFAULT_NUM_SKEWED_HASHES;
+  // Skewed keys denote for top n keys in terms of partition size.
+  private static final int DEFAULT_NUM_SKEWED_KEYS = 3;
+  private int numSkewedKeys = DEFAULT_NUM_SKEWED_KEYS;
 
   /**
    * Constructor.
@@ -53,8 +56,8 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
         DynamicOptimizationEventHandler.class);
   }
 
-  public DataSkewRuntimePass setNumSkewedHashes(final int numOfSkewedHashes) {
-    numSkewedHashes = numOfSkewedHashes;
+  public DataSkewRuntimePass setNumSkewedKeys(final int numOfSkewedKeys) {
+    numSkewedKeys = numOfSkewedKeys;
     return this;
   }
 
@@ -81,17 +84,17 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
         .collect(Collectors.toList());
 
     // Get number of evaluators of the next stage (number of blocks).
-    final Integer reducerTaskNum = optimizationEdges.stream().findFirst().orElseThrow(() ->
+    final Integer numOfDstTasks = optimizationEdges.stream().findFirst().orElseThrow(() ->
         new RuntimeException("optimization edges are empty")).getDst().getTaskIds().size();
 
     // Calculate keyRanges.
-    final List<KeyRange> keyRanges = calculateHashRanges(metricData.right(), reducerTaskNum);
+    final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), numOfDstTasks);
 
-    // Overwrite the previously assigned hash value range in the physical DAG with the new range.
+    // Overwrite the previously assigned key range in the physical DAG with the new range.
     optimizationEdges.forEach(optimizationEdge -> {
       // Update the information.
       final Map<Integer, KeyRange> taskIdxToHashRange = new HashMap<>();
-      for (int taskIdx = 0; taskIdx < reducerTaskNum; taskIdx++) {
+      for (int taskIdx = 0; taskIdx < numOfDstTasks; taskIdx++) {
         taskIdxToHashRange.put(taskIdx, keyRanges.get(taskIdx));
       }
       optimizationEdge.setTaskIdxToKeyRange(taskIdxToHashRange);
@@ -100,10 +103,24 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
     return new PhysicalPlan(originalPlan.getId(), physicalDAGBuilder.build());
   }
 
-  private boolean containsSkewedHash(final List<Integer> skewedHashes,
-                                     final int startingHash, final int finishingHash) {
-    for (int h = startingHash; h < finishingHash; h++) {
-      if (skewedHashes.contains(h)) {
+  public List<Integer> identifySkewedKeys(final Map<Integer, Long> keyValToPartitionSizeMap) {
+    // Identify skewed keyes.
+    List<Map.Entry<Integer, Long>> sortedMetricData = keyValToPartitionSizeMap.entrySet().stream()
+        .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+        .collect(Collectors.toList());
+    List<Integer> skewedKeys = new ArrayList<>();
+    for (int i = 0; i < numSkewedKeys; i++) {
+      skewedKeys.add(sortedMetricData.get(i).getKey());
+      LOG.info("Skewed key: Key {} Size {}", sortedMetricData.get(i).getKey(), sortedMetricData.get(i).getValue());
+    }
+
+    return skewedKeys;
+  }
+
+  private boolean containsSkewedKey(final List<Integer> skewedKeys,
+                                    final int startingKey, final int finishingKey) {
+    for (int k = startingKey; k < finishingKey; k++) {
+      if (skewedKeys.contains(k)) {
         return true;
       }
     }
@@ -111,79 +128,72 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
   }
 
   /**
-   * Method for calculating key ranges to evenly distribute the skewed metric data.
+   * Evenly distribute the skewed data to the destination tasks.
+   * Partition denotes for a keyed portion of a Task output, whose key is a key.
+   * Using a map of key to partition size, this method groups the given partitions
+   * to a key range of partitions with approximate size of (total size of partitions / the number of tasks).
    *
-   * @param aggregatedMetricData the metric data.
-   * @param taskNum the size of the task list.
+   * @param keyToPartitionSizeMap a map of key to partition size.
+   * @param numOfDstTasks the number of tasks that receives this data as input.
    * @return the list of key ranges calculated.
    */
   @VisibleForTesting
-  public List<KeyRange> calculateHashRanges(final Map<Integer, Long> aggregatedMetricData,
-                                            final Integer taskNum) {
-    // NOTE: aggregatedMetricDataMap is made up of a map of (hash value, blockSize).
-    // Get the max hash value.
-    final int maxHashValue = aggregatedMetricData.keySet().stream()
+  public List<KeyRange> calculateKeyRanges(final Map<Integer, Long> keyToPartitionSizeMap,
+                                           final Integer numOfDstTasks) {
+    // Get the biggest key.
+    final int maxKey = keyToPartitionSizeMap.keySet().stream()
         .max(Integer::compareTo)
-        .orElseThrow(() -> new DynamicOptimizationException("Cannot find max hash value among blocks."));
+        .orElseThrow(() -> new DynamicOptimizationException("Cannot find max key among blocks."));
 
-    // Identify skewed hashes.
-    List<Map.Entry<Integer, Long>> sortedMetricData = aggregatedMetricData.entrySet().stream()
-        .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-        .collect(Collectors.toList());
+    // Identify skewed keys, which is top numSkewedKeys number of keys.
+    List<Integer> skewedKeys = identifySkewedKeys(keyToPartitionSizeMap);
 
-    List<Integer> skewedHashes = new ArrayList<>();
-    for (int i = 0; i < numSkewedHashes; i++) {
-      skewedHashes.add(sortedMetricData.get(i).getKey());
-      LOG.info("Skewed hash: Hash {} Size {}", sortedMetricData.get(i).getKey(), sortedMetricData.get(i).getValue());
-    }
+    // Calculate the ideal size for each destination task.
+    final Long totalSize = keyToPartitionSizeMap.values().stream().mapToLong(n -> n).sum(); // get total size
+    final Long idealSizePerTask = totalSize / numOfDstTasks; // and derive the ideal size per task
 
-    // Do the optimization using the information derived above.
-    final Long totalSize = aggregatedMetricData.values().stream().mapToLong(n -> n).sum(); // get total size
-    final Long idealSizePerTask = totalSize / taskNum; // and derive the ideal size per task
-    LOG.info("idealSizePerTask {} = {}(totalSize) / {}(taskNum)",
-        idealSizePerTask, totalSize, taskNum);
-
-    final List<KeyRange> keyRanges = new ArrayList<>(taskNum);
-    int startingHashValue = 0;
-    int finishingHashValue = 1; // initial values
-    Long currentAccumulatedSize = aggregatedMetricData.getOrDefault(startingHashValue, 0L);
+    final List<KeyRange> keyRanges = new ArrayList<>(numOfDstTasks);
+    int startingKey = 0;
+    int finishingKey = 1;
+    Long currentAccumulatedSize = keyToPartitionSizeMap.getOrDefault(startingKey, 0L);
     Long prevAccumulatedSize = 0L;
-    for (int i = 1; i <= taskNum; i++) {
-      if (i != taskNum) {
-        final Long idealAccumulatedSize = idealSizePerTask * i; // where we should end
-        // find the point while adding up one by one.
+    for (int i = 1; i <= numOfDstTasks; i++) {
+      if (i != numOfDstTasks) {
+        // Ideal accumulated partition size for this task.
+        final Long idealAccumulatedSize = idealSizePerTask * i;
+        // By adding partition sizes, find the accumulated size nearest to the given ideal size.
         while (currentAccumulatedSize < idealAccumulatedSize) {
-          currentAccumulatedSize += aggregatedMetricData.getOrDefault(finishingHashValue, 0L);
-          finishingHashValue++;
+          currentAccumulatedSize += keyToPartitionSizeMap.getOrDefault(finishingKey, 0L);
+          finishingKey++;
         }
 
         final Long oneStepBack =
-            currentAccumulatedSize - aggregatedMetricData.getOrDefault(finishingHashValue - 1, 0L);
+            currentAccumulatedSize - keyToPartitionSizeMap.getOrDefault(finishingKey - 1, 0L);
         final Long diffFromIdeal = currentAccumulatedSize - idealAccumulatedSize;
         final Long diffFromIdealOneStepBack = idealAccumulatedSize - oneStepBack;
         // Go one step back if we came too far.
         if (diffFromIdeal > diffFromIdealOneStepBack) {
-          finishingHashValue--;
-          currentAccumulatedSize -= aggregatedMetricData.getOrDefault(finishingHashValue, 0L);
+          finishingKey--;
+          currentAccumulatedSize -= keyToPartitionSizeMap.getOrDefault(finishingKey, 0L);
         }
 
-        boolean isSkewedHash = containsSkewedHash(skewedHashes, startingHashValue, finishingHashValue);
-        keyRanges.add(i - 1, HashRange.of(startingHashValue, finishingHashValue, isSkewedHash));
-        LOG.debug("KeyRange {}~{}, Size {}", startingHashValue, finishingHashValue - 1,
+        boolean isSkewedKey = containsSkewedKey(skewedKeys, startingKey, finishingKey);
+        keyRanges.add(i - 1, HashRange.of(startingKey, finishingKey, isSkewedKey));
+        LOG.debug("KeyRange {}~{}, Size {}", startingKey, finishingKey - 1,
             currentAccumulatedSize - prevAccumulatedSize);
 
         prevAccumulatedSize = currentAccumulatedSize;
-        startingHashValue = finishingHashValue;
+        startingKey = finishingKey;
       } else { // last one: we put the range of the rest.
-        boolean isSkewedHash = containsSkewedHash(skewedHashes, startingHashValue, finishingHashValue);
+        boolean isSkewedKey = containsSkewedKey(skewedKeys, startingKey, finishingKey);
         keyRanges.add(i - 1,
-            HashRange.of(startingHashValue, maxHashValue + 1, isSkewedHash));
+            HashRange.of(startingKey, maxKey + 1, isSkewedKey));
 
-        while (finishingHashValue <= maxHashValue) {
-          currentAccumulatedSize += aggregatedMetricData.getOrDefault(finishingHashValue, 0L);
-          finishingHashValue++;
+        while (finishingKey <= maxKey) {
+          currentAccumulatedSize += keyToPartitionSizeMap.getOrDefault(finishingKey, 0L);
+          finishingKey++;
         }
-        LOG.debug("KeyRange {}~{}, Size {}", startingHashValue, maxHashValue + 1,
+        LOG.debug("KeyRange {}~{}, Size {}", startingKey, maxKey + 1,
             currentAccumulatedSize - prevAccumulatedSize);
       }
     }

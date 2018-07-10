@@ -25,10 +25,7 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
@@ -136,16 +133,9 @@ public final class ExecutorRepresenter {
    *
    */
   public void onTaskExecutionComplete(final String taskId) {
-    Task completedTask = null;
-    for (Task task : runningTasks) {
-      if (task.getTaskId().equals(taskId)) {
-        completedTask = task;
-      }
-    }
-
-    if (completedTask == null) {
-      throw new RuntimeException("Completed task not found in its ExecutorRepresenter");
-    }
+    Task completedTask = runningTasks.stream()
+        .filter(task -> task.getTaskId().equals(taskId)).findFirst()
+        .orElseThrow(() -> new RuntimeException("Completed task not found in its ExecutorRepresenter"));
 
     runningTasks.remove(completedTask);
     runningTaskToAttempt.remove(completedTask);
@@ -157,16 +147,9 @@ public final class ExecutorRepresenter {
    * @param taskId id of the Task
    */
   public void onTaskExecutionFailed(final String taskId) {
-    Task failedTask = null;
-    for (Task task : runningTasks) {
-      if (task.getTaskId().equals(taskId)) {
-        failedTask = task;
-      }
-    }
-
-    if (failedTask == null) {
-      throw new RuntimeException("Completed task not found in its ExecutorRepresenter");
-    }
+    Task failedTask = runningTasks.stream()
+        .filter(task -> task.getTaskId().equals(taskId)).findFirst()
+        .orElseThrow(() -> new RuntimeException("Failed task not found in its ExecutorRepresenter"));
 
     runningTasks.remove(failedTask);
     runningTaskToAttempt.remove(failedTask);
