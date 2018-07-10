@@ -1,16 +1,23 @@
 <template>
-  <div class="main-container">
-      <job-metric
-       ref="jobMetricComponent"
-      :metric="taskMetricDataSet"
-      :groups="groupDataSet">
-      </job-metric>
+  <div>
+    <el-collapse v-model="collapseActiveNames">
+      <el-collapse-item name="timeline">
+        <template slot="title">
+          Timeline <i class="el-icon-time"></i>
+        </template>
+        <metric-timeline
+         ref="metricTimeline"
+        :metric="metricDataSet"
+        :groups="groupDataSet">
+        </metric-timeline>
+      </el-collapse-item>
+    </el-collapse>
   </div>
 </template>
 
 <script>
 import Vue from 'vue';
-import JobMetric from '~/components/JobMetric';
+import MetricTimeline from '~/components/MetricTimeline';
 import { DataSet } from 'vue2vis';
 
 const STATE = {
@@ -34,16 +41,20 @@ const RECONNECT_INTERVAL = 3000;
 
 export default {
   components: {
-    JobMetric,
+    MetricTimeline,
   },
 
   data() {
     return {
-      jobMetricDataSet: new DataSet([]),
-      stageMetricDataSet: new DataSet([]),
-      taskMetricDataSet: new DataSet([]),
+      // timeline dataset
+      metricDataSet: new DataSet([]),
       groupDataSet: new DataSet([]),
+
+      // websocket object
       ws: undefined,
+
+      // element-ui specific
+      collapseActiveNames: ['timeline'],
     };
   },
 
@@ -66,7 +77,8 @@ export default {
         if (!this.groupDataSet.get(metricType)) {
           this.groupDataSet.add({
             id: metricType,
-            content: metricType
+            content: metricType,
+            order: METRIC_LIST.indexOf(metricType)
           });
         }
         await this.processIndividualMetric(metric);
@@ -77,22 +89,10 @@ export default {
     },
 
     async processIndividualMetric({ metricType, data }) {
-      let target;
-      switch (metricType) {
-        case 'JobMetric':
-          target = this.jobMetricDataSet;
-          break;
-        case 'StageMetric':
-          target = this.stageMetricDataSet;
-          break;
-        case 'TaskMetric':
-          target = this.taskMetricDataSet;
-          break;
-        default:
-          return;
-      }
-
-      let newItem = { id: data.id, group: metricType };
+      let newItem = {
+        id: data.id,
+        group: metricType,
+      };
 
       data.stateTransitionEvents
         .filter(event => event.prevState != null)
@@ -101,19 +101,23 @@ export default {
             // Stage does not have READY, so it cannot be represented as
             // a range of timeline. So the only needed field is `start`.
             newItem.start = new Date(event.timestamp);
-            newItem.content = data.id;
+            newItem.content = data.id + ' COMPLETE';
           } else if (event.prevState == STATE.READY) {
             newItem.start = new Date(event.timestamp);
             newItem.content = data.id;
           } else if (event.newState == STATE.COMPLETE) {
-            newItem.end = new Date(event.timestamp);
+            if (newItem.start) {
+              newItem.end = new Date(event.timestamp);
+            } else {
+              newItem.start = new Date(event.timestamp);
+            }
             newItem.content = data.id;
           }
         });
-      let prevItem = target.get(newItem.id);
+      let prevItem = this.metricDataSet.get(newItem.id);
       if (!prevItem) {
-        target.add(newItem);
-        if (target.length == 1) {
+        this.metricDataSet.add(newItem);
+        if (this.metricDataSet.length == 1) {
           try {
             await this.moveTimeline(newItem.start);
           } catch (e) {
@@ -123,7 +127,7 @@ export default {
           await this.fitTimeline();
         }
       } else {
-        target.update(newItem);
+        this.metricDataSet.update(newItem);
         if (!(prevItem.start == newItem.start && prevItem.end == newItem.end)) {
           await this.fitTimeline();
         }
@@ -131,13 +135,17 @@ export default {
     },
 
     async fitTimeline() {
-      this.$refs.jobMetricComponent.$refs.timeline.fit(FIT_OPTIONS);
+      try {
+        this.$refs.metricTimeline.$refs.timeline.fit(FIT_OPTIONS);
+      } catch (e) {
+        console.warn('Error when fitting timeline');
+      }
     },
 
     moveTimeline(time) {
       return new Promise((resolve, reject) => {
         try {
-          this.$refs.jobMetricComponent
+          this.$refs.metricTimeline
             .$refs.timeline.moveTo(time, false, () => resolve());
         } catch (e) {
           reject();
@@ -150,13 +158,15 @@ export default {
         return;
       }
 
+      if (this.ws && this.ws.readyState != WebSocket.CLOSED) {
+        ws.close();
+      }
+
       this.ws = new WebSocket('ws://localhost:10101/api/websocket');
 
       this.ws.onopen = (event) => {
         // clear metric
-        this.jobMetricDataSet.clear();
-        this.stageMetricDataSet.clear();
-        this.taskMetricDataSet.clear();
+        this.metricDataSet.clear();
         this.groupDataSet.clear();
         console.log('Connected!');
       };
@@ -174,12 +184,14 @@ export default {
       };
 
       this.ws.onclose = () => {
+        this.ws.close();
         setTimeout(() => {
           this.prepareWebSocket();
         }, RECONNECT_INTERVAL);
       };
 
       this.ws.onerror = () => {
+        this.ws.close();
         setTimeout(() => {
           this.prepareWebSocket();
         }, RECONNECT_INTERVAL);

@@ -18,6 +18,7 @@ export default {
   data() {
     return {
       options: {
+        // this should be modified to adjust somewhere adequate
         start: new Date(1530765471863),
         end: new Date(1530765471863),
       }

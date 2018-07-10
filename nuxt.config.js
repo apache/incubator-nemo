@@ -1,19 +1,19 @@
 module.exports = {
   head: {
-    title: 'nemo-visualizer',
+    title: 'Nemo Web Visualizer',
     meta: [
       { charset: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { hid: 'description', name: 'description', content: 'Nemo web visualizer' }
     ],
     link: [
-      { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
+      { rel: 'icon', type: 'image/x-icon', href: '/nemo.ico' }
     ]
   },
 
   plugins: [
     '~/plugins/element-ui',
-    { src: '~/plugins/vue2vis', ssr: true },
+    '~/plugins/vue2vis',
   ],
 
   css: [
@@ -25,6 +25,7 @@ module.exports = {
   loading: { color: '#3B8070' },
 
   build: {
+    vendor: ['element-ui'],
     extend (config, { isDev, isClient }) {
       if (isDev && isClient) {
         config.module.rules.push({

@@ -1,19 +1,21 @@
 <template>
   <el-container>
-    <el-header>
-      <div class="header-container">
-        <h2 class="header-title">Nemo</h2>
-      </div>
+    <el-header class="header-container">
+      <h2 class="header-title">
+        Nemo Web Visualizer
+      </h2>
     </el-header>
-    <el-main>
-      <div class="main-container">
-        <nuxt/>
-      </div>
-    </el-main>
+    <el-container>
+      <el-main>
+        <div class="main-container">
+          <nuxt/>
+        </div>
+      </el-main>
+    </el-container>
   </el-container>
 </template>
 
-<style>
+<style scoped>
 html {
   -ms-text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
@@ -25,7 +27,6 @@ html {
 *, *:before, *:after {
   box-sizing: border-box;
   margin: 0;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 .header-container {
@@ -43,6 +44,8 @@ html {
 }
 
 .header-title {
+  display: flex;
+  display: -webkit-flex;
   font-size: 32px;
 }
 </style>
