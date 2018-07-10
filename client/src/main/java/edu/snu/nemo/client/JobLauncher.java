@@ -33,6 +33,7 @@ import org.apache.reef.io.network.util.StringIdentifierFactory;
 import org.apache.reef.runtime.local.client.LocalRuntimeConfiguration;
 import org.apache.reef.runtime.yarn.client.YarnClientConfiguration;
 import org.apache.reef.tang.*;
+import org.apache.reef.tang.annotations.Name;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.apache.reef.tang.formats.CommandLine;
 import org.apache.reef.util.EnvironmentUtils;
@@ -95,12 +96,15 @@ public final class JobLauncher {
     final Configuration driverConf = getDriverConf(builtJobConf);
     final Configuration driverNcsConf = getDriverNcsConf();
     final Configuration driverMessageConfg = getDriverMessageConf();
-    final Configuration executorResourceConfig = getExecutorResourceConf(builtJobConf);
+    final Configuration executorResourceConfig = getJSONConf(builtJobConf, JobConf.ExecutorJSONPath.class,
+        JobConf.ExecutorJSONContents.class);
+    final Configuration bandwidthConfig = getJSONConf(builtJobConf, JobConf.BandwidthJSONPath.class,
+        JobConf.BandwidthJSONContents.class);
     final Configuration clientConf = getClientConf();
 
     // Merge Job and Driver Confs
     jobAndDriverConf = Configurations.merge(builtJobConf, driverConf, driverNcsConf, driverMessageConfg,
-        executorResourceConfig, driverRPCServer.getListeningConfiguration());
+        executorResourceConfig, bandwidthConfig, driverRPCServer.getListeningConfiguration());
 
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
@@ -237,7 +241,8 @@ public final class JobLauncher {
     cl.registerShortNameOfClass(JobConf.OptimizationPolicy.class);
     cl.registerShortNameOfClass(JobConf.DeployMode.class);
     cl.registerShortNameOfClass(JobConf.DriverMemMb.class);
-    cl.registerShortNameOfClass(JobConf.ExecutorJsonPath.class);
+    cl.registerShortNameOfClass(JobConf.ExecutorJSONPath.class);
+    cl.registerShortNameOfClass(JobConf.BandwidthJSONPath.class);
     cl.registerShortNameOfClass(JobConf.JVMHeapSlack.class);
     cl.registerShortNameOfClass(JobConf.IORequestHandleThreadsTotal.class);
     cl.registerShortNameOfClass(JobConf.MaxTaskAttempt.class);
@@ -277,19 +282,25 @@ public final class JobLauncher {
   }
 
   /**
-   * Get executor resource configuration.
+   * Read json file and return its contents as configuration parameter.
    *
-   * @param jobConf job configuration to get executor json path.
-   * @return executor resource configuration.
+   * @param jobConf job configuration to get json path.
+   * @param pathParameter named parameter represents path to the json file, or an empty string
+   * @param contentsParameter named parameter represents contents of the file
+   * @return configuration with contents of the file, or an empty string as value for {@code contentsParameter}
    * @throws InjectionException exception while injection.
    */
-  private static Configuration getExecutorResourceConf(final Configuration jobConf) throws InjectionException {
+  private static Configuration getJSONConf(final Configuration jobConf,
+                                           final Class<? extends Name<String>> pathParameter,
+                                           final Class<? extends Name<String>> contentsParameter)
+      throws InjectionException {
     final Injector injector = TANG.newInjector(jobConf);
     try {
-      final String path = injector.getNamedInstance(JobConf.ExecutorJsonPath.class);
-      final String contents = new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
+      final String path = injector.getNamedInstance(pathParameter);
+      final String contents = path.isEmpty() ? ""
+          : new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8);
       return TANG.newConfigurationBuilder()
-          .bindNamedParameter(JobConf.ExecutorJsonContents.class, contents)
+          .bindNamedParameter(contentsParameter, contents)
           .build();
     } catch (final IOException e) {
       throw new RuntimeException(e);

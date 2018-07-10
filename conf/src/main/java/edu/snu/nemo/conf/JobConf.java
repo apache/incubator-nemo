@@ -126,6 +126,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
+<<<<<<< HEAD
    * Max number of attempts for task scheduling.
    */
   @NamedParameter(doc = "Max number of task attempts", short_name = "max_task_attempt", default_value = "1")
@@ -142,12 +143,27 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class ExecutorPosionSec implements Name<Integer> {
   }
 
+  /*
+   * Path to the JSON file that specifies bandwidth between locations.
+   */
+  @NamedParameter(doc = "Path to the JSON file that specifies bandwidth between locations",
+      short_name = "bandwidth_json", default_value = "")
+  public final class BandwidthJSONPath implements Name<String> {
+  }
+
   /**
    * Path to the JSON file that specifies resource layout.
    */
   @NamedParameter(doc = "Path to the JSON file that specifies resources for executors", short_name = "executor_json",
       default_value = "examples/resources/sample_executor_resources.json")
-  public final class ExecutorJsonPath implements Name<String> {
+  public final class ExecutorJSONPath implements Name<String> {
+  }
+
+  /**
+   * Contents of the JSON file that specifies bandwidth between locations.
+   */
+  @NamedParameter(doc = "Contents of JSON file that specifies bandwidth between locations")
+  public final class BandwidthJSONContents implements Name<String> {
   }
 
 
@@ -155,7 +171,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * Contents of the JSON file that specifies resource layout.
    */
   @NamedParameter(doc = "Contents of JSON file that specifies resources for executors")
-  public final class ExecutorJsonContents implements Name<String> {
+  public final class ExecutorJSONContents implements Name<String> {
   }
 
   //////////////////////////////// Runtime Data Plane Configurations
