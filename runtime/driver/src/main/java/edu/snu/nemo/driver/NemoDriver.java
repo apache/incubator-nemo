@@ -98,6 +98,7 @@ public final class NemoDriver {
     this.glusterDirectory = glusterDirectory;
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
+    // TODO #69: Support job-wide execution property
     NodeNamesAssignmentPass.setBandwidthSpecificationString(bandwidthString);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG,
         message -> startSchedulingUserApplication(message.getLaunchDAG().getDag()));
