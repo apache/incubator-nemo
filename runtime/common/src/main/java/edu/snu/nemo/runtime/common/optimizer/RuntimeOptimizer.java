@@ -47,8 +47,7 @@ public final class RuntimeOptimizer {
 
     switch (dynamicOptimizationType) {
       case DataSkewRuntimePass:
-        // Metric data for DataSkewRuntimePass is
-        // a pair of blockIds and map of hashrange, partition size.
+        // Metric data for DataSkewRuntimePass is a pair of blockIds and map of hashrange, partition size.
         final Pair<List<String>, Map<Integer, Long>> metricData =
             Pair.of(metricCollectionBarrierVertex.getBlockIds(),
                 (Map<Integer, Long>) metricCollectionBarrierVertex.getMetricData());

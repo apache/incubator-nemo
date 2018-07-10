@@ -20,6 +20,9 @@ import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.SkewnessAwareSchedulingProperty;
+
+import java.util.List;
 
 /**
  * Pass to annotate the DAG for a job to perform data skew.
@@ -33,14 +36,28 @@ public final class DataSkewVertexPass extends AnnotatingPass {
     super(DynamicOptimizationProperty.class);
   }
 
+  private boolean hasMetricCollectionBarrierVertexAsParent(final DAG<IRVertex, IREdge> dag,
+                                                           final IRVertex v) {
+    List<IRVertex> parents = dag.getParents(v.getId());
+    for (IRVertex parent : parents) {
+      if (parent instanceof MetricCollectionBarrierVertex) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    dag.topologicalDo(v -> {
-      // we only care about metric collection barrier vertices.
-      if (v instanceof MetricCollectionBarrierVertex) {
-        v.setProperty(DynamicOptimizationProperty.of(DynamicOptimizationProperty.Value.DataSkewRuntimePass));
-      }
-    });
+    dag.getVertices().stream()
+        .filter(v -> v instanceof MetricCollectionBarrierVertex)
+        .forEach(v -> v.setProperty(DynamicOptimizationProperty
+            .of(DynamicOptimizationProperty.Value.DataSkewRuntimePass)));
+    dag.getVertices().stream()
+        .filter(v -> hasMetricCollectionBarrierVertexAsParent(dag, v)
+            && !v.getExecutionProperties().containsKey(SkewnessAwareSchedulingProperty.class))
+        .forEach(v -> v.getExecutionProperties().put(SkewnessAwareSchedulingProperty.of(true)));
+
     return dag;
   }
 }

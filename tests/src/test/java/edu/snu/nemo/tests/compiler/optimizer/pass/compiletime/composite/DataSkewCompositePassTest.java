@@ -24,6 +24,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
+import edu.snu.nemo.common.ir.vertex.executionproperty.SkewnessAwareSchedulingProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.AnnotatingPass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.CompositePass;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.composite.DataSkewCompositePass;
@@ -103,5 +104,11 @@ public class DataSkewCompositePassTest {
                   .equals(e.getPropertyValue(MetricCollectionProperty.class)))
         .forEach(e -> assertEquals(PartitionerProperty.Value.DataSkewHashPartitioner,
             e.getPropertyValue(PartitionerProperty.class).get())));
+
+    processedDAG.filterVertices(v -> v instanceof MetricCollectionBarrierVertex)
+        .forEach(metricV -> {
+          List<IRVertex> reducerV = processedDAG.getChildren(metricV.getId());
+          reducerV.forEach(rV -> assertTrue(rV.getPropertyValue(SkewnessAwareSchedulingProperty.class).get()));
+        });
   }
 }

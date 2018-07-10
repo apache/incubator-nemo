@@ -68,7 +68,8 @@ public final class SourceLocationAwareSchedulingConstraintTest {
   }
 
   /**
-   * {@link SourceLocationAwareSchedulingConstraint} should properly schedule TGs with multiple source locations.
+   * {@link SourceLocationAwareSchedulingConstraint} should properly schedule {@link Task}s
+   * with multiple source locations.
    */
   @Test
   public void testSourceLocationAwareSchedulingWithMultiSource() {
