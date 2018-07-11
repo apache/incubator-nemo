@@ -23,8 +23,6 @@ import org.apache.reef.annotations.audience.DriverSide;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This policy chooses a set of Executors, on which have minimum running Tasks.
@@ -32,7 +30,6 @@ import org.slf4j.LoggerFactory;
 @ThreadSafe
 @DriverSide
 public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy {
-  private static final Logger LOG = LoggerFactory.getLogger(MinOccupancyFirstSchedulingPolicy.class.getName());
 
   @VisibleForTesting
   @Inject

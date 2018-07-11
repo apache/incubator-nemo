@@ -76,7 +76,6 @@ public final class RuntimeMaster {
   private static final int REST_SERVER_PORT = 10101;
 
   private final ExecutorService runtimeMasterThread;
-
   private final Scheduler scheduler;
   private final ContainerManager containerManager;
   private final BlockManagerMaster blockManagerMaster;
@@ -84,21 +83,17 @@ public final class RuntimeMaster {
   private final MessageEnvironment masterMessageEnvironment;
   private final MetricStore metricStore;
   private final Map<Integer, Long> aggregatedMetricData;
+  private final ExecutorService metricAggregationService;
   private final ClientRPC clientRPC;
   private final MetricManagerMaster metricManagerMaster;
-
   // For converting json data. This is a thread safe.
   private final ObjectMapper objectMapper;
-
   private final String dagDirectory;
   private final Set<IRVertex> irVertices;
-
   private final AtomicInteger resourceRequestCount;
-
   private CountDownLatch metricCountDownLatch;
   // REST API server for web metric visualization ui.
   private final Server metricServer;
-
 
   @Inject
   public RuntimeMaster(final Scheduler scheduler,
@@ -127,7 +122,8 @@ public final class RuntimeMaster {
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
-    this.aggregatedMetricData = new HashMap<>();
+    this.aggregatedMetricData = new ConcurrentHashMap<>();
+    this.metricAggregationService = Executors.newFixedThreadPool(10);
     this.metricStore = MetricStore.getStore();
     this.metricServer = startRestMetricServer();
   }
@@ -155,7 +151,8 @@ public final class RuntimeMaster {
 
   /**
    * Submits the {@link PhysicalPlan} to Runtime.
-   * @param plan to execute.
+   *
+   * @param plan to execute
    * @param maxScheduleAttempt the max number of times this plan/sub-part of the plan should be attempted.
    */
   public Pair<JobStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
@@ -172,7 +169,6 @@ public final class RuntimeMaster {
         throw new RuntimeException(e);
       }
     };
-
     try {
       return runtimeMasterThread.submit(jobExecutionCallable).get();
     } catch (Exception e) {
@@ -191,9 +187,7 @@ public final class RuntimeMaster {
     } catch (final InterruptedException e) {
       LOG.warn("Waiting executor terminating process interrupted.");
     }
-
     runtimeMasterThread.execute(() -> {
-
       scheduler.terminate();
       try {
         masterMessageEnvironment.close();
@@ -248,22 +242,22 @@ public final class RuntimeMaster {
   /**
    * Called when a container is allocated for this runtime.
    * A wrapper function for {@link ContainerManager}.
-   * @param executorId to use for the executor to be launched on this container.
-   * @param allocatedEvaluator to be used as the container.
+   *
+   * @param executorId            to use for the executor to be launched on this container.
+   * @param allocatedEvaluator    to be used as the container.
    * @param executorConfiguration to use for the executor to be launched on this container.
    */
   public void onContainerAllocated(final String executorId,
                                    final AllocatedEvaluator allocatedEvaluator,
                                    final Configuration executorConfiguration) {
     runtimeMasterThread.execute(() -> {
-
       containerManager.onContainerAllocated(executorId, allocatedEvaluator, executorConfiguration);
-
     });
   }
 
   /**
    * Called when an executor is launched on a container for this runtime.
+   *
    * @param activeContext of the launched executor.
    * @return true if all requested executors have been launched, false otherwise.
    */
@@ -289,6 +283,7 @@ public final class RuntimeMaster {
 
   /**
    * Called when an executor fails due to container failure on this runtime.
+   *
    * @param failedEvaluator that failed.
    */
   public void onExecutorFailed(final FailedEvaluator failedEvaluator) {
@@ -314,9 +309,7 @@ public final class RuntimeMaster {
     @Override
     public void onMessage(final ControlMessage.Message message) {
       runtimeMasterThread.execute(() -> {
-
         handleControlMessage(message);
-
       });
     }
 
@@ -379,7 +372,6 @@ public final class RuntimeMaster {
     }
   }
 
-
   /**
    * Accumulates the metric data for a barrier vertex.
    * TODO #96: Modularize DataSkewPolicy to use MetricVertex and BarrierVertex.
@@ -396,22 +388,24 @@ public final class RuntimeMaster {
         .filter(irVertex -> irVertex.getId().equals(srcVertexId)).findFirst()
         .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
 
-    // For each hash range index, aggregate the metric data as they arrive.
-    partitionSizeInfo.forEach(partitionSizeEntry -> {
-      final int key = partitionSizeEntry.getKey();
-      final long size = partitionSizeEntry.getSize();
-      if (aggregatedMetricData.containsKey(key)) {
-        aggregatedMetricData.compute(key, (existKey, existValue) -> existValue + size);
-      } else {
-        aggregatedMetricData.put(key, size);
-      }
-    });
-
     if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
       final MetricCollectionBarrierVertex<Integer, Long> metricCollectionBarrierVertex =
           (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
+
       metricCollectionBarrierVertex.addBlockId(blockId);
-      metricCollectionBarrierVertex.setMetricData(aggregatedMetricData);
+      metricAggregationService.submit(() -> {
+        // For each hash range index, we aggregate the metric data.
+        partitionSizeInfo.forEach(partitionSizeEntry -> {
+          final int key = partitionSizeEntry.getKey();
+          final long size = partitionSizeEntry.getSize();
+          if (aggregatedMetricData.containsKey(key)) {
+            aggregatedMetricData.compute(key, (existKey, existValue) -> existValue + size);
+          } else {
+            aggregatedMetricData.put(key, size);
+          }
+        });
+        metricCollectionBarrierVertex.setMetricData(aggregatedMetricData);
+      });
     } else {
       throw new RuntimeException("Something wrong happened at DataSkewCompositePass.");
     }

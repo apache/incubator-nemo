@@ -24,8 +24,8 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.runtime.common.data.KeyRange;
 import edu.snu.nemo.runtime.common.data.HashRange;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Edge of a stage that connects an IRVertex of the source stage to an IRVertex of the destination stage.
@@ -47,7 +47,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   /**
    * The list between the task idx and key range to read.
    */
-  private List<KeyRange> taskIdxToKeyRange;
+  private Map<Integer, KeyRange> taskIdxToKeyRange;
 
   /**
    * Value for {@link DataCommunicationPatternProperty}.
@@ -82,9 +82,9 @@ public final class StageEdge extends RuntimeEdge<Stage> {
     this.srcVertex = srcVertex;
     this.dstVertex = dstVertex;
     // Initialize the key range of each dst task.
-    this.taskIdxToKeyRange = new ArrayList<>();
+    this.taskIdxToKeyRange = new HashMap<>();
     for (int taskIdx = 0; taskIdx < dstStage.getTaskIds().size(); taskIdx++) {
-      taskIdxToKeyRange.add(HashRange.of(taskIdx, taskIdx + 1));
+      taskIdxToKeyRange.put(taskIdx, HashRange.of(taskIdx, taskIdx + 1, false));
     }
     this.dataCommunicationPatternValue = edgeProperties.get(DataCommunicationPatternProperty.class)
         .orElseThrow(() -> new RuntimeException(String.format(
@@ -122,7 +122,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
   /**
    * @return the list between the task idx and key range to read.
    */
-  public List<KeyRange> getTaskIdxToKeyRange() {
+  public Map<Integer, KeyRange> getTaskIdxToKeyRange() {
     return taskIdxToKeyRange;
   }
 
@@ -131,7 +131,7 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    *
    * @param taskIdxToKeyRange the list to set.
    */
-  public void setTaskIdxToKeyRange(final List<KeyRange> taskIdxToKeyRange) {
+  public void setTaskIdxToKeyRange(final Map<Integer, KeyRange> taskIdxToKeyRange) {
     this.taskIdxToKeyRange = taskIdxToKeyRange;
   }
 
