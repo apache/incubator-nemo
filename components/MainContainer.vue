@@ -39,6 +39,8 @@ const FIT_OPTIONS = {
 
 const RECONNECT_INTERVAL = 3000;
 
+let reconnectionTimer;
+
 export default {
   components: {
     MetricTimeline,
@@ -58,7 +60,7 @@ export default {
     };
   },
 
-  mounted() {
+  beforeMount() {
     this.prepareWebSocket();
 
     METRIC_LIST.forEach(metricType => {
@@ -74,6 +76,7 @@ export default {
       // specific event broadcast
       if ('metricType' in metric) {
         const metricType = metric.metricType;
+        // build group dataset
         if (!this.groupDataSet.get(metricType)) {
           this.groupDataSet.add({
             id: metricType,
@@ -83,7 +86,7 @@ export default {
         }
         await this.processIndividualMetric(metric);
       } else {
-        // this means the first big metric chunk
+        // TODO: this means the first big metric chunk
         // await ctx.dispatch('processInitialMetric', metric);
       }
     },
@@ -97,15 +100,15 @@ export default {
       data.stateTransitionEvents
         .filter(event => event.prevState != null)
         .forEach(event => {
-          if (event.prevState == STATE.INCOMPLETE) {
+          if (event.prevState === STATE.INCOMPLETE) {
             // Stage does not have READY, so it cannot be represented as
             // a range of timeline. So the only needed field is `start`.
             newItem.start = new Date(event.timestamp);
             newItem.content = data.id + ' COMPLETE';
-          } else if (event.prevState == STATE.READY) {
+          } else if (event.prevState === STATE.READY) {
             newItem.start = new Date(event.timestamp);
             newItem.content = data.id;
-          } else if (event.newState == STATE.COMPLETE) {
+          } else if (event.newState === STATE.COMPLETE) {
             if (newItem.start) {
               newItem.end = new Date(event.timestamp);
             } else {
@@ -116,8 +119,12 @@ export default {
         });
       let prevItem = this.metricDataSet.get(newItem.id);
       if (!prevItem) {
-        this.metricDataSet.add(newItem);
-        if (this.metricDataSet.length == 1) {
+        try {
+          this.metricDataSet.add(newItem);
+        } catch (e) {
+          console.warn('Error when adding new item');
+        }
+        if (this.metricDataSet.length === 1) {
           try {
             await this.moveTimeline(newItem.start);
           } catch (e) {
@@ -127,8 +134,12 @@ export default {
           await this.fitTimeline();
         }
       } else {
-        this.metricDataSet.update(newItem);
-        if (!(prevItem.start == newItem.start && prevItem.end == newItem.end)) {
+        try {
+          this.metricDataSet.update(newItem);
+        } catch (e) {
+          console.warn('Error when updating item');
+        }
+        if (!(prevItem.start === newItem.start && prevItem.end === newItem.end)) {
           await this.fitTimeline();
         }
       }
@@ -158,8 +169,8 @@ export default {
         return;
       }
 
-      if (this.ws && this.ws.readyState != WebSocket.CLOSED) {
-        ws.close();
+      if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
+        this.closeWebSocket();
       }
 
       this.ws = new WebSocket('ws://localhost:10101/api/websocket');
@@ -184,23 +195,35 @@ export default {
       };
 
       this.ws.onclose = () => {
-        this.ws.close();
-        setTimeout(() => {
-          this.prepareWebSocket();
-        }, RECONNECT_INTERVAL);
+        this.tryReconnect();
       };
 
       this.ws.onerror = () => {
-        this.ws.close();
-        setTimeout(() => {
-          this.prepareWebSocket();
-        }, RECONNECT_INTERVAL);
+        this.tryReconnect();
       };
 
       window.onbeforeunload = () => {
-        this.ws.close();
+        this.closeWebSocket();
       };
-    }
+    },
+
+    closeWebSocket() {
+      if (!this.ws) {
+        return;
+      }
+      this.ws.close();
+      this.ws = undefined;
+    },
+
+    tryReconnect() {
+      this.closeWebSocket();
+      if (reconnectionTimer) {
+        clearTimeout(reconnectionTimer);
+      }
+      reconnectionTimer = setTimeout(() => {
+        this.prepareWebSocket();
+      }, RECONNECT_INTERVAL);
+    },
   }
 }
 </script>
