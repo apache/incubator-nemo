@@ -17,24 +17,37 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorSlotComplianceProperty;
+
+import java.util.Collections;
 
 /**
  * Sets {@link ExecutorSlotComplianceProperty}.
  */
-public final class ExecutorSlotCompliancePass extends AnnotatingPass {
+public final class SailfishVertexExecutorSlotCompliancePass extends AnnotatingPass {
 
-  public ExecutorSlotCompliancePass() {
-    super(ExecutorSlotComplianceProperty.class);
+  public SailfishVertexExecutorSlotCompliancePass() {
+    super(ExecutorSlotComplianceProperty.class, Collections.singleton(DataFlowModelProperty.class));
   }
 
   @Override
   public DAG<IRVertex, IREdge> apply(final DAG<IRVertex, IREdge> dag) {
-    // On every vertex, if ExecutorSlotComplianceProperty is not set, put it as true.
+    // On every vertex that receive push edge, if ExecutorSlotComplianceProperty is not set, put it as false.
+    // For other vertices, if ExecutorSlotComplianceProperty is not set, put it as true.
     dag.getVertices().stream()
         .filter(v -> !v.getExecutionProperties().containsKey(ExecutorSlotComplianceProperty.class))
-        .forEach(v -> v.getExecutionProperties().put(ExecutorSlotComplianceProperty.of(true)));
+        .forEach(v -> {
+          if (dag.getIncomingEdgesOf(v).stream().anyMatch(
+              e -> e.getPropertyValue(DataFlowModelProperty.class)
+                  .orElseThrow(() -> new RuntimeException(String.format("DataFlowModelProperty for %s must be set",
+                      e.getId()))).equals(DataFlowModelProperty.Value.Push))) {
+            v.getExecutionProperties().put(ExecutorSlotComplianceProperty.of(false));
+          } else {
+            v.getExecutionProperties().put(ExecutorSlotComplianceProperty.of(true));
+          }
+        });
     return dag;
   }
 }
