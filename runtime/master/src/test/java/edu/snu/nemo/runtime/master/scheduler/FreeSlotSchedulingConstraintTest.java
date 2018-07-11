@@ -18,6 +18,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorSlotComplianceProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.reef.tang.Tang;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -48,8 +49,9 @@ public final class FreeSlotSchedulingConstraintTest {
   }
 
   @Test
-  public void testFreeSlot() {
-    final SchedulingConstraint schedulingConstraint = new FreeSlotSchedulingConstraint();
+  public void testFreeSlot() throws Exception {
+    final SchedulingConstraint schedulingConstraint =
+        Tang.Factory.getTang().newInjector().getInstance(FreeSlotSchedulingConstraint.class);
     final ExecutorRepresenter a0 = mockExecutorRepresenter(1, 1);
     final ExecutorRepresenter a1 = mockExecutorRepresenter(2, 3);
 
