@@ -17,6 +17,7 @@ package edu.snu.nemo.compiler.optimizer.pass.compiletime.reshaping;
 
 import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import edu.snu.nemo.compiler.optimizer.pass.compiletime.CompileTimePass;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.PassCondition;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -27,12 +28,13 @@ import java.util.Set;
  */
 public abstract class ReshapingPass implements CompileTimePass {
   private final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties;
+  private final PassCondition condition;
 
   /**
    * Default constructor.
    */
   public ReshapingPass() {
-    this.prerequisiteExecutionProperties = new HashSet<>();
+    this(new HashSet<>());
   }
 
   /**
@@ -41,6 +43,12 @@ public abstract class ReshapingPass implements CompileTimePass {
    */
   public ReshapingPass(final Set<Class<? extends ExecutionProperty>> prerequisiteExecutionProperties) {
     this.prerequisiteExecutionProperties = prerequisiteExecutionProperties;
+    this.condition = new PassCondition();
+  }
+
+  @Override
+  public final PassCondition getCondition() {
+    return condition;
   }
 
   @Override

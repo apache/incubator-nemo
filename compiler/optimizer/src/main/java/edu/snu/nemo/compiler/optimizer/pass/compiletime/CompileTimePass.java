@@ -23,6 +23,7 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionProperty;
 import java.io.Serializable;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Interface for compile-time optimization passes that processes the DAG.
@@ -34,4 +35,19 @@ public interface CompileTimePass extends Function<DAG<IRVertex, IREdge>, DAG<IRV
    * @return set of prerequisite execution properties.
    */
   Set<Class<? extends ExecutionProperty>> getPrerequisiteExecutionProperties();
+
+  /**
+   * Getter for the condition under which to apply the pass.
+   * @return the condition under which to apply the pass.
+   */
+  PassCondition getCondition();
+
+  /**
+   * Add the condition to the condition to run the pass.
+   * @param newCondition the new condition to add to the existing condition.
+   * @return the condition with the new condition added.
+   */
+  default Predicate<DAG<IRVertex, IREdge>> addCondition(Predicate<DAG<IRVertex, IREdge>> newCondition) {
+    return getCondition().and(newCondition);
+  }
 }

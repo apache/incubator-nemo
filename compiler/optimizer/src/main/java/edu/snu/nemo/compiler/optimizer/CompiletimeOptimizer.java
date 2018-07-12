@@ -66,7 +66,7 @@ public final class CompiletimeOptimizer {
     if (passes.hasNext()) {
       final CompileTimePass passToApply = passes.next();
       // Apply the pass to the DAG.
-      final DAG<IRVertex, IREdge> processedDAG = passToApply.apply(dag);
+      final DAG<IRVertex, IREdge> processedDAG = passToApply.getCondition().test(dag) ? passToApply.apply(dag) : dag;
       // Ensure AnnotatingPass and ReshapingPass functions as intended.
       if ((passToApply instanceof AnnotatingPass && !checkAnnotatingPass(dag, processedDAG))
           || (passToApply instanceof ReshapingPass && !checkReshapingPass(dag, processedDAG))) {
