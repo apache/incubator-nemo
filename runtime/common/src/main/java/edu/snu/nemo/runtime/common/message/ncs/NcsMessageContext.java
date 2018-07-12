@@ -56,7 +56,9 @@ final class NcsMessageContext implements MessageContext {
       // We do not call connection.close since NCS caches connection.
       // Disabling Sonar warning (squid:S2095)
     } catch (final NetworkException e) {
-      throw new RuntimeException("Cannot connect to " + senderId, e);
+      // TODO #140: Properly classify and handle each RPC failure
+      // Not logging the stacktrace here, as it's not very useful.
+      LOG.error("NCS Exception");
     }
   }
 }

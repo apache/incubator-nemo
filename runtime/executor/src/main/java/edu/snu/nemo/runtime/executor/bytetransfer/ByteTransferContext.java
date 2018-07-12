@@ -119,11 +119,7 @@ public abstract class ByteTransferContext {
       return;
     }
     hasException = true;
-    if (cause == null) {
-      LOG.error(String.format("A channel exception set on %s", toString()));
-    } else {
-      LOG.error(String.format("A channel exception set on %s", toString()), cause);
-    }
+    LOG.error(String.format("A channel exception set on %s", toString())); // Not logging throwable, which isn't useful
     exception = cause;
   }
 

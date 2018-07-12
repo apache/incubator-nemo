@@ -18,7 +18,6 @@ package edu.snu.nemo.runtime.common.plan;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
-import org.apache.commons.lang.SerializationUtils;
 
 import java.io.Serializable;
 import java.util.List;
@@ -145,8 +144,10 @@ public final class Task implements Serializable {
     sb.append(taskId);
     sb.append(" / attempt: ");
     sb.append(attemptIdx);
-    sb.append(" / irDAG: ");
-    sb.append(SerializationUtils.deserialize(serializedIRDag));
+    sb.append(" / incoming: ");
+    sb.append(taskIncomingEdges);
+    sb.append(" / outgoing: ");
+    sb.append(taskOutgoingEdges);
     sb.append("/ exec props: ");
     sb.append(getExecutionProperties());
     return sb.toString();

@@ -108,7 +108,8 @@ public final class RuntimeMaster {
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
     // and keeping it single threaded removes the complexity of multi-thread synchronization.
-    this.runtimeMasterThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster"));
+    this.runtimeMasterThread =
+        Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "RuntimeMaster thread"));
     this.scheduler = scheduler;
     this.containerManager = containerManager;
     this.blockManagerMaster = blockManagerMaster;
@@ -218,13 +219,13 @@ public final class RuntimeMaster {
 
         for (int i = 0; i < jsonRootNode.size(); i++) {
           final TreeNode resourceNode = jsonRootNode.get(i);
-          final ResourceSpecification.Builder builder = ResourceSpecification.newBuilder();
-          builder.setContainerType(resourceNode.get("type").traverse().nextTextValue());
-          builder.setMemory(resourceNode.get("memory_mb").traverse().getIntValue());
-          builder.setCapacity(resourceNode.get("capacity").traverse().getIntValue());
+          final String type = resourceNode.get("type").traverse().nextTextValue();
+          final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
+          final int capacity = resourceNode.get("capacity").traverse().getIntValue();
           final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
+          final int poisonSec = resourceNode.path("poison_sec").traverse().nextIntValue(-1);
           resourceRequestCount.getAndAdd(executorNum);
-          containerManager.requestContainer(executorNum, builder.build());
+          containerManager.requestContainer(executorNum, new ResourceSpecification(type, capacity, memory, poisonSec));
         }
         metricCountDownLatch = new CountDownLatch(resourceRequestCount.get());
       } catch (final Exception e) {
@@ -288,7 +289,6 @@ public final class RuntimeMaster {
    */
   public void onExecutorFailed(final FailedEvaluator failedEvaluator) {
     runtimeMasterThread.execute(() -> {
-      LOG.info("onExecutorFailed: {}", failedEvaluator.getId());
       metricCountDownLatch.countDown();
 
       // Note that getFailedContextList() can be empty if the failure occurred

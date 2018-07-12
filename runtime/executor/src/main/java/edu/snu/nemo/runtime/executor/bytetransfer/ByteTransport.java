@@ -209,12 +209,8 @@ final class ByteTransport implements AutoCloseable {
         LOG.debug("Connected to {}", remoteExecutorId);
         return;
       }
-      // Failed to connect
-      if (future.cause() == null) {
-        LOG.error("Failed to connect to {}", remoteExecutorId);
-      } else {
-        LOG.error(String.format("Failed to connect to %s", remoteExecutorId), future.cause());
-      }
+      // Failed to connect (Not logging the cause here, which is not very useful)
+      LOG.error("Failed to connect to {}", remoteExecutorId);
     });
     return connectFuture;
   }

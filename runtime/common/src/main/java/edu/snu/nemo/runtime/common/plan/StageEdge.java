@@ -119,6 +119,11 @@ public final class StageEdge extends RuntimeEdge<Stage> {
     return sb.toString();
   }
 
+  @Override
+  public String toString() {
+    return propertiesToJSON();
+  }
+
   /**
    * @return the list between the task idx and key range to read.
    */

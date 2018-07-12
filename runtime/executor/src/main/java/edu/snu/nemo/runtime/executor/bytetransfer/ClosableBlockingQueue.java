@@ -91,13 +91,15 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    */
   @Nullable
   public synchronized T take() throws InterruptedException {
+    while (queue.isEmpty() && !closed) {
+      wait();
+    }
+
+    // This should come after wait(), to be always checked on close
     if (throwable != null) {
       throw new RuntimeException(throwable);
     }
 
-    while (queue.isEmpty() && !closed) {
-      wait();
-    }
     // retrieves and removes the head of the underlying collection, or return null if the queue is empty
     return queue.poll();
   }
@@ -110,13 +112,15 @@ public final class ClosableBlockingQueue<T> implements AutoCloseable {
    */
   @Nullable
   public synchronized T peek() throws InterruptedException {
+    while (queue.isEmpty() && !closed) {
+      wait();
+    }
+
+    // This should come after wait(), to be always checked on close
     if (throwable != null) {
       throw new RuntimeException(throwable);
     }
 
-    while (queue.isEmpty() && !closed) {
-      wait();
-    }
     // retrieves the head of the underlying collection, or return null if the queue is empty
     return queue.peek();
   }

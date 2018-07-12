@@ -107,7 +107,7 @@ public final class ContainerManagerTest {
         containerManager.onContainerAllocated(
             executorId,
             createMockEvaluator(evaluatorId, descriptor),
-            mock(Configuration.class));
+            createMockConfiguration());
         final ExecutorRepresenter executorRepresenter =
             containerManager.onContainerLaunched(createMockContext(executorId, descriptor)).get();
         assertEquals(spec.getContainerType(), executorRepresenter.getContainerType());
@@ -125,7 +125,7 @@ public final class ContainerManagerTest {
     containerManager.onContainerAllocated(
         getExecutorId(),
         createMockEvaluator(evaluatorId, createDescriptor(RESOURCE_SPEC_A)),
-        mock(Configuration.class));
+        createMockConfiguration());
     assertEquals(RESOURCE_SPEC_A, containerManager.onContainerFailed(evaluatorId));
   }
 
@@ -139,7 +139,7 @@ public final class ContainerManagerTest {
     containerManager.onContainerAllocated(
         executorId,
         createMockEvaluator(evaluatorId, descriptor),
-        mock(Configuration.class));
+        createMockConfiguration());
     containerManager.onContainerLaunched(createMockContext(executorId, descriptor));
     assertEquals(RESOURCE_SPEC_A, containerManager.onContainerFailed(evaluatorId));
   }
@@ -169,5 +169,9 @@ public final class ContainerManagerTest {
     when(mockedContext.getId()).thenReturn(id);
     when(mockedContext.getEvaluatorDescriptor()).thenReturn(descriptor);
     return mockedContext;
+  }
+
+  private Configuration createMockConfiguration() {
+    return Tang.Factory.getTang().newConfigurationBuilder().build();
   }
 }
