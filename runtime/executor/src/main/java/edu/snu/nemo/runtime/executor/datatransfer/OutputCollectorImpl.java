@@ -117,4 +117,16 @@ public final class OutputCollectorImpl<O> implements OutputCollector<O> {
       return this.additionalTagOutputQueues.get(tag).isEmpty();
     }
   }
+
+  public Queue<O> getMainTagOutputQueue() {
+    return mainTagOutputQueue;
+  }
+
+  public Queue getAdditionalTagOutputQueue(final String dstVertexId) {
+    if (this.additionalTagOutputQueues.get(dstVertexId) == null) {
+      return this.mainTagOutputQueue;
+    } else {
+      return this.additionalTagOutputQueues.get(dstVertexId);
+    }
+  }
 }

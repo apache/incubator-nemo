@@ -18,8 +18,10 @@ package edu.snu.nemo.compiler.frontend.beam.transform;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.snu.nemo.common.ir.OutputCollector;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
+import edu.snu.nemo.runtime.executor.datatransfer.OutputCollectorImpl;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.state.State;
+import org.apache.beam.sdk.state.TimeDomain;
 import org.apache.beam.sdk.state.Timer;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvoker;
@@ -34,6 +36,7 @@ import org.joda.time.Instant;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Queue;
 
 /**
  * DoFn transform implementation.
@@ -249,7 +252,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public PaneInfo pane() {
-      throw new UnsupportedOperationException("pane() in ProcessContext under DoTransform");
+      return PaneInfo.createPane(true, true, PaneInfo.Timing.UNKNOWN);
     }
 
     @Override
@@ -269,7 +272,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public void outputWithTimestamp(final O output, final Instant timestamp) {
-      throw new UnsupportedOperationException("outputWithTimestamp() in ProcessContext under DoTransform");
+      outputCollector.emit(output);
     }
 
     @Override
@@ -284,12 +287,17 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public BoundedWindow window() {
-      return new BoundedWindow() {
-        @Override
-        public Instant maxTimestamp() {
-          return GlobalWindow.INSTANCE.maxTimestamp();
-        }
-      };
+      return GlobalWindow.INSTANCE;
+    }
+
+    @Override
+    public PaneInfo paneInfo(final DoFn<I, O> doFn) {
+      return PaneInfo.createPane(true, true, PaneInfo.Timing.UNKNOWN);
+    }
+
+    @Override
+    public PipelineOptions pipelineOptions() {
+      return options;
     }
 
     @Override
@@ -315,8 +323,33 @@ public final class DoTransform<I, O> implements Transform<I, O> {
     }
 
     @Override
-    public RestrictionTracker<?> restrictionTracker() {
+    public I element(final DoFn<I, O> doFn) {
+      return this.input;
+    }
+
+    @Override
+    public Instant timestamp(final DoFn<I, O> doFn) {
+      return Instant.now();
+    }
+
+    @Override
+    public RestrictionTracker<?, ?> restrictionTracker() {
       throw new UnsupportedOperationException("restrictionTracker() in ProcessContext under DoTransform");
+    }
+
+    @Override
+    public TimeDomain timeDomain(final DoFn<I, O> doFn) {
+      throw new UnsupportedOperationException("timeDomain() in ProcessContext under DoTransform");
+    }
+
+    @Override
+    public DoFn.OutputReceiver<O> outputReceiver(final DoFn<I, O> doFn) {
+      return new OutputReceiver<>((OutputCollectorImpl) outputCollector);
+    }
+
+    @Override
+    public DoFn.MultiOutputReceiver taggedOutputReceiver(final DoFn<I, O> doFn) {
+      return new MultiOutputReceiver((OutputCollectorImpl) outputCollector, additionalOutputs);
     }
 
     @Override
@@ -335,5 +368,58 @@ public final class DoTransform<I, O> implements Transform<I, O> {
    */
   public DoFn getDoFn() {
     return doFn;
+  }
+
+  /**
+   * OutputReceiver class.
+   * @param <O> output type
+   */
+  static final class OutputReceiver<O> implements DoFn.OutputReceiver<O> {
+    private final Queue<O> dataQueue;
+
+    OutputReceiver(final OutputCollectorImpl<O> outputCollector) {
+      this.dataQueue = outputCollector.getMainTagOutputQueue();
+    }
+
+    OutputReceiver(final OutputCollectorImpl outputCollector,
+                       final TupleTag<O> tupleTag,
+                       final Map<String, String> tagToVertex) {
+      final String dstVertexId = tagToVertex.get(tupleTag.getId());
+      this.dataQueue = (Queue<O>) outputCollector.getAdditionalTagOutputQueue(dstVertexId);
+    }
+
+    @Override
+    public void output(final O output) {
+      dataQueue.add(output);
+    }
+
+    @Override
+    public void outputWithTimestamp(final O output, final Instant timestamp) {
+      dataQueue.add(output);
+    }
+  }
+
+  /**
+   * MultiOutputReceiver class.
+   */
+  static final class MultiOutputReceiver implements DoFn.MultiOutputReceiver {
+    private final OutputCollectorImpl outputCollector;
+    private final Map<String, String> tagToVertex;
+
+    /**
+     * Constructor.
+     * @param outputCollector outputCollector
+     * @param tagToVertex     tag to vertex map
+     */
+    MultiOutputReceiver(final OutputCollectorImpl outputCollector,
+                               final Map<String, String> tagToVertex) {
+      this.outputCollector = outputCollector;
+      this.tagToVertex = tagToVertex;
+    }
+
+    @Override
+    public <T> DoFn.OutputReceiver<T> get(final TupleTag<T> tag) {
+      return new OutputReceiver<>(this.outputCollector, tag, tagToVertex);
+    }
   }
 }
