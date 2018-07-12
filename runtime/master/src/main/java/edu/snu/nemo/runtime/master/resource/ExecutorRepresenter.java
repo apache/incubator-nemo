@@ -171,27 +171,6 @@ public final class ExecutorRepresenter {
   }
 
   /**
-   * @return the current snapshot of the number of attempt per running tasks.
-   */
-  public Map<Task, Integer> getRunningTaskToAttempt() {
-    return Collections.unmodifiableMap(new HashMap<>(runningTaskToAttempt));
-  }
-
-  /**
-   * @return the current snapshot of Tasks that have been failed in this executor.
-   */
-  public Set<Task> getFailedTasks() {
-    return Collections.unmodifiableSet(new HashSet<>(failedTasks));
-  }
-
-  /**
-   * @return set of ids of Tasks that have been completed in this executor
-   */
-  public Set<Task> getCompleteTasks() {
-    return Collections.unmodifiableSet(new HashSet<>(completeTasks));
-  }
-
-  /**
    * @return the executor id
    */
   public String getExecutorId() {

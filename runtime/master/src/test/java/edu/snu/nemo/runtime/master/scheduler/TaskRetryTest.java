@@ -59,10 +59,10 @@ import static org.mockito.Mockito.mock;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({BlockManagerMaster.class, SchedulerRunner.class, SchedulingConstraintRegistry.class,
     PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
-public final class TaskRestartTest {
+public final class TaskRetryTest {
   @Rule public TestName testName = new TestName();
 
-  private static final Logger LOG = LoggerFactory.getLogger(TaskRestartTest.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(TaskRetryTest.class.getName());
   private static final AtomicInteger ID_OFFSET = new AtomicInteger(1);
 
   private Random random;
