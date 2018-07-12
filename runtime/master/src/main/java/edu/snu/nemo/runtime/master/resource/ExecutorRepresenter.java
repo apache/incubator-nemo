@@ -164,10 +164,10 @@ public final class ExecutorRepresenter {
   }
 
   /**
-   * @return set of ids of Tasks that are running in this executor
+   * @return the current snapshot of set of Tasks that are running in this executor.
    */
   public Set<Task> getRunningTasks() {
-    return runningTasks;
+    return Collections.unmodifiableSet(new HashSet<>(runningTasks));
   }
 
   /**
