@@ -42,10 +42,7 @@ import org.apache.beam.sdk.values.PCollectionViews;
 import org.apache.beam.sdk.values.PValue;
 import org.apache.beam.sdk.values.TupleTag;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Stack;
+import java.util.*;
 
 /**
  * Visits every node in the beam dag to translate the BEAM program to the IR.
@@ -57,6 +54,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
   // loopVertexStack keeps track of where the beam program is: whether it is inside a composite transform or it is not.
   private final Stack<LoopVertex> loopVertexStack;
   private final Map<PValue, Pair<BeamEncoderFactory, BeamDecoderFactory>> pValueToCoder;
+  private final Map<IRVertex, Pair<BeamEncoderFactory, BeamDecoderFactory>> sideInputCoder;
   private final Map<PValue, TupleTag> pValueToTag;
 
   /**
@@ -71,6 +69,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
     this.options = options;
     this.loopVertexStack = new Stack<>();
     this.pValueToCoder = new HashMap<>();
+    this.sideInputCoder = new HashMap<>();
     this.pValueToTag = new HashMap<>();
   }
 
@@ -97,7 +96,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
 //    Print if needed for development
 //    LOG.info("visitp " + beamNode.getTransform());
     final IRVertex irVertex =
-        convertToVertex(beamNode, builder, pValueToVertex, pValueToCoder, pValueToTag, options, loopVertexStack);
+        convertToVertex(beamNode, builder, pValueToVertex, sideInputCoder, pValueToTag, options, loopVertexStack);
     beamNode.getOutputs().values().stream().filter(v -> v instanceof PCollection).map(v -> (PCollection) v)
         .forEach(output -> pValueToCoder.put(output,
             Pair.of(new BeamEncoderFactory(output.getCoder()), new BeamDecoderFactory(output.getCoder()))));
@@ -127,7 +126,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
    * @param beamNode        input beam node.
    * @param builder         the DAG builder to add the vertex to.
    * @param pValueToVertex  PValue to Vertex map.
-   * @param pValueToCoder   PValue to EncoderFactory and DecoderFactory map.
+   * @param sideInputCoder  Side input EncoderFactory and DecoderFactory map.
    * @param pValueToTag     PValue to Tag map.
    * @param options         pipeline options.
    * @param loopVertexStack Stack to get the current loop vertex that the operator vertex will be assigned to.
@@ -139,7 +138,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
   convertToVertex(final TransformHierarchy.Node beamNode,
                   final DAGBuilder<IRVertex, IREdge> builder,
                   final Map<PValue, IRVertex> pValueToVertex,
-                  final Map<PValue, Pair<BeamEncoderFactory, BeamDecoderFactory>> pValueToCoder,
+                  final Map<IRVertex, Pair<BeamEncoderFactory, BeamDecoderFactory>> sideInputCoder,
                   final Map<PValue, TupleTag> pValueToTag,
                   final PipelineOptions options,
                   final Stack<LoopVertex> loopVertexStack) {
@@ -166,7 +165,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
           .orElseThrow(() -> new RuntimeException("No inputs provided to " + beamNode.getFullName())).getCoder();
       beamNode.getOutputs().values().stream()
           .forEach(output ->
-              pValueToCoder.put(output, getCoderPairForView(view.getView().getViewFn(), beamInputCoder)));
+              sideInputCoder.put(irVertex, getCoderPairForView(view.getView().getViewFn(), beamInputCoder)));
     } else if (beamTransform instanceof Window) {
       final Window<I> window = (Window<I>) beamTransform;
       final WindowTransform transform = new WindowTransform(window.getWindowFn());
@@ -182,7 +181,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
       final DoTransform transform = new DoTransform(parDo.getFn(), options);
       irVertex = new OperatorVertex(transform);
       builder.addVertex(irVertex, loopVertexStack);
-      connectSideInputs(builder, parDo.getSideInputs(), pValueToVertex, pValueToCoder, irVertex);
+      connectSideInputs(builder, parDo.getSideInputs(), pValueToVertex, sideInputCoder, irVertex);
     } else if (beamTransform instanceof ParDo.MultiOutput) {
       final ParDo.MultiOutput<I, O> parDo = (ParDo.MultiOutput<I, O>) beamTransform;
       final DoTransform transform = new DoTransform(parDo.getFn(), options);
@@ -193,7 +192,7 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
             .forEach(kv -> pValueToTag.put(kv.getValue(), kv.getKey()));
       }
       builder.addVertex(irVertex, loopVertexStack);
-      connectSideInputs(builder, parDo.getSideInputs(), pValueToVertex, pValueToCoder, irVertex);
+      connectSideInputs(builder, parDo.getSideInputs(), pValueToVertex, sideInputCoder, irVertex);
     } else if (beamTransform instanceof Flatten.PCollections) {
       irVertex = new OperatorVertex(new FlattenTransform());
       builder.addVertex(irVertex, loopVertexStack);
@@ -209,19 +208,20 @@ public final class NemoPipelineVisitor extends Pipeline.PipelineVisitor.Defaults
    * @param builder        the DAG builder to add the vertex to.
    * @param sideInputs     side inputs.
    * @param pValueToVertex PValue to Vertex map.
-   * @param pValueToCoder  PValue to Encoder/Decoder factory map.
+   * @param coderMap       Side input to Encoder/Decoder factory map.
    * @param irVertex       wrapper for a user operation in the IR. (Where the side input is headed to)
    */
   private static void connectSideInputs(final DAGBuilder<IRVertex, IREdge> builder,
                                         final List<PCollectionView<?>> sideInputs,
                                         final Map<PValue, IRVertex> pValueToVertex,
-                                        final Map<PValue, Pair<BeamEncoderFactory, BeamDecoderFactory>> pValueToCoder,
+                                        final Map<IRVertex, Pair<BeamEncoderFactory, BeamDecoderFactory>> coderMap,
                                         final IRVertex irVertex) {
     sideInputs.stream().filter(pValueToVertex::containsKey)
         .forEach(pValue -> {
           final IRVertex src = pValueToVertex.get(pValue);
-          final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, irVertex), src, irVertex, true);
-          final Pair<BeamEncoderFactory, BeamDecoderFactory> coder = pValueToCoder.get(pValue);
+          final IREdge edge = new IREdge(getEdgeCommunicationPattern(src, irVertex),
+              src, irVertex, true);
+          final Pair<BeamEncoderFactory, BeamDecoderFactory> coder = coderMap.get(src);
           edge.setProperty(EncoderProperty.of(coder.left()));
           edge.setProperty(DecoderProperty.of(coder.right()));
           edge.setProperty(KeyExtractorProperty.of(new BeamKeyExtractor()));
