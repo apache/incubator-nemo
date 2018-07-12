@@ -1,4 +1,4 @@
-# nemo-visualizer
+# Nemo Web Visualizer
 
 > Nemo web visualizer
 

@@ -14,6 +14,7 @@ module.exports = {
   plugins: [
     '~/plugins/element-ui',
     '~/plugins/vue2vis',
+    '~/plugins/event-bus',
   ],
 
   css: [

@@ -11,6 +11,12 @@
         :groups="groupDataSet">
         </metric-timeline>
       </el-collapse-item>
+      <el-collapse-item name="dag">
+        <template slot="title">
+          DAG
+        </template>
+        <dag></dag>
+      </el-collapse-item>
     </el-collapse>
   </div>
 </template>
@@ -18,8 +24,10 @@
 <script>
 import Vue from 'vue';
 import MetricTimeline from '~/components/MetricTimeline';
+import DAG from '~/components/DAG';
 import { DataSet } from 'vue2vis';
 
+// valid state string
 const STATE = {
   READY: 'READY',
   EXECUTING: 'EXECUTING',
@@ -27,23 +35,27 @@ const STATE = {
   COMPLETE: 'COMPLETE',
 };
 
+// list of metric, order of elements matters.
 const METRIC_LIST = [
   'JobMetric',
   'StageMetric',
   'TaskMetric',
 ];
 
+// timeline fitting option
 const FIT_OPTIONS = {
   duration: 500,
 }
 
-const RECONNECT_INTERVAL = 3000;
-
+// variable to store the return value of setTimeout()
 let reconnectionTimer;
+// reconnection interval
+const RECONNECT_INTERVAL = 3000;
 
 export default {
   components: {
-    MetricTimeline,
+    'metric-timeline': MetricTimeline,
+    'dag': DAG,
   },
 
   data() {
@@ -52,11 +64,14 @@ export default {
       metricDataSet: new DataSet([]),
       groupDataSet: new DataSet([]),
 
+      // dag data
+      dag: undefined,
+
       // websocket object
       ws: undefined,
 
       // element-ui specific
-      collapseActiveNames: ['timeline'],
+      collapseActiveNames: ['timeline', 'dag'],
     };
   },
 
@@ -125,13 +140,9 @@ export default {
           console.warn('Error when adding new item');
         }
         if (this.metricDataSet.length === 1) {
-          try {
-            await this.moveTimeline(newItem.start);
-          } catch (e) {
-            console.warn('Error when moving timeline');
-          }
+          this.moveTimeline(newItem.start);
         } else {
-          await this.fitTimeline();
+          this.fitTimeline();
         }
       } else {
         try {
@@ -140,28 +151,17 @@ export default {
           console.warn('Error when updating item');
         }
         if (!(prevItem.start === newItem.start && prevItem.end === newItem.end)) {
-          await this.fitTimeline();
+          this.fitTimeline();
         }
       }
     },
 
-    async fitTimeline() {
-      try {
-        this.$refs.metricTimeline.$refs.timeline.fit(FIT_OPTIONS);
-      } catch (e) {
-        console.warn('Error when fitting timeline');
-      }
+    fitTimeline() {
+      this.$eventBus.$emit('fit-timeline');
     },
 
     moveTimeline(time) {
-      return new Promise((resolve, reject) => {
-        try {
-          this.$refs.metricTimeline
-            .$refs.timeline.moveTo(time, false, () => resolve());
-        } catch (e) {
-          reject();
-        }
-      });
+      this.$eventBus.$emit('move-timeline', time);
     },
 
     prepareWebSocket() {

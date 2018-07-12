@@ -15,6 +15,16 @@ import { DataSet } from 'vue2vis';
 export default {
   props: ['metric', 'groups'],
 
+  beforeMount() {
+    this.$eventBus.$on('fit-timeline', () => {
+      this.fitTimeline();
+    });
+
+    this.$eventBus.$on('move-timeline', ( time ) => {
+      this.moveTimeline(time);
+    });
+  },
+
   data() {
     return {
       options: {
@@ -25,12 +35,22 @@ export default {
     };
   },
 
-  computed: {
-
-  },
-
   methods: {
+    fitTimeline() {
+      try {
+        this.$refs.timeline.fit();
+      } catch (e) {
+        console.warn('Error when fitting the timeline');
+      }
+    },
 
+    moveTimeline(time) {
+      try {
+        this.$refs.timeline.moveTo(time, false);
+      } catch (e) {
+        console.warn('Error when moving the timeline');
+      }
+    },
   }
 
 }
