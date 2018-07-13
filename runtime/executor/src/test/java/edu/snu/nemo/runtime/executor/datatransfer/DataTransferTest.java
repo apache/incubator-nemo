@@ -40,7 +40,6 @@ import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.executor.Executor;
-import edu.snu.nemo.runtime.executor.MetricManagerWorker;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.SerializerManager;
 import edu.snu.nemo.runtime.master.*;
@@ -126,12 +125,9 @@ public final class DataTransferTest {
     final Injector dispatcherInjector = LocalMessageDispatcher.forkInjector(baseInjector);
     final Injector injector = LocalMessageEnvironment.forkInjector(dispatcherInjector,
         MessageEnvironment.MASTER_COMMUNICATION_ID);
-    final ContainerManager containerManager = injector.getInstance(ContainerManager.class);
     final ExecutorRegistry executorRegistry = injector.getInstance(ExecutorRegistry.class);
     final MessageEnvironment messageEnvironment = injector.getInstance(MessageEnvironment.class);
-    final LocalMessageDispatcher messageDispatcher = injector.getInstance(LocalMessageDispatcher.class);
 
-    final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     final SchedulingConstraintRegistry schedulingConstraint = injector.getInstance(SchedulingConstraintRegistry.class);
@@ -140,14 +136,15 @@ public final class DataTransferTest {
     final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingConstraint, schedulingPolicy, taskQueue, executorRegistry);
     final Scheduler scheduler = new BatchSingleJobScheduler(
         schedulerRunner, taskQueue, master, pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
+    injector.bindVolatileInstance(Scheduler.class, scheduler);
     final AtomicInteger executorCount = new AtomicInteger(0);
-    final ClientRPC clientRPC = mock(ClientRPC.class);
-    final MetricManagerMaster metricManagerMaster = mock(MetricManagerMaster.class);
+    injector.bindVolatileInstance(ClientRPC.class, mock(ClientRPC.class));
+    injector.bindVolatileInstance(MetricManagerMaster.class, mock(MetricManagerMaster.class));
+    injector.bindVolatileInstance(MetricMessageHandler.class, mock(MetricMessageHandler.class));
+    injector.bindVolatileParameter(JobConf.DAGDirectory.class, EMPTY_DAG_DIRECTORY);
 
     // Necessary for wiring up the message environments
-    final RuntimeMaster runtimeMaster =
-        new RuntimeMaster(scheduler, containerManager, master,
-            metricMessageHandler, messageEnvironment, clientRPC, metricManagerMaster, EMPTY_DAG_DIRECTORY);
+    final RuntimeMaster runtimeMaster = injector.getInstance(RuntimeMaster.class);
 
     final Injector injector1 = Tang.Factory.getTang().newInjector();
     injector1.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
@@ -178,7 +175,8 @@ public final class DataTransferTest {
       final Injector nameClientInjector) throws InjectionException {
     final Injector messageEnvironmentInjector = LocalMessageEnvironment.forkInjector(dispatcherInjector, executorId);
     final MessageEnvironment messageEnvironment = messageEnvironmentInjector.getInstance(MessageEnvironment.class);
-    final PersistentConnectionToMasterMap conToMaster = new PersistentConnectionToMasterMap(messageEnvironment);
+    final PersistentConnectionToMasterMap conToMaster = messageEnvironmentInjector
+        .getInstance(PersistentConnectionToMasterMap.class);
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
         .bindNamedParameter(JobConf.ExecutorId.class, executorId)
         .bindNamedParameter(MessageParameters.SenderId.class, executorId)
@@ -189,28 +187,20 @@ public final class DataTransferTest {
     injector.bindVolatileParameter(JobConf.FileDirectory.class, TMP_LOCAL_FILE_DIRECTORY);
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_REMOTE_FILE_DIRECTORY);
     final BlockManagerWorker blockManagerWorker;
-    final MetricManagerWorker metricManagerWorker;
     final SerializerManager serializerManager;
     final DataTransferFactory dataTransferFactory;
     try {
       blockManagerWorker = injector.getInstance(BlockManagerWorker.class);
-      metricManagerWorker = injector.getInstance(MetricManagerWorker.class);
       serializerManager = injector.getInstance(SerializerManager.class);
       serializerManagers.put(blockManagerWorker, serializerManager);
       dataTransferFactory = injector.getInstance(DataTransferFactory.class);
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
+    injector.bindVolatileParameter(JobConf.ExecutorId.class, executorId);
 
     // Unused, but necessary for wiring up the message environments
-    final Executor executor = new Executor(
-        executorId,
-        conToMaster,
-        messageEnvironment,
-        serializerManager,
-        dataTransferFactory,
-        metricManagerWorker);
-    injector.bindVolatileInstance(Executor.class, executor);
+    injector.getInstance(Executor.class);
 
     return Pair.of(blockManagerWorker, dataTransferFactory);
   }
