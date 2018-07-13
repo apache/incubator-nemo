@@ -187,9 +187,11 @@ public final class BlockStoreTest {
 
     // Generates the range of hash value to read for each read task.
     final int smallDataRangeEnd = 1 + NUM_READ_HASH_TASKS - NUM_WRITE_HASH_TASKS;
-    readKeyRangeList.add(HashRange.of(0, smallDataRangeEnd));
+    readKeyRangeList.add(HashRange.of(0, smallDataRangeEnd, false));
     IntStream.range(0, NUM_READ_HASH_TASKS - 1).forEach(readTaskIdx -> {
-      readKeyRangeList.add(HashRange.of(smallDataRangeEnd + readTaskIdx, smallDataRangeEnd + readTaskIdx + 1));
+      readKeyRangeList.add(HashRange.of(smallDataRangeEnd + readTaskIdx,
+          smallDataRangeEnd + readTaskIdx + 1,
+          false));
     });
 
     // Generates the expected result of hash range retrieval for each read task.
@@ -342,7 +344,8 @@ public final class BlockStoreTest {
           public Boolean call() {
             try {
               for (int writeTaskIdx = 0; writeTaskIdx < NUM_WRITE_VERTICES; writeTaskIdx++) {
-                readResultCheck(blockIdList.get(writeTaskIdx), HashRange.of(readTaskIdx, readTaskIdx + 1),
+                readResultCheck(blockIdList.get(writeTaskIdx),
+                    HashRange.of(readTaskIdx, readTaskIdx + 1, false),
                     readerSideStore, partitionsPerBlock.get(writeTaskIdx).get(readTaskIdx).getData());
               }
               return true;

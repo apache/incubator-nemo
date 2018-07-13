@@ -64,7 +64,8 @@ public final class SchedulerRunner {
                           final ExecutorRegistry executorRegistry) {
     this.jobStateManagers = new HashMap<>();
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
-    this.schedulerThread = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "SchedulerRunner"));
+    this.schedulerThread = Executors.newSingleThreadExecutor(runnable ->
+        new Thread(runnable, "SchedulerRunner thread"));
     this.isSchedulerRunning = false;
     this.isTerminated = false;
     this.executorRegistry = executorRegistry;
@@ -112,7 +113,6 @@ public final class SchedulerRunner {
         continue;
       }
 
-      LOG.debug("Trying to schedule {}...", task.getTaskId());
       executorRegistry.viewExecutors(executors -> {
         final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
         task.getExecutionProperties().forEachProperties(property -> {
@@ -129,6 +129,8 @@ public final class SchedulerRunner {
               = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
           // update metadata first
           jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+
+          LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
 
           // send the task
           selectedExecutor.onTaskScheduled(task);

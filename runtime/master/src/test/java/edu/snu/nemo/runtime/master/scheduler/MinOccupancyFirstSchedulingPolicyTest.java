@@ -37,10 +37,16 @@ import static org.mockito.Mockito.*;
 @PrepareForTest({ExecutorRepresenter.class, Task.class})
 public final class MinOccupancyFirstSchedulingPolicyTest {
 
+  private static Task mockTask(final String taskId) {
+    final Task task = mock(Task.class);
+    when(task.getTaskId()).thenReturn(taskId);
+    return task;
+  }
+
   private static ExecutorRepresenter mockExecutorRepresenter(final int numRunningTasks) {
     final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
-    final Set<String> runningTasks = new HashSet<>();
-    IntStream.range(0, numRunningTasks).forEach(i -> runningTasks.add(String.valueOf(i)));
+    final Set<Task> runningTasks = new HashSet<>();
+    IntStream.range(0, numRunningTasks).forEach(i -> runningTasks.add(mockTask(String.valueOf(i))));
     when(executorRepresenter.getRunningTasks()).thenReturn(runningTasks);
     return executorRepresenter;
   }

@@ -139,7 +139,6 @@ public final class BlockManagerMaster {
    */
   public Set<String> removeWorker(final String executorId) {
     final Set<String> tasksToRecompute = new HashSet<>();
-    LOG.warn("Worker {} is removed.", new Object[]{executorId});
 
     final Lock writeLock = lock.writeLock();
     writeLock.lock();
@@ -252,11 +251,10 @@ public final class BlockManagerMaster {
     writeLock.lock();
     try {
       if (producerTaskIdToBlockIds.containsKey(failedTaskId)) {
-        LOG.info("ProducerTask {} failed for a list of blocks:", failedTaskId);
         producerTaskIdToBlockIds.get(failedTaskId).forEach(blockId -> {
           final BlockState.State state = (BlockState.State)
               blockIdToMetadata.get(blockId).getBlockState().getStateMachine().getCurrentState();
-          LOG.info("Partition lost: {}", blockId);
+          LOG.info("Block lost: {}", blockId);
           onBlockStateChanged(blockId, BlockState.State.NOT_AVAILABLE, null);
         });
       } // else this task does not produce any block

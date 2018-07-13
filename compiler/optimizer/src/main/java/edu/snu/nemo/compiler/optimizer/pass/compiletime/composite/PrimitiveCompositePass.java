@@ -39,6 +39,7 @@ public final class PrimitiveCompositePass extends CompositePass {
         new CompressionPass(),
         new DecompressionPass(),
         new SourceLocationAwareSchedulingPass(),
+        new NodeNamesAssignmentPass(),
         new ExecutorSlotCompliancePass()
     ));
   }

@@ -17,6 +17,8 @@ package edu.snu.nemo.runtime.executor.data;
 
 import edu.snu.nemo.conf.JobConf;
 import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.ArrayDeque;
@@ -30,13 +32,14 @@ import java.util.concurrent.CompletableFuture;
  * Executors can suffer from performance degradation and network-related exceptions when there are massive connections,
  * especially under low network bandwidth or high volume of data.
  */
-public final class BlockTransferConnectionQueue {
+public final class BlockTransferThrottler {
+  private static final Logger LOG = LoggerFactory.getLogger(BlockTransferThrottler.class.getName());
   private final Map<String, Integer> runtimeEdgeIdToNumCurrentConnections = new HashMap<>();
   private final Map<String, Queue<CompletableFuture<Void>>> runtimeEdgeIdToPendingConnections = new HashMap<>();
   private final int maxNum;
 
   @Inject
-  private BlockTransferConnectionQueue(@Parameter(JobConf.MaxNumDownloadsForARuntimeEdge.class) final int maxNum) {
+  private BlockTransferThrottler(@Parameter(JobConf.MaxNumDownloadsForARuntimeEdge.class) final int maxNum) {
     this.maxNum = maxNum;
   }
 
@@ -45,7 +48,7 @@ public final class BlockTransferConnectionQueue {
    * @param runtimeEdgeId the corresponding runtime edge id.
    * @return a future that will be completed when the connection is granted.
    */
-  public synchronized CompletableFuture<Void> requestConnectPermission(final String runtimeEdgeId) {
+  public synchronized CompletableFuture<Void> requestTransferPermission(final String runtimeEdgeId) {
     runtimeEdgeIdToNumCurrentConnections.putIfAbsent(runtimeEdgeId, 0);
     runtimeEdgeIdToPendingConnections.computeIfAbsent(runtimeEdgeId, id -> new ArrayDeque<>());
     final int currentOutstandingConnections = runtimeEdgeIdToNumCurrentConnections.get(runtimeEdgeId);
@@ -63,10 +66,10 @@ public final class BlockTransferConnectionQueue {
   }
 
   /**
-   * Indicates the connection has finished.
+   * Indicates the transfer has finished.
    * @param runtimeEdgeId the corresponding runtime edge id.
    */
-  public synchronized void onConnectionFinished(final String runtimeEdgeId) {
+  public synchronized void onTransferFinished(final String runtimeEdgeId) {
     final Queue<CompletableFuture<Void>> pendingConnections = runtimeEdgeIdToPendingConnections.get(runtimeEdgeId);
     if (pendingConnections.size() == 0) {
       // Just decrease the number of current connections.

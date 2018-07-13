@@ -16,12 +16,14 @@
 package edu.snu.nemo.driver;
 
 import edu.snu.nemo.common.ir.IdManager;
+import edu.snu.nemo.compiler.optimizer.pass.compiletime.annotating.NodeNamesAssignmentPass;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageParameters;
 import edu.snu.nemo.runtime.master.ClientRPC;
 import edu.snu.nemo.runtime.master.RuntimeMaster;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.driver.client.JobMessageObserver;
 import org.apache.reef.driver.context.ActiveContext;
@@ -81,7 +83,8 @@ public final class NemoDriver {
                      final LocalAddressProvider localAddressProvider,
                      final JobMessageObserver client,
                      final ClientRPC clientRPC,
-                     @Parameter(JobConf.ExecutorJsonContents.class) final String resourceSpecificationString,
+                     @Parameter(JobConf.ExecutorJSONContents.class) final String resourceSpecificationString,
+                     @Parameter(JobConf.BandwidthJSONContents.class) final String bandwidthString,
                      @Parameter(JobConf.JobId.class) final String jobId,
                      @Parameter(JobConf.FileDirectory.class) final String localDirectory,
                      @Parameter(JobConf.GlusterVolumeDirectory.class) final String glusterDirectory) {
@@ -96,6 +99,8 @@ public final class NemoDriver {
     this.glusterDirectory = glusterDirectory;
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
+    // TODO #69: Support job-wide execution property
+    NodeNamesAssignmentPass.setBandwidthSpecificationString(bandwidthString);
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG,
         message -> startSchedulingUserApplication(message.getLaunchDAG().getDag()));
     // Send DriverStarted message to the client
@@ -154,7 +159,8 @@ public final class NemoDriver {
    */
   public void startSchedulingUserApplication(final String dagString) {
     // Launch user application (with a new thread)
-    final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor();
+    final ExecutorService userApplicationRunnerThread = Executors.newSingleThreadExecutor(
+        new BasicThreadFactory.Builder().namingPattern("User App thread-%d").build());
     userApplicationRunnerThread.execute(() -> userApplicationRunner.run(dagString));
     userApplicationRunnerThread.shutdown();
   }

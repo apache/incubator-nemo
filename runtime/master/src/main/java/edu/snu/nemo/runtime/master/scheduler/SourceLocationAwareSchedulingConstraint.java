@@ -21,8 +21,6 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.SourceLocationAwareSchedu
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -37,7 +35,6 @@ import java.util.*;
 @DriverSide
 @AssociatedProperty(SourceLocationAwareSchedulingProperty.class)
 public final class SourceLocationAwareSchedulingConstraint implements SchedulingConstraint {
-  private static final Logger LOG = LoggerFactory.getLogger(SourceLocationAwareSchedulingConstraint.class);
 
   @Inject
   private SourceLocationAwareSchedulingConstraint() {

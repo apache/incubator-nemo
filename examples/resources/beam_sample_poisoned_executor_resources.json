@@ -1,0 +1,13 @@
+[
+  {
+    "type": "Transient",
+    "memory_mb": 512,
+    "capacity": 15,
+    "poison_sec": 2
+  },
+  {
+    "type": "Reserved",
+    "memory_mb": 512,
+    "capacity": 15
+  }
+]

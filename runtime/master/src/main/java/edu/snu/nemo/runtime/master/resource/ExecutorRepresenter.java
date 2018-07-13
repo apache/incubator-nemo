@@ -25,11 +25,9 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 
 /**
  * (WARNING) This class is not thread-safe, and thus should only be accessed through ExecutorRegistry.
@@ -47,10 +45,10 @@ public final class ExecutorRepresenter {
 
   private final String executorId;
   private final ResourceSpecification resourceSpecification;
-  private final Set<String> runningTasks;
-  private final Map<String, Integer> runningTaskToAttempt;
-  private final Set<String> completeTasks;
-  private final Set<String> failedTasks;
+  private final Set<Task> runningTasks;
+  private final Map<Task, Integer> runningTaskToAttempt;
+  private final Set<Task> completeTasks;
+  private final Set<Task> failedTasks;
   private final MessageSender<ControlMessage.Message> messageSender;
   private final ActiveContext activeContext;
   private final ExecutorService serializationExecutorService;
@@ -88,7 +86,9 @@ public final class ExecutorRepresenter {
    */
   public Set<String> onExecutorFailed() {
     failedTasks.addAll(runningTasks);
-    final Set<String> snapshot = new HashSet<>(runningTasks);
+    final Set<String> snapshot = runningTasks.stream()
+        .map(Task::getTaskId)
+        .collect(Collectors.toSet());
     runningTasks.clear();
     return snapshot;
   }
@@ -98,9 +98,9 @@ public final class ExecutorRepresenter {
    * @param task
    */
   public void onTaskScheduled(final Task task) {
-    runningTasks.add(task.getTaskId());
-    runningTaskToAttempt.put(task.getTaskId(), task.getAttemptIdx());
-    failedTasks.remove(task.getTaskId());
+    runningTasks.add(task);
+    runningTaskToAttempt.put(task, task.getAttemptIdx());
+    failedTasks.remove(task);
 
     serializationExecutorService.submit(new Runnable() {
       @Override
@@ -133,9 +133,13 @@ public final class ExecutorRepresenter {
    *
    */
   public void onTaskExecutionComplete(final String taskId) {
-    runningTasks.remove(taskId);
-    runningTaskToAttempt.remove(taskId);
-    completeTasks.add(taskId);
+    Task completedTask = runningTasks.stream()
+        .filter(task -> task.getTaskId().equals(taskId)).findFirst()
+        .orElseThrow(() -> new RuntimeException("Completed task not found in its ExecutorRepresenter"));
+
+    runningTasks.remove(completedTask);
+    runningTaskToAttempt.remove(completedTask);
+    completeTasks.add(completedTask);
   }
 
   /**
@@ -143,9 +147,13 @@ public final class ExecutorRepresenter {
    * @param taskId id of the Task
    */
   public void onTaskExecutionFailed(final String taskId) {
-    runningTasks.remove(taskId);
-    runningTaskToAttempt.remove(taskId);
-    failedTasks.add(taskId);
+    Task failedTask = runningTasks.stream()
+        .filter(task -> task.getTaskId().equals(taskId)).findFirst()
+        .orElseThrow(() -> new RuntimeException("Failed task not found in its ExecutorRepresenter"));
+
+    runningTasks.remove(failedTask);
+    runningTaskToAttempt.remove(failedTask);
+    failedTasks.add(failedTask);
   }
 
   /**
@@ -156,28 +164,10 @@ public final class ExecutorRepresenter {
   }
 
   /**
-   * @return set of ids of Tasks that are running in this executor
+   * @return the current snapshot of set of Tasks that are running in this executor.
    */
-  public Set<String> getRunningTasks() {
-    return runningTasks;
-  }
-
-  public Map<String, Integer> getRunningTaskToAttempt() {
-    return runningTaskToAttempt;
-  }
-
-  /**
-   * @return set of ids of Tasks that have been failed in this exeuctor
-
-  public Set<String> getFailedTasks() {
-    return failedTasks;
-  }
-
-  /**
-   * @return set of ids of Tasks that have been completed in this executor
-   */
-  public Set<String> getCompleteTasks() {
-    return completeTasks;
+  public Set<Task> getRunningTasks() {
+    return Collections.unmodifiableSet(new HashSet<>(runningTasks));
   }
 
   /**
