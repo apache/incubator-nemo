@@ -43,7 +43,7 @@ public class LoopExtractionPassTest {
   }
 
   @Test
-  public void testLoopGrouping() throws Exception {
+  public void testLoopGrouping() {
     final DAG<IRVertex, IREdge> processedDAG = new LoopExtractionPass().apply(compiledDAG);
 
     assertEquals(9, processedDAG.getTopologicalSort().size());

@@ -17,7 +17,11 @@ package edu.snu.nemo.runtime.common.message.local;
 
 import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.message.MessageSender;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 
+import javax.inject.Inject;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,10 +31,12 @@ import java.util.concurrent.ConcurrentMap;
  * Dispatch messages on a single machine.
  */
 public final class LocalMessageDispatcher {
+  private static final Tang TANG = Tang.Factory.getTang();
 
   private final ConcurrentMap<String, ConcurrentMap<String, MessageListener>> nodeIdToMessageListenersMap;
 
-  public LocalMessageDispatcher() {
+  @Inject
+  private LocalMessageDispatcher() {
     this.nodeIdToMessageListenersMap = new ConcurrentHashMap<>();
   }
 
@@ -93,5 +99,25 @@ public final class LocalMessageDispatcher {
     LocalDispatcherException(final String message) {
       super(message);
     }
+  }
+
+  /**
+   * @return an {@link Injector} which has {@link LocalMessageDispatcher} for testing.
+   * @throws InjectionException when failed to inject {@link LocalMessageDispatcher}
+   */
+  public static Injector getInjector() throws InjectionException {
+    return forkInjector(TANG.newInjector());
+  }
+
+  /**
+   * @param baseInjector base {@link Injector} to extend upon
+   * @return an {@link Injector} which has {@link LocalMessageDispatcher} for testing.
+   * @throws InjectionException when failed to inject {@link LocalMessageDispatcher}
+   */
+  public static Injector forkInjector(final Injector baseInjector) throws InjectionException {
+    final Injector injector = baseInjector
+        .forkInjector(LocalMessageEnvironment.LOCAL_MESSAGE_ENVIRONMENT_CONFIGURATION);
+    injector.getInstance(LocalMessageDispatcher.class);
+    return injector;
   }
 }

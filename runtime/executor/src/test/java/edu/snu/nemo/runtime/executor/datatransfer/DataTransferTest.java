@@ -109,7 +109,6 @@ public final class DataTransferTest {
   private static final DecoderFactory DECODER_FACTORY =
       PairDecoderFactory.of(IntDecoderFactory.of(), IntDecoderFactory.of());
   private static final Tang TANG = Tang.Factory.getTang();
-  private static final int HASH_RANGE_MULTIPLIER = 10;
 
   private BlockManagerMaster master;
   private BlockManagerWorker worker1;
@@ -119,17 +118,18 @@ public final class DataTransferTest {
 
   @Before
   public void setUp() throws InjectionException {
-    final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
-    final LocalMessageEnvironment messageEnvironment =
-        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(JobConf.ScheduleSerThread.class, "1")
         .build();
-    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
-    injector.bindVolatileInstance(EvaluatorRequestor.class, mock(EvaluatorRequestor.class));
-    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
+    final Injector baseInjector = Tang.Factory.getTang().newInjector(configuration);
+    baseInjector.bindVolatileInstance(EvaluatorRequestor.class, mock(EvaluatorRequestor.class));
+    final Injector dispatcherInjector = LocalMessageDispatcher.forkInjector(baseInjector);
+    final Injector injector = LocalMessageEnvironment.forkInjector(dispatcherInjector,
+        MessageEnvironment.MASTER_COMMUNICATION_ID);
     final ContainerManager containerManager = injector.getInstance(ContainerManager.class);
     final ExecutorRegistry executorRegistry = injector.getInstance(ExecutorRegistry.class);
+    final MessageEnvironment messageEnvironment = injector.getInstance(MessageEnvironment.class);
+    final LocalMessageDispatcher messageDispatcher = injector.getInstance(LocalMessageDispatcher.class);
 
     final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
@@ -159,10 +159,10 @@ public final class DataTransferTest {
 
     this.master = master;
     final Pair<BlockManagerWorker, DataTransferFactory> pair1 =
-        createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher, injector2);
+        createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector, injector2);
     this.worker1 = pair1.left();
     this.transferFactory = pair1.right();
-    this.worker2 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher,
+    this.worker2 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector,
         injector2).left();
   }
 
@@ -174,9 +174,10 @@ public final class DataTransferTest {
 
   private Pair<BlockManagerWorker, DataTransferFactory> createWorker(
       final String executorId,
-      final LocalMessageDispatcher messageDispatcher,
-      final Injector nameClientInjector) {
-    final LocalMessageEnvironment messageEnvironment = new LocalMessageEnvironment(executorId, messageDispatcher);
+      final Injector dispatcherInjector,
+      final Injector nameClientInjector) throws InjectionException {
+    final Injector messageEnvironmentInjector = LocalMessageEnvironment.forkInjector(dispatcherInjector, executorId);
+    final MessageEnvironment messageEnvironment = messageEnvironmentInjector.getInstance(MessageEnvironment.class);
     final PersistentConnectionToMasterMap conToMaster = new PersistentConnectionToMasterMap(messageEnvironment);
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
         .bindNamedParameter(JobConf.ExecutorId.class, executorId)
