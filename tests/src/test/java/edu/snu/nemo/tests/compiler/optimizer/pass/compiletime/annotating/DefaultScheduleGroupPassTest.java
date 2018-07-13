@@ -39,6 +39,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.*;
 
+import static edu.snu.nemo.common.test.EmptyComponents.EMPTY_TRANSFORM;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -49,8 +50,6 @@ import static org.junit.Assert.assertTrue;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(JobLauncher.class)
 public final class DefaultScheduleGroupPassTest {
-  private static final Transform EMPTY_TRANSFORM = new EmptyComponents.EmptyTransform("empty");
-
   @Test
   public void testAnnotatingPass() {
     final AnnotatingPass scheduleGroupPass = new DefaultScheduleGroupPass();

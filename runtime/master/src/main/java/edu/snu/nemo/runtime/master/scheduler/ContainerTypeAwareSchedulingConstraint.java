@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
@@ -29,9 +28,8 @@ import javax.inject.Inject;
 @AssociatedProperty(ExecutorPlacementProperty.class)
 public final class ContainerTypeAwareSchedulingConstraint implements SchedulingConstraint {
 
-  @VisibleForTesting
   @Inject
-  public ContainerTypeAwareSchedulingConstraint() {
+  private ContainerTypeAwareSchedulingConstraint() {
   }
 
   @Override
