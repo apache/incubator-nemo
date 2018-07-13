@@ -99,7 +99,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class OptimizationPolicy implements Name<String> {
   }
 
-  //////////////////////////////// Runtime Configurations
+  //////////////////////////////// Runtime Master-Executor Common Configurations
 
   /**
    * Deploy mode.
@@ -109,10 +109,38 @@ public final class JobConf extends ConfigurationModuleBuilder {
   }
 
   /**
+   * The fraction of container memory not to use fo the JVM heap.
+   */
+  @NamedParameter(doc = "The fraction of the container memory not to use for the JVM heap", short_name = "heap_slack",
+      default_value = "0.3")
+  public final class JVMHeapSlack implements Name<Double> {
+  }
+
+  //////////////////////////////// Runtime Master Configurations
+
+  /**
    * Nemo driver memory.
    */
   @NamedParameter(doc = "Nemo driver memory", short_name = "driver_mem_mb", default_value = "1024")
   public final class DriverMemMb implements Name<Integer> {
+  }
+
+  /**
+<<<<<<< HEAD
+   * Max number of attempts for task scheduling.
+   */
+  @NamedParameter(doc = "Max number of task attempts", short_name = "max_task_attempt", default_value = "1")
+  public final class MaxTaskAttempt implements Name<Integer> {
+  }
+
+  //////////////////////////////// Runtime Executor Configurations
+
+  /**
+   * Used for fault-injected tests.
+   */
+  @NamedParameter(doc = "Executor crashes after expected time, does not crash when -1",
+      short_name = "executor_poison_sec", default_value = "-1")
+  public final class ExecutorPosionSec implements Name<Integer> {
   }
 
   /**
@@ -138,13 +166,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class BandwidthJSONContents implements Name<String> {
   }
 
-  /**
-   * The fraction of container memory not to use fo the JVM heap.
-   */
-  @NamedParameter(doc = "The fraction of the container memory not to use for the JVM heap", short_name = "heap_slack",
-      default_value = "0.3")
-  public final class JVMHeapSlack implements Name<Double> {
-  }
 
   /**
    * Contents of the JSON file that specifies resource layout.
@@ -153,16 +174,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class ExecutorJSONContents implements Name<String> {
   }
 
-  /**
-   * Executor capacity.
-   * Determines the number of Task 'slots' for each executor.
-   * 1) Master's Task scheduler can use this number in scheduling.
-   *    (e.g., schedule Task to the executor currently with the maximum number of available slots)
-   * 2) Executor's number of Task execution threads is set to this number.
-   */
-  @NamedParameter(doc = "Executor capacity", short_name = "executor_capacity", default_value = "1")
-  public final class ExecutorCapacity implements Name<Integer> {
-  }
+  //////////////////////////////// Runtime Data Plane Configurations
 
   /**
    * Number of I/O threads for block fetch requests from other executor.
@@ -178,13 +190,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
   @NamedParameter(doc = "Maximum number of parallel downloads for a runtime edge.", short_name = "max_downloads",
       default_value = "30")
   public final class MaxNumDownloadsForARuntimeEdge implements Name<Integer> {
-  }
-
-  /**
-   * Max number of attempts for task scheduling.
-   */
-  @NamedParameter(doc = "Max number of schedules", short_name = "max_schedule_attempt", default_value = "3")
-  public final class MaxScheduleAttempt implements Name<Integer> {
   }
 
   /**

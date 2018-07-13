@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorSlotComplianceProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
@@ -28,9 +27,9 @@ import javax.inject.Inject;
  */
 @AssociatedProperty(ExecutorSlotComplianceProperty.class)
 public final class FreeSlotSchedulingConstraint implements SchedulingConstraint {
-  @VisibleForTesting
+
   @Inject
-  public FreeSlotSchedulingConstraint() {
+  private FreeSlotSchedulingConstraint() {
   }
 
   @Override
@@ -39,6 +38,11 @@ public final class FreeSlotSchedulingConstraint implements SchedulingConstraint 
       return true;
     }
 
-    return executor.getRunningTasks().size() < executor.getExecutorCapacity();
+    // Count the number of tasks which are running in this executor and complying the slot constraint.
+    final long numOfComplyingTasks = executor.getRunningTasks().stream()
+        .filter(runningTask -> runningTask.getPropertyValue(ExecutorSlotComplianceProperty.class)
+            .orElseGet(() -> true))
+        .count();
+    return numOfComplyingTasks < executor.getExecutorCapacity();
   }
 }

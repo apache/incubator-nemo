@@ -249,7 +249,7 @@ public final class JobStateManager {
     if (newState == JobState.State.EXECUTING) {
       LOG.debug("Executing Job ID {}...", this.jobId);
     } else if (newState == JobState.State.COMPLETE || newState == JobState.State.FAILED) {
-      LOG.info("Job ID {} {}!", new Object[]{jobId, newState});
+      LOG.debug("Job ID {} {}!", new Object[]{jobId, newState});
 
       // Awake all threads waiting the finish of this job.
       finishLock.lock();
@@ -354,7 +354,7 @@ public final class JobStateManager {
     file.getParentFile().mkdirs();
     try (final PrintWriter printWriter = new PrintWriter(file)) {
       printWriter.println(toStringWithPhysicalPlan());
-      LOG.info(String.format("JSON representation of job state for %s(%s) was saved to %s",
+      LOG.debug(String.format("JSON representation of job state for %s(%s) was saved to %s",
           jobId, suffix, file.getPath()));
     } catch (final IOException e) {
       LOG.warn(String.format("Cannot store JSON representation of job state for %s(%s) to %s: %s",

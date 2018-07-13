@@ -76,7 +76,7 @@ public final class NemoBackendTest<I, O> {
     final PhysicalPlan executionPlan = backend.compile(dag, physicalPlanGenerator);
 
     assertEquals(2, executionPlan.getStageDAG().getVertices().size());
-    assertEquals(1, executionPlan.getStageDAG().getTopologicalSort().get(0).getTaskIds().size());
-    assertEquals(1, executionPlan.getStageDAG().getTopologicalSort().get(1).getTaskIds().size());
+    assertEquals(2, executionPlan.getStageDAG().getTopologicalSort().get(0).getIRDAG().getVertices().size());
+    assertEquals(3, executionPlan.getStageDAG().getTopologicalSort().get(1).getIRDAG().getVertices().size());
   }
 }

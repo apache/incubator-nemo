@@ -31,6 +31,8 @@ import edu.snu.nemo.common.exception.UnsupportedCommPatternException;
 import edu.snu.nemo.runtime.common.data.HashRange;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -43,6 +45,7 @@ import java.util.stream.StreamSupport;
  * Represents the input data transfer to a task.
  */
 public final class InputReader extends DataTransfer {
+  private static final Logger LOG = LoggerFactory.getLogger(InputReader.class.getName());
   private final int dstTaskIndex;
   private final BlockManagerWorker blockManagerWorker;
 
@@ -89,7 +92,7 @@ public final class InputReader extends DataTransfer {
     final String blockId = getBlockId(dstTaskIndex);
     final Optional<InterTaskDataStoreProperty.Value> dataStoreProperty
         = runtimeEdge.getPropertyValue(InterTaskDataStoreProperty.class);
-    return blockManagerWorker.queryBlock(blockId, getId(), dataStoreProperty.get(), HashRange.all());
+    return blockManagerWorker.readBlock(blockId, getId(), dataStoreProperty.get(), HashRange.all());
   }
 
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast() {
@@ -100,7 +103,7 @@ public final class InputReader extends DataTransfer {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockId = getBlockId(srcTaskIdx);
-      futures.add(blockManagerWorker.queryBlock(blockId, getId(), dataStoreProperty.get(), HashRange.all()));
+      futures.add(blockManagerWorker.readBlock(blockId, getId(), dataStoreProperty.get(), HashRange.all()));
     }
 
     return futures;
@@ -127,7 +130,7 @@ public final class InputReader extends DataTransfer {
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       final String blockId = getBlockId(srcTaskIdx);
       futures.add(
-          blockManagerWorker.queryBlock(blockId, getId(), dataStoreProperty.get(), hashRangeToRead));
+          blockManagerWorker.readBlock(blockId, getId(), dataStoreProperty.get(), hashRangeToRead));
     }
 
     return futures;
