@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -34,9 +33,8 @@ import org.slf4j.LoggerFactory;
 public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(MinOccupancyFirstSchedulingPolicy.class.getName());
 
-  @VisibleForTesting
   @Inject
-  public MinOccupancyFirstSchedulingPolicy() {
+  private MinOccupancyFirstSchedulingPolicy() {
   }
 
   @Override

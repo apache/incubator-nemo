@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.SourceLocationAwareSchedulingProperty;
@@ -40,9 +39,8 @@ import java.util.*;
 public final class SourceLocationAwareSchedulingConstraint implements SchedulingConstraint {
   private static final Logger LOG = LoggerFactory.getLogger(SourceLocationAwareSchedulingConstraint.class);
 
-  @VisibleForTesting
   @Inject
-  public SourceLocationAwareSchedulingConstraint() {
+  private SourceLocationAwareSchedulingConstraint() {
   }
 
   /**

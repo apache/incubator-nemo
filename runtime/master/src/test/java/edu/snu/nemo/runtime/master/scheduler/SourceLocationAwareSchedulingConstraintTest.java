@@ -19,6 +19,8 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.SourceLocationAwareSchedu
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.common.ir.Readable;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -53,8 +55,9 @@ public final class SourceLocationAwareSchedulingConstraintTest {
    * there are no executors in appropriate location(s).
    */
   @Test
-  public void testSourceLocationAwareSchedulingNotAvailable() {
-    final SchedulingConstraint schedulingConstraint = new SourceLocationAwareSchedulingConstraint();
+  public void testSourceLocationAwareSchedulingNotAvailable() throws InjectionException {
+    final SchedulingConstraint schedulingConstraint = Tang.Factory.getTang().newInjector()
+        .getInstance(SourceLocationAwareSchedulingConstraint.class);
 
     // Prepare test scenario
     final Task task = CreateTask.withReadablesWithSourceLocations(
@@ -71,8 +74,9 @@ public final class SourceLocationAwareSchedulingConstraintTest {
    * {@link SourceLocationAwareSchedulingConstraint} should properly schedule TGs with multiple source locations.
    */
   @Test
-  public void testSourceLocationAwareSchedulingWithMultiSource() {
-    final SchedulingConstraint schedulingConstraint = new SourceLocationAwareSchedulingConstraint();
+  public void testSourceLocationAwareSchedulingWithMultiSource() throws InjectionException {
+    final SchedulingConstraint schedulingConstraint = Tang.Factory.getTang().newInjector()
+        .getInstance(SourceLocationAwareSchedulingConstraint.class);
     // Prepare test scenario
     final Task task0 = CreateTask.withReadablesWithSourceLocations(
         Collections.singletonList(Collections.singletonList(SITE_1)));

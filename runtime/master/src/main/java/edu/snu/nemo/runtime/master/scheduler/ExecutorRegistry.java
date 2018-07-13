@@ -46,7 +46,7 @@ public final class ExecutorRegistry {
   private final Map<String, Pair<ExecutorRepresenter, ExecutorState>> executors;
 
   @Inject
-  public ExecutorRegistry() {
+  private ExecutorRegistry() {
     this.executors = new HashMap<>();
   }
 

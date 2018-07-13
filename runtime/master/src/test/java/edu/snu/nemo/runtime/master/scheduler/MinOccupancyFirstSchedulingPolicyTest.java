@@ -17,6 +17,8 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -44,8 +46,9 @@ public final class MinOccupancyFirstSchedulingPolicyTest {
   }
 
   @Test
-  public void test() {
-    final SchedulingPolicy schedulingPolicy = new MinOccupancyFirstSchedulingPolicy();
+  public void test() throws InjectionException {
+    final SchedulingPolicy schedulingPolicy = Tang.Factory.getTang().newInjector()
+        .getInstance(MinOccupancyFirstSchedulingPolicy.class);
     final ExecutorRepresenter a0 = mockExecutorRepresenter(1);
     final ExecutorRepresenter a1 = mockExecutorRepresenter(2);
     final ExecutorRepresenter a2 = mockExecutorRepresenter(2);

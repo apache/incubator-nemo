@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorSlotComplianceProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
@@ -28,9 +27,8 @@ import javax.inject.Inject;
  */
 @AssociatedProperty(ExecutorSlotComplianceProperty.class)
 public final class FreeSlotSchedulingConstraint implements SchedulingConstraint {
-  @VisibleForTesting
   @Inject
-  public FreeSlotSchedulingConstraint() {
+  private FreeSlotSchedulingConstraint() {
   }
 
   @Override
