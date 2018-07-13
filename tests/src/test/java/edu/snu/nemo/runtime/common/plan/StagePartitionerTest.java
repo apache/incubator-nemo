@@ -38,6 +38,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static edu.snu.nemo.common.test.EmptyComponents.EMPTY_TRANSFORM;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
@@ -45,8 +46,6 @@ import static org.junit.Assert.assertNotEquals;
  * Tests {@link StagePartitioner}.
  */
 public final class StagePartitionerTest {
-  private static final Transform EMPTY_TRANSFORM = new EmptyComponents.EmptyTransform("empty");
-
   private StagePartitioner stagePartitioner;
 
   @Before

@@ -31,7 +31,7 @@ public final class PersistentConnectionToMasterMap {
   private final MessageEnvironment messageEnvironment;
 
   @Inject
-  public PersistentConnectionToMasterMap(final MessageEnvironment messageEnvironment) {
+  private PersistentConnectionToMasterMap(final MessageEnvironment messageEnvironment) {
     this.messageEnvironment = messageEnvironment;
     messageSenders = new HashMap<>();
     try {
