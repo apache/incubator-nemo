@@ -15,7 +15,7 @@
         <template slot="title">
           DAG
         </template>
-        <dag></dag>
+        <dag :dag="dag"></dag>
       </el-collapse-item>
     </el-collapse>
   </div>
@@ -111,6 +111,11 @@ export default {
         id: data.id,
         group: metricType,
       };
+
+      if (data.dag && !this.dag) {
+        this.dag = data.dag;
+        this.$eventBus.$emit('dag', this.dag);
+      }
 
       data.stateTransitionEvents
         .filter(event => event.prevState != null)

@@ -13,8 +13,10 @@
     "precommit": "npm run lint"
   },
   "dependencies": {
-    "dagre-d3": "^0.6.1",
+    "@dagrejs/graphlib": "^2.1.4",
+    "dagre": "^0.8.2",
     "element-ui": "^2.4.3",
+    "fabric": "^2.3.3",
     "nuxt": "^1.0.0",
     "vue2vis": "0.0.13"
   },
