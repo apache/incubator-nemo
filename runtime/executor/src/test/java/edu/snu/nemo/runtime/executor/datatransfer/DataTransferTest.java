@@ -126,7 +126,6 @@ public final class DataTransferTest {
     final Injector injector = LocalMessageEnvironment.forkInjector(dispatcherInjector,
         MessageEnvironment.MASTER_COMMUNICATION_ID);
     final ExecutorRegistry executorRegistry = injector.getInstance(ExecutorRegistry.class);
-    final MessageEnvironment messageEnvironment = injector.getInstance(MessageEnvironment.class);
 
     final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
@@ -144,23 +143,19 @@ public final class DataTransferTest {
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, EMPTY_DAG_DIRECTORY);
 
     // Necessary for wiring up the message environments
-    final RuntimeMaster runtimeMaster = injector.getInstance(RuntimeMaster.class);
+    injector.getInstance(RuntimeMaster.class);
+    final BlockManagerMaster master = injector.getInstance(BlockManagerMaster.class);
 
-    final Injector injector1 = Tang.Factory.getTang().newInjector();
-    injector1.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
-    injector1.bindVolatileInstance(RuntimeMaster.class, runtimeMaster);
-    final BlockManagerMaster master = injector1.getInstance(BlockManagerMaster.class);
-
-    final Injector injector2 = createNameClientInjector();
-    injector2.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
+    final Injector nameClientInjector = createNameClientInjector();
+    nameClientInjector.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
 
     this.master = master;
-    final Pair<BlockManagerWorker, DataTransferFactory> pair1 =
-        createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector, injector2);
+    final Pair<BlockManagerWorker, DataTransferFactory> pair1 = createWorker(
+        EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector, nameClientInjector);
     this.worker1 = pair1.left();
     this.transferFactory = pair1.right();
     this.worker2 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector,
-        injector2).left();
+        nameClientInjector).left();
   }
 
   @After
@@ -197,7 +192,6 @@ public final class DataTransferTest {
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }
-    injector.bindVolatileParameter(JobConf.ExecutorId.class, executorId);
 
     // Unused, but necessary for wiring up the message environments
     injector.getInstance(Executor.class);
