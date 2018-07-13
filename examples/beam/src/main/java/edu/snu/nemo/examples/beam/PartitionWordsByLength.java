@@ -20,10 +20,7 @@ import edu.snu.nemo.compiler.frontend.beam.NemoPipelineRunner;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.FlatMapElements;
-import org.apache.beam.sdk.transforms.MapElements;
-import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.values.*;
 
 import java.util.Arrays;
@@ -52,11 +49,11 @@ public final class PartitionWordsByLength {
 
     // {} here is required for preserving type information.
     // Please see https://stackoverflow.com/a/48431397 for details.
-    final TupleTag<String> shortWordsTag = new TupleTag<String>() {
+    final TupleTag<KV<Integer, String>> shortWordsTag = new TupleTag<KV<Integer, String>>("short") {
     };
-    final TupleTag<Integer> longWordsTag = new TupleTag<Integer>() {
+    final TupleTag<KV<Integer, String>> longWordsTag = new TupleTag<KV<Integer, String>>("long") {
     };
-    final TupleTag<String> veryLongWordsTag = new TupleTag<String>() {
+    final TupleTag<String> veryLongWordsTag = new TupleTag<String>("very long") {
     };
 
     final Pipeline p = Pipeline.create(options);
@@ -70,27 +67,44 @@ public final class PartitionWordsByLength {
           @ProcessElement
           public void processElement(final ProcessContext c) {
             String word = c.element();
-            if (word.length() < 5) {
-              c.output(shortWordsTag, word);
-            } else if (word.length() < 8) {
-              c.output(longWordsTag, word.length());
+            if (word.length() < 6) {
+              c.output(shortWordsTag, KV.of(word.length(), word));
+            } else if (word.length() < 11) {
+              c.output(longWordsTag, KV.of(word.length(), word));
             } else {
-              c.output(veryLongWordsTag, word);
+              c.output(word);
             }
           }
         }).withOutputTags(veryLongWordsTag, TupleTagList
-            .of(longWordsTag)
-            .and(shortWordsTag)));
+            .of(shortWordsTag).and(longWordsTag)));
 
-    PCollection<String> shortWords = results.get(shortWordsTag);
-    PCollection<String> longWordLengths = results
-        .get(longWordsTag)
-        .apply(MapElements.into(TypeDescriptors.strings()).via(i -> Integer.toString(i)));
+    PCollection<String> shortWords = results.get(shortWordsTag)
+        .apply(GroupByKey.create())
+        .apply(MapElements.via(new FormatLines()));
+    PCollection<String> longWords = results.get(longWordsTag)
+        .apply(GroupByKey.create())
+        .apply(MapElements.via(new FormatLines()));
     PCollection<String> veryLongWords = results.get(veryLongWordsTag);
 
     GenericSourceSink.write(shortWords, outputFilePath + "_short");
-    GenericSourceSink.write(longWordLengths, outputFilePath + "_long");
+    GenericSourceSink.write(longWords, outputFilePath + "_long");
     GenericSourceSink.write(veryLongWords, outputFilePath + "_very_long");
     p.run();
+  }
+
+  /**
+   * Formats a key-value pair to a string.
+   */
+  static class FormatLines extends SimpleFunction<KV<Integer, Iterable<String>>, String> {
+    @Override
+    public String apply(final KV<Integer, Iterable<String>> input) {
+      final int length = input.getKey();
+      final StringBuilder sb = new StringBuilder();
+      for (final String word : input.getValue()) {
+        sb.append(length).append(": ").append(word).append('\n');
+      }
+
+      return sb.toString();
+    }
   }
 }
