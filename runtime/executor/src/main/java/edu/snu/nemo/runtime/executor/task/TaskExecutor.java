@@ -162,13 +162,18 @@ public final class TaskExecutor {
           .collect(Collectors.toList());
 
       // Handle writes
-      final List<OutputWriter> childrenTaskWriters = getChildrenTaskWriters(
-          taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory); // Children-task write
+      // Main output children task writes
+      final List<OutputWriter> mainChildrenTaskWriters = getMainChildrenTaskWriters(
+          taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
+      // Additional output children task writes
+      final Map<String, OutputWriter> additionalChildrenTaskWriters = getAdditionalChildrenTaskWriters(
+          taskIndex, irVertex, task.getTaskOutgoingEdges(), dataTransferFactory, additionalOutputMap);
       final List<String> additionalOutputVertices = new ArrayList<>(additionalOutputMap.values());
       final OutputCollectorImpl oci = new OutputCollectorImpl(additionalOutputVertices);
+      // intra-vertex writes
       final VertexHarness vertexHarness = new VertexHarness(irVertex, oci, children,
-          isToSideInputs, isToAdditionalTagOutputs,
-          childrenTaskWriters, new ContextImpl(sideInputMap, additionalOutputMap)); // Intra-vertex write
+          isToSideInputs, isToAdditionalTagOutputs, mainChildrenTaskWriters, additionalChildrenTaskWriters,
+          new ContextImpl(sideInputMap, additionalOutputMap));
       prepareTransform(vertexHarness);
       vertexIdToHarness.put(irVertex.getId(), vertexHarness);
 
@@ -222,11 +227,13 @@ public final class TaskExecutor {
     }
 
     // Recursively process all of the additional output elements.
-    vertexHarness.getAdditionalTagOutputChildren().keySet().forEach(tag -> {
-      while (!outputCollector.isEmpty(tag)) {
-        final Object element = outputCollector.remove(tag);
-        handleAdditionalOutputElement(vertexHarness, element, tag); // Recursion
-      }
+    vertexHarness.getIRVertex().getPropertyValue(AdditionalTagOutputProperty.class).ifPresent(tagToVertex -> {
+      tagToVertex.values().forEach(tag -> {
+        while (!outputCollector.isEmpty(tag)) {
+          final Object element = outputCollector.remove(tag);
+          handleAdditionalOutputElement(vertexHarness, element, tag); // Recursion
+        }
+      });
     });
   }
 
@@ -317,28 +324,49 @@ public final class TaskExecutor {
 
   private void finalizeVertex(final VertexHarness vertexHarness) {
     closeTransform(vertexHarness);
-    while (!vertexHarness.getOutputCollector().isEmpty()) {
-      final Object element = vertexHarness.getOutputCollector().remove();
+    final OutputCollectorImpl outputCollector = vertexHarness.getOutputCollector();
+
+    // handle main outputs
+    while (!outputCollector.isEmpty()) {
+      final Object element = outputCollector.remove();
       handleMainOutputElement(vertexHarness, element);
     }
+
+    // handle additional tagged outputs
+    vertexHarness.getAdditionalTagOutputChildren().keySet().forEach(tag -> {
+      while (!outputCollector.isEmpty(tag)) {
+        final Object element = outputCollector.remove(tag);
+        handleAdditionalOutputElement(vertexHarness, element, tag);
+      }
+    });
     finalizeOutputWriters(vertexHarness);
   }
 
   private void handleMainOutputElement(final VertexHarness harness, final Object element) {
-    harness.getWritersToChildrenTasks().forEach(outputWriter -> {
+    // writes to children tasks
+      harness.getWritersToChildrenTasks().forEach(outputWriter -> {
       outputWriter.write(element);
     });
+    // writes to side input children tasks
     if (harness.getSideInputChildren().size() > 0) {
       sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
     }
+    // process elements in the next vertices within a task
     harness.getNonSideInputChildren().forEach(child -> processElementRecursively(child, element));
   }
 
   private void handleAdditionalOutputElement(final VertexHarness harness, final Object element, final String tag) {
-    // Inter-task writes are currently not supported.
+    // writes to additional children tasks
+    harness.getWritersToAdditionalChildrenTasks().entrySet().stream()
+        .filter(kv -> kv.getKey().equals(tag))
+        .forEach(kv -> {
+          kv.getValue().write(element);
+        });
+    // writes to side input children tasks
     if (harness.getSideInputChildren().size() > 0) {
       sideInputMap.put(((OperatorVertex) harness.getIRVertex()).getTransform().getTag(), element);
     }
+    // process elements in the next vertices within a task
     harness.getAdditionalTagOutputChildren().entrySet().stream()
         .filter(kv -> kv.getKey().equals(tag))
         .forEach(kv -> processElementRecursively(kv.getValue(), element));
@@ -350,8 +378,9 @@ public final class TaskExecutor {
    */
   private boolean handleDataFetchers(final List<DataFetcher> fetchers) {
     final List<DataFetcher> availableFetchers = new ArrayList<>(fetchers);
-    int finishedFetcherIndex = NONE_FINISHED;
+    int finishedFetcherIndex;
     while (!availableFetchers.isEmpty()) { // empty means we've consumed all task-external input data
+      finishedFetcherIndex = NONE_FINISHED;
       for (int i = 0; i < availableFetchers.size(); i++) {
         final DataFetcher dataFetcher = fetchers.get(i);
         final Object element;
@@ -417,16 +446,38 @@ public final class TaskExecutor {
         .collect(Collectors.toList());
   }
 
-  private List<OutputWriter> getChildrenTaskWriters(final int taskIndex,
-                                                    final IRVertex irVertex,
-                                                    final List<StageEdge> outEdgesToChildrenTasks,
-                                                    final DataTransferFactory dataTransferFactory) {
+  private List<OutputWriter> getMainChildrenTaskWriters(final int taskIndex,
+                                                        final IRVertex irVertex,
+                                                        final List<StageEdge> outEdgesToChildrenTasks,
+                                                        final DataTransferFactory dataTransferFactory,
+                                                        final Map<String, String> taggedOutputs) {
     return outEdgesToChildrenTasks
         .stream()
         .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
+        .filter(outEdge -> !taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
         .map(outEdgeForThisVertex -> dataTransferFactory
             .createWriter(irVertex, taskIndex, outEdgeForThisVertex.getDstIRVertex(), outEdgeForThisVertex))
         .collect(Collectors.toList());
+  }
+
+  private Map<String, OutputWriter> getAdditionalChildrenTaskWriters(final int taskIndex,
+                                                                     final IRVertex irVertex,
+                                                                     final List<StageEdge> outEdgesChildrenTasks,
+                                                                     final DataTransferFactory dataTransferFactory,
+                                                                     final Map<String, String> taggedOutputs) {
+    final Map<String, OutputWriter> additionalChildrenTaskWriters = new HashMap<>();
+
+    outEdgesChildrenTasks
+        .stream()
+        .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
+        .filter(outEdge -> taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
+        .forEach(outEdgeForThisVertex -> {
+          additionalChildrenTaskWriters.put(outEdgeForThisVertex.getDstIRVertex().getId(),
+              dataTransferFactory.createWriter(irVertex, taskIndex, outEdgeForThisVertex.getDstIRVertex(),
+                  outEdgeForThisVertex));
+        });
+
+    return additionalChildrenTaskWriters;
   }
 
   private List<VertexHarness> getChildrenHarnesses(final IRVertex irVertex,
@@ -485,10 +536,18 @@ public final class TaskExecutor {
   private void finalizeOutputWriters(final VertexHarness vertexHarness) {
     final List<Long> writtenBytesList = new ArrayList<>();
 
-    vertexHarness.getWritersToChildrenTasks().forEach(outputWriter -> {
+    // finalize OutputWriters for main children
+    vertexHarness.getWritersToMainChildrenTasks().forEach(outputWriter -> {
       outputWriter.close();
       final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
       writtenBytes.ifPresent(writtenBytesList::add);
+    });
+
+    // finalize OutputWriters for additional tagged children
+    vertexHarness.getWritersToAdditionalChildrenTasks().values().forEach(outputWriter -> {
+      outputWriter.close();
+      final Optional<Long> writtennBytes = outputWriter.getWrittenBytes();
+      writtennBytes.ifPresent(writtenBytesList::add);
     });
 
     long totalWrittenBytes = 0;
