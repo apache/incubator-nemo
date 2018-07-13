@@ -15,10 +15,9 @@
  */
 package edu.snu.nemo.runtime.common.message.local;
 
-import edu.snu.nemo.runtime.common.message.MessageContext;
-import edu.snu.nemo.runtime.common.message.MessageEnvironment;
-import edu.snu.nemo.runtime.common.message.MessageListener;
-import edu.snu.nemo.runtime.common.message.MessageSender;
+import edu.snu.nemo.runtime.common.message.*;
+import org.apache.reef.tang.Injector;
+import org.apache.reef.tang.Tang;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -30,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Tests local messaging components.
  */
 public class LocalMessageTest {
-  private final LocalMessageDispatcher localMessageDispatcher = new LocalMessageDispatcher();
+  private static final Tang TANG = Tang.Factory.getTang();
 
   @Test
   public void testLocalMessages() throws Exception {
@@ -42,9 +41,19 @@ public class LocalMessageTest {
     final String secondListenerIdToDriver = "SecondToDriver";
     final String listenerIdBetweenExecutors = "BetweenExecutors";
 
-    final MessageEnvironment driverEnv = new LocalMessageEnvironment(driverNodeId, localMessageDispatcher);
-    final MessageEnvironment executorOneEnv = new LocalMessageEnvironment(executorOneNodeId, localMessageDispatcher);
-    final MessageEnvironment executorTwoEnv = new LocalMessageEnvironment(executorTwoNodeId, localMessageDispatcher);
+    final Injector injector = TANG.newInjector(TANG.newConfigurationBuilder()
+        .bindImplementation(MessageEnvironment.class, LocalMessageEnvironment.class).build());
+    injector.getInstance(LocalMessageDispatcher.class);
+
+    final MessageEnvironment driverEnv = injector.forkInjector(TANG.newConfigurationBuilder()
+        .bindNamedParameter(MessageParameters.SenderId.class, driverNodeId).build())
+        .getInstance(MessageEnvironment.class);
+    final MessageEnvironment executorOneEnv = injector.forkInjector(TANG.newConfigurationBuilder()
+        .bindNamedParameter(MessageParameters.SenderId.class, executorOneNodeId).build())
+        .getInstance(MessageEnvironment.class);
+    final MessageEnvironment executorTwoEnv = injector.forkInjector(TANG.newConfigurationBuilder()
+        .bindNamedParameter(MessageParameters.SenderId.class, executorTwoNodeId).build())
+        .getInstance(MessageEnvironment.class);
 
     final AtomicInteger toDriverMessageUsingSend = new AtomicInteger();
 

@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -31,9 +30,8 @@ import java.util.*;
 @DriverSide
 public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy {
 
-  @VisibleForTesting
   @Inject
-  public MinOccupancyFirstSchedulingPolicy() {
+  private MinOccupancyFirstSchedulingPolicy() {
   }
 
   @Override

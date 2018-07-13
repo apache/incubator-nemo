@@ -71,7 +71,7 @@ public class CommonSubexpressionEliminationPassTest {
   }
 
   @Test
-  public void testCommonSubexpressionEliminationPass() throws Exception {
+  public void testCommonSubexpressionEliminationPass() {
     final long originalVerticesNum = dagNotToOptimize.getVertices().size();
     final long optimizedVerticesNum = dagToOptimize.getVertices().size();
 

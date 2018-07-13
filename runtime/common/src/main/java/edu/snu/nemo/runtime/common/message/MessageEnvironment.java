@@ -66,4 +66,9 @@ public interface MessageEnvironment {
    * @throws Exception while closing
    */
   void close() throws Exception;
+
+  /**
+   * @return identifier for this node
+   */
+  String getId();
 }

@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.common.state.TaskState;
 import edu.snu.nemo.runtime.master.JobStateManager;
@@ -58,12 +57,11 @@ public final class SchedulerRunner {
   private final SchedulingConstraintRegistry schedulingConstraintRegistry;
   private final SchedulingPolicy schedulingPolicy;
 
-  @VisibleForTesting
   @Inject
-  public SchedulerRunner(final SchedulingConstraintRegistry schedulingConstraintRegistry,
-                         final SchedulingPolicy schedulingPolicy,
-                         final PendingTaskCollectionPointer pendingTaskCollectionPointer,
-                         final ExecutorRegistry executorRegistry) {
+  private SchedulerRunner(final SchedulingConstraintRegistry schedulingConstraintRegistry,
+                          final SchedulingPolicy schedulingPolicy,
+                          final PendingTaskCollectionPointer pendingTaskCollectionPointer,
+                          final ExecutorRegistry executorRegistry) {
     this.jobStateManagers = new HashMap<>();
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.schedulerThread = Executors.newSingleThreadExecutor(runnable ->

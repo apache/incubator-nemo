@@ -74,12 +74,12 @@ public final class Executor {
   private final MetricMessageSender metricMessageSender;
 
   @Inject
-  public Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
-                  final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
-                  final MessageEnvironment messageEnvironment,
-                  final SerializerManager serializerManager,
-                  final DataTransferFactory dataTransferFactory,
-                  final MetricManagerWorker metricMessageSender) {
+  private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
+                   final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+                   final MessageEnvironment messageEnvironment,
+                   final SerializerManager serializerManager,
+                   final DataTransferFactory dataTransferFactory,
+                   final MetricManagerWorker metricMessageSender) {
     this.executorId = executorId;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
         .namingPattern("TaskExecutor thread-%d")
