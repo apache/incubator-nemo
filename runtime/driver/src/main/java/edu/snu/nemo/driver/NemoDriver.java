@@ -100,11 +100,7 @@ public final class NemoDriver {
     this.clientRPC = clientRPC;
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message ->
         startSchedulingUserApplication(message.getLaunchDAG().getDag()));
-    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.DriverShutdown, message -> {
-      LOG.info("Driver shutdown initiated");
-      userApplicationRunnerThread.execute(runtimeMaster::terminate);
-      userApplicationRunnerThread.shutdown();
-    });
+    clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.DriverShutdown, message -> shutdown());
     // Send DriverStarted message to the client
     clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
         .setType(ControlMessage.DriverToClientMessageType.DriverStarted).build());
@@ -116,6 +112,15 @@ public final class NemoDriver {
   private void setUpLogger() {
     final java.util.logging.Logger rootLogger = LogManager.getLogManager().getLogger("");
     rootLogger.addHandler(handler);
+  }
+
+  /**
+   * Trigger shutdown of the driver and the runtime master.
+   */
+  private void shutdown() {
+    LOG.info("Driver shutdown initiated");
+    userApplicationRunnerThread.execute(runtimeMaster::terminate);
+    userApplicationRunnerThread.shutdown();
   }
 
   /**
@@ -199,8 +204,6 @@ public final class NemoDriver {
     @Override
     public void onNext(final StopTime stopTime) {
       handler.close();
-      clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-          .setType(ControlMessage.DriverToClientMessageType.DriverStopped).build());
       clientRPC.shutdown();
     }
   }
