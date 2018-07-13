@@ -41,7 +41,7 @@ enum DriverToClientMessageType {
     DriverStarted = 0;
     ResourceReady = 1;
     DataCollected = 2;
-    JobDone = 3;
+    ExecutionDone = 3;
 }
 
 message DriverToClientMessage {

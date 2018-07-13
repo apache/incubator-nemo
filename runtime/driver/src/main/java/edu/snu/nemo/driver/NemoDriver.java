@@ -71,7 +71,7 @@ public final class NemoDriver {
   private final String glusterDirectory;
   private final ClientRPC clientRPC;
 
-  private static ExecutorService userApplicationRunnerThread;
+  private static ExecutorService runnerThread = Executors.newSingleThreadExecutor();
 
   // Client for sending log messages
   private final RemoteClientMessageLoggingHandler handler;
@@ -99,7 +99,7 @@ public final class NemoDriver {
     this.handler = new RemoteClientMessageLoggingHandler(client);
     this.clientRPC = clientRPC;
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.LaunchDAG, message ->
-        startSchedulingUserApplication(message.getLaunchDAG().getDag()));
+        startSchedulingUserDAG(message.getLaunchDAG().getDag()));
     clientRPC.registerHandler(ControlMessage.ClientToDriverMessageType.DriverShutdown, message -> shutdown());
     // Send DriverStarted message to the client
     clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
@@ -119,8 +119,8 @@ public final class NemoDriver {
    */
   private void shutdown() {
     LOG.info("Driver shutdown initiated");
-    userApplicationRunnerThread.execute(runtimeMaster::terminate);
-    userApplicationRunnerThread.shutdown();
+    runnerThread.execute(runtimeMaster::terminate);
+    runnerThread.shutdown();
   }
 
   /**
@@ -162,18 +162,13 @@ public final class NemoDriver {
   }
 
   /**
-   * Start user application.
+   * Start user DAG.
    */
-  public void startSchedulingUserApplication(final String dagString) {
-    // Launch user application (with a new thread)
-    if (userApplicationRunnerThread == null) {
-      userApplicationRunnerThread = Executors.newSingleThreadExecutor();
-    }
-    // This should be able to run multiple times.
-    userApplicationRunnerThread.execute(() -> userApplicationRunner.run(dagString));
+  public void startSchedulingUserDAG(final String dagString) {
+    runnerThread.execute(() -> userApplicationRunner.run(dagString));
     // send driver notification that user application is done.
-    userApplicationRunnerThread.execute(() -> clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-        .setType(ControlMessage.DriverToClientMessageType.JobDone).build()));
+    runnerThread.execute(() -> clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+        .setType(ControlMessage.DriverToClientMessageType.ExecutionDone).build()));
   }
 
   /**

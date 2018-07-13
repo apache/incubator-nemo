@@ -89,7 +89,7 @@ public final class JobLauncher {
     driverRPCServer
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> { })
         .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, event -> driverReadyLatch.countDown())
-        .registerHandler(ControlMessage.DriverToClientMessageType.JobDone, event -> jobDoneLatch.countDown())
+        .registerHandler(ControlMessage.DriverToClientMessageType.ExecutionDone, event -> jobDoneLatch.countDown())
         .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(
             SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
         .run();
@@ -109,49 +109,50 @@ public final class JobLauncher {
     // Get DeployMode Conf
     deployModeConf = Configurations.merge(getDeployModeConf(builtJobConf), clientConf);
 
-    // Launch driver
-    LOG.info("Launching driver");
+    // Start Driver and launch user program.
     try {
       if (jobAndDriverConf == null || deployModeConf == null || builtJobConf == null) {
         throw new RuntimeException("Configuration for launching driver is not ready");
       }
 
+      // Launch driver
+      LOG.info("Launching driver");
       driverReadyLatch = new CountDownLatch(1);
       driverLauncher = DriverLauncher.getLauncher(deployModeConf);
       driverLauncher.submit(jobAndDriverConf, 500);
-      // When the driver is up and the resource is ready, the ResourceReady message is delivered,
-      // triggering the DRIVER_RPC_SERVER to send the LaunchDAG message to the driver.
-    } catch (final InjectionException e) {
-      throw new RuntimeException(e);
-    }
+      // When the driver is up and the resource is ready, the ResourceReady message is delivered.
 
-    // Launch client main
-    runUserProgramMain(builtJobConf);
+      // Launch client main
+      runUserProgramMain(builtJobConf);
 
-    // Trigger driver shutdown afterwards
-    driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
-        .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
-    // Wait for driver to naturally finish
-    synchronized (driverLauncher) {
-      while (!driverLauncher.getStatus().isDone()) {
-        try {
-          LOG.info("Wait for the driver to finish");
-          driverLauncher.wait();
-        } catch (final InterruptedException e) {
-          LOG.warn("Interrupted: " + e);
-          // clean up state...
-          Thread.currentThread().interrupt();
+      // Trigger driver shutdown afterwards
+      driverRPCServer.send(ControlMessage.ClientToDriverMessage.newBuilder()
+          .setType(ControlMessage.ClientToDriverMessageType.DriverShutdown).build());
+      // Wait for driver to naturally finish
+      synchronized (driverLauncher) {
+        while (!driverLauncher.getStatus().isDone()) {
+          try {
+            LOG.info("Wait for the driver to finish");
+            driverLauncher.wait();
+          } catch (final InterruptedException e) {
+            LOG.warn("Interrupted: " + e);
+            // clean up state...
+            Thread.currentThread().interrupt();
+          }
         }
       }
-    }
-    // Close everything that's left
-    driverRPCServer.shutdown();
-    driverLauncher.close();
-    final Optional<Throwable> possibleError = driverLauncher.getStatus().getError();
-    if (possibleError.isPresent()) {
-      throw new RuntimeException(possibleError.get());
-    } else {
-      LOG.info("Job successfully completed");
+    } catch (final InjectionException e) {
+      throw new RuntimeException(e);
+    } finally {
+      // Close everything that's left
+      driverRPCServer.shutdown();
+      driverLauncher.close();
+      final Optional<Throwable> possibleError = driverLauncher.getStatus().getError();
+      if (possibleError.isPresent()) {
+        throw new RuntimeException(possibleError.get());
+      } else {
+        LOG.info("Job successfully completed");
+      }
     }
   }
 
@@ -180,7 +181,7 @@ public final class JobLauncher {
         .setLaunchDAG(ControlMessage.LaunchDAGMessage.newBuilder().setDag(serializedDAG).build())
         .build());
 
-    // Wait for the JobDone message from the driver
+    // Wait for the ExecutionDone message from the driver
     try {
       LOG.info("Waiting for the job to finish");
       jobDoneLatch.await();
