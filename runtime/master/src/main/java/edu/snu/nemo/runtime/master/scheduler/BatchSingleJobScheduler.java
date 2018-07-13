@@ -77,12 +77,12 @@ public final class BatchSingleJobScheduler implements Scheduler {
   private List<List<Stage>> sortedScheduleGroups;
 
   @Inject
-  public BatchSingleJobScheduler(final SchedulerRunner schedulerRunner,
-                                 final PendingTaskCollectionPointer pendingTaskCollectionPointer,
-                                 final BlockManagerMaster blockManagerMaster,
-                                 final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
-                                 final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
-                                 final ExecutorRegistry executorRegistry) {
+  private BatchSingleJobScheduler(final SchedulerRunner schedulerRunner,
+                                  final PendingTaskCollectionPointer pendingTaskCollectionPointer,
+                                  final BlockManagerMaster blockManagerMaster,
+                                  final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
+                                  final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler,
+                                  final ExecutorRegistry executorRegistry) {
     this.schedulerRunner = schedulerRunner;
     this.pendingTaskCollectionPointer = pendingTaskCollectionPointer;
     this.blockManagerMaster = blockManagerMaster;

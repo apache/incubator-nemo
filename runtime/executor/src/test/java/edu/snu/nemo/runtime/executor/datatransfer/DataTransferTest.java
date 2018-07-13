@@ -125,17 +125,9 @@ public final class DataTransferTest {
     final Injector dispatcherInjector = LocalMessageDispatcher.forkInjector(baseInjector);
     final Injector injector = LocalMessageEnvironment.forkInjector(dispatcherInjector,
         MessageEnvironment.MASTER_COMMUNICATION_ID);
-    final ExecutorRegistry executorRegistry = injector.getInstance(ExecutorRegistry.class);
 
-    final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
-    final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
-    final SchedulingConstraintRegistry schedulingConstraint = injector.getInstance(SchedulingConstraintRegistry.class);
-    final SchedulingPolicy schedulingPolicy = injector.getInstance(SchedulingPolicy.class);
-    final PendingTaskCollectionPointer taskQueue = new PendingTaskCollectionPointer();
-    final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingConstraint, schedulingPolicy, taskQueue, executorRegistry);
-    final Scheduler scheduler = new BatchSingleJobScheduler(
-        schedulerRunner, taskQueue, master, pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
-    injector.bindVolatileInstance(Scheduler.class, scheduler);
+    injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
+    injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
     final AtomicInteger executorCount = new AtomicInteger(0);
     injector.bindVolatileInstance(ClientRPC.class, mock(ClientRPC.class));
     injector.bindVolatileInstance(MetricManagerMaster.class, mock(MetricManagerMaster.class));

@@ -203,9 +203,6 @@ public final class RuntimeMaster {
       metricMessageHandler.terminate();
       containerManager.terminate();
 
-      // TODO #?: parameterize file path using Tang
-      metricStore.dumpAllMetricToFile("/tmp/dump");
-
       try {
         metricServer.stop();
       } catch (final Exception e) {

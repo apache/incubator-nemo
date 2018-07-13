@@ -16,6 +16,8 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import edu.snu.nemo.runtime.common.plan.Task;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -46,8 +48,9 @@ public final class PendingTaskCollectionPointerTest {
   }
 
   @Before
-  public void setUp() {
-    this.pendingTaskCollectionPointer = new PendingTaskCollectionPointer();
+  public void setUp() throws InjectionException {
+    this.pendingTaskCollectionPointer = Tang.Factory.getTang().newInjector()
+        .getInstance(PendingTaskCollectionPointer.class);
   }
 
   @Test
