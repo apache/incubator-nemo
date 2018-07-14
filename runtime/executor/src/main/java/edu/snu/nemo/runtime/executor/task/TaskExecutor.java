@@ -228,10 +228,10 @@ public final class TaskExecutor {
 
     // Recursively process all of the additional output elements.
     vertexHarness.getIRVertex().getPropertyValue(AdditionalTagOutputProperty.class).ifPresent(tagToVertex -> {
-      tagToVertex.values().forEach(tag -> {
-        while (!outputCollector.isEmpty(tag)) {
-          final Object element = outputCollector.remove(tag);
-          handleAdditionalOutputElement(vertexHarness, element, tag); // Recursion
+      tagToVertex.values().forEach(dstVertexId -> {
+        while (!outputCollector.isEmpty(dstVertexId)) {
+          final Object element = outputCollector.remove(dstVertexId);
+          handleAdditionalOutputElement(vertexHarness, element, dstVertexId); // Recursion
         }
       });
     });
@@ -446,6 +446,15 @@ public final class TaskExecutor {
         .collect(Collectors.toList());
   }
 
+  /**
+   * Return inter-task OutputWriters, for single output or output associated with main tag.
+   * @param taskIndex               current task index
+   * @param irVertex                source irVertex
+   * @param outEdgesToChildrenTasks outgoing edges to child tasks
+   * @param dataTransferFactory     dataTransferFactory
+   * @param taggedOutputs           tag to vertex id map
+   * @return OutputWriters for main children tasks
+   */
   private List<OutputWriter> getMainChildrenTaskWriters(final int taskIndex,
                                                         final IRVertex irVertex,
                                                         final List<StageEdge> outEdgesToChildrenTasks,
@@ -460,14 +469,23 @@ public final class TaskExecutor {
         .collect(Collectors.toList());
   }
 
+  /**
+   * Return inter-task OutputWriters associated with additional output tags.
+   * @param taskIndex               current task index
+   * @param irVertex                source irVertex
+   * @param outEdgesToChildrenTasks outgoing edges to child tasks
+   * @param dataTransferFactory     dataTransferFactory
+   * @param taggedOutputs           tag to vertex id map
+   * @return additional children vertex id to OutputWriters map.
+   */
   private Map<String, OutputWriter> getAdditionalChildrenTaskWriters(final int taskIndex,
                                                                      final IRVertex irVertex,
-                                                                     final List<StageEdge> outEdgesChildrenTasks,
+                                                                     final List<StageEdge> outEdgesToChildrenTasks,
                                                                      final DataTransferFactory dataTransferFactory,
                                                                      final Map<String, String> taggedOutputs) {
     final Map<String, OutputWriter> additionalChildrenTaskWriters = new HashMap<>();
 
-    outEdgesChildrenTasks
+    outEdgesToChildrenTasks
         .stream()
         .filter(outEdge -> outEdge.getSrcIRVertex().getId().equals(irVertex.getId()))
         .filter(outEdge -> taggedOutputs.containsValue(outEdge.getDstIRVertex().getId()))
