@@ -26,6 +26,8 @@ import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import org.apache.reef.tang.Tang;
 
+import javax.inject.Inject;
+
 /**
  * Backend component for Nemo Runtime.
  */
@@ -33,7 +35,8 @@ public final class NemoBackend implements Backend<PhysicalPlan> {
   /**
    * Constructor.
    */
-  public NemoBackend() {
+  @Inject
+  private NemoBackend() {
   }
 
   /**

@@ -24,21 +24,19 @@ import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
-import edu.snu.nemo.common.ir.vertex.transform.Transform;
-import edu.snu.nemo.common.test.EmptyComponents;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Test;
 
 import java.util.Iterator;
 
+import static edu.snu.nemo.common.test.EmptyComponents.EMPTY_TRANSFORM;
 import static org.junit.Assert.assertNotEquals;
 
 /**
  * Tests {@link PhysicalPlanGenerator}.
  */
 public final class PhysicalPlanGeneratorTest {
-  private static final Transform EMPTY_TRANSFORM = new EmptyComponents.EmptyTransform("");
 
   /**
    * Test splitting ScheduleGroups by Pull StageEdges.

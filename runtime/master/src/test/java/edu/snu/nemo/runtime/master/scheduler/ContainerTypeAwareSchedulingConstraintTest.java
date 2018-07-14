@@ -18,6 +18,8 @@ package edu.snu.nemo.runtime.master.scheduler;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorPlacementProperty;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -43,8 +45,9 @@ public final class ContainerTypeAwareSchedulingConstraintTest {
   }
 
   @Test
-  public void testContainerTypeAware() {
-    final SchedulingConstraint schedulingConstraint = new ContainerTypeAwareSchedulingConstraint();
+  public void testContainerTypeAware() throws InjectionException {
+    final SchedulingConstraint schedulingConstraint = Tang.Factory.getTang().newInjector()
+        .getInstance(ContainerTypeAwareSchedulingConstraint.class);
     final ExecutorRepresenter a0 = mockExecutorRepresenter(ExecutorPlacementProperty.TRANSIENT);
     final ExecutorRepresenter a1 = mockExecutorRepresenter(ExecutorPlacementProperty.RESERVED);
     final ExecutorRepresenter a2 = mockExecutorRepresenter(ExecutorPlacementProperty.NONE);

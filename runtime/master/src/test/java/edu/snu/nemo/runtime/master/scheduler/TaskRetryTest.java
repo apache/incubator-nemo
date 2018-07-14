@@ -85,16 +85,11 @@ public final class TaskRetryTest {
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
 
     // Get scheduler
-    final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
-    final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
-    final SchedulingConstraintRegistry constraintRegistry = mock(SchedulingConstraintRegistry.class);
-    final SchedulingPolicy schedulingPolicy = injector.getInstance(MinOccupancyFirstSchedulingPolicy.class);
-    final PendingTaskCollectionPointer pendingTaskCollectionPointer = new PendingTaskCollectionPointer();
-    final SchedulerRunner schedulerRunner = new SchedulerRunner(
-        constraintRegistry, schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
-    final BlockManagerMaster blockManagerMaster = mock(BlockManagerMaster.class);
-    scheduler =  new BatchSingleJobScheduler(schedulerRunner, pendingTaskCollectionPointer, blockManagerMaster,
-        pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
+    injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
+    injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
+    injector.bindVolatileInstance(SchedulingConstraintRegistry.class, mock(SchedulingConstraintRegistry.class));
+    injector.bindVolatileInstance(BlockManagerMaster.class, mock(BlockManagerMaster.class));
+    scheduler = injector.getInstance(Scheduler.class);
 
     // Get JobStateManager
     jobStateManager = runPhysicalPlan(TestPlanGenerator.PlanType.TwoVerticesJoined);
