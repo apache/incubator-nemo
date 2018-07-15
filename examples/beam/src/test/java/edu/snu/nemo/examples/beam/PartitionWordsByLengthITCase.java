@@ -42,7 +42,6 @@ public final class PartitionWordsByLengthITCase {
   private static final String outputFileName = "sample_output_tag";
   private static final String testResourceFileName = "test_output_tag";
   private static final String executorResourceFileName = fileBasePath + "beam_sample_executor_resources.json";
-  private static final String oneExecutorResourceFileName = fileBasePath + "beam_sample_one_executor_resources.json";
   private static final String inputFilePath =  fileBasePath + inputFileName;
   private static final String outputFilePath =  fileBasePath + outputFileName;
 
@@ -50,8 +49,8 @@ public final class PartitionWordsByLengthITCase {
   public void setUp() throws Exception {
     builder = new ArgBuilder()
         .addResourceJson(executorResourceFileName)
-      .addUserMain(PartitionWordsByLength.class.getCanonicalName())
-      .addUserArgs(inputFilePath, outputFilePath);
+        .addUserMain(PartitionWordsByLength.class.getCanonicalName())
+        .addUserArgs(inputFilePath, outputFilePath);
   }
 
   @After
