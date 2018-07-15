@@ -16,10 +16,19 @@
 package edu.snu.nemo.runtime.common.optimizer;
 
 import edu.snu.nemo.common.Pair;
+import edu.snu.nemo.common.dag.DAG;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.DynamicOptimizationProperty;
+import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.optimizer.pass.runtime.DataSkewRuntimePass;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import edu.snu.nemo.runtime.common.plan.PhysicalPlanGenerator;
+import edu.snu.nemo.runtime.common.plan.Stage;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
+import org.apache.reef.tang.Tang;
+import org.apache.reef.tang.exceptions.InjectionException;
 
 import java.util.*;
 
@@ -45,15 +54,28 @@ public final class RuntimeOptimizer {
     final DynamicOptimizationProperty.Value dynamicOptimizationType =
         metricCollectionBarrierVertex.getPropertyValue(DynamicOptimizationProperty.class).get();
 
-    switch (dynamicOptimizationType) {
-      case DataSkewRuntimePass:
-        // Metric data for DataSkewRuntimePass is a pair of blockIds and map of hashrange, partition size.
-        final Pair<List<String>, Map<Integer, Long>> metricData =
-            Pair.of(metricCollectionBarrierVertex.getBlockIds(),
-                (Map<Integer, Long>) metricCollectionBarrierVertex.getMetricData());
-        return new DataSkewRuntimePass().apply(originalPlan, metricData);
-      default:
-        throw new UnsupportedOperationException("Unknown runtime pass: " + dynamicOptimizationType);
+    try {
+      final PhysicalPlanGenerator physicalPlanGenerator =
+          Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
+
+      switch (dynamicOptimizationType) {
+        case DataSkewRuntimePass:
+          // Metric data for DataSkewRuntimePass is a pair of blockIds and map of hashrange, partition size.
+          final Pair<List<String>, Map<Integer, Long>> metricData =
+              Pair.of(metricCollectionBarrierVertex.getBlockIds(),
+                  (Map<Integer, Long>) metricCollectionBarrierVertex.getMetricData());
+          //return new DataSkewRuntimePass().apply(originalPlan, metricData);
+
+          final DAG<IRVertex, IREdge> newIrDAG = new DataSkewRuntimePass().apply(originalPlan.getIrDAG(), metricData);
+          final DAG<Stage, StageEdge> stageDAG = newIrDAG.convert(physicalPlanGenerator);
+          final PhysicalPlan physicalPlan =
+              new PhysicalPlan(RuntimeIdGenerator.generatePhysicalPlanId(), newIrDAG, stageDAG);
+          return physicalPlan;
+        default:
+          throw new UnsupportedOperationException("Unknown runtime pass: " + dynamicOptimizationType);
+      }
+    } catch (final InjectionException e) {
+      throw new RuntimeException(e);
     }
   }
 }

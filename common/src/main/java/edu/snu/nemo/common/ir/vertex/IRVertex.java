@@ -30,6 +30,7 @@ import java.util.function.Consumer;
  */
 public abstract class IRVertex extends Vertex {
   private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
+  private boolean isTargetOfOpt;
 
   /**
    * Constructor of IRVertex.
@@ -37,6 +38,7 @@ public abstract class IRVertex extends Vertex {
   public IRVertex() {
     super(IdManager.newVertexId());
     this.executionProperties = ExecutionPropertyMap.of(this);
+    this.isTargetOfOpt = false;
   }
 
   /**
@@ -88,5 +90,13 @@ public abstract class IRVertex extends Vertex {
     sb.append("\"class\": \"").append(this.getClass().getSimpleName());
     sb.append("\", \"executionProperties\": ").append(executionProperties);
     return sb.toString();
+  }
+
+  public void setAsTargetOfOpt() {
+    isTargetOfOpt = true;
+  }
+
+  public final boolean isTargetOfOpt() {
+    return isTargetOfOpt;
   }
 }

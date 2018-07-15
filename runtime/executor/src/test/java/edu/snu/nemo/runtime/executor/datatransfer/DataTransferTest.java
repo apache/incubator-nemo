@@ -15,6 +15,9 @@
  */
 package edu.snu.nemo.runtime.executor.datatransfer;
 
+import edu.snu.nemo.common.DataSkewMetricFactory;
+import edu.snu.nemo.common.HashRange;
+import edu.snu.nemo.common.KeyRange;
 import edu.snu.nemo.common.coder.*;
 import edu.snu.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import edu.snu.nemo.common.ir.edge.IREdge;
@@ -326,6 +329,15 @@ public final class DataTransferTest {
     dummyIREdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
     dummyIREdge.setProperty(EncoderProperty.of(ENCODER_FACTORY));
     dummyIREdge.setProperty(DecoderProperty.of(DECODER_FACTORY));
+    if (dummyIREdge.getPropertyValue(DataCommunicationPatternProperty.class).get()
+        .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
+      final int parallelism = dstVertex.getPropertyValue(ParallelismProperty.class).get();
+      final Map<Integer, KeyRange> metric = new HashMap<>();
+      for (int i = 0; i < parallelism; i++) {
+        metric.put(i, HashRange.of(i, i + 1, false));
+      }
+      dummyIREdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(metric)));
+    }
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
     final RuntimeEdge dummyEdge;
 
@@ -415,6 +427,15 @@ public final class DataTransferTest {
     duplicateDataProperty.get().setGroupSize(2);
     dummyIREdge.setProperty(InterTaskDataStoreProperty.of(store));
     dummyIREdge.setProperty(UsedDataHandlingProperty.of(UsedDataHandlingProperty.Value.Keep));
+    if (dummyIREdge.getPropertyValue(DataCommunicationPatternProperty.class).get()
+        .equals(DataCommunicationPatternProperty.Value.Shuffle)) {
+      final int parallelism = dstVertex.getPropertyValue(ParallelismProperty.class).get();
+      final Map<Integer, KeyRange> metric = new HashMap<>();
+      for (int i = 0; i < parallelism; i++) {
+        metric.put(i, HashRange.of(i, i + 1, false));
+      }
+      dummyIREdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(metric)));
+    }
     final RuntimeEdge dummyEdge, dummyEdge2;
     final ExecutionPropertyMap edgeProperties = dummyIREdge.getExecutionProperties();
 

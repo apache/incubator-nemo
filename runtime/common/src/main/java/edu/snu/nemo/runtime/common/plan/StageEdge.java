@@ -16,13 +16,15 @@
 package edu.snu.nemo.runtime.common.plan;
 
 import com.google.common.annotations.VisibleForTesting;
+import edu.snu.nemo.common.DataSkewMetricFactory;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
 import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
 import edu.snu.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
-import edu.snu.nemo.runtime.common.data.KeyRange;
-import edu.snu.nemo.runtime.common.data.HashRange;
+import edu.snu.nemo.common.KeyRange;
+import edu.snu.nemo.common.HashRange;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -128,7 +130,9 @@ public final class StageEdge extends RuntimeEdge<Stage> {
    * @return the list between the task idx and key range to read.
    */
   public Map<Integer, KeyRange> getTaskIdxToKeyRange() {
-    return taskIdxToKeyRange;
+    final DataSkewMetricFactory metricFactory =
+        (DataSkewMetricFactory) getExecutionProperties().get(DataSkewMetricProperty.class).get();
+    return metricFactory.getMetric();
   }
 
   /**

@@ -15,8 +15,10 @@
  */
 package edu.snu.nemo.runtime.common.optimizer.pass.runtime;
 
+import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.eventhandler.RuntimeEventHandler;
-import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 
 import java.io.Serializable;
 import java.util.Set;
@@ -28,7 +30,7 @@ import java.util.function.BiFunction;
  * after dynamic optimization.
  * @param <T> type of the metric data used for dynamic optimization.
  */
-public interface RuntimePass<T> extends BiFunction<PhysicalPlan, T, PhysicalPlan>, Serializable {
+public interface RuntimePass<T> extends BiFunction<DAG<IRVertex, IREdge>, T, DAG<IRVertex, IREdge>>, Serializable {
   /**
    * @return the set of event handlers used with the runtime pass.
    */

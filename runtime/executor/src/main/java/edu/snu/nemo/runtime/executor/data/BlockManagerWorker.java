@@ -26,7 +26,7 @@ import edu.snu.nemo.common.ir.edge.executionproperty.UsedDataHandlingProperty;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.comm.ControlMessage.ByteTransferContextDescriptor;
-import edu.snu.nemo.runtime.common.data.KeyRange;
+import edu.snu.nemo.common.KeyRange;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.PersistentConnectionToMasterMap;

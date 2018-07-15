@@ -16,23 +16,19 @@
 package edu.snu.nemo.runtime.executor.datatransfer;
 
 import com.google.common.annotations.VisibleForTesting;
-import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.InterTaskDataStoreProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupProperty;
-import edu.snu.nemo.common.ir.edge.executionproperty.DuplicateEdgeGroupPropertyValue;
+import edu.snu.nemo.common.DataSkewMetricFactory;
+import edu.snu.nemo.common.ir.edge.executionproperty.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
-import edu.snu.nemo.runtime.common.data.KeyRange;
+import edu.snu.nemo.common.KeyRange;
 import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.common.exception.BlockFetchException;
 import edu.snu.nemo.common.exception.UnsupportedCommPatternException;
-import edu.snu.nemo.runtime.common.data.HashRange;
+import edu.snu.nemo.common.HashRange;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.DataUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -45,7 +41,6 @@ import java.util.stream.StreamSupport;
  * Represents the input data transfer to a task.
  */
 public final class InputReader extends DataTransfer {
-  private static final Logger LOG = LoggerFactory.getLogger(InputReader.class.getName());
   private final int dstTaskIndex;
   private final BlockManagerWorker blockManagerWorker;
 
@@ -118,8 +113,9 @@ public final class InputReader extends DataTransfer {
     assert (runtimeEdge instanceof StageEdge);
     final Optional<InterTaskDataStoreProperty.Value> dataStoreProperty
         = runtimeEdge.getPropertyValue(InterTaskDataStoreProperty.class);
-    final KeyRange hashRangeToRead =
-        ((StageEdge) runtimeEdge).getTaskIdxToKeyRange().get(dstTaskIndex);
+    final DataSkewMetricFactory metricFactory =
+        (DataSkewMetricFactory) runtimeEdge.getExecutionProperties().get(DataSkewMetricProperty.class).get();
+    final KeyRange hashRangeToRead = metricFactory.getMetric().get(dstTaskIndex);
     if (hashRangeToRead == null) {
       throw new BlockFetchException(
           new Throwable("The hash range to read is not assigned to " + dstTaskIndex + "'th task"));
