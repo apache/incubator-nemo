@@ -49,6 +49,7 @@ public final class PartitionWordsByLengthITCase {
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
+        .addResourceJson(executorResourceFileName)
       .addUserMain(PartitionWordsByLength.class.getCanonicalName())
       .addUserArgs(inputFilePath, outputFilePath);
   }
@@ -67,7 +68,6 @@ public final class PartitionWordsByLengthITCase {
   @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
         .addJobId(PartitionWordsByLengthITCase.class.getSimpleName())
         .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
         .build());
@@ -76,27 +76,8 @@ public final class PartitionWordsByLengthITCase {
   @Test (timeout = TIMEOUT)
   public void testSailfish() throws Exception {
     JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
         .addJobId(PartitionWordsByLengthITCase.class.getSimpleName() + "_sailfish")
         .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
-        .build());
-  }
-
-  @Test (timeout = TIMEOUT)
-  public void testSailfishInOneExecutor() throws Exception {
-    JobLauncher.main(builder
-        .addResourceJson(oneExecutorResourceFileName)
-        .addJobId(PartitionWordsByLengthITCase.class.getSimpleName() + "_sailfishInOneExecutor")
-        .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
-        .build());
-  }
-
-  @Test (timeout = TIMEOUT)
-  public void testPado() throws Exception {
-    JobLauncher.main(builder
-        .addResourceJson(executorResourceFileName)
-        .addJobId(PartitionWordsByLengthITCase.class.getSimpleName() + "_pado")
-        .addOptimizationPolicy(PadoPolicyParallelismFive.class.getCanonicalName())
         .build());
   }
 }
