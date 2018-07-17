@@ -140,6 +140,7 @@ public final class JobLauncher {
             Thread.currentThread().interrupt();
           }
         }
+        LOG.info("Driver terminated");
       }
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
@@ -183,13 +184,14 @@ public final class JobLauncher {
 
     // Wait for the ExecutionDone message from the driver
     try {
-      LOG.info("Waiting for the job to finish");
+      LOG.info("Waiting for the DAG to finish execution");
       jobDoneLatch.await();
     } catch (final InterruptedException e) {
       LOG.warn("Interrupted: " + e);
       // clean up state...
       Thread.currentThread().interrupt();
     }
+    LOG.info("DAG execution done");
   }
 
   /**
@@ -211,7 +213,9 @@ public final class JobLauncher {
       throw new RuntimeException("User Main Class not public");
     }
 
+    LOG.info("User program started");
     method.invoke(null, (Object) args);
+    LOG.info("User program finished");
   }
 
   /**
