@@ -61,23 +61,23 @@ final class BlockMetadata {
 
     switch (newState) {
       case IN_PROGRESS:
-        stateMachine.setState(newState);
         break;
       case NOT_AVAILABLE:
-        LOG.info("Block {} lost in {}", new Object[]{blockId, location});
         // Reset the block location and committer information.
         locationHandler.completeExceptionally(new AbsentBlockException(blockId, newState));
         locationHandler = new BlockManagerMaster.BlockLocationRequestHandler(blockId);
-        stateMachine.setState(newState);
         break;
       case AVAILABLE:
-        assert (location != null);
+        if (location == null) {
+          throw new RuntimeException("Null location");
+        }
         locationHandler.complete(location);
-        stateMachine.setState(newState);
         break;
       default:
         throw new UnsupportedOperationException(newState.toString());
     }
+
+    stateMachine.setState(newState);
   }
 
   /**

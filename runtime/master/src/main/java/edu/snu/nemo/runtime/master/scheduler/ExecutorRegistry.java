@@ -17,6 +17,7 @@ package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.common.Pair;
+import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
 
@@ -46,7 +47,7 @@ public final class ExecutorRegistry {
   private final Map<String, Pair<ExecutorRepresenter, ExecutorState>> executors;
 
   @Inject
-  public ExecutorRegistry() {
+  private ExecutorRegistry() {
     this.executors = new HashMap<>();
   }
 
@@ -89,8 +90,10 @@ public final class ExecutorRegistry {
   @VisibleForTesting
   synchronized Optional<ExecutorRepresenter> findExecutorForTask(final String taskId) {
     for (final ExecutorRepresenter executor : getRunningExecutors()) {
-      if (executor.getRunningTasks().contains(taskId) || executor.getCompleteTasks().contains(taskId)) {
-        return Optional.of(executor);
+      for (final Task runningTask : executor.getRunningTasks()) {
+        if (runningTask.getTaskId().equals(taskId)) {
+          return Optional.of(executor);
+        }
       }
     }
     return Optional.empty();

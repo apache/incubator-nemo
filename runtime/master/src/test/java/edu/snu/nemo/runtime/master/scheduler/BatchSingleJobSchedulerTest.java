@@ -62,15 +62,8 @@ import static org.mockito.Mockito.mock;
 public final class BatchSingleJobSchedulerTest {
   private static final Logger LOG = LoggerFactory.getLogger(BatchSingleJobSchedulerTest.class.getName());
   private Scheduler scheduler;
-  private SchedulingConstraintRegistry schedulingConstraint;
-  private SchedulingPolicy schedulingPolicy;
-  private SchedulerRunner schedulerRunner;
   private ExecutorRegistry executorRegistry;
-  private MetricMessageHandler metricMessageHandler;
-  private PendingTaskCollectionPointer pendingTaskCollectionPointer;
-  private PubSubEventHandlerWrapper pubSubEventHandler;
-  private UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler;
-  private BlockManagerMaster blockManagerMaster = mock(BlockManagerMaster.class);
+  private final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
 
   private static final int EXECUTOR_CAPACITY = 20;
@@ -84,16 +77,10 @@ public final class BatchSingleJobSchedulerTest {
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");
 
     executorRegistry = injector.getInstance(ExecutorRegistry.class);
-    metricMessageHandler = mock(MetricMessageHandler.class);
-    pendingTaskCollectionPointer = new PendingTaskCollectionPointer();
-    schedulingConstraint = injector.getInstance(SchedulingConstraintRegistry.class);
-    schedulingPolicy = injector.getInstance(SchedulingPolicy.class);
-    schedulerRunner = new SchedulerRunner(schedulingConstraint, schedulingPolicy, pendingTaskCollectionPointer, executorRegistry);
-    pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
-    updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
-    scheduler =
-        new BatchSingleJobScheduler(schedulerRunner, pendingTaskCollectionPointer,
-            blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
+    injector.bindVolatileInstance(BlockManagerMaster.class, mock(BlockManagerMaster.class));
+    injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
+    injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
+    scheduler = injector.getInstance(BatchSingleJobScheduler.class);
 
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();

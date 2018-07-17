@@ -71,6 +71,11 @@ public final class ArgBuilder {
     return this;
   }
 
+  public ArgBuilder addMaxTaskAttempt(final int maxAttempt) {
+    args.add(Arrays.asList("-max_task_attempt", String.valueOf(maxAttempt)));
+    return this;
+  }
+
   /**
    * @param directory directory to save the DAG.
    * @return builder with the DAG directory.

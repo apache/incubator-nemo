@@ -33,7 +33,7 @@ public final class PendingTaskCollectionPointer {
   private Collection<Task> curTaskCollection;
 
   @Inject
-  public PendingTaskCollectionPointer() {
+  private PendingTaskCollectionPointer() {
   }
 
   /**

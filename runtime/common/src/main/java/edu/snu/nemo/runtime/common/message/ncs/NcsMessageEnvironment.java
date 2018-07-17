@@ -27,10 +27,11 @@ import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.IdentifierFactory;
 import org.apache.reef.wake.remote.transport.LinkListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.net.SocketAddress;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,6 +42,8 @@ import java.util.concurrent.Future;
  * Message environment for NCS.
  */
 public final class NcsMessageEnvironment implements MessageEnvironment {
+  private static final Logger LOG = LoggerFactory.getLogger(NcsMessageEnvironment.class.getName());
+
   private static final String NCS_CONN_FACTORY_ID = "NCS_CONN_FACTORY_ID";
 
   private final NetworkConnectionService networkConnectionService;
@@ -62,7 +65,7 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     this.senderId = senderId;
     this.replyFutureMap = new ReplyFutureMap<>();
     this.listenerConcurrentMap = new ConcurrentHashMap<>();
-    this.receiverToConnectionMap = new HashMap<>();
+    this.receiverToConnectionMap = new ConcurrentHashMap<>();
     this.connectionFactory = networkConnectionService.registerConnectionFactory(
         idFactory.getNewInstance(NCS_CONN_FACTORY_ID),
         new ControlMessageCodec(),
@@ -87,23 +90,22 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
   public <T> Future<MessageSender<T>> asyncConnect(final String receiverId, final String listenerId) {
     try {
       // If the connection toward the receiver exists already, reuses it.
-      final Connection connection = receiverToConnectionMap.computeIfAbsent(receiverId, absentReceiverId -> {
-        try {
-          final Connection newConnection = connectionFactory.newConnection(idFactory.getNewInstance(absentReceiverId));
-          newConnection.open();
-          return newConnection;
-        } catch (final NetworkException e) {
-          throw new RuntimeException(e);
-        }
-      });
+      final Connection connection;
+      if (receiverToConnectionMap.containsKey(receiverId)) {
+        connection = receiverToConnectionMap.get(receiverId);
+      } else {
+        connection = connectionFactory.newConnection(idFactory.getNewInstance(receiverId));
+        connection.open();
+      }
       return CompletableFuture.completedFuture((MessageSender) new NcsMessageSender(connection, replyFutureMap));
-    } catch (final Exception e) {
+    } catch (final NetworkException e) {
       final CompletableFuture<MessageSender<T>> failedFuture = new CompletableFuture<>();
       failedFuture.completeExceptionally(e);
       return failedFuture;
     }
   }
 
+  @Override
   public String getId() {
     return senderId;
   }
@@ -166,8 +168,9 @@ public final class NcsMessageEnvironment implements MessageEnvironment {
     public void onException(final Throwable throwable,
                             final SocketAddress socketAddress,
                             final Message<ControlMessage.Message> messages) {
-      final ControlMessage.Message controlMessage = extractSingleMessage(messages);
-      throw new RuntimeException(controlMessage.toString(), throwable);
+      // TODO #140: Properly classify and handle each RPC failure
+      // Not logging the stacktrace here, as it's not very useful.
+      LOG.error("NCS Exception");
     }
   }
 
