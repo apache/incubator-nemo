@@ -159,6 +159,8 @@ public final class JobLauncher {
 
   /**
    * Launch application using the application DAG.
+   * Notice that we launch the DAG one at a time, as the result of a DAG has to be immediately returned to the
+   * Java variable before the application can be resumed.
    *
    * @param dag the application DAG.
    */
