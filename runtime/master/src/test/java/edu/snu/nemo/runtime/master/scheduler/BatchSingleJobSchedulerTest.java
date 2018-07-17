@@ -54,13 +54,13 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 /**
- * Tests {@link BatchScheduler}.
+ * Tests {@link BatchSingleJobScheduler}.
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ContainerManager.class, BlockManagerMaster.class,
     PubSubEventHandlerWrapper.class, UpdatePhysicalPlanEventHandler.class, MetricMessageHandler.class})
-public final class BatchSchedulerTest {
-  private static final Logger LOG = LoggerFactory.getLogger(BatchSchedulerTest.class.getName());
+public final class BatchSingleJobSchedulerTest {
+  private static final Logger LOG = LoggerFactory.getLogger(BatchSingleJobSchedulerTest.class.getName());
   private Scheduler scheduler;
   private SchedulingConstraintRegistry schedulingConstraint;
   private SchedulingPolicy schedulingPolicy;
@@ -92,7 +92,7 @@ public final class BatchSchedulerTest {
     pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
     updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
     scheduler =
-        new BatchScheduler(schedulerRunner, pendingTaskCollectionPointer,
+        new BatchSingleJobScheduler(schedulerRunner, pendingTaskCollectionPointer,
             blockManagerMaster, pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
 
     final ActiveContext activeContext = mock(ActiveContext.class);
@@ -127,7 +127,7 @@ public final class BatchSchedulerTest {
   }
 
   /**
-   * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchScheduler}.
+   * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchSingleJobScheduler}.
    * Task state changes are explicitly submitted to scheduler instead of executor messages.
    */
   @Test(timeout=10000)
@@ -137,7 +137,7 @@ public final class BatchSchedulerTest {
   }
 
   /**
-   * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchScheduler}.
+   * This method builds a physical DAG starting from an IR DAG and submits it to {@link BatchSingleJobScheduler}.
    * Task state changes are explicitly submitted to scheduler instead of executor messages.
    */
   @Test(timeout=10000)
