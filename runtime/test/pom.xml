@@ -25,8 +25,8 @@ limitations under the License.
         <relativePath>../../</relativePath>
     </parent>
 
-    <artifactId>nemo-runtime-plangenerator</artifactId>
-    <name>Nemo Runtime Test Plans</name>
+    <artifactId>nemo-runtime-test</artifactId>
+    <name>Nemo Runtime Test</name>
 
     <repositories>
         <repository>
