@@ -40,11 +40,8 @@ public final class BlockManagerMasterTest {
 
   @Before
   public void setUp() throws Exception {
-    final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
-    final LocalMessageEnvironment messageEnvironment =
-        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
-    final Injector injector = Tang.Factory.getTang().newInjector();
-    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
+    final Injector injector = LocalMessageEnvironment.forkInjector(LocalMessageDispatcher.getInjector(),
+        MessageEnvironment.MASTER_COMMUNICATION_ID);
     blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
   }
 

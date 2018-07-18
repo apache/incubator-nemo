@@ -17,6 +17,7 @@ package edu.snu.nemo.runtime.master.resource;
 
 import edu.snu.nemo.common.exception.ContainerException;
 import edu.snu.nemo.conf.JobConf;
+import edu.snu.nemo.runtime.common.message.FailedMessageSender;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageSender;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -25,6 +26,8 @@ import org.apache.reef.driver.evaluator.AllocatedEvaluator;
 import org.apache.reef.driver.evaluator.EvaluatorRequest;
 import org.apache.reef.driver.evaluator.EvaluatorRequestor;
 import org.apache.reef.tang.Configuration;
+import org.apache.reef.tang.Configurations;
+import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +36,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -146,7 +150,12 @@ public final class ContainerManager {
         + ") allocated, will be used for [" + executorId + "]");
     pendingContextIdToResourceSpec.put(executorId, resourceSpecification);
 
-    allocatedContainer.submitContext(executorConfiguration);
+    // Poison handling
+    final Configuration poisonConfiguration = Tang.Factory.getTang().newConfigurationBuilder()
+        .bindNamedParameter(JobConf.ExecutorPosionSec.class, String.valueOf(resourceSpecification.getPoisonSec()))
+        .build();
+
+    allocatedContainer.submitContext(Configurations.merge(executorConfiguration, poisonConfiguration));
   }
 
   /**
@@ -165,16 +174,16 @@ public final class ContainerManager {
 
     // We set contextId = executorId in NemoDriver when we generate executor configuration.
     final String executorId = activeContext.getId();
-
     final ResourceSpecification resourceSpec = pendingContextIdToResourceSpec.remove(executorId);
 
     // Connect to the executor and initiate Master side's executor representation.
-    final MessageSender messageSender;
+    MessageSender messageSender;
     try {
       messageSender =
           messageEnvironment.asyncConnect(executorId, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
-    } catch (final Exception e) {
-      throw new RuntimeException(e);
+    } catch (final InterruptedException | ExecutionException e) {
+      // TODO #140: Properly classify and handle each RPC failure
+      messageSender = new FailedMessageSender();
     }
 
     // Create the executor representation.
@@ -182,9 +191,8 @@ public final class ContainerManager {
         new ExecutorRepresenter(executorId, resourceSpec, messageSender, activeContext, serializationExecutorService,
             activeContext.getEvaluatorDescriptor().getNodeDescriptor().getName());
 
-    LOG.info("{} is up and running at {}", executorId, executorRepresenter.getNodeName());
-
     requestLatchByResourceSpecId.get(resourceSpec.getResourceSpecId()).countDown();
+
     return Optional.of(executorRepresenter);
   }
 

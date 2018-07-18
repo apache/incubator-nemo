@@ -16,10 +16,7 @@
 package edu.snu.nemo.runtime.executor;
 
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
-import edu.snu.nemo.runtime.common.message.MessageContext;
-import edu.snu.nemo.runtime.common.message.MessageEnvironment;
-import edu.snu.nemo.runtime.common.message.MessageListener;
-import edu.snu.nemo.runtime.common.message.MessageSender;
+import edu.snu.nemo.runtime.common.message.*;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageDispatcher;
 import edu.snu.nemo.runtime.common.message.local.LocalMessageEnvironment;
 import edu.snu.nemo.runtime.master.MetricManagerMaster;
@@ -52,40 +49,29 @@ import static org.mockito.Mockito.mock;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ExecutorRepresenter.class, ExecutorRegistry.class})
 public final class MetricFlushTest {
-  private static final Tang TANG = Tang.Factory.getTang();
   private static final String MASTER = "MASTER";
   private static final String WORKER = "WORKER";
   private static final int EXECUTOR_NUM = 5;
-  private static MessageSender masterToWorkerSender;
 
   @Test(timeout = 10000)
   public void test() throws InjectionException, ExecutionException, InterruptedException {
     final CountDownLatch latch = new CountDownLatch(EXECUTOR_NUM);
 
-    final LocalMessageDispatcher localMessagedispatcher = new LocalMessageDispatcher();
+    final Injector injector = LocalMessageDispatcher.getInjector();
 
-    final Configuration configuration = TANG.newConfigurationBuilder()
-        .build();
-    final Injector injector = TANG.newInjector(configuration);
+    final Injector masterInjector = LocalMessageEnvironment.forkInjector(injector, MASTER);
+    final Injector workerInjector = LocalMessageEnvironment.forkInjector(injector, WORKER);
 
-    final Injector masterInjector = injector.forkInjector();
-    final Injector workerInjector = injector.forkInjector();
+    final MessageEnvironment masterMessageEnvironment = masterInjector.getInstance(MessageEnvironment.class);
+    final MessageEnvironment workerMessageEnvironment = workerInjector.getInstance(MessageEnvironment.class);
 
-    final LocalMessageEnvironment masterMessageEnvironment = new LocalMessageEnvironment(MASTER,
-        localMessagedispatcher);
-    masterInjector.bindVolatileInstance(MessageEnvironment.class, masterMessageEnvironment);
-
-    final LocalMessageEnvironment workerMessageEnvironment = new LocalMessageEnvironment(WORKER,
-        localMessagedispatcher);
-    workerInjector.bindVolatileInstance(MessageEnvironment.class, workerMessageEnvironment);
-
-    masterToWorkerSender = masterMessageEnvironment
+    final MessageSender masterToWorkerSender = masterMessageEnvironment
         .asyncConnect(WORKER, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
 
     final Set<ExecutorRepresenter> executorRepresenterSet = new HashSet<>();
 
     for (int i = 0; i < EXECUTOR_NUM; i++) {
-      executorRepresenterSet.add(newWorker());
+      executorRepresenterSet.add(newWorker(masterToWorkerSender));
     }
 
     final ExecutorRegistry executorRegistry = mock(ExecutorRegistry.class);
@@ -129,7 +115,7 @@ public final class MetricFlushTest {
     latch.await();
   }
 
-  private ExecutorRepresenter newWorker() {
+  private static ExecutorRepresenter newWorker(final MessageSender masterToWorkerSender) {
     final ExecutorRepresenter workerRepresenter = mock(ExecutorRepresenter.class);
     doAnswer((Answer<Void>) invocationOnMock -> {
       final ControlMessage.Message msg = (ControlMessage.Message) invocationOnMock.getArguments()[0];
