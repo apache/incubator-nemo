@@ -21,6 +21,7 @@ option java_outer_classname = "ControlMessage";
 
 enum ClientToDriverMessageType {
     LaunchDAG = 0;
+    DriverShutdown = 1;
 }
 
 message ClientToDriverMessage {
@@ -38,8 +39,9 @@ message DataCollectMessage {
 
 enum DriverToClientMessageType {
     DriverStarted = 0;
-    ResourceReady = 1;
+    DriverReady = 1;
     DataCollected = 2;
+    ExecutionDone = 3;
 }
 
 message DriverToClientMessage {

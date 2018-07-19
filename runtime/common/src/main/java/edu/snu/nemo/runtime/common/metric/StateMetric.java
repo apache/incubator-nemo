@@ -15,13 +15,14 @@
  */
 package edu.snu.nemo.runtime.common.metric;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
  * Interface for metric which contians its state.
  * @param <T> class of state of the metric.
  */
-public interface StateMetric<T> extends Metric {
+public interface StateMetric<T extends Serializable> extends Metric {
   /**
    * Get its list of {@link StateTransitionEvent}.
    * @return list of events.

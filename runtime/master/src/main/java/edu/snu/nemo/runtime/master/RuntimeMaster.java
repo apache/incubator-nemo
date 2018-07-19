@@ -186,7 +186,9 @@ public final class RuntimeMaster {
         LOG.warn("Terminating master before all executor terminated messages arrived.");
       }
     } catch (final InterruptedException e) {
-      LOG.warn("Waiting executor terminating process interrupted.");
+      LOG.warn("Waiting executor terminating process interrupted: " + e);
+      // clean up state...
+      Thread.currentThread().interrupt();
     }
     runtimeMasterThread.execute(() -> {
       scheduler.terminate();
