@@ -94,7 +94,10 @@ final class GenericSourceSink {
       dataToWrite.apply(ParDo.of(new HDFSWrite(path)));
       return PDone.in(dataToWrite.getPipeline());
     } else {
-      return dataToWrite.apply(TextIO.write().to(path));
+      // Added withWindowedWrites() to local file writes. This is necessary for FileResult coders.
+      // If not specified, FileResultCoder#encode will be blocked. See windowCoder in FileResultCoder#encode
+      // for further information. This is only relevant to local file writes.
+      return dataToWrite.apply(TextIO.write().to(path).withWindowedWrites());
     }
   }
 

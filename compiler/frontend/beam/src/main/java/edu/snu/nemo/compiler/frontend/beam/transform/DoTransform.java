@@ -287,6 +287,7 @@ public final class DoTransform<I, O> implements Transform<I, O> {
 
     @Override
     public BoundedWindow window() {
+      // Unbounded windows are not supported for now.
       return GlobalWindow.INSTANCE;
     }
 
