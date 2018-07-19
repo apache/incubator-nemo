@@ -378,9 +378,9 @@ public final class TaskExecutor {
    */
   private boolean handleDataFetchers(final List<DataFetcher> fetchers) {
     final List<DataFetcher> availableFetchers = new ArrayList<>(fetchers);
-    int finishedFetcherIndex;
     while (!availableFetchers.isEmpty()) { // empty means we've consumed all task-external input data
-      finishedFetcherIndex = NONE_FINISHED;
+      // For this looping of available fetchers.
+      int finishedFetcherIndex = NONE_FINISHED;
       for (int i = 0; i < availableFetchers.size(); i++) {
         final DataFetcher dataFetcher = availableFetchers.get(i);
         final Object element;
