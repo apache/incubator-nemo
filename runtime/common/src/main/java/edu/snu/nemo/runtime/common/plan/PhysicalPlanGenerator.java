@@ -35,6 +35,8 @@ import edu.snu.nemo.common.exception.PhysicalPlanGenerationException;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -46,6 +48,7 @@ import java.util.function.Function;
 public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdge>, DAG<Stage, StageEdge>> {
   private final String dagDirectory;
   private final StagePartitioner stagePartitioner;
+  private static final Logger LOG = LoggerFactory.getLogger(PhysicalPlanGenerator.class.getName());
 
   /**
    * Private constructor.
@@ -78,7 +81,6 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
 
     // this is needed because of DuplicateEdgeGroupProperty.
     handleDuplicateEdgeGroupProperty(dagOfStages);
-
 
     // Split StageGroup by Pull StageEdges
     splitScheduleGroupByPullStageEdges(dagOfStages);
@@ -150,7 +152,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
 
       final DAGBuilder<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAGBuilder = new DAGBuilder<>();
 
-      // Prepare vertexIdtoReadables
+      // Prepare vertexIdToReadables
       final List<Map<String, Readable>> vertexIdToReadables = new ArrayList<>(stageParallelism);
       for (int i = 0; i < stageParallelism; i++) {
         vertexIdToReadables.add(new HashMap<>());
@@ -159,7 +161,7 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
       // For each IRVertex,
       for (final IRVertex irVertex : stageVertices) {
         // Take care of the readables of a source vertex.
-        if (irVertex instanceof SourceVertex) {
+        if (irVertex instanceof SourceVertex && !irVertex.getStagePartitioned()) {
           final SourceVertex sourceVertex = (SourceVertex) irVertex;
           try {
             final List<Readable> readables = sourceVertex.getReadables(stageParallelism);
@@ -202,6 +204,11 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
         final Stage stage = new Stage(stageIdentifier, stageInternalDAG, stageProperties, vertexIdToReadables);
         dagOfStagesBuilder.addVertex(stage);
         stageIdToStageMap.put(stageId, stage);
+      }
+
+      for (IRVertex irVertex : stageVertices) {
+        irVertex.setStagePartitioned();
+        LOG.info("{} stagePartitioned", irVertex.getId());
       }
     }
 

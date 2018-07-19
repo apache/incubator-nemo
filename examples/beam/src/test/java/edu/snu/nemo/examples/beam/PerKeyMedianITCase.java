@@ -18,6 +18,7 @@ package edu.snu.nemo.examples.beam;
 import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
+import edu.snu.nemo.compiler.optimizer.policy.DataSkewPolicy;
 import edu.snu.nemo.examples.beam.policy.DataSkewPolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;

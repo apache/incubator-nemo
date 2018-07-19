@@ -30,7 +30,7 @@ import java.util.function.Consumer;
  */
 public abstract class IRVertex extends Vertex {
   private final ExecutionPropertyMap<VertexExecutionProperty> executionProperties;
-  private boolean isTargetOfOpt;
+  private boolean stagePartitioned;
 
   /**
    * Constructor of IRVertex.
@@ -38,7 +38,7 @@ public abstract class IRVertex extends Vertex {
   public IRVertex() {
     super(IdManager.newVertexId());
     this.executionProperties = ExecutionPropertyMap.of(this);
-    this.isTargetOfOpt = false;
+    this.stagePartitioned = false;
   }
 
   /**
@@ -92,11 +92,10 @@ public abstract class IRVertex extends Vertex {
     return sb.toString();
   }
 
-  public void setAsTargetOfOpt() {
-    isTargetOfOpt = true;
+  public final void setStagePartitioned() {
+    stagePartitioned = true;
   }
-
-  public final boolean isTargetOfOpt() {
-    return isTargetOfOpt;
+  public final boolean getStagePartitioned() {
+    return stagePartitioned;
   }
 }

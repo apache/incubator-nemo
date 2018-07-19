@@ -33,18 +33,15 @@ import java.util.*;
 public final class MetricStore {
   private final Map<Class, Map<String, Object>> metricMap = new HashMap<>();
   // You can add more metrics by adding item to this metricList list.
-  private final Map<String, Class> metricList = new HashMap<String, Class>() {
-    {
-      put("JobMetric", JobMetric.class);
-      put("StageMetric", StageMetric.class);
-      put("TaskMetric", TaskMetric.class);
-    }
-  };
-
+  private final Map<String, Class> metricList = new HashMap<>();
   /**
    * Private constructor.
    */
-  private MetricStore() { }
+  private MetricStore() {
+    metricList.put("JobMetric", JobMetric.class);
+    metricList.put("StageMetric", StageMetric.class);
+    metricList.put("TaskMetric", TaskMetric.class);
+  }
 
   /**
    * Getter for singleton instance.
