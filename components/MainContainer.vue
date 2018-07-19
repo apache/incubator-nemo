@@ -92,23 +92,30 @@ export default {
     async processMetric(metric) {
       // specific event broadcast
       if ('metricType' in metric) {
-        const metricType = metric.metricType;
-        // build group dataset
-        if (!this.groupDataSet.get(metricType)) {
-          this.groupDataSet.add({
-            id: metricType,
-            content: metricType,
-            order: METRIC_LIST.indexOf(metricType)
-          });
-        }
         await this.processIndividualMetric(metric);
       } else {
-        // TODO: this means the first big metric chunk
-        // await ctx.dispatch('processInitialMetric', metric);
+        // the first big metric chunk
+        Object.keys(metric).forEach(metricType => {
+          Object.values(metric[metricType]).forEach(async data => {
+            await this.processIndividualMetric({
+              metricType: metricType,
+              data: data,
+            });
+          });
+        });
       }
     },
 
     async processIndividualMetric({ metricType, data }) {
+      // build group dataset
+      if (!this.groupDataSet.get(metricType)) {
+        this.groupDataSet.add({
+          id: metricType,
+          content: metricType,
+          order: METRIC_LIST.indexOf(metricType)
+        });
+      }
+
       let newItem = {
         id: data.id,
         group: metricType,
