@@ -26,7 +26,11 @@ import java.util.List;
 /**
  * Empty components to mock transform and source, for tests and examples.
  */
-public class EmptyComponents {
+public final class EmptyComponents {
+  public static final Transform EMPTY_TRANSFORM = new EmptyTransform("");
+
+  private EmptyComponents() {
+  }
 
   /**
    * An empty transform.

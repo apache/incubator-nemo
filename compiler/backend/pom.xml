@@ -46,5 +46,11 @@ limitations under the License.
             <artifactId>nemo-runtime-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>edu.snu.nemo</groupId>
+            <artifactId>nemo-compiler-optimizer</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>

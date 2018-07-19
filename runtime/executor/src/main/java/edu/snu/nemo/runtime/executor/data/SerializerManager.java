@@ -40,7 +40,7 @@ public final class SerializerManager {
    * Constructor.
    */
   @Inject
-  public SerializerManager() {
+  private SerializerManager() {
   }
 
   /**

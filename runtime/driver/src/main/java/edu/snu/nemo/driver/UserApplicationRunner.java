@@ -59,6 +59,7 @@ public final class UserApplicationRunner {
   private UserApplicationRunner(@Parameter(JobConf.DAGDirectory.class) final String dagDirectory,
                                 @Parameter(JobConf.OptimizationPolicy.class) final String optimizationPolicy,
                                 @Parameter(JobConf.MaxTaskAttempt.class) final int maxScheduleAttempt,
+                                final NemoBackend backend,
                                 final PubSubEventHandlerWrapper pubSubEventHandlerWrapper,
                                 final Injector injector,
                                 final RuntimeMaster runtimeMaster) {
@@ -67,7 +68,7 @@ public final class UserApplicationRunner {
     this.maxScheduleAttempt = maxScheduleAttempt;
     this.injector = injector;
     this.runtimeMaster = runtimeMaster;
-    this.backend = new NemoBackend();
+    this.backend = backend;
     this.pubSubWrapper = pubSubEventHandlerWrapper;
   }
 
@@ -119,7 +120,6 @@ public final class UserApplicationRunner {
 
       jobStateManager.storeJSON(dagDirectory, "final");
       LOG.info("{} is complete!", physicalPlan.getId());
-      runtimeMaster.terminate();
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }

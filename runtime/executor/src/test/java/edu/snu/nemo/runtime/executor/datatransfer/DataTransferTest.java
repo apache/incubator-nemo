@@ -43,7 +43,6 @@ import edu.snu.nemo.runtime.common.plan.RuntimeEdge;
 import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.executor.Executor;
-import edu.snu.nemo.runtime.executor.MetricManagerWorker;
 import edu.snu.nemo.runtime.executor.data.BlockManagerWorker;
 import edu.snu.nemo.runtime.executor.data.SerializerManager;
 import edu.snu.nemo.runtime.master.*;
@@ -112,7 +111,6 @@ public final class DataTransferTest {
   private static final DecoderFactory DECODER_FACTORY =
       PairDecoderFactory.of(IntDecoderFactory.of(), IntDecoderFactory.of());
   private static final Tang TANG = Tang.Factory.getTang();
-  private static final int HASH_RANGE_MULTIPLIER = 10;
 
   private BlockManagerMaster master;
   private BlockManagerWorker worker1;
@@ -122,51 +120,37 @@ public final class DataTransferTest {
 
   @Before
   public void setUp() throws InjectionException {
-    final LocalMessageDispatcher messageDispatcher = new LocalMessageDispatcher();
-    final LocalMessageEnvironment messageEnvironment =
-        new LocalMessageEnvironment(MessageEnvironment.MASTER_COMMUNICATION_ID, messageDispatcher);
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(JobConf.ScheduleSerThread.class, "1")
         .build();
-    final Injector injector = Tang.Factory.getTang().newInjector(configuration);
-    injector.bindVolatileInstance(EvaluatorRequestor.class, mock(EvaluatorRequestor.class));
-    injector.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
-    final ContainerManager containerManager = injector.getInstance(ContainerManager.class);
-    final ExecutorRegistry executorRegistry = injector.getInstance(ExecutorRegistry.class);
+    final Injector baseInjector = Tang.Factory.getTang().newInjector(configuration);
+    baseInjector.bindVolatileInstance(EvaluatorRequestor.class, mock(EvaluatorRequestor.class));
+    final Injector dispatcherInjector = LocalMessageDispatcher.forkInjector(baseInjector);
+    final Injector injector = LocalMessageEnvironment.forkInjector(dispatcherInjector,
+        MessageEnvironment.MASTER_COMMUNICATION_ID);
 
-    final MetricMessageHandler metricMessageHandler = mock(MetricMessageHandler.class);
-    final PubSubEventHandlerWrapper pubSubEventHandler = mock(PubSubEventHandlerWrapper.class);
-    final UpdatePhysicalPlanEventHandler updatePhysicalPlanEventHandler = mock(UpdatePhysicalPlanEventHandler.class);
-    final SchedulingConstraintRegistry schedulingConstraint = injector.getInstance(SchedulingConstraintRegistry.class);
-    final SchedulingPolicy schedulingPolicy = injector.getInstance(SchedulingPolicy.class);
-    final PendingTaskCollectionPointer taskQueue = new PendingTaskCollectionPointer();
-    final SchedulerRunner schedulerRunner = new SchedulerRunner(schedulingConstraint, schedulingPolicy, taskQueue, executorRegistry);
-    final Scheduler scheduler = new BatchSingleJobScheduler(
-        schedulerRunner, taskQueue, master, pubSubEventHandler, updatePhysicalPlanEventHandler, executorRegistry);
+    injector.bindVolatileInstance(PubSubEventHandlerWrapper.class, mock(PubSubEventHandlerWrapper.class));
+    injector.bindVolatileInstance(UpdatePhysicalPlanEventHandler.class, mock(UpdatePhysicalPlanEventHandler.class));
     final AtomicInteger executorCount = new AtomicInteger(0);
-    final ClientRPC clientRPC = mock(ClientRPC.class);
-    final MetricManagerMaster metricManagerMaster = mock(MetricManagerMaster.class);
+    injector.bindVolatileInstance(ClientRPC.class, mock(ClientRPC.class));
+    injector.bindVolatileInstance(MetricManagerMaster.class, mock(MetricManagerMaster.class));
+    injector.bindVolatileInstance(MetricMessageHandler.class, mock(MetricMessageHandler.class));
+    injector.bindVolatileParameter(JobConf.DAGDirectory.class, EMPTY_DAG_DIRECTORY);
 
     // Necessary for wiring up the message environments
-    final RuntimeMaster runtimeMaster =
-        new RuntimeMaster(scheduler, containerManager, master,
-            metricMessageHandler, messageEnvironment, clientRPC, metricManagerMaster, EMPTY_DAG_DIRECTORY);
+    injector.getInstance(RuntimeMaster.class);
+    final BlockManagerMaster master = injector.getInstance(BlockManagerMaster.class);
 
-    final Injector injector1 = Tang.Factory.getTang().newInjector();
-    injector1.bindVolatileInstance(MessageEnvironment.class, messageEnvironment);
-    injector1.bindVolatileInstance(RuntimeMaster.class, runtimeMaster);
-    final BlockManagerMaster master = injector1.getInstance(BlockManagerMaster.class);
-
-    final Injector injector2 = createNameClientInjector();
-    injector2.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
+    final Injector nameClientInjector = createNameClientInjector();
+    nameClientInjector.bindVolatileParameter(JobConf.JobId.class, "data transfer test");
 
     this.master = master;
-    final Pair<BlockManagerWorker, DataTransferFactory> pair1 =
-        createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher, injector2);
+    final Pair<BlockManagerWorker, DataTransferFactory> pair1 = createWorker(
+        EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector, nameClientInjector);
     this.worker1 = pair1.left();
     this.transferFactory = pair1.right();
-    this.worker2 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), messageDispatcher,
-        injector2).left();
+    this.worker2 = createWorker(EXECUTOR_ID_PREFIX + executorCount.getAndIncrement(), dispatcherInjector,
+        nameClientInjector).left();
   }
 
   @After
@@ -177,10 +161,12 @@ public final class DataTransferTest {
 
   private Pair<BlockManagerWorker, DataTransferFactory> createWorker(
       final String executorId,
-      final LocalMessageDispatcher messageDispatcher,
-      final Injector nameClientInjector) {
-    final LocalMessageEnvironment messageEnvironment = new LocalMessageEnvironment(executorId, messageDispatcher);
-    final PersistentConnectionToMasterMap conToMaster = new PersistentConnectionToMasterMap(messageEnvironment);
+      final Injector dispatcherInjector,
+      final Injector nameClientInjector) throws InjectionException {
+    final Injector messageEnvironmentInjector = LocalMessageEnvironment.forkInjector(dispatcherInjector, executorId);
+    final MessageEnvironment messageEnvironment = messageEnvironmentInjector.getInstance(MessageEnvironment.class);
+    final PersistentConnectionToMasterMap conToMaster = messageEnvironmentInjector
+        .getInstance(PersistentConnectionToMasterMap.class);
     final Configuration executorConfiguration = TANG.newConfigurationBuilder()
         .bindNamedParameter(JobConf.ExecutorId.class, executorId)
         .bindNamedParameter(MessageParameters.SenderId.class, executorId)
@@ -191,12 +177,10 @@ public final class DataTransferTest {
     injector.bindVolatileParameter(JobConf.FileDirectory.class, TMP_LOCAL_FILE_DIRECTORY);
     injector.bindVolatileParameter(JobConf.GlusterVolumeDirectory.class, TMP_REMOTE_FILE_DIRECTORY);
     final BlockManagerWorker blockManagerWorker;
-    final MetricManagerWorker metricManagerWorker;
     final SerializerManager serializerManager;
     final DataTransferFactory dataTransferFactory;
     try {
       blockManagerWorker = injector.getInstance(BlockManagerWorker.class);
-      metricManagerWorker = injector.getInstance(MetricManagerWorker.class);
       serializerManager = injector.getInstance(SerializerManager.class);
       serializerManagers.put(blockManagerWorker, serializerManager);
       dataTransferFactory = injector.getInstance(DataTransferFactory.class);
@@ -205,14 +189,7 @@ public final class DataTransferTest {
     }
 
     // Unused, but necessary for wiring up the message environments
-    final Executor executor = new Executor(
-        executorId,
-        conToMaster,
-        messageEnvironment,
-        serializerManager,
-        dataTransferFactory,
-        metricManagerWorker);
-    injector.bindVolatileInstance(Executor.class, executor);
+    injector.getInstance(Executor.class);
 
     return Pair.of(blockManagerWorker, dataTransferFactory);
   }

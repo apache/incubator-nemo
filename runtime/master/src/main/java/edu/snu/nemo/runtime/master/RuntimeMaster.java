@@ -96,14 +96,14 @@ public final class RuntimeMaster {
   private final Server metricServer;
 
   @Inject
-  public RuntimeMaster(final Scheduler scheduler,
-                       final ContainerManager containerManager,
-                       final BlockManagerMaster blockManagerMaster,
-                       final MetricMessageHandler metricMessageHandler,
-                       final MessageEnvironment masterMessageEnvironment,
-                       final ClientRPC clientRPC,
-                       final MetricManagerMaster metricManagerMaster,
-                       @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
+  private RuntimeMaster(final Scheduler scheduler,
+                        final ContainerManager containerManager,
+                        final BlockManagerMaster blockManagerMaster,
+                        final MetricMessageHandler metricMessageHandler,
+                        final MessageEnvironment masterMessageEnvironment,
+                        final ClientRPC clientRPC,
+                        final MetricManagerMaster metricManagerMaster,
+                        @Parameter(JobConf.DAGDirectory.class) final String dagDirectory) {
     // We would like to use a single thread for runtime master operations
     // since the processing logic in master takes a very short amount of time
     // compared to the job completion times of executed jobs
@@ -186,7 +186,9 @@ public final class RuntimeMaster {
         LOG.warn("Terminating master before all executor terminated messages arrived.");
       }
     } catch (final InterruptedException e) {
-      LOG.warn("Waiting executor terminating process interrupted.");
+      LOG.warn("Waiting executor terminating process interrupted: " + e);
+      // clean up state...
+      Thread.currentThread().interrupt();
     }
     runtimeMasterThread.execute(() -> {
       scheduler.terminate();
@@ -197,9 +199,6 @@ public final class RuntimeMaster {
       }
       metricMessageHandler.terminate();
       containerManager.terminate();
-
-      // TODO #?: parameterize file path using Tang
-      metricStore.dumpAllMetricToFile("/tmp/dump");
 
       try {
         metricServer.stop();

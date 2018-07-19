@@ -15,7 +15,6 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
-import com.google.common.annotations.VisibleForTesting;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;
@@ -31,16 +30,15 @@ import java.util.*;
 @DriverSide
 public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy {
 
-  @VisibleForTesting
   @Inject
-  public MinOccupancyFirstSchedulingPolicy() {
+  private MinOccupancyFirstSchedulingPolicy() {
   }
 
   @Override
   public ExecutorRepresenter selectExecutor(final Collection<ExecutorRepresenter> executors, final Task task) {
     final OptionalInt minOccupancy =
         executors.stream()
-        .map(executor -> executor.getRunningTasks().size())
+        .map(executor -> executor.getNumOfRunningTasks())
         .mapToInt(i -> i).min();
 
     if (!minOccupancy.isPresent()) {
@@ -48,7 +46,7 @@ public final class MinOccupancyFirstSchedulingPolicy implements SchedulingPolicy
     }
 
     return executors.stream()
-        .filter(executor -> executor.getRunningTasks().size() == minOccupancy.getAsInt())
+        .filter(executor -> executor.getNumOfRunningTasks() == minOccupancy.getAsInt())
         .findFirst()
         .orElseThrow(() -> new RuntimeException("No such executor"));
   }

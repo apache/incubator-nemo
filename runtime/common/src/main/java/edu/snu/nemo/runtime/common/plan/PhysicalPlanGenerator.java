@@ -82,7 +82,6 @@ public final class PhysicalPlanGenerator implements Function<DAG<IRVertex, IREdg
     // this is needed because of DuplicateEdgeGroupProperty.
     handleDuplicateEdgeGroupProperty(dagOfStages);
 
-
     // Split StageGroup by Pull StageEdges
     splitScheduleGroupByPullStageEdges(dagOfStages);
 
