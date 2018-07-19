@@ -89,7 +89,7 @@ public final class JobLauncher {
     // Registers actions for launching the DAG.
     driverRPCServer
         .registerHandler(ControlMessage.DriverToClientMessageType.DriverStarted, event -> { })
-        .registerHandler(ControlMessage.DriverToClientMessageType.ResourceReady, event -> driverReadyLatch.countDown())
+        .registerHandler(ControlMessage.DriverToClientMessageType.DriverReady, event -> driverReadyLatch.countDown())
         .registerHandler(ControlMessage.DriverToClientMessageType.ExecutionDone, event -> jobDoneLatch.countDown())
         .registerHandler(ControlMessage.DriverToClientMessageType.DataCollected, message -> COLLECTED_DATA.addAll(
             SerializationUtils.deserialize(Base64.getDecoder().decode(message.getDataCollected().getData()))))
@@ -124,7 +124,7 @@ public final class JobLauncher {
       driverReadyLatch = new CountDownLatch(1);
       driverLauncher = DriverLauncher.getLauncher(deployModeConf);
       driverLauncher.submit(jobAndDriverConf, 500);
-      // When the driver is up and the resource is ready, the ResourceReady message is delivered.
+      // When the driver is up and the resource is ready, the DriverReady message is delivered.
 
       // Launch client main
       runUserProgramMain(builtJobConf);
@@ -385,8 +385,7 @@ public final class JobLauncher {
    * @return the collected data.
    */
   public static <T> List<T> getCollectedData() {
-    final List<T> result = new ArrayList<>();
-    result.addAll((List<T>) COLLECTED_DATA);
+    final List<T> result = (List<T>) new ArrayList<>(COLLECTED_DATA);
     COLLECTED_DATA.clear(); // flush after fetching.
     return result;
   }

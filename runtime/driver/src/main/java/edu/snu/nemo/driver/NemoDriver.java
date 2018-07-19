@@ -162,7 +162,7 @@ public final class NemoDriver {
 
       if (finalExecutorLaunched) {
         clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-            .setType(ControlMessage.DriverToClientMessageType.ResourceReady).build());
+            .setType(ControlMessage.DriverToClientMessageType.DriverReady).build());
       }
     }
   }
@@ -171,10 +171,12 @@ public final class NemoDriver {
    * Start user DAG.
    */
   public void startSchedulingUserDAG(final String dagString) {
-    runnerThread.execute(() -> userApplicationRunner.run(dagString));
-    // send driver notification that user application is done.
-    runnerThread.execute(() -> clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
-        .setType(ControlMessage.DriverToClientMessageType.ExecutionDone).build()));
+    runnerThread.execute(() -> {
+      userApplicationRunner.run(dagString);
+      // send driver notification that user application is done.
+      clientRPC.send(ControlMessage.DriverToClientMessage.newBuilder()
+          .setType(ControlMessage.DriverToClientMessageType.ExecutionDone).build());
+    });
   }
 
   /**
