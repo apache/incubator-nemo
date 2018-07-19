@@ -19,6 +19,8 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
+import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelismFive;
+import edu.snu.nemo.examples.beam.policy.SailfishPolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,9 +48,9 @@ public final class PartitionWordsByLengthITCase {
   @Before
   public void setUp() throws Exception {
     builder = new ArgBuilder()
-      .addResourceJson(executorResourceFileName)
-      .addUserMain(PartitionWordsByLength.class.getCanonicalName())
-      .addUserArgs(inputFilePath, outputFilePath);
+        .addResourceJson(executorResourceFileName)
+        .addUserMain(PartitionWordsByLength.class.getCanonicalName())
+        .addUserArgs(inputFilePath, outputFilePath);
   }
 
   @After
@@ -65,8 +67,16 @@ public final class PartitionWordsByLengthITCase {
   @Test (timeout = TIMEOUT)
   public void test() throws Exception {
     JobLauncher.main(builder
-      .addJobId(PartitionWordsByLength.class.getSimpleName())
-      .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
-      .build());
+        .addJobId(PartitionWordsByLengthITCase.class.getSimpleName())
+        .addOptimizationPolicy(DefaultPolicyParallelismFive.class.getCanonicalName())
+        .build());
+  }
+
+  @Test (timeout = TIMEOUT)
+  public void testSailfish() throws Exception {
+    JobLauncher.main(builder
+        .addJobId(PartitionWordsByLengthITCase.class.getSimpleName() + "_sailfish")
+        .addOptimizationPolicy(SailfishPolicyParallelismFive.class.getCanonicalName())
+        .build());
   }
 }
