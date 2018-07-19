@@ -234,11 +234,9 @@ public final class ExecutorRepresenter {
   private Task removeFromRunningTasks(final String taskId) {
     final Task task;
     if (runningComplyingTasks.containsKey(taskId)) {
-      task = runningComplyingTasks.get(taskId);
-      runningComplyingTasks.remove(task);
+      task = runningComplyingTasks.remove(taskId);
     } else if (runningNonComplyingTasks.containsKey(taskId)) {
-      task = runningNonComplyingTasks.get(taskId);
-      runningNonComplyingTasks.remove(task);
+      task = runningNonComplyingTasks.remove(taskId);
     } else {
       throw new RuntimeException(String.format("Task %s not found in its ExecutorRepresenter", taskId));
     }
