@@ -31,7 +31,7 @@ import edu.snu.nemo.runtime.master.resource.ContainerManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import edu.snu.nemo.runtime.master.resource.ResourceSpecification;
 import edu.snu.nemo.common.dag.DAG;
-import edu.snu.nemo.runtime.plangenerator.TestPlanGenerator;
+import edu.snu.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;

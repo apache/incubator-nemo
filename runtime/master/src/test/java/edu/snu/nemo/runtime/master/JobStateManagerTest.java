@@ -25,7 +25,7 @@ import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.state.JobState;
 import edu.snu.nemo.runtime.common.state.StageState;
 import edu.snu.nemo.runtime.common.state.TaskState;
-import edu.snu.nemo.runtime.plangenerator.TestPlanGenerator;
+import edu.snu.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.reef.tang.Injector;
 import org.junit.Before;
 import org.junit.Test;

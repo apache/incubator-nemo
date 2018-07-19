@@ -25,8 +25,8 @@ limitations under the License.
         <relativePath>../../</relativePath>
     </parent>
 
-    <artifactId>nemo-compiler-backend</artifactId>
-    <name>Nemo Compiler Backend</name>
+    <artifactId>nemo-runtime-test</artifactId>
+    <name>Nemo Runtime Test</name>
 
     <repositories>
         <repository>
@@ -38,11 +38,6 @@ limitations under the License.
     <dependencies>
         <dependency>
             <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-	    <dependency>
-            <groupId>edu.snu.nemo</groupId>
             <artifactId>nemo-runtime-common</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -50,7 +45,6 @@ limitations under the License.
             <groupId>edu.snu.nemo</groupId>
             <artifactId>nemo-compiler-optimizer</artifactId>
             <version>${project.version}</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>
