@@ -60,6 +60,11 @@ public final class DataSkewHashPartitioner implements Partitioner<Integer> {
    */
   @Override
   public Integer partition(final Object element) {
-    return Math.abs(keyExtractor.extractKey(element).hashCode() % hashRange);
+    final Object key = keyExtractor.extractKey(element);
+    if (key == null) {
+      return 0;
+    } else {
+      return Math.abs(keyExtractor.extractKey(element).hashCode() % hashRange);
+    }
   }
 }
