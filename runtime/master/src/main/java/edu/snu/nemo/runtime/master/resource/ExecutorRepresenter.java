@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.master.resource;
 
 import com.google.protobuf.ByteString;
+import edu.snu.nemo.common.ir.vertex.executionproperty.ExecutorSlotComplianceProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
@@ -28,6 +29,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * (WARNING) This class is not thread-safe, and thus should only be accessed through ExecutorRegistry.
@@ -45,7 +47,8 @@ public final class ExecutorRepresenter {
 
   private final String executorId;
   private final ResourceSpecification resourceSpecification;
-  private final Set<Task> runningTasks;
+  private final Map<String, Task> runningComplyingTasks;
+  private final Map<String, Task> runningNonComplyingTasks;
   private final Map<Task, Integer> runningTaskToAttempt;
   private final Set<Task> completeTasks;
   private final Set<Task> failedTasks;
@@ -72,7 +75,8 @@ public final class ExecutorRepresenter {
     this.executorId = executorId;
     this.resourceSpecification = resourceSpecification;
     this.messageSender = messageSender;
-    this.runningTasks = new HashSet<>();
+    this.runningComplyingTasks = new HashMap<>();
+    this.runningNonComplyingTasks = new HashMap<>();
     this.runningTaskToAttempt = new HashMap<>();
     this.completeTasks = new HashSet<>();
     this.failedTasks = new HashSet<>();
@@ -85,12 +89,13 @@ public final class ExecutorRepresenter {
    * Marks all Tasks which were running in this executor as failed.
    */
   public Set<String> onExecutorFailed() {
-    failedTasks.addAll(runningTasks);
-    final Set<String> snapshot = runningTasks.stream()
-        .map(Task::getTaskId)
-        .collect(Collectors.toSet());
-    runningTasks.clear();
-    return snapshot;
+    failedTasks.addAll(runningComplyingTasks.values());
+    failedTasks.addAll(runningNonComplyingTasks.values());
+    final Set<String> taskIds = Stream.concat(runningComplyingTasks.keySet().stream(),
+        runningNonComplyingTasks.keySet().stream()).collect(Collectors.toSet());
+    runningComplyingTasks.clear();
+    runningNonComplyingTasks.clear();
+    return taskIds;
   }
 
   /**
@@ -98,25 +103,23 @@ public final class ExecutorRepresenter {
    * @param task
    */
   public void onTaskScheduled(final Task task) {
-    runningTasks.add(task);
+    (task.getPropertyValue(ExecutorSlotComplianceProperty.class).orElse(true)
+        ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
     failedTasks.remove(task);
 
-    serializationExecutorService.submit(new Runnable() {
-      @Override
-      public void run() {
-        final byte[] serialized = SerializationUtils.serialize(task);
-        sendControlMessage(
-            ControlMessage.Message.newBuilder()
-                .setId(RuntimeIdGenerator.generateMessageId())
-                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-                .setType(ControlMessage.MessageType.ScheduleTask)
-                .setScheduleTaskMsg(
-                    ControlMessage.ScheduleTaskMsg.newBuilder()
-                        .setTask(ByteString.copyFrom(serialized))
-                        .build())
-                .build());
-      }
+    serializationExecutorService.submit(() -> {
+      final byte[] serialized = SerializationUtils.serialize(task);
+      sendControlMessage(
+          ControlMessage.Message.newBuilder()
+              .setId(RuntimeIdGenerator.generateMessageId())
+              .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+              .setType(ControlMessage.MessageType.ScheduleTask)
+              .setScheduleTaskMsg(
+                  ControlMessage.ScheduleTaskMsg.newBuilder()
+                      .setTask(ByteString.copyFrom(serialized))
+                      .build())
+              .build());
     });
   }
 
@@ -133,11 +136,7 @@ public final class ExecutorRepresenter {
    *
    */
   public void onTaskExecutionComplete(final String taskId) {
-    Task completedTask = runningTasks.stream()
-        .filter(task -> task.getTaskId().equals(taskId)).findFirst()
-        .orElseThrow(() -> new RuntimeException("Completed task not found in its ExecutorRepresenter"));
-
-    runningTasks.remove(completedTask);
+    final Task completedTask = removeFromRunningTasks(taskId);
     runningTaskToAttempt.remove(completedTask);
     completeTasks.add(completedTask);
   }
@@ -147,11 +146,7 @@ public final class ExecutorRepresenter {
    * @param taskId id of the Task
    */
   public void onTaskExecutionFailed(final String taskId) {
-    Task failedTask = runningTasks.stream()
-        .filter(task -> task.getTaskId().equals(taskId)).findFirst()
-        .orElseThrow(() -> new RuntimeException("Failed task not found in its ExecutorRepresenter"));
-
-    runningTasks.remove(failedTask);
+    final Task failedTask = removeFromRunningTasks(taskId);
     runningTaskToAttempt.remove(failedTask);
     failedTasks.add(failedTask);
   }
@@ -167,7 +162,29 @@ public final class ExecutorRepresenter {
    * @return the current snapshot of set of Tasks that are running in this executor.
    */
   public Set<Task> getRunningTasks() {
-    return Collections.unmodifiableSet(new HashSet<>(runningTasks));
+    return Stream.concat(runningComplyingTasks.values().stream(),
+        runningNonComplyingTasks.values().stream()).collect(Collectors.toSet());
+  }
+
+  /**
+   * @return the number of running {@link Task}s.
+   */
+  public int getNumOfRunningTasks() {
+    return getNumOfComplyingRunningTasks() + getNumOfNonComplyingRunningTasks();
+  }
+
+  /**
+   * @return the number of running {@link Task}s that complies to the executor slot restriction.
+   */
+  public int getNumOfComplyingRunningTasks() {
+    return runningComplyingTasks.size();
+  }
+
+  /**
+   * @return the number of running {@link Task}s that does not comply to the executor slot restriction.
+   */
+  public int getNumOfNonComplyingRunningTasks() {
+    return runningNonComplyingTasks.size();
   }
 
   /**
@@ -202,10 +219,30 @@ public final class ExecutorRepresenter {
   public String toString() {
     final StringBuffer sb = new StringBuffer("ExecutorRepresenter{");
     sb.append("executorId='").append(executorId).append('\'');
-    sb.append(", runningTasks=").append(runningTasks);
+    sb.append(", runningTasks=").append(getRunningTasks());
     sb.append(", failedTasks=").append(failedTasks);
     sb.append('}');
     return sb.toString();
+  }
+
+  /**
+   * Removes the specified {@link Task} from the map of running tasks.
+   *
+   * @param taskId id of the task to remove
+   * @return the removed {@link Task}
+   */
+  private Task removeFromRunningTasks(final String taskId) {
+    final Task task;
+    if (runningComplyingTasks.containsKey(taskId)) {
+      task = runningComplyingTasks.get(taskId);
+      runningComplyingTasks.remove(task);
+    } else if (runningNonComplyingTasks.containsKey(taskId)) {
+      task = runningNonComplyingTasks.get(taskId);
+      runningNonComplyingTasks.remove(task);
+    } else {
+      throw new RuntimeException(String.format("Task %s not found in its ExecutorRepresenter", taskId));
+    }
+    return task;
   }
 }
 
