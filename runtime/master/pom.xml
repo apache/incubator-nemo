@@ -48,7 +48,7 @@ limitations under the License.
         </dependency>
         <dependency>
             <groupId>edu.snu.nemo</groupId>
-            <artifactId>nemo-runtime-plangenerator</artifactId>
+            <artifactId>nemo-runtime-test</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
