@@ -12,12 +12,26 @@
 <script>
 import { DataSet } from 'vue2vis';
 
+const FIT_THROTTLE_INTERVAL = 500;
+const REDRAW_DELAY = 300;
+
 export default {
   props: ['metric', 'groups'],
 
   beforeMount() {
+    this.$eventBus.$on('redraw-timeline', () => {
+      setTimeout(this.redrawTimeline, REDRAW_DELAY);
+    });
+
     this.$eventBus.$on('fit-timeline', () => {
-      this.fitTimeline();
+      if (this.fitThrottleTimer) {
+        return;
+      }
+
+      this.fitThrottleTimer = setTimeout(() => {
+        this.fitTimeline();
+        this.fitThrottleTimer = null;
+      }, FIT_THROTTLE_INTERVAL);
     });
 
     this.$eventBus.$on('move-timeline', ( time ) => {
@@ -31,14 +45,27 @@ export default {
         // TODO: this should be modified to adjust somewhere adequate
         start: new Date(1530765471863),
         end: new Date(1530765471863),
-      }
+      },
+
+      fitThrottleTimer: undefined,
     };
   },
 
+  computed: {
+    timeline() {
+      return this.$refs.timeline;
+    },
+  },
+
   methods: {
+    redrawTimeline() {
+      this.timeline.redraw();
+      this.timeline.fit();
+    },
+
     fitTimeline() {
       try {
-        this.$refs.timeline.fit();
+        this.timeline.fit();
       } catch (e) {
         console.warn('Error when fitting the timeline');
       }
@@ -46,7 +73,7 @@ export default {
 
     moveTimeline(time) {
       try {
-        this.$refs.timeline.moveTo(time, false);
+        this.timeline.moveTo(time, false);
       } catch (e) {
         console.warn('Error when moving the timeline');
       }

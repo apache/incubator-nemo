@@ -1,8 +1,8 @@
 <template>
   <div>
-    <el-collapse v-model="collapseActiveNames">
-      <el-collapse-item name="timeline">
-        <template slot="title">
+    <el-tabs @tab-click="handleTabClick">
+      <el-tab-pane>
+        <template slot="label">
           Timeline <i class="el-icon-time"></i>
         </template>
         <metric-timeline
@@ -10,14 +10,14 @@
         :metric="metricDataSet"
         :groups="groupDataSet">
         </metric-timeline>
-      </el-collapse-item>
-      <el-collapse-item name="dag">
-        <template slot="title">
+      </el-tab-pane>
+      <el-tab-pane>
+        <template slot="label">
           DAG
         </template>
         <dag :dag="dag"></dag>
-      </el-collapse-item>
-    </el-collapse>
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
@@ -26,14 +26,7 @@ import Vue from 'vue';
 import MetricTimeline from '~/components/MetricTimeline';
 import DAG from '~/components/DAG';
 import { DataSet } from 'vue2vis';
-
-// valid state string
-const STATE = {
-  READY: 'READY',
-  EXECUTING: 'EXECUTING',
-  INCOMPLETE: 'INCOMPLETE',
-  COMPLETE: 'COMPLETE',
-};
+import { STATE } from '~/assets/constants';
 
 // list of metric, order of elements matters.
 const METRIC_LIST = [
@@ -87,6 +80,15 @@ export default {
   },
 
   methods: {
+    handleTabClick({ index }) {
+      if (index === '0') {
+        this.$eventBus.$emit('redraw-timeline');
+      }
+      else if (index === '1') {
+        this.$eventBus.$emit('rerender-dag');
+      }
+    },
+
     async processMetric(metric) {
       // specific event broadcast
       if ('metricType' in metric) {
@@ -123,6 +125,10 @@ export default {
           if (event.prevState === STATE.INCOMPLETE) {
             // Stage does not have READY, so it cannot be represented as
             // a range of timeline. So the only needed field is `start`.
+            this.$eventBus.$emit('stageEvent', {
+              stageId: data.id,
+              state: STATE.COMPLETE,
+            });
             newItem.start = new Date(event.timestamp);
             newItem.content = data.id + ' COMPLETE';
           } else if (event.prevState === STATE.READY) {
@@ -178,7 +184,7 @@ export default {
         this.closeWebSocket();
       }
 
-      this.ws = new WebSocket('ws://localhost:10101/api/websocket');
+      this.ws = new WebSocket('ws://127.0.0.1:10101/api/websocket');
 
       this.ws.onopen = (event) => {
         // clear metric

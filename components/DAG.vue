@@ -1,7 +1,7 @@
 <template>
-  <div>
-    <canvas class="dag-canvas" id="dag-canvas"></canvas>
-    <button @click="drawDAG()">DRAW</button>
+  <div ref="canvasContainer" class="dag-canvas-container">
+    <p v-if="!dag">DAG is not ready.</p>
+    <canvas :class="{dag: dag-canvas}" id="dag-canvas"></canvas>
   </div>
 </template>
 
@@ -10,69 +10,35 @@ import { fabric } from 'fabric';
 import { Graph } from '@dagrejs/graphlib';
 import graphlib from '@dagrejs/graphlib';
 import dagre from 'dagre';
+import { STATE } from '~/assets/constants';
+
+const DEBOUNCE_INTERVAL = 200;
 
 const VERTEX_WIDTH = 50;
 const VERTEX_HEIGHT = 30;
 const VERTEX_RADIUS = 4;
 const PAN_MARGIN = 20;
 
+const CANVAS_RATIO = 0.75;
+const MAX_ZOOM = 20;
+const MIN_ZOOM = 0.01;
+
+const DEBUG = false;
+
 export default {
 
   mounted() {
-    this.canvas = new fabric.Canvas('dag-canvas');
-    this.canvas.setWidth(800);
-    this.canvas.setHeight(300);
-    this.canvas.selection = false;
-    this.$eventBus.$on('dag', data => {
-      this.dag = data;
+    this.initializeCanvas();
+    this.setUpEventListener();
+
+    // debug
+    if (DEBUG) {
+      this.dag = require('~/assets/monster.json').dag;
+      this.resizeCanvas(false);
       this.drawDAG();
-    });
-
-    // FOR DEBUG
-    this.dag = require('~/assets/monster.json').dag;
-    this.drawDAG();
-    // FOR DEBUG END
-
-    // zoom feature
-    this.canvas.on('mouse:wheel', option => {
-      let delta = option.e.deltaY;
-      let zoom = this.canvas.getZoom();
-      zoom += delta / 200;
-      if (zoom > 20) {
-        zoom = 20;
-      } else if (zoom < 0.01) {
-        zoom = 0.01;
-      }
-      this.canvas.zoomToPoint({
-        x: option.e.offsetX,
-        y: option.e.offsetY,
-      }, zoom);
-      option.e.preventDefault();
-      option.e.stopPropagation();
-    });
-
-    // pan feature
-    this.canvas.on('mouse:down', option => {
-      let e = option.e;
-      this.isDragging = true;
-      this.lastXCoord = e.clientX;
-      this.lastYCoord = e.clientY;
-    });
-
-    this.canvas.on('mouse:move', option => {
-      if (this.isDragging) {
-        const e = option.e;
-        this.canvas.viewportTransform[4] += e.clientX - this.lastXCoord;
-        this.canvas.viewportTransform[5] += e.clientY - this.lastYCoord;
-        this.canvas.requestRenderAll();
-        this.lastXCoord = e.clientX;
-        this.lastYCoord = e.clientY;
-      }
-    });
-
-    this.canvas.on('mouse:up', option => {
-      this.isDragging = false;
-    });
+      this.fitCanvas();
+    }
+    // debug end
   },
 
   data() {
@@ -81,8 +47,12 @@ export default {
       isDragging: false,
       lastXCoord: 0,
       lastYCoord: 0,
+      resizeDebounceTimer: undefined,
+      lastViewportX: 0,
+      lastViewportY: 0,
 
       dag: undefined,
+      firstDagRender: false,
 
       stageGraph: undefined,
       verticesGraph: {},
@@ -92,10 +62,27 @@ export default {
 
       // object vertexId -> fabric.Circle of vertex
       vertices: {},
+      // object stageId -> fabric.Rect of stage
+      stages: {},
     };
   },
 
   computed: {
+
+    dagWidth() {
+      if (!this.stageGraph) {
+        return undefined;
+      }
+      return this.stageGraph.graph().width;
+    },
+
+    dagHeight() {
+      if (!this.stageGraph) {
+        return undefined;
+      }
+      return this.stageGraph.graph().height;
+    },
+
     stageIdArray() {
       if (!this.dag) {
         return undefined;
@@ -109,9 +96,135 @@ export default {
       }
       return this.dag.edges;
     },
+
   },
 
   methods: {
+
+    initializeCanvas() {
+      this.canvas = new fabric.Canvas('dag-canvas');
+      this.canvas.selection = false;
+    },
+
+    resizeCanvas(fit) {
+      if (!this.canvas) {
+        return;
+      }
+
+      if (this.resizeDebounceTimer) {
+        clearTimeout(this.resizeDebounceTimer);
+      }
+
+      this.resizeDebounceTimer = setTimeout(() => {
+        let w = this.$refs.canvasContainer.offsetWidth;
+        this.canvas.setWidth(w);
+        this.canvas.setHeight(w * CANVAS_RATIO);
+        if (fit) {
+          this.fitCanvas();
+        }
+      }, DEBOUNCE_INTERVAL);
+    },
+
+    setUpEventListener() {
+      if (process.browser) {
+        window.addEventListener('resize',
+          () => this.resizeCanvas(true), false);
+      }
+
+      this.$eventBus.$on('rerender-dag', () => {
+        if (this.firstDagRender) {
+          this.firstDagRender = false;
+          this.resizeCanvas(true);
+        } else {
+          this.resizeCanvas(false);
+        }
+        this.canvas.viewportTransform[4] = this.lastViewportX;
+        this.canvas.viewportTransform[5] = this.lastViewportY;
+        //this.canvas.calcOffset();
+      });
+
+      // new dag event
+      this.$eventBus.$on('dag', data => {
+        this.setUpCanvasMouseEventHandler();
+        this.dag = data;
+        this.drawDAG();
+        this.fitCanvas();
+        this.canvas.viewportTransform[4] = this.lastViewportX;
+        this.canvas.viewportTransform[5] = this.lastViewportY;
+        this.firstDagRender = true;
+      });
+
+      // stage state transition event
+      this.$eventBus.$on('stageEvent', ({ stageId, state }) => {
+        if (!stageId || !(stageId in this.stages)) {
+          return;
+        }
+
+        const stage = this.stages[stageId];
+
+        if (state == STATE.COMPLETE) {
+          stage.set('fill', 'green');
+          this.canvas.renderAll();
+        }
+      });
+    },
+
+    setUpCanvasMouseEventHandler() {
+      // zoom feature
+      this.canvas.on('mouse:wheel', option => {
+        let delta = option.e.deltaY;
+        let zoom = this.canvas.getZoom();
+        zoom += delta / 200;
+        if (zoom > MAX_ZOOM) {
+          zoom = MAX_ZOOM;
+        } else if (zoom < MIN_ZOOM) {
+          zoom = MIN_ZOOM;
+        }
+        this.canvas.zoomToPoint({
+          x: option.e.offsetX,
+          y: option.e.offsetY,
+        }, zoom);
+        this.lastViewportX = this.canvas.viewportTransform[4];
+        this.lastViewportY = this.canvas.viewportTransform[5];
+        option.e.preventDefault();
+        option.e.stopPropagation();
+      });
+
+      // pan feature
+      this.canvas.on('mouse:down', option => {
+        let e = option.e;
+        this.isDragging = true;
+        this.lastXCoord = e.clientX;
+        this.lastYCoord = e.clientY;
+      });
+
+      this.canvas.on('mouse:move', option => {
+        if (this.isDragging) {
+          const e = option.e;
+          this.canvas.viewportTransform[4] += e.clientX - this.lastXCoord;
+          this.canvas.viewportTransform[5] += e.clientY - this.lastYCoord;
+          this.lastViewportX = this.canvas.viewportTransform[4];
+          this.lastViewportY = this.canvas.viewportTransform[5];
+          this.canvas.requestRenderAll();
+          this.lastXCoord = e.clientX;
+          this.lastYCoord = e.clientY;
+        }
+      });
+
+      this.canvas.on('mouse:up', option => {
+        this.isDragging = false;
+      });
+    },
+
+    fitCanvas() {
+      let widthRatio = this.canvas.width / this.dagWidth;
+      let heightRatio = this.canvas.height / this.dagHeight;
+      let targetRatio = widthRatio > heightRatio ?
+        heightRatio : widthRatio;
+      this.canvas.setZoom(targetRatio);
+      this.canvas.renderAll();
+    },
+
     getInnerIrDag(stageId) {
       return this.dag.vertices.find(v => v.id == stageId).properties.irDag;
     },
@@ -123,7 +236,6 @@ export default {
         const irDag = this.getInnerIrDag(stageId);
         const innerEdges = irDag.edges;
         const innerVertices = irDag.vertices;
-        const vertexCount = innerVertices.length;
         let objectArray = [];
 
         // get inner vertex layout
@@ -222,6 +334,8 @@ export default {
           strokeWidth: 2,
         });
 
+        this.stages[stage.label] = stageRect;
+
         const sg = this.stageGroups[stage.label];
         // add rect to group
         sg.addWithUpdate(stageRect);
@@ -268,3 +382,9 @@ export default {
   }
 }
 </script>
+<style>
+.dag-canvas {
+  box-sizing: border-box;
+  border: 2px solid black;
+}
+</style>
