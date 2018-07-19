@@ -120,7 +120,6 @@ public final class UserApplicationRunner {
 
       jobStateManager.storeJSON(dagDirectory, "final");
       LOG.info("{} is complete!", physicalPlan.getId());
-      runtimeMaster.terminate();
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }

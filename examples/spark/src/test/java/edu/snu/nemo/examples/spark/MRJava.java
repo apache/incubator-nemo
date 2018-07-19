@@ -66,8 +66,30 @@ public final class MRJava {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }
   }
+  /* TODO #152: enable execution of multiple jobs (call scheduleJob multiple times with caching).
+  @Test(timeout = TIMEOUT)
+  public void testSparkWordAndLineCount() throws Exception {
+    final String inputFileName = "sample_input_wordcount_spark";
+    final String outputFileName = "sample_output_word_and_line_count";
+    final String testResourceFilename = "test_output_word_and_line_count";
+    final String inputFilePath = fileBasePath + inputFileName;
+    final String outputFilePath = fileBasePath + outputFileName;
 
-  /* Temporary disabled because of Travis issue
+    JobLauncher.main(builder
+        .addJobId(JavaWordAndLineCount.class.getSimpleName() + "_test")
+        .addUserMain(JavaWordAndLineCount.class.getCanonicalName())
+        .addUserArgs(inputFilePath, outputFilePath)
+        .addOptimizationPolicy(DefaultPolicy.class.getCanonicalName())
+        .build());
+
+    try {
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName, testResourceFilename);
+    } finally {
+      ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
+    }
+  }
+
+  /* Temporary disabled due to Travis issue
   @Test(timeout = TIMEOUT)
   public void testSparkMapReduce() throws Exception {
     final String inputFileName = "sample_input_wordcount_spark";
