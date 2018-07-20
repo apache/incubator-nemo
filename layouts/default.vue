@@ -7,9 +7,13 @@
     </el-header>
     <el-container>
       <el-main>
-        <div class="main-container">
-          <nuxt/>
-        </div>
+        <el-row type="flex" justify="center">
+          <el-col :span="20">
+            <div class="main-container">
+              <nuxt/>
+            </div>
+          </el-col>
+        </el-row>
       </el-main>
     </el-container>
   </el-container>
@@ -38,7 +42,6 @@ html {
 }
 
 .main-container {
-  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
 }
