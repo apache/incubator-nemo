@@ -382,7 +382,7 @@ public final class TaskExecutor {
       // For this looping of available fetchers.
       int finishedFetcherIndex = NONE_FINISHED;
       for (int i = 0; i < availableFetchers.size(); i++) {
-        final DataFetcher dataFetcher = fetchers.get(i);
+        final DataFetcher dataFetcher = availableFetchers.get(i);
         final Object element;
         try {
           element = dataFetcher.fetchDataElement();
