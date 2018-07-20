@@ -104,7 +104,7 @@ public final class NodeNamesAssignmentPass extends AnnotatingPass {
       } else if (isOneToOneEdge(inEdges)) {
         LOG.info(String.format("Setting %s - is o2o from %s", irVertex.getId(),
             inEdges.iterator().next().getSrc().getId()));
-        final Optional<HashMap<String, Integer>> property = inEdges.iterator().next()
+        final Optional<HashMap<String, Integer>> property = inEdges.iterator().next().getSrc()
             .getExecutionProperties().get(NodeNamesProperty.class);
         irVertex.getExecutionProperties().put(NodeNamesProperty.of(property.get()));
       } else {
