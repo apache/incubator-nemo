@@ -20,6 +20,7 @@ import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
+import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageContext;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
@@ -388,6 +389,7 @@ public final class RuntimeMaster {
         .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
 
     if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
+      LOG.info("Task-{} received dataSizeMetricMsg", RuntimeIdGenerator.getTaskIndexFromBlockId(blockId));
       final MetricCollectionBarrierVertex<Integer, Long> metricCollectionBarrierVertex =
           (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
 

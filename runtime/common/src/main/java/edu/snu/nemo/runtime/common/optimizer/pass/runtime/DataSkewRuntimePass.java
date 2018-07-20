@@ -52,9 +52,10 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
   /**
    * Constructor.
    */
-  public DataSkewRuntimePass() {
+  public DataSkewRuntimePass(final int numOfSkewedKeys) {
     this.eventHandlers = Collections.singleton(
         DynamicOptimizationEventHandler.class);
+    this.numSkewedKeys = 3;
   }
 
   public DataSkewRuntimePass setNumSkewedKeys(final int numOfSkewedKeys) {

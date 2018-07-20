@@ -35,15 +35,7 @@ public final class DataSkewPolicy implements Policy {
    */
   public DataSkewPolicy() {
     this.policy = new PolicyBuilder(true)
-        .registerRuntimePass(new DataSkewRuntimePass(), new DataSkewCompositePass())
-        .registerCompileTimePass(new LoopOptimizationCompositePass())
-        .registerCompileTimePass(new PrimitiveCompositePass())
-        .build();
-  }
-
-  public DataSkewPolicy(final int skewness) {
-    this.policy = new PolicyBuilder(true)
-        .registerRuntimePass(new DataSkewRuntimePass().setNumSkewedKeys(skewness), new DataSkewCompositePass())
+        .registerRuntimePass(new DataSkewRuntimePass(10), new DataSkewCompositePass())
         .registerCompileTimePass(new LoopOptimizationCompositePass())
         .registerCompileTimePass(new PrimitiveCompositePass())
         .build();

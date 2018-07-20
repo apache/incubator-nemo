@@ -366,7 +366,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   private void onTaskExecutionComplete(final String executorId,
                                        final String taskId,
                                        final boolean isOnHoldToComplete) {
-    LOG.debug("{} completed in {}", new Object[]{taskId, executorId});
+    LOG.info("{} completed in {}", new Object[]{taskId, executorId});
     if (!isOnHoldToComplete) {
       executorRegistry.updateExecutor(executorId, (executor, state) -> {
         executor.onTaskExecutionComplete(taskId);

@@ -301,6 +301,7 @@ public final class BlockManagerWorker {
                   .addAllPartitionSize(partitionSizeEntries)
               )
               .build());
+      LOG.info("Task-{} sent datasizeMetricMsg", RuntimeIdGenerator.getTaskIndexFromBlockId(blockId));
     }
   }
 
