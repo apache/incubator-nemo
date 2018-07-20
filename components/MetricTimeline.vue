@@ -16,7 +16,7 @@ const FIT_THROTTLE_INTERVAL = 500;
 const REDRAW_DELAY = 300;
 
 export default {
-  props: ['metric', 'groups'],
+  props: ['metric', 'groups', 'metricLookupMap'],
 
   beforeMount() {
     this.$eventBus.$on('redraw-timeline', () => {

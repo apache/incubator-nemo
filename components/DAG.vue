@@ -22,12 +22,13 @@ const PAN_MARGIN = 20;
 const CANVAS_RATIO = 0.75;
 const MAX_ZOOM = 20;
 const MIN_ZOOM = 0.01;
+const TARGET_FIND_TOLERANCE = 4;
 
-const DEBUG = true;
+const DEBUG = false;
 
 export default {
 
-  props: ['metricDataSet'],
+  props: ['metricDataSet', 'metricLookupMap'],
 
   mounted() {
     this.initializeCanvas();
@@ -39,6 +40,7 @@ export default {
       this.resizeCanvas(false);
       this.drawDAG();
       this.fitCanvas();
+      this.setUpCanvasMouseEventHandler();
     }
     // debug end
   },
@@ -101,10 +103,10 @@ export default {
   },
 
   methods: {
-
     initializeCanvas() {
       this.canvas = new fabric.Canvas('dag-canvas');
       this.canvas.selection = false;
+      this.canvas.targetFindTolerance = TARGET_FIND_TOLERANCE;
     },
 
     resizeCanvas(fit) {
@@ -197,10 +199,6 @@ export default {
         this.isDragging = true;
         this.lastXCoord = e.clientX;
         this.lastYCoord = e.clientY;
-
-        if (option.target) {
-          this.handleObjectClick(option.target);
-        }
       });
 
       this.canvas.on('mouse:move', option => {
@@ -231,22 +229,22 @@ export default {
     },
 
     getInnerIrDag(stageId) {
-      return this.dag.vertices.find(v => v.id == stageId).properties.irDag;
+      return this.dag.vertices.find(v => v.id === stageId).properties.irDag;
     },
 
-    handleObjectClick(obj) {
-      console.log(obj.metricId);
+    handleObjectClick({ metricId }) {
+      this.$eventBus.$emit('metric-selected', metricId);
     },
 
     drawDAG() {
       this.canvas.clear();
 
+      let objectArray = [];
       // configure stage layout based on inner vertices
       this.stageIdArray.forEach(stageId => {
         const irDag = this.getInnerIrDag(stageId);
         const innerEdges = irDag.edges;
         const innerVertices = irDag.vertices;
-        let objectArray = [];
 
         // initialize stage inner object array
         this.stageInnerObjects[stageId] = [];
@@ -313,6 +311,7 @@ export default {
             fill: 'transparent',
             stroke: 'black',
             strokeWidth: 2,
+            perPixelTargetFind: true,
             selectable: false,
           });
 
@@ -324,9 +323,6 @@ export default {
           this.stageInnerObjects[stageId].push(pathObj);
         });
 
-        objectArray.forEach(obj => {
-          this.canvas.add(obj);
-        });
       });
 
       this.stageGraph = new Graph();
@@ -394,6 +390,7 @@ export default {
           fill: 'transparent',
           stroke: 'black',
           strokeWidth: 2,
+          perPixelTargetFind: true,
           selectable: false,
         });
 
@@ -419,6 +416,10 @@ export default {
           obj.set('left', dx);
           obj.set('top', dy);
         })
+      });
+
+      objectArray.forEach(obj => {
+        this.canvas.add(obj);
       });
     },
   }

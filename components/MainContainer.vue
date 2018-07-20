@@ -3,21 +3,39 @@
     <el-tabs @tab-click="handleTabClick">
       <el-tab-pane>
         <template slot="label">
-          Timeline <i class="el-icon-time"></i>
+          Timeline <i class="el-icon-time"/>
         </template>
         <metric-timeline
-         ref="metricTimeline"
-        :metric="metricDataSet"
-        :groups="groupDataSet">
-        </metric-timeline>
+           ref="metricTimeline"
+          :metric="metricDataSet"
+          :metricLookupMap="metricLookupMap"
+          :groups="groupDataSet"/>
       </el-tab-pane>
       <el-tab-pane>
         <template slot="label">
           DAG
         </template>
-        <dag :metricDataSet="metricDataSet"></dag>
+        <dag
+          :metricDataSet="metricDataSet"
+          :metricLookupMap="metricLookupMap"/>
       </el-tab-pane>
     </el-tabs>
+    <el-table
+      empty-text="No data"
+      :row-class-name="_rowClassName"
+      :data="tableData">
+      <el-table-column type="expand">
+        <template slot-scope="props">
+          <ul>
+            <li v-for="ep in props.row.extra" :key="ep.key">
+              {{ ep.key }}: {{ ep.value }}
+            </li>
+          </ul>
+        </template>
+      </el-table-column>
+      <el-table-column label="Key" prop="key"/>
+      <el-table-column label="Value" prop="value"/>
+    </el-table>
   </div>
 </template>
 
@@ -61,17 +79,18 @@ export default {
 
       // dag data
       dag: undefined,
+      metricLookupMap: {}, // metricId -> data
 
       // websocket object
       ws: undefined,
 
       // element-ui specific
       collapseActiveNames: ['timeline', 'dag'],
+      tableData: [],
     };
   },
 
   beforeMount() {
-    // this.prepareWebSocket();
     this.tryReconnect();
 
     // predefine group sets
@@ -81,14 +100,79 @@ export default {
         content: metricType
       });
     });
+
+    this.$eventBus.$on('metric-selected', metricId => {
+      this.tableData = [];
+      const metric = this.metricLookupMap[metricId];
+      Object.keys(metric).forEach(key => {
+        if (typeof metric[key] === 'object') {
+          if (key === 'executionProperties') {
+            let executionPropertyArray = [];
+            Object.keys(metric[key]).forEach(ep => {
+              executionPropertyArray.push({
+                key: ep,
+                value: metric[key][ep]
+              });
+            });
+            this.tableData.push({
+              key: key,
+              value: '',
+              extra: executionPropertyArray,
+            });
+          }
+        } else {
+          this.tableData.push({
+            key: key,
+            value: metric[key],
+          });
+        }
+      });
+
+    });
   },
 
   methods: {
+    _rowClassName(rowObject) {
+      if (rowObject.row.extra) {
+        return '';
+      }
+      return 'no-expand'
+    },
+
+    _flatten(metric) {
+      let newMetric = {};
+      Object.keys(metric).forEach(key => {
+        if (key === 'properties') {
+          Object.assign(newMetric, this._flatten(metric[key]));
+        } else if (key !== 'irDag') {
+          newMetric[key] = metric[key];
+        }
+      });
+
+      return newMetric;
+    },
+
+    buildMetricLookupMap() {
+      this.dag.vertices.forEach(stage => {
+        this.metricLookupMap[stage.id] = this._flatten(stage);
+        stage.properties.irDag.vertices.forEach(vertex => {
+          this.metricLookupMap[vertex.id] = this._flatten(vertex);
+        });
+        stage.properties.irDag.edges.forEach(edge => {
+          const edgeId = edge.properties.runtimeEdgeId;
+          this.metricLookupMap[edgeId] = this._flatten(edge);
+        });
+      });
+      this.dag.edges.forEach(edge => {
+        const edgeId = edge.properties.runtimeEdgeId;
+        this.metricLookupMap[edgeId] = this._flatten(edge);
+      });
+    },
+
     handleTabClick({ index }) {
       if (index === '0') {
         this.$eventBus.$emit('redraw-timeline');
-      }
-      else if (index === '1') {
+      } else if (index === '1') {
         this.$eventBus.$emit('rerender-dag');
       }
     },
@@ -126,6 +210,7 @@ export default {
       if (data.dag && !this.dag) {
         this.dag = data.dag;
         this.$eventBus.$emit('dag', this.dag);
+        this.buildMetricLookupMap();
       }
 
       data.stateTransitionEvents
@@ -247,3 +332,12 @@ export default {
   }
 }
 </script>
+<style>
+.no-expand .el-icon {
+  display: none;
+}
+
+.no-expand .el-table__expand-icon {
+  pointer-events: none;
+}
+</style>
