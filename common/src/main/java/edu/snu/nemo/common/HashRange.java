@@ -122,9 +122,6 @@ public final class HashRange implements KeyRange<Integer> {
     return result;
   }
 
-  public void setAsSkewed() {
-    isSkewed = true;
-  }
   public boolean isSkewed() {
     return isSkewed;
   }

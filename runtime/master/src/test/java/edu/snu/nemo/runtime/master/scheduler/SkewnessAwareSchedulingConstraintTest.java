@@ -39,19 +39,19 @@ import static org.mockito.Mockito.when;
 @PrepareForTest({ExecutorRepresenter.class, Task.class, HashRange.class, StageEdge.class})
 public final class SkewnessAwareSchedulingConstraintTest {
 
-  private static StageEdge mockStageEdge() {
+  private static StageEdge mockStageEdge(final int numSkewedHashRange,
+                                         final int numTotalHashRange) {
     final Map<Integer, KeyRange> taskIdxToKeyRange = new HashMap<>();
 
-    final HashRange skewedHashRange1 = mock(HashRange.class);
-    when(skewedHashRange1.isSkewed()).thenReturn(true);
-    final HashRange skewedHashRange2 = mock(HashRange.class);
-    when(skewedHashRange2.isSkewed()).thenReturn(true);
-    final HashRange hashRange = mock(HashRange.class);
-    when(hashRange.isSkewed()).thenReturn(false);
-
-    taskIdxToKeyRange.put(0, skewedHashRange1);
-    taskIdxToKeyRange.put(1, skewedHashRange2);
-    taskIdxToKeyRange.put(2, hashRange);
+    for (int taskIdx = 0; taskIdx < numTotalHashRange; taskIdx++) {
+      final HashRange hashRange = mock(HashRange.class);
+      if (taskIdx < numSkewedHashRange) {
+        when(hashRange.isSkewed()).thenReturn(true);
+      } else {
+        when(hashRange.isSkewed()).thenReturn(false);
+      }
+      taskIdxToKeyRange.put(taskIdx, hashRange);
+    }
 
     final StageEdge inEdge = mock(StageEdge.class);
     when(inEdge.getTaskIdxToKeyRange()).thenReturn(taskIdxToKeyRange);
@@ -81,11 +81,12 @@ public final class SkewnessAwareSchedulingConstraintTest {
   @Test
   public void testScheduleSkewedTasks() {
     final SchedulingConstraint schedulingConstraint = new SkewnessAwareSchedulingConstraint();
-    final StageEdge inEdge = mockStageEdge();
-    final Task task0 = mockTask(0, Arrays.asList(inEdge));
-    final Task task1 = mockTask(1, Arrays.asList(inEdge));
-    final Task task2 = mockTask(2, Arrays.asList(inEdge));
-    final ExecutorRepresenter e0 = mockExecutorRepresenter(task0);
+    // Create a StageEdge where two out of three are skewed hash ranges.
+    final StageEdge inEdge = mockStageEdge(2, 3);
+    final Task task0 = mockTask(0, Arrays.asList(inEdge));  // skewed task
+    final Task task1 = mockTask(1, Arrays.asList(inEdge));  // skewed task
+    final Task task2 = mockTask(2, Arrays.asList(inEdge));  // non-skewed task
+    final ExecutorRepresenter e0 = mockExecutorRepresenter(task0);  // schedule skewed task to e0
 
     assertEquals(true, schedulingConstraint.testSchedulability(e0, task2));
     assertEquals(false, schedulingConstraint.testSchedulability(e0, task1));

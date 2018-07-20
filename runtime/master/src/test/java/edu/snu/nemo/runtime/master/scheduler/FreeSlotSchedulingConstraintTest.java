@@ -28,7 +28,6 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
@@ -46,42 +45,21 @@ public final class FreeSlotSchedulingConstraintTest {
   @Before
   public void setUp() throws Exception {
     schedulingConstraint = Tang.Factory.getTang().newInjector().getInstance(FreeSlotSchedulingConstraint.class);
-    a0 = mockExecutorRepresenter(1, 1, 1);
-    a1 = mockExecutorRepresenter(2, 2, 3);
-  }
-
-  /**
-   * Mock a task.
-   *
-   * @param taskId the ID of the task to mock.
-   * @return the mocked task.
-   */
-  private static Task mockTask(final String taskId) {
-    final Task task = mock(Task.class);
-    when(task.getTaskId()).thenReturn(taskId);
-    return task;
+    a0 = mockExecutorRepresenter(1, 1);
+    a1 = mockExecutorRepresenter(2, 3);
   }
 
   /**
    * Mock an executor representer.
    *
    * @param numComplyingTasks the number of already running (mocked) tasks which comply slot constraint in the executor.
-   * @param numIgnoringTasks  the number of already running (mocked) tasks which ignore slot constraint in the executor.
    * @param capacity          the capacity of the executor.
    * @return the mocked executor.
    */
   private static ExecutorRepresenter mockExecutorRepresenter(final int numComplyingTasks,
-                                                             final int numIgnoringTasks,
                                                              final int capacity) {
     final ExecutorRepresenter executorRepresenter = mock(ExecutorRepresenter.class);
-    final Set<Task> runningTasks = new HashSet<>();
-    IntStream.range(0, numComplyingTasks).forEach(i -> runningTasks.add(mockTask(String.valueOf(i))));
-    IntStream.range(0, numIgnoringTasks).forEach(i -> {
-      final Task task = mockTask(String.valueOf(numComplyingTasks + i));
-      when(task.getPropertyValue(ExecutorSlotComplianceProperty.class)).thenReturn(Optional.of(false));
-      runningTasks.add(task);
-    });
-    when(executorRepresenter.getRunningTasks()).thenReturn(runningTasks);
+    when(executorRepresenter.getNumOfComplyingRunningTasks()).thenReturn(numComplyingTasks);
     when(executorRepresenter.getExecutorCapacity()).thenReturn(capacity);
     return executorRepresenter;
   }
