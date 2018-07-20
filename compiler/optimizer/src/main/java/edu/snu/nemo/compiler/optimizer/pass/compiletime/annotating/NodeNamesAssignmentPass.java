@@ -102,10 +102,11 @@ public final class NodeNamesAssignmentPass extends AnnotatingPass {
         }
         irVertex.getExecutionProperties().put(NodeNamesProperty.of(shares));
       } else if (isOneToOneEdge(inEdges)) {
-        LOG.info(String.format("Setting %s - is o2o from %s", irVertex.getId(), inEdges.iterator().next()));
-        final Optional<NodeNamesProperty> property = inEdges.iterator().next()
+        LOG.info(String.format("Setting %s - is o2o from %s", irVertex.getId(),
+            inEdges.iterator().next().getSrc().getId()));
+        final Optional<HashMap<String, Integer>> property = inEdges.iterator().next()
             .getExecutionProperties().get(NodeNamesProperty.class);
-        irVertex.getExecutionProperties().put(property.get());
+        irVertex.getExecutionProperties().put(NodeNamesProperty.of(property.get()));
       } else {
         LOG.info(String.format("Setting %s - is complex", irVertex.getId()));
         // This IRVertex has shuffle inEdge(s), or has multiple inEdges.
