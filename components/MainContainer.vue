@@ -15,7 +15,7 @@
         <template slot="label">
           DAG
         </template>
-        <dag :dag="dag"></dag>
+        <dag :metricDataSet="metricDataSet"></dag>
       </el-tab-pane>
     </el-tabs>
   </div>
@@ -27,6 +27,8 @@ import MetricTimeline from '~/components/MetricTimeline';
 import DAG from '~/components/DAG';
 import { DataSet } from 'vue2vis';
 import { STATE } from '~/assets/constants';
+
+const WEBSOCKET_ENDPOINT = 'ws://127.0.0.1:10101/api/websocket';
 
 // list of metric, order of elements matters.
 const METRIC_LIST = [
@@ -69,8 +71,10 @@ export default {
   },
 
   beforeMount() {
-    this.prepareWebSocket();
+    // this.prepareWebSocket();
+    this.tryReconnect();
 
+    // predefine group sets
     METRIC_LIST.forEach(metricType => {
       this.groupDataSet.add({
         id: metricType,
@@ -112,14 +116,12 @@ export default {
         this.groupDataSet.add({
           id: metricType,
           content: metricType,
-          order: METRIC_LIST.indexOf(metricType)
+          order: METRIC_LIST.indexOf(metricType),
         });
       }
 
-      let newItem = {
-        id: data.id,
-        group: metricType,
-      };
+      let newItem = { group: metricType };
+      Object.assign(newItem, data);
 
       if (data.dag && !this.dag) {
         this.dag = data.dag;
@@ -132,7 +134,7 @@ export default {
           if (event.prevState === STATE.INCOMPLETE) {
             // Stage does not have READY, so it cannot be represented as
             // a range of timeline. So the only needed field is `start`.
-            this.$eventBus.$emit('stageEvent', {
+            this.$eventBus.$emit('stage-event', {
               stageId: data.id,
               state: STATE.COMPLETE,
             });
@@ -150,6 +152,7 @@ export default {
             newItem.content = data.id;
           }
         });
+
       let prevItem = this.metricDataSet.get(newItem.id);
       if (!prevItem) {
         try {
@@ -191,13 +194,12 @@ export default {
         this.closeWebSocket();
       }
 
-      this.ws = new WebSocket('ws://127.0.0.1:10101/api/websocket');
+      this.ws = new WebSocket(WEBSOCKET_ENDPOINT);
 
       this.ws.onopen = (event) => {
         // clear metric
         this.metricDataSet.clear();
         this.groupDataSet.clear();
-        console.log('Connected!');
       };
 
       this.ws.onmessage = (event) => {

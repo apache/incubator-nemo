@@ -23,9 +23,11 @@ const CANVAS_RATIO = 0.75;
 const MAX_ZOOM = 20;
 const MIN_ZOOM = 0.01;
 
-const DEBUG = false;
+const DEBUG = true;
 
 export default {
+
+  props: ['metricDataSet'],
 
   mounted() {
     this.initializeCanvas();
@@ -33,7 +35,7 @@ export default {
 
     // debug
     if (DEBUG) {
-      this.dag = require('~/assets/monster.json').dag;
+      this.dag = require('~/assets/sample.json').dag;
       this.resizeCanvas(false);
       this.drawDAG();
       this.fitCanvas();
@@ -57,13 +59,12 @@ export default {
       stageGraph: undefined,
       verticesGraph: {},
 
-      // fabric.Group of stages
-      stageGroups: {},
-
-      // object vertexId -> fabric.Circle of vertex
-      vertices: {},
-      // object stageId -> fabric.Rect of stage
-      stages: {},
+      // vertexId -> fabric.Circle of vertex
+      vertexObjects: {},
+      // stageId -> fabric.Rect of stage
+      stageObjects: {},
+      // stageId -> inner objects of stage (edges, vertices)
+      stageInnerObjects: {},
     };
   },
 
@@ -140,7 +141,7 @@ export default {
         }
         this.canvas.viewportTransform[4] = this.lastViewportX;
         this.canvas.viewportTransform[5] = this.lastViewportY;
-        //this.canvas.calcOffset();
+        this.canvas.calcOffset();
       });
 
       // new dag event
@@ -155,14 +156,14 @@ export default {
       });
 
       // stage state transition event
-      this.$eventBus.$on('stageEvent', ({ stageId, state }) => {
-        if (!stageId || !(stageId in this.stages)) {
+      this.$eventBus.$on('stage-event', ({ stageId, state }) => {
+        if (!stageId || !(stageId in this.stageObjects)) {
           return;
         }
 
-        const stage = this.stages[stageId];
+        const stage = this.stageObjects[stageId];
 
-        if (state == STATE.COMPLETE) {
+        if (state === STATE.COMPLETE) {
           stage.set('fill', 'green');
           this.canvas.renderAll();
         }
@@ -196,6 +197,10 @@ export default {
         this.isDragging = true;
         this.lastXCoord = e.clientX;
         this.lastYCoord = e.clientY;
+
+        if (option.target) {
+          this.handleObjectClick(option.target);
+        }
       });
 
       this.canvas.on('mouse:move', option => {
@@ -229,14 +234,22 @@ export default {
       return this.dag.vertices.find(v => v.id == stageId).properties.irDag;
     },
 
+    handleObjectClick(obj) {
+      console.log(obj.metricId);
+    },
+
     drawDAG() {
       this.canvas.clear();
-      // configuring stage layout based on inner vertices
-      this.stageIdArray.forEach((stageId, idx) => {
+
+      // configure stage layout based on inner vertices
+      this.stageIdArray.forEach(stageId => {
         const irDag = this.getInnerIrDag(stageId);
         const innerEdges = irDag.edges;
         const innerVertices = irDag.vertices;
         let objectArray = [];
+
+        // initialize stage inner object array
+        this.stageInnerObjects[stageId] = [];
 
         // get inner vertex layout
         this.verticesGraph[stageId] = new Graph();
@@ -265,15 +278,22 @@ export default {
         // create vertex circles
         g.nodes().map(node => g.node(node)).forEach(vertex => {
           let vertexCircle = new fabric.Circle({
+            metricId: vertex.label,
             radius: VERTEX_RADIUS,
             left: vertex.x,
             top: vertex.y,
             originX: 'center',
             originY: 'center',
             fill: 'black',
+            selectable: false,
           });
 
-          this.vertices[vertex.label] = vertexCircle;
+          vertexCircle.on('mousedown', () => {
+            this.handleObjectClick(vertexCircle);
+          });
+
+          this.vertexObjects[vertex.label] = vertexCircle;
+          this.stageInnerObjects[stageId].push(vertexCircle);
           objectArray.push(vertexCircle);
         });
 
@@ -289,15 +309,23 @@ export default {
 
           let pathObj = new fabric.Path(path);
           pathObj.set({
+            metricId: edge.label,
             fill: 'transparent',
             stroke: 'black',
             strokeWidth: 2,
+            selectable: false,
           });
+
+          pathObj.on('mousedown', () => {
+            this.handleObjectClick(pathObj);
+          });
+
           objectArray.push(pathObj);
+          this.stageInnerObjects[stageId].push(pathObj);
         });
 
-        this.stageGroups[stageId] = new fabric.Group(objectArray, {
-          selectable: false,
+        objectArray.forEach(obj => {
+          this.canvas.add(obj);
         });
       });
 
@@ -327,24 +355,26 @@ export default {
       // create stage rect
       g.nodes().map(node => g.node(node)).forEach(stage => {
         let stageRect = new fabric.Rect({
+          metricId: stage.label,
           width: stage.width,
           height: stage.height,
+          left: stage.x,
+          top: stage.y,
           fill: 'white',
           stroke: 'rgba(100, 200, 200, 0.5)',
           strokeWidth: 2,
+          originX: 'center',
+          originY: 'center',
+          selectable: false,
         });
 
-        this.stages[stage.label] = stageRect;
-
-        const sg = this.stageGroups[stage.label];
-        // add rect to group
-        sg.addWithUpdate(stageRect);
+        this.stageObjects[stage.label] = stageRect;
+        this.canvas.add(stageRect);
         stageRect.sendToBack();
-        // set group attributes
-        sg.set('left', stage.x);
-        sg.set('top', stage.y);
-        sg.set('originX', 'center');
-        sg.set('originY', 'center');
+
+        stageRect.on('mousedown', () => {
+          this.handleObjectClick(stageRect);
+        });
       });
 
       let stageEdgeObjectArray = [];
@@ -360,24 +390,36 @@ export default {
 
         let pathObj = new fabric.Path(path);
         pathObj.set({
+          metricId: edge.label,
           fill: 'transparent',
           stroke: 'black',
           strokeWidth: 2,
           selectable: false,
         });
 
+        pathObj.on('mousedown', () => {
+          this.handleObjectClick(pathObj);
+        });
+
         stageEdgeObjectArray.push(pathObj);
       });
 
-      this.canvas.add(new fabric.Group(stageEdgeObjectArray, {
-        selectable: false,
-      }));
-
-      // draw final result by adding groups to canvas
-      this.stageIdArray.forEach(stageId => {
-        this.canvas.add(this.stageGroups[stageId]);
+      stageEdgeObjectArray.forEach(e => {
+        this.canvas.add(e);
       });
 
+      // rearrange inner vertices and edges
+      this.stageIdArray.forEach(stageId => {
+        const stageObj = this.stageObjects[stageId];
+        this.stageInnerObjects[stageId].forEach(obj => {
+          const dx = obj.get('left') + stageObj.get('left')
+            - stageObj.get('width') / 2;
+          const dy = obj.get('top') + stageObj.get('top')
+            - stageObj.get('height') / 2;
+          obj.set('left', dx);
+          obj.set('top', dy);
+        })
+      });
     },
   }
 }
