@@ -16,6 +16,7 @@
 package edu.snu.nemo.runtime.master.scheduler;
 
 import com.google.common.annotations.VisibleForTesting;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.SkewnessAwareSchedulingProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
@@ -28,6 +29,7 @@ import org.apache.reef.annotations.audience.DriverSide;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
+import java.util.Map;
 
 /**
  * This policy aims to distribute partitions with skewed keys to different executors.
@@ -45,7 +47,9 @@ public final class SkewnessAwareSchedulingConstraint implements SchedulingConstr
   public boolean hasSkewedData(final Task task) {
     final int taskIdx = RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId());
     for (StageEdge inEdge : task.getTaskIncomingEdges()) {
-      final KeyRange hashRange = inEdge.getTaskIdxToKeyRange().get(taskIdx);
+      final Map<Integer, KeyRange> taskIdxToKeyRange =
+          inEdge.getPropertyValue(DataSkewMetricProperty.class).get().getMetric();
+      final KeyRange hashRange = taskIdxToKeyRange.get(taskIdx);
       if (((HashRange) hashRange).isSkewed()) {
         return true;
       }
