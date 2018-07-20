@@ -15,9 +15,16 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import edu.snu.nemo.common.DataSkewMetricFactory;
+import edu.snu.nemo.common.ir.edge.IREdge;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataFlowModelProperty;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
+import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.common.HashRange;
 import edu.snu.nemo.common.KeyRange;
+import edu.snu.nemo.runtime.common.plan.Stage;
 import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -36,7 +43,8 @@ import static org.mockito.Mockito.when;
  * Test cases for {@link SkewnessAwareSchedulingConstraint}.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({ExecutorRepresenter.class, Task.class, HashRange.class, StageEdge.class})
+@PrepareForTest({ExecutorRepresenter.class, Task.class, Stage.class, HashRange.class,
+IRVertex.class, IREdge.class})
 public final class SkewnessAwareSchedulingConstraintTest {
 
   private static StageEdge mockStageEdge(final int numSkewedHashRange,
@@ -53,10 +61,18 @@ public final class SkewnessAwareSchedulingConstraintTest {
       taskIdxToKeyRange.put(taskIdx, hashRange);
     }
 
-    final StageEdge inEdge = mock(StageEdge.class);
-    when(inEdge.getTaskIdxToKeyRange()).thenReturn(taskIdxToKeyRange);
+    final IRVertex srcMockVertex = mock(IRVertex.class);
+    final IRVertex dstMockVertex = mock(IRVertex.class);
+    final Stage srcMockStage = mock(Stage.class);
+    final Stage dstMockStage = mock(Stage.class);
 
-    return inEdge;
+    final IREdge dummyIREdge = new IREdge(DataCommunicationPatternProperty.Value.Shuffle, srcMockVertex, dstMockVertex);
+    dummyIREdge.setProperty(DataFlowModelProperty.of(DataFlowModelProperty.Value.Pull));
+    dummyIREdge.setProperty(DataSkewMetricProperty.of(new DataSkewMetricFactory(taskIdxToKeyRange)));
+    final StageEdge dummyEdge = new StageEdge("Edge-0", dummyIREdge.getExecutionProperties(),
+        srcMockVertex, dstMockVertex, srcMockStage, dstMockStage, false);
+
+    return dummyEdge;
   }
 
   private static Task mockTask(final int taskIdx, final List<StageEdge> inEdges) {
