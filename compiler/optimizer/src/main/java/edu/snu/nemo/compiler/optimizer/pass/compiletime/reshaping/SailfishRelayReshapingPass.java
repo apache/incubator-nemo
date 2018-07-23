@@ -23,12 +23,10 @@ import edu.snu.nemo.common.ir.edge.executionproperty.DataCommunicationPatternPro
 import edu.snu.nemo.common.ir.edge.IREdge;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
 import edu.snu.nemo.common.ir.vertex.OperatorVertex;
-import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalTagOutputProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.SkipSerDesProperty;
 import edu.snu.nemo.common.ir.vertex.transform.RelayTransform;
 
 import java.util.Collections;
-import java.util.HashMap;
 
 /**
  * Pass to modify the DAG for a job to batch the disk seek.
@@ -62,20 +60,6 @@ public final class SailfishRelayReshapingPass extends ReshapingPass {
             // before the vertex receiving shuffled data.
             final OperatorVertex iFileMergerVertex = new OperatorVertex(new RelayTransform());
             iFileMergerVertex.getExecutionProperties().put(SkipSerDesProperty.of());
-
-            // Update additional tagged output property of the source vertex if necessary.
-            if (edge.getSrc().getPropertyValue(AdditionalTagOutputProperty.class).isPresent()) {
-              final HashMap<String, String> additionalTagOutputPropertyValue =
-                  edge.getSrc().getPropertyValue(AdditionalTagOutputProperty.class).get();
-              if (additionalTagOutputPropertyValue.containsValue(v.getId())) {
-                additionalTagOutputPropertyValue.forEach((tag, vertexId) -> {
-                  if (vertexId == v.getId()) {
-                    additionalTagOutputPropertyValue.replace(tag, iFileMergerVertex.getId());
-                  }
-                });
-                edge.getSrc().setProperty(AdditionalTagOutputProperty.of(additionalTagOutputPropertyValue));
-              }
-            }
 
             builder.addVertex(iFileMergerVertex);
             final IREdge newEdgeToMerger = new IREdge(DataCommunicationPatternProperty.Value.Shuffle,

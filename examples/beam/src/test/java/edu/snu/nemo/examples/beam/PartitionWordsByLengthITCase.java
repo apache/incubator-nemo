@@ -19,7 +19,6 @@ import edu.snu.nemo.client.JobLauncher;
 import edu.snu.nemo.common.test.ArgBuilder;
 import edu.snu.nemo.common.test.ExampleTestUtil;
 import edu.snu.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
-import edu.snu.nemo.examples.beam.policy.PadoPolicyParallelismFive;
 import edu.snu.nemo.examples.beam.policy.SailfishPolicyParallelismFive;
 import org.junit.After;
 import org.junit.Before;
@@ -58,6 +57,8 @@ public final class PartitionWordsByLengthITCase {
       ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_short", testResourceFileName + "_short");
       ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_long", testResourceFileName + "_long");
       ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_very_long", testResourceFileName + "_very_long");
+      ExampleTestUtil.ensureOutputValidity(fileBasePath, outputFileName + "_very_very_long",
+          testResourceFileName + "_very_very_long");
     } finally {
       ExampleTestUtil.deleteOutputFile(fileBasePath, outputFileName);
     }

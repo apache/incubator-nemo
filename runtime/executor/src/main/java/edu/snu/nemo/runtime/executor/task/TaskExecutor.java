@@ -20,8 +20,8 @@ import edu.snu.nemo.common.ContextImpl;
 import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.common.dag.DAG;
 import edu.snu.nemo.common.ir.Readable;
+import edu.snu.nemo.common.ir.edge.executionproperty.AdditionalOutputTagProperty;
 import edu.snu.nemo.common.ir.vertex.*;
-import edu.snu.nemo.common.ir.vertex.executionproperty.AdditionalTagOutputProperty;
 import edu.snu.nemo.common.ir.vertex.transform.Transform;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
@@ -154,8 +154,8 @@ public final class TaskExecutor {
           .map(RuntimeEdge::isSideInput)
           .collect(Collectors.toList());
 
-      final Map<String, String> additionalOutputMap = irVertex
-          .getPropertyValue(AdditionalTagOutputProperty.class).orElse(new HashMap<>());
+      final Map<String, String> additionalOutputMap =
+          getAdditionalOutputMap(irVertex, task.getTaskOutgoingEdges(), irVertexDag);
       final List<Boolean> isToAdditionalTagOutputs = children.stream()
           .map(harness -> harness.getIRVertex().getId())
           .map(additionalOutputMap::containsValue)
@@ -227,13 +227,12 @@ public final class TaskExecutor {
     }
 
     // Recursively process all of the additional output elements.
-    vertexHarness.getIRVertex().getPropertyValue(AdditionalTagOutputProperty.class).ifPresent(tagToVertex -> {
-      tagToVertex.values().forEach(dstVertexId -> {
-        while (!outputCollector.isEmpty(dstVertexId)) {
-          final Object element = outputCollector.remove(dstVertexId);
-          handleAdditionalOutputElement(vertexHarness, element, dstVertexId); // Recursion
-        }
-      });
+    vertexHarness.getContext().getAdditionalTagOutputs().values().forEach(value -> {
+      final String dstVertexId = (String) value;
+      while (!outputCollector.isEmpty(dstVertexId)) {
+        final Object element = outputCollector.remove(dstVertexId);
+        handleAdditionalOutputElement(vertexHarness, element, dstVertexId); // Recursion
+      }
     });
   }
 
@@ -421,6 +420,31 @@ public final class TaskExecutor {
 
   ////////////////////////////////////////////// Helper methods for setting up initial data structures
 
+  private Map<String, String> getAdditionalOutputMap(final IRVertex irVertex,
+                                                     final List<StageEdge> outEdgesToChildrenTasks,
+                                                     final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
+    final Map<String, String> additionalOutputMap = new HashMap<>();
+
+    // Add all intra-task additional tags to additional output map.
+    irVertexDag.getOutgoingEdgesOf(irVertex.getId())
+        .stream()
+        .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
+        .map(edge ->
+            Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(), edge.getDst().getId()))
+        .forEach(pair -> additionalOutputMap.put(pair.left(), pair.right()));
+
+    // Add all inter-task additional tags to additional output map.
+    outEdgesToChildrenTasks
+        .stream()
+        .filter(edge -> edge.getSrcIRVertex().getId().equals(irVertex.getId()))
+        .filter(edge -> edge.getPropertyValue(AdditionalOutputTagProperty.class).isPresent())
+        .map(edge ->
+            Pair.of(edge.getPropertyValue(AdditionalOutputTagProperty.class).get(), edge.getDstIRVertex().getId()))
+        .forEach(pair -> additionalOutputMap.put(pair.left(), pair.right()));
+
+    return additionalOutputMap;
+  }
+
   private Optional<Readable> getSourceVertexReader(final IRVertex irVertex,
                                                    final Map<String, Readable> irVertexIdToReadable) {
     if (irVertex instanceof SourceVertex) {
@@ -564,8 +588,8 @@ public final class TaskExecutor {
     // finalize OutputWriters for additional tagged children
     vertexHarness.getWritersToAdditionalChildrenTasks().values().forEach(outputWriter -> {
       outputWriter.close();
-      final Optional<Long> writtennBytes = outputWriter.getWrittenBytes();
-      writtennBytes.ifPresent(writtenBytesList::add);
+      final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
+      writtenBytes.ifPresent(writtenBytesList::add);
     });
 
     long totalWrittenBytes = 0;

@@ -55,6 +55,8 @@ public final class PartitionWordsByLength {
     };
     final TupleTag<String> veryLongWordsTag = new TupleTag<String>("very long") {
     };
+    final TupleTag<String> veryVeryLongWordsTag = new TupleTag<String>("very very long") {
+    };
 
     final Pipeline p = Pipeline.create(options);
     final PCollection<String> lines = GenericSourceSink.read(p, inputFilePath);
@@ -71,12 +73,14 @@ public final class PartitionWordsByLength {
               c.output(shortWordsTag, KV.of(word.length(), word));
             } else if (word.length() < 11) {
               c.output(longWordsTag, KV.of(word.length(), word));
+            } else if (word.length() > 12) {
+              c.output(veryVeryLongWordsTag, word);
             } else {
               c.output(word);
             }
           }
         }).withOutputTags(veryLongWordsTag, TupleTagList
-            .of(shortWordsTag).and(longWordsTag)));
+            .of(shortWordsTag).and(longWordsTag).and(veryVeryLongWordsTag)));
 
     PCollection<String> shortWords = results.get(shortWordsTag)
         .apply(GroupByKey.create())
@@ -85,10 +89,12 @@ public final class PartitionWordsByLength {
         .apply(GroupByKey.create())
         .apply(MapElements.via(new FormatLines()));
     PCollection<String> veryLongWords = results.get(veryLongWordsTag);
+    PCollection<String> veryveryLongWords = results.get(veryVeryLongWordsTag);
 
     GenericSourceSink.write(shortWords, outputFilePath + "_short");
     GenericSourceSink.write(longWords, outputFilePath + "_long");
     GenericSourceSink.write(veryLongWords, outputFilePath + "_very_long");
+    GenericSourceSink.write(veryveryLongWords, outputFilePath + "_very_very_long");
     p.run();
   }
 
