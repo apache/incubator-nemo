@@ -81,6 +81,16 @@ public final class NodeNamesAssignmentPass extends AnnotatingPass {
     bandwidthSpecificationString = value;
   }
 
+  private static HashMap<String, Integer> getEvenShares(final List<String> nodes, final int parallelism) {
+    final HashMap<String, Integer> shares = new HashMap<>();
+    final int defaultShare = parallelism / nodes.size();
+    final int remainder = parallelism % nodes.size();
+    for (int i = 0; i < nodes.size(); i++) {
+      shares.put(nodes.get(i), defaultShare + (i < remainder ? 1 : 0));
+    }
+    return shares;
+  }
+
   private static void assignNodeShares(
       final DAG<IRVertex, IREdge> dag,
       final BandwidthSpecification bandwidthSpecification) {
@@ -93,14 +103,7 @@ public final class NodeNamesAssignmentPass extends AnnotatingPass {
         LOG.info(String.format("Setting %s - is root", irVertex.getId()));
         // This vertex is root vertex.
         // Fall back to setting even distribution
-        final HashMap<String, Integer> shares = new HashMap<>();
-        final List<String> nodes = bandwidthSpecification.getNodes();
-        final int defaultShare = parallelism / nodes.size();
-        final int remainder = parallelism % nodes.size();
-        for (int i = 0; i < nodes.size(); i++) {
-          shares.put(nodes.get(i), defaultShare + (i < remainder ? 1 : 0));
-        }
-        irVertex.getExecutionProperties().put(NodeNamesProperty.of(shares));
+        irVertex.getExecutionProperties().put(NodeNamesProperty.of(EMPTY_MAP));
       } else if (isOneToOneEdge(inEdges)) {
         LOG.info(String.format("Setting %s - is o2o from %s", irVertex.getId(),
             inEdges.iterator().next().getSrc().getId()));
@@ -113,7 +116,11 @@ public final class NodeNamesAssignmentPass extends AnnotatingPass {
         final Map<String, Integer> parentLocationShares = new HashMap<>();
         for (final IREdge edgeToIRVertex : dag.getIncomingEdgesOf(irVertex)) {
           final IRVertex parentVertex = edgeToIRVertex.getSrc();
-          final Map<String, Integer> shares = parentVertex.getPropertyValue(NodeNamesProperty.class).get();
+          final Map<String, Integer> parentShares = parentVertex.getPropertyValue(NodeNamesProperty.class).get();
+          final int parentParallelism = parentVertex.getPropertyValue(ParallelismProperty.class)
+              .orElseThrow(() -> new RuntimeException("Parallelism property required"));
+          final Map<String, Integer> shares = parentShares.isEmpty() ? getEvenShares(bandwidthSpecification.getNodes(),
+              parentParallelism) : parentShares;
           for (final Map.Entry<String, Integer> element : shares.entrySet()) {
             parentLocationShares.putIfAbsent(element.getKey(), 0);
             parentLocationShares.put(element.getKey(),
