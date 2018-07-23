@@ -19,7 +19,6 @@ import edu.snu.nemo.common.Pair;
 import edu.snu.nemo.conf.JobConf;
 import edu.snu.nemo.common.exception.*;
 import edu.snu.nemo.common.ir.vertex.IRVertex;
-import edu.snu.nemo.common.ir.vertex.MetricCollectionBarrierVertex;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageContext;
@@ -348,7 +347,7 @@ public final class RuntimeMaster {
         final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
         // TODO #96: Modularize DataSkewPolicy to use MetricVertex and BarrierVertex.
         accumulateBarrierMetric(dataSizeMetricMsg.getPartitionSizeList(), dataSizeMetricMsg.getBlockId());
-        ((BatchSingleJobScheduler)scheduler).updateMetric(blockIds, aggregatedMetricData);
+        ((BatchSingleJobScheduler) scheduler).updateMetric(blockIds, aggregatedMetricData);
         break;
       case MetricMessageReceived:
         final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();

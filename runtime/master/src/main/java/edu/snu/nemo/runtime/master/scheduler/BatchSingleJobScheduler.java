@@ -135,7 +135,8 @@ public final class BatchSingleJobScheduler implements Scheduler {
     }
   }
 
-  public void updateMetric(List<String> blockIds, Map<Integer, Long> aggregatedMetricData) {
+  public void updateMetric(final List<String> blockIds,
+                           final Map<Integer, Long> aggregatedMetricData) {
     this.metricData = Pair.of(blockIds, aggregatedMetricData);
   }
 
