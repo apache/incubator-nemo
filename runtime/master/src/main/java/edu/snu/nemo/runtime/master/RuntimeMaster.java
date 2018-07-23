@@ -84,7 +84,6 @@ public final class RuntimeMaster {
   private final MessageEnvironment masterMessageEnvironment;
   private final MetricStore metricStore;
   private final Map<Integer, Long> aggregatedMetricData;
-  private final ExecutorService metricAggregationService;
   private final ClientRPC clientRPC;
   private final MetricManagerMaster metricManagerMaster;
   // For converting json data. This is a thread safe.
@@ -124,8 +123,7 @@ public final class RuntimeMaster {
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
-    this.aggregatedMetricData = new ConcurrentHashMap<>();
-    this.metricAggregationService = Executors.newFixedThreadPool(10);
+    this.aggregatedMetricData = new HashMap<>();
     this.metricStore = MetricStore.getStore();
     this.metricServer = startRestMetricServer();
   }
@@ -389,24 +387,22 @@ public final class RuntimeMaster {
         .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
 
     if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
-      LOG.info("Task-{} received dataSizeMetricMsg", RuntimeIdGenerator.getTaskIndexFromBlockId(blockId));
+      LOG.info("Received dataSizeMetricMsg from Task-{}", RuntimeIdGenerator.getTaskIndexFromBlockId(blockId));
       final MetricCollectionBarrierVertex<Integer, Long> metricCollectionBarrierVertex =
           (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
 
       metricCollectionBarrierVertex.addBlockId(blockId);
-      metricAggregationService.submit(() -> {
-        // For each hash range index, we aggregate the metric data.
-        partitionSizeInfo.forEach(partitionSizeEntry -> {
-          final int key = partitionSizeEntry.getKey();
-          final long size = partitionSizeEntry.getSize();
-          if (aggregatedMetricData.containsKey(key)) {
-            aggregatedMetricData.compute(key, (existKey, existValue) -> existValue + size);
-          } else {
-            aggregatedMetricData.put(key, size);
-          }
-        });
-        metricCollectionBarrierVertex.setMetricData(aggregatedMetricData);
+      // For each hash range index, we aggregate the metric data.
+      partitionSizeInfo.forEach(partitionSizeEntry -> {
+        final int key = partitionSizeEntry.getKey();
+        final long size = partitionSizeEntry.getSize();
+        if (aggregatedMetricData.containsKey(key)) {
+          aggregatedMetricData.compute(key, (existKey, existValue) -> existValue + size);
+        } else {
+          aggregatedMetricData.put(key, size);
+        }
       });
+      metricCollectionBarrierVertex.setMetricData(aggregatedMetricData);
     } else {
       throw new RuntimeException("Something wrong happened at DataSkewCompositePass.");
     }
