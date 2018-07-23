@@ -22,6 +22,7 @@ import edu.snu.nemo.runtime.common.comm.ControlMessage;
 import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageSender;
 import edu.snu.nemo.runtime.common.plan.Task;
+import org.apache.commons.lang3.SerializationException;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.reef.driver.context.ActiveContext;
 
@@ -111,12 +112,18 @@ public final class ExecutorRepresenter {
     runningTaskToAttempt.put(task, task.getAttemptIdx());
     failedTasks.remove(task);
     LOG.info("{} sent to executor - 1", task.getTaskId());
-
+    LOG.info("{} sent to executor - 2", task.getTaskId());
+    final byte[] serialized;
+    try {
+      serialized = SerializationUtils.serialize(task);
+    } catch (final Throwable t) {
+      LOG.error(t.toString());
+      t.getCause();
+      t.printStackTrace();
+      throw new RuntimeException(t);
+    }
+    LOG.info("{} sent to executor - 3", task.getTaskId());
     serializationExecutorService.submit(() -> {
-      LOG.info("{} sent to executor - 2", task.getTaskId());
-      try {
-        final byte[] serialized = SerializationUtils.serialize(task);
-        LOG.info("{} sent to executor - 3", task.getTaskId());
         final ControlMessage.Message msg =
             ControlMessage.Message.newBuilder()
                 .setId(RuntimeIdGenerator.generateMessageId())
@@ -130,10 +137,6 @@ public final class ExecutorRepresenter {
         LOG.info("{} sent to executor - 4", task.getTaskId());
         sendControlMessage(msg);
         LOG.info("{} sent to executor - 5", task.getTaskId());
-      } catch (final Throwable t) {
-        LOG.error(t.getMessage());
-        throw new RuntimeException(t);
-      }
     });
   }
 
