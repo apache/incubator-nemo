@@ -110,8 +110,10 @@ public final class ExecutorRepresenter {
         ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
     failedTasks.remove(task);
+    LOG.info("{} sent to executor - 1", task.getTaskId());
 
     serializationExecutorService.submit(() -> {
+      LOG.info("{} sent to executor - 2", task.getTaskId());
       final byte[] serialized = SerializationUtils.serialize(task);
       sendControlMessage(
           ControlMessage.Message.newBuilder()
@@ -123,7 +125,7 @@ public final class ExecutorRepresenter {
                       .setTask(ByteString.copyFrom(serialized))
                       .build())
               .build());
-	LOG.info("{} sent to executor", task.getTaskId());
+      LOG.info("{} sent to executor - 3", task.getTaskId());
     });
   }
 
