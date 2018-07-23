@@ -106,7 +106,7 @@ public final class SchedulerRunner {
       return null;
     }
 
-    final List<Task> scheduledTasks = new ArrayList<>();
+    final List<String> scheduledTasks = new ArrayList<>();
     final Collection<Task> taskList = taskListOptional.get();
     final List<Task> couldNotSchedule = new ArrayList<>();
     if (prevScheduledTasks != null) {
@@ -128,9 +128,10 @@ public final class SchedulerRunner {
         LOG.debug("Skipping {} as it is not READY", task.getTaskId());
         continue;
       }
+      final String taskId = task.getTaskId();
 
       executorRegistry.viewExecutors(executors -> {
-        if (!scheduledTasks.contains(task)) {
+        if (!scheduledTasks.contains(taskId)) {
           final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
           task.getExecutionProperties().forEachProperties(property -> {
             final Optional<SchedulingConstraint> constraint = schedulingConstraintRegistry.get(property.getClass());
@@ -151,7 +152,7 @@ public final class SchedulerRunner {
 
             // send the task
             selectedExecutor.onTaskScheduled(task);
-            scheduledTasks.add(task);
+            scheduledTasks.add(taskId);
           } else {
             couldNotSchedule.add(task);
           }
