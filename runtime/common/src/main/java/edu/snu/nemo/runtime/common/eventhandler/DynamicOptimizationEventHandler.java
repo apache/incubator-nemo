@@ -51,13 +51,11 @@ public final class DynamicOptimizationEventHandler implements RuntimeEventHandle
   @Override
   public void onNext(final DynamicOptimizationEvent dynamicOptimizationEvent) {
     final PhysicalPlan physicalPlan = dynamicOptimizationEvent.getPhysicalPlan();
-    final MetricCollectionBarrierVertex metricCollectionBarrierVertex =
-            dynamicOptimizationEvent.getMetricCollectionBarrierVertex();
+    final Object metricData = dynamicOptimizationEvent.getMetricData();
 
     final Pair<String, String> taskInfo = dynamicOptimizationEvent.getTaskInfo();
 
-    final PhysicalPlan newPlan = RuntimeOptimizer.dynamicOptimization(physicalPlan,
-        metricCollectionBarrierVertex);
+    final PhysicalPlan newPlan = RuntimeOptimizer.dynamicOptimization(physicalPlan, metricData);
 
     pubSubEventHandler.onNext(new UpdatePhysicalPlanEvent(newPlan, taskInfo));
   }

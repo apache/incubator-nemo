@@ -75,6 +75,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
   private PhysicalPlan physicalPlan;
   private JobStateManager jobStateManager;
   private List<List<Stage>> sortedScheduleGroups;
+  private Object metricData;
 
   @Inject
   private BatchSingleJobScheduler(final SchedulerRunner schedulerRunner,
@@ -134,18 +135,20 @@ public final class BatchSingleJobScheduler implements Scheduler {
     }
   }
 
+  public void updateMetric(List<String> blockIds, Map<Integer, Long> aggregatedMetricData) {
+    this.metricData = Pair.of(blockIds, aggregatedMetricData);
+  }
+
   /**
    * Handles task state transition notifications sent from executors.
    * Note that we can receive notifications for previous task attempts, due to the nature of asynchronous events.
    * We ignore such late-arriving notifications, and only handle notifications for the current task attempt.
-   *
-   * @param executorId the id of the executor where the message was sent from.
+   *  @param executorId the id of the executor where the message was sent from.
    * @param taskId whose state has changed
    * @param taskAttemptIndex of the task whose state has changed
    * @param newState the state to change to
    * @param vertexPutOnHold the ID of vertex that is put on hold. It is null otherwise.
    */
-  @Override
   public void onTaskStateReportFromExecutor(final String executorId,
                                             final String taskId,
                                             final int taskAttemptIndex,
@@ -408,7 +411,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
       // and we will use this vertex to perform metric collection and dynamic optimization.
 
       pubSubEventHandlerWrapper.getPubSubEventHandler().onNext(
-          new DynamicOptimizationEvent(physicalPlan, metricCollectionBarrierVertex, Pair.of(executorId, taskId)));
+          new DynamicOptimizationEvent(physicalPlan, metricData, Pair.of(executorId, taskId)));
     } else {
       onTaskExecutionComplete(executorId, taskId, true);
     }

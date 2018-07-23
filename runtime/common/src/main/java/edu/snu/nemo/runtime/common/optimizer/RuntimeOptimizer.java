@@ -45,34 +45,24 @@ public final class RuntimeOptimizer {
   /**
    * Dynamic optimization method to process the dag with an appropriate pass, decided by the stats.
    * @param originalPlan original physical execution plan.
-   * @param metricCollectionBarrierVertex the vertex that collects metrics and chooses which optimization to perform.
    * @return the newly updated optimized physical plan.
    */
   public static synchronized PhysicalPlan dynamicOptimization(
           final PhysicalPlan originalPlan,
-          final MetricCollectionBarrierVertex metricCollectionBarrierVertex) {
-    final DynamicOptimizationProperty.Value dynamicOptimizationType =
-        metricCollectionBarrierVertex.getPropertyValue(DynamicOptimizationProperty.class).get();
-
+          final Object metric) {
     try {
       final PhysicalPlanGenerator physicalPlanGenerator =
           Tang.Factory.getTang().newInjector().getInstance(PhysicalPlanGenerator.class);
 
-      switch (dynamicOptimizationType) {
-        case DataSkewRuntimePass:
-          // Metric data for DataSkewRuntimePass is a pair of blockIds and map of hashrange, partition size.
-          final Pair<List<String>, Map<Integer, Long>> metricData =
-              Pair.of(metricCollectionBarrierVertex.getBlockIds(),
-                  (Map<Integer, Long>) metricCollectionBarrierVertex.getMetricData());
-          final DAG<IRVertex, IREdge> newIrDAG =
-              new DataSkewRuntimePass(10).apply(originalPlan.getIrDAG(), metricData);
-          final DAG<Stage, StageEdge> stageDAG = newIrDAG.convert(physicalPlanGenerator);
-          final PhysicalPlan physicalPlan =
-              new PhysicalPlan(RuntimeIdGenerator.generatePhysicalPlanId(), newIrDAG, stageDAG);
-          return physicalPlan;
-        default:
-          throw new UnsupportedOperationException("Unknown runtime pass: " + dynamicOptimizationType);
-      }
+      // Metric data for DataSkewRuntimePass is a pair of blockIds and map of hashrange, partition size.
+      final Pair<List<String>, Map<Integer, Long>> metricData =
+          (Pair<List<String>, Map<Integer, Long>>) metric;
+      final DAG<IRVertex, IREdge> newIrDAG =
+          new DataSkewRuntimePass(10).apply(originalPlan.getIrDAG(), metricData);
+      final DAG<Stage, StageEdge> stageDAG = newIrDAG.convert(physicalPlanGenerator);
+      final PhysicalPlan physicalPlan =
+          new PhysicalPlan(RuntimeIdGenerator.generatePhysicalPlanId(), newIrDAG, stageDAG);
+      return physicalPlan;
     } catch (final InjectionException e) {
       throw new RuntimeException(e);
     }

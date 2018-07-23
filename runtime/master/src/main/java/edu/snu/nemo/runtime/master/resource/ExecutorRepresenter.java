@@ -103,17 +103,13 @@ public final class ExecutorRepresenter {
 
   /**
    * Marks the Task as running, and sends scheduling message to the executor.
-   * @param taskToClone
+   * @param task
    */
-  public void onTaskScheduled(final Task taskToClone) {
-    final Task task = taskToClone.clone();
-
+  public void onTaskScheduled(final Task task) {
     (task.getPropertyValue(ExecutorSlotComplianceProperty.class).orElse(true)
         ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
     failedTasks.remove(task);
-    LOG.info("{} sent to executor - 1", task.getTaskId());
-    LOG.info("{} sent to executor - 2", task.getTaskId());
     final byte[] serialized;
     try {
       serialized = SerializationUtils.serialize(task);
@@ -122,7 +118,6 @@ public final class ExecutorRepresenter {
       t.printStackTrace();
       throw new RuntimeException(t);
     }
-    LOG.info("{} sent to executor - 3", task.getTaskId());
     serializationExecutorService.submit(() -> {
         final ControlMessage.Message msg =
             ControlMessage.Message.newBuilder()
@@ -134,9 +129,7 @@ public final class ExecutorRepresenter {
                         .setTask(ByteString.copyFrom(serialized))
                         .build())
                 .build();
-        LOG.info("{} sent to executor - 4", task.getTaskId());
         sendControlMessage(msg);
-        LOG.info("{} sent to executor - 5", task.getTaskId());
     });
   }
 

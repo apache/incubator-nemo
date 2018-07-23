@@ -27,6 +27,7 @@ import edu.snu.nemo.runtime.common.message.MessageEnvironment;
 import edu.snu.nemo.runtime.common.message.MessageListener;
 import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
 import edu.snu.nemo.runtime.common.state.TaskState;
+import edu.snu.nemo.runtime.master.scheduler.BatchSingleJobScheduler;
 import edu.snu.nemo.runtime.master.servlet.*;
 import edu.snu.nemo.runtime.master.resource.ContainerManager;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
@@ -83,6 +84,7 @@ public final class RuntimeMaster {
   private final MetricMessageHandler metricMessageHandler;
   private final MessageEnvironment masterMessageEnvironment;
   private final MetricStore metricStore;
+  private final List<String> blockIds;
   private final Map<Integer, Long> aggregatedMetricData;
   private final ClientRPC clientRPC;
   private final MetricManagerMaster metricManagerMaster;
@@ -123,6 +125,7 @@ public final class RuntimeMaster {
     this.irVertices = new HashSet<>();
     this.resourceRequestCount = new AtomicInteger(0);
     this.objectMapper = new ObjectMapper();
+    this.blockIds = new ArrayList<>();
     this.aggregatedMetricData = new HashMap<>();
     this.metricStore = MetricStore.getStore();
     this.metricServer = startRestMetricServer();
@@ -344,8 +347,8 @@ public final class RuntimeMaster {
       case DataSizeMetric:
         final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
         // TODO #96: Modularize DataSkewPolicy to use MetricVertex and BarrierVertex.
-        accumulateBarrierMetric(dataSizeMetricMsg.getPartitionSizeList(),
-            dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getBlockId());
+        accumulateBarrierMetric(dataSizeMetricMsg.getPartitionSizeList(), dataSizeMetricMsg.getBlockId());
+        ((BatchSingleJobScheduler)scheduler).updateMetric(blockIds, aggregatedMetricData);
         break;
       case MetricMessageReceived:
         final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
@@ -376,36 +379,22 @@ public final class RuntimeMaster {
    * TODO #98: Implement MetricVertex that collect metric used for dynamic optimization.
    *
    * @param partitionSizeInfo the size of partitions in a block to accumulate.
-   * @param srcVertexId       the ID of the source vertex.
    * @param blockId           the ID of the block.
    */
   private void accumulateBarrierMetric(final List<ControlMessage.PartitionSizeEntry> partitionSizeInfo,
-                                       final String srcVertexId,
                                        final String blockId) {
-    final IRVertex vertexToSendMetricDataTo = irVertices.stream()
-        .filter(irVertex -> irVertex.getId().equals(srcVertexId)).findFirst()
-        .orElseThrow(() -> new RuntimeException(srcVertexId + " doesn't exist in the submitted Physical Plan"));
-
-    if (vertexToSendMetricDataTo instanceof MetricCollectionBarrierVertex) {
-      LOG.info("Received dataSizeMetricMsg from Task-{}", RuntimeIdGenerator.getTaskIndexFromBlockId(blockId));
-      final MetricCollectionBarrierVertex<Integer, Long> metricCollectionBarrierVertex =
-          (MetricCollectionBarrierVertex) vertexToSendMetricDataTo;
-
-      metricCollectionBarrierVertex.addBlockId(blockId);
-      // For each hash range index, we aggregate the metric data.
-      partitionSizeInfo.forEach(partitionSizeEntry -> {
-        final int key = partitionSizeEntry.getKey();
-        final long size = partitionSizeEntry.getSize();
-        if (aggregatedMetricData.containsKey(key)) {
-          aggregatedMetricData.compute(key, (existKey, existValue) -> existValue + size);
-        } else {
-          aggregatedMetricData.put(key, size);
-        }
-      });
-      metricCollectionBarrierVertex.setMetricData(aggregatedMetricData);
-    } else {
-      throw new RuntimeException("Something wrong happened at DataSkewCompositePass.");
-    }
+    LOG.info("Received dataSizeMetricMsg from Task-{}", RuntimeIdGenerator.getTaskIndexFromBlockId(blockId));
+    blockIds.add(blockId);
+    // For each hash range index, we aggregate the metric data.
+    partitionSizeInfo.forEach(partitionSizeEntry -> {
+      final int key = partitionSizeEntry.getKey();
+      final long size = partitionSizeEntry.getSize();
+      if (aggregatedMetricData.containsKey(key)) {
+        aggregatedMetricData.compute(key, (existKey, existValue) -> existValue + size);
+      } else {
+        aggregatedMetricData.put(key, size);
+      }
+    });
   }
 
   private static TaskState.State convertTaskState(final ControlMessage.TaskStateFromExecutor state) {

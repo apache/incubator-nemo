@@ -28,20 +28,19 @@ import edu.snu.nemo.runtime.common.plan.PhysicalPlan;
  */
 public final class DynamicOptimizationEvent implements RuntimeEvent {
   private final PhysicalPlan physicalPlan;
-  private final MetricCollectionBarrierVertex metricCollectionBarrierVertex;
+  private final Object metricData;
   private final Pair<String, String> taskInfo;
 
   /**
    * Default constructor.
    * @param physicalPlan physical plan to be optimized.
-   * @param metricCollectionBarrierVertex metric collection barrier vertex to retrieve metric data from.
    * @param taskInfo information of the task.
    */
   public DynamicOptimizationEvent(final PhysicalPlan physicalPlan,
-                                  final MetricCollectionBarrierVertex metricCollectionBarrierVertex,
+                                  final Object metricData,
                                   final Pair<String, String> taskInfo) {
     this.physicalPlan = physicalPlan;
-    this.metricCollectionBarrierVertex = metricCollectionBarrierVertex;
+    this.metricData = metricData;
     this.taskInfo = taskInfo;
   }
 
@@ -52,11 +51,8 @@ public final class DynamicOptimizationEvent implements RuntimeEvent {
     return this.physicalPlan;
   }
 
-  /**
-   * @return the metric collection barrier vertex for the dynamic optimization.
-   */
-  public MetricCollectionBarrierVertex getMetricCollectionBarrierVertex() {
-    return this.metricCollectionBarrierVertex;
+  public Object getMetricData() {
+    return this.metricData;
   }
 
   /**
