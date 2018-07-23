@@ -103,7 +103,6 @@ public final class NodeNamesAssignmentPass extends AnnotatingPass {
         // Fall back to setting even distribution
         irVertex.getExecutionProperties().put(NodeNamesProperty.of(EMPTY_MAP));
       } else if (isOneToOneEdge(inEdges)) {
-            inEdges.iterator().next().getSrc().getId()));
         final Optional<HashMap<String, Integer>> property = inEdges.iterator().next().getSrc()
             .getExecutionProperties().get(NodeNamesProperty.class);
         irVertex.getExecutionProperties().put(NodeNamesProperty.of(property.get()));
