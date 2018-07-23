@@ -39,7 +39,7 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
     Collections.sort(nodeNames, Comparator.naturalOrder());
     int index = taskIndex;
     for (final String nodeName : nodeNames) {
-      if (index < propertyValue.get(nodeName)) {
+      if (index >= propertyValue.get(nodeName)) {
         index -= propertyValue.get(nodeName);
       } else {
         return nodeName;
@@ -55,7 +55,11 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
     if (propertyValue.isEmpty()) {
       return true;
     }
-    return executor.getNodeName().equals(
-        getNodeName(propertyValue, RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId())));
+    try {
+      return executor.getNodeName().equals(
+          getNodeName(propertyValue, RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId())));
+    } catch (final IllegalStateException e) {
+      throw new RuntimeException(String.format("Cannot schedule %s", task.getTaskId(), e));
+    }
   }
 }
