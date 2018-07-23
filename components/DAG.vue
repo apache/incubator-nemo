@@ -16,8 +16,11 @@ const DEBOUNCE_INTERVAL = 200;
 
 const VERTEX_WIDTH = 50;
 const VERTEX_HEIGHT = 30;
-const VERTEX_RADIUS = 4;
+const VERTEX_RADIUS = 6;
 const PAN_MARGIN = 20;
+const RECT_ROUND_RADIUS = 4;
+
+const SUCCESS_COLOR = '#67C23A';
 
 const CANVAS_RATIO = 0.75;
 const MAX_ZOOM = 20;
@@ -134,6 +137,10 @@ export default {
           () => this.resizeCanvas(true), false);
       }
 
+      this.$eventBus.$on('resize-canvas', () => {
+        this.resizeCanvas(true);
+      });
+
       this.$eventBus.$on('rerender-dag', () => {
         if (this.firstDagRender) {
           this.firstDagRender = false;
@@ -157,6 +164,12 @@ export default {
         this.firstDagRender = true;
       });
 
+      this.$eventBus.$on('metric-selected-done', () => {
+        this.resizeCanvas(true);
+        this.canvas.renderAll();
+        this.canvas.calcOffset();
+      });
+
       // stage state transition event
       this.$eventBus.$on('stage-event', ({ stageId, state }) => {
         if (!stageId || !(stageId in this.stageObjects)) {
@@ -166,7 +179,7 @@ export default {
         const stage = this.stageObjects[stageId];
 
         if (state === STATE.COMPLETE) {
-          stage.set('fill', 'green');
+          stage.set('fill', SUCCESS_COLOR);
           this.canvas.renderAll();
         }
       });
@@ -199,6 +212,10 @@ export default {
         this.isDragging = true;
         this.lastXCoord = e.clientX;
         this.lastYCoord = e.clientY;
+
+        if (!option.target) {
+          this.$eventBus.$emit('metric-deselect');
+        }
       });
 
       this.canvas.on('mouse:move', option => {
@@ -216,6 +233,13 @@ export default {
 
       this.canvas.on('mouse:up', option => {
         this.isDragging = false;
+        this.resetCoords();
+      });
+    },
+
+    resetCoords() {
+      this.canvas.forEachObject(obj => {
+        obj.setCoords();
       });
     },
 
@@ -356,6 +380,8 @@ export default {
           height: stage.height,
           left: stage.x,
           top: stage.y,
+          rx: RECT_ROUND_RADIUS,
+          ry: RECT_ROUND_RADIUS,
           fill: 'white',
           stroke: 'rgba(100, 200, 200, 0.5)',
           strokeWidth: 2,

@@ -1,10 +1,10 @@
 <template>
   <div>
     <timeline
-    ref="timeline"
-    :items="metric"
-    :groups="groups"
-    :options="options">
+      ref="timeline"
+      :items="metric"
+      :groups="groups"
+      :options="options">
     </timeline>
   </div>
 </template>
@@ -36,6 +36,17 @@ export default {
 
     this.$eventBus.$on('move-timeline', ( time ) => {
       this.moveTimeline(time);
+    });
+
+  },
+
+  mounted() {
+    this.timeline.on('select', ({ items }) => {
+      if (items.length === 0) {
+        this.$eventBus.$emit('metric-deselect');
+      } else {
+        this.$eventBus.$emit('metric-selected', items[0]);
+      }
     });
   },
 

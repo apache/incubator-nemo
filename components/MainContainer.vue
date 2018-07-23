@@ -1,44 +1,48 @@
 <template>
-  <div>
-    <el-tabs @tab-click="handleTabClick">
-      <el-tab-pane>
-        <template slot="label">
-          Timeline <i class="el-icon-time"/>
-        </template>
-        <metric-timeline
-           ref="metricTimeline"
-          :metric="metricDataSet"
-          :metricLookupMap="metricLookupMap"
-          :groups="groupDataSet"/>
-      </el-tab-pane>
-      <el-tab-pane>
-        <template slot="label">
-          DAG
-        </template>
-        <dag
-          :metricDataSet="metricDataSet"
-          :metricLookupMap="metricLookupMap"/>
-      </el-tab-pane>
-    </el-tabs>
-    <template v-if="tableData.length > 0">
-      <el-table
-        empty-text="No data"
-        :row-class-name="_rowClassName"
-        :data="tableData">
-        <el-table-column type="expand">
-          <template slot-scope="props">
-            <ul>
-              <li v-for="ep in props.row.extra" :key="ep.key">
-                {{ ep.key }}: {{ ep.value }}
-              </li>
-            </ul>
+  <el-row type="flex" justify="space-between">
+    <el-col :span="mainColSpan">
+      <el-tabs @tab-click="handleTabClick">
+        <el-tab-pane>
+          <template slot="label">
+            Timeline <i class="el-icon-time"/>
           </template>
-        </el-table-column>
-        <el-table-column label="Key" prop="key"/>
-        <el-table-column label="Value" prop="value"/>
-      </el-table>
-    </template>
-  </div>
+          <metric-timeline
+             ref="metricTimeline"
+            :metric="metricDataSet"
+            :metricLookupMap="metricLookupMap"
+            :groups="groupDataSet"/>
+        </el-tab-pane>
+        <el-tab-pane>
+          <template slot="label">
+            DAG
+          </template>
+          <dag
+            :metricDataSet="metricDataSet"
+            :metricLookupMap="metricLookupMap"/>
+        </el-tab-pane>
+      </el-tabs>
+    </el-col>
+    <el-col :span="subColSpan">
+      <template v-if="tableData.length > 0">
+        <el-table
+          empty-text="No data"
+          :row-class-name="_rowClassName"
+          :data="tableData">
+          <el-table-column type="expand">
+            <template slot-scope="props">
+              <ul>
+                <li v-for="ep in props.row.extra" :key="ep.key">
+                  {{ ep.key }}: {{ ep.value }}
+                </li>
+              </ul>
+            </template>
+          </el-table-column>
+          <el-table-column label="Key" prop="key"/>
+          <el-table-column label="Value" prop="value"/>
+        </el-table>
+      </template>
+    </el-col>
+  </el-row>
 </template>
 
 <script>
@@ -92,6 +96,19 @@ export default {
     };
   },
 
+  computed: {
+    mainColSpan() {
+      if (this.tableData.length === 0) {
+        return 24;
+      }
+      return 12;
+    },
+
+    subColSpan() {
+      return 23 - this.mainColSpan;
+    }
+  },
+
   beforeMount() {
     this.tryReconnect();
 
@@ -129,8 +146,14 @@ export default {
           });
         }
       });
-
+      this.$eventBus.$emit('metric-selected-done');
     });
+
+    this.$eventBus.$on('metric-deselect', () => {
+      this.tableData = [];
+      this.$eventBus.$emit('resize-canvas');
+    });
+
   },
 
   methods: {
@@ -138,7 +161,7 @@ export default {
       if (rowObject.row.extra) {
         return '';
       }
-      return 'no-expand'
+      return 'no-expand';
     },
 
     _flatten(metric) {
@@ -154,7 +177,14 @@ export default {
       return newMetric;
     },
 
-    buildMetricLookupMap() {
+    _removeUnusedProperties(metric) {
+      let newMetric = Object.assign({}, metric);
+      delete newMetric.group;
+      delete newMetric.content;
+      return newMetric;
+    },
+
+    buildMetricLookupMapWithDAG() {
       this.dag.vertices.forEach(stage => {
         this.metricLookupMap[stage.id] = this._flatten(stage);
         stage.properties.irDag.vertices.forEach(vertex => {
@@ -169,6 +199,14 @@ export default {
         const edgeId = edge.properties.runtimeEdgeId;
         this.metricLookupMap[edgeId] = this._flatten(edge);
       });
+    },
+
+    addMetricToMetricLookupMap(metric) {
+      if (metric.group === 'JobMetric') {
+        this.metricLookupMap[metric.id] = this._removeUnusedProperties(metric);
+      } else if (metric.group === 'TaskMetric') {
+        this.metricLookupMap[metric.id] = this._removeUnusedProperties(metric);
+      }
     },
 
     handleTabClick({ index }) {
@@ -207,12 +245,13 @@ export default {
       }
 
       let newItem = { group: metricType };
+      // overwrite item object with received data
       Object.assign(newItem, data);
 
       if (data.dag && !this.dag) {
         this.dag = data.dag;
         this.$eventBus.$emit('dag', this.dag);
-        this.buildMetricLookupMap();
+        this.buildMetricLookupMapWithDAG();
       }
 
       data.stateTransitionEvents
@@ -244,6 +283,7 @@ export default {
       if (!prevItem) {
         try {
           this.metricDataSet.add(newItem);
+          this.addMetricToMetricLookupMap(newItem);
         } catch (e) {
           console.warn('Error when adding new item');
         }
@@ -255,6 +295,7 @@ export default {
       } else {
         try {
           this.metricDataSet.update(newItem);
+          this.addMetricToMetricLookupMap(newItem);
         } catch (e) {
           console.warn('Error when updating item');
         }
