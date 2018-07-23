@@ -15,7 +15,7 @@
  */
 package edu.snu.nemo.runtime.common.message;
 
-import edu.snu.nemo.runtime.common.message.ncs.NcsMessageEnvironment;
+import edu.snu.nemo.runtime.common.message.grpc.GrpcMessageEnvironment;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.concurrent.Future;
@@ -24,7 +24,7 @@ import java.util.concurrent.Future;
  * Set up {@link MessageListener}s to handle incoming messages on this node, and connect to remote nodes and return
  * {@link MessageSender}s to send message to them.
  */
-@DefaultImplementation(NcsMessageEnvironment.class)
+@DefaultImplementation(GrpcMessageEnvironment.class)
 public interface MessageEnvironment {
 
   // The ID of the master used for distinguish the sender or receiver.
