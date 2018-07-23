@@ -105,7 +105,7 @@ public final class ExecutorRepresenter {
    * Marks the Task as running, and sends scheduling message to the executor.
    * @param task
    */
-  public void onTaskScheduled(final Task task) {
+  public synchronized void onTaskScheduled(final Task task) {
     (task.getPropertyValue(ExecutorSlotComplianceProperty.class).orElse(true)
         ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
