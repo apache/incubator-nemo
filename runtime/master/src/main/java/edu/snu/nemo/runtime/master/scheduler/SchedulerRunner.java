@@ -80,11 +80,8 @@ public final class SchedulerRunner {
   private final class SchedulerThread implements Runnable {
     @Override
     public void run() {
-      Collection<Task> prevScheduledTasks = null;
-      Collection<Task> scheduledTasks;
       while (!isTerminated) {
-        scheduledTasks = doScheduleTaskList(prevScheduledTasks);
-        prevScheduledTasks = scheduledTasks;
+        doScheduleTaskList();
         schedulingIteration.await();
       }
       jobStateManagers.values().forEach(jobStateManager -> {
@@ -98,28 +95,17 @@ public final class SchedulerRunner {
     }
   }
 
-  Collection<Task> doScheduleTaskList(final Collection<Task> prevScheduledTasks) {
+  void doScheduleTaskList() {
     final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
     if (!taskListOptional.isPresent()) {
       // Task list is empty
       LOG.debug("PendingTaskCollectionPointer is empty. Awaiting for more Tasks...");
-      return null;
+      return;
     }
 
     final List<String> scheduledTasks = new ArrayList<>();
     final Collection<Task> taskList = taskListOptional.get();
     final List<Task> couldNotSchedule = new ArrayList<>();
-    if (prevScheduledTasks != null) {
-      List<Task> common = new ArrayList<>(taskList);
-      common.retainAll(prevScheduledTasks);
-      if (common.size() > 0) {
-        common.forEach(commonTask -> {
-          final JobStateManager jobStateManager = jobStateManagers.get(commonTask.getJobId());
-          LOG.error("Duplicate tasks! {} {}",
-              commonTask.getTaskId(), jobStateManager.getTaskState(commonTask.getTaskId()));
-        });
-      }
-    }
 
     for (final Task task : taskList) {
       final JobStateManager jobStateManager = jobStateManagers.get(task.getJobId());
@@ -165,7 +151,6 @@ public final class SchedulerRunner {
       // Try these again, if no new task list has been set
       pendingTaskCollectionPointer.setIfNull(couldNotSchedule);
     }
-    return scheduledTasks;
   }
 
   /**
