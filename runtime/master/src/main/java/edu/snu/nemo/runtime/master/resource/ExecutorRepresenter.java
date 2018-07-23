@@ -31,6 +31,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * (WARNING) This class is not thread-safe, and thus should only be accessed through ExecutorRegistry.
  *
@@ -44,7 +47,7 @@ import java.util.stream.Stream;
  */
 @NotThreadSafe
 public final class ExecutorRepresenter {
-
+  private static final Logger LOG = LoggerFactory.getLogger(ExecutorRepresenter.class.getName());
   private final String executorId;
   private final ResourceSpecification resourceSpecification;
   private final Map<String, Task> runningComplyingTasks;
@@ -120,6 +123,7 @@ public final class ExecutorRepresenter {
                       .setTask(ByteString.copyFrom(serialized))
                       .build())
               .build());
+	LOG.info("{} sent to executor", task.getTaskId());
     });
   }
 
