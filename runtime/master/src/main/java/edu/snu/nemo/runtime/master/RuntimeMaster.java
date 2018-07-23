@@ -344,10 +344,10 @@ public final class RuntimeMaster {
         LOG.error(failedExecutorId + " failed, Stack Trace: ", exception);
         throw new RuntimeException(exception);
       case DataSizeMetric:
-        final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
+        //final ControlMessage.DataSizeMetricMsg dataSizeMetricMsg = message.getDataSizeMetricMsg();
         // TODO #96: Modularize DataSkewPolicy to use MetricVertex and BarrierVertex.
-        accumulateBarrierMetric(dataSizeMetricMsg.getPartitionSizeList(),
-            dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getBlockId());
+        //accumulateBarrierMetric(dataSizeMetricMsg.getPartitionSizeList(),
+        //    dataSizeMetricMsg.getSrcIRVertexId(), dataSizeMetricMsg.getBlockId());
         break;
       case MetricMessageReceived:
         final List<ControlMessage.Metric> metricList = message.getMetricMsg().getMetricList();
