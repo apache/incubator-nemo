@@ -348,9 +348,9 @@ public final class BatchSingleJobScheduler implements Scheduler {
           attemptIdx,
           stageToSchedule.getExecutionProperties(),
           stageToSchedule.getSerializedIRDAG(),
-          stageIncomingEdges,
-          stageOutgoingEdges,
-          vertexIdToReadables.get(taskIdx)));
+          new ArrayList<>(stageIncomingEdges),
+          new ArrayList<>(stageOutgoingEdges),
+          new HashMap<>(vertexIdToReadables.get(taskIdx))));
     });
     return tasks;
   }

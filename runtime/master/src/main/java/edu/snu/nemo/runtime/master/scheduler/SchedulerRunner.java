@@ -80,8 +80,10 @@ public final class SchedulerRunner {
   private final class SchedulerThread implements Runnable {
     @Override
     public void run() {
+      int rnd = 0;
       while (!isTerminated) {
-        doScheduleTaskList();
+        doScheduleTaskList(rnd);
+        rnd++;
         schedulingIteration.await();
       }
       jobStateManagers.values().forEach(jobStateManager -> {
@@ -95,7 +97,7 @@ public final class SchedulerRunner {
     }
   }
 
-  void doScheduleTaskList() {
+  void doScheduleTaskList(final int rnd) {
     final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
     if (!taskListOptional.isPresent()) {
       // Task list is empty
@@ -104,6 +106,7 @@ public final class SchedulerRunner {
     }
 
     final Collection<Task> taskList = taskListOptional.get();
+    taskList.forEach(task -> LOG.info("TaskList{}: {}", rnd, task.getTaskId()));
     final List<Task> couldNotSchedule = new ArrayList<>();
     for (final Task task : taskList) {
       final JobStateManager jobStateManager = jobStateManagers.get(task.getJobId());
