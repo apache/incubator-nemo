@@ -80,11 +80,11 @@ public final class SchedulerRunner {
   private final class SchedulerThread implements Runnable {
     @Override
     public void run() {
-      Collection<Task> prevTasks = null;
-      Collection<Task> currTasks;
+      Collection<Task> prevScheduledTasks = null;
+      Collection<Task> scheduledTasks;
       while (!isTerminated) {
-        currTasks = doScheduleTaskList(prevTasks);
-        prevTasks = currTasks;
+        scheduledTasks = doScheduleTaskList(prevScheduledTasks);
+        prevScheduledTasks = scheduledTasks;
         schedulingIteration.await();
       }
       jobStateManagers.values().forEach(jobStateManager -> {
@@ -98,7 +98,7 @@ public final class SchedulerRunner {
     }
   }
 
-  Collection<Task> doScheduleTaskList(final Collection<Task> prevTasks) {
+  Collection<Task> doScheduleTaskList(final Collection<Task> prevScheduledTasks) {
     final Optional<Collection<Task>> taskListOptional = pendingTaskCollectionPointer.getAndSetNull();
     if (!taskListOptional.isPresent()) {
       // Task list is empty
@@ -106,14 +106,18 @@ public final class SchedulerRunner {
       return null;
     }
 
+    List<Task> scheduledTasks = new ArrayList<>();
     final Collection<Task> taskList = taskListOptional.get();
     final List<Task> couldNotSchedule = new ArrayList<>();
-
-    List<Task> common = new ArrayList<>(taskList);
-    if (prevTasks != null) {
-      common.retainAll(prevTasks);
+    if (prevScheduledTasks != null) {
+      List<Task> common = new ArrayList<>(taskList);
+      common.retainAll(prevScheduledTasks);
       if (common.size() > 0) {
-        LOG.error("Duplicate tasks! {}", common.get(0).getTaskId());
+        common.forEach(commonTask -> {
+          final JobStateManager jobStateManager = jobStateManagers.get(commonTask.getJobId());
+          LOG.error("Duplicate tasks! {} {}",
+              commonTask.getTaskId(), jobStateManager.getTaskState(commonTask.getTaskId()));
+        });
       }
     }
 
@@ -146,6 +150,7 @@ public final class SchedulerRunner {
 
           // send the task
           selectedExecutor.onTaskScheduled(task);
+          scheduledTasks.add(task);
         } else {
           couldNotSchedule.add(task);
         }
@@ -157,7 +162,7 @@ public final class SchedulerRunner {
       // Try these again, if no new task list has been set
       pendingTaskCollectionPointer.setIfNull(couldNotSchedule);
     }
-    return taskList;
+    return scheduledTasks;
   }
 
   /**

@@ -41,7 +41,7 @@ import java.util.stream.Stream;
 @NotThreadSafe
 public final class ExecutionPropertyMap<T extends ExecutionProperty> implements Serializable {
   private final String id;
-  private final Map<Class<? extends ExecutionProperty>, T> properties = new HashMap<>();
+  private Map<Class<? extends ExecutionProperty>, T> properties = new HashMap<>();
 
   /**
    * Constructor for ExecutionPropertyMap class.
@@ -50,6 +50,15 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
   @VisibleForTesting
   public ExecutionPropertyMap(final String id) {
     this.id = id;
+  }
+
+  public ExecutionPropertyMap(final String id, final Map<Class<? extends ExecutionProperty>, T> properties) {
+    this.id = id;
+    this.properties = properties;
+  }
+
+  public ExecutionPropertyMap getCopy() {
+    return new ExecutionPropertyMap(this.id, this.properties);
   }
 
   /**
