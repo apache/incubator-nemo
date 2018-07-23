@@ -20,9 +20,7 @@ import edu.snu.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import edu.snu.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 import java.io.Serializable;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * A Task is a self-contained executable that can be executed on a machine.
@@ -65,6 +63,17 @@ public final class Task implements Serializable {
     this.taskIncomingEdges = taskIncomingEdges;
     this.taskOutgoingEdges = taskOutgoingEdges;
     this.irVertexIdToReadable = irVertexIdToReadable;
+  }
+
+  public Task clone() {
+    return new Task(jobId,
+        taskId,
+        attemptIdx,
+        executionProperties.getCopy(),
+        serializedIRDag,
+        new ArrayList<>(taskIncomingEdges),
+        new ArrayList<>(taskOutgoingEdges),
+        new HashMap<>(irVertexIdToReadable));
   }
 
   /**

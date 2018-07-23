@@ -103,9 +103,11 @@ public final class ExecutorRepresenter {
 
   /**
    * Marks the Task as running, and sends scheduling message to the executor.
-   * @param task
+   * @param taskToClone
    */
-  public void onTaskScheduled(final Task task) {
+  public void onTaskScheduled(final Task taskToClone) {
+    final Task task = taskToClone.clone();
+
     (task.getPropertyValue(ExecutorSlotComplianceProperty.class).orElse(true)
         ? runningComplyingTasks : runningNonComplyingTasks).put(task.getTaskId(), task);
     runningTaskToAttempt.put(task, task.getAttemptIdx());
@@ -114,9 +116,7 @@ public final class ExecutorRepresenter {
     LOG.info("{} sent to executor - 2", task.getTaskId());
     final byte[] serialized;
     try {
-      synchronized (task) {
-        serialized = SerializationUtils.serialize(task);
-      }
+      serialized = SerializationUtils.serialize(task);
     } catch (final Throwable t) {
       LOG.error(t.toString());
       t.printStackTrace();
