@@ -55,7 +55,11 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
     if (propertyValue.isEmpty()) {
       return true;
     }
-    return executor.getNodeName().equals(
-        getNodeName(propertyValue, RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId())));
+    try {
+      return executor.getNodeName().equals(
+          getNodeName(propertyValue, RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId())));
+    } catch (final IllegalStateException e) {
+      throw new RuntimeException(String.format("Cannot schedule %s", task.getTaskId(), e));
+    }
   }
 }
