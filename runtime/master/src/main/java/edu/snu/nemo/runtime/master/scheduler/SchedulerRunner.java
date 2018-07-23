@@ -106,7 +106,7 @@ public final class SchedulerRunner {
       return null;
     }
 
-    List<Task> scheduledTasks = new ArrayList<>();
+    final List<Task> scheduledTasks = new ArrayList<>();
     final Collection<Task> taskList = taskListOptional.get();
     final List<Task> couldNotSchedule = new ArrayList<>();
     if (prevScheduledTasks != null) {
@@ -130,29 +130,31 @@ public final class SchedulerRunner {
       }
 
       executorRegistry.viewExecutors(executors -> {
-        final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
-        task.getExecutionProperties().forEachProperties(property -> {
-          final Optional<SchedulingConstraint> constraint = schedulingConstraintRegistry.get(property.getClass());
-          if (constraint.isPresent() && !candidateExecutors.getValue().isEmpty()) {
-            candidateExecutors.setValue(candidateExecutors.getValue().stream()
-                .filter(e -> constraint.get().testSchedulability(e, task))
-                .collect(Collectors.toSet()));
+        if (!scheduledTasks.contains(task)) {
+          final MutableObject<Set<ExecutorRepresenter>> candidateExecutors = new MutableObject<>(executors);
+          task.getExecutionProperties().forEachProperties(property -> {
+            final Optional<SchedulingConstraint> constraint = schedulingConstraintRegistry.get(property.getClass());
+            if (constraint.isPresent() && !candidateExecutors.getValue().isEmpty()) {
+              candidateExecutors.setValue(candidateExecutors.getValue().stream()
+                  .filter(e -> constraint.get().testSchedulability(e, task))
+                  .collect(Collectors.toSet()));
+            }
+          });
+          if (!candidateExecutors.getValue().isEmpty()) {
+            // Select executor
+            final ExecutorRepresenter selectedExecutor
+                = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
+            // update metadata first
+            jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
+
+            LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
+
+            // send the task
+            selectedExecutor.onTaskScheduled(task);
+            scheduledTasks.add(task);
+          } else {
+            couldNotSchedule.add(task);
           }
-        });
-        if (!candidateExecutors.getValue().isEmpty()) {
-          // Select executor
-          final ExecutorRepresenter selectedExecutor
-              = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
-          // update metadata first
-          jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
-
-          LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
-
-          // send the task
-          selectedExecutor.onTaskScheduled(task);
-          scheduledTasks.add(task);
-        } else {
-          couldNotSchedule.add(task);
         }
       });
     }

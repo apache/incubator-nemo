@@ -118,7 +118,6 @@ public final class ExecutorRepresenter {
       serialized = SerializationUtils.serialize(task);
     } catch (final Throwable t) {
       LOG.error(t.toString());
-      t.getCause();
       t.printStackTrace();
       throw new RuntimeException(t);
     }
