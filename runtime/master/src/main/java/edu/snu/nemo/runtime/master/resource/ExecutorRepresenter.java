@@ -114,21 +114,26 @@ public final class ExecutorRepresenter {
 
     serializationExecutorService.submit(() -> {
       LOG.info("{} sent to executor - 2", task.getTaskId());
+      try {
         final byte[] serialized = SerializationUtils.serialize(task);
         LOG.info("{} sent to executor - 3", task.getTaskId());
         final ControlMessage.Message msg =
             ControlMessage.Message.newBuilder()
-            .setId(RuntimeIdGenerator.generateMessageId())
-            .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
-            .setType(ControlMessage.MessageType.ScheduleTask)
-            .setScheduleTaskMsg(
-                ControlMessage.ScheduleTaskMsg.newBuilder()
-                    .setTask(ByteString.copyFrom(serialized))
-                    .build())
-            .build();
+                .setId(RuntimeIdGenerator.generateMessageId())
+                .setListenerId(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID)
+                .setType(ControlMessage.MessageType.ScheduleTask)
+                .setScheduleTaskMsg(
+                    ControlMessage.ScheduleTaskMsg.newBuilder()
+                        .setTask(ByteString.copyFrom(serialized))
+                        .build())
+                .build();
         LOG.info("{} sent to executor - 4", task.getTaskId());
         sendControlMessage(msg);
         LOG.info("{} sent to executor - 5", task.getTaskId());
+      } catch (final Throwable t) {
+        LOG.error(t.getMessage());
+        throw new RuntimeException(t);
+      }
     });
   }
 
