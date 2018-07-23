@@ -95,23 +95,19 @@ public final class NodeNamesAssignmentPass extends AnnotatingPass {
       final DAG<IRVertex, IREdge> dag,
       final BandwidthSpecification bandwidthSpecification) {
     dag.topologicalDo(irVertex -> {
-      LOG.info(String.format("Setting %s", irVertex.getId()));
       final Collection<IREdge> inEdges = dag.getIncomingEdgesOf(irVertex);
       final int parallelism = irVertex.getPropertyValue(ParallelismProperty.class)
           .orElseThrow(() -> new RuntimeException("Parallelism property required"));
       if (inEdges.size() == 0) {
-        LOG.info(String.format("Setting %s - is root", irVertex.getId()));
         // This vertex is root vertex.
         // Fall back to setting even distribution
         irVertex.getExecutionProperties().put(NodeNamesProperty.of(EMPTY_MAP));
       } else if (isOneToOneEdge(inEdges)) {
-        LOG.info(String.format("Setting %s - is o2o from %s", irVertex.getId(),
             inEdges.iterator().next().getSrc().getId()));
         final Optional<HashMap<String, Integer>> property = inEdges.iterator().next().getSrc()
             .getExecutionProperties().get(NodeNamesProperty.class);
         irVertex.getExecutionProperties().put(NodeNamesProperty.of(property.get()));
       } else {
-        LOG.info(String.format("Setting %s - is complex", irVertex.getId()));
         // This IRVertex has shuffle inEdge(s), or has multiple inEdges.
         final Map<String, Integer> parentLocationShares = new HashMap<>();
         for (final IREdge edgeToIRVertex : dag.getIncomingEdgesOf(irVertex)) {
