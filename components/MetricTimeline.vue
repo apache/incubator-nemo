@@ -45,7 +45,7 @@ export default {
       if (items.length === 0) {
         this.$eventBus.$emit('metric-deselect');
       } else {
-        this.$eventBus.$emit('metric-selected', items[0]);
+        this.$eventBus.$emit('metric-select', items[0]);
       }
     });
   },
@@ -54,8 +54,8 @@ export default {
     return {
       options: {
         // TODO: this should be modified to adjust somewhere adequate
-        start: new Date(1530765471863),
-        end: new Date(1530765471863),
+        start: Date.now(),
+        end: Date.now(),
       },
 
       fitThrottleTimer: undefined,

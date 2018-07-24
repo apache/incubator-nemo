@@ -9,7 +9,6 @@
           <metric-timeline
              ref="metricTimeline"
             :metric="metricDataSet"
-            :metricLookupMap="metricLookupMap"
             :groups="groupDataSet"/>
         </el-tab-pane>
         <el-tab-pane>
@@ -17,8 +16,8 @@
             DAG
           </template>
           <dag
-            :metricDataSet="metricDataSet"
-            :metricLookupMap="metricLookupMap"/>
+            :tabIndex="tabIndex"
+            :metricDataSet="metricDataSet"/>
         </el-tab-pane>
       </el-tabs>
     </el-col>
@@ -93,6 +92,7 @@ export default {
       // element-ui specific
       collapseActiveNames: ['timeline', 'dag'],
       tableData: [],
+      tabIndex: '0',
     };
   },
 
@@ -120,7 +120,7 @@ export default {
       });
     });
 
-    this.$eventBus.$on('metric-selected', metricId => {
+    this.$eventBus.$on('metric-select', metricId => {
       this.tableData = [];
       const metric = this.metricLookupMap[metricId];
       Object.keys(metric).forEach(key => {
@@ -130,7 +130,7 @@ export default {
             Object.keys(metric[key]).forEach(ep => {
               executionPropertyArray.push({
                 key: ep,
-                value: metric[key][ep]
+                value: metric[key][ep],
               });
             });
             this.tableData.push({
@@ -146,12 +146,13 @@ export default {
           });
         }
       });
-      this.$eventBus.$emit('metric-selected-done');
+      this.$eventBus.$emit('metric-select-done');
     });
 
-    this.$eventBus.$on('metric-deselect', () => {
+    this.$eventBus.$on('metric-deselect', async () => {
       this.tableData = [];
-      this.$eventBus.$emit('resize-canvas');
+      await this.$nextTick();
+      this.$eventBus.$emit('metric-deselect-done');
     });
 
   },
@@ -210,6 +211,7 @@ export default {
     },
 
     handleTabClick({ index }) {
+      this.tabIndex = index;
       if (index === '0') {
         this.$eventBus.$emit('redraw-timeline');
       } else if (index === '1') {

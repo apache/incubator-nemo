@@ -1,7 +1,9 @@
 <template>
   <div ref="canvasContainer" class="dag-canvas-container">
     <p v-if="!dag">DAG is not ready.</p>
-    <canvas :class="{dag: dag-canvas}" id="dag-canvas"></canvas>
+    <div v-show="dag">
+      <canvas class="dag-canvas" id="dag-canvas"></canvas>
+    </div>
   </div>
 </template>
 
@@ -22,16 +24,18 @@ const RECT_ROUND_RADIUS = 4;
 
 const SUCCESS_COLOR = '#67C23A';
 
+const BACKGROUND_COLOR = '#F2F6FC';
 const CANVAS_RATIO = 0.75;
 const MAX_ZOOM = 20;
 const MIN_ZOOM = 0.01;
 const TARGET_FIND_TOLERANCE = 4;
 
+const MY_TAB_INDEX = '1';
 const DEBUG = false;
 
 export default {
 
-  props: ['metricDataSet', 'metricLookupMap'],
+  props: ['metricDataSet', 'tabIndex'],
 
   mounted() {
     this.initializeCanvas();
@@ -43,7 +47,7 @@ export default {
       this.resizeCanvas(false);
       this.drawDAG();
       this.fitCanvas();
-      this.setUpCanvasMouseEventHandler();
+      this.setUpCanvasEventHandler();
     }
     // debug end
   },
@@ -107,28 +111,35 @@ export default {
 
   methods: {
     initializeCanvas() {
-      this.canvas = new fabric.Canvas('dag-canvas');
-      this.canvas.selection = false;
-      this.canvas.targetFindTolerance = TARGET_FIND_TOLERANCE;
+      this.canvas = new fabric.Canvas('dag-canvas', {
+        selection: false,
+        backgroundColor: BACKGROUND_COLOR,
+        targetFindTolerance: TARGET_FIND_TOLERANCE,
+        preserveObjectStacking: true,
+      });
+      this.canvas.renderAll();
     },
 
     resizeCanvas(fit) {
-      if (!this.canvas) {
-        return;
-      }
-
-      if (this.resizeDebounceTimer) {
-        clearTimeout(this.resizeDebounceTimer);
-      }
-
-      this.resizeDebounceTimer = setTimeout(() => {
-        let w = this.$refs.canvasContainer.offsetWidth;
-        this.canvas.setWidth(w);
-        this.canvas.setHeight(w * CANVAS_RATIO);
-        if (fit) {
-          this.fitCanvas();
+      return new Promise((resolve, reject) => {
+        if (!this.canvas) {
+          return;
         }
-      }, DEBOUNCE_INTERVAL);
+
+        if (this.resizeDebounceTimer) {
+          clearTimeout(this.resizeDebounceTimer);
+        }
+
+        this.resizeDebounceTimer = setTimeout(() => {
+          let w = this.$refs.canvasContainer.offsetWidth;
+          this.canvas.setWidth(w);
+          this.canvas.setHeight(w * CANVAS_RATIO);
+          if (fit) {
+            this.fitCanvas();
+          }
+          resolve();
+        }, DEBOUNCE_INTERVAL);
+      });
     },
 
     setUpEventListener() {
@@ -141,33 +152,46 @@ export default {
         this.resizeCanvas(true);
       });
 
-      this.$eventBus.$on('rerender-dag', () => {
+      this.$eventBus.$on('rerender-dag', async () => {
+        if (!this.dag) {
+          return;
+        }
+
         if (this.firstDagRender) {
           this.firstDagRender = false;
-          this.resizeCanvas(true);
+          await this.resizeCanvas(true);
         } else {
-          this.resizeCanvas(false);
+          await this.resizeCanvas(false);
         }
         this.canvas.viewportTransform[4] = this.lastViewportX;
         this.canvas.viewportTransform[5] = this.lastViewportY;
         this.canvas.calcOffset();
       });
 
+      this.$eventBus.$on('metric-select-done', () => {
+        if (this.tabIndex === MY_TAB_INDEX) {
+          this.resizeCanvas(false);
+        }
+      });
+
+      this.$eventBus.$on('metric-deselect-done', () => {
+        if (this.tabIndex === MY_TAB_INDEX) {
+          this.resizeCanvas(false);
+        }
+      });
+
       // new dag event
-      this.$eventBus.$on('dag', data => {
-        this.setUpCanvasMouseEventHandler();
+      this.$eventBus.$on('dag', async data => {
+        if (this.tabIndex === MY_TAB_INDEX) {
+          await this.resizeCanvas(false);
+        }
+        this.setUpCanvasEventHandler();
         this.dag = data;
         this.drawDAG();
-        this.fitCanvas();
+        await this.fitCanvas();
         this.canvas.viewportTransform[4] = this.lastViewportX;
         this.canvas.viewportTransform[5] = this.lastViewportY;
         this.firstDagRender = true;
-      });
-
-      this.$eventBus.$on('metric-selected-done', () => {
-        this.resizeCanvas(true);
-        this.canvas.renderAll();
-        this.canvas.calcOffset();
       });
 
       // stage state transition event
@@ -185,10 +209,10 @@ export default {
       });
     },
 
-    setUpCanvasMouseEventHandler() {
+    setUpCanvasEventHandler() {
       // zoom feature
-      this.canvas.on('mouse:wheel', option => {
-        let delta = option.e.deltaY;
+      this.canvas.on('mouse:wheel', options => {
+        let delta = options.e.deltaY;
         let zoom = this.canvas.getZoom();
         zoom += delta / 200;
         if (zoom > MAX_ZOOM) {
@@ -197,30 +221,26 @@ export default {
           zoom = MIN_ZOOM;
         }
         this.canvas.zoomToPoint({
-          x: option.e.offsetX,
-          y: option.e.offsetY,
+          x: options.e.offsetX,
+          y: options.e.offsetY,
         }, zoom);
         this.lastViewportX = this.canvas.viewportTransform[4];
         this.lastViewportY = this.canvas.viewportTransform[5];
-        option.e.preventDefault();
-        option.e.stopPropagation();
+        options.e.preventDefault();
+        options.e.stopPropagation();
       });
 
       // pan feature
-      this.canvas.on('mouse:down', option => {
-        let e = option.e;
+      this.canvas.on('mouse:down', options => {
+        let e = options.e;
         this.isDragging = true;
         this.lastXCoord = e.clientX;
         this.lastYCoord = e.clientY;
-
-        if (!option.target) {
-          this.$eventBus.$emit('metric-deselect');
-        }
       });
 
-      this.canvas.on('mouse:move', option => {
+      this.canvas.on('mouse:move', options => {
         if (this.isDragging) {
-          const e = option.e;
+          const e = options.e;
           this.canvas.viewportTransform[4] += e.clientX - this.lastXCoord;
           this.canvas.viewportTransform[5] += e.clientY - this.lastYCoord;
           this.lastViewportX = this.canvas.viewportTransform[4];
@@ -231,9 +251,21 @@ export default {
         }
       });
 
-      this.canvas.on('mouse:up', option => {
+      this.canvas.on('mouse:up', () => {
         this.isDragging = false;
         this.resetCoords();
+      });
+
+      this.canvas.on('selection:created', options => {
+        this.$eventBus.$emit('metric-select', options.target.metricId);
+      });
+
+      this.canvas.on('selection:updated', options => {
+        this.$eventBus.$emit('metric-select', options.target.metricId);
+      });
+
+      this.canvas.on('selection:cleared', () => {
+        this.$eventBus.$emit('metric-deselect');
       });
     },
 
@@ -243,7 +275,7 @@ export default {
       });
     },
 
-    fitCanvas() {
+    async fitCanvas() {
       let widthRatio = this.canvas.width / this.dagWidth;
       let heightRatio = this.canvas.height / this.dagHeight;
       let targetRatio = widthRatio > heightRatio ?
@@ -256,12 +288,9 @@ export default {
       return this.dag.vertices.find(v => v.id === stageId).properties.irDag;
     },
 
-    handleObjectClick({ metricId }) {
-      this.$eventBus.$emit('metric-selected', metricId);
-    },
-
     drawDAG() {
-      this.canvas.clear();
+      // clear objects in canvas without resetting background
+      this.canvas.remove(...this.canvas.getObjects().concat());
 
       let objectArray = [];
       // configure stage layout based on inner vertices
@@ -307,11 +336,10 @@ export default {
             originX: 'center',
             originY: 'center',
             fill: 'black',
-            selectable: false,
-          });
-
-          vertexCircle.on('mousedown', () => {
-            this.handleObjectClick(vertexCircle);
+            hasControls: false,
+            hasRotatingPoint: false,
+            lockMovementX: true,
+            lockMovementY: true,
           });
 
           this.vertexObjects[vertex.label] = vertexCircle;
@@ -336,11 +364,10 @@ export default {
             stroke: 'black',
             strokeWidth: 2,
             perPixelTargetFind: true,
-            selectable: false,
-          });
-
-          pathObj.on('mousedown', () => {
-            this.handleObjectClick(pathObj);
+            hasControls: false,
+            hasRotatingPoint: false,
+            lockMovementX: true,
+            lockMovementY: true,
           });
 
           objectArray.push(pathObj);
@@ -387,16 +414,15 @@ export default {
           strokeWidth: 2,
           originX: 'center',
           originY: 'center',
-          selectable: false,
+          hasControls: false,
+          hasRotatingPoint: false,
+          lockMovementX: true,
+          lockMovementY: true,
         });
 
         this.stageObjects[stage.label] = stageRect;
         this.canvas.add(stageRect);
         stageRect.sendToBack();
-
-        stageRect.on('mousedown', () => {
-          this.handleObjectClick(stageRect);
-        });
       });
 
       let stageEdgeObjectArray = [];
@@ -417,11 +443,10 @@ export default {
           stroke: 'black',
           strokeWidth: 2,
           perPixelTargetFind: true,
-          selectable: false,
-        });
-
-        pathObj.on('mousedown', () => {
-          this.handleObjectClick(pathObj);
+          hasControls: false,
+          hasRotatingPoint: false,
+          lockMovementX: true,
+          lockMovementY: true,
         });
 
         stageEdgeObjectArray.push(pathObj);
@@ -454,6 +479,5 @@ export default {
 <style>
 .dag-canvas {
   box-sizing: border-box;
-  border: 2px solid black;
 }
 </style>
