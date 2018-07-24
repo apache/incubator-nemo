@@ -101,7 +101,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
   }
 
   public List<Integer> identifySkewedKeys(final Map<Integer, Long> keyValToPartitionSizeMap) {
-    // Identify skewed keyes.
+    // Identify skewed keys.
     List<Map.Entry<Integer, Long>> sortedMetricData = keyValToPartitionSizeMap.entrySet().stream()
         .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
         .collect(Collectors.toList());

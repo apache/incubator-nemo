@@ -46,6 +46,7 @@ public final class GroupByKeyTransform<I> implements Transform<I, KV<Object, Lis
 
   @Override
   public void onData(final I element) {
+    LOG.info("GBK element {}", element);
     final KV kv = (KV) element;
     keyToValues.putIfAbsent(kv.getKey(), new ArrayList());
     keyToValues.get(kv.getKey()).add(kv.getValue());

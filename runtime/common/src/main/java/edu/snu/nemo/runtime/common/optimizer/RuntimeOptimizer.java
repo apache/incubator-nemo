@@ -56,7 +56,7 @@ public final class RuntimeOptimizer {
       final Pair<List<String>, Map<Integer, Long>> metricData =
           (Pair<List<String>, Map<Integer, Long>>) metric;
       final DAG<IRVertex, IREdge> newIrDAG =
-          new DataSkewRuntimePass(10).apply(originalPlan.getIrDAG(), metricData);
+          new DataSkewRuntimePass(3).apply(originalPlan.getIrDAG(), metricData);
       final DAG<Stage, StageEdge> stageDAG = newIrDAG.convert(physicalPlanGenerator);
       final PhysicalPlan physicalPlan =
           new PhysicalPlan(RuntimeIdGenerator.generatePhysicalPlanId(), newIrDAG, stageDAG);
