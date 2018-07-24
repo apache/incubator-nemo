@@ -1,53 +1,50 @@
 <template>
-  <el-row type="flex" justify="space-between">
-    <el-col :span="mainColSpan">
-      <el-tabs @tab-click="handleTabClick">
-        <el-tab-pane>
-          <template slot="label">
-            Timeline <i class="el-icon-time"/>
-          </template>
-          <metric-timeline
-             ref="metricTimeline"
-            :metric="metricDataSet"
-            :groups="groupDataSet"/>
-        </el-tab-pane>
-        <el-tab-pane>
-          <template slot="label">
-            DAG
-          </template>
-          <dag
-            :tabIndex="tabIndex"
-            :metricDataSet="metricDataSet"/>
-        </el-tab-pane>
-      </el-tabs>
-    </el-col>
-    <el-col :span="subColSpan">
-      <template v-if="tableData.length > 0">
-        <el-table
-          empty-text="No data"
-          :row-class-name="_rowClassName"
-          :data="tableData">
-          <el-table-column type="expand">
-            <template slot-scope="props">
-              <ul>
-                <li v-for="ep in props.row.extra" :key="ep.key">
-                  {{ ep.key }}: {{ ep.value }}
-                </li>
-              </ul>
-            </template>
-          </el-table-column>
-          <el-table-column label="Key" prop="key"/>
-          <el-table-column label="Value" prop="value"/>
-        </el-table>
-      </template>
-    </el-col>
-  </el-row>
+  <el-card>
+    <el-tabs @tab-click="handleTabClick">
+      <el-tab-pane>
+        <template slot="label">
+          Timeline <i class="el-icon-time"/>
+        </template>
+        <el-row type="flex" justify="space-between">
+          <el-col :span="mainColSpan">
+            <metric-timeline
+               ref="metricTimeline"
+              :metric="metricDataSet"
+              :groups="groupDataSet"/>
+          </el-col>
+          <el-col :span="subColSpan">
+            <detail-table
+              v-if="tabIndex === '0'"
+              :tableData="tableData"/>
+          </el-col>
+        </el-row>
+      </el-tab-pane>
+      <el-tab-pane>
+        <template slot="label">
+          DAG
+        </template>
+        <el-row type="flex" justify="space-between">
+          <el-col :span="mainColSpan">
+            <dag
+              :tabIndex="tabIndex"
+              :metricDataSet="metricDataSet"/>
+            </el-col>
+          <el-col :span="subColSpan">
+            <detail-table
+              v-if="tabIndex === '1'"
+              :tableData="tableData"/>
+          </el-col>
+        </el-row>
+      </el-tab-pane>
+    </el-tabs>
+  </el-card>
 </template>
 
 <script>
 import Vue from 'vue';
 import MetricTimeline from '~/components/MetricTimeline';
 import DAG from '~/components/DAG';
+import DetailTable from '~/components/DetailTable';
 import { DataSet } from 'vue2vis';
 import { STATE } from '~/assets/constants';
 
@@ -74,6 +71,7 @@ export default {
   components: {
     'metric-timeline': MetricTimeline,
     'dag': DAG,
+    'detail-table': DetailTable,
   },
 
   data() {
@@ -81,6 +79,9 @@ export default {
       // timeline dataset
       metricDataSet: new DataSet([]),
       groupDataSet: new DataSet([]),
+
+      // selected metric id
+      selectedMetricId: '',
 
       // dag data
       dag: undefined,
@@ -107,7 +108,7 @@ export default {
     },
 
     subColSpan() {
-      return 23 - this.mainColSpan;
+      return 24 - this.mainColSpan;
     }
   },
 
@@ -123,6 +124,42 @@ export default {
     });
 
     this.$eventBus.$on('metric-select', metricId => {
+      this.selectedMetricId = metricId;
+      this.buildTableData(metricId);
+      this.$eventBus.$emit('metric-select-done');
+    });
+
+    this.$eventBus.$on('metric-deselect', async () => {
+      this.tableData = [];
+      this.selectedMetricId = '';
+      await this.$nextTick();
+      this.$eventBus.$emit('metric-deselect-done');
+    });
+
+  },
+
+  methods: {
+    _flatten(metric) {
+      let newMetric = {};
+      Object.keys(metric).forEach(key => {
+        if (key === 'properties') {
+          Object.assign(newMetric, this._flatten(metric[key]));
+        } else if (key !== 'irDag') {
+          newMetric[key] = metric[key];
+        }
+      });
+
+      return newMetric;
+    },
+
+    _removeUnusedProperties(metric) {
+      let newMetric = Object.assign({}, metric);
+      delete newMetric.group;
+      delete newMetric.content;
+      return newMetric;
+    },
+
+    buildTableData(metricId) {
       this.tableData = [];
       const metric = this.metricLookupMap[metricId];
       Object.keys(metric).forEach(key => {
@@ -148,43 +185,6 @@ export default {
           });
         }
       });
-      this.$eventBus.$emit('metric-select-done');
-    });
-
-    this.$eventBus.$on('metric-deselect', async () => {
-      this.tableData = [];
-      await this.$nextTick();
-      this.$eventBus.$emit('metric-deselect-done');
-    });
-
-  },
-
-  methods: {
-    _rowClassName(rowObject) {
-      if (rowObject.row.extra) {
-        return '';
-      }
-      return 'no-expand';
-    },
-
-    _flatten(metric) {
-      let newMetric = {};
-      Object.keys(metric).forEach(key => {
-        if (key === 'properties') {
-          Object.assign(newMetric, this._flatten(metric[key]));
-        } else if (key !== 'irDag') {
-          newMetric[key] = metric[key];
-        }
-      });
-
-      return newMetric;
-    },
-
-    _removeUnusedProperties(metric) {
-      let newMetric = Object.assign({}, metric);
-      delete newMetric.group;
-      delete newMetric.content;
-      return newMetric;
     },
 
     buildMetricLookupMapWithDAG() {
@@ -209,6 +209,9 @@ export default {
         this.metricLookupMap[metric.id] = this._removeUnusedProperties(metric);
       } else if (metric.group === 'TaskMetric') {
         this.metricLookupMap[metric.id] = this._removeUnusedProperties(metric);
+      }
+      if (this.selectedMetricId === metric.id) {
+        this.buildTableData(metric.id);
       }
     },
 
