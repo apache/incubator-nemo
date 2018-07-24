@@ -382,7 +382,6 @@ public final class RuntimeMaster {
    */
   private void accumulateBarrierMetric(final List<ControlMessage.PartitionSizeEntry> partitionSizeInfo,
                                        final String blockId) {
-    LOG.info("Received dataSizeMetricMsg from Task-{}", RuntimeIdGenerator.getTaskIndexFromBlockId(blockId));
     blockIds.add(blockId);
     // For each hash range index, we aggregate the metric data.
     partitionSizeInfo.forEach(partitionSizeEntry -> {
