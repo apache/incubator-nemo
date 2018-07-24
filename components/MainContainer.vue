@@ -88,6 +88,8 @@ export default {
 
       // websocket object
       ws: undefined,
+      wsStatus: 'closed',
+      autoReconnect: true,
 
       // element-ui specific
       collapseActiveNames: ['timeline', 'dag'],
@@ -321,15 +323,18 @@ export default {
       }
 
       if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
-        this.closeWebSocket();
+        // this.closeWebSocket();
+        // is this really correct?
+        return;
       }
 
       this.ws = new WebSocket(WEBSOCKET_ENDPOINT);
 
-      this.ws.onopen = (event) => {
+      this.ws.onopen = () => {
         // clear metric
         this.metricDataSet.clear();
         this.groupDataSet.clear();
+        this.wsStatus = 'opened';
       };
 
       this.ws.onmessage = (event) => {
@@ -341,15 +346,16 @@ export default {
           return;
         }
 
+        // pass to metric handling logic
         this.processMetric(parsedData);
       };
 
       this.ws.onclose = () => {
-        this.tryReconnect();
-      };
-
-      this.ws.onerror = () => {
-        this.tryReconnect();
+        this.wsStatus = 'closed';
+        if (this.ws && this.autoReconnect) {
+          this.ws = undefined;
+          this.tryReconnect();
+        }
       };
 
       window.onbeforeunload = () => {
@@ -358,21 +364,31 @@ export default {
     },
 
     closeWebSocket() {
-      if (!this.ws) {
-        return;
+      if (this.ws) {
+        this.ws.close();
       }
-      this.ws.close();
-      this.ws = undefined;
     },
 
     tryReconnect() {
-      this.closeWebSocket();
-      if (reconnectionTimer) {
-        clearTimeout(reconnectionTimer);
+      if (this.wsStatus === 'opened') {
+        return;
       }
-      reconnectionTimer = setTimeout(() => {
-        this.prepareWebSocket();
-      }, RECONNECT_INTERVAL);
+      this.closeWebSocket();
+
+      // when auto reconnect option is true
+      if (this.autoReconnect) {
+        if (reconnectionTimer) {
+          clearTimeout(reconnectionTimer);
+        }
+        // timer for reconnecting
+        reconnectionTimer = setTimeout(() => {
+          this.tryReconnect();
+        }, RECONNECT_INTERVAL);
+      } else {
+        this.tryReconnect();
+      }
+
+      this.prepareWebSocket();
     },
   }
 }
