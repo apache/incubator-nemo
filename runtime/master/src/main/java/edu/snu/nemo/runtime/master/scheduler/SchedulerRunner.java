@@ -132,7 +132,7 @@ public final class SchedulerRunner {
               = schedulingPolicy.selectExecutor(candidateExecutors.getValue(), task);
           // update metadata first
           jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
-          LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
+          LOG.debug("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
           // send the task
           selectedExecutor.onTaskScheduled(task);
           scheduledTasks.add(taskId);

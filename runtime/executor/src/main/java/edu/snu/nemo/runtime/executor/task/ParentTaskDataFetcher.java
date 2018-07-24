@@ -42,7 +42,6 @@ class ParentTaskDataFetcher extends DataFetcher {
   private int expectedNumOfIterators;
   private DataUtil.IteratorWithNumBytes currentIterator;
   private int currentIteratorIndex;
-  private boolean noElementAtAll = true;
   private long serBytes = 0;
   private long encodedBytes = 0;
 
@@ -105,19 +104,10 @@ class ParentTaskDataFetcher extends DataFetcher {
 
       if (this.currentIterator.hasNext()) {
         // This iterator has an element available
-        noElementAtAll = false;
         return this.currentIterator.next();
       } else {
         if (currentIteratorIndex == expectedNumOfIterators) {
-          // Entire fetcher is done
-          if (noElementAtAll) {
-            // This shouldn't normally happen, except for cases such as when Beam's VoidCoder is used.
-            noElementAtAll = false;
-            return Void.TYPE;
-          } else {
-            // This whole fetcher's done
-            return null;
-          }
+          return null;
         } else {
           // Advance to the next one
           countBytes(currentIterator);
