@@ -93,6 +93,9 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
     final List<KeyRange> keyRanges = calculateKeyRanges(metricData.right(), dstParallelism);
     final Map<Integer, KeyRange> taskIdxToKeyRange = new HashMap<>();
     for (int i = 0; i < dstParallelism; i++) {
+      if (((HashRange)keyRanges.get(i)).isSkewed()) {
+        LOG.info("Task-{} is assigned Skewed input", i);
+      }
       taskIdxToKeyRange.put(i, keyRanges.get(i));
     }
     // Overwrite the previously assigned key range in the physical DAG with the new range.
@@ -182,7 +185,7 @@ public final class DataSkewRuntimePass implements RuntimePass<Pair<List<String>,
         prevAccumulatedSize = currentAccumulatedSize;
         startingKey = finishingKey;
       } else { // last one: we put the range of the rest.
-        boolean isSkewedKey = containsSkewedKey(skewedKeys, startingKey, finishingKey);
+        boolean isSkewedKey = containsSkewedKey(skewedKeys, startingKey, maxKey + 1);
         keyRanges.add(i - 1,
             HashRange.of(startingKey, maxKey + 1, isSkewedKey));
 
