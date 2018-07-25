@@ -69,9 +69,6 @@ public final class SkewnessAwareSchedulingConstraint implements SchedulingConstr
         return false;
       }
     }
-    if (hasSkewedData(task)) {
-      LOG.info("SkewnessAwareConstraint: Skewed {} scheduled to {}", task.getTaskId(), executor.getExecutorId());
-    }
     return true;
   }
 }
