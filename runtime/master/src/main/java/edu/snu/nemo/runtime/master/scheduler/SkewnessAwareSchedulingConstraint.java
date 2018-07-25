@@ -31,6 +31,9 @@ import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * This policy aims to distribute partitions with skewed keys to different executors.
  */
@@ -38,6 +41,7 @@ import java.util.Map;
 @DriverSide
 @AssociatedProperty(SkewnessAwareSchedulingProperty.class)
 public final class SkewnessAwareSchedulingConstraint implements SchedulingConstraint {
+  private static final Logger LOG = LoggerFactory.getLogger(SkewnessAwareSchedulingConstraint.class.getName());
 
   @VisibleForTesting
   @Inject
@@ -64,6 +68,9 @@ public final class SkewnessAwareSchedulingConstraint implements SchedulingConstr
       if (hasSkewedData(runningTask) && hasSkewedData(task)) {
         return false;
       }
+    }
+    if (hasSkewedData(task)) {
+      LOG.info("SkewnessAwareConstraint: Skewed {} scheduled to {}", task.getTaskId(), executor.getExecutorId());
     }
     return true;
   }
