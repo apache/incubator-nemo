@@ -331,6 +331,7 @@ public final class BatchSingleJobScheduler implements Scheduler {
           jobStateManager.onTaskStateChanged(taskId, TaskState.State.READY);
         case READY:
           taskIdsToSchedule.add(taskId);
+          LOG.info("{} is READY", taskId);
           break;
 
         // This shouldn't happen.

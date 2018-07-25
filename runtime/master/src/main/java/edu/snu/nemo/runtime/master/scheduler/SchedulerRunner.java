@@ -153,6 +153,8 @@ public final class SchedulerRunner {
           final boolean isSkewed = hasSkewedData(task);
           if (isSkewed) {
             LOG.info("Skewed {} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
+          } else {
+            LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
           }
           // send the task
           selectedExecutor.onTaskScheduled(task);
