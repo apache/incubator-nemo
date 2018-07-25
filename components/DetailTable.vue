@@ -9,7 +9,7 @@
         <template slot-scope="props">
           <ul>
             <li v-for="ep in props.row.extra" :key="ep.key">
-              {{ ep.key }}: {{ ep.value }}
+              {{ _preprocessKey(ep.key) }}: {{ ep.value }}
             </li>
           </ul>
         </template>
@@ -29,6 +29,14 @@ export default {
         return '';
       }
       return 'no-expand';
+    },
+
+    _preprocessKey(key) {
+      if (/^.+\..+$/.test(key)) {
+        const splitted = key.split('.');
+        return splitted[splitted.length - 1];
+      }
+      return key;
     },
   },
 

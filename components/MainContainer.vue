@@ -1,43 +1,75 @@
 <template>
-  <el-card>
-    <el-tabs @tab-click="handleTabClick">
-      <el-tab-pane>
-        <template slot="label">
-          Timeline <i class="el-icon-time"/>
-        </template>
-        <el-row type="flex" justify="space-between">
-          <el-col :span="mainColSpan">
-            <metric-timeline
-               ref="metricTimeline"
-              :metric="metricDataSet"
-              :groups="groupDataSet"/>
-          </el-col>
-          <el-col :span="subColSpan">
-            <detail-table
-              v-if="tabIndex === '0'"
-              :tableData="tableData"/>
-          </el-col>
-        </el-row>
-      </el-tab-pane>
-      <el-tab-pane>
-        <template slot="label">
-          DAG
-        </template>
-        <el-row type="flex" justify="space-between">
-          <el-col :span="mainColSpan">
-            <dag
-              :tabIndex="tabIndex"
-              :metricDataSet="metricDataSet"/>
+  <div>
+    <el-card class="checkbox-container">
+      <el-row>
+        <el-col class="upper-card-col" :span="8" :xs="24">
+          <el-row type="flex" justify="center">
+              <el-checkbox
+                :span="12"
+                @change="autoReconnectChanged"
+                v-model="autoReconnect">Auto reconnect</el-checkbox>
+          </el-row>
+        </el-col>
+        <el-col class="upper-card-col" :span="8" :xs="24">
+          <el-row type="flex" justify="center">
+            <div :span="12">
+              Status: {{ _wsStatusText(wsStatus) }}
+              <i v-if="wsStatus === 'closed'" class="el-icon-loading"/>
+            </div>
+          </el-row>
+        </el-col>
+        <el-col class="upeer-card-col" :span="8" :xs="24">
+          <el-row type="flex" justify="center">
+            <el-button
+              :span="12"
+              type="primary"
+              round
+              :disabled="buttonDisabled"
+              @click="prepareWebSocket">Connect</el-button>
+          </el-row>
+        </el-col>
+      </el-row>
+    </el-card>
+    <el-card>
+      <el-tabs @tab-click="handleTabClick">
+        <el-tab-pane>
+          <template slot="label">
+            Timeline <i class="el-icon-time"/>
+          </template>
+          <el-row type="flex" justify="space-between">
+            <el-col :span="mainColSpan">
+              <metric-timeline
+                 ref="metricTimeline"
+                :metric="metricDataSet"
+                :groups="groupDataSet"/>
             </el-col>
-          <el-col :span="subColSpan">
-            <detail-table
-              v-if="tabIndex === '1'"
-              :tableData="tableData"/>
-          </el-col>
-        </el-row>
-      </el-tab-pane>
-    </el-tabs>
-  </el-card>
+            <el-col :span="subColSpan">
+              <detail-table
+                v-if="tabIndex === '0'"
+                :tableData="tableData"/>
+            </el-col>
+          </el-row>
+        </el-tab-pane>
+        <el-tab-pane>
+          <template slot="label">
+            DAG
+          </template>
+          <el-row type="flex" justify="space-between">
+            <el-col :span="mainColSpan">
+              <dag
+                :tabIndex="tabIndex"
+                :metricDataSet="metricDataSet"/>
+              </el-col>
+            <el-col :span="subColSpan">
+              <detail-table
+                v-if="tabIndex === '1'"
+                :tableData="tableData"/>
+            </el-col>
+          </el-row>
+        </el-tab-pane>
+      </el-tabs>
+    </el-card>
+  </div>
 </template>
 
 <script>
@@ -90,7 +122,7 @@ export default {
       // websocket object
       ws: undefined,
       wsStatus: 'closed',
-      autoReconnect: true,
+      autoReconnect: false,
 
       // element-ui specific
       collapseActiveNames: ['timeline', 'dag'],
@@ -109,7 +141,11 @@ export default {
 
     subColSpan() {
       return 24 - this.mainColSpan;
-    }
+    },
+
+    buttonDisabled() {
+      return this.wsStatus === 'opened' || this.autoReconnect;
+    },
   },
 
   beforeMount() {
@@ -157,6 +193,15 @@ export default {
       delete newMetric.group;
       delete newMetric.content;
       return newMetric;
+    },
+
+    _wsStatusText(wsStatus) {
+      if (wsStatus === 'opened') {
+        return 'Connected';
+      } else if (wsStatus === 'closed') {
+        return 'Not connected';
+      }
+      return 'Unknown';
     },
 
     buildTableData(metricId) {
@@ -337,6 +382,8 @@ export default {
         // clear metric
         this.metricDataSet.clear();
         this.groupDataSet.clear();
+        this.dag = null;
+        this.selectedMetricId = '';
         this.wsStatus = 'opened';
       };
 
@@ -372,6 +419,13 @@ export default {
       }
     },
 
+    clearWebSocketReconnectTimer() {
+      if (reconnectionTimer) {
+        clearTimeout(reconnectionTimer);
+        reconnectionTimer = null;
+      }
+    },
+
     tryReconnect() {
       if (this.wsStatus === 'opened') {
         return;
@@ -380,23 +434,35 @@ export default {
 
       // when auto reconnect option is true
       if (this.autoReconnect) {
-        if (reconnectionTimer) {
-          clearTimeout(reconnectionTimer);
-        }
+        this.clearWebSocketReconnectTimer();
         // timer for reconnecting
         reconnectionTimer = setTimeout(() => {
           this.tryReconnect();
         }, RECONNECT_INTERVAL);
-      } else {
-        this.tryReconnect();
       }
-
       this.prepareWebSocket();
+    },
+
+    autoReconnectChanged(v) {
+      if (v && this.wsStatus === 'closed') {
+        this.tryReconnect();
+      } else if (!v) {
+        this.clearWebSocketReconnectTimer();
+      }
     },
   }
 }
 </script>
 <style>
+.checkbox-container {
+  margin-bottom: 15px;
+}
+
+.upper-card-col {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
 .no-expand .el-icon {
   display: none;
 }

@@ -1,5 +1,9 @@
 <template>
   <div ref="canvasContainer" class="dag-canvas-container">
+    <el-button
+      v-if="dag"
+      @click="fitButton"
+      type="primary">Fit</el-button>
     <p v-if="!dag">DAG is not ready.</p>
     <div v-show="dag">
       <canvas class="dag-canvas" id="dag-canvas"></canvas>
@@ -58,9 +62,10 @@ export default {
       isDragging: false,
       lastXCoord: 0,
       lastYCoord: 0,
-      resizeDebounceTimer: undefined,
       lastViewportX: 0,
       lastViewportY: 0,
+
+      resizeDebounceTimer: undefined,
 
       dag: undefined,
       firstDagRender: false,
@@ -120,6 +125,21 @@ export default {
       this.canvas.renderAll();
     },
 
+    initializeVariables() {
+      this.isDragging = false;
+      this.lastXCoord = 0;
+      this.lastYCoord = 0;
+      this.lastViewportX = 0;
+      this.lastViewportY = 0;
+      this.resizeDebounceTimer = undefined;
+      this.firstDagRender = false;
+      this.stageGraph = undefined;
+      this.verticesGraph = {};
+      this.vertexObjects = {};
+      this.stageObjects = {};
+      this.stageInnerObjects = {};
+    },
+
     resizeCanvas(fit) {
       return new Promise((resolve, reject) => {
         if (!this.canvas) {
@@ -131,13 +151,15 @@ export default {
         }
 
         this.resizeDebounceTimer = setTimeout(() => {
-          let w = this.$refs.canvasContainer.offsetWidth;
-          this.canvas.setWidth(w);
-          this.canvas.setHeight(w * CANVAS_RATIO);
-          if (fit) {
-            this.fitCanvas();
+          if (this.$refs.canvasContainer) {
+            let w = this.$refs.canvasContainer.offsetWidth;
+            this.canvas.setWidth(w);
+            this.canvas.setHeight(w * CANVAS_RATIO);
+            if (fit) {
+              this.fitCanvas();
+            }
+            resolve();
           }
-          resolve();
         }, DEBOUNCE_INTERVAL);
       });
     },
@@ -185,6 +207,7 @@ export default {
         if (this.tabIndex === MY_TAB_INDEX) {
           await this.resizeCanvas(false);
         }
+        this.initializeVariables();
         this.setUpCanvasEventHandler();
         this.dag = data;
         this.drawDAG();
@@ -472,6 +495,12 @@ export default {
       objectArray.forEach(obj => {
         this.canvas.add(obj);
       });
+    },
+
+    fitButton() {
+      this.canvas.viewportTransform[4] = 0;
+      this.canvas.viewportTransform[5] = 0;
+      this.fitCanvas();
     },
   }
 }

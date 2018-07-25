@@ -2,7 +2,7 @@
   <el-container>
     <el-header class="header-container">
       <h2 class="header-title">
-        Nemo Web Visualizer
+        {{ title }}
       </h2>
     </el-header>
     <el-container>
@@ -18,6 +18,46 @@
     </el-container>
   </el-container>
 </template>
+
+<script>
+const DEFAULT_WINDOW_WIDTH = 1920;
+
+export default {
+  data() {
+    return {
+      windowWidth: DEFAULT_WINDOW_WIDTH,
+    }
+  },
+
+  beforeMount() {
+    if (process.browser) {
+      this.windowWidth = window.innerWidth;
+        window.addEventListener('resize', this.updateWindowWidth);
+    }
+    this.updateWindowWidth();
+  },
+
+  computed: {
+    title() {
+      if (this.windowWidth > 768) {
+        return 'Nemo Web Visualizer';
+      }
+      return 'Nemo Visualizer';
+    },
+  },
+
+  methods: {
+    updateWindowWidth() {
+      if (process.browser) {
+        this.windowWidth = window.innerWidth;
+      } else {
+        this.windowWidth = DEFAULT_WINDOW_WIDTH;
+      }
+    }
+  },
+
+}
+</script>
 
 <style scoped>
 html {
