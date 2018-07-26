@@ -54,7 +54,7 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
     return false;
   }
 
-  private String getNodeName(final Map<String, Integer> propertyValue,
+  private List<String> getNodeName(final Map<String, Integer> propertyValue,
                              final ExecutorRepresenter executor,
                              final Task task) {
     final List<String> nodeNames = new ArrayList<>(propertyValue.keySet());
@@ -64,11 +64,14 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
       if (index >= propertyValue.get(nodeName)) {
         index -= propertyValue.get(nodeName);
       } else {
+        List<String> candidateNodes = nodeNames.subList(nodeNames.indexOf(nodeName), nodeNames.size());
         if (hasSkewedData(task)) {
-          LOG.info("Skewed {} can be assigned to {}({})",
-              task.getTaskId(), executor.getExecutorId(), nodeName);
+          for (String n : candidateNodes) {
+            LOG.info("Skewed {} can be assigned to {}({})",
+                task.getTaskId(), n, candidateNodes.toArray().toString());
+          }
         }
-        return nodeName;
+        return nodeNames.subList(nodeNames.indexOf(nodeName), nodeNames.size());
       }
     }
     throw new IllegalStateException("Detected excessive parallelism which NodeNamesProperty does not cover");
@@ -82,8 +85,8 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
       return true;
     }
     try {
-      return executor.getNodeName().equals(
-          getNodeName(propertyValue, executor, task));
+      List<String> candidateNodes = getNodeName(propertyValue, executor, task);
+      return candidateNodes.contains(executor.getNodeName());
     } catch (final IllegalStateException e) {
       throw new RuntimeException(String.format("Cannot schedule %s", task.getTaskId(), e));
     }
