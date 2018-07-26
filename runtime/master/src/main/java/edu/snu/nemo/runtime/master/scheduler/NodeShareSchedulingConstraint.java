@@ -15,9 +15,13 @@
  */
 package edu.snu.nemo.runtime.master.scheduler;
 
+import edu.snu.nemo.common.HashRange;
+import edu.snu.nemo.common.KeyRange;
+import edu.snu.nemo.common.ir.edge.executionproperty.DataSkewMetricProperty;
 import edu.snu.nemo.common.ir.executionproperty.AssociatedProperty;
 import edu.snu.nemo.common.ir.vertex.executionproperty.NodeNamesProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
+import edu.snu.nemo.runtime.common.plan.StageEdge;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
 import org.slf4j.Logger;
@@ -37,16 +41,33 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
   private NodeShareSchedulingConstraint() {
   }
 
-  private String getNodeName(final Map<String, Integer> propertyValue, final int taskIndex) {
+  public boolean hasSkewedData(final Task task) {
+    final int taskIdx = RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId());
+    for (StageEdge inEdge : task.getTaskIncomingEdges()) {
+      final Map<Integer, KeyRange> taskIdxToKeyRange =
+          inEdge.getPropertyValue(DataSkewMetricProperty.class).get().getMetric();
+      final KeyRange hashRange = taskIdxToKeyRange.get(taskIdx);
+      if (((HashRange) hashRange).isSkewed()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private String getNodeName(final Map<String, Integer> propertyValue,
+                             final ExecutorRepresenter executor,
+                             final Task task) {
     final List<String> nodeNames = new ArrayList<>(propertyValue.keySet());
     Collections.sort(nodeNames, Comparator.naturalOrder());
-    int index = taskIndex;
+    int index = RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId());
     for (final String nodeName : nodeNames) {
       if (index >= propertyValue.get(nodeName)) {
         index -= propertyValue.get(nodeName);
       } else {
-        LOG.info("Stage-1-Task-{} can be assigned to NodeName {} (propertyValue.get(nodeName) {})",
-            taskIndex, nodeName, propertyValue.get(nodeName));
+        if (hasSkewedData(task)) {
+          LOG.info("Skewed {} can be assigned to {}({})",
+              task.getTaskId(), executor.getExecutorId(), nodeName);
+        }
         return nodeName;
       }
     }
@@ -62,7 +83,7 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
     }
     try {
       return executor.getNodeName().equals(
-          getNodeName(propertyValue, RuntimeIdGenerator.getIndexFromTaskId(task.getTaskId())));
+          getNodeName(propertyValue, executor, task));
     } catch (final IllegalStateException e) {
       throw new RuntimeException(String.format("Cannot schedule %s", task.getTaskId(), e));
     }

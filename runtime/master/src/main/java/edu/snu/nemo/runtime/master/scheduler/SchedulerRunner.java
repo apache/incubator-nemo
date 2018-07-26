@@ -152,9 +152,8 @@ public final class SchedulerRunner {
           jobStateManager.onTaskStateChanged(task.getTaskId(), TaskState.State.EXECUTING);
           final boolean isSkewed = hasSkewedData(task);
           if (isSkewed) {
-            LOG.info("Skewed {} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
-          } else {
-            LOG.info("{} scheduled to {}", task.getTaskId(), selectedExecutor.getExecutorId());
+            LOG.info("Skewed {} scheduled to {} {}",
+                task.getTaskId(), selectedExecutor.getExecutorId(), selectedExecutor.getNodeName());
           }
           // send the task
           selectedExecutor.onTaskScheduled(task);
