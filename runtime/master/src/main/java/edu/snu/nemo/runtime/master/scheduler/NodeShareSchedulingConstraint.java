@@ -20,6 +20,8 @@ import edu.snu.nemo.common.ir.vertex.executionproperty.NodeNamesProperty;
 import edu.snu.nemo.runtime.common.RuntimeIdGenerator;
 import edu.snu.nemo.runtime.common.plan.Task;
 import edu.snu.nemo.runtime.master.resource.ExecutorRepresenter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -29,6 +31,7 @@ import java.util.*;
  */
 @AssociatedProperty(NodeNamesProperty.class)
 public final class NodeShareSchedulingConstraint implements SchedulingConstraint {
+  private static final Logger LOG = LoggerFactory.getLogger(NodeShareSchedulingConstraint.class.getName());
 
   @Inject
   private NodeShareSchedulingConstraint() {
@@ -42,6 +45,8 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
       if (index >= propertyValue.get(nodeName)) {
         index -= propertyValue.get(nodeName);
       } else {
+        LOG.info("Stage-1-Task-{} can be assigned to NodeName {} (propertyValue.get(nodeName) {})",
+            taskIndex, nodeName, propertyValue.get(nodeName));
         return nodeName;
       }
     }
