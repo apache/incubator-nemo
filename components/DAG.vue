@@ -2,7 +2,9 @@
   <div ref="canvasContainer" class="dag-canvas-container">
     <el-button
       v-if="dag"
+      class="fit-button"
       @click="fitButton"
+      plain
       type="primary">Fit</el-button>
     <p v-if="!dag">DAG is not ready.</p>
     <div v-show="dag">
@@ -25,16 +27,18 @@ const VERTEX_HEIGHT = 30;
 const VERTEX_RADIUS = 6;
 const PAN_MARGIN = 20;
 const RECT_ROUND_RADIUS = 4;
+const ARROW_SIDE = 3;
 
 const SUCCESS_COLOR = '#67C23A';
 
 const BACKGROUND_COLOR = '#F2F6FC';
 const CANVAS_RATIO = 0.75;
 const MAX_ZOOM = 20;
-const MIN_ZOOM = 0.01;
+const MIN_ZOOM = 0.1;
 const TARGET_FIND_TOLERANCE = 4;
 
 const MY_TAB_INDEX = '1';
+
 const DEBUG = false;
 
 export default {
@@ -371,14 +375,7 @@ export default {
         });
 
         g.edges().map(e => g.edge(e)).forEach(edge => {
-          let path = '';
-          edge.points.forEach(point => {
-            if (!path) {
-              path = `M ${point.x} ${point.y}`;
-            } else {
-              path += ` L ${point.x} ${point.y}`;
-            }
-          });
+          let path = this.drawSVGArrow(edge);
 
           let pathObj = new fabric.Path(path);
           pathObj.set({
@@ -450,14 +447,7 @@ export default {
 
       let stageEdgeObjectArray = [];
       g.edges().map(e => g.edge(e)).forEach(edge => {
-        let path = '';
-        edge.points.forEach(point => {
-          if (!path) {
-            path = `M ${point.x} ${point.y}`;
-          } else {
-            path += ` L ${point.x} ${point.y}`;
-          }
-        });
+        let path = this.drawSVGArrow(edge);
 
         let pathObj = new fabric.Path(path);
         pathObj.set({
@@ -497,6 +487,39 @@ export default {
       });
     },
 
+    drawSVGArrow(edges) {
+      let path = '';
+      edges.points.forEach(point => {
+        if (!path) {
+          path = `M ${point.x} ${point.y}`;
+        } else {
+          path += ` L ${point.x} ${point.y}`;
+        }
+      });
+      const l = edges.points.length,
+        a = ARROW_SIDE, h = a * Math.sqrt(3) / 2;
+      const p1 = edges.points[l - 2], p2 = edges.points[l - 1];
+      let theta = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+
+      let trans = (d, theta) => {
+        let c = Math.cos(theta), s = Math.sin(theta);
+        return { x: c * d.x - s * d.y, y: s * d.x + c * d.y };
+      };
+
+      let d = [
+        { x: 0, y: a / 2 },
+        { x: h, y: -a / 2 },
+        { x: -h, y: -a / 2 },
+        { x: 0, y: a / 2 }
+      ].map(_d => trans(_d, theta));
+
+      d.forEach(p => {
+        path += ` l ${p.x} ${p.y}`
+      });
+
+      return path;
+    },
+
     fitButton() {
       this.canvas.viewportTransform[4] = 0;
       this.canvas.viewportTransform[5] = 0;
@@ -508,5 +531,9 @@ export default {
 <style>
 .dag-canvas {
   box-sizing: border-box;
+}
+
+.fit-button {
+  margin: 10px;
 }
 </style>
