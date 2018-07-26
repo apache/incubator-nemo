@@ -73,6 +73,7 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
           */
           return nodeNames.subList(nodeNames.indexOf(nodeName), nodeNames.size());
         } else {
+          LOG.info("Non-skewed {} can be assigned to {}", task.getTaskId(), nodeName);
           final List<String> candidateNode = new ArrayList<>();
           candidateNode.add(nodeName);
           return candidateNode;
