@@ -64,20 +64,19 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
       if (index >= propertyValue.get(nodeName)) {
         index -= propertyValue.get(nodeName);
       } else {
+        /*
         if (hasSkewedData(task)) {
           List<String> candidateNodes = nodeNames.subList(nodeNames.indexOf(nodeName), nodeNames.size());
-          /*
-          for (String n : candidateNodes) {
-            LOG.info("Skewed {} can be assigned to {}", task.getTaskId(), n);
-          }
-          */
           return nodeNames.subList(nodeNames.indexOf(nodeName), nodeNames.size());
         } else {
           //LOG.info("Non-skewed {} can be assigned to {}", task.getTaskId(), nodeName);
           final List<String> candidateNode = new ArrayList<>();
           candidateNode.add(nodeName);
           return candidateNode;
-        }
+        }*/
+        final List<String> candidateNode = new ArrayList<>();
+        candidateNode.add(nodeName);
+        return candidateNode;
       }
     }
     throw new IllegalStateException("Detected excessive parallelism which NodeNamesProperty does not cover");
