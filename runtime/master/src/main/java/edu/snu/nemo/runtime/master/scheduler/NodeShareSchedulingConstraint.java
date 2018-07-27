@@ -36,9 +36,23 @@ import java.util.*;
 @AssociatedProperty(NodeNamesProperty.class)
 public final class NodeShareSchedulingConstraint implements SchedulingConstraint {
   private static final Logger LOG = LoggerFactory.getLogger(NodeShareSchedulingConstraint.class.getName());
+  private final List<String> fast;
+  private final List<String> slow;
 
   @Inject
   private NodeShareSchedulingConstraint() {
+    this.fast = new ArrayList<>();
+    fast.add("skew-w2");
+    fast.add("skew-w3");
+    fast.add("skew-w4");
+    fast.add("skew-w5");
+    fast.add("skew-w6");
+    this.slow = new ArrayList<>();
+    slow.add("skew-w7");
+    slow.add("skew-w8");
+    slow.add("skew-w9");
+    slow.add("skew-w10");
+    slow.add("skew-w11");
   }
 
   public boolean hasSkewedData(final Task task) {
@@ -64,6 +78,11 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
       if (index >= propertyValue.get(nodeName)) {
         index -= propertyValue.get(nodeName);
       } else {
+        if (fast.contains(nodeName)) {
+          return fast;
+        } else {
+          return slow;
+        }
         /*
         if (hasSkewedData(task)) {
           List<String> candidateNodes = nodeNames.subList(nodeNames.indexOf(nodeName), nodeNames.size());
@@ -74,9 +93,6 @@ public final class NodeShareSchedulingConstraint implements SchedulingConstraint
           candidateNode.add(nodeName);
           return candidateNode;
         }*/
-        final List<String> candidateNode = new ArrayList<>();
-        candidateNode.add(nodeName);
-        return candidateNode;
       }
     }
     throw new IllegalStateException("Detected excessive parallelism which NodeNamesProperty does not cover");
