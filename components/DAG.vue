@@ -37,7 +37,7 @@ const MAX_ZOOM = 20;
 const MIN_ZOOM = 0.1;
 const TARGET_FIND_TOLERANCE = 4;
 
-const MY_TAB_INDEX = '1';
+const MY_TAB_INDEX = '2';
 
 const DEBUG = false;
 
@@ -211,6 +211,7 @@ export default {
         if (this.tabIndex === MY_TAB_INDEX) {
           await this.resizeCanvas(false);
         }
+        // TODO: do not initialized when the dag is from same job
         this.initializeVariables();
         this.setUpCanvasEventHandler();
         this.dag = data;

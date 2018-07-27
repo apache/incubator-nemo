@@ -34,6 +34,12 @@
       <el-tabs @tab-click="handleTabClick">
         <el-tab-pane>
           <template slot="label">
+            Jobs <i class="el-icon-tickets"/>
+          </template>
+          <job-view></job-view>
+        </el-tab-pane>
+        <el-tab-pane>
+          <template slot="label">
             Timeline <i class="el-icon-time"/>
           </template>
           <el-row type="flex" justify="space-between">
@@ -45,7 +51,7 @@
             </el-col>
             <el-col :span="subColSpan">
               <detail-table
-                v-if="tabIndex === '0'"
+                v-if="tabIndex === '1'"
                 :tableData="tableData"/>
             </el-col>
           </el-row>
@@ -62,10 +68,17 @@
               </el-col>
             <el-col :span="subColSpan">
               <detail-table
-                v-if="tabIndex === '1'"
+                v-if="tabIndex === '2'"
                 :tableData="tableData"/>
             </el-col>
           </el-row>
+        </el-tab-pane>
+        <el-tab-pane>
+          <template slot="label">
+            Task
+          </template>
+          <task-statistics
+            :metricLookupMap="metricLookupMap"/>
         </el-tab-pane>
       </el-tabs>
     </el-card>
@@ -74,9 +87,11 @@
 
 <script>
 import Vue from 'vue';
+import JobView from '~/components/JobView';
 import MetricTimeline from '~/components/MetricTimeline';
 import DAG from '~/components/DAG';
 import DetailTable from '~/components/DetailTable';
+import TaskStatistics from '~/components/TaskStatistics';
 import { DataSet } from 'vue2vis';
 import { STATE } from '~/assets/constants';
 
@@ -89,10 +104,9 @@ const METRIC_LIST = [
   'TaskMetric',
 ];
 
-// timeline fitting option
-const FIT_OPTIONS = {
-  duration: 500,
-}
+const JOBS_TAB = '0';
+const TIMELINE_TAB = '1';
+const DAG_TAB = '2';
 
 // variable to store the return value of setTimeout()
 let reconnectionTimer;
@@ -101,9 +115,11 @@ const RECONNECT_INTERVAL = 3000;
 
 export default {
   components: {
+    'job-view': JobView,
     'metric-timeline': MetricTimeline,
     'dag': DAG,
     'detail-table': DetailTable,
+    'task-statistics': TaskStatistics,
   },
 
   data() {
@@ -206,7 +222,7 @@ export default {
 
     buildTableData(metricId) {
       this.tableData = [];
-      const metric = this.metricLookupMap[metricId];
+      const metric = this._removeUnusedProperties(this.metricLookupMap[metricId]);
       Object.keys(metric).forEach(key => {
         if (typeof metric[key] === 'object') {
           if (key === 'executionProperties') {
@@ -224,9 +240,10 @@ export default {
             });
           }
         } else {
+          let value = metric[key] === -1 ? 'N/A' : metric[key];
           this.tableData.push({
             key: key,
-            value: metric[key],
+            value: value,
           });
         }
       });
@@ -234,26 +251,26 @@ export default {
 
     buildMetricLookupMapWithDAG() {
       this.dag.vertices.forEach(stage => {
-        this.metricLookupMap[stage.id] = this._flatten(stage);
+        Vue.set(this.metricLookupMap, stage.id, this._flatten(stage));
         stage.properties.irDag.vertices.forEach(vertex => {
-          this.metricLookupMap[vertex.id] = this._flatten(vertex);
+          Vue.set(this.metricLookupMap, vertex.id, this._flatten(vertex));
         });
         stage.properties.irDag.edges.forEach(edge => {
           const edgeId = edge.properties.runtimeEdgeId;
-          this.metricLookupMap[edgeId] = this._flatten(edge);
+          Vue.set(this.metricLookupMap, edgeId, this._flatten(edge));
         });
       });
       this.dag.edges.forEach(edge => {
         const edgeId = edge.properties.runtimeEdgeId;
-        this.metricLookupMap[edgeId] = this._flatten(edge);
+        Vue.set(this.metricLookupMap, edgeId, this._flatten(edge));
       });
     },
 
     addMetricToMetricLookupMap(metric) {
       if (metric.group === 'JobMetric') {
-        this.metricLookupMap[metric.id] = this._removeUnusedProperties(metric);
+        Vue.set(this.metricLookupMap, metric.id, metric);
       } else if (metric.group === 'TaskMetric') {
-        this.metricLookupMap[metric.id] = this._removeUnusedProperties(metric);
+        Vue.set(this.metricLookupMap, metric.id, metric);
       }
       if (this.selectedMetricId === metric.id) {
         this.buildTableData(metric.id);
@@ -262,9 +279,9 @@ export default {
 
     handleTabClick({ index }) {
       this.tabIndex = index;
-      if (index === '0') {
+      if (index === TIMELINE_TAB) {
         this.$eventBus.$emit('redraw-timeline');
-      } else if (index === '1') {
+      } else if (index === DAG_TAB) {
         this.$eventBus.$emit('rerender-dag');
       }
     },
@@ -300,6 +317,9 @@ export default {
       // overwrite item object with received data
       Object.assign(newItem, data);
 
+      // if data contains `dag`, it will send to DAG component
+      // TODO: support multi job with job identifier
+      // maybe can use self-generated UUIDv4?
       if (data.dag && !this.dag) {
         this.dag = data.dag;
         this.$eventBus.$emit('dag', this.dag);

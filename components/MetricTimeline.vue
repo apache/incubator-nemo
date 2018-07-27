@@ -53,7 +53,6 @@ export default {
   data() {
     return {
       options: {
-        // TODO: this should be modified to adjust somewhere adequate
         start: Date.now(),
         end: Date.now(),
       },
