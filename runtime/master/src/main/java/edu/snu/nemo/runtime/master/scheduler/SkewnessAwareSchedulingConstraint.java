@@ -69,9 +69,11 @@ public final class SkewnessAwareSchedulingConstraint implements SchedulingConstr
         return false;
       }
     }
+    /*
     if (!hasSkewedData(task)) {
-      LOG.info("{} can be assigned to {}", task.getTaskId(), executor.getNodeName());
+      LOG.info("Non-Skewed {} can be assigned to {}", task.getTaskId(), executor.getNodeName());
     }
+    */
     return true;
   }
 }
