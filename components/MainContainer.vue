@@ -1,5 +1,6 @@
 <template>
   <div>
+    <!--
     <el-card class="checkbox-container">
       <el-row>
         <el-col class="upper-card-col" :span="8" :xs="24">
@@ -30,6 +31,7 @@
         </el-col>
       </el-row>
     </el-card>
+    -->
     <el-card>
       <el-tabs @tab-click="handleTabClick">
         <el-tab-pane>
@@ -135,11 +137,6 @@ export default {
       dag: undefined,
       metricLookupMap: {}, // metricId -> data
 
-      // websocket object
-      ws: undefined,
-      wsStatus: 'closed',
-      autoReconnect: false,
-
       // element-ui specific
       collapseActiveNames: ['timeline', 'dag'],
       tableData: [],
@@ -158,15 +155,9 @@ export default {
     subColSpan() {
       return 24 - this.mainColSpan;
     },
-
-    buttonDisabled() {
-      return this.wsStatus === 'opened' || this.autoReconnect;
-    },
   },
 
   beforeMount() {
-    this.tryReconnect();
-
     // predefine group sets
     METRIC_LIST.forEach(metricType => {
       this.groupDataSet.add({
@@ -209,15 +200,6 @@ export default {
       delete newMetric.group;
       delete newMetric.content;
       return newMetric;
-    },
-
-    _wsStatusText(wsStatus) {
-      if (wsStatus === 'opened') {
-        return 'Connected';
-      } else if (wsStatus === 'closed') {
-        return 'Not connected';
-      }
-      return 'Unknown';
     },
 
     buildTableData(metricId) {
@@ -385,6 +367,7 @@ export default {
       this.$eventBus.$emit('move-timeline', time);
     },
 
+    /*
     prepareWebSocket() {
       if (!process.browser) {
         return;
@@ -470,6 +453,7 @@ export default {
         this.clearWebSocketReconnectTimer();
       }
     },
+    */
   }
 }
 </script>
