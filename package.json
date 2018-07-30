@@ -18,6 +18,7 @@
     "element-ui": "^2.4.3",
     "fabric": "^2.3.3",
     "nuxt": "^1.0.0",
+    "uuid": "^3.3.2",
     "vue2vis": "0.0.13"
   },
   "devDependencies": {

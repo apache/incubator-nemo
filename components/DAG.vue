@@ -30,6 +30,7 @@ const RECT_ROUND_RADIUS = 4;
 const ARROW_SIDE = 3;
 
 const SUCCESS_COLOR = '#67C23A';
+const DANGER_COLOR = '#F56C6C';
 
 const BACKGROUND_COLOR = '#F2F6FC';
 const CANVAS_RATIO = 0.75;
@@ -43,7 +44,7 @@ const DEBUG = false;
 
 export default {
 
-  props: ['metricDataSet', 'tabIndex'],
+  props: ['selectedJobId', 'tabIndex'],
 
   mounted() {
     this.initializeCanvas();
@@ -207,14 +208,16 @@ export default {
       });
 
       // new dag event
-      this.$eventBus.$on('dag', async data => {
+      this.$eventBus.$on('dag', async ({ dag, jobId }) => {
+        if (jobId !== this.selectedJobId) {
+          return;
+        }
+
         if (this.tabIndex === MY_TAB_INDEX) {
           await this.resizeCanvas(false);
         }
-        // TODO: do not initialized when the dag is from same job
-        this.initializeVariables();
         this.setUpCanvasEventHandler();
-        this.dag = data;
+        this.dag = dag;
         this.drawDAG();
         await this.fitCanvas();
         this.canvas.viewportTransform[4] = this.lastViewportX;
@@ -223,7 +226,11 @@ export default {
       });
 
       // stage state transition event
-      this.$eventBus.$on('stage-event', ({ stageId, state }) => {
+      this.$eventBus.$on('stage-event', ({ stageId, state, jobId }) => {
+        if (jobId !== this.selectedJobId) {
+          return;
+        }
+
         if (!stageId || !(stageId in this.stageObjects)) {
           return;
         }
@@ -232,6 +239,9 @@ export default {
 
         if (state === STATE.COMPLETE) {
           stage.set('fill', SUCCESS_COLOR);
+          this.canvas.renderAll();
+        } else if (state === STATE.FAILED) {
+          stage.set('fill', DANGER_COLOR);
           this.canvas.renderAll();
         }
       });

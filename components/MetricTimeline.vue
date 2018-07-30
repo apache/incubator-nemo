@@ -16,14 +16,18 @@ const FIT_THROTTLE_INTERVAL = 500;
 const REDRAW_DELAY = 300;
 
 export default {
-  props: ['metric', 'groups', 'metricLookupMap'],
+  props: ['selectedJobId', 'metric', 'groups', 'metricLookupMap'],
 
   beforeMount() {
     this.$eventBus.$on('redraw-timeline', () => {
       setTimeout(this.redrawTimeline, REDRAW_DELAY);
     });
 
-    this.$eventBus.$on('fit-timeline', () => {
+    this.$eventBus.$on('fit-timeline', (jobId) => {
+      if (jobId !== this.selectedJobId) {
+        return;
+      }
+
       if (this.fitThrottleTimer) {
         return;
       }
@@ -34,7 +38,10 @@ export default {
       }, FIT_THROTTLE_INTERVAL);
     });
 
-    this.$eventBus.$on('move-timeline', ( time ) => {
+    this.$eventBus.$on('move-timeline', ({ time, jobId }) => {
+      if (jobId !== this.selectedJobId) {
+        return;
+      }
       this.moveTimeline(time);
     });
 
@@ -47,6 +54,10 @@ export default {
       } else {
         this.$eventBus.$emit('metric-select', items[0]);
       }
+    });
+
+    this.$eventBus.$on('set-timeline-items', metricDataSet => {
+      this.timeline.setItems(metricDataSet);
     });
   },
 

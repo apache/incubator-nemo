@@ -47,7 +47,8 @@
           <el-row type="flex" justify="space-between">
             <el-col :span="mainColSpan">
               <metric-timeline
-                 ref="metricTimeline"
+                ref="metricTimeline"
+                :selectedJobId="selectedJobId"
                 :metric="metricDataSet"
                 :groups="groupDataSet"/>
             </el-col>
@@ -64,9 +65,7 @@
           </template>
           <el-row type="flex" justify="space-between">
             <el-col :span="mainColSpan">
-              <dag
-                :tabIndex="tabIndex"
-                :metricDataSet="metricDataSet"/>
+              <dag :selectedJobId="selectedJobId" :tabIndex="tabIndex"/>
               </el-col>
             <el-col :span="subColSpan">
               <detail-table
@@ -80,6 +79,7 @@
             Task
           </template>
           <task-statistics
+            :selectedJobId="selectedJobId"
             :metricLookupMap="metricLookupMap"/>
         </el-tab-pane>
       </el-tabs>
@@ -96,8 +96,6 @@ import DetailTable from '~/components/DetailTable';
 import TaskStatistics from '~/components/TaskStatistics';
 import { DataSet } from 'vue2vis';
 import { STATE } from '~/assets/constants';
-
-const WEBSOCKET_ENDPOINT = 'ws://127.0.0.1:10101/api/websocket';
 
 // list of metric, order of elements matters.
 const METRIC_LIST = [
@@ -132,9 +130,9 @@ export default {
 
       // selected metric id
       selectedMetricId: '',
+      // selected job id
+      selectedJobId: '',
 
-      // dag data
-      dag: undefined,
       metricLookupMap: {}, // metricId -> data
 
       // element-ui specific
@@ -166,40 +164,42 @@ export default {
       });
     });
 
-    this.$eventBus.$on('metric-select', metricId => {
-      this.selectedMetricId = metricId;
-      this.buildTableData(metricId);
-      this.$eventBus.$emit('metric-select-done');
-    });
 
-    this.$eventBus.$on('metric-deselect', async () => {
-      this.tableData = [];
-      this.selectedMetricId = '';
-      await this.$nextTick();
-      this.$eventBus.$emit('metric-deselect-done');
-    });
-
+    this.setUpEventHandlers();
   },
 
   methods: {
-    _flatten(metric) {
-      let newMetric = {};
-      Object.keys(metric).forEach(key => {
-        if (key === 'properties') {
-          Object.assign(newMetric, this._flatten(metric[key]));
-        } else if (key !== 'irDag') {
-          newMetric[key] = metric[key];
+    setUpEventHandlers() {
+      // event handler for detecting change of job id
+      this.$eventBus.$on('job-id-select', data => {
+        this.$eventBus.$emit('set-timeline-items', data.metricDataSet);
+        this.selectedJobId = data.jobId;
+        this.metricDataSet = data.metricDataSet;
+        this.metricLookupMap = data.metricLookupMap;
+        this.selectedMetricId = '';
+      });
+
+      this.$eventBus.$on('build-table-data', ({ metricId, jobId }) => {
+        if (this.selectJobId === jobId &&
+          this.selectedMetricId === metricId) {
+          this.buildTableData(metricId);
         }
       });
 
-      return newMetric;
-    },
+      // event handler for individual metric selection
+      this.$eventBus.$on('metric-select', metricId => {
+        this.selectedMetricId = metricId;
+        this.buildTableData(metricId);
+        this.$eventBus.$emit('metric-select-done');
+      });
 
-    _removeUnusedProperties(metric) {
-      let newMetric = Object.assign({}, metric);
-      delete newMetric.group;
-      delete newMetric.content;
-      return newMetric;
+      // event handler for individual metric deselection
+      this.$eventBus.$on('metric-deselect', async () => {
+        this.tableData = [];
+        this.selectedMetricId = '';
+        await this.$nextTick();
+        this.$eventBus.$emit('metric-deselect-done');
+      });
     },
 
     buildTableData(metricId) {
@@ -231,34 +231,6 @@ export default {
       });
     },
 
-    buildMetricLookupMapWithDAG() {
-      this.dag.vertices.forEach(stage => {
-        Vue.set(this.metricLookupMap, stage.id, this._flatten(stage));
-        stage.properties.irDag.vertices.forEach(vertex => {
-          Vue.set(this.metricLookupMap, vertex.id, this._flatten(vertex));
-        });
-        stage.properties.irDag.edges.forEach(edge => {
-          const edgeId = edge.properties.runtimeEdgeId;
-          Vue.set(this.metricLookupMap, edgeId, this._flatten(edge));
-        });
-      });
-      this.dag.edges.forEach(edge => {
-        const edgeId = edge.properties.runtimeEdgeId;
-        Vue.set(this.metricLookupMap, edgeId, this._flatten(edge));
-      });
-    },
-
-    addMetricToMetricLookupMap(metric) {
-      if (metric.group === 'JobMetric') {
-        Vue.set(this.metricLookupMap, metric.id, metric);
-      } else if (metric.group === 'TaskMetric') {
-        Vue.set(this.metricLookupMap, metric.id, metric);
-      }
-      if (this.selectedMetricId === metric.id) {
-        this.buildTableData(metric.id);
-      }
-    },
-
     handleTabClick({ index }) {
       this.tabIndex = index;
       if (index === TIMELINE_TAB) {
@@ -268,192 +240,12 @@ export default {
       }
     },
 
-    async processMetric(metric) {
-      // specific event broadcast
-      if ('metricType' in metric) {
-        await this.processIndividualMetric(metric);
-      } else {
-        // the first big metric chunk
-        Object.keys(metric).forEach(metricType => {
-          Object.values(metric[metricType]).forEach(async data => {
-            await this.processIndividualMetric({
-              metricType: metricType,
-              data: data,
-            });
-          });
-        });
-      }
+    _removeUnusedProperties(metric) {
+      let newMetric = Object.assign({}, metric);
+      delete newMetric.group;
+      delete newMetric.content;
+      return newMetric;
     },
-
-    async processIndividualMetric({ metricType, data }) {
-      // build group dataset
-      if (!this.groupDataSet.get(metricType)) {
-        this.groupDataSet.add({
-          id: metricType,
-          content: metricType,
-          order: METRIC_LIST.indexOf(metricType),
-        });
-      }
-
-      let newItem = { group: metricType };
-      // overwrite item object with received data
-      Object.assign(newItem, data);
-
-      // if data contains `dag`, it will send to DAG component
-      // TODO: support multi job with job identifier
-      // maybe can use self-generated UUIDv4?
-      if (data.dag && !this.dag) {
-        this.dag = data.dag;
-        this.$eventBus.$emit('dag', this.dag);
-        this.buildMetricLookupMapWithDAG();
-      }
-
-      data.stateTransitionEvents
-        .filter(event => event.prevState != null)
-        .forEach(event => {
-          if (event.prevState === STATE.INCOMPLETE) {
-            // Stage does not have READY, so it cannot be represented as
-            // a range of timeline. So the only needed field is `start`.
-            this.$eventBus.$emit('stage-event', {
-              stageId: data.id,
-              state: STATE.COMPLETE,
-            });
-            newItem.start = new Date(event.timestamp);
-            newItem.content = data.id + ' COMPLETE';
-          } else if (event.prevState === STATE.READY) {
-            newItem.start = new Date(event.timestamp);
-            newItem.content = data.id;
-          } else if (event.newState === STATE.COMPLETE) {
-            if (newItem.start) {
-              newItem.end = new Date(event.timestamp);
-            } else {
-              newItem.start = new Date(event.timestamp);
-            }
-            newItem.content = data.id;
-          }
-        });
-
-      let prevItem = this.metricDataSet.get(newItem.id);
-      if (!prevItem) {
-        try {
-          this.metricDataSet.add(newItem);
-          this.addMetricToMetricLookupMap(newItem);
-        } catch (e) {
-          console.warn('Error when adding new item');
-        }
-        if (this.metricDataSet.length === 1) {
-          this.moveTimeline(newItem.start);
-        } else {
-          this.fitTimeline();
-        }
-      } else {
-        try {
-          this.metricDataSet.update(newItem);
-          this.addMetricToMetricLookupMap(newItem);
-        } catch (e) {
-          console.warn('Error when updating item');
-        }
-        if (!(prevItem.start === newItem.start && prevItem.end === newItem.end)) {
-          this.fitTimeline();
-        }
-      }
-    },
-
-    fitTimeline() {
-      this.$eventBus.$emit('fit-timeline');
-    },
-
-    moveTimeline(time) {
-      this.$eventBus.$emit('move-timeline', time);
-    },
-
-    /*
-    prepareWebSocket() {
-      if (!process.browser) {
-        return;
-      }
-
-      if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
-        // this.closeWebSocket();
-        // is this really correct?
-        return;
-      }
-
-      this.ws = new WebSocket(WEBSOCKET_ENDPOINT);
-
-      this.ws.onopen = () => {
-        // clear metric
-        this.metricDataSet.clear();
-        this.groupDataSet.clear();
-        this.dag = null;
-        this.selectedMetricId = '';
-        this.wsStatus = 'opened';
-      };
-
-      this.ws.onmessage = (event) => {
-        let parsedData;
-        try {
-          parsedData = JSON.parse(event.data);
-        } catch (e) {
-          console.warn('Non-JSON data received');
-          return;
-        }
-
-        // pass to metric handling logic
-        this.processMetric(parsedData);
-      };
-
-      this.ws.onclose = () => {
-        this.wsStatus = 'closed';
-        if (this.ws && this.autoReconnect) {
-          this.ws = undefined;
-          this.tryReconnect();
-        }
-      };
-
-      window.onbeforeunload = () => {
-        this.closeWebSocket();
-      };
-    },
-
-    closeWebSocket() {
-      if (this.ws) {
-        this.ws.close();
-      }
-    },
-
-    clearWebSocketReconnectTimer() {
-      if (reconnectionTimer) {
-        clearTimeout(reconnectionTimer);
-        reconnectionTimer = null;
-      }
-    },
-
-    tryReconnect() {
-      if (this.wsStatus === 'opened') {
-        return;
-      }
-      this.closeWebSocket();
-
-      // when auto reconnect option is true
-      if (this.autoReconnect) {
-        this.clearWebSocketReconnectTimer();
-        // timer for reconnecting
-        reconnectionTimer = setTimeout(() => {
-          this.tryReconnect();
-        }, RECONNECT_INTERVAL);
-      }
-      this.prepareWebSocket();
-    },
-
-    autoReconnectChanged(v) {
-      if (v && this.wsStatus === 'closed') {
-        this.tryReconnect();
-      } else if (!v) {
-        this.clearWebSocketReconnectTimer();
-      }
-    },
-    */
   }
 }
 </script>

@@ -72,7 +72,6 @@ export default {
     },
 
     toStateText(e) {
-      console.log(e[e.length - 1].newState);
       return e[e.length - 1].newState;
     },
 
